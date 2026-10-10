@@ -12,10 +12,12 @@
 		"prepare": "husky",
 		"test": "vp -C packages/raf-query test",
 		"typecheck": "pnpm --filter raf-query typecheck",
-		"check": "vp check"
+		"check": "vp check",
+		"postinstall": "vendor-src check"
 	},
 	"devDependencies": {
 		"@release-it/conventional-changelog": "12.0.2",
+		"@tanstack/react-query": "^5.104.1",
 		"@types/node": "26.6.4",
 		"@vitest/coverage-v8": "5.0.1",
 		"husky": "9.1.7",
@@ -24,6 +26,7 @@
 		"raf-query": "workspace:*",
 		"release-it": "21.1.0",
 		"typescript": "7.0.2",
+		"vendor-src": "^0.15.2",
 		"vite-plus": "1.0.0"
 	},
 	"lint-staged": {
