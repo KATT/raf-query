@@ -1,0 +1,57 @@
+concurrency:
+  group: ${{ github.workflow }}
+
+jobs:
+  release:
+    # release-it pushes "chore: release vX.Y.Z", which would re-trigger this
+    # workflow and fail with "no commits since the latest tag".
+    if: "${{ !startsWith(github.event.head_commit.message, 'chore: release') }}"
+    permissions:
+      contents: write
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.ACCESS_TOKEN }}
+      - uses: ./.github/actions/prepare
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@latest
+      - run: pnpm build
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Release
+        working-directory: packages/raf-query
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          # Trusted Publishing uses OIDC; a placeholder NODE_AUTH_TOKEN from
+          # setup-node would make npm skip the OIDC exchange.
+          NODE_AUTH_TOKEN: ""
+        run: |
+          set +e
+          pnpm exec release-it --ci --verbose > /tmp/release-it.log 2>&1
+          code=$?
+          set -e
+          cat /tmp/release-it.log
+          if [ "$code" -eq 0 ]; then
+            exit 0
+          fi
+          if grep -Fq "There are no commits since the latest tag" /tmp/release-it.log; then
+            echo "No releasable commits since the latest tag; skipping."
+            exit 0
+          fi
+          exit "$code"
+
+name: Release
+
+on:
+  push:
+    branches:
+      - main

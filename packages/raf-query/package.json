@@ -1,0 +1,55 @@
+{
+	"name": "raf-query",
+	"version": "0.0.0",
+	"description": "Render-as-you-fetch query library",
+	"keywords": [
+		"query",
+		"raf",
+		"render-as-you-fetch",
+		"suspense"
+	],
+	"license": "MIT",
+	"author": {
+		"name": "KATT",
+		"email": "alexander@n1s.se"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/KATT/raf-query.git",
+		"directory": "packages/raf-query"
+	},
+	"homepage": "https://github.com/KATT/raf-query#readme",
+	"bugs": {
+		"url": "https://github.com/KATT/raf-query/issues"
+	},
+	"files": [
+		"dist/",
+		"LICENSE.md",
+		"README.md"
+	],
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		".": "./dist/index.mjs"
+	},
+	"scripts": {
+		"prepack": "node scripts/sync-package-docs.ts",
+		"build": "vp pack",
+		"test": "vp test",
+		"typecheck": "tsc"
+	},
+	"dependencies": {
+		"@effect/platform-node": "4.0.1",
+		"effect": "4.0.1"
+	},
+	"devDependencies": {
+		"@effect/vitest": "4.0.1",
+		"@types/node": "26.6.4",
+		"@vitest/coverage-v8": "5.0.1",
+		"typescript": "7.0.2",
+		"vite-plus": "1.0.0"
+	},
+	"engines": {
+		"node": ">=24"
+	}
+}

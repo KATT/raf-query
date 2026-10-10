@@ -1,0 +1,70 @@
+{
+	"git": {
+		"commitMessage": "chore: release v${version}",
+		"pushArgs": ["--follow-tags", "--atomic"],
+		"requireCommits": true
+	},
+	"github": {
+		"release": true,
+		"releaseName": "v${version}"
+	},
+	"hooks": {
+		"before:npm": "pnpm --dir ../.. build && node scripts/sync-package-docs.ts",
+		"after:git:release": "pnpm pack --out raf-query.tgz && npm publish raf-query.tgz && rm raf-query.tgz"
+	},
+	"npm": {
+		"publish": false,
+		"skipChecks": true
+	},
+	"plugins": {
+		"@release-it/conventional-changelog": {
+			"infile": "CHANGELOG.md",
+			"preset": {
+				"name": "conventionalcommits",
+				"preMajor": true,
+				"types": [
+					{
+						"section": "Features",
+						"type": "feat"
+					},
+					{
+						"section": "Bug Fixes",
+						"type": "fix"
+					},
+					{
+						"section": "Performance Improvements",
+						"type": "perf"
+					},
+					{
+						"hidden": true,
+						"type": "build"
+					},
+					{
+						"hidden": true,
+						"type": "chore"
+					},
+					{
+						"hidden": true,
+						"type": "ci"
+					},
+					{
+						"hidden": true,
+						"type": "docs"
+					},
+					{
+						"hidden": true,
+						"type": "refactor"
+					},
+					{
+						"hidden": true,
+						"type": "style"
+					},
+					{
+						"hidden": true,
+						"type": "test"
+					}
+				]
+			}
+		}
+	}
+}

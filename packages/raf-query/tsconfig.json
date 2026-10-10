@@ -1,0 +1,16 @@
+{
+	"compilerOptions": {
+		"declaration": true,
+		"esModuleInterop": true,
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"noEmit": true,
+		"resolveJsonModule": true,
+		"rewriteRelativeImportExtensions": true,
+		"skipLibCheck": true,
+		"strict": true,
+		"target": "ES2023"
+	},
+	"include": ["src", "scripts"],
+	"exclude": [".repos", "dist", "node_modules", "coverage"]
+}

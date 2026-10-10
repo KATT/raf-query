@@ -1,0 +1,29 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": ["typescript", "unicorn", "oxc"],
+	"categories": {
+		"correctness": "error",
+		"suspicious": "error"
+	},
+	"ignorePatterns": [
+		"coverage",
+		"**/coverage",
+		"dist",
+		"**/dist",
+		"node_modules",
+		"**/node_modules",
+		".repos",
+		"pnpm-lock.yaml"
+	],
+	"env": {
+		"builtin": true
+	},
+	"overrides": [
+		{
+			"files": ["**/*.test.ts"],
+			"env": {
+				"vitest": true
+			}
+		}
+	]
+}

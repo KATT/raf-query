@@ -1,0 +1,12 @@
+/coverage
+**/coverage
+/dist
+**/dist
+/node_modules
+**/node_modules
+.DS_Store
+**/.DS_Store
+
+# Generated into the publishable package on prepack / release
+/packages/raf-query/README.md
+/packages/raf-query/LICENSE.md

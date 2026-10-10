@@ -1,0 +1,71 @@
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - run: pnpm build
+      - name: Run the packed package as a consumer would
+        run: |
+          pnpm --dir packages/raf-query pack --out "$RUNNER_TEMP/raf-query.tgz"
+          mkdir "$RUNNER_TEMP/consumer"
+          cd "$RUNNER_TEMP/consumer"
+          npm init -y > /dev/null
+          npm install "$RUNNER_TEMP/raf-query.tgz"
+          node -e "import('raf-query').then((m) => console.log(m.name))"
+
+  engines_check:
+    name: Engines Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - uses: actions/setup-node@v4
+        with:
+          cache: pnpm
+          node-version-file: .nvmrc
+      - run: pnpm --filter raf-query install --prod --engine-strict --ignore-scripts
+
+  format_check:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - run: pnpm format:check
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - run: pnpm lint
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - run: pnpm test --coverage
+      - if: always()
+        uses: codecov/codecov-action@v3
+
+  type_check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - run: pnpm typecheck
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
