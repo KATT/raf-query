@@ -12,6 +12,10 @@
 
 ## Vendored Source
 
-Dependency source is vendored under `.repos/` as read-only reference material for coding agents, pinned to the installed versions. Nothing is vendored yet — run `vendor-src add <package>`. See `.repos/AGENTS.md`.
+Source for this project's key dependencies is vendored under `.repos/`, pinned to the installed versions. When a question is about how one of these libraries actually behaves, read its vendored source — implementation, tests, examples — instead of relying on docs, memory, or web search. The trees are read-only reference material; see `.repos/AGENTS.md` before touching or citing them.
+
+### Vendored packages
+
+- `@tanstack/react-query@5.104.1` → `.repos/query`
 
 <!-- vendor-src:end -->

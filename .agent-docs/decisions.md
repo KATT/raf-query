@@ -20,3 +20,15 @@ Append-only in spirit; rewrite in place when a decision changes. Keep each entry
 - Root `README.md`: product sketch / public story (human will draft ideas there).
 - `AGENTS.md`: short environment + pointers agents need every session.
 - `.agent-docs/`: durable agent notes (this folder). Agents may reshape it.
+
+## 2026-10-10 — Vendored TanStack Query
+
+- `vendor-src` dogfoods at the workspace root (`postinstall`: `vendor-src check`).
+- `@tanstack/react-query@5.104.1` → `.repos/query` (inspiration / mechanism reference for raf-query).
+- Read that tree for how query caches, observers, and suspense integration actually work; don’t invent parallel APIs from memory.
+
+## 2026-10-10 — npm release path
+
+- Same release-it + GitHub Actions flow as vendor-src: push to `main` → `.github/workflows/release.yaml`.
+- Publishes via npm OIDC trusted publishing (`id-token: write`, empty `NODE_AUTH_TOKEN`).
+- Needs GitHub secret `ACCESS_TOKEN` (release push) and an npm trusted publisher on `raf-query` for workflow `release.yaml`.

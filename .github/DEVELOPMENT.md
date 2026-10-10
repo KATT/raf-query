@@ -44,3 +44,20 @@ pnpm typecheck
 ```shell
 pnpm lint
 ```
+
+## Releasing / npm publish
+
+Pushing to `main` runs [`.github/workflows/release.yaml`](./workflows/release.yaml). [release-it](https://github.com/release-it/release-it) bumps `packages/raf-query`, updates `CHANGELOG.md`, tags, creates a GitHub Release, then `pnpm pack` + `npm publish` (OIDC trusted publishing — no `NPM_TOKEN`).
+
+One-time setup (already done for this repo when documented here; recreate if forking):
+
+1. **GitHub secret `ACCESS_TOKEN`** — a PAT with `repo` (and ability to push to `main` / create releases). The workflow checks out and pushes the release commit with this token.
+2. **npm trusted publisher** for package `raf-query`:
+   - GitHub user/org: `KATT`
+   - Repository: `raf-query`
+   - Workflow filename: `release.yaml` (filename only)
+   - Allow `npm publish`
+   - CLI: `npm trust github raf-query --file release.yaml --repo KATT/raf-query --allow-publish -y`
+   - Or UI: https://www.npmjs.com/package/raf-query/access after the first publish exists / from npm account package settings
+
+Do not set `NODE_AUTH_TOKEN` / `NPM_TOKEN` in the release job — a placeholder token disables OIDC.

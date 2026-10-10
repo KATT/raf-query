@@ -49,6 +49,10 @@
 		"typescript": "7.0.2",
 		"vite-plus": "1.0.0"
 	},
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	},
 	"engines": {
 		"node": ">=24"
 	}

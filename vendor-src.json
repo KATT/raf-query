@@ -2,5 +2,12 @@
 	"$schema": "https://unpkg.com/vendor-src/schema.json",
 	"dir": ".repos",
 	"rootAgentsMd": true,
-	"repos": {}
+	"repos": {
+		"query": {
+			"packages": ["@tanstack/react-query"],
+			"url": "https://github.com/TanStack/query.git",
+			"version": "5.104.1",
+			"ref": "@tanstack/react-query@5.104.1"
+		}
+	}
 }
