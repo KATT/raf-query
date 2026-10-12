@@ -9,6 +9,7 @@ import {
 	QueryClientProvider,
 	type QueryHandle,
 	queryOptions,
+	type Thenable,
 	useQuery,
 	type UseQueryOptions,
 	useWaterfall,
@@ -455,7 +456,7 @@ describe("useQuery", () => {
 			const [issue] = useQuery(backend.issueQuery, ensured);
 			expectTypeOf(issue).toEqualTypeOf<Issue>();
 			const [promise] = useQuery(backend.issueQuery, handle);
-			expectTypeOf(promise).toEqualTypeOf<Promise<Issue>>();
+			expectTypeOf(promise).toEqualTypeOf<Thenable<Issue>>();
 		};
 		expect(useTypes).toBeTypeOf("function");
 	});

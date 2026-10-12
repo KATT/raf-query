@@ -15,7 +15,7 @@ import type {
 	QueryMeta,
 	RetryPolicy,
 } from "./options.ts";
-import { fulfilled, type Pending, pending } from "./thenable.ts";
+import { fulfilled, type Pending, pending, type Thenable } from "./thenable.ts";
 
 /** A snapshot of one cache entry. Replaced, never mutated, on every change. */
 export interface QueryState<TData> {
@@ -36,9 +36,9 @@ export interface QueryState<TData> {
 	readonly isStale: boolean;
 	/**
 	 * Settles with `data`. A new promise is created per data version, already
-	 * fulfilled once data exists, so React's `use()` reads it synchronously.
+	 * fulfilled once data exists, so it can be read synchronously.
 	 */
-	readonly promise: Promise<TData>;
+	readonly promise: Thenable<TData>;
 	readonly status: "error" | "pending" | "success";
 	/** When `data` was fetched (ms since epoch); `0` without data. */
 	readonly updatedAt: number;

@@ -13,6 +13,7 @@ import {
 	type QueryKey,
 	QueryObserver,
 	type QueryObserverOptions,
+	type Thenable,
 } from "@raf-query/core";
 import { use, useEffect, useState, useSyncExternalStore } from "react";
 
@@ -62,7 +63,7 @@ export type UseQueryControls<TFactory extends QueryFactory> =
 		: QueryControls<TFactory>;
 
 export type UseQueryResult<TFactory extends QueryFactory> = readonly [
-	promise: Promise<DataOf<TFactory>>,
+	promise: Thenable<DataOf<TFactory>>,
 	controls: UseQueryControls<TFactory>,
 ];
 

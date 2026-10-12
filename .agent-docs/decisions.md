@@ -143,6 +143,12 @@ Agent decisions:
 - Not released: `.release-it.json` publishes core and react by name only, and its `after:bump` filter (`./packages/*`) doesn't reach `.experimental/`, so the version stays `0.0.0`.
 - Tests: TanStack batches observer notifications on a `setTimeout(0)`, so React tests wait a macrotask inside `act` after any cache write (`flush()` in `test-utils.tsx`).
 
+## 2026-10-12 — `Thenable` type (human asked)
+
+- `Thenable<T>` (core, public type) = `Promise<T>` & a `status` union (`pending` / `fulfilled` + `value` / `rejected` + `reason`), the fields React's `use()` reads. `QueryState.promise` and `useQuery`'s promise are typed with it.
+- Library code that already ensured a query returns or reads its thenable instead of re-checking `data !== undefined` (`qc.fetch` returns `#load`'s promise). No `unwrap()` helper (human).
+- Apps, examples and README read with React's `use()` (human).
+
 ## 2026-10-12 — npm release path
 
 - release-it + GitHub Actions: push to `main` → `.github/workflows/release.yaml`, run from the repo root (`.release-it.json`). Setup steps live in `.github/DEVELOPMENT.md`.

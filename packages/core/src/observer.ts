@@ -1,6 +1,7 @@
 import type { QueryKey } from "./key.ts";
 import type { QueryFactory } from "./options.ts";
 import type { Query, SubscribeOptions } from "./query.ts";
+import type { Thenable } from "./thenable.ts";
 
 /** How one reader observes its query. */
 export interface QueryObserverOptions {
@@ -43,7 +44,7 @@ export interface QueryObserverResult<TData = unknown> {
 	/** Key of the data in `promise`; differs from the query's while `isPrevious`. */
 	readonly key: QueryKey;
 	/** Settles with the data to show; see `QueryState.promise`. */
-	readonly promise: Promise<TData>;
+	readonly promise: Thenable<TData>;
 	refetch(): Promise<void>;
 	/** When the data in `promise` was fetched (ms since epoch); `0` before that. */
 	readonly updatedAt: number;

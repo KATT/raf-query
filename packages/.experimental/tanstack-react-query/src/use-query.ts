@@ -28,7 +28,7 @@ import {
 	type QueryFactory,
 	type QueryHandle,
 } from "./options.ts";
-import { promiseFor } from "./thenable.ts";
+import { promiseFor, type Thenable } from "./thenable.ts";
 
 export interface UseQueryOptions {
 	/** Refetch on this interval (ms) while mounted and the page is visible. */
@@ -85,7 +85,7 @@ export type UseQueryControls<TFactory extends QueryFactory> =
 		: QueryControls<TFactory>;
 
 export type UseQueryResult<TFactory extends QueryFactory> = readonly [
-	promise: Promise<DataOf<TFactory>>,
+	promise: Thenable<DataOf<TFactory>>,
 	controls: UseQueryControls<TFactory>,
 ];
 
@@ -213,7 +213,7 @@ interface Shown {
 	readonly hash: string;
 	readonly input: unknown;
 	readonly key: QueryKey;
-	readonly promise: Promise<unknown>;
+	readonly promise: Thenable<unknown>;
 	readonly updatedAt: number;
 }
 
