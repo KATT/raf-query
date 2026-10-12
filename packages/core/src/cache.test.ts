@@ -9,6 +9,7 @@ import {
 	Fiber,
 	Layer,
 	Option,
+	Schedule,
 	Scope,
 	Stream,
 } from "effect";
@@ -17,11 +18,13 @@ import { TestClock } from "effect/testing";
 import {
 	type DehydratedState,
 	dehydrateQuery,
+	infiniteQueryOptions,
 	Platform,
 	Query,
 	QueryCache,
 	queryOptions,
 	RedactedError,
+	type RetryPolicy,
 } from "./index.ts";
 import { createBackend, fakePlatform, flush } from "./test-utils.ts";
 
@@ -658,6 +661,414 @@ describe("QueryCache", () => {
 			expect(Option.getOrUndefined(cached)?.title).toBe("A");
 			expect(yield* Fiber.join(fetched)).toEqual({ id: 2, title: "Second" });
 			expect(backend.requests).toHaveLength(0);
+		}),
+	);
+});
+
+describe("when the last reader leaves mid-request", () => {
+	/** A query whose attempts the test settles, with or without reading its signal. */
+	function controlled(options: {
+		readonly readsSignal: boolean;
+		readonly retry?: RetryPolicy;
+		readonly retryDelay?: number;
+	}) {
+		const attempts: Array<
+			PromiseWithResolvers<string> & { readonly signal?: AbortSignal }
+		> = [];
+		const factory = () =>
+			queryOptions({
+				queryFn: (context) => {
+					const attempt = Promise.withResolvers<string>();
+					attempts.push(
+						options.readsSignal
+							? { ...attempt, signal: context.signal }
+							: attempt,
+					);
+					return attempt.promise;
+				},
+				queryKey: ["controlled"],
+				retry: options.retry ?? 3,
+				retryDelay: options.retryDelay ?? 1000,
+			});
+		return { attempts, factory };
+	}
+
+	/** The errors of the cache's `failed` events, as they happen. */
+	function failedEvents(cache: QueryCache.QueryCache) {
+		const failed: Array<unknown> = [];
+		cache.subscribeUnsafe((event) => {
+			if (event.type === "failed") {
+				failed.push(event.error);
+			}
+		});
+		return failed;
+	}
+
+	it.effect(
+		"interrupts a refetch that reads its signal and keeps the data",
+		() =>
+			Effect.gen(function* () {
+				const backend = createBackend();
+				const cache = yield* QueryCache.make({ isServer: false });
+				const failed = failedEvents(cache);
+				yield* cache.setData(
+					backend.issueQuery,
+					{ id: 1 },
+					{ id: 1, title: "Cached" },
+				);
+				const query = cache.getQueryUnsafe(backend.issueQuery, { id: 1 });
+				const before = Query.getUnsafe(query);
+				const unsubscribe = Query.subscribeUnsafe(query, () => {});
+				const refetched = yield* Effect.forkChild(Query.fetch(query), {
+					startImmediately: true,
+				});
+
+				unsubscribe();
+				yield* settle;
+
+				expect(backend.requests[0]?.signal.aborted).toBe(true);
+				expect(Query.getUnsafe(query)).toMatchObject({
+					data: { id: 1, title: "Cached" },
+					error: null,
+					failureCount: 0,
+					isFetching: false,
+					status: "success",
+				});
+				expect(Query.getUnsafe(query).promise).toBe(before.promise);
+				expect(yield* Fiber.join(refetched)).toEqual({
+					id: 1,
+					title: "Cached",
+				});
+				expect(failed).toEqual([]);
+
+				yield* cache.prefetch(backend.issueQuery, { id: 1 });
+				expect(backend.requests).toHaveLength(2);
+				backend.respondAll();
+				yield* settle;
+				expect(Query.getUnsafe(query).data).toEqual({ id: 1, title: "First" });
+			}),
+	);
+
+	it.effect("restores the failure count from before the request", () =>
+		Effect.gen(function* () {
+			const source = controlled({ readsSignal: true });
+			const cache = yield* QueryCache.make({ isServer: false });
+			yield* cache.setData(source.factory, undefined, "cached");
+			const query = cache.getQueryUnsafe(source.factory);
+			const unsubscribe = Query.subscribeUnsafe(query, () => {});
+			yield* Effect.forkChild(Query.refetch(query), { startImmediately: true });
+			yield* settle;
+			source.attempts[0]?.reject(new Error("down"));
+			yield* settle;
+			expect(Query.getUnsafe(query).failureCount).toBe(1);
+
+			unsubscribe();
+			yield* settle;
+			yield* TestClock.adjust("1 minute");
+
+			expect(source.attempts).toHaveLength(1);
+			expect(Query.getUnsafe(query)).toMatchObject({
+				data: "cached",
+				error: null,
+				failureCount: 0,
+				isFetching: false,
+			});
+		}),
+	);
+
+	it.effect("lets a first load finish, so a held read resolves", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: false });
+			const query = cache.getQueryUnsafe(backend.issueQuery, { id: 1 });
+			const held = Query.readUnsafe(query);
+			const unsubscribe = Query.subscribeUnsafe(query, () => {});
+
+			unsubscribe();
+			yield* settle;
+
+			expect(backend.requests[0]?.signal.aborted).toBe(false);
+			expect(Query.getUnsafe(query).isFetching).toBe(true);
+			backend.respondAll();
+			expect(yield* Effect.promise(() => held)).toEqual({
+				id: 1,
+				title: "First",
+			});
+			expect(backend.requests).toHaveLength(0);
+		}),
+	);
+
+	it.effect("doesn't retry a failed first load nobody reads anymore", () =>
+		Effect.gen(function* () {
+			const source = controlled({ readsSignal: true });
+			const cache = yield* QueryCache.make({ isServer: false });
+			const query = cache.getQueryUnsafe(source.factory);
+			const held = Query.readUnsafe(query);
+			const unsubscribe = Query.subscribeUnsafe(query, () => {});
+
+			unsubscribe();
+			yield* settle;
+			source.attempts[0]?.reject(new Error("down"));
+			yield* settle;
+			yield* TestClock.adjust("1 minute");
+
+			expect(source.attempts[0]?.signal?.aborted).toBe(false);
+			const reason = yield* Effect.promise(() =>
+				held.then(
+					() => undefined,
+					(error: unknown) => error,
+				),
+			);
+			expect(reason).toEqual(new Error("down"));
+			expect(Query.getUnsafe(query)).toMatchObject({
+				failureCount: 1,
+				status: "error",
+			});
+			expect(source.attempts).toHaveLength(1);
+		}),
+	);
+
+	it.effect(
+		"doesn't cancel when a reader subscribes again in the same task",
+		() =>
+			Effect.gen(function* () {
+				const backend = createBackend();
+				const cache = yield* QueryCache.make({ isServer: false });
+				yield* cache.setData(
+					backend.issueQuery,
+					{ id: 1 },
+					{ id: 1, title: "Cached" },
+				);
+				const query = cache.getQueryUnsafe(backend.issueQuery, { id: 1 });
+				const unsubscribe = Query.subscribeUnsafe(query, () => {});
+				yield* Effect.forkChild(Query.refetch(query), {
+					startImmediately: true,
+				});
+
+				unsubscribe();
+				Query.subscribeUnsafe(query, () => {});
+				yield* settle;
+
+				expect(backend.requests[0]?.signal.aborted).toBe(false);
+				backend.respondAll();
+				yield* settle;
+				expect(Query.getUnsafe(query)).toMatchObject({
+					data: { id: 1, title: "First" },
+					isFetching: false,
+				});
+			}),
+	);
+
+	it.effect("leaves a request nobody subscribed to alone", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: false });
+			yield* cache.setData(
+				backend.issueQuery,
+				{ id: 1 },
+				{ id: 1, title: "Cached" },
+			);
+
+			yield* cache.prefetch(backend.issueQuery, { id: 1 });
+			yield* settle;
+
+			expect(backend.requests[0]?.signal.aborted).toBe(false);
+			backend.respondAll();
+			yield* settle;
+			const data = yield* cache.getData(backend.issueQuery, { id: 1 });
+			expect(Option.getOrUndefined(data)?.title).toBe("First");
+		}),
+	);
+
+	it.effect("interrupts a page request and keeps the loaded pages", () =>
+		Effect.gen(function* () {
+			const signals: Array<AbortSignal> = [];
+			const cache = yield* QueryCache.make({ isServer: false });
+			const query = cache.getQueryUnsafe(() =>
+				infiniteQueryOptions({
+					getNextPageParam: (lastPage: number) => lastPage + 1,
+					initialPageParam: 0,
+					queryFn: (context) => {
+						signals.push(context.signal);
+						return context.pageParam === 0
+							? Promise.resolve(0)
+							: Promise.withResolvers<number>().promise;
+					},
+					queryKey: ["pages"],
+				}),
+			);
+			yield* Query.fetch(query);
+			const unsubscribe = Query.subscribeUnsafe(query, () => {});
+			const next = yield* Effect.forkChild(Query.fetchNextPage(query), {
+				startImmediately: true,
+			});
+
+			unsubscribe();
+			yield* Fiber.join(next);
+
+			expect(signals[1]?.aborted).toBe(true);
+			expect(Query.getUnsafe(query)).toMatchObject({
+				data: { pageParams: [0], pages: [0] },
+				fetchDirection: undefined,
+				isFetching: false,
+			});
+		}),
+	);
+
+	it.effect("interrupts an Effect queryFn", () =>
+		Effect.gen(function* () {
+			let interrupted = false;
+			const effectQuery = () =>
+				queryOptions({
+					queryFn: () =>
+						Effect.never.pipe(
+							Effect.onInterrupt(() =>
+								Effect.sync(() => {
+									interrupted = true;
+								}),
+							),
+							Effect.as("never"),
+						),
+					queryKey: ["effect"],
+				});
+			const cache = yield* QueryCache.make({ isServer: false });
+			yield* cache.setData(effectQuery, undefined, "cached");
+			const query = cache.getQueryUnsafe(effectQuery);
+			const unsubscribe = Query.subscribeUnsafe(query, () => {});
+			const refetched = yield* Effect.forkChild(Query.fetch(query), {
+				startImmediately: true,
+			});
+
+			unsubscribe();
+			yield* settle;
+
+			expect(interrupted).toBe(true);
+			expect(Query.getUnsafe(query).isFetching).toBe(false);
+			expect(yield* Fiber.join(refetched)).toBe("cached");
+		}),
+	);
+
+	it.effect.each([
+		["a count", 3],
+		["a predicate", () => true],
+		["a schedule", Schedule.recurs(3)],
+	] as const)(
+		"lets a queryFn that ignores its signal finish, without retries (%s)",
+		([_name, retry]) =>
+			Effect.gen(function* () {
+				const source = controlled({ readsSignal: false, retry });
+				const cache = yield* QueryCache.make({ isServer: false });
+				const failed = failedEvents(cache);
+				yield* cache.setData(source.factory, undefined, "cached");
+				const query = cache.getQueryUnsafe(source.factory);
+				const unsubscribe = Query.subscribeUnsafe(query, () => {});
+				const refetched = yield* Effect.forkChild(
+					Effect.flip(Query.fetch(query)),
+					{ startImmediately: true },
+				);
+
+				unsubscribe();
+				yield* settle;
+				source.attempts[0]?.reject(new Error("down"));
+
+				expect(yield* Fiber.join(refetched)).toEqual(new Error("down"));
+				expect(source.attempts).toHaveLength(1);
+				expect(Query.getUnsafe(query)).toMatchObject({
+					data: "cached",
+					failureCount: 1,
+					status: "error",
+				});
+				expect(failed).toHaveLength(1);
+			}),
+	);
+
+	it.effect("caches the result of a queryFn that ignores its signal", () =>
+		Effect.gen(function* () {
+			const source = controlled({ readsSignal: false });
+			const cache = yield* QueryCache.make({ isServer: false });
+			yield* cache.setData(source.factory, undefined, "cached");
+			const query = cache.getQueryUnsafe(source.factory);
+			const unsubscribe = Query.subscribeUnsafe(query, () => {});
+			const refetched = yield* Effect.forkChild(Query.fetch(query), {
+				startImmediately: true,
+			});
+
+			unsubscribe();
+			yield* settle;
+			source.attempts[0]?.resolve("ok");
+
+			expect(yield* Fiber.join(refetched)).toBe("ok");
+			expect(Query.getUnsafe(query).data).toBe("ok");
+		}),
+	);
+
+	it.effect("skips a retry that was waiting out its delay", () =>
+		Effect.gen(function* () {
+			const source = controlled({ readsSignal: false });
+			const cache = yield* QueryCache.make({ isServer: false });
+			const query = cache.getQueryUnsafe(source.factory);
+			const unsubscribe = Query.subscribeUnsafe(query, () => {});
+			const fetched = yield* Effect.forkChild(Effect.flip(Query.fetch(query)), {
+				startImmediately: true,
+			});
+			yield* settle;
+			source.attempts[0]?.reject(new Error("down"));
+			yield* settle;
+
+			unsubscribe();
+			yield* settle;
+			yield* TestClock.adjust("1 second");
+
+			expect(yield* Fiber.join(fetched)).toEqual(new Error("down"));
+			expect(source.attempts).toHaveLength(1);
+		}),
+	);
+
+	it.effect("skips a retry that would wait for the platform", () =>
+		Effect.gen(function* () {
+			const platform = fakePlatform({ online: false });
+			const source = controlled({ readsSignal: false });
+			const cache = yield* QueryCache.make({ isServer: false }).pipe(
+				Effect.provideService(Platform.Platform, platform),
+			);
+			const query = cache.getQueryUnsafe(source.factory);
+			const unsubscribe = Query.subscribeUnsafe(query, () => {});
+			const fetched = yield* Effect.forkChild(Effect.flip(Query.fetch(query)), {
+				startImmediately: true,
+			});
+			yield* settle;
+			source.attempts[0]?.reject(new Error("down"));
+			yield* settle;
+
+			unsubscribe();
+			yield* settle;
+			yield* TestClock.adjust("1 second");
+
+			expect(yield* Fiber.join(fetched)).toEqual(new Error("down"));
+			expect(source.attempts).toHaveLength(1);
+		}),
+	);
+
+	it.effect("retries again once a reader comes back", () =>
+		Effect.gen(function* () {
+			const source = controlled({ readsSignal: false, retry: 1 });
+			const cache = yield* QueryCache.make({ isServer: false });
+			const query = cache.getQueryUnsafe(source.factory);
+			const unsubscribe = Query.subscribeUnsafe(query, () => {});
+			const fetched = yield* Effect.forkChild(Query.fetch(query), {
+				startImmediately: true,
+			});
+			unsubscribe();
+			yield* settle;
+
+			Query.subscribeUnsafe(query, () => {});
+			source.attempts[0]?.reject(new Error("down"));
+			yield* settle;
+			yield* TestClock.adjust("1 second");
+			source.attempts[1]?.resolve("ok");
+
+			expect(yield* Fiber.join(fetched)).toBe("ok");
+			expect(source.attempts).toHaveLength(2);
 		}),
 	);
 });
