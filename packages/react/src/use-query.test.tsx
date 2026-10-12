@@ -3,6 +3,7 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { Component, type ReactNode, Suspense, use } from "react";
 
 import {
+	type EnsuredQueryHandle,
 	infiniteQueryOptions,
 	QueryClient,
 	QueryClientProvider,
@@ -267,10 +268,9 @@ describe("useQuery", () => {
 			});
 		}
 		function Numbers(props: {
-			readonly handle: QueryHandle<typeof numbersQuery>;
+			readonly handle: EnsuredQueryHandle<typeof numbersQuery>;
 		}) {
-			const [pagesPromise, numbers] = useQuery(numbersQuery, props.handle);
-			const data = use(pagesPromise);
+			const [data, numbers] = useQuery(numbersQuery, props.handle);
 			return (
 				<button
 					disabled={!numbers.hasNextPage}
@@ -300,6 +300,54 @@ describe("useQuery", () => {
 		const button = await screen.findByText("1,2,3");
 		expect(button.hasAttribute("disabled")).toBe(true);
 		cleanup();
+	});
+
+	it("returns the data itself for a handle from ensure", async () => {
+		const test = setup();
+		function EnsuredTitle(props: {
+			readonly handle: EnsuredQueryHandle<typeof test.backend.issueQuery>;
+		}) {
+			const [issue] = useQuery(test.backend.issueQuery, props.handle);
+			return <p>{issue.title}</p>;
+		}
+		const ensuring = test.client.ensure(test.backend.issueQuery, { id: 1 });
+		await test.backend.respond();
+		const handle = await ensuring;
+
+		await mount(test.view(<EnsuredTitle handle={handle} />));
+		expect(screen.getByText("First")).toBeDefined();
+
+		// The entry lost its data after the loader ran: the hook suspends.
+		await act(async () => {
+			void test.client.reset(test.backend.issueQuery, { id: 1 });
+			await Promise.resolve();
+		});
+		expect(screen.getByText("Loading")).toBeDefined();
+		await test.backend.respond();
+		expect(screen.getByText("First")).toBeDefined();
+		cleanup();
+	});
+
+	it("types reads of ensured handles as data", () => {
+		const backend = createBackend();
+		expectTypeOf<EnsuredQueryHandle<typeof backend.issueQuery>>().not.toExtend<
+			QueryHandle<typeof backend.issueQuery>
+		>();
+		const ensure = (client: QueryClient) =>
+			client.ensure(backend.issueQuery, { id: 1 });
+		expectTypeOf(ensure).returns.resolves.toEqualTypeOf<
+			EnsuredQueryHandle<typeof backend.issueQuery>
+		>();
+		const useTypes = (
+			ensured: EnsuredQueryHandle<typeof backend.issueQuery>,
+			handle: QueryHandle<typeof backend.issueQuery>,
+		) => {
+			const [issue] = useQuery(backend.issueQuery, ensured);
+			expectTypeOf(issue).toEqualTypeOf<Issue>();
+			const [promise] = useQuery(backend.issueQuery, handle);
+			expectTypeOf(promise).toEqualTypeOf<Promise<Issue>>();
+		};
+		expect(useTypes).toBeTypeOf("function");
 	});
 
 	it("types paging controls only for paged factories", () => {

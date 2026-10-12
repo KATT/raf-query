@@ -169,16 +169,34 @@ export type LoadOptions<TFactory extends QueryFactory> =
 
 declare const factoryType: unique symbol;
 
-/**
- * The serializable reference a loader or server component hands to the
- * component that reads the query. It holds no data and no functions.
- */
-export interface QueryHandle<TFactory extends QueryFactory = QueryFactory> {
+interface HandleFields<TFactory extends QueryFactory> {
 	/** Type-only: ties the handle to its factory. Never present at runtime. */
 	readonly [factoryType]?: TFactory;
 	/** The factory's input; `unknown` on a handle of no particular factory. */
 	readonly input: QueryFactory extends TFactory ? unknown : InputOf<TFactory>;
 	readonly key: QueryKey;
+}
+
+/**
+ * The serializable reference a loader or server component hands to the
+ * component that reads the query. It holds no data and no functions.
+ */
+export interface QueryHandle<
+	TFactory extends QueryFactory = QueryFactory,
+> extends HandleFields<TFactory> {
+	readonly ensured?: false;
+}
+
+/**
+ * A handle from `ensure`: its data was loaded before the handle was
+ * returned, so `useQuery` returns the data rather than a promise. Not
+ * assignable to {@link QueryHandle}, so a prop typed for one can't receive
+ * the other.
+ */
+export interface EnsuredQueryHandle<
+	TFactory extends QueryFactory = QueryFactory,
+> extends HandleFields<TFactory> {
+	readonly ensured: true;
 }
 
 /**

@@ -2,10 +2,14 @@
 
 import { Button } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import {
+	type EnsuredQueryHandle,
+	type QueryHandle,
+	useQuery,
+} from "@raf-query/react";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { Suspense, use } from "react";
+import { Suspense } from "react";
 
 import { commentsQuery, issueQuery, userQuery } from "~/queries.ts";
 
@@ -17,10 +21,9 @@ import { AssigneeCard, AssigneeCardSkeleton } from "./user.tsx";
 export function IssuePage(props: {
 	readonly assignee: QueryHandle<typeof userQuery>;
 	readonly comments: QueryHandle<typeof commentsQuery>;
-	readonly issue: QueryHandle<typeof issueQuery>;
+	readonly issue: EnsuredQueryHandle<typeof issueQuery>;
 }) {
-	const [issuePromise] = useQuery(issueQuery, props.issue);
-	const issue = use(issuePromise);
+	const [issue] = useQuery(issueQuery, props.issue);
 
 	return (
 		<div className="grid gap-6">

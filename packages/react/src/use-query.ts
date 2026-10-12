@@ -2,6 +2,7 @@
 
 import type {
 	DataOf,
+	EnsuredQueryHandle,
 	InputArgs,
 	InputOf,
 	IsPaged,
@@ -11,7 +12,13 @@ import type {
 	QueryHandle,
 	QueryKey,
 } from "@raf-query/core";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import {
+	use,
+	useCallback,
+	useEffect,
+	useState,
+	useSyncExternalStore,
+} from "react";
 
 import { unsafeCast } from "./cast.ts";
 import { useQueryClient } from "./provider.tsx";
@@ -75,6 +82,12 @@ export type UseQueryResult<TFactory extends QueryFactory> = readonly [
 	controls: UseQueryControls<TFactory>,
 ];
 
+/** {@link useQuery}'s result for a handle from `ensure`. */
+export type UseEnsuredQueryResult<TFactory extends QueryFactory> = readonly [
+	data: DataOf<TFactory>,
+	controls: UseQueryControls<TFactory>,
+];
+
 interface Shown {
 	readonly handle: { readonly input: unknown; readonly key: QueryKey };
 	readonly hash: string;
@@ -122,12 +135,32 @@ function useRefetchInterval(
  *
  * The promise is stable per data version and already fulfilled once the
  * cache has data, so `use()` only suspends while there is nothing to show.
+ *
+ * A handle from `ensure` had its data loaded before the route rendered, so
+ * the hook returns the data itself:
+ *
+ * ```tsx
+ * const [post, postState] = useQuery(postQuery, loaderData.post);
+ * ```
+ *
+ * If that entry has lost its data since (garbage-collected, `reset`), the
+ * hook suspends until it is refetched.
  */
 export function useQuery<TFactory extends QueryFactory>(
 	factory: TFactory,
+	handle: EnsuredQueryHandle<TFactory>,
+	options?: UseQueryOptions,
+): UseEnsuredQueryResult<TFactory>;
+export function useQuery<TFactory extends QueryFactory>(
+	factory: TFactory,
 	handle: QueryHandle<TFactory>,
+	options?: UseQueryOptions,
+): UseQueryResult<TFactory>;
+export function useQuery<TFactory extends QueryFactory>(
+	factory: TFactory,
+	handle: EnsuredQueryHandle<TFactory> | QueryHandle<TFactory>,
 	options: UseQueryOptions = {},
-): UseQueryResult<TFactory> {
+): UseEnsuredQueryResult<TFactory> | UseQueryResult<TFactory> {
 	const client = useQueryClient();
 	const query = queryFor(client, factory, handle.input);
 	query.read();
@@ -188,6 +221,13 @@ export function useQuery<TFactory extends QueryFactory>(
 		keyof QueryControls<QueryFactory> | keyof PagingControls,
 		unknown
 	>;
+	if (handle.ensured === true) {
+		// SAFETY: as below; `use` unwraps the promise to its data.
+		return unsafeCast<UseEnsuredQueryResult<TFactory>>([
+			use(shown.promise),
+			controls,
+		]);
+	}
 	// SAFETY: `shown.promise` is this factory's entry's promise (or an earlier
 	// input's entry of the same factory), and `controls` has every field of
 	// both control shapes.
