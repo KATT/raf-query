@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"build": "pnpm -r --filter \"./packages/*\" --filter \"./packages/.experimental/*\" build",
-		"bundle-size": "node scripts/bundle-size.ts",
+		"bundle-size": "pnpm --filter @tooling/bundle-size measure",
 		"build:examples": "pnpm -r --filter \"./examples/*\" --filter \"./examples/.experimental/*\" build",
 		"format": "vp fmt",
 		"format:check": "vp fmt --check",
@@ -34,7 +34,6 @@
 		"oxlint": "1.85.0",
 		"oxlint-tsgolint": "7.0.2003",
 		"release-it": "21.1.0",
-		"rolldown": "1.2.13",
 		"typescript": "7.0.2",
 		"vendor-src": "0.15.2",
 		"vite-plus": "1.0.0"
