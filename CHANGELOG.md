@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.18](https://github.com/KATT/raf-query/compare/0.0.17...0.0.18) (2026-10-12)
+
+### Bug Fixes
+
+- **core:** allow undefined query data ([#22](https://github.com/KATT/raf-query/issues/22)) ([9b85e57](https://github.com/KATT/raf-query/commit/9b85e57bf2fed4413cdbc1b49f925cc60dad695f)), references [#20](https://github.com/KATT/raf-query/issues/20)
+
 ## [0.0.17](https://github.com/KATT/raf-query/compare/0.0.16...0.0.17) (2026-10-12)
 
 ### Features
