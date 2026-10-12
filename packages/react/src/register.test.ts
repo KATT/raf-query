@@ -1,7 +1,7 @@
 import { describe, expectTypeOf, it } from "@effect/vitest";
 import type { QueryMeta as CoreQueryMeta } from "@raf-query/core";
 
-import { type Query, type QueryMeta, queryOptions } from "./index.ts";
+import { Query, type QueryMeta, queryOptions } from "./index.ts";
 
 declare module "@raf-query/react" {
 	interface Register {
@@ -15,7 +15,7 @@ describe("Register", () => {
 			readonly errorMessage?: string;
 		}>();
 		expectTypeOf<CoreQueryMeta>().toEqualTypeOf<QueryMeta>();
-		expectTypeOf<Query["meta"]>().toEqualTypeOf<QueryMeta | undefined>();
+		expectTypeOf(Query.meta).returns.toEqualTypeOf<QueryMeta | undefined>();
 
 		queryOptions({
 			meta: { errorMessage: "Couldn't load issues" },

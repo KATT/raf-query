@@ -1,7 +1,7 @@
 "use client";
 
-import type { QueryClient } from "@raf-query/core";
-import { Predicate } from "effect";
+import { Query } from "@raf-query/core";
+import { Effect, Predicate } from "effect";
 import {
 	type CSSProperties,
 	type PointerEvent as ReactPointerEvent,
@@ -9,6 +9,7 @@ import {
 	useSyncExternalStore,
 } from "react";
 
+import type { QueryClient } from "./client.ts";
 import {
 	countByStatus,
 	type DevtoolsStatus,
@@ -441,6 +442,7 @@ function QueryDetails(props: {
 	const query = props.row.query;
 	const state = props.row.state;
 	const options = query.options;
+	const meta = Query.meta(query);
 	const section = { padding: 8 };
 	return (
 		<section
@@ -483,17 +485,17 @@ function QueryDetails(props: {
 					color={statusColors.fetching}
 					disabled={options === undefined || state.isFetching}
 					label="Refetch"
-					onClick={() => void query.refetch()}
+					onClick={() => void Effect.runPromise(Query.refetch(query))}
 				/>
 				<ActionButton
 					color={statusColors.stale}
 					label="Invalidate"
-					onClick={() => void query.invalidate()}
+					onClick={() => void Effect.runPromise(Query.invalidate(query))}
 				/>
 				<ActionButton
 					color={statusColors.inactive}
 					label="Reset"
-					onClick={() => void query.reset()}
+					onClick={() => void Effect.runPromise(Query.reset(query))}
 				/>
 				<ActionButton
 					color={statusColors.error}
@@ -550,11 +552,11 @@ function QueryDetails(props: {
 			<div style={{ ...section, fontFamily: monoFamily }}>
 				<Explorer depth={0} palette={palette} value={query.handle.input} />
 			</div>
-			{query.meta === undefined ? null : (
+			{meta === undefined ? null : (
 				<>
 					<Heading palette={palette} title="Meta" />
 					<div style={{ ...section, fontFamily: monoFamily }}>
-						<Explorer depth={0} palette={palette} value={query.meta} />
+						<Explorer depth={0} palette={palette} value={meta} />
 					</div>
 				</>
 			)}

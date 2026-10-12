@@ -1,16 +1,20 @@
 import { describe, expect, expectTypeOf, it } from "@effect/vitest";
+import { Data, Effect, type Option } from "effect";
 
 import {
-	allKeyed,
 	type DataOf,
+	type ErrorOf,
 	hashKey,
 	type InfiniteData,
 	infiniteQueryOptions,
 	matchesKey,
-	QueryClient,
+	Query,
+	type QueryFunctionContext,
 	type QueryHandle,
+	type QueryMeta,
 	queryOptions,
 } from "./index.ts";
+import { makeCacheUnsafe } from "./test-utils.ts";
 
 describe("keys", () => {
 	it("hash plain objects independent of key order", () => {
@@ -28,28 +32,22 @@ describe("keys", () => {
 	});
 });
 
-describe("allKeyed", () => {
-	it("awaits a record of promises, keeping keys", async () => {
-		const result = await allKeyed({
-			one: Promise.resolve(1),
-			two: "two",
-		});
-
-		expect(result).toEqual({ one: 1, two: "two" });
-		expectTypeOf(result).toEqualTypeOf<{ one: number; two: string }>();
-	});
-
-	it("rejects on the first failure", async () => {
-		await expect(
-			allKeyed({ bad: Promise.reject(new Error("no")), good: 1 }),
-		).rejects.toThrow("no");
-	});
-});
+class NotFound extends Data.TaggedError("NotFound")<{ readonly id: number }> {}
 
 function postQuery(input: { slug: string }) {
 	return queryOptions({
-		queryFn: () => ({ slug: input.slug, title: "Hello" }),
+		queryFn: () => Promise.resolve({ slug: input.slug, title: "Hello" }),
 		queryKey: ["post", input.slug],
+	});
+}
+
+function issueQuery(input: { id: number }) {
+	return queryOptions({
+		queryFn: () =>
+			input.id > 0
+				? Effect.succeed({ id: input.id })
+				: Effect.fail(new NotFound({ id: input.id })),
+		queryKey: ["issue", input.id],
 	});
 }
 
@@ -68,36 +66,70 @@ function meQuery() {
 
 describe("types", () => {
 	it("flow from the factory to every verb", () => {
-		const qc = new QueryClient({ isServer: true });
+		const cache = makeCacheUnsafe({ isServer: true });
 
-		expectTypeOf(qc.prefetch(postQuery, { slug: "a" })).toEqualTypeOf<
-			QueryHandle<typeof postQuery>
+		expectTypeOf(cache.prefetch(postQuery, { slug: "a" })).toEqualTypeOf<
+			Effect.Effect<QueryHandle<typeof postQuery>>
 		>();
-		expectTypeOf(qc.prefetch(postQuery, { slug: "a" }).input).toEqualTypeOf<{
-			slug: string;
-		}>();
-		expectTypeOf(qc.fetch(postQuery, { slug: "a" })).resolves.toEqualTypeOf<{
-			slug: string;
-			title: string;
-		}>();
+		expectTypeOf(cache.fetch(postQuery, { slug: "a" })).toEqualTypeOf<
+			Effect.Effect<{ slug: string; title: string }, unknown>
+		>();
+		expectTypeOf(cache.getData(postQuery, { slug: "a" })).toEqualTypeOf<
+			Effect.Effect<Option.Option<{ slug: string; title: string }>>
+		>();
 		expectTypeOf<DataOf<typeof commentsQuery>>().toEqualTypeOf<
 			InfiniteData<{ next: number | null }, number>
 		>();
-		expectTypeOf(qc.prefetch(meQuery).input).toEqualTypeOf<undefined>();
+		expectTypeOf(
+			Effect.runSync(cache.prefetch(meQuery)).input,
+		).toEqualTypeOf<undefined>();
+	});
+
+	it("keep an Effect queryFn's error type", () => {
+		const cache = makeCacheUnsafe({ isServer: true });
+
+		expectTypeOf<DataOf<typeof issueQuery>>().toEqualTypeOf<{ id: number }>();
+		expectTypeOf<ErrorOf<typeof issueQuery>>().toEqualTypeOf<NotFound>();
+		expectTypeOf<ErrorOf<typeof postQuery>>().toEqualTypeOf<unknown>();
+		expectTypeOf(cache.fetch(issueQuery, { id: 1 })).toEqualTypeOf<
+			Effect.Effect<{ id: number }, NotFound | Query.CancelledError>
+		>();
+		expectTypeOf(
+			Query.fetch(cache.getQueryUnsafe(issueQuery, { id: 1 })),
+		).toEqualTypeOf<
+			Effect.Effect<{ id: number }, NotFound | Query.CancelledError>
+		>();
+	});
+
+	it("type meta as a string-keyed record unless Register declares queryMeta", () => {
+		expectTypeOf<QueryMeta>().toEqualTypeOf<Record<string, unknown>>();
+		expectTypeOf<QueryFunctionContext["meta"]>().toEqualTypeOf<
+			QueryMeta | undefined
+		>();
+		expectTypeOf(Query.meta).returns.toEqualTypeOf<QueryMeta | undefined>();
+		queryOptions({
+			// @ts-expect-error meta is an object, not a string
+			meta: "label",
+			queryFn: () => 1,
+			queryKey: ["meta", "typed"],
+		});
 	});
 
 	it("reject wrong inputs and paging options on plain factories", () => {
-		const qc = new QueryClient({ isServer: true });
+		const cache = makeCacheUnsafe({ isServer: true });
 		const typeOnly = () => {
 			// @ts-expect-error the input is required
-			qc.prefetch(postQuery);
+			cache.prefetch(postQuery);
 			// @ts-expect-error wrong input shape
-			qc.prefetch(postQuery, { id: 1 });
+			cache.prefetch(postQuery, { id: 1 });
 			// @ts-expect-error `pages` is only for paged factories
-			void qc.ensure(postQuery, { slug: "a" }, { pages: 2 });
-			void qc.ensure(commentsQuery, { slug: "a" }, { pages: 2 });
+			cache.ensure(postQuery, { slug: "a" }, { pages: 2 });
+			cache.ensure(commentsQuery, { slug: "a" }, { pages: 2 });
+			// @ts-expect-error wrong input shape
+			cache.invalidate(postQuery, { id: 1 });
+			cache.invalidate({ queryKey: ["post"] });
 			// @ts-expect-error factories take at most one argument
-			qc.prefetch((a: string, b: string) => postQuery({ slug: a + b }), "a");
+			cache.prefetch((a: string, b: string) => postQuery({ slug: a + b }), "a");
 		};
 		expect(typeOnly).toBeTypeOf("function");
 	});
