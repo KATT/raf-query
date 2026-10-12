@@ -18,7 +18,6 @@ import {
 	type QueryHost,
 	type QueryState,
 } from "./query.ts";
-import { unwrap } from "./thenable.ts";
 
 export interface QueryClientConfig {
 	/** Defaults for every query; a factory's own options win. */
@@ -221,9 +220,8 @@ export class QueryClient {
 		factory: TFactory,
 		...args: LoadArgs<TFactory>
 	): Promise<DataOf<TFactory>> {
-		const entry = this.#build(factory, args[0]);
-		await this.#load(entry, args[1]?.pages);
-		return unwrap(typed<TFactory>(entry).getState().promise);
+		const entry = typed<TFactory>(this.#build(factory, args[0]));
+		return this.#load(entry, args[1]?.pages);
 	}
 
 	/**
@@ -367,7 +365,11 @@ export class QueryClient {
 		return entry;
 	}
 
-	#load(entry: QueryEntry, pages: number | undefined): Promise<unknown> {
+	/** Resolves to the entry's data: the cached thenable, or the first fetch. */
+	#load<TData, TFactory extends QueryFactory>(
+		entry: Query<TData, TFactory>,
+		pages: number | undefined,
+	): Promise<TData> {
 		const state = entry.getState();
 		if (!state.hasData) {
 			return entry.fetch({ pages });

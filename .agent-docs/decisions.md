@@ -132,11 +132,11 @@ Agent decisions:
 - Not released: `.release-it.json` publishes core and react by name only.
 - Tests: TanStack batches observer notifications on a `setTimeout(0)`, so React tests wait a macrotask inside `act` after any cache write (`flush()` in `test-utils.tsx`).
 
-## 2026-10-12 — `Thenable` + internal `unwrap()` (human asked)
+## 2026-10-12 — `Thenable` type (human asked)
 
 - `Thenable<T>` (core, public type) = `Promise<T>` & a `status` union (`pending` / `fulfilled` + `value` / `rejected` + `reason`), the fields React's `use()` reads. `QueryState.promise` and `useQuery`'s promise are typed with it.
-- `unwrap(thenable)` (`core/src/thenable.ts`, **not exported**) reads a thenable synchronously: value, or rethrows `reason`, and **throws on pending**. For library code that already ensured a query (`qc.fetch` after `#load`), instead of re-checking `data !== undefined`. A pending thenable there is a bug, so it throws.
-- Apps, examples and README keep reading with React's `use()` (human). An earlier attempt at a public React `unwrap()` that called `use()` while pending was dropped.
+- Library code that already ensured a query returns or reads its thenable instead of re-checking `data !== undefined` (`qc.fetch` returns `#load`'s promise). No `unwrap()` helper (human).
+- Apps, examples and README read with React's `use()` (human).
 
 ## 2026-10-12 — npm release path
 

@@ -28,25 +28,6 @@ interface RejectedStatus {
 export type Thenable<T> = Promise<T> &
 	(FulfilledStatus<T> | PendingStatus | RejectedStatus);
 
-/**
- * The result of a thenable the caller knows has settled: its value, or its
- * rejection reason thrown. A pending one throws, since reaching it means the
- * caller's "already loaded" assumption is wrong.
- */
-export function unwrap<T>(thenable: Thenable<T>): T {
-	switch (thenable.status) {
-		case "fulfilled": {
-			return thenable.value;
-		}
-		case "rejected": {
-			throw thenable.reason;
-		}
-		case "pending": {
-			throw new Error("unwrap() called on a pending thenable");
-		}
-	}
-}
-
 export function fulfilled<T>(value: T): Thenable<T> {
 	return Object.assign(Promise.resolve(value), {
 		status: "fulfilled" as const,
