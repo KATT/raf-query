@@ -7,6 +7,7 @@ export {
 	type QueryClientConfig,
 } from "./client.ts";
 export { QueryClientProvider, useQueryClient } from "./provider.tsx";
+export { useIsFetching } from "./use-is-fetching.ts";
 export {
 	type PagingControls,
 	type QueryControls,
