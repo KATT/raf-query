@@ -11,10 +11,17 @@ import type {
 	QueryHandle,
 	QueryKey,
 } from "@raf-query/core";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useState,
+	useSyncExternalStore,
+} from "react";
 
 import { unsafeCast } from "./cast.ts";
 import { useQueryClient } from "./provider.tsx";
+import { ControlsTracker } from "./tracked.ts";
 
 export interface UseQueryOptions {
 	/** Refetch on this interval (ms) while mounted and the page is visible. */
@@ -122,6 +129,8 @@ function useRefetchInterval(
  *
  * The promise is stable per data version and already fulfilled once the
  * cache has data, so `use()` only suspends while there is nothing to show.
+ * The component re-renders when the promise changes, and when a control it
+ * has read changes; changes to controls it never reads are skipped.
  */
 export function useQuery<TFactory extends QueryFactory>(
 	factory: TFactory,
@@ -132,14 +141,25 @@ export function useQuery<TFactory extends QueryFactory>(
 	const query = queryFor(client, factory, handle.input);
 	query.read();
 
+	const [tracker] = useState(() => new ControlsTracker());
 	const refetchOnReconnect = options.refetchOnReconnect;
 	const refetchOnWindowFocus = options.refetchOnWindowFocus;
 	const subscribe = useCallback(
 		(onChange: () => void) =>
-			query.subscribe(onChange, { refetchOnReconnect, refetchOnWindowFocus }),
-		[query, refetchOnReconnect, refetchOnWindowFocus],
+			query.subscribe(
+				() => {
+					if (tracker.changed(query.getState())) {
+						onChange();
+					}
+				},
+				{ refetchOnReconnect, refetchOnWindowFocus },
+			),
+		[query, tracker, refetchOnReconnect, refetchOnWindowFocus],
 	);
 	const state = useSyncExternalStore(subscribe, query.getState, query.getState);
+	useLayoutEffect(() => {
+		tracker.committed(state);
+	});
 	useRefetchInterval(query, options.refetchInterval);
 
 	const keepPrevious = options.whilePending === "previous";
@@ -167,24 +187,18 @@ export function useQuery<TFactory extends QueryFactory>(
 		promise: state.promise,
 		updatedAt: state.updatedAt,
 	};
-	const controls = {
-		error: state.error,
+	const controls = tracker.controls(state, shown.updatedAt, {
 		fetchNextPage: query.fetchNextPage,
 		fetchPreviousPage: query.fetchPreviousPage,
 		hash: query.hash,
 		hasNextPage: query.hasNextPage(),
 		hasPreviousPage: query.hasPreviousPage(),
 		input: shown.handle.input,
-		isFetching: state.isFetching,
-		isFetchingNextPage: state.fetchDirection === "forward",
-		isFetchingPreviousPage: state.fetchDirection === "backward",
 		isPending: !state.hasData,
 		isPrevious: previous !== undefined,
-		isStale: state.isStale,
 		key: shown.handle.key,
 		refetch: query.refetch,
-		updatedAt: shown.updatedAt,
-	} satisfies Record<
+	}) satisfies Record<
 		keyof QueryControls<QueryFactory> | keyof PagingControls,
 		unknown
 	>;

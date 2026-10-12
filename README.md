@@ -179,7 +179,7 @@ function PostPage() {
 | `hash`         | Stable string form of the handle's key, for `key` props on Suspense boundaries                                           |
 | `refetch()`    | Refetch now. Returns a promise, so it can be awaited inside a transition or action                                       |
 
-When the cache updates — refetch, invalidation, `setData` — the hook returns a new, pre-resolved promise and the component re-renders without suspending. When the **first** load fails, the promise rejects and `use()` throws to the nearest error boundary. Resetting that boundary refetches the query.
+When the cache updates — refetch, invalidation, `setData` — the hook returns a new, pre-resolved promise and the component re-renders without suspending. Controls are tracked: reading `controls.isFetching` subscribes the component to `isFetching`, and a change to a control it never read doesn't re-render it. When the **first** load fails, the promise rejects and `use()` throws to the nearest error boundary. Resetting that boundary refetches the query.
 
 Queries do not refetch on mount. They refetch when a loader starts them again, when invalidated, on window focus or reconnect while stale, on `refetch()`, or on `refetchInterval`.
 
@@ -293,7 +293,7 @@ return (
 );
 ```
 
-The parent re-renders when `controls` change. If it only passes the promise down, call the hook in the child instead.
+A component re-renders when the promise changes, and when a control it reads changes. Controls it never reads, like `isFetching` here, don't re-render it, so a parent that only passes the promise down stays put during background refetches.
 
 ## Render-time inputs: `useWaterfall`
 
