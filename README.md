@@ -544,26 +544,27 @@ Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.de
 
 `@raf-query/core`:
 
-| Export                                         | Use                                                        |
-| ---------------------------------------------- | ---------------------------------------------------------- |
-| `QueryClient`                                  | The cache                                                  |
-| `queryOptions(options)`                        | Typed options for a query factory                          |
-| `infiniteQueryOptions(options)`                | Typed options for a paged query factory                    |
-| `allKeyed(record)`                             | Await a record of promises, keeping keys                   |
-| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations          |
-| `hashKey(key)`, `matchesKey(key, prefix)`      | Key helpers                                                |
-| `CancelledError`                               | Rejection of a request cancelled by `clear()` or a restart |
-| `QueryHandle<TFactory>`                        | Handle type for props                                      |
-| `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                           |
+| Export                                         | Use                                                                   |
+| ---------------------------------------------- | --------------------------------------------------------------------- |
+| `QueryClient`                                  | The cache                                                             |
+| `queryOptions(options)`                        | Typed options for a query factory                                     |
+| `infiniteQueryOptions(options)`                | Typed options for a paged query factory                               |
+| `allKeyed(record)`                             | Await a record of promises, keeping keys                              |
+| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations                     |
+| `hashKey(key)`, `matchesKey(key, prefix)`      | Key helpers                                                           |
+| `CancelledError`                               | Rejection of a request cancelled by `clear()` or a restart            |
+| `QueryHandle<TFactory>`                        | Handle type for props                                                 |
+| `Thenable<T>`                                  | A promise with the `status` / `value` / `reason` fields `use()` reads |
+| `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                                      |
 
 `@raf-query/react` (plus all of the above):
 
-| Export                                | Use                                                                                                            |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `QueryClientProvider`                 | Provides a client to the tree                                                                                  |
-| `useQueryClient()`                    | Read the client                                                                                                |
-| `useQuery(factory, handle, options?)` | `[Promise<Data>, controls]`; for paged factories `Data` is `{ pages, pageParams }` and controls include paging |
-| `useWaterfall(factory, input)`        | Start a query during render and return its handle                                                              |
+| Export                                | Use                                                                                                             |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `QueryClientProvider`                 | Provides a client to the tree                                                                                   |
+| `useQueryClient()`                    | Read the client                                                                                                 |
+| `useQuery(factory, handle, options?)` | `[Thenable<Data>, controls]`; for paged factories `Data` is `{ pages, pageParams }` and controls include paging |
+| `useWaterfall(factory, input)`        | Start a query during render and return its handle                                                               |
 
 ## Development
 

@@ -18,6 +18,7 @@ import {
 	type QueryHost,
 	type QueryState,
 } from "./query.ts";
+import { unwrap } from "./thenable.ts";
 
 export interface QueryClientConfig {
 	/** Defaults for every query; a factory's own options win. */
@@ -222,11 +223,7 @@ export class QueryClient {
 	): Promise<DataOf<TFactory>> {
 		const entry = this.#build(factory, args[0]);
 		await this.#load(entry, args[1]?.pages);
-		const data = typed<TFactory>(entry).getState().data;
-		if (data === undefined) {
-			throw new Error(`Query ${entry.hash} has no data`);
-		}
-		return data;
+		return unwrap(typed<TFactory>(entry).getState().promise);
 	}
 
 	/**
@@ -378,7 +375,7 @@ export class QueryClient {
 		if (!state.isFetching && entry.isStaleNow()) {
 			entry.fetch().catch(noop);
 		}
-		return Promise.resolve(state.data);
+		return state.promise;
 	}
 
 	#match(target: QueryFactory | QueryFilter, input: unknown) {

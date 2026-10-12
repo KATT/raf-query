@@ -28,38 +28,23 @@ interface RejectedStatus {
 export type Thenable<T> = Promise<T> &
 	(FulfilledStatus<T> | PendingStatus | RejectedStatus);
 
-function isTracked<T>(promise: Promise<T>): promise is Thenable<T> {
-	return "status" in promise && typeof promise.status === "string";
-}
-
 /**
- * Keep `status` / `value` / `reason` on a promise current, the way React's
- * `use()` does, and return the same object typed as a {@link Thenable}.
- * Promises that already have a `status` are returned as they are.
- *
- * The fields are only set when the promise settles, a microtask after it
- * resolves, so track a promise when it is created, not when it is read.
+ * The result of a thenable the caller knows has settled: its value, or its
+ * rejection reason thrown. A pending one throws, since reaching it means the
+ * caller's "already loaded" assumption is wrong.
  */
-export function track<T>(promise: Promise<T>): Thenable<T> {
-	if (isTracked(promise)) {
-		return promise;
+export function unwrap<T>(thenable: Thenable<T>): T {
+	switch (thenable.status) {
+		case "fulfilled": {
+			return thenable.value;
+		}
+		case "rejected": {
+			throw thenable.reason;
+		}
+		case "pending": {
+			throw new Error("unwrap() called on a pending thenable");
+		}
 	}
-	const thenable: Thenable<T> = Object.assign(promise, {
-		status: "pending" as const,
-	});
-	void promise.then(
-		(value) => {
-			if (thenable.status === "pending") {
-				Object.assign(thenable, { status: "fulfilled", value });
-			}
-		},
-		(error: unknown) => {
-			if (thenable.status === "pending") {
-				Object.assign(thenable, { reason: error, status: "rejected" });
-			}
-		},
-	);
-	return thenable;
 }
 
 export function fulfilled<T>(value: T): Thenable<T> {
