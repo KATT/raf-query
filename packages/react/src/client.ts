@@ -3,6 +3,7 @@ import {
 	type DataOf,
 	type DehydratedState,
 	type DehydrateOptions,
+	type EnsuredQueryHandle,
 	type HydrateOptions,
 	type InputArgs,
 	type InputOf,
@@ -58,8 +59,8 @@ export class QueryClient {
 
 	/**
 	 * Start a query without waiting and return its handle. Fresh data is
-	 * reused; stale data refetches in the background. Errors surface where the
-	 * data is read, never here.
+	 * reused; stale data refetches in the background (in the browser only).
+	 * Errors surface where the data is read, never here.
 	 */
 	prefetch<TFactory extends QueryFactory>(
 		factory: TFactory,
@@ -70,12 +71,14 @@ export class QueryClient {
 
 	/**
 	 * Start a query and wait for it on a cache miss. Rejects if that request
-	 * fails. Stale cached data resolves immediately and revalidates.
+	 * fails. Stale cached data resolves immediately and revalidates in the
+	 * browser. The handle is marked `ensured`, so `useQuery` returns its data
+	 * directly.
 	 */
 	ensure<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: LoadArgs<TFactory>
-	): Promise<QueryHandle<TFactory>> {
+	): Promise<EnsuredQueryHandle<TFactory>> {
 		return Effect.runPromise(this.effect.ensure(factory, ...args));
 	}
 
@@ -127,7 +130,11 @@ export class QueryClient {
 		Effect.runSync(this.effect.setData(factory, input, updater));
 	}
 
-	/** Cached data for a factory call, or `undefined`. */
+	/**
+	 * Cached data for a factory call, or `undefined` if there is none. Data can
+	 * itself be `undefined`; `getQuery(...).getStateUnsafe().hasData` tells
+	 * them apart.
+	 */
 	getData<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>

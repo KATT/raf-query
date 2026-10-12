@@ -1,5 +1,63 @@
 # Changelog
 
+## [0.0.18](https://github.com/KATT/raf-query/compare/0.0.17...0.0.18) (2026-10-12)
+
+### Bug Fixes
+
+- **core:** allow undefined query data ([#22](https://github.com/KATT/raf-query/issues/22)) ([9b85e57](https://github.com/KATT/raf-query/commit/9b85e57bf2fed4413cdbc1b49f925cc60dad695f)), references [#20](https://github.com/KATT/raf-query/issues/20)
+
+## [0.0.17](https://github.com/KATT/raf-query/compare/0.0.16...0.0.17) (2026-10-12)
+
+### Features
+
+- **core:** pause retries while the browser is offline ([#18](https://github.com/KATT/raf-query/issues/18)) ([a25c664](https://github.com/KATT/raf-query/commit/a25c664359fe7248cdc8d91a14d524e37b467c6c))
+
+## [0.0.16](https://github.com/KATT/raf-query/compare/0.0.15...0.0.16) (2026-10-12)
+
+### Bug Fixes
+
+- **core:** don't revalidate cached data in server verbs ([#19](https://github.com/KATT/raf-query/issues/19)) ([0ed7d9f](https://github.com/KATT/raf-query/commit/0ed7d9fefd0b70a8aa9a85c8d2c309a9fed42903))
+
+## [0.0.15](https://github.com/KATT/raf-query/compare/0.0.14...0.0.15) (2026-10-12)
+
+- **agent-docs:** replace local ~/dev path with upstream React link ([#17](https://github.com/KATT/raf-query/issues/17)) ([79c0314](https://github.com/KATT/raf-query/commit/79c031475c3ed62ce5a07fb91d68733534e452b3))
+
+## [0.0.14](https://github.com/KATT/raf-query/compare/0.0.13...0.0.14) (2026-10-12)
+
+### Features
+
+- tracked query results via a core QueryObserver, like TanStack Query ([#13](https://github.com/KATT/raf-query/issues/13)) ([7b99b47](https://github.com/KATT/raf-query/commit/7b99b4704be110c999b41277afd5dac4c515f45f))
+
+## [0.0.13](https://github.com/KATT/raf-query/compare/0.0.12...0.0.13) (2026-10-12)
+
+### Features
+
+- useQuery returns data for handles from ensure ([#16](https://github.com/KATT/raf-query/issues/16)) ([a50b8fd](https://github.com/KATT/raf-query/commit/a50b8fdc51b952341377d4b55f25ebb6b21d39e1))
+
+## [0.0.12](https://github.com/KATT/raf-query/compare/0.0.11...0.0.12) (2026-10-12)
+
+- **examples:** move the shared db and ui packages into examples/.shared ([#14](https://github.com/KATT/raf-query/issues/14)) ([fccdc7b](https://github.com/KATT/raf-query/commit/fccdc7bb8075ce2fb0cdbe07b26b36f2ace2bd9c))
+
+## [0.0.11](https://github.com/KATT/raf-query/compare/0.0.10...0.0.11) (2026-10-12)
+
+### Features
+
+- **core:** structurally share new data with the old (structuralSharing) ([#15](https://github.com/KATT/raf-query/issues/15)) ([bf4392a](https://github.com/KATT/raf-query/commit/bf4392a56936ead6fb8b2726981cb19dadf51304))
+
+## [0.0.10](https://github.com/KATT/raf-query/compare/0.0.9...0.0.10) (2026-10-12)
+
+- move the TanStack Query experiment into .experimental folders ([#12](https://github.com/KATT/raf-query/issues/12)) ([e9613a6](https://github.com/KATT/raf-query/commit/e9613a608f100fb17de6baf37c0f1fcfa479e909))
+
+## [0.0.9](https://github.com/KATT/raf-query/compare/0.0.8...0.0.9) (2026-10-12)
+
+### Bug Fixes
+
+- **examples:** let the client pick new comment ids ([#9](https://github.com/KATT/raf-query/issues/9)) ([de3a723](https://github.com/KATT/raf-query/commit/de3a7238b2568458a9771450a8c94d82576f5f7d))
+
+## [0.0.8](https://github.com/KATT/raf-query/compare/0.0.7...0.0.8) (2026-10-12)
+
+- rename the TanStack Query experiment to make clear it's experimental and unpublished ([#11](https://github.com/KATT/raf-query/issues/11)) ([146c3be](https://github.com/KATT/raf-query/commit/146c3be5034f8c4c642ea9faea693a7558ca4aac))
+
 ## [0.0.7](https://github.com/KATT/raf-query/compare/0.0.6...0.0.7) (2026-10-12)
 
 ### Features

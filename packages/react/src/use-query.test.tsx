@@ -3,6 +3,7 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { Component, type ReactNode, Suspense, use } from "react";
 
 import {
+	type EnsuredQueryHandle,
 	infiniteQueryOptions,
 	QueryClient,
 	QueryClientProvider,
@@ -267,10 +268,9 @@ describe("useQuery", () => {
 			});
 		}
 		function Numbers(props: {
-			readonly handle: QueryHandle<typeof numbersQuery>;
+			readonly handle: EnsuredQueryHandle<typeof numbersQuery>;
 		}) {
-			const [pagesPromise, numbers] = useQuery(numbersQuery, props.handle);
-			const data = use(pagesPromise);
+			const [data, numbers] = useQuery(numbersQuery, props.handle);
 			return (
 				<button
 					disabled={!numbers.hasNextPage}
@@ -300,6 +300,164 @@ describe("useQuery", () => {
 		const button = await screen.findByText("1,2,3");
 		expect(button.hasAttribute("disabled")).toBe(true);
 		cleanup();
+	});
+
+	it("re-renders only for the controls a component reads", async () => {
+		const test = setup();
+		const renders = { all: 0, promiseOnly: 0 };
+		function PromiseOnly(props: {
+			readonly handle: QueryHandle<typeof test.backend.issueQuery>;
+		}) {
+			renders.promiseOnly++;
+			const [issuePromise] = useQuery(test.backend.issueQuery, props.handle);
+			return <p>{use(issuePromise).title}</p>;
+		}
+		function ReadsFetching(props: {
+			readonly handle: QueryHandle<typeof test.backend.issueQuery>;
+		}) {
+			renders.all++;
+			const [issuePromise, issueState] = useQuery(
+				test.backend.issueQuery,
+				props.handle,
+			);
+			const issue = use(issuePromise);
+			return <p>{`${issue.title}${issueState.isFetching ? "…" : ""}`}</p>;
+		}
+		const handle = test.client.prefetch(test.backend.issueQuery, { id: 1 });
+		await test.backend.respond();
+		await mount(
+			test.view(
+				<>
+					<PromiseOnly handle={handle} />
+					<ReadsFetching handle={handle} />
+				</>,
+			),
+		);
+		expect(renders).toEqual({ all: 1, promiseOnly: 1 });
+
+		await act(async () => {
+			void test.client.invalidate(test.backend.issueQuery, { id: 1 });
+			await Promise.resolve();
+		});
+		expect(screen.getByText("First…")).toBeDefined();
+		expect(renders).toEqual({ all: 2, promiseOnly: 1 });
+
+		test.backend.issues.set(1, { assigneeId: 10, id: 1, title: "Renamed" });
+		await test.backend.respond();
+		expect(screen.getAllByText("Renamed")).toHaveLength(2);
+		expect(renders).toEqual({ all: 3, promiseOnly: 2 });
+		cleanup();
+	});
+
+	it("doesn't re-render for retries of a background refetch", async () => {
+		const client = new QueryClient({ isServer: false });
+		let attempt = 0;
+		function flakyQuery() {
+			return queryOptions({
+				queryFn: async () => {
+					attempt++;
+					if (attempt > 1 && attempt < 4) {
+						throw new Error("flaky");
+					}
+					return attempt;
+				},
+				queryKey: ["flaky"],
+				retry: 3,
+				retryDelay: 1,
+			});
+		}
+		const renders = { count: 0 };
+		function Value(props: {
+			readonly handle: EnsuredQueryHandle<typeof flakyQuery>;
+		}) {
+			renders.count++;
+			const [value] = useQuery(flakyQuery, props.handle);
+			return <p>{`Value ${value}`}</p>;
+		}
+		const handle = await client.ensure(flakyQuery);
+		await mount(
+			<QueryClientProvider client={client}>
+				<Value handle={handle} />
+			</QueryClientProvider>,
+		);
+
+		await act(async () => {
+			await client.invalidate(flakyQuery);
+		});
+		expect(screen.getByText("Value 4")).toBeDefined();
+		expect(renders.count).toBe(2);
+		cleanup();
+	});
+
+	it("returns the data itself for a handle from ensure", async () => {
+		const test = setup();
+		function EnsuredTitle(props: {
+			readonly handle: EnsuredQueryHandle<typeof test.backend.issueQuery>;
+		}) {
+			const [issue] = useQuery(test.backend.issueQuery, props.handle);
+			return <p>{issue.title}</p>;
+		}
+		const ensuring = test.client.ensure(test.backend.issueQuery, { id: 1 });
+		await test.backend.respond();
+		const handle = await ensuring;
+
+		await mount(test.view(<EnsuredTitle handle={handle} />));
+		expect(screen.getByText("First")).toBeDefined();
+
+		// The entry lost its data after the loader ran: the hook suspends.
+		await act(async () => {
+			void test.client.reset(test.backend.issueQuery, { id: 1 });
+			await Promise.resolve();
+		});
+		expect(screen.getByText("Loading")).toBeDefined();
+		await test.backend.respond();
+		expect(screen.getByText("First")).toBeDefined();
+		cleanup();
+	});
+
+	it("returns undefined data without suspending", async () => {
+		const test = setup();
+		function assigneeQuery() {
+			return queryOptions({
+				queryFn: (): Promise<string | undefined> => Promise.resolve(undefined),
+				queryKey: ["assignee"],
+				staleTime: Infinity,
+			});
+		}
+		function Assignee(props: {
+			readonly handle: EnsuredQueryHandle<typeof assigneeQuery>;
+		}) {
+			const [name] = useQuery(assigneeQuery, props.handle);
+			return <p>{name ?? "Unassigned"}</p>;
+		}
+		const handle = await test.client.ensure(assigneeQuery);
+
+		await mount(test.view(<Assignee handle={handle} />));
+
+		expect(screen.getByText("Unassigned")).toBeDefined();
+		cleanup();
+	});
+
+	it("types reads of ensured handles as data", () => {
+		const backend = createBackend();
+		expectTypeOf<EnsuredQueryHandle<typeof backend.issueQuery>>().not.toExtend<
+			QueryHandle<typeof backend.issueQuery>
+		>();
+		const ensure = (client: QueryClient) =>
+			client.ensure(backend.issueQuery, { id: 1 });
+		expectTypeOf(ensure).returns.resolves.toEqualTypeOf<
+			EnsuredQueryHandle<typeof backend.issueQuery>
+		>();
+		const useTypes = (
+			ensured: EnsuredQueryHandle<typeof backend.issueQuery>,
+			handle: QueryHandle<typeof backend.issueQuery>,
+		) => {
+			const [issue] = useQuery(backend.issueQuery, ensured);
+			expectTypeOf(issue).toEqualTypeOf<Issue>();
+			const [promise] = useQuery(backend.issueQuery, handle);
+			expectTypeOf(promise).toEqualTypeOf<Promise<Issue>>();
+		};
+		expect(useTypes).toBeTypeOf("function");
 	});
 
 	it("types paging controls only for paged factories", () => {

@@ -6,7 +6,7 @@ import { Predicate } from "effect";
  */
 export type QueryKey = ReadonlyArray<unknown>;
 
-function isPlainRecord(
+export function isPlainRecord(
 	value: unknown,
 ): value is { readonly [key: string]: unknown } {
 	if (!Predicate.isObject(value) || Array.isArray(value)) {

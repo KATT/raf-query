@@ -20,6 +20,8 @@ import {
 import type { QueryKey } from "./key.ts";
 import { listen } from "./listen.ts";
 import { scheduleNotify } from "./notify.ts";
+import { whenOnline } from "./online.ts";
+import { replaceEqualDeep } from "./share.ts";
 import type {
 	AnyQueryOptions,
 	QueryBehavior,
@@ -59,7 +61,7 @@ export interface QueryState<TData> {
 }
 
 /** Per-reader preferences, registered with {@link Query.subscribeUnsafe}. */
-export interface QueryObserver {
+export interface SubscribeOptions {
 	readonly refetchOnReconnect?: boolean;
 	readonly refetchOnWindowFocus?: boolean;
 }
@@ -128,7 +130,7 @@ export interface Query<
 	readonly reset: Effect.Effect<void>;
 	readonly state: Effect.Effect<QueryState<TData>>;
 	/** Listen for state changes. Subscribed entries count as read. */
-	subscribeUnsafe(listener: () => void, observer?: QueryObserver): () => void;
+	subscribeUnsafe(listener: () => void, options?: SubscribeOptions): () => void;
 }
 
 /**
@@ -153,7 +155,7 @@ export interface QueryHost {
 /** The background work of an entry, one fiber per kind. */
 type Task = "errorShown" | "gc" | "request" | "stale";
 
-const defaultObserver: QueryObserver = {};
+const defaultObserver: SubscribeOptions = {};
 
 /**
  * Fibers keyed by task, owned by `scope`: forking a task interrupts its
@@ -195,7 +197,7 @@ export class QueryEntry implements Query {
 	#host: QueryHost;
 	/** Awaited by every caller of the request in flight; outlives restarts. */
 	#inFlight: Deferred.Deferred<unknown, unknown> | undefined;
-	#listeners = new Map<() => void, QueryObserver>();
+	#listeners = new Map<() => void, SubscribeOptions>();
 	#options: AnyQueryOptions | undefined;
 	#pending: Pending<unknown> | undefined;
 	/** Open while the entry is cached. */
@@ -501,8 +503,10 @@ export class QueryEntry implements Query {
 		}
 		this.#inFlight = undefined;
 		if (Exit.isSuccess(exit)) {
-			this.#succeed(exit.value, Date.now());
-			Deferred.doneUnsafe(awaiter, exit);
+			Deferred.doneUnsafe(
+				awaiter,
+				Exit.succeed(this.#succeed(exit.value, Date.now())),
+			);
 		} else if (Cause.hasInterruptsOnly(exit.cause)) {
 			this.#set({ fetchDirection: undefined, isFetching: false });
 			Deferred.doneUnsafe(awaiter, Exit.fail(new CancelledError()));
@@ -513,10 +517,16 @@ export class QueryEntry implements Query {
 		this.#scheduleGc();
 	}
 
-	#succeed(data: unknown, updatedAt: number) {
+	#succeed(next: unknown, updatedAt: number) {
+		const previous = this.#state;
+		const data =
+			previous.hasData && this.#behavior("structuralSharing") !== false
+				? replaceEqualDeep(previous.data, next)
+				: next;
 		const firstLoad = this.#pending;
 		this.#pending = undefined;
 		firstLoad?.resolve(data);
+		const unchanged = previous.hasData && data === previous.data;
 		this.#set({
 			data,
 			error: null,
@@ -525,10 +535,12 @@ export class QueryEntry implements Query {
 			hasData: true,
 			isFetching: false,
 			isInvalidated: false,
-			promise: firstLoad ? firstLoad.promise : fulfilled(data),
+			promise:
+				firstLoad?.promise ?? (unchanged ? previous.promise : fulfilled(data)),
 			status: "success",
 			updatedAt,
 		});
+		return data;
 	}
 
 	#fail(error: unknown) {
@@ -603,7 +615,20 @@ export class QueryEntry implements Query {
 			},
 			this.#host.isServer,
 		);
-		return schedule ? Effect.retry(attempt, schedule) : attempt;
+		if (!schedule) {
+			return attempt;
+		}
+		// Retries wait while the browser is offline; the first attempt doesn't.
+		const online = this.#host.isServer ? Effect.void : whenOnline;
+		return Effect.suspend(() => {
+			let retrying = false;
+			const gated = Effect.suspend(() => {
+				const wait = retrying ? online : Effect.void;
+				retrying = true;
+				return Effect.andThen(wait, attempt);
+			});
+			return Effect.retry(gated, schedule);
+		});
 	}
 
 	#scheduleGc() {

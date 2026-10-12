@@ -13,6 +13,7 @@ import { hashKey, matchesKey, type QueryKey } from "./key.ts";
 import { listen } from "./listen.ts";
 import {
 	type DataOf,
+	type EnsuredQueryHandle,
 	type ErrorOf,
 	type InputArgs,
 	type InputOf,
@@ -35,7 +36,9 @@ export interface QueryCacheConfig {
 	readonly defaults?: QueryBehavior;
 	/**
 	 * Whether this cache runs on the server. Detected from `window`. Server
-	 * caches don't retry, never garbage-collect, and skip stale timers.
+	 * caches don't retry, never garbage-collect, skip stale timers, and reuse
+	 * cached data in `prefetch` / `ensure` / `fetch` instead of revalidating
+	 * it, unless `invalidate` marked it.
 	 */
 	readonly isServer?: boolean;
 }
@@ -70,7 +73,10 @@ export type QueryTarget<TFactory extends QueryFactory> =
 	| [factory: TFactory, ...args: InputArgs<TFactory>]
 	| [filter: QueryFilter];
 
-/** A new value, or a function of the current one. */
+/**
+ * A new value, or a function of the current one. `previous` is `undefined`
+ * both with no data and with `undefined` data.
+ */
 export type Updater<TData> = TData | ((previous: TData | undefined) => TData);
 
 /** The entry of a factory call, typed by the factory. */
@@ -106,23 +112,42 @@ function handleOf<TFactory extends QueryFactory>(
 	return handle as QueryHandle<TFactory>;
 }
 
+function ensuredHandleOf<TFactory extends QueryFactory>(
+	entry: QueryEntry,
+): EnsuredQueryHandle<TFactory> {
+	return { ...handleOf<TFactory>(entry), ensured: true };
+}
+
+/**
+ * Background refetch of cached data a verb reuses. A server cache renders
+ * once, so a refetch there could only duplicate a request whose result is
+ * never shown; it refetches only what `invalidate` marked.
+ */
+function revalidate(entry: QueryEntry, isServer: boolean) {
+	const state = entry.getStateUnsafe();
+	const wanted = isServer ? state.isInvalidated : entry.isStaleUnsafe();
+	if (!state.isFetching && wanted) {
+		entry.start();
+	}
+}
+
 /**
  * Waits for an entry's data on a cache miss. Cached data returns at once,
- * and revalidates in the background if stale.
+ * and revalidates in the background (see `revalidate`).
  */
 function load<TFactory extends QueryFactory>(
 	entry: QueryEntry,
 	pages: number | undefined,
+	isServer: boolean,
 ): Effect.Effect<DataOf<TFactory>, ErrorOf<TFactory> | CancelledError> {
 	const query = typed<TFactory>(entry);
 	const state = query.getStateUnsafe();
 	if (!state.hasData) {
 		return query.fetch({ pages });
 	}
-	if (!state.isFetching && entry.isStaleUnsafe()) {
-		entry.start();
-	}
-	// SAFETY: `hasData` is set exactly when `data` holds a request's result.
+	revalidate(entry, isServer);
+	// SAFETY: `hasData` means `data` came from this factory's queryFn or
+	// setData, so it's `DataOf<TFactory>` even when that includes `undefined`.
 	return Effect.succeed(unsafeCast<DataOf<TFactory>>(state.data));
 }
 
@@ -225,8 +250,9 @@ export class QueryCache {
 
 	/**
 	 * Start a query without waiting and return its handle. Fresh data is
-	 * reused; stale data refetches in the background. Errors surface where the
-	 * data is read, never here.
+	 * reused; stale data refetches in the background (in the browser only, see
+	 * {@link QueryCacheConfig.isServer}). Errors surface where the data is
+	 * read, never here.
 	 */
 	prefetch<TFactory extends QueryFactory>(
 		factory: TFactory,
@@ -234,8 +260,9 @@ export class QueryCache {
 	): Effect.Effect<QueryHandle<TFactory>> {
 		return Effect.sync(() => {
 			const entry = this.#build(factory, args[0]);
-			const state = entry.getStateUnsafe();
-			if (!state.isFetching && (!state.hasData || entry.isStaleUnsafe())) {
+			if (entry.getStateUnsafe().hasData) {
+				revalidate(entry, this.isServer);
+			} else {
 				entry.start();
 			}
 			return handleOf<TFactory>(entry);
@@ -244,16 +271,21 @@ export class QueryCache {
 
 	/**
 	 * Start a query and wait for it on a cache miss. Fails if that request
-	 * fails. Stale cached data succeeds immediately and revalidates.
+	 * fails. Stale cached data succeeds immediately and revalidates in the
+	 * browser. The handle is marked `ensured`, so `useQuery` returns its data
+	 * directly.
 	 */
 	ensure<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: LoadArgs<TFactory>
-	): Effect.Effect<QueryHandle<TFactory>, ErrorOf<TFactory> | CancelledError> {
+	): Effect.Effect<
+		EnsuredQueryHandle<TFactory>,
+		ErrorOf<TFactory> | CancelledError
+	> {
 		return Effect.suspend(() => {
 			const entry = this.#build(factory, args[0]);
-			return load<TFactory>(entry, args[1]?.pages).pipe(
-				Effect.as(handleOf<TFactory>(entry)),
+			return load<TFactory>(entry, args[1]?.pages, this.isServer).pipe(
+				Effect.as(ensuredHandleOf<TFactory>(entry)),
 			);
 		});
 	}
@@ -264,7 +296,11 @@ export class QueryCache {
 		...args: LoadArgs<TFactory>
 	): Effect.Effect<DataOf<TFactory>, ErrorOf<TFactory> | CancelledError> {
 		return Effect.suspend(() =>
-			load<TFactory>(this.#build(factory, args[0]), args[1]?.pages),
+			load<TFactory>(
+				this.#build(factory, args[0]),
+				args[1]?.pages,
+				this.isServer,
+			),
 		);
 	}
 
@@ -322,7 +358,10 @@ export class QueryCache {
 		});
 	}
 
-	/** Cached data for a factory call. */
+	/**
+	 * Cached data for a factory call. `Some(undefined)` when the data itself
+	 * is `undefined`.
+	 */
 	getData<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>

@@ -72,11 +72,11 @@ The factory is the only place a query is declared paged. Every other API — `pr
 
 All three verbs live on the query client and accept a factory plus its input.
 
-| Call                              | Returns                | Blocks? | Use for                                                    |
-| --------------------------------- | ---------------------- | ------- | ---------------------------------------------------------- |
-| `qc.prefetch(factory, input)`     | `QueryHandle`          | No      | Data the route can render without; it streams in           |
-| `await qc.ensure(factory, input)` | `Promise<QueryHandle>` | Yes     | Data the route must not render without                     |
-| `await qc.fetch(factory, input)`  | `Promise<Data>`        | Yes     | Rendering in a server component, or building another input |
+| Call                              | Returns                       | Blocks? | Use for                                                                |
+| --------------------------------- | ----------------------------- | ------- | ---------------------------------------------------------------------- |
+| `qc.prefetch(factory, input)`     | `QueryHandle`                 | No      | Data the route can render without; it streams in                       |
+| `await qc.ensure(factory, input)` | `Promise<EnsuredQueryHandle>` | Yes     | Data the route must not render without; `useQuery` returns it directly |
+| `await qc.fetch(factory, input)`  | `Promise<Data>`               | Yes     | Rendering in a server component, or building another input             |
 
 ```tsx
 // TanStack Start
@@ -113,6 +113,7 @@ Behavior:
 
 - Every verb dedupes against the cache. A fresh entry is reused; a stale entry is refetched in the background.
 - `ensure` and `fetch` wait only on a cache miss. With stale cached data they resolve immediately and revalidate in the background.
+- On the server, cached data is always reused, whatever `staleTime` says. A server client renders once, so a background refetch could only repeat a request whose result is never shown. Entries marked by `invalidate` still refetch.
 - A failed `prefetch` never throws out of the loader. The error surfaces where the data is read, and is reported to the client's `onError`.
 - A failed `ensure` or `fetch` rejects, so it reaches the route's error boundary.
 
@@ -125,9 +126,16 @@ interface QueryHandle<TFactory> {
 	readonly key: QueryKey; // ["post", "hello"]
 	readonly input: InputOf<TFactory>; // { slug: "hello" }
 }
+
+// From `ensure`: the route waited for the data.
+interface EnsuredQueryHandle<TFactory> {
+	readonly key: QueryKey;
+	readonly input: InputOf<TFactory>;
+	readonly ensured: true;
+}
 ```
 
-Handles hold no data and no functions. Data reaches the client cache through the [hydration stream](#ssr-and-hydration), so loader data stays tiny and each query is serialized once. The loader's return value lists exactly which queries a route started, and a handle from `ensure` versus `prefetch` shows whether the route waited for it.
+Handles hold no data and no functions. Data reaches the client cache through the [hydration stream](#ssr-and-hydration), so loader data stays tiny and each query is serialized once. The loader's return value lists exactly which queries a route started, and its types show which ones the route waited for: `useQuery` returns the data for an `EnsuredQueryHandle` and a promise for a `QueryHandle`. The two aren't assignable to each other, so type a prop with the one its loader returns.
 
 ## Reading queries
 
@@ -135,17 +143,20 @@ Handles hold no data and no functions. Data reaches the client cache through the
 
 ```ts
 const [promise, controls] = useQuery(factory, handle, options?);
+const [data, controls] = useQuery(factory, ensuredHandle, options?);
 ```
 
 `options` takes [`whilePending`](#when-the-url-changes) and per-read refetch settings (`refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`). There is no option to change the input; the handle decides what is read.
 
 `promise` is a stable `Promise<Data>` owned by the cache. Unwrap it with `use()`. When the cache already has data, the promise is pre-resolved and `use()` returns synchronously without suspending.
 
+A handle from `ensure` had its data loaded before the route rendered, so `useQuery` returns the data itself. If the entry has lost that data since (it was garbage-collected while the router kept the loader data, or `reset`), the hook suspends until it is refetched.
+
 ```tsx
 function PostPage() {
 	const loaderData = Route.useLoaderData();
-	const [postPromise, postState] = useQuery(postQuery, loaderData.post);
-	const post = use(postPromise);
+	// `post` came from `qc.ensure`, `comments` from `qc.prefetch`.
+	const [post, postState] = useQuery(postQuery, loaderData.post);
 
 	return (
 		<article>
@@ -179,7 +190,7 @@ function PostPage() {
 | `hash`         | Stable string form of the handle's key, for `key` props on Suspense boundaries                                           |
 | `refetch()`    | Refetch now. Returns a promise, so it can be awaited inside a transition or action                                       |
 
-When the cache updates — refetch, invalidation, `setData` — the hook returns a new, pre-resolved promise and the component re-renders without suspending. When the **first** load fails, the promise rejects and `use()` throws to the nearest error boundary. Resetting that boundary refetches the query.
+When the cache updates — refetch, invalidation, `setData` — the hook returns a new, pre-resolved promise and the component re-renders without suspending. New data is structurally shared with the old: objects and arrays that are deeply equal keep their identity, and a refetch that returns equal data keeps the same promise, so nothing re-renders. Controls are tracked: reading `controls.isFetching` subscribes the component to `isFetching`, and a change to a control it never read doesn't re-render it. When the **first** load fails, the promise rejects and `use()` throws to the nearest error boundary. Resetting that boundary refetches the query.
 
 Queries do not refetch on mount. They refetch when a loader starts them again, when invalidated, on window focus or reconnect while stale, on `refetch()`, or on `refetchInterval`.
 
@@ -267,6 +278,7 @@ Either way, an input that's already cached renders immediately. A component that
 To show a skeleton instead, for instance when moving between unrelated posts, give the Suspense boundary the query's key. React treats it as new content and shows its fallback, even inside a transition:
 
 ```tsx
+// This loader prefetches the post instead of ensuring it.
 const [postPromise, postState] = useQuery(postQuery, loaderData.post);
 
 return (
@@ -282,10 +294,10 @@ In Next.js the same rules apply: read `searchParams` in the page, `prefetch` wit
 
 ### Passing promises down
 
-A component can call the hook and hand the promise to a child, so only the child suspends:
+A component can call the hook with a prefetched handle and hand the promise to a child, so only the child suspends:
 
 ```tsx
-const [postPromise] = useQuery(postQuery, loaderData.post);
+const [postPromise] = useQuery(postQuery, loaderData.post); // from `qc.prefetch`
 return (
 	<Suspense fallback={<Spinner />}>
 		<PostBody post={postPromise} />
@@ -293,7 +305,7 @@ return (
 );
 ```
 
-The parent re-renders when `controls` change. If it only passes the promise down, call the hook in the child instead.
+A component re-renders when the promise changes, and when a control it reads changes. Controls it never reads, like `isFetching` here, don't re-render it, so a parent that only passes the promise down stays put during background refetches.
 
 ## Render-time inputs: `useWaterfall`
 
@@ -350,6 +362,8 @@ function EditTitle(props: { post: Post }) {
 | `qc.invalidate({ queryKey, exact? })` | Same, for every query whose key starts with `queryKey` (unless `exact`) |
 | `qc.setData(factory, input, updater)` | Write data directly                                                     |
 | `qc.getData(factory, input)`          | Read cached data, or `undefined`                                        |
+
+Data can be `undefined` when the `queryFn`'s type allows it (`Promise<User | undefined>`); it's cached and reused like any other value, unlike in TanStack Query, where an `undefined` result is an error. So `getData` and an updater's `previous` return `undefined` both with no data and with `undefined` data; `qc.getQuery(factory, input).getStateUnsafe().hasData` tells them apart.
 
 ## SSR and hydration
 
@@ -434,7 +448,8 @@ export default async function Page(props: {
 - `getQueryClient` is scoped to one request by React's `cache()`.
 - `HydrationBoundary` sends the request client's entries to the browser cache; pending ones stream as promises. Render one in each server component that starts queries for client components. Entries already sent in this request are skipped.
 - `QueryProvider` creates the browser client, and streams queries that client components start during SSR (`useWaterfall`) into the HTML. Pass `config` for the client's options; it must be serializable.
-- Server components that only render data can `await qc.fetch(...)` anywhere; the per-request client dedupes them.
+- Server components that only render data can `await qc.fetch(...)` anywhere; the per-request client makes one request per query, whatever its `staleTime`.
+- `fetch` returns data, not a handle. When a server component renders the data and also hands the query to a client component, pass `await qc.ensure(...)`: after the `fetch` it resolves from the cache, and the client component gets the data from `useQuery` without a promise.
 - Factories can call server actions: server components call them directly, and the browser calls them on refetch. Validate their arguments, since anyone can call them.
 
 #### Server-only queries
@@ -529,7 +544,7 @@ Both render nothing on the server, since the server's cache isn't the browser's.
 | `getAll()`, `getQuery(factory, input?)`     | Cache entries, for devtools and integrations                                                                            |
 | `clear()`                                   | Drop every entry and abort in-flight requests                                                                           |
 | `mount()`                                   | Start window-focus and reconnect refetching. The providers call it                                                      |
-| `isServer`                                  | Detected from `window`. Server clients don't retry, never gc, skip stale timers                                         |
+| `isServer`                                  | Detected from `window`. Server clients don't retry, never gc, skip stale timers, and never revalidate cached data       |
 
 Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
 
@@ -540,8 +555,11 @@ Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.de
 | `retry` (count, `boolean`, predicate, `Schedule`)     | `3`; `0` on the server                    |
 | `retryDelay` (ms, or a function of the failure count) | Doubling from 1 s, at most 30 s           |
 | `refetchOnWindowFocus`, `refetchOnReconnect`          | `true` (only read, stale queries refetch) |
+| `structuralSharing` (keep deeply equal parts of data) | `true`                                    |
 
 `infiniteQueryOptions` also takes `getPreviousPageParam` and `maxPages`.
+
+In the browser, retries pause while `navigator.onLine` is `false`: after the retry delay, the next attempt waits for the window's `online` event. The request stays fetching meanwhile, and cancelling it (`remove`, `clear`, a restart) stops the wait. The first attempt runs regardless.
 
 `@raf-query/core`:
 
@@ -551,8 +569,10 @@ Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.de
 | `queryOptions(options)`                                      | Typed options for a query factory                                         |
 | `infiniteQueryOptions(options)`                              | Typed options for a paged query factory                                   |
 | `hashKey(key)`, `matchesKey(key, prefix)`                    | Key helpers                                                               |
+| `QueryObserver`                                              | One reader's view of a query, with tracked results; for bindings          |
 | `CancelledError`                                             | Failure of a request whose entry was removed or cleared before it settled |
 | `QueryHandle<TFactory>`                                      | Handle type for props                                                     |
+| `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                     |
 | `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                   |
 
 `@raf-query/react` (plus all of the above):

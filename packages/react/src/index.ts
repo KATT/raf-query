@@ -11,6 +11,7 @@ export {
 	type PagingControls,
 	type QueryControls,
 	useQuery,
+	type UseEnsuredQueryResult,
 	type UseQueryControls,
 	type UseQueryOptions,
 	type UseQueryResult,

@@ -1,6 +1,12 @@
-import { describe, expect, it } from "@effect/vitest";
+import { describe, expect, it, vi } from "@effect/vitest";
 
-import { dehydrate, hydrate, QueryClient, queryOptions } from "./index.ts";
+import {
+	dehydrate,
+	type DehydratedState,
+	hydrate,
+	QueryClient,
+	queryOptions,
+} from "./index.ts";
 import { createBackend } from "./test-utils.ts";
 
 describe("dehydrate", () => {
@@ -36,6 +42,29 @@ describe("dehydrate", () => {
 });
 
 describe("hydrate", () => {
+	it("keeps undefined data, even when JSON drops the field", async () => {
+		const queryFn = vi.fn(() => Promise.resolve(undefined));
+		function noneQuery() {
+			return queryOptions({ queryFn, queryKey: ["none"], staleTime: Infinity });
+		}
+		const server = new QueryClient({ isServer: true });
+		const browser = new QueryClient({ isServer: false });
+		await server.fetch(noneQuery);
+
+		// oxlint-disable-next-line unicorn/prefer-structured-clone -- structuredClone keeps `data: undefined`; JSON drops it, which is the case under test
+		const sent: DehydratedState = JSON.parse(JSON.stringify(dehydrate(server)));
+		expect(sent.queries[0]).not.toHaveProperty("data");
+		hydrate(browser, sent);
+
+		const query = browser.getQuery(noneQuery);
+		expect(query.getStateUnsafe()).toMatchObject({
+			data: undefined,
+			hasData: true,
+		});
+		await expect(query.readUnsafe()).resolves.toBeUndefined();
+		expect(queryFn).toHaveBeenCalledOnce();
+	});
+
 	it("writes data without fetching", async () => {
 		const backend = createBackend();
 		const server = new QueryClient({ isServer: true });

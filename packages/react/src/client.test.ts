@@ -1,4 +1,11 @@
-import { describe, expect, it, onTestFinished, vi } from "@effect/vitest";
+import {
+	describe,
+	expect,
+	expectTypeOf,
+	it,
+	onTestFinished,
+	vi,
+} from "@effect/vitest";
 import { Effect, Schedule } from "effect";
 
 import { CancelledError, QueryClient, queryOptions } from "./index.ts";
@@ -76,7 +83,11 @@ describe("ensure and fetch", () => {
 		const data = qc.fetch(backend.issueQuery, { id: 1 });
 		backend.respondAll();
 
-		expect(await handle).toEqual({ input: { id: 1 }, key: ["issue", 1] });
+		expect(await handle).toEqual({
+			ensured: true,
+			input: { id: 1 },
+			key: ["issue", 1],
+		});
 		expect(await data).toEqual({ id: 1, title: "First" });
 		expect(backend.requests).toHaveLength(0);
 	});
@@ -113,6 +124,108 @@ describe("ensure and fetch", () => {
 			input: undefined,
 			key: ["count"],
 		});
+	});
+});
+
+describe("undefined data", () => {
+	function maybeQuery() {
+		return queryOptions({
+			queryFn: (): Promise<number | undefined> => Promise.resolve(undefined),
+			queryKey: ["maybe"],
+			staleTime: Infinity,
+		});
+	}
+
+	it("is data like any other value", async () => {
+		const queryFn = vi.fn(() => Promise.resolve(undefined));
+		const qc = new QueryClient({ isServer: false });
+		function noneQuery() {
+			return queryOptions({ queryFn, queryKey: ["none"], staleTime: Infinity });
+		}
+
+		await expect(qc.fetch(noneQuery)).resolves.toBeUndefined();
+		await expect(qc.ensure(noneQuery)).resolves.toMatchObject({
+			ensured: true,
+		});
+		await expect(qc.getQuery(noneQuery).readUnsafe()).resolves.toBeUndefined();
+		expect(qc.getQuery(noneQuery).getStateUnsafe()).toMatchObject({
+			data: undefined,
+			hasData: true,
+			status: "success",
+		});
+		expect(queryFn).toHaveBeenCalledOnce();
+	});
+
+	it("can be written with setData, and hasData tells it from no data", async () => {
+		const qc = new QueryClient({ isServer: false });
+		expect(qc.getData(maybeQuery)).toBeUndefined();
+		expect(qc.getQuery(maybeQuery).getStateUnsafe().hasData).toBe(false);
+
+		qc.setData(maybeQuery, undefined, undefined);
+
+		expect(qc.getData(maybeQuery)).toBeUndefined();
+		expect(qc.getQuery(maybeQuery).getStateUnsafe().hasData).toBe(true);
+		await expect(qc.fetch(maybeQuery)).resolves.toBeUndefined();
+	});
+
+	it("types data from the queryFn, including undefined", () => {
+		const fetchMaybe = (qc: QueryClient) => qc.fetch(maybeQuery);
+		expectTypeOf(fetchMaybe).returns.resolves.toEqualTypeOf<
+			number | undefined
+		>();
+	});
+});
+
+describe("on the server", () => {
+	it("verbs reuse cached data instead of revalidating it", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: true });
+
+		const data = qc.fetch(backend.issueQuery, { id: 1 });
+		backend.respondAll();
+		expect(await data).toEqual({ id: 1, title: "First" });
+		expect(qc.getQuery(backend.issueQuery, { id: 1 }).isStaleUnsafe()).toBe(
+			true,
+		);
+
+		const handle = await qc.ensure(backend.issueQuery, { id: 1 });
+		qc.prefetch(backend.issueQuery, { id: 1 });
+		expect(await qc.fetch(backend.issueQuery, { id: 1 })).toEqual({
+			id: 1,
+			title: "First",
+		});
+
+		expect(handle.ensured).toBe(true);
+		expect(backend.requests).toHaveLength(0);
+	});
+
+	it("invalidate refetches read entries", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: true });
+		const data = qc.fetch(backend.issueQuery, { id: 1 });
+		backend.respondAll();
+		await data;
+		qc.getQuery(backend.issueQuery, { id: 1 }).subscribeUnsafe(() => {});
+
+		const invalidated = qc.invalidate(backend.issueQuery, { id: 1 });
+		expect(backend.requests).toHaveLength(1);
+		backend.issues.set(1, { id: 1, title: "Edited" });
+		backend.respondAll();
+		await invalidated;
+
+		expect(qc.getData(backend.issueQuery, { id: 1 })?.title).toBe("Edited");
+	});
+
+	it("verbs refetch unread entries invalidate marked", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: true });
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
+
+		await qc.invalidate(backend.issueQuery, { id: 1 });
+		expect(backend.requests).toHaveLength(0);
+
+		qc.prefetch(backend.issueQuery, { id: 1 });
+		expect(backend.requests).toHaveLength(1);
 	});
 });
 
@@ -174,6 +287,65 @@ describe("read", () => {
 		expect(retried).not.toBe(failed);
 		backend.respondAll();
 		expect(await retried).toEqual({ id: 1, title: "Back" });
+	});
+});
+
+describe("structural sharing", () => {
+	function listQuery(options: { structuralSharing?: boolean } = {}) {
+		return () =>
+			queryOptions({
+				queryFn: () => [
+					{ id: 1, tags: ["a"], title: "First" },
+					{ id: 2, tags: ["b"], title: "Second" },
+				],
+				queryKey: ["list"],
+				...options,
+			});
+	}
+
+	it("keeps the data and promise when a refetch returns equal data", async () => {
+		const qc = new QueryClient({ isServer: false });
+		const query = qc.getQuery(listQuery());
+		await Effect.runPromise(query.fetch());
+		const before = query.getStateUnsafe();
+
+		await Effect.runPromise(query.refetch);
+
+		const after = query.getStateUnsafe();
+		expect(after.data).toBe(before.data);
+		expect(after.promise).toBe(before.promise);
+		expect(after.updatedAt).toBeGreaterThanOrEqual(before.updatedAt);
+	});
+
+	it("reuses unchanged parts of new data", async () => {
+		const qc = new QueryClient({ isServer: false });
+		const factory = listQuery();
+		const data = await qc.fetch(factory);
+		const promise = qc.getQuery(factory).getStateUnsafe().promise;
+
+		qc.setData(factory, undefined, [
+			{ id: 1, tags: ["a"], title: "First" },
+			{ id: 2, tags: ["b"], title: "Renamed" },
+		]);
+
+		const next = qc.getData(factory);
+		expect(next).not.toBe(data);
+		expect(next?.[0]).toBe(data[0]);
+		expect(next?.[1]).not.toBe(data[1]);
+		expect(next?.[1]?.tags).toBe(data[1]?.tags);
+		expect(qc.getQuery(factory).getStateUnsafe().promise).not.toBe(promise);
+	});
+
+	it("is skipped with structuralSharing: false", async () => {
+		const qc = new QueryClient({ isServer: false });
+		const query = qc.getQuery(listQuery({ structuralSharing: false }));
+		await Effect.runPromise(query.fetch());
+		const before = query.getStateUnsafe();
+
+		await Effect.runPromise(query.refetch);
+
+		expect(query.getStateUnsafe().data).not.toBe(before.data);
+		expect(query.getStateUnsafe().promise).not.toBe(before.promise);
 	});
 });
 
@@ -520,6 +692,148 @@ describe("retry", () => {
 
 		expect(byPredicate).toHaveBeenCalledTimes(2);
 		expect(bySchedule).toHaveBeenCalledTimes(5);
+	});
+
+	describe("offline", () => {
+		function goOffline() {
+			const target = new EventTarget();
+			const network = { onLine: false };
+			vi.stubGlobal("window", target);
+			vi.stubGlobal("navigator", network);
+			return {
+				goOnline() {
+					network.onLine = true;
+					target.dispatchEvent(new Event("online"));
+				},
+				target,
+			};
+		}
+
+		function failingOnce() {
+			let calls = 0;
+			return vi.fn(() => {
+				calls++;
+				return calls === 1 ? Promise.reject(new Error("down")) : "ok";
+			});
+		}
+
+		it("waits for the browser to come back online before retrying", async () => {
+			useFakeTimers();
+			const browser = goOffline();
+			const queryFn = failingOnce();
+			const qc = new QueryClient({ isServer: false });
+			const query = qc.getQuery(() =>
+				queryOptions({ queryFn, queryKey: ["offline"] }),
+			);
+			const result = Effect.runPromise(query.fetch());
+
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(queryFn).toHaveBeenCalledOnce();
+			expect(query.getStateUnsafe()).toMatchObject({
+				failureCount: 1,
+				isFetching: true,
+				status: "pending",
+			});
+
+			browser.goOnline();
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(await result).toBe("ok");
+			expect(queryFn).toHaveBeenCalledTimes(2);
+		});
+
+		it("still waits for the retry delay", async () => {
+			useFakeTimers();
+			const browser = goOffline();
+			const queryFn = failingOnce();
+			const qc = new QueryClient({ isServer: false });
+			const result = qc.fetch(() =>
+				queryOptions({ queryFn, queryKey: ["offline"], retryDelay: 1000 }),
+			);
+
+			await vi.advanceTimersByTimeAsync(500);
+			browser.goOnline();
+			await vi.advanceTimersByTimeAsync(499);
+			expect(queryFn).toHaveBeenCalledOnce();
+			await vi.advanceTimersByTimeAsync(1);
+
+			expect(await result).toBe("ok");
+		});
+
+		it("pauses Schedule retries too", async () => {
+			useFakeTimers();
+			const browser = goOffline();
+			const queryFn = failingOnce();
+			const qc = new QueryClient({ isServer: false });
+			const result = qc.fetch(() =>
+				queryOptions({
+					queryFn,
+					queryKey: ["offline"],
+					retry: Schedule.recurs(3),
+				}),
+			);
+
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(queryFn).toHaveBeenCalledOnce();
+
+			browser.goOnline();
+
+			expect(await result).toBe("ok");
+		});
+
+		it("stops waiting when the query is removed", async () => {
+			useFakeTimers();
+			const browser = goOffline();
+			const removeListener = vi.spyOn(browser.target, "removeEventListener");
+			const queryFn = vi.fn(() => Promise.reject(new Error("down")));
+			const qc = new QueryClient({ isServer: false });
+			const factory = () => queryOptions({ queryFn, queryKey: ["offline"] });
+			const result = qc.fetch(factory);
+			await vi.advanceTimersByTimeAsync(60_000);
+
+			qc.remove(factory);
+
+			await expect(result).rejects.toBeInstanceOf(CancelledError);
+			expect(removeListener).toHaveBeenCalledWith(
+				"online",
+				expect.any(Function),
+			);
+			browser.goOnline();
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(queryFn).toHaveBeenCalledOnce();
+		});
+
+		it("doesn't delay retries while online", async () => {
+			const browser = goOffline();
+			browser.goOnline();
+			const queryFn = vi.fn(() => Promise.reject(new Error("down")));
+			const qc = new QueryClient({ isServer: false });
+
+			await expect(
+				qc.fetch(() =>
+					queryOptions({ queryFn, queryKey: ["online"], retryDelay: 0 }),
+				),
+			).rejects.toThrow("down");
+			expect(queryFn).toHaveBeenCalledTimes(4);
+		});
+
+		it("doesn't wait on the server", async () => {
+			goOffline();
+			const queryFn = vi.fn(() => Promise.reject(new Error("down")));
+			const qc = new QueryClient({ isServer: true });
+
+			await expect(
+				qc.fetch(() =>
+					queryOptions({
+						queryFn,
+						queryKey: ["server"],
+						retry: 1,
+						retryDelay: 0,
+					}),
+				),
+			).rejects.toThrow("down");
+			expect(queryFn).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	it("is off on the server", async () => {
