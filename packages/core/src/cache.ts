@@ -1,8 +1,9 @@
 /**
  * The query cache, as an Effect service. `make` builds one in the current
  * scope; closing the scope interrupts every request and timer it started.
- * Everything that waits, or changes the cache, is an Effect; `getQueryUnsafe`
- * and `subscribeUnsafe` are for renders and external stores.
+ * Everything that waits, or changes the cache, is an Effect; `getQueryUnsafe`,
+ * `isFetchingUnsafe` and `subscribeUnsafe` are for renders and external
+ * stores.
  *
  * Requests run with the services the cache was built with, under those of
  * the latest verb that called for the entry. So the verbs that can start a
@@ -201,6 +202,13 @@ export interface QueryCache {
 	invalidate<TFactory extends QueryFactory>(
 		...target: Target<TFactory>
 	): Effect.Effect<void>;
+	/**
+	 * How many entries have a request in flight: all of them, or those
+	 * matching `filter`. For global loading indicators.
+	 */
+	isFetching(filter?: Filter): Effect.Effect<number>;
+	/** `isFetching`, synchronously, for renders. */
+	isFetchingUnsafe(filter?: Filter): number;
 	readonly isServer: boolean;
 	/**
 	 * Refetch read, stale queries on window focus and reconnect while the
@@ -423,6 +431,11 @@ export const make: (
 			...args: InputArgs<TFactory>
 		) => typed<TFactory>(build(factory, args[0]));
 
+		const isFetchingUnsafe = (filter?: Filter) =>
+			(filter ? match([filter]) : [...state.entries.values()]).filter(
+				(entry) => entry.state.isFetching,
+			).length;
+
 		const cache: QueryCache = {
 			all: Effect.sync(() => [...state.entries.values()]),
 			clear: Effect.sync(() => {
@@ -464,6 +477,8 @@ export const make: (
 				),
 			invalidate: (...target) =>
 				Effect.suspend(() => settleAll(match(target).map(Entry.invalidate))),
+			isFetching: (filter) => Effect.sync(() => isFetchingUnsafe(filter)),
+			isFetchingUnsafe,
 			isServer: state.isServer,
 			mount: state.isServer
 				? Effect.void

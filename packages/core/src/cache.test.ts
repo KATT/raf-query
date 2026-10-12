@@ -339,6 +339,70 @@ describe("QueryCache", () => {
 		}),
 	);
 
+	it.effect("isFetching counts entries with a request in flight", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: false });
+			const counts: Array<number> = [];
+			cache.subscribeUnsafe((event) => {
+				if (event.type === "updated") {
+					counts.push(cache.isFetchingUnsafe());
+				}
+			});
+			expect(yield* cache.isFetching()).toBe(0);
+
+			yield* cache.prefetch(backend.issueQuery, { id: 1 });
+			yield* cache.prefetch(backend.issueQuery, { id: 2 });
+			yield* cache.setData(
+				backend.issueQuery,
+				{ id: 3 },
+				{ id: 3, title: "Third" },
+			);
+			expect(yield* cache.isFetching()).toBe(2);
+
+			backend.respondAll();
+			yield* settle;
+			expect(yield* cache.isFetching()).toBe(0);
+			expect(counts).toEqual([1, 2, 2, 1, 0]);
+		}),
+	);
+
+	it.effect("isFetching matches a filter by key prefix, or exactly", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: false });
+			yield* cache.prefetch(backend.issueQuery, { id: 1 });
+			yield* cache.prefetch(backend.issueQuery, { id: 2 });
+			yield* cache.prefetch(() =>
+				queryOptions({ queryFn: () => Effect.never, queryKey: ["issue"] }),
+			);
+
+			expect(yield* cache.isFetching()).toBe(3);
+			expect(yield* cache.isFetching({ queryKey: ["issue"] })).toBe(3);
+			expect(
+				yield* cache.isFetching({ exact: true, queryKey: ["issue"] }),
+			).toBe(1);
+			expect(cache.isFetchingUnsafe({ queryKey: ["issue", 1] })).toBe(1);
+			expect(cache.isFetchingUnsafe({ queryKey: ["user"] })).toBe(0);
+		}),
+	);
+
+	it.effect("isFetching drops a request that failed", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: false });
+			yield* cache.prefetch(backend.issueQuery, { id: 1 });
+			expect(cache.isFetchingUnsafe()).toBe(1);
+
+			backend.requests[0]?.fail(new Error("boom"));
+			yield* settle;
+
+			expect(yield* cache.isFetching()).toBe(0);
+			const query = yield* cache.getQuery(backend.issueQuery, { id: 1 });
+			expect((yield* Query.get(query)).status).toBe("error");
+		}),
+	);
+
 	it.effect("reset drops data and refetches what watch is reading", () =>
 		Effect.gen(function* () {
 			const backend = createBackend();

@@ -180,6 +180,14 @@ export class QueryClient<TServices = never> {
 		return Effect.runSync(this.effect.all);
 	}
 
+	/**
+	 * How many entries have a request in flight: all of them, or those
+	 * matching `filter`. For global loading indicators.
+	 */
+	isFetching(filter?: QueryCache.Filter): number {
+		return this.effect.isFetchingUnsafe(filter);
+	}
+
 	/** Listen to entries being added, updated, and removed. */
 	subscribe(listener: (event: QueryCache.Event) => void): () => void {
 		return this.effect.subscribeUnsafe(listener);
