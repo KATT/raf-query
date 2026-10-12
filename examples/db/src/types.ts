@@ -40,7 +40,12 @@ export type CommentsInput = z.infer<typeof CommentsInput>;
 export const UpdateTitleInput = z.object({ id: Id, title: Text });
 export type UpdateTitleInput = z.infer<typeof UpdateTitleInput>;
 
-export const AddCommentInput = z.object({ body: Text, issueId: Id });
+/** The client picks `id`, so its optimistic entry and the saved comment match. */
+export const AddCommentInput = z.object({
+	body: Text,
+	id: z.uuid(),
+	issueId: Id,
+});
 export type AddCommentInput = z.infer<typeof AddCommentInput>;
 
 export interface User {
@@ -72,7 +77,7 @@ export interface Comment {
 	readonly body: string;
 	/** ISO date. */
 	readonly createdAt: string;
-	readonly id: number;
+	readonly id: string;
 	readonly issueId: number;
 }
 

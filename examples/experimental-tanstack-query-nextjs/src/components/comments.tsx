@@ -31,7 +31,10 @@ export function Comments(props: {
 	const loaded = pages.pages.flatMap((page) => page.comments);
 	const [shown, addOptimistic] = useOptimistic<ReadonlyArray<Comment>, Comment>(
 		loaded,
-		(current, comment) => [comment, ...current],
+		(current, comment) =>
+			current.some((existing) => existing.id === comment.id)
+				? current
+				: [comment, ...current],
 	);
 	const total = pages.pages.at(-1)?.total ?? 0;
 
@@ -43,14 +46,15 @@ export function Comments(props: {
 			<form
 				action={async (formData) => {
 					const body = String(formData.get("body") ?? "");
+					const id = crypto.randomUUID();
 					addOptimistic({
 						author: currentUser,
 						body,
 						createdAt: new Date().toISOString(),
-						id: -Date.now(),
+						id,
 						issueId,
 					});
-					await addComment({ body, issueId });
+					await addComment({ body, id, issueId });
 					await queryClient.invalidateQueries({ queryKey: ["issues"] });
 				}}
 				className="grid gap-2"
