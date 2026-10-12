@@ -20,7 +20,7 @@ Working memory for coding agents on this repo. **Agents own this folder** — cr
 Many PRs are open at once, so each decision is its own file and PRs rarely touch the same one:
 
 - **A new decision is a new file**: `decisions/<topic>.md`, kebab-case, named by topic. No dates or sequence numbers in the name (parallel PRs would pick the same number), and no index file (every PR would edit it). Changing a decision edits its file; reversing one deletes or rewrites it.
-- Each file starts with `# Title (who)`, then short bullets: what was decided, the reason, what lost, and the files it lives in. `(human …)` marks what the human decided or asked for: don't reverse it without asking. `(agent)` is open to revision with a good reason.
+- Each file starts with `# Title (who)`, then short bullets: what was decided, the reason, what lost, and the files it lives in. The PR's "Alternatives considered" section has the longer case against what lost. `(human …)` marks what the human decided or asked for: don't reverse it without asking. `(agent)` is open to revision with a good reason.
 - Find decisions with `head -n 1 .agent-docs/decisions/*.md` for the titles, or `rg <term> .agent-docs/decisions`.
 
 ## Digging deeper with git

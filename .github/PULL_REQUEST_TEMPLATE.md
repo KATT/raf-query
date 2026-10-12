@@ -17,6 +17,14 @@ What changes, as bullet points.
 If the public API changes, show it in code blocks: before and after, or a short usage example.
 -->
 
+## Alternatives considered
+
+<!--
+Other ways to solve this, and why each lost: a different API, a smaller change, doing nothing, what TanStack Query does.
+Where this differs from TanStack Query, say why.
+Write "None" if there was only one sensible way.
+-->
+
 ## Testing
 
 <!-- How you checked it works: new or updated tests, manual runs. -->
