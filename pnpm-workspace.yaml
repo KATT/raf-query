@@ -1,5 +1,6 @@
 packages:
   - "packages/*"
+  - "tooling/*"
 
 catalog:
   "@effect/platform-node": 4.0.1

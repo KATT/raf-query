@@ -2,9 +2,6 @@ import { defineConfig } from "vite-plus";
 
 export default defineConfig({
 	fmt: {
-		useTabs: true,
-		printWidth: 80,
-		sortPackageJson: false,
 		embeddedLanguageFormatting: "auto",
 		ignorePatterns: [
 			".husky/**",
@@ -13,5 +10,8 @@ export default defineConfig({
 			"pnpm-lock.yaml",
 			".repos/**",
 		],
+		printWidth: 80,
+		sortPackageJson: false,
+		useTabs: true,
 	},
 });
