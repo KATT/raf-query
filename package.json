@@ -7,8 +7,8 @@
 		"build": "pnpm -r --filter \"./packages/*\" build",
 		"format": "vp fmt",
 		"format:check": "vp fmt --check",
-		"lint": "vp lint --disable-nested-config --ignore-pattern=.repos/** --ignore-pattern=**/node_modules/**",
-		"lint:fix": "vp lint --fix --disable-nested-config --ignore-pattern=.repos/** --ignore-pattern=**/node_modules/**",
+		"lint": "vp lint -c .oxlintrc.json --disable-nested-config",
+		"lint:fix": "vp lint -c .oxlintrc.json --fix --disable-nested-config",
 		"prepare": "husky",
 		"test": "pnpm -r --filter \"./packages/*\" test",
 		"typecheck": "pnpm -r --filter \"./packages/*\" typecheck",
@@ -33,6 +33,7 @@
 		"vite-plus": "1.0.0"
 	},
 	"lint-staged": {
+		"*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}": "vp lint -c .oxlintrc.json --fix --disable-nested-config --no-error-on-unmatched-pattern",
 		"*": "vp fmt --no-error-on-unmatched-pattern"
 	},
 	"engines": {
