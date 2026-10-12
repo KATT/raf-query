@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.1](https://github.com/KATT/raf-query/compare/0.1.0...0.1.1) (2026-10-12)
+
+### Features
+
+- **core:** add predicate to QueryFilter ([#24](https://github.com/KATT/raf-query/issues/24)) ([c0b9c18](https://github.com/KATT/raf-query/commit/c0b9c1829cb3b6446f765b151e520f0195af5276))
+
 ## [0.1.0](https://github.com/KATT/raf-query/compare/0.0.19...0.1.0) (2026-10-12)
 
 ### ⚠ BREAKING CHANGES
