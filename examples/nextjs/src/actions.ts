@@ -15,19 +15,19 @@ import {
 	IssueId,
 	IssueListInput,
 	UpdateTitleInput,
+	UserId,
 } from "@examples/db/types";
-import { Schema } from "effect";
 import { notFound } from "next/navigation";
 
 // Server actions are public endpoints: the parameter types are for callers,
 // the schemas check what actually arrives.
 
 export async function listIssues(input: IssueListInput) {
-	return listIssuesInDb(Schema.decodeUnknownSync(IssueListInput)(input));
+	return listIssuesInDb(IssueListInput.parse(input));
 }
 
 export async function getIssue(id: number) {
-	const issue = await findIssue(Schema.decodeUnknownSync(IssueId)(id));
+	const issue = await findIssue(IssueId.parse(id));
 	if (!issue) {
 		notFound();
 	}
@@ -39,7 +39,7 @@ export async function countIssues() {
 }
 
 export async function getUser(id: string) {
-	const user = await findUser(Schema.decodeUnknownSync(Schema.String)(id));
+	const user = await findUser(UserId.parse(id));
 	if (!user) {
 		notFound();
 	}
@@ -47,13 +47,13 @@ export async function getUser(id: string) {
 }
 
 export async function listComments(input: CommentsInput) {
-	return listCommentsInDb(Schema.decodeUnknownSync(CommentsInput)(input));
+	return listCommentsInDb(CommentsInput.parse(input));
 }
 
 export async function updateIssueTitle(input: UpdateTitleInput) {
-	return updateIssue(Schema.decodeUnknownSync(UpdateTitleInput)(input));
+	return updateIssue(UpdateTitleInput.parse(input));
 }
 
 export async function addComment(input: AddCommentInput) {
-	return insertComment(Schema.decodeUnknownSync(AddCommentInput)(input));
+	return insertComment(AddCommentInput.parse(input));
 }

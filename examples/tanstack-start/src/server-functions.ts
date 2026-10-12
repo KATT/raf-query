@@ -13,17 +13,17 @@ import {
 	IssueId,
 	IssueListInput,
 	UpdateTitleInput,
+	UserId,
 } from "@examples/db/types";
 import { notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { Schema } from "effect";
 
 export const listIssues = createServerFn()
-	.validator(Schema.toStandardSchemaV1(IssueListInput))
+	.validator(IssueListInput)
 	.handler((context) => listIssuesInDb(context.data));
 
 export const getIssue = createServerFn()
-	.validator(Schema.toStandardSchemaV1(IssueId))
+	.validator(IssueId)
 	.handler(async (context) => {
 		const issue = await findIssue(context.data);
 		if (!issue) {
@@ -35,7 +35,7 @@ export const getIssue = createServerFn()
 export const countIssues = createServerFn().handler(() => countIssuesInDb());
 
 export const getUser = createServerFn()
-	.validator(Schema.toStandardSchemaV1(Schema.String))
+	.validator(UserId)
 	.handler(async (context) => {
 		const user = await findUser(context.data);
 		if (!user) {
@@ -45,13 +45,13 @@ export const getUser = createServerFn()
 	});
 
 export const listComments = createServerFn()
-	.validator(Schema.toStandardSchemaV1(CommentsInput))
+	.validator(CommentsInput)
 	.handler((context) => listCommentsInDb(context.data));
 
 export const updateIssueTitle = createServerFn({ method: "POST" })
-	.validator(Schema.toStandardSchemaV1(UpdateTitleInput))
+	.validator(UpdateTitleInput)
 	.handler((context) => updateIssue(context.data));
 
 export const addComment = createServerFn({ method: "POST" })
-	.validator(Schema.toStandardSchemaV1(AddCommentInput))
+	.validator(AddCommentInput)
 	.handler((context) => insertComment(context.data));

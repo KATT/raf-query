@@ -92,8 +92,9 @@ App: **issue tracker** (confirmed). Data: an in-memory fake DB with artificial l
 
 ## 2026-10-12 — How the examples are built (agent)
 
-- **`examples/db`** (`@examples/db`) is the fake DB; **`@examples/db/types`** is its client-safe half (Effect schemas, interfaces, `currentUser`). Client code imports only `/types`; the root entry reads `process.env` and the store on `globalThis`, which must stay out of client bundles.
-- Inputs are **Effect Schemas** in `/types`. Start validators and `validateSearch` take `Schema.toStandardSchemaV1(schema)`; Next server actions call `Schema.decodeUnknownSync(schema)(input)` (they're public endpoints, so they validate even though the parameter is typed). Next pages decode `searchParams` with `IssueListSearchParams` (strings → `IssueListInput`).
+- **`examples/db`** (`@examples/db`) is the fake DB; **`@examples/db/types`** is its client-safe half (Zod schemas, interfaces, `currentUser`). Client code imports only `/types`; the root entry reads `process.env` and the store on `globalThis`, which must stay out of client bundles.
+- **No Effect in the example apps or `examples/db`** (human, 2026-10-12): they show raf-query to people who don't use Effect. When they need a schema library, use **Zod**. Effect stays in the libraries.
+- Inputs are **Zod schemas** in `/types`. Start validators and `validateSearch` take the schema directly (Zod implements Standard Schema); Next server actions call `schema.parse(input)` (they're public endpoints, so they validate even though the parameter is typed). Next pages parse `searchParams` with `IssueListSearchParams` (strings → `IssueListInput`).
 - **Next.js rejects server actions during SSR** ("Server Functions cannot be called during initial render"). So no `useWaterfall` with a server-action `queryFn` in the Next app: the issue page `await`s the issue, then `prefetch`es its assignee. Comments embed their `author` (backend returns it with the parent) in both apps, so there's no per-comment lookup.
 - Comments list newest first, with the form on top: a new comment must land on the loaded first page, or it vanishes when the optimistic entry settles.
 - Start: `vite` is overridden to `@voidzero-dev/vite-plus-core` (no `vite` bin), so scripts are `vp build` / `vp dev` / `vp preview`. React Compiler runs via `@rolldown/plugin-babel` + `reactCompilerPreset()`. **Don't name a source file `server.ts`**: it becomes `dist/server/server.js` and replaces the server entry (500 `serverBuild.fetch` undefined).
@@ -113,6 +114,23 @@ App: **issue tracker** (confirmed). Data: an in-memory fake DB with artificial l
 - Renders nothing until hydrated (`useSyncExternalStore` server snapshot `false`): the server's cache isn't the browser's, and `localStorage` state is read in the client-only child's `useState` initializer.
 - Cache events fire synchronously, sometimes during another component's render, so `devtools-store.ts` notifies React in a microtask and caches the row snapshot per event version.
 - Core gained what the panel needs: `Query.observerCount`, `Query.isStaleNow()`, `Query.reset()`, `qc.reset` / `qc.remove`, and the `observers` cache event (subscribe/unsubscribe don't otherwise emit). A suspended reader isn't counted until it commits.
+
+## 2026-10-12 — Experiment: `@raf-query/tanstack-react-query` (human asked)
+
+One package giving raf-query's API on TanStack Query, to compare against the own-engine pair. Human picks: keep core/react for now; `@tanstack/react-query` is a regular `dependency` and the only one (no Effect); the cache is TanStack's own `QueryClient`, so TanStack hooks and devtools work on it; same API as the README minus Effect entry points; private, with experimental copies of both example apps (`examples/*-tanstack-query`, ports 3002 / 3003).
+
+Agent decisions:
+
+- **Verbs are free functions** taking the client first — `prefetch(qc, factory, input)`, `ensure`, `ensureData`, `invalidate`, `setData`, `getData` — since the client is TanStack's class. `qc.fetch` became `ensureData` (`fetch` shadows the global). Prefix invalidation is TanStack's own `qc.invalidateQueries({ queryKey })`. TanStack's hooks are not re-exported.
+- Verbs call `client.query()` / `client.infiniteQuery()` (the non-deprecated API). Those default `retry` to `false`, so verbs pass the read default instead: 0 on the server, 3 in the browser, unless the factory or client sets one.
+- **One observer per query hash**, recreated when the hash changes. Moving a `QueryObserver` to a new key refetches stale data (`shouldFetchOptionally`), which would refetch what the loader just fetched. Observers set `refetchOnMount: false`.
+- **Stable thenables** live in `thenable.ts`, one set per `Query` in a `WeakMap`: a fulfilled thenable per data identity, and one pending thenable fed by `QueryCache.subscribe`. A read with no data and nothing in flight starts the fetch during render (`observer.fetchOptimistic`), because `use()` suspends before effects run.
+- **An error is shown once, then the next read retries.** React re-renders a throwing tree once before the error boundary takes it, so the rejected thenable is returned until a microtask passes; after that, a read (an error boundary reset) refetches. This replaces TanStack's `retryOnMount`.
+- Paged factories use `InfiniteQueryObserver`; `{ pages }` maps to `client.infiniteQuery({ pages })`.
+- Dev-only check: two inputs with the same key hash warn once per key (`console.warn`).
+- Integrations: TanStack Router uses TanStack's own `@tanstack/react-router-ssr-query` (no `/tanstack-router` subpath). `/rsc` exports a `HydrationBoundary` that dehydrates pending entries as promises and skips entries an earlier boundary already sent in the request; `/next` exports `QueryProvider` (client per server render, singleton in the browser).
+- Not released: `.release-it.json` publishes core and react by name only.
+- Tests: TanStack batches observer notifications on a `setTimeout(0)`, so React tests wait a macrotask inside `act` after any cache write (`flush()` in `test-utils.tsx`).
 
 ## 2026-10-12 — npm release path
 
