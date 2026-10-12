@@ -1,15 +1,11 @@
 "use client";
 
-import {
-	type DehydratedState,
-	dehydrateQuery,
-	hydrate,
-	QueryClient,
-	type QueryClientConfig,
-} from "@raf-query/core";
+import { type DehydratedState, dehydrateQuery, Query } from "@raf-query/core";
+import { Effect } from "effect";
 import { useServerInsertedHTML } from "next/navigation";
 import { type ReactNode, useState } from "react";
 
+import { hydrate, QueryClient, type QueryClientConfig } from "./client.ts";
 import { hydratedHashes } from "./hydrate.tsx";
 import { QueryClientProvider } from "./provider.tsx";
 
@@ -52,13 +48,13 @@ function useServerStream(client: QueryClient) {
 			.getAll()
 			.filter(
 				(query) =>
-					query.getState().hasData &&
+					Query.getUnsafe(query).hasData &&
 					!sent.has(query.hash) &&
 					!hydrated.has(query.hash),
 			)
 			.map((query) => {
 				sent.add(query.hash);
-				return dehydrateQuery(query);
+				return Effect.runSync(dehydrateQuery(query));
 			});
 		if (queries.length === 0) {
 			return null;

@@ -355,7 +355,7 @@ describe("useQuery", () => {
 		let attempt = 0;
 		function flakyQuery() {
 			return queryOptions({
-				queryFn: () => {
+				queryFn: async () => {
 					attempt++;
 					if (attempt > 1 && attempt < 4) {
 						throw new Error("flaky");

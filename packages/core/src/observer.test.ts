@@ -1,15 +1,16 @@
 import { describe, expect, it, onTestFinished, vi } from "@effect/vitest";
+import { Effect } from "effect";
 
-import { QueryClient, QueryObserver } from "./index.ts";
-import { createBackend, flush } from "./test-utils.ts";
+import { Query, QueryObserver } from "./index.ts";
+import { createBackend, flush, makeCacheUnsafe } from "./test-utils.ts";
 
 async function setup() {
 	const backend = createBackend();
-	const qc = new QueryClient({ isServer: false });
-	qc.prefetch(backend.issueQuery, { id: 1 });
+	const qc = makeCacheUnsafe({ isServer: false });
+	Effect.runSync(qc.prefetch(backend.issueQuery, { id: 1 }));
 	backend.respondAll();
 	await flush();
-	const query = qc.getQuery(backend.issueQuery, { id: 1 });
+	const query = qc.getQueryUnsafe(backend.issueQuery, { id: 1 });
 	return { backend, qc, query };
 }
 
@@ -20,7 +21,7 @@ describe("QueryObserver", () => {
 		const listener = vi.fn();
 		observer.subscribe(listener);
 
-		void test.query.refetch();
+		Effect.runFork(Query.refetch(test.query));
 		await flush();
 		expect(listener).toHaveBeenCalledOnce();
 		expect(observer.getCurrentResult().isFetching).toBe(true);
@@ -34,7 +35,7 @@ describe("QueryObserver", () => {
 		const result = observer.trackResult(observer.getCurrentResult());
 		void result.promise;
 
-		void test.query.refetch();
+		Effect.runFork(Query.refetch(test.query));
 		await flush();
 		expect(listener).not.toHaveBeenCalled();
 
@@ -44,7 +45,7 @@ describe("QueryObserver", () => {
 		expect(listener).toHaveBeenCalledOnce();
 
 		void observer.trackResult(observer.getCurrentResult()).isFetching;
-		void test.query.refetch();
+		Effect.runFork(Query.refetch(test.query));
 		await flush();
 		expect(listener).toHaveBeenCalledTimes(2);
 	});
@@ -54,8 +55,10 @@ describe("QueryObserver", () => {
 		const options = { whilePending: "previous" } as const;
 		const observer = new QueryObserver(test.query, options);
 		observer.subscribe(() => {});
-		const second = test.qc.getQuery(test.backend.issueQuery, { id: 2 });
-		second.read();
+		const second = test.qc.getQueryUnsafe(test.backend.issueQuery, {
+			id: 2,
+		});
+		Query.readUnsafe(second);
 
 		observer.setOptions(second, options);
 		expect(observer.getCurrentResult()).toMatchObject({
@@ -63,7 +66,7 @@ describe("QueryObserver", () => {
 			isPending: true,
 			isPrevious: true,
 			key: ["issue", 1],
-			promise: test.query.getState().promise,
+			promise: Query.getUnsafe(test.query).promise,
 		});
 
 		test.backend.respondAll();
@@ -71,7 +74,7 @@ describe("QueryObserver", () => {
 		expect(observer.getCurrentResult()).toMatchObject({
 			input: { id: 2 },
 			isPrevious: false,
-			promise: second.getState().promise,
+			promise: Query.getUnsafe(second).promise,
 		});
 	});
 

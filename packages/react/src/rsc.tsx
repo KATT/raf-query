@@ -1,12 +1,7 @@
-import {
-	canDehydrate,
-	dehydrate,
-	type DehydrateOptions,
-	hashKey,
-	type QueryClient,
-} from "@raf-query/core";
+import { canDehydrate, type DehydrateOptions, hashKey } from "@raf-query/core";
 import type { ReactNode } from "react";
 
+import { dehydrate, type QueryClient } from "./client.ts";
 import { Hydrate } from "./hydrate.tsx";
 
 const sentByClient = new WeakMap<QueryClient, Set<string>>();

@@ -6,9 +6,9 @@ Mechanisms the build should copy, each verified against vendored or local source
 
 | Concern                                                                                                                   | Package                                                                                |
 | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Cache entries, dedupe, retries, gc, staleness, focus/reconnect managers, infinite paging, invalidation, dehydrate/hydrate | `@raf-query/core`                                                                      |
+| Cache entries, dedupe, retries, gc, staleness, focus/reconnect managers, infinite paging, invalidation, dehydrate/hydrate | `@raf-query/core` (`QueryCache`, Effect-only)                                          |
 | Stable thenables per (key, data version)                                                                                  | `@raf-query/core` (React-agnostic: a thenable with `status`/`value` is just an object) |
-| Observers, `useSyncExternalStore` subscription, provider, `useWaterfall`                                                  | `@raf-query/react`                                                                     |
+| Promise `QueryClient`, `allKeyed`, observers, `useSyncExternalStore` subscription, provider, `useWaterfall`               | `@raf-query/react`                                                                     |
 | SSR stream glue                                                                                                           | `@raf-query/react/tanstack-router`, `/rsc`, `/next`                                    |
 
 Mirror TanStack's split: `.repos/query/packages/query-core` (no React import anywhere) and `.repos/query/packages/react-query/src/index.ts` (`export * from '@tanstack/query-core'`). Keep `@raf-query/core` free of React types so another binding could sit on it.
@@ -23,7 +23,7 @@ Mirror TanStack's split: `.repos/query/packages/query-core` (no React import any
 - **Next.js SSR-pass stream.** `useServerInsertedHTML` pushes `<script>` chunks after each Suspense boundary; the client drains `window[id]` then swaps in a live `push` (`.repos/query/packages/react-query-next-experimental/src/HydrationStreamProvider.tsx`). Basis for `QueryProvider`.
 - **Handle typing.** `QueryHandle<TFactory>` carries the factory only as a type-level phantom field; `InputArgs` keeps required inputs required and makes no-arg factories' input optional; `QueryFactory = (input: never) => AnyQueryOptions` rejects 2+ parameter factories. Data comes from the factory's return type (`DataOf`), not a key tag. The handle is invariant in `TFactory` (an `out` annotation fails), so helpers that take "any handle" use structural types.
 - **Paged vs plain** is the runtime `kind: "infinite" | "query"` stamped by the two option functions; types branch on the same field. `expectTypeOf` tests cover both kinds.
-- **Requests are Effects.** `queryFn` results (value, promise, Effect) are normalized into one Effect, retried by `#withRetry` (count / predicate / `Schedule`), and run with `Effect.runPromiseExit(…, { signal })`; interrupt aborts the `queryFn`'s signal.
+- **Requests are Effects.** `queryFn` results (value, promise, Effect) are normalized into one Effect (`fromQueryFn`), retried with `Effect.retry` and the `Schedule` from `retrySchedule`, and forked as the entry's `request` fiber; interrupting it aborts the `queryFn`'s signal. See the "Effect-native engine" decision.
 
 ## Open implementation questions
 

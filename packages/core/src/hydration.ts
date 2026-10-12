@@ -1,6 +1,9 @@
-import { cacheOf, type QueryClient } from "./client.ts";
+import { Effect } from "effect";
+
+import * as Entry from "./entry.ts";
 import type { QueryKey } from "./key.ts";
-import type { Query } from "./query.ts";
+import type { QueryFactory } from "./options.ts";
+import * as Query from "./query.ts";
 
 /**
  * One cache entry in transit. Settled entries carry `data`; entries still
@@ -24,7 +27,7 @@ export interface DehydrateOptions {
 	 * Which entries to send. Default: entries with data or a request in
 	 * flight ({@link canDehydrate}).
 	 */
-	readonly filter?: (query: Query) => boolean;
+	readonly filter?: (query: Query.Query) => boolean;
 	/**
 	 * Send a pending query's rejection as-is. By default the receiving side
 	 * gets a generic error, so server errors don't leak into the page; its
@@ -44,17 +47,18 @@ const noop = () => {};
 const identity = <T>(value: T) => value;
 
 /** The default dehydrate filter: entries with data or a request in flight. */
-export function canDehydrate(query: Query): boolean {
-	const state = query.getState();
+export function canDehydrate<TData, TFactory extends QueryFactory, TError>(
+	query: Query.Query<TData, TFactory, TError>,
+): boolean {
+	const state = Query.getUnsafe(query);
 	return state.hasData || state.isFetching;
 }
 
-/** Snapshot one entry for transfer. */
-export function dehydrateQuery(
-	query: Query,
-	options: DehydrateOptions = {},
+export function dehydrateUnsafe<TData, TFactory extends QueryFactory, TError>(
+	query: Query.Query<TData, TFactory, TError>,
+	options: DehydrateOptions,
 ): DehydratedQuery {
-	const state = query.getState();
+	const state = Query.getUnsafe(query);
 	const serialize = options.serializeData ?? identity;
 	if (state.hasData) {
 		return {
@@ -70,41 +74,34 @@ export function dehydrateQuery(
 	return { key: query.key, promise, updatedAt: 0 };
 }
 
-/** Snapshot the cache for transfer to another client (server → browser). */
-export function dehydrate(
-	client: QueryClient,
+/** Snapshot one entry for transfer. */
+export function dehydrateQuery<TData, TFactory extends QueryFactory, TError>(
+	query: Query.Query<TData, TFactory, TError>,
 	options: DehydrateOptions = {},
-): DehydratedState {
-	const filter = options.filter ?? canDehydrate;
-	return {
-		queries: client
-			.getAll()
-			.filter(filter)
-			.map((query) => dehydrateQuery(query, options)),
-	};
+): Effect.Effect<DehydratedQuery> {
+	return Effect.sync(() => dehydrateUnsafe(query, options));
 }
 
 /**
- * Write dehydrated entries into a client. Existing entries only take newer
+ * Write dehydrated entries into a cache. Existing entries only take newer
  * data; pending entries resume the sender's request.
  */
-export function hydrate(
-	client: QueryClient,
+export function hydrateEntries(
+	entryFor: (key: QueryKey) => Entry.Entry,
 	state: DehydratedState,
-	options: HydrateOptions = {},
+	options: HydrateOptions,
 ): void {
 	const deserialize = options.deserializeData ?? identity;
-	const cache = cacheOf(client);
 	for (const query of state.queries) {
-		const entry = cache.entryFor(query.key);
-		const current = entry.getState();
+		const entry = entryFor(query.key);
+		const current = entry.state;
 		if (query.updatedAt > 0) {
 			if (!current.hasData || current.updatedAt < query.updatedAt) {
-				entry.setData(deserialize(query.data), query.updatedAt);
+				Entry.setData(entry, deserialize(query.data), query.updatedAt);
 			}
 		} else if (query.promise && !current.hasData) {
 			// Flight-decoded promises are thenables, not always real promises.
-			entry.resume(Promise.resolve(query.promise).then(deserialize));
+			Entry.resume(entry, Promise.resolve(query.promise).then(deserialize));
 		}
 	}
 }

@@ -3,13 +3,13 @@ import {
 	type DehydratedQuery,
 	dehydrateQuery,
 	type DehydrateOptions,
-	hydrate,
 	type HydrateOptions,
 	type Query,
-	type QueryClient,
 } from "@raf-query/core";
 import { type AnyRouter, isRedirect } from "@tanstack/react-router";
-import { Predicate } from "effect";
+import { Effect, Predicate } from "effect";
+
+import { hydrate, type QueryClient } from "./client.ts";
 
 export interface RouterIntegrationOptions<TRouter extends AnyRouter> {
 	readonly dehydrateOptions?: DehydrateOptions;
@@ -69,7 +69,7 @@ function setupServer<TRouter extends AnyRouter>(
 		const initial: Array<DehydratedQuery> = [];
 		for (const query of queryClient.getAll()) {
 			if (shouldSend(query)) {
-				initial.push(dehydrateQuery(query, dehydrateOptions));
+				initial.push(Effect.runSync(dehydrateQuery(query, dehydrateOptions)));
 				sent.add(query.hash);
 			}
 		}
@@ -82,7 +82,7 @@ function setupServer<TRouter extends AnyRouter>(
 				controller = streamController;
 			},
 		});
-		let batch: Map<string, Query> | undefined;
+		let batch: Map<string, Query.Query> | undefined;
 		const flush = () => {
 			const queries = batch;
 			batch = undefined;
@@ -92,7 +92,7 @@ function setupServer<TRouter extends AnyRouter>(
 			const chunk: Array<DehydratedQuery> = [];
 			for (const query of queries.values()) {
 				if (!sent.has(query.hash) && shouldSend(query)) {
-					chunk.push(dehydrateQuery(query, dehydrateOptions));
+					chunk.push(Effect.runSync(dehydrateQuery(query, dehydrateOptions)));
 					sent.add(query.hash);
 				}
 			}
