@@ -44,7 +44,7 @@ export interface QueryState<TData> {
 }
 
 /** Per-reader preferences, registered with {@link Query.subscribe}. */
-export interface QueryObserver {
+export interface SubscribeOptions {
 	readonly refetchOnReconnect?: boolean;
 	readonly refetchOnWindowFocus?: boolean;
 }
@@ -98,7 +98,7 @@ export interface Query<
 	 */
 	reset(): Promise<void>;
 	/** Listen for state changes. Subscribed entries count as read. */
-	subscribe(listener: () => void, observer?: QueryObserver): () => void;
+	subscribe(listener: () => void, options?: SubscribeOptions): () => void;
 }
 
 /** Thrown into a request's awaiters when the cache is cleared mid-request. */
@@ -127,7 +127,7 @@ interface InFlight {
 
 const noop = () => {};
 const identity = <T>(value: T) => value;
-const defaultObserver: QueryObserver = {};
+const defaultObserver: SubscribeOptions = {};
 
 function isEffectResult<T>(
 	result: QueryFnResult<T>,
@@ -222,7 +222,7 @@ export class QueryEntry implements Query {
 	#handle: QueryHandle;
 	#host: QueryHost;
 	#inFlight: InFlight | undefined;
-	#listeners = new Map<() => void, QueryObserver>();
+	#listeners = new Map<() => void, SubscribeOptions>();
 	#options: AnyQueryOptions | undefined;
 	#pending: Pending<unknown> | undefined;
 	#staleTimer: ReturnType<typeof setTimeout> | undefined;
