@@ -57,6 +57,7 @@ Spec lives in root `README.md`. Picks, and what lost:
 - **No refetch on mount.** Loaders, invalidation, focus/reconnect-while-stale, `refetch()`, `refetchInterval` are the only refetch triggers.
 - **Server-only factories** (importing DB code) can't be read by client hooks; pass a plain promise prop or render in RSC. (An earlier proposal for a `server: true` flag didn't work: the client component would still have to import the factory.)
 - **Effect is a runtime dependency of both libraries** (human, 2026-10-12). Use it for subscriptions, dedupe, scheduling, retries — functionally like TanStack Query, not a line-by-line port. The app-facing API (`@raf-query/react`) is Promise-first **and** exposes the Effect cache as `qc.effect` (Effect-returning `queryFn`, typed errors, Stream-based subscriptions). Versions come from the `catalog:` in `pnpm-workspace.yaml`; source is vendored at `.repos/effect` — read it (start with its `LLMS.md`) before writing Effect code.
+- **Using raf-query must not require knowing Effect** (human, 2026-10-12: "it should also work to _use_ it without knowing or caring about Effect"). Everything below the React/framework edge is Effect-native, but `QueryClient`, the hooks, the integrations and promise `queryFn`s never make an app import `effect` or name an Effect type; `QueryClient`'s `TServices` defaults to `never`. Effect-only features (services, `qc.effect`, Streams) are opt-in and documented in the README's Effect section. The example apps are the check.
 
 ## 2026-10-12 — Two packages, React-agnostic core
 

@@ -6,6 +6,8 @@ Queries start in route loaders and React Server Components, travel to components
 
 The cache's mechanics (dedupe, staleness, retries, infinite paging, SSR hydration) follow [TanStack Query](https://tanstack.com/query); the public API is built around loaders, RSC, and `use()` instead of `useQuery`-in-render.
 
+The cache is written in [Effect](https://effect.website), but using raf-query doesn't take any Effect: `queryFn`s return promises, and `QueryClient`, the hooks and the integrations speak promises. Apps that do use Effect get the same cache as Effects, with typed errors and services ([Effect](#effect)).
+
 ## Status
 
 Early. Both packages are on npm at `0.0.x`, and the API can still change between patch releases. [`examples/`](examples/) has the same issue tracker built on TanStack Start and on Next.js App Router.
