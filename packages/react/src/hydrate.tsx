@@ -10,22 +10,13 @@ import { type ReactNode, useEffect, useState } from "react";
 
 import { hydrate, type QueryClient } from "./client.ts";
 import { useQueryClient } from "./provider.tsx";
+import { sentHashes } from "./sent.ts";
 
-const hydratedByClient = new WeakMap<QueryClient, Set<string>>();
-
-/** Hashes of entries a client received through {@link Hydrate}. */
-export function hydratedHashes(client: QueryClient): ReadonlySet<string> {
-	return hydratedByClient.get(client) ?? new Set();
-}
-
-function markHydrated(client: QueryClient, state: DehydratedState) {
-	let hashes = hydratedByClient.get(client);
-	if (!hashes) {
-		hashes = new Set();
-		hydratedByClient.set(client, hashes);
-	}
+/** In the SSR pass, entries from the RSC payload needn't be streamed again. */
+function markSent(client: QueryClient, state: DehydratedState) {
+	const sent = sentHashes(client);
 	for (const query of state.queries) {
-		hashes.add(hashKey(query.key));
+		sent.add(hashKey(query.key));
 	}
 }
 
@@ -74,7 +65,7 @@ export function Hydrate(props: {
 	// other components aren't updated mid-render.
 	if (hydrated?.state !== state) {
 		const parts = split(client, state);
-		markHydrated(client, state);
+		markSent(client, state);
 		hydrate(client, parts.now, options);
 		setHydrated({ deferred: parts.deferred, state });
 	}
