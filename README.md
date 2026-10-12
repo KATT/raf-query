@@ -363,7 +363,7 @@ function EditTitle(props: { post: Post }) {
 | `qc.setData(factory, input, updater)` | Write data directly                                                     |
 | `qc.getData(factory, input)`          | Read cached data, or `undefined`                                        |
 
-Data can be `undefined` when the `queryFn`'s type allows it (`Promise<User | undefined>`); it's cached and reused like any other value, unlike in TanStack Query, where an `undefined` result is an error. So `getData` and an updater's `previous` return `undefined` both with no data and with `undefined` data; `qc.getQuery(factory, input).getStateUnsafe().hasData` tells them apart.
+Data can be `undefined` when the `queryFn`'s type allows it (`Promise<User | undefined>`); it's cached and reused like any other value, unlike in TanStack Query, where an `undefined` result is an error. So `getData` and an updater's `previous` return `undefined` both with no data and with `undefined` data; `Query.getUnsafe(qc.getQuery(factory, input)).hasData` tells them apart.
 
 ## SSR and hydration
 
@@ -458,14 +458,17 @@ A factory that imports server-only code (a database client) can't be imported by
 
 ## Effect
 
-raf-query's cache is written in [Effect](https://effect.website): `QueryClient` is a Promise wrapper around a `QueryCache` from `@raf-query/core`, available as `qc.effect`. Effect code uses the cache directly:
+raf-query's cache is written in [Effect](https://effect.website): `QueryClient` is a Promise wrapper around a `QueryCache` service from `@raf-query/core`, available as `qc.effect`. Effect code uses the cache directly, or builds its own with `QueryCache.make(config)` (scoped: closing the scope interrupts every request and timer) or `QueryCache.layer(config)`:
 
 - A `queryFn` can return an `Effect`. Cancelling the request interrupts it.
-- An Effect `queryFn`'s error type is the query's: `qc.effect.fetch(issueQuery, input)` fails with `IssueNotFound | CancelledError`. `ErrorOf<TFactory>` names it; it's `unknown` for promises. A `queryFn` that throws instead of returning is a defect, and isn't retried.
+- An Effect `queryFn`'s error type is the query's: `qc.effect.fetch(issueQuery, input)` fails with `IssueNotFound | Query.CancelledError`. `ErrorOf<TFactory>` names it; it's `unknown` for promises. A `queryFn` that throws instead of returning is a defect, and isn't retried.
 - `retry` accepts a `Schedule` as well as a count or predicate.
 - `qc.effect` has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidate`, `reset`, `remove`, `setData`, `getData` (an `Option`), `dehydrate`, `hydrate`. `watch` is a `Stream` of an entry's state, and `events` a `Stream` of cache events.
+- Entries are a data type with module functions, as in Effect's own modules: `Query.fetch(query)`, `Query.refetch(query)`, `Query.invalidate(query)`, `Query.changes(query)`, and `Query.getUnsafe(query)` / `Query.subscribeUnsafe(query, listener)` for synchronous reads.
+- Time comes from the `Clock` and the page from the `Platform` service (focus, visibility, `navigator.onLine`; the default reads the globals). Provide `TestClock` or another `Platform` to test staleness, gc and offline retries without a browser.
 
 ```ts
+import { QueryCache, queryOptions } from "@raf-query/core";
 import { Effect, Schedule, Stream } from "effect";
 
 export function issueQuery(input: { id: number }) {
@@ -477,15 +480,18 @@ export function issueQuery(input: { id: number }) {
 }
 
 const program = Effect.gen(function* () {
-	const issue = yield* qc.effect.fetch(issueQuery, { id: 1 });
-	yield* qc.effect.watch(issueQuery, { id: 1 }).pipe(
+	const cache = yield* QueryCache.QueryCache;
+	const issue = yield* cache.fetch(issueQuery, { id: 1 });
+	yield* cache.watch(issueQuery, { id: 1 }).pipe(
 		Stream.map((state) => state.data?.title),
 		Stream.runForEach((title) => Effect.log(title)),
 	);
 });
+
+Effect.runFork(program.pipe(Effect.provide(QueryCache.layer())));
 ```
 
-`watch` counts as a reader while it runs, so invalidation and window focus refetch the entry. Outside React, `qc.effect.mount` (`Effect<void, never, Scope>`) refetches read, stale entries on window focus and reconnect while its scope is open.
+`watch` counts as a reader while it runs, so invalidation and window focus refetch the entry. Outside React, `cache.mount` (`Effect<void, never, Scope>`) refetches read, stale entries on window focus and reconnect while its scope is open.
 
 ## Devtools
 
@@ -563,18 +569,20 @@ In the browser, retries pause while `navigator.onLine` is `false`: after the ret
 
 `@raf-query/core`:
 
-| Export                                                       | Use                                                                       |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| `QueryCache`                                                 | The cache, with an Effect for every verb (`qc.effect`)                    |
-| `queryOptions(options)`                                      | Typed options for a query factory                                         |
-| `infiniteQueryOptions(options)`                              | Typed options for a paged query factory                                   |
-| `hashKey(key)`, `matchesKey(key, prefix)`                    | Key helpers                                                               |
-| `QueryObserver`                                              | One reader's view of a query, with tracked results; for bindings          |
-| `CancelledError`                                             | Failure of a request whose entry was removed or cleared before it settled |
-| `QueryHandle<TFactory>`                                      | Handle type for props                                                     |
-| `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                     |
-| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`               |
-| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                   |
+| Export                                                       | Use                                                                        |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `QueryCache`                                                 | The cache service (`qc.effect`): `make`, `layer`, and the verbs as Effects |
+| `Query`                                                      | Cache entries: `Query.fetch`, `Query.changes`, `Query.getUnsafe`, …        |
+| `Platform`                                                   | The page the cache watches (focus, network); swap it in tests              |
+| `queryOptions(options)`                                      | Typed options for a query factory                                          |
+| `infiniteQueryOptions(options)`                              | Typed options for a paged query factory                                    |
+| `hashKey(key)`, `matchesKey(key, prefix)`                    | Key helpers                                                                |
+| `QueryObserver`                                              | One reader's view of a query, with tracked results; for bindings           |
+| `Query.CancelledError`                                       | Failure of a request whose entry was removed or cleared before it settled  |
+| `QueryHandle<TFactory>`                                      | Handle type for props                                                      |
+| `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                      |
+| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`                |
+| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                    |
 
 `@raf-query/react` (plus all of the above):
 
