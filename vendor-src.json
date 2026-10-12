@@ -8,6 +8,12 @@
 			"url": "https://github.com/TanStack/query.git",
 			"version": "5.104.1",
 			"ref": "@tanstack/react-query@5.104.1"
+		},
+		"router": {
+			"packages": ["@tanstack/react-router"],
+			"url": "https://github.com/TanStack/router.git",
+			"version": "1.170.42",
+			"ref": "@tanstack/react-router@1.170.42"
 		}
 	}
 }

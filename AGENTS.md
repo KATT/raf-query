@@ -17,5 +17,6 @@ Source for this project's key dependencies is vendored under `.repos/`, pinned t
 ### Vendored packages
 
 - `@tanstack/react-query@5.104.1` → `.repos/query`
+- `@tanstack/react-router@1.170.42` → `.repos/router`
 
 <!-- vendor-src:end -->
