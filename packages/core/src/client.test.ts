@@ -892,31 +892,40 @@ describe("when the last reader leaves mid-request", () => {
 		expect(query.getState().data).toEqual({ id: 1, title: "First" });
 	});
 
-	it("sends a first load back to idle, and the next read settles the held promise", async () => {
+	it("lets a first load finish, so renders suspended on it resume", async () => {
 		const backend = createBackend();
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
 		const held = query.read();
 		const unsubscribe = query.subscribe(() => {});
-		const fetched = query.fetch();
 
 		unsubscribe();
 		await flush();
 
-		expect(backend.requests[0]?.signal.aborted).toBe(true);
-		expect(query.getState()).toMatchObject({
-			error: null,
-			hasData: false,
-			isFetching: false,
-			status: "pending",
-		});
-		expect(query.getState().promise).toBe(held);
-		await expect(fetched).rejects.toBeInstanceOf(CancelledError);
-
-		expect(query.read()).toBe(held);
-		expect(backend.requests).toHaveLength(2);
+		expect(backend.requests[0]?.signal.aborted).toBe(false);
+		expect(query.getState().isFetching).toBe(true);
 		backend.respondAll();
 		await expect(held).resolves.toEqual({ id: 1, title: "First" });
+		expect(backend.requests).toHaveLength(0);
+	});
+
+	it("doesn't retry a first load nobody reads anymore", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		const query = qc.getQuery(backend.issueQuery, { id: 404 });
+		const held = query.read();
+		const unsubscribe = query.subscribe(() => {});
+
+		unsubscribe();
+		await flush();
+		backend.respondAll();
+
+		await expect(held).rejects.toThrow("No issue 404");
+		expect(query.getState()).toMatchObject({
+			failureCount: 1,
+			status: "error",
+		});
+		expect(backend.requests).toHaveLength(0);
 	});
 
 	it("doesn't cancel when a reader subscribes again in the same task", async () => {
@@ -990,7 +999,7 @@ describe("when the last reader leaves mid-request", () => {
 	it("interrupts an Effect queryFn", async () => {
 		let interrupted = false;
 		const qc = new QueryClient({ isServer: false });
-		const query = qc.getQuery(() =>
+		const effectQuery = () =>
 			queryOptions({
 				queryFn: () =>
 					Effect.never.pipe(
@@ -999,10 +1008,12 @@ describe("when the last reader leaves mid-request", () => {
 								interrupted = true;
 							}),
 						),
+						Effect.as("never"),
 					),
 				queryKey: ["effect"],
-			}),
-		);
+			});
+		qc.setData(effectQuery, undefined, "cached");
+		const query = qc.getQuery(effectQuery);
 		const unsubscribe = query.subscribe(() => {});
 		query.fetch().catch(() => {});
 		await flush();

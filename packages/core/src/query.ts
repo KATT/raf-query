@@ -524,32 +524,28 @@ export class QueryEntry implements Query {
 	}
 
 	/**
-	 * The last reader left while `run` was in flight. A request that can be
-	 * aborted is, and the entry goes back to its state before the request;
-	 * one that can't finishes, so its result is cached, but doesn't retry.
+	 * The last reader left while `run` was in flight. A refetch that can be
+	 * aborted is, and the entry goes back to its state before the request.
+	 * Anything else finishes, so its result is cached, but doesn't retry.
 	 */
 	#unobserved(run: InFlight) {
 		if (this.isObserved || this.#inFlight !== run) {
 			return;
 		}
-		if (!this.#signalConsumed) {
+		// Renders suspended on a first load aren't subscribed, and nothing
+		// re-renders them until its promise settles, so it's never aborted.
+		if (!this.#signalConsumed || !this.#state.hasData) {
 			this.#retriesCancelled = true;
 			return;
 		}
 		this.#inFlight = undefined;
 		run.controller.abort();
-		// A first load goes back to idle with its pending promise kept, so a
-		// render suspended on it resumes when the next read refetches.
 		this.#set({
 			failureCount: run.failureCount,
 			fetchDirection: undefined,
 			isFetching: false,
 		});
-		if (this.#state.hasData) {
-			run.deferred.resolve(this.#state.data);
-		} else {
-			run.deferred.reject(new CancelledError());
-		}
+		run.deferred.resolve(this.#state.data);
 		this.#scheduleGc();
 	}
 

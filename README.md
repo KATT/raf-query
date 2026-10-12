@@ -560,7 +560,7 @@ Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.de
 
 In the browser, retries pause while `navigator.onLine` is `false`: after the retry delay, the next attempt waits for the window's `online` event. The request stays fetching meanwhile, and cancelling it (`remove`, `clear`, a restart) stops the wait. The first attempt runs regardless.
 
-When the last reader of a query unsubscribes while its request is in flight, a `queryFn` that read its `signal` (or returned an Effect) is aborted, and the entry goes back to how it was before the request: data kept, no error, not fetching. A `queryFn` that ignores its `signal` finishes so its result is cached, but doesn't retry unless a reader comes back. Requests nothing has subscribed to yet, like a loader's `prefetch`, keep running.
+When the last reader of a query unsubscribes during a background refetch, a `queryFn` that read its `signal` (or returned an Effect) is aborted, and the entry goes back to how it was before the request: data kept, no error, not fetching. Other requests, including every first load (a render may be suspended on it), finish so their result is cached, but don't retry unless a reader comes back. Requests nothing has subscribed to yet, like a loader's `prefetch`, keep running.
 
 `@raf-query/core`:
 
