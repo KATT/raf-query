@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.3](https://github.com/KATT/raf-query/compare/0.1.2...0.1.3) (2026-10-12)
+
+### Features
+
+- **core:** cancel requests nobody reads anymore ([#27](https://github.com/KATT/raf-query/issues/27)) ([c3c1e4b](https://github.com/KATT/raf-query/commit/c3c1e4bb9250164b6df17d7d4b7bd4043f908961))
+
 ## [0.1.2](https://github.com/KATT/raf-query/compare/0.1.1...0.1.2) (2026-10-12)
 
 ### Features
