@@ -13,11 +13,13 @@ import {
 import { TestClock } from "effect/testing";
 
 import {
+	type DehydratedState,
 	dehydrateQuery,
 	Platform,
 	Query,
 	QueryCache,
 	queryOptions,
+	RedactedError,
 } from "./index.ts";
 import { createBackend, fakePlatform, flush } from "./test-utils.ts";
 
@@ -411,6 +413,148 @@ describe("QueryCache", () => {
 
 			expect(settled).toMatchObject({ data: { id: 1, title: "A" } });
 			expect(pending.promise).toBeInstanceOf(Promise);
+		}),
+	);
+
+	it.effect("dehydrate skips and records what `sent` holds", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: true });
+			yield* cache.prefetch(backend.issueQuery, { id: 1 });
+			const sent = new Set<string>();
+
+			const first = yield* cache.dehydrate({ sent });
+			yield* cache.prefetch(backend.issueQuery, { id: 2 });
+			const second = yield* cache.dehydrate({ sent });
+
+			expect(first.queries.map((query) => query.key)).toEqual([["issue", 1]]);
+			expect(second.queries.map((query) => query.key)).toEqual([["issue", 2]]);
+			expect([...sent]).toEqual(['["issue",1]', '["issue",2]']);
+		}),
+	);
+
+	it.effect(
+		"a failed pending query reaches the receiver as a RedactedError",
+		() =>
+			Effect.gen(function* () {
+				const backend = createBackend();
+				const cache = yield* QueryCache.make({ isServer: true });
+				yield* cache.prefetch(backend.issueQuery, { id: 404 });
+				const promise = (yield* cache.dehydrate()).queries[0]?.promise;
+				backend.respondAll();
+
+				const reason = yield* Effect.promise(async () => {
+					try {
+						await promise;
+						return undefined;
+					} catch (error: unknown) {
+						return error;
+					}
+				});
+
+				expect(reason).toBeInstanceOf(RedactedError);
+				expect(reason).toEqual(new RedactedError({ hash: '["issue",404]' }));
+				expect(reason).toHaveProperty("message", 'Query ["issue",404] failed');
+			}),
+	);
+
+	it.effect(
+		"dehydrateStream sends the cache, then each entry once, in batches",
+		() =>
+			Effect.gen(function* () {
+				const backend = createBackend();
+				for (const id of [3, 4, 5]) {
+					backend.issues.set(id, { id, title: `Issue ${id}` });
+				}
+				const cache = yield* QueryCache.make({ isServer: true });
+				yield* cache.setData(
+					backend.issueQuery,
+					{ id: 1 },
+					{ id: 1, title: "A" },
+				);
+				yield* cache.prefetch(backend.issueQuery, { id: 2 });
+				const scope = yield* Scope.make();
+				const stream = yield* cache
+					.dehydrateStream()
+					.pipe(Scope.provide(scope));
+				const fiber = yield* Effect.forkChild(
+					Stream.runCollect(stream.updates),
+					{ startImmediately: true },
+				);
+
+				yield* cache.prefetch(backend.issueQuery, { id: 3 });
+				yield* cache.prefetch(backend.issueQuery, { id: 4 });
+				yield* settle;
+				backend.respondAll();
+				yield* settle;
+				// Changed in the scope's last tick: still sent before the end.
+				yield* cache.prefetch(backend.issueQuery, { id: 5 });
+				yield* Scope.close(scope, Exit.void);
+
+				const ids = (state: DehydratedState) =>
+					state.queries.map((query) => query.key[1]);
+				expect(ids(stream.initial)).toEqual([1, 2]);
+				expect((yield* Fiber.join(fiber)).map(ids)).toEqual([[3, 4], [5]]);
+			}),
+	);
+
+	it.effect(
+		"dehydrateStream hands a batch to its reader in the microtask",
+		() =>
+			Effect.gen(function* () {
+				const backend = createBackend();
+				const cache = yield* QueryCache.make({ isServer: true });
+				const stream = yield* cache.dehydrateStream();
+				const received: Array<DehydratedState> = [];
+				yield* Effect.forkChild(
+					Stream.runForEach(stream.updates, (state) =>
+						Effect.sync(() => received.push(state)),
+					),
+					{ startImmediately: true },
+				);
+
+				yield* cache.prefetch(backend.issueQuery, { id: 1 });
+				expect(received).toHaveLength(0);
+				yield* Effect.promise(() => Promise.resolve());
+
+				expect(received).toHaveLength(1);
+			}),
+	);
+
+	it.effect("hydrateStream resumes requests the server started later", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const server = yield* QueryCache.make({ isServer: true });
+			const browser = yield* QueryCache.make({ isServer: false });
+			// `updatedAt: 0` means pending to `hydrate`.
+			yield* TestClock.adjust("1 second");
+			yield* server.setData(
+				backend.issueQuery,
+				{ id: 1 },
+				{ id: 1, title: "A" },
+			);
+			const scope = yield* Scope.make();
+			const stream = yield* server.dehydrateStream().pipe(Scope.provide(scope));
+			yield* browser.hydrate(stream.initial);
+			const hydrating = yield* Effect.forkChild(
+				browser.hydrateStream(stream.updates),
+				{ startImmediately: true },
+			);
+
+			yield* server.prefetch(backend.issueQuery, { id: 2 });
+			yield* settle;
+			const fetched = yield* Effect.forkChild(
+				browser.fetch(backend.issueQuery, { id: 2 }),
+				{ startImmediately: true },
+			);
+			backend.respondAll();
+			yield* Scope.close(scope, Exit.void);
+			yield* Fiber.join(hydrating);
+
+			const cached = yield* browser.getData(backend.issueQuery, { id: 1 });
+			expect(Option.getOrUndefined(cached)?.title).toBe("A");
+			expect(yield* Fiber.join(fetched)).toEqual({ id: 2, title: "Second" });
+			expect(backend.requests).toHaveLength(0);
 		}),
 	);
 });
