@@ -18,6 +18,7 @@ import {
 	type QueryHandle,
 	queryOptions,
 	useQuery,
+	Query,
 } from "./index.ts";
 
 function createBackend() {
@@ -158,6 +159,27 @@ describe("QueryDevtoolsPanel", () => {
 		expect(within(details).getByText("query")).toBeTruthy();
 		expect(within(details).getByText('"Two"')).toBeTruthy();
 		expect(within(details).getAllByText("2")).not.toHaveLength(0);
+		expect(within(details).queryByText("Meta")).toBeNull();
+	});
+
+	it("shows the selected entry's meta", async () => {
+		useCleanup();
+		const client = new QueryClient({ isServer: false });
+		function metaQuery() {
+			return queryOptions({
+				meta: { errorMessage: "Couldn't load issues" },
+				queryFn: () => "issues",
+				queryKey: ["issues"],
+			});
+		}
+		client.setData(metaQuery, undefined, "issues");
+
+		await mount(<QueryDevtoolsPanel client={client} />);
+		fireEvent.click(queryButton('["issues"]'));
+
+		const details = screen.getByRole("region", { name: "Query details" });
+		expect(within(details).getByText("Meta")).toBeTruthy();
+		expect(within(details).getByText('"Couldn\'t load issues"')).toBeTruthy();
 	});
 
 	it("refetches, invalidates, resets and removes the selected entry", async () => {
@@ -194,7 +216,7 @@ describe("QueryDevtoolsPanel", () => {
 		await act(async () => {
 			fireEvent.click(within(details).getByRole("button", { name: "Reset" }));
 		});
-		expect(query.getState().hasData).toBe(false);
+		expect(Query.getUnsafe(query).hasData).toBe(false);
 		expect(screen.getByText("loading")).toBeTruthy();
 		await app.backend.respond();
 		expect(screen.getByText("Issue 1")).toBeTruthy();
@@ -258,7 +280,7 @@ describe("QueryDevtoolsPanel", () => {
 			fireEvent.click(screen.getByRole("button", { name: "Invalidate all" }));
 		});
 		expect(
-			app.client.getQuery(app.backend.issueQuery, { id: 1 }).getState()
+			Query.getUnsafe(app.client.getQuery(app.backend.issueQuery, { id: 1 }))
 				.isInvalidated,
 		).toBe(true);
 

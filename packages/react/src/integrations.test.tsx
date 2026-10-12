@@ -98,6 +98,38 @@ describe("HydrationBoundary", () => {
 		cleanup();
 	});
 
+	it("skips entries an earlier boundary of the request sent", async () => {
+		const backend = createBackend();
+		const server = new QueryClient({ isServer: true });
+		const browser = new QueryClient({ isServer: false });
+		server.setData(backend.issueQuery, { id: 1 }, "First");
+		function Issue() {
+			const [issuePromise] = useQuery(backend.issueQuery, {
+				input: { id: 1 },
+				key: ["issue", 1],
+			});
+			return <p>{use(issuePromise)}</p>;
+		}
+		const boundary = () => (
+			<QueryClientProvider client={browser}>
+				<HydrationBoundary client={server}>
+					<Issue />
+				</HydrationBoundary>
+			</QueryClientProvider>
+		);
+
+		await mount(boundary());
+		cleanup();
+		await new Promise((resolve) => {
+			setTimeout(resolve, 1);
+		});
+		server.setData(backend.issueQuery, { id: 1 }, "Second");
+		await mount(boundary());
+
+		expect(screen.getByText("First")).toBeDefined();
+		cleanup();
+	});
+
 	it("writes new entries during render, newer data for shown ones after commit", async () => {
 		const backend = createBackend();
 		const browser = new QueryClient({ isServer: false });

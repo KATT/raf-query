@@ -1,6 +1,6 @@
 {
 	"name": "@raf-query/react",
-	"version": "0.0.19",
+	"version": "0.1.4",
 	"description": "React bindings for raf-query, a render-as-you-fetch query library",
 	"keywords": [
 		"query",
@@ -35,7 +35,6 @@
 		".": "./src/index.ts",
 		"./devtools": "./src/devtools.tsx",
 		"./devtools/production": "./src/devtools-production.tsx",
-		"./effect": "./src/effect.ts",
 		"./next": "./src/next.tsx",
 		"./rsc": "./src/rsc.tsx",
 		"./tanstack-router": "./src/tanstack-router.ts"
@@ -85,7 +84,6 @@
 			".": "./dist/index.mjs",
 			"./devtools": "./dist/devtools.mjs",
 			"./devtools/production": "./dist/devtools-production.mjs",
-			"./effect": "./dist/effect.mjs",
 			"./next": "./dist/next.mjs",
 			"./rsc": "./dist/rsc.mjs",
 			"./tanstack-router": "./dist/tanstack-router.mjs"

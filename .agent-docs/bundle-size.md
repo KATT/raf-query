@@ -1,38 +1,48 @@
-# Bundle size: engine on Effect vs on Promises
+# Bundle size
 
 Reference for when bundle size matters more. Measure with `pnpm bundle-size` (see `decisions.md`, "Bundle size").
 
-## Current: engine on Effect (human picked, 2026-10-12)
+## Current: Effect-native core (#23 onward)
 
-The engine runs every request through `Effect.runPromiseExit` (`query.ts`: `Effect.gen`, `Effect.retry(schedule)`, interruption; `online.ts`: `Effect.callback`). `queryOptions` takes an Effect `queryFn` and a `Schedule` `retry` natively. The Effect-only client verbs (`ensureEffect`, `fetchEffect`, `invalidateEffect`, `watch`) live in `@raf-query/core/effect` / `@raf-query/react/effect`, so `Stream` / `Queue` stay out of apps that don't import them.
+Core exposes only Effect APIs (`QueryCache`, `Query`, `QueryObserver`, `Platform` namespaces); `@raf-query/react`'s `QueryClient` builds the cache with `Layer.buildWithScope` and runs each verb with `Effect.runSync` / `runPromise`. `qc.effect` is the Effect-native cache itself. So every app bundles Effect's runtime plus `Layer`, `Context`, `Scope`, `Schedule` and the rest the engine reaches.
 
-## Alternative: engine on Promises + `AbortSignal`
+## Numbers (gzip, kB; `tooling/bundle-size` fixtures, Start example's bundler)
 
-Built and working on branch **`cursor/promise-engine-reference-16c7`** (commit `45a59b9a`, plus measurement tooling in `d2697e01`). Main entries import only `Predicate`; `@raf-query/core/effect` adds `effectQueryOptions` / `effectInfiniteQueryOptions` (run an Effect `queryFn` with `runPromiseExit`, `CancelledError` on interrupt) and `retrySchedule(schedule)` → `RetryStrategy` (`{ start(): (failureCount, error) => delayMs | false }`, stepping the schedule with `Schedule.toStep` + `runSyncExit`). To revive: cherry-pick `45a59b9a`'s `query.ts`, `online.ts`, `options.ts`, `effect.ts` and the tests.
+| App                             | TanStack Query | raf-query `main` (Effect-native) | Pre-#23 Effect engine | Pre-#23 Promise engine |
+| ------------------------------- | -------------: | -------------------------------: | --------------------: | ---------------------: |
+| Factory + prefetch + `useQuery` |           9.77 |                            29.26 |                 16.75 |                   5.64 |
+| + paged                         |          10.44 |                            29.65 |                 17.15 |                   6.04 |
+| + action that invalidates       |          10.60 |                            29.81 |                 17.32 |                   6.21 |
+| TanStack Router app             |          12.36 |                            31.44 |                 18.50 |                   7.41 |
+| Effect `queryFn` + `Schedule`   |              — |                            29.49 |                 16.93 |                  15.33 |
 
-## Numbers (gzip, `tooling/bundle-size` fixtures, Start example's bundler)
+- **Effect's share of raf-query:** ~21.4 kB on `main`; ~11.2 kB with the pre-#23 Effect engine plus `/effect` subpath; ~0.2 kB with the Promise engine.
+- **Full `examples/tanstack-start` client JS:** 185.3 kB on `main`. The TanStack-backed copy is 163.1 kB.
+- **Floor:** Effect's fiber runtime alone (`runPromiseExit(succeed(1))`) is ~7 kB gzip. Effect v4 has no lighter `Micro` runtime.
 
-| App                             | TanStack Query | Effect engine (now) | Promise engine |
-| ------------------------------- | -------------: | ------------------: | -------------: |
-| Factory + prefetch + `useQuery` |           9.77 |               16.75 |           5.64 |
-| + paged                         |          10.44 |               17.15 |           6.04 |
-| + action that invalidates       |          10.60 |               17.32 |           6.21 |
-| TanStack Router app             |          12.36 |               18.50 |           7.41 |
-| Effect `queryFn` + `Schedule`   |              — |               16.93 |          15.33 |
+## Why it's big, and what's shakable
 
-Effect's share of raf-query: ~11.2 kB (Effect engine) vs ~0.2 kB (Promise engine). The original layout (Effect engine plus `qc.effect` built in the constructor) was 19.11 kB / 13.4 kB share. Full `examples/tanstack-start` client JS: 168.9 kB (Effect engine), 157.7 kB (Promise engine), 171.3 kB (original).
+Effect v4 shakes per export (`sideEffects` lists only a schema file), and app-side `import { X }` / `import * as X` with static access both shake with Rolldown. What defeats it:
 
-## Trade-offs
+- **Anything reachable from the always-imported path.** Class properties built in a constructor (`qc.effect`) and engine code that runs on every request can't be shaken, whatever they import.
+- **`export * as X` in a library build.** Rolldown/tsdown compile it to an `__exportAll` getter object, which keeps every member in `dist/`. Core's `export * as QueryCache` / `Query` / `QueryObserver` / `Platform` are of this shape; apps importing the main entry may keep members they don't use. Check with `pnpm bundle-size --dist` after `pnpm build`.
+- Dynamic access (`X[key]`) and re-exported `export *` keep everything.
 
-Effect engine:
+## The Promise-engine experiment
 
-- Pro: retry, cancellation, online-wait are Effect combinators; reads well and is easy to extend (timeouts, racing, tracing).
-- Pro: one factory API; `queryOptions` takes Effects and Schedules, no `effectQueryOptions` / `retrySchedule` adapter.
-- Con: every app pays ~11 kB gzip of Effect, even without Effect code; ~1.7× TanStack Query for the simplest app.
-- Floor: Effect's fiber runtime alone (`runPromiseExit(succeed(1))`) is ~7 kB gzip, so trimming engine imports (e.g. avoiding `Schedule` machinery when `retry` isn't a Schedule) could save at most ~4 kB. Effect v4 has no lighter `Micro` runtime.
+Branch **`cursor/promise-engine-reference-16c7`** has a working engine on Promises + `AbortSignal` (retry loop, abortable `sleep` / `whenOnline`, `RetryStrategy` bridging `Schedule`s), with Effect APIs behind a `@raf-query/core/effect` subpath. It's built on the **pre-#23** core (`client.ts`, `query.ts`), so it can't be cherry-picked onto the Effect-native core; treat it as a design reference.
 
-Promise engine:
+The human rejected it (2026-10-12): the internals were worse than the Effect version.
 
-- Pro: ~half of TanStack Query; Effect costs only apps that import `/effect`.
-- Con: hand-rolled retry loop, abortable `sleep` / `whenOnline`, and a `RetryStrategy` protocol to bridge Schedules; more code to get right (abort races, `CancelledError` paths).
-- Con: two ways to define an Effect query (`effectQueryOptions` vs `queryOptions`), and Schedule retries in `config.defaults` need `retrySchedule(...)`.
+Trade-offs:
+
+- **Effect engine:** retry, cancellation and online-wait are Effect combinators, which read well and are easy to extend (timeouts, racing, tracing). One factory API: `queryOptions` takes Effects and Schedules. Every app pays the Effect runtime and whatever the engine reaches.
+- **Promise engine:** about half of TanStack Query, and Effect costs only apps that import `/effect`. Hand-rolled retry and abort plumbing is more code to get right (abort races, `CancelledError` paths). Two ways to define an Effect query, and Schedule retries in `config.defaults` need an adapter.
+
+Levers that keep the Effect engine:
+
+- Move Effect-only, not-always-used APIs (`Stream`, `Queue`, `Layer` services) behind subpaths, as named exports.
+- Avoid constructor-built Effect objects.
+- Replace `export * as` namespaces in the main entry with named exports.
+
+Each lever can only get down to the ~7 kB runtime floor plus what the engine itself uses.

@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.1.4](https://github.com/KATT/raf-query/compare/0.1.3...0.1.4) (2026-10-12)
+
+### Features
+
+- **core:** add per-query meta ([#26](https://github.com/KATT/raf-query/issues/26)) ([863c915](https://github.com/KATT/raf-query/commit/863c915d884bdfa3bcb3053da348d51aa0e697cf))
+
+## [0.1.3](https://github.com/KATT/raf-query/compare/0.1.2...0.1.3) (2026-10-12)
+
+### Features
+
+- **core:** cancel requests nobody reads anymore ([#27](https://github.com/KATT/raf-query/issues/27)) ([c3c1e4b](https://github.com/KATT/raf-query/commit/c3c1e4bb9250164b6df17d7d4b7bd4043f908961))
+
+## [0.1.2](https://github.com/KATT/raf-query/compare/0.1.1...0.1.2) (2026-10-12)
+
+### Features
+
+- add isFetching(filter?) and useIsFetching(filter?) ([#25](https://github.com/KATT/raf-query/issues/25)) ([70c3b98](https://github.com/KATT/raf-query/commit/70c3b981027f717b1d619d5a2b23822f685c032a))
+
+## [0.1.1](https://github.com/KATT/raf-query/compare/0.1.0...0.1.1) (2026-10-12)
+
+### Features
+
+- **core:** add predicate to QueryFilter ([#24](https://github.com/KATT/raf-query/issues/24)) ([c0b9c18](https://github.com/KATT/raf-query/commit/c0b9c1829cb3b6446f765b151e520f0195af5276))
+
+## [0.1.0](https://github.com/KATT/raf-query/compare/0.0.19...0.1.0) (2026-10-12)
+
+### ⚠ BREAKING CHANGES
+
+- Effect-native engine; core exposes only Effect APIs ([#23](https://github.com/KATT/raf-query/issues/23))
+- **core:** make QueryObserver an Effect-style data type ([#29](https://github.com/KATT/raf-query/issues/29))
+
+- **core:** make QueryObserver an Effect-style data type ([#29](https://github.com/KATT/raf-query/issues/29)) ([50fbb45](https://github.com/KATT/raf-query/commit/50fbb45bf3edcaa83673e2177894a76bdf76560b))
+- Effect-native engine; core exposes only Effect APIs ([#23](https://github.com/KATT/raf-query/issues/23)) ([8e0bb09](https://github.com/KATT/raf-query/commit/8e0bb09a63d644ede053f443406a521ff2613a6f))
+
+### Features
+
+- **core:** stream SSR dehydration as Effect APIs; integrations become thin edges ([#30](https://github.com/KATT/raf-query/issues/30)) ([6b2b570](https://github.com/KATT/raf-query/commit/6b2b5703f5463c0f3805c233cf4ead90df9efb76)), references [#29](https://github.com/KATT/raf-query/issues/29)
+- typed services for Effect queries; QueryClient layer and dispose() ([#31](https://github.com/KATT/raf-query/issues/31)) ([6aeaa3d](https://github.com/KATT/raf-query/commit/6aeaa3d356f6483654729620ac26762508eb8fd8))
+
 ## [0.0.19](https://github.com/KATT/raf-query/compare/0.0.18...0.0.19) (2026-10-12)
 
 ### Features

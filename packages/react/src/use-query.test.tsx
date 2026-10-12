@@ -1,10 +1,12 @@
 import { describe, expect, expectTypeOf, it } from "@effect/vitest";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
-import { Component, type ReactNode, Suspense, use } from "react";
+import { Context, Effect, Layer } from "effect";
+import { Component, type ReactNode, StrictMode, Suspense, use } from "react";
 
 import {
 	type EnsuredQueryHandle,
 	infiniteQueryOptions,
+	Query,
 	QueryClient,
 	QueryClientProvider,
 	type QueryHandle,
@@ -80,6 +82,19 @@ function createBackend() {
 			}),
 		userQuery,
 	};
+}
+
+class Greeting extends Context.Service<Greeting, string>()("test/Greeting") {}
+
+function greetingQuery(input: { name: string }) {
+	return queryOptions({
+		queryFn: () =>
+			Effect.map(
+				Effect.service(Greeting),
+				(greeting) => `${greeting}, ${input.name}`,
+			),
+		queryKey: ["greeting", input.name],
+	});
 }
 
 /** Render inside an awaited `act`, so React resumes suspended trees later. */
@@ -355,7 +370,7 @@ describe("useQuery", () => {
 		let attempt = 0;
 		function flakyQuery() {
 			return queryOptions({
-				queryFn: () => {
+				queryFn: async () => {
 					attempt++;
 					if (attempt > 1 && attempt < 4) {
 						throw new Error("flaky");
@@ -388,6 +403,69 @@ describe("useQuery", () => {
 		expect(screen.getByText("Value 4")).toBeDefined();
 		expect(renders.count).toBe(2);
 		cleanup();
+	});
+
+	describe("a background refetch that reads its signal", () => {
+		function slowNote() {
+			const client = new QueryClient({ isServer: false });
+			const signals: Array<AbortSignal> = [];
+			function noteQuery() {
+				return queryOptions({
+					queryFn: (context) => {
+						signals.push(context.signal);
+						return Promise.withResolvers<string>().promise;
+					},
+					queryKey: ["note"],
+				});
+			}
+			function Note(props: { readonly handle: QueryHandle<typeof noteQuery> }) {
+				const [notePromise] = useQuery(noteQuery, props.handle);
+				return <p>{use(notePromise)}</p>;
+			}
+			client.setData(noteQuery, undefined, "Cached");
+			const handle = client.prefetch(noteQuery);
+			const ui = (
+				<QueryClientProvider client={client}>
+					<Note handle={handle} />
+				</QueryClientProvider>
+			);
+			return { query: client.getQuery(noteQuery), signals, ui };
+		}
+
+		it("is aborted when its last reader unmounts", async () => {
+			const test = slowNote();
+			const result = await act(async () => render(test.ui));
+			expect(screen.getByText("Cached")).toBeDefined();
+
+			await act(async () => {
+				result.unmount();
+				await new Promise((resolve) => {
+					setTimeout(resolve, 0);
+				});
+			});
+
+			expect(test.signals[0]?.aborted).toBe(true);
+			expect(Query.getUnsafe(test.query)).toMatchObject({
+				data: "Cached",
+				error: null,
+				isFetching: false,
+			});
+		});
+
+		it("survives StrictMode's remount", async () => {
+			const test = slowNote();
+			await act(async () => render(<StrictMode>{test.ui}</StrictMode>));
+			await act(async () => {
+				await new Promise((resolve) => {
+					setTimeout(resolve, 0);
+				});
+			});
+
+			expect(test.signals).toHaveLength(1);
+			expect(test.signals[0]?.aborted).toBe(false);
+			expect(Query.getUnsafe(test.query).isFetching).toBe(true);
+			cleanup();
+		});
 	});
 
 	it("returns the data itself for a handle from ensure", async () => {
@@ -471,6 +549,33 @@ describe("useQuery", () => {
 			void controls.fetchNextPage;
 		};
 		expect(useTypes).toBeTypeOf("function");
+	});
+
+	it("starts a request with the client's layer services during render", async () => {
+		const client = new QueryClient({
+			isServer: false,
+			layer: Layer.succeed(Greeting, "Hello"),
+		});
+		function Greet(props: {
+			readonly handle: QueryHandle<typeof greetingQuery>;
+		}) {
+			const [greetingPromise] = useQuery(greetingQuery, props.handle);
+			return <p>{use(greetingPromise)}</p>;
+		}
+
+		await mount(
+			<QueryClientProvider client={client}>
+				<Suspense fallback={<p>Loading</p>}>
+					<Greet
+						handle={{ input: { name: "Ada" }, key: ["greeting", "Ada"] }}
+					/>
+				</Suspense>
+			</QueryClientProvider>,
+		);
+
+		await waitFor(() => screen.getByText("Hello, Ada"));
+		expect(screen.queryByText("Loading")).toBeNull();
+		cleanup();
 	});
 });
 

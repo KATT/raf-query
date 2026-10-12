@@ -6,22 +6,22 @@ import {
 	type InputArgs,
 	type InputOf,
 	type IsPaged,
-	type Query,
-	type QueryClient,
 	type QueryFactory,
 	type QueryHandle,
 	type QueryKey,
 	QueryObserver,
-	type QueryObserverOptions,
 	type Thenable,
+	Query,
 } from "@raf-query/core";
+import { Effect } from "effect";
 import { use, useEffect, useState, useSyncExternalStore } from "react";
 
 import { unsafeCast } from "./cast.ts";
+import type { QueryClient } from "./client.ts";
 import { useQueryClient } from "./provider.tsx";
 
 /** `refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`, `whilePending`. */
-export type UseQueryOptions = QueryObserverOptions;
+export type UseQueryOptions = QueryObserver.Options;
 
 /** The second element of {@link useQuery}'s result. */
 export interface QueryControls<TFactory extends QueryFactory> {
@@ -74,15 +74,72 @@ export type UseEnsuredQueryResult<TFactory extends QueryFactory> = readonly [
 ];
 
 export function queryFor<TFactory extends QueryFactory>(
-	client: QueryClient,
+	client: QueryClient<unknown>,
 	factory: TFactory,
 	input: unknown,
-): Query<DataOf<TFactory>, TFactory> {
+): Query.Of<TFactory> {
 	// SAFETY: `input` is a handle's input, and handles are typed to the
 	// factory they were created through (`QueryHandle<TFactory>`).
 	// oxlint-disable-next-line typescript/consistent-type-assertions
 	const args = [input] as InputArgs<TFactory>;
 	return client.getQuery(factory, ...args);
+}
+
+const commands = new WeakMap<Effect.Effect<void>, () => Promise<void>>();
+
+/** One stable Promise function per command Effect, so identities track the query's. */
+function commandFor(effect: Effect.Effect<void>): () => Promise<void> {
+	let command = commands.get(effect);
+	if (!command) {
+		command = () => Effect.runPromise(effect);
+		commands.set(effect, command);
+	}
+	return command;
+}
+
+type Command = "fetchNextPage" | "fetchPreviousPage" | "refetch";
+
+type PromiseCommands = Omit<QueryObserver.Result, Command> &
+	Record<Command, () => Promise<void>>;
+
+/** `tracked`, with the observer's command Effects as Promise functions. */
+function withPromiseCommands(tracked: QueryObserver.Result): PromiseCommands {
+	// SAFETY: the trap below replaces exactly the `Command` properties with
+	// Promise functions and forwards every other read.
+	return unsafeCast<PromiseCommands>(
+		new Proxy(tracked, {
+			get: (target, name, receiver) => {
+				if (
+					name === "fetchNextPage" ||
+					name === "fetchPreviousPage" ||
+					name === "refetch"
+				) {
+					return commandFor(target[name]);
+				}
+				// oxlint-disable-next-line anti-slop/no-reflect-get -- a Proxy trap forwarding to its target
+				return Reflect.get(target, name, receiver);
+			},
+		}),
+	);
+}
+
+/** An observer, with the stable callbacks `useSyncExternalStore` needs. */
+interface ObserverStore<TFactory extends QueryFactory> {
+	getSnapshot(): QueryObserver.Result<DataOf<TFactory>>;
+	readonly observer: QueryObserver.QueryObserver<DataOf<TFactory>, TFactory>;
+	subscribe(onChange: () => void): () => void;
+}
+
+function storeFor<TFactory extends QueryFactory>(
+	query: Query.Of<TFactory>,
+	options: UseQueryOptions,
+): ObserverStore<TFactory> {
+	const observer = QueryObserver.makeUnsafe(query, options);
+	return {
+		getSnapshot: () => QueryObserver.getUnsafe(observer),
+		observer,
+		subscribe: (onChange) => QueryObserver.subscribeUnsafe(observer, onChange),
+	};
 }
 
 /**
@@ -126,21 +183,22 @@ export function useQuery<TFactory extends QueryFactory>(
 ): UseEnsuredQueryResult<TFactory> | UseQueryResult<TFactory> {
 	const client = useQueryClient();
 	const query = queryFor(client, factory, handle.input);
-	query.read();
+	Query.readUnsafe(query);
 
 	const refetchInterval = options.refetchInterval;
 	const refetchOnReconnect = options.refetchOnReconnect;
 	const refetchOnWindowFocus = options.refetchOnWindowFocus;
 	const whilePending = options.whilePending;
-	const [observer] = useState(() => new QueryObserver(query, options));
-	const result = observer.getOptimisticResult(query, options);
-	useSyncExternalStore(
-		observer.subscribe,
-		observer.getCurrentResult,
-		observer.getCurrentResult,
+	const [store] = useState(() => storeFor(query, options));
+	const observer = store.observer;
+	const result = QueryObserver.getOptimisticResultUnsafe(
+		observer,
+		query,
+		options,
 	);
+	useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
 	useEffect(() => {
-		observer.setOptions(query, {
+		QueryObserver.setOptionsUnsafe(observer, query, {
 			refetchInterval,
 			refetchOnReconnect,
 			refetchOnWindowFocus,
@@ -157,8 +215,10 @@ export function useQuery<TFactory extends QueryFactory>(
 
 	// The promise is returned as the tuple's first element, where reads can't
 	// be seen, so it always counts as read.
-	observer.trackProp("promise");
-	const controls = observer.trackResult(result);
+	QueryObserver.trackProp(observer, "promise");
+	const controls = withPromiseCommands(
+		QueryObserver.trackResult(observer, result),
+	);
 	if (handle.ensured === true) {
 		// SAFETY: as below; `use` unwraps the promise to its data.
 		return unsafeCast<UseEnsuredQueryResult<TFactory>>([

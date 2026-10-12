@@ -138,15 +138,7 @@ Effect.gen(function* () {
 	const alias = dist
 		? [
 				{ find: /^@raf-query\/core$/, replacement: source("core", "index") },
-				{
-					find: /^@raf-query\/core\/effect$/,
-					replacement: source("core", "effect"),
-				},
 				{ find: /^@raf-query\/react$/, replacement: source("react", "index") },
-				{
-					find: /^@raf-query\/react\/effect$/,
-					replacement: source("react", "effect"),
-				},
 				{
 					find: /^@raf-query\/react\/tanstack-router$/,
 					replacement: source("react", "tanstack-router"),

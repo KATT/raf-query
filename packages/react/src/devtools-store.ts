@@ -1,5 +1,7 @@
-import type { Query, QueryClient, QueryState } from "@raf-query/core";
+import { Query } from "@raf-query/core";
 import { useSyncExternalStore } from "react";
+
+import type { QueryClient } from "./client.ts";
 
 /** How the devtools label an entry, most urgent first. */
 export type DevtoolsStatus =
@@ -21,8 +23,8 @@ export const statuses: ReadonlyArray<DevtoolsStatus> = [
 export interface QueryRow {
 	readonly hash: string;
 	readonly observers: number;
-	readonly query: Query;
-	readonly state: QueryState<unknown>;
+	readonly query: Query.Query;
+	readonly state: Query.State<unknown>;
 	readonly status: DevtoolsStatus;
 }
 
@@ -37,26 +39,26 @@ interface CacheStore {
 
 const stores = new WeakMap<QueryClient, CacheStore>();
 
-export function statusOf(query: Query): DevtoolsStatus {
-	const state = query.getState();
+export function statusOf(query: Query.Query): DevtoolsStatus {
+	const state = Query.getUnsafe(query);
 	if (state.isFetching) {
 		return "fetching";
 	}
 	if (state.status === "error") {
 		return "error";
 	}
-	if (query.observerCount === 0) {
+	if (Query.observerCountUnsafe(query) === 0) {
 		return "inactive";
 	}
-	return query.isStaleNow() ? "stale" : "fresh";
+	return Query.isStaleUnsafe(query) ? "stale" : "fresh";
 }
 
-function rowOf(query: Query): QueryRow {
+function rowOf(query: Query.Query): QueryRow {
 	return {
 		hash: query.hash,
-		observers: query.observerCount,
+		observers: Query.observerCountUnsafe(query),
 		query,
-		state: query.getState(),
+		state: Query.getUnsafe(query),
 		status: statusOf(query),
 	};
 }

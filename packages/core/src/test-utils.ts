@@ -1,4 +1,8 @@
+import { Effect, Scope } from "effect";
+
+import * as QueryCache from "./cache.ts";
 import { queryOptions } from "./options.ts";
+import type { Platform, PlatformEvent } from "./platform.ts";
 
 export interface Issue {
 	readonly id: number;
@@ -65,4 +69,39 @@ export function flush() {
 	return new Promise<void>((resolve) => {
 		setTimeout(resolve, 0);
 	});
+}
+
+/** A cache for tests that don't run in an Effect, with the default services. */
+export function makeCacheUnsafe(config?: QueryCache.Config) {
+	return Effect.runSync(
+		QueryCache.make(config).pipe(Scope.provide(Scope.makeUnsafe())),
+	);
+}
+
+/** A page whose focus and network events the test fires. */
+export function fakePlatform(options: { readonly online?: boolean } = {}) {
+	const listeners = new Set<(event: PlatformEvent) => void>();
+	let online = options.online ?? true;
+	const platform: Platform = {
+		isOnlineUnsafe: () => online,
+		isServer: false,
+		isVisibleUnsafe: () => true,
+		subscribeUnsafe(listener) {
+			listeners.add(listener);
+			return () => {
+				listeners.delete(listener);
+			};
+		},
+	};
+	return {
+		...platform,
+		emit(event: PlatformEvent) {
+			if (event === "online") {
+				online = true;
+			}
+			for (const listener of listeners) {
+				listener(event);
+			}
+		},
+	};
 }

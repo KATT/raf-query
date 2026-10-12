@@ -1,6 +1,6 @@
 {
 	"name": "@raf-query/core",
-	"version": "0.0.19",
+	"version": "0.1.4",
 	"description": "Framework-agnostic core of raf-query, a render-as-you-fetch query library",
 	"keywords": [
 		"query",
@@ -31,8 +31,7 @@
 	"type": "module",
 	"sideEffects": false,
 	"exports": {
-		".": "./src/index.ts",
-		"./effect": "./src/effect.ts"
+		".": "./src/index.ts"
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/sync-package-docs.ts",
@@ -54,8 +53,7 @@
 	"publishConfig": {
 		"access": "public",
 		"exports": {
-			".": "./dist/index.mjs",
-			"./effect": "./dist/effect.mjs"
+			".": "./dist/index.mjs"
 		},
 		"provenance": true
 	},
