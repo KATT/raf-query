@@ -1,0 +1,40 @@
+{
+	"name": "@raf-query/experimental-effect-atom",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Experiment, not published: raf-query's render-as-you-fetch API on Effect's AtomRegistry",
+	"license": "MIT",
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"build": "vp pack",
+		"test": "vp test",
+		"typecheck": "tsc"
+	},
+	"dependencies": {
+		"@raf-query/core": "workspace:*",
+		"effect": "catalog:"
+	},
+	"peerDependencies": {
+		"react": "^19.2.0"
+	},
+	"devDependencies": {
+		"@testing-library/react": "16.3.3",
+		"@types/node": "26.6.4",
+		"@types/react": "19.3.0",
+		"@types/react-dom": "19.3.0",
+		"@vitest/coverage-v8": "5.0.1",
+		"happy-dom": "21.0.1",
+		"react": "19.3.0",
+		"react-dom": "19.3.0",
+		"typescript": "7.0.2",
+		"vite-plus": "1.0.0",
+		"vitest": "5.0.1"
+	},
+	"engines": {
+		"node": ">=22"
+	}
+}

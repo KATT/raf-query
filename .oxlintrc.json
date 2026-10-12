@@ -420,6 +420,7 @@
 			// so it memoizes by hand.
 			"files": [
 				"packages/react/src/**/*.{ts,tsx}",
+				"packages/.experimental/effect-atom/src/**/*.{ts,tsx}",
 				"packages/.experimental/tanstack-react-query/src/**/*.{ts,tsx}"
 			],
 			"rules": {
@@ -430,7 +431,11 @@
 		{
 			// Code built on Effect. Opt-in, because these rules would push Effect
 			// idioms into code that doesn't use it.
-			"files": ["packages/*/src/**", "scripts/**"],
+			"files": [
+				"packages/*/src/**",
+				"packages/.experimental/effect-atom/src/**",
+				"scripts/**"
+			],
 			"rules": {
 				"anti-slop-effect/no-manual-effect-error-tag": "error",
 				"anti-slop-effect/no-manual-tag-comparison": "error",
