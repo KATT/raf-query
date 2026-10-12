@@ -540,6 +540,148 @@ describe("retry", () => {
 		expect(bySchedule).toHaveBeenCalledTimes(5);
 	});
 
+	describe("offline", () => {
+		function goOffline() {
+			const target = new EventTarget();
+			const network = { onLine: false };
+			vi.stubGlobal("window", target);
+			vi.stubGlobal("navigator", network);
+			return {
+				goOnline() {
+					network.onLine = true;
+					target.dispatchEvent(new Event("online"));
+				},
+				target,
+			};
+		}
+
+		function failingOnce() {
+			let calls = 0;
+			return vi.fn(() => {
+				calls++;
+				return calls === 1 ? Promise.reject(new Error("down")) : "ok";
+			});
+		}
+
+		it("waits for the browser to come back online before retrying", async () => {
+			useFakeTimers();
+			const browser = goOffline();
+			const queryFn = failingOnce();
+			const qc = new QueryClient({ isServer: false });
+			const query = qc.getQuery(() =>
+				queryOptions({ queryFn, queryKey: ["offline"] }),
+			);
+			const result = query.fetch();
+
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(queryFn).toHaveBeenCalledOnce();
+			expect(query.getState()).toMatchObject({
+				failureCount: 1,
+				isFetching: true,
+				status: "pending",
+			});
+
+			browser.goOnline();
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(await result).toBe("ok");
+			expect(queryFn).toHaveBeenCalledTimes(2);
+		});
+
+		it("still waits for the retry delay", async () => {
+			useFakeTimers();
+			const browser = goOffline();
+			const queryFn = failingOnce();
+			const qc = new QueryClient({ isServer: false });
+			const result = qc.fetch(() =>
+				queryOptions({ queryFn, queryKey: ["offline"], retryDelay: 1000 }),
+			);
+
+			await vi.advanceTimersByTimeAsync(500);
+			browser.goOnline();
+			await vi.advanceTimersByTimeAsync(499);
+			expect(queryFn).toHaveBeenCalledOnce();
+			await vi.advanceTimersByTimeAsync(1);
+
+			expect(await result).toBe("ok");
+		});
+
+		it("pauses Schedule retries too", async () => {
+			useFakeTimers();
+			const browser = goOffline();
+			const queryFn = failingOnce();
+			const qc = new QueryClient({ isServer: false });
+			const result = qc.fetch(() =>
+				queryOptions({
+					queryFn,
+					queryKey: ["offline"],
+					retry: Schedule.recurs(3),
+				}),
+			);
+
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(queryFn).toHaveBeenCalledOnce();
+
+			browser.goOnline();
+
+			expect(await result).toBe("ok");
+		});
+
+		it("stops waiting when the query is removed", async () => {
+			useFakeTimers();
+			const browser = goOffline();
+			const removeListener = vi.spyOn(browser.target, "removeEventListener");
+			const queryFn = vi.fn(() => Promise.reject(new Error("down")));
+			const qc = new QueryClient({ isServer: false });
+			const factory = () => queryOptions({ queryFn, queryKey: ["offline"] });
+			const result = qc.fetch(factory);
+			await vi.advanceTimersByTimeAsync(60_000);
+
+			qc.remove(factory);
+
+			await expect(result).rejects.toBeInstanceOf(CancelledError);
+			expect(removeListener).toHaveBeenCalledWith(
+				"online",
+				expect.any(Function),
+			);
+			browser.goOnline();
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(queryFn).toHaveBeenCalledOnce();
+		});
+
+		it("doesn't delay retries while online", async () => {
+			const browser = goOffline();
+			browser.goOnline();
+			const queryFn = vi.fn(() => Promise.reject(new Error("down")));
+			const qc = new QueryClient({ isServer: false });
+
+			await expect(
+				qc.fetch(() =>
+					queryOptions({ queryFn, queryKey: ["online"], retryDelay: 0 }),
+				),
+			).rejects.toThrow("down");
+			expect(queryFn).toHaveBeenCalledTimes(4);
+		});
+
+		it("doesn't wait on the server", async () => {
+			goOffline();
+			const queryFn = vi.fn(() => Promise.reject(new Error("down")));
+			const qc = new QueryClient({ isServer: true });
+
+			await expect(
+				qc.fetch(() =>
+					queryOptions({
+						queryFn,
+						queryKey: ["server"],
+						retry: 1,
+						retryDelay: 0,
+					}),
+				),
+			).rejects.toThrow("down");
+			expect(queryFn).toHaveBeenCalledTimes(2);
+		});
+	});
+
 	it("is off on the server", async () => {
 		const queryFn = vi.fn(() => Promise.reject(new Error("down")));
 		const qc = new QueryClient({ isServer: true });
