@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.7](https://github.com/KATT/raf-query/compare/0.0.6...0.0.7) (2026-10-12)
+
+### Features
+
+- **react:** add @raf-query/react/devtools ([#7](https://github.com/KATT/raf-query/issues/7)) ([e325d76](https://github.com/KATT/raf-query/commit/e325d76305e29f935228a2dbad6834b0309229e4))
+
 ## [0.0.6](https://github.com/KATT/raf-query/compare/0.0.5...0.0.6) (2026-10-12)
 
 - experimental @raf-query/tanstack-react-query on TanStack Query ([#8](https://github.com/KATT/raf-query/issues/8)) ([9d909c4](https://github.com/KATT/raf-query/commit/9d909c46ca030fd465d7af0fcd9591818356dd80))
