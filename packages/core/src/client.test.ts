@@ -8,7 +8,13 @@ import {
 } from "@effect/vitest";
 import { Effect, Schedule } from "effect";
 
-import { CancelledError, QueryClient, queryOptions } from "./index.ts";
+import {
+	CancelledError,
+	infiniteQueryOptions,
+	QueryClient,
+	queryOptions,
+	type RetryPolicy,
+} from "./index.ts";
 import { createBackend, flush } from "./test-utils.ts";
 
 function useFakeTimers(options?: Parameters<typeof vi.useFakeTimers>[0]) {
@@ -833,6 +839,258 @@ describe("Effect queryFn", () => {
 		await expect(slow).rejects.toBeInstanceOf(CancelledError);
 		await flush();
 		expect(interrupted).toBe(true);
+	});
+});
+
+describe("when the last reader leaves mid-request", () => {
+	/** A query whose `queryFn` never reads its signal; the test settles each attempt. */
+	function ignoringSignal(retry: RetryPolicy, retryDelay = 0) {
+		const attempts: Array<PromiseWithResolvers<string>> = [];
+		const factory = () =>
+			queryOptions({
+				queryFn: () => {
+					const attempt = Promise.withResolvers<string>();
+					attempts.push(attempt);
+					return attempt.promise;
+				},
+				queryKey: ["ignores signal"],
+				retry,
+				retryDelay,
+			});
+		return { attempts, factory };
+	}
+
+	it("aborts a request that reads its signal and keeps the data", async () => {
+		const backend = createBackend();
+		const onError = vi.fn();
+		const qc = new QueryClient({ isServer: false, onError });
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "Cached" });
+		const query = qc.getQuery(backend.issueQuery, { id: 1 });
+		const before = query.getState();
+		const unsubscribe = query.subscribe(() => {});
+		const refetched = query.fetch();
+
+		unsubscribe();
+		await flush();
+
+		expect(backend.requests[0]?.signal.aborted).toBe(true);
+		expect(query.getState()).toMatchObject({
+			data: { id: 1, title: "Cached" },
+			error: null,
+			failureCount: 0,
+			isFetching: false,
+			status: "success",
+		});
+		expect(query.getState().promise).toBe(before.promise);
+		await expect(refetched).resolves.toEqual({ id: 1, title: "Cached" });
+		expect(onError).not.toHaveBeenCalled();
+
+		qc.prefetch(backend.issueQuery, { id: 1 });
+		expect(backend.requests).toHaveLength(2);
+		backend.respondAll();
+		await flush();
+		expect(query.getState().data).toEqual({ id: 1, title: "First" });
+	});
+
+	it("sends a first load back to idle, and the next read settles the held promise", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		const query = qc.getQuery(backend.issueQuery, { id: 1 });
+		const held = query.read();
+		const unsubscribe = query.subscribe(() => {});
+		const fetched = query.fetch();
+
+		unsubscribe();
+		await flush();
+
+		expect(backend.requests[0]?.signal.aborted).toBe(true);
+		expect(query.getState()).toMatchObject({
+			error: null,
+			hasData: false,
+			isFetching: false,
+			status: "pending",
+		});
+		expect(query.getState().promise).toBe(held);
+		await expect(fetched).rejects.toBeInstanceOf(CancelledError);
+
+		expect(query.read()).toBe(held);
+		expect(backend.requests).toHaveLength(2);
+		backend.respondAll();
+		await expect(held).resolves.toEqual({ id: 1, title: "First" });
+	});
+
+	it("doesn't cancel when a reader subscribes again in the same task", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "Cached" });
+		const query = qc.getQuery(backend.issueQuery, { id: 1 });
+		const unsubscribe = query.subscribe(() => {});
+		void query.refetch();
+
+		unsubscribe();
+		query.subscribe(() => {});
+		await flush();
+
+		expect(backend.requests[0]?.signal.aborted).toBe(false);
+		backend.respondAll();
+		await flush();
+		expect(query.getState()).toMatchObject({
+			data: { id: 1, title: "First" },
+			isFetching: false,
+		});
+	});
+
+	it("leaves a request nobody subscribed to alone", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+
+		qc.prefetch(backend.issueQuery, { id: 1 });
+		await flush();
+
+		expect(backend.requests[0]?.signal.aborted).toBe(false);
+		backend.respondAll();
+		await flush();
+		expect(qc.getData(backend.issueQuery, { id: 1 })).toEqual({
+			id: 1,
+			title: "First",
+		});
+	});
+
+	it("aborts a page request and keeps the loaded pages", async () => {
+		const signals: Array<AbortSignal> = [];
+		const qc = new QueryClient({ isServer: false });
+		const query = qc.getQuery(() =>
+			infiniteQueryOptions({
+				getNextPageParam: (lastPage: number) => lastPage + 1,
+				initialPageParam: 0,
+				queryFn: (context) => {
+					signals.push(context.signal);
+					return context.pageParam === 0
+						? Promise.resolve(0)
+						: Promise.withResolvers<number>().promise;
+				},
+				queryKey: ["pages"],
+			}),
+		);
+		await query.fetch();
+		const unsubscribe = query.subscribe(() => {});
+		const next = query.fetchNextPage();
+
+		unsubscribe();
+		await next;
+
+		expect(signals[1]?.aborted).toBe(true);
+		expect(query.getState()).toMatchObject({
+			data: { pageParams: [0], pages: [0] },
+			fetchDirection: undefined,
+			isFetching: false,
+		});
+	});
+
+	it("interrupts an Effect queryFn", async () => {
+		let interrupted = false;
+		const qc = new QueryClient({ isServer: false });
+		const query = qc.getQuery(() =>
+			queryOptions({
+				queryFn: () =>
+					Effect.never.pipe(
+						Effect.onInterrupt(() =>
+							Effect.sync(() => {
+								interrupted = true;
+							}),
+						),
+					),
+				queryKey: ["effect"],
+			}),
+		);
+		const unsubscribe = query.subscribe(() => {});
+		query.fetch().catch(() => {});
+		await flush();
+
+		unsubscribe();
+		await flush();
+
+		expect(interrupted).toBe(true);
+		expect(query.getState().isFetching).toBe(false);
+	});
+
+	it.each([
+		["a count", 3],
+		["a schedule", Schedule.recurs(3)],
+	] as const)(
+		"lets a queryFn that ignores its signal finish, without retries (%s)",
+		async (_name, retry) => {
+			const onError = vi.fn();
+			const qc = new QueryClient({ isServer: false, onError });
+			const source = ignoringSignal(retry);
+			const query = qc.getQuery(source.factory);
+			const unsubscribe = query.subscribe(() => {});
+			const fetched = query.fetch();
+
+			unsubscribe();
+			await flush();
+			source.attempts[0]?.reject(new Error("down"));
+
+			await expect(fetched).rejects.toThrow("down");
+			expect(source.attempts).toHaveLength(1);
+			expect(query.getState()).toMatchObject({
+				failureCount: 1,
+				status: "error",
+			});
+			expect(onError).toHaveBeenCalledOnce();
+		},
+	);
+
+	it("caches the result of a queryFn that ignores its signal", async () => {
+		const qc = new QueryClient({ isServer: false });
+		const source = ignoringSignal(3);
+		const query = qc.getQuery(source.factory);
+		const unsubscribe = query.subscribe(() => {});
+		const fetched = query.fetch();
+
+		unsubscribe();
+		await flush();
+		source.attempts[0]?.resolve("ok");
+
+		expect(await fetched).toBe("ok");
+		expect(query.getState().data).toBe("ok");
+	});
+
+	it("skips a retry that was waiting out its delay", async () => {
+		useFakeTimers();
+		const qc = new QueryClient({ isServer: false });
+		const source = ignoringSignal(3, 100);
+		const query = qc.getQuery(source.factory);
+		const unsubscribe = query.subscribe(() => {});
+		const fetched = query.fetch();
+		fetched.catch(() => {});
+		await vi.advanceTimersByTimeAsync(0);
+		source.attempts[0]?.reject(new Error("down"));
+		await vi.advanceTimersByTimeAsync(0);
+
+		unsubscribe();
+		await vi.advanceTimersByTimeAsync(100);
+
+		await expect(fetched).rejects.toThrow("down");
+		expect(source.attempts).toHaveLength(1);
+	});
+
+	it("retries again once a reader comes back", async () => {
+		const qc = new QueryClient({ isServer: false });
+		const source = ignoringSignal(1);
+		const query = qc.getQuery(source.factory);
+		const unsubscribe = query.subscribe(() => {});
+		const fetched = query.fetch();
+		unsubscribe();
+		await flush();
+
+		query.subscribe(() => {});
+		source.attempts[0]?.reject(new Error("down"));
+		await flush();
+		source.attempts[1]?.resolve("ok");
+
+		expect(await fetched).toBe("ok");
+		expect(source.attempts).toHaveLength(2);
 	});
 });
 

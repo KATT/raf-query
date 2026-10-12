@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "@effect/vitest";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
-import { Component, type ReactNode, Suspense, use } from "react";
+import { Component, type ReactNode, StrictMode, Suspense, use } from "react";
 
 import {
 	type EnsuredQueryHandle,
@@ -387,6 +387,71 @@ describe("useQuery", () => {
 		expect(screen.getByText("Value 4")).toBeDefined();
 		expect(renders.count).toBe(2);
 		cleanup();
+	});
+
+	describe("a background refetch that reads its signal", () => {
+		function slowNote() {
+			const client = new QueryClient({ isServer: false });
+			const signals: Array<AbortSignal> = [];
+			function noteQuery() {
+				return queryOptions({
+					queryFn: (context) => {
+						signals.push(context.signal);
+						return Promise.withResolvers<string>().promise;
+					},
+					queryKey: ["note"],
+				});
+			}
+			function Note(props: { readonly handle: QueryHandle<typeof noteQuery> }) {
+				const [notePromise] = useQuery(noteQuery, props.handle);
+				return <p>{use(notePromise)}</p>;
+			}
+			client.setData(noteQuery, undefined, "Cached");
+			const handle = client.prefetch(noteQuery);
+			const ui = (
+				<QueryClientProvider client={client}>
+					<Note handle={handle} />
+				</QueryClientProvider>
+			);
+			return { client, noteQuery, signals, ui };
+		}
+
+		it("is aborted when its last reader unmounts", async () => {
+			const test = slowNote();
+			const result = await act(async () => render(test.ui));
+			expect(screen.getByText("Cached")).toBeDefined();
+
+			await act(async () => {
+				result.unmount();
+				await new Promise((resolve) => {
+					setTimeout(resolve, 0);
+				});
+			});
+
+			expect(test.signals[0]?.aborted).toBe(true);
+			expect(test.client.getQuery(test.noteQuery).getState()).toMatchObject({
+				data: "Cached",
+				error: null,
+				isFetching: false,
+			});
+		});
+
+		it("survives StrictMode's remount", async () => {
+			const test = slowNote();
+			await act(async () => render(<StrictMode>{test.ui}</StrictMode>));
+			await act(async () => {
+				await new Promise((resolve) => {
+					setTimeout(resolve, 0);
+				});
+			});
+
+			expect(test.signals).toHaveLength(1);
+			expect(test.signals[0]?.aborted).toBe(false);
+			expect(test.client.getQuery(test.noteQuery).getState().isFetching).toBe(
+				true,
+			);
+			cleanup();
+		});
 	});
 
 	it("returns the data itself for a handle from ensure", async () => {

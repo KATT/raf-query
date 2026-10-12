@@ -123,6 +123,8 @@ export interface QueryHost {
 interface InFlight {
 	readonly controller: AbortController;
 	readonly deferred: Pending<unknown>;
+	/** Restored if the request is cancelled because nobody reads it anymore. */
+	readonly failureCount: number;
 }
 
 const noop = () => {};
@@ -225,6 +227,10 @@ export class QueryEntry implements Query {
 	#listeners = new Map<() => void, SubscribeOptions>();
 	#options: AnyQueryOptions | undefined;
 	#pending: Pending<unknown> | undefined;
+	/** The last reader left while the current request's `queryFn` ignores its signal. */
+	#retriesCancelled = false;
+	/** The current request's `queryFn` read its `signal` (or returned an Effect). */
+	#signalConsumed = false;
 	#staleTimer: ReturnType<typeof setTimeout> | undefined;
 	#state: QueryState<unknown>;
 
@@ -273,6 +279,7 @@ export class QueryEntry implements Query {
 
 	subscribe = (listener: () => void, observer = defaultObserver) => {
 		this.#listeners.set(listener, observer);
+		this.#retriesCancelled = false;
 		this.#clearGc();
 		this.#scheduleStale();
 		this.#host.observersChanged(this);
@@ -283,6 +290,13 @@ export class QueryEntry implements Query {
 			if (this.#listeners.size === 0) {
 				clearTimeout(this.#staleTimer);
 				this.#scheduleGc();
+				const run = this.#inFlight;
+				if (run) {
+					// React unsubscribes and resubscribes in one commit (StrictMode,
+					// a route swapping in a page that reads the same query), so the
+					// decision waits until that commit is done.
+					queueMicrotask(() => this.#unobserved(run));
+				}
 			}
 			this.#host.observersChanged(this);
 		};
@@ -457,10 +471,17 @@ export class QueryEntry implements Query {
 		direction: "backward" | "forward" | undefined,
 	) {
 		const deferred = this.#inFlight?.deferred ?? pending<unknown>();
-		const run: InFlight = { controller: new AbortController(), deferred };
+		const clearsError = !this.#state.hasData && this.#state.status === "error";
+		const run: InFlight = {
+			controller: new AbortController(),
+			deferred,
+			failureCount: clearsError ? 0 : this.#state.failureCount,
+		};
 		this.#inFlight = run;
+		this.#retriesCancelled = false;
+		this.#signalConsumed = false;
 		this.#clearGc();
-		if (!this.#state.hasData && this.#state.status === "error") {
+		if (clearsError) {
 			this.#pending = pending();
 			this.#set({
 				error: null,
@@ -498,6 +519,36 @@ export class QueryEntry implements Query {
 			const error = Cause.squash(exit.cause);
 			this.#fail(error);
 			run.deferred.reject(error);
+		}
+		this.#scheduleGc();
+	}
+
+	/**
+	 * The last reader left while `run` was in flight. A request that can be
+	 * aborted is, and the entry goes back to its state before the request;
+	 * one that can't finishes, so its result is cached, but doesn't retry.
+	 */
+	#unobserved(run: InFlight) {
+		if (this.isObserved || this.#inFlight !== run) {
+			return;
+		}
+		if (!this.#signalConsumed) {
+			this.#retriesCancelled = true;
+			return;
+		}
+		this.#inFlight = undefined;
+		run.controller.abort();
+		// A first load goes back to idle with its pending promise kept, so a
+		// render suspended on it resumes when the next read refetches.
+		this.#set({
+			failureCount: run.failureCount,
+			fetchDirection: undefined,
+			isFetching: false,
+		});
+		if (this.#state.hasData) {
+			run.deferred.resolve(this.#state.data);
+		} else {
+			run.deferred.reject(new CancelledError());
 		}
 		this.#scheduleGc();
 	}
@@ -566,7 +617,12 @@ export class QueryEntry implements Query {
 	): Effect.Effect<unknown, unknown> {
 		if (options.kind === "query") {
 			return this.#attempt((signal) =>
-				options.queryFn({ queryKey: options.queryKey, signal }),
+				options.queryFn({
+					queryKey: options.queryKey,
+					get signal() {
+						return signal();
+					},
+				}),
 			);
 		}
 		return this.#pagedRequest(options, request);
@@ -585,7 +641,9 @@ export class QueryEntry implements Query {
 					direction,
 					pageParam,
 					queryKey: options.queryKey,
-					signal,
+					get signal() {
+						return signal();
+					},
 				}),
 			);
 
@@ -629,24 +687,35 @@ export class QueryEntry implements Query {
 		});
 	}
 
-	/** One request: run the `queryFn` with a fresh signal, retrying per policy. */
+	/**
+	 * One request: run the `queryFn` with a fresh signal, retrying per policy.
+	 * `call` reads the signal through the getter it's given, so reading it is
+	 * seen, like TanStack Query's `abortSignalConsumed`.
+	 */
 	#attempt(
-		call: (signal: AbortSignal) => QueryFnResult<unknown>,
+		call: (signal: () => AbortSignal) => QueryFnResult<unknown>,
 	): Effect.Effect<unknown, unknown> {
 		const once = Effect.suspend(() => {
 			const controller = new AbortController();
+			const signal = () => {
+				this.#signalConsumed = true;
+				return controller.signal;
+			};
 			return Effect.try({
 				catch: identity,
-				try: () => call(controller.signal),
+				try: () => call(signal),
 			}).pipe(
-				Effect.flatMap((result) =>
-					isEffectResult(result)
-						? result
-						: Effect.tryPromise({
-								catch: identity,
-								try: () => Promise.resolve(result),
-							}),
-				),
+				Effect.flatMap((result) => {
+					if (isEffectResult(result)) {
+						// Interrupting an Effect is how it's cancelled, signal or not.
+						this.#signalConsumed = true;
+						return result;
+					}
+					return Effect.tryPromise({
+						catch: identity,
+						try: () => Promise.resolve(result),
+					});
+				}),
 				Effect.onInterrupt(() => Effect.sync(() => controller.abort())),
 			);
 		});
@@ -663,15 +732,34 @@ export class QueryEntry implements Query {
 		const counted = once.pipe(Effect.tapError(() => countFailure));
 		// Retries wait while the browser is offline; the first attempt doesn't.
 		const online = this.#host.isServer ? Effect.void : whenOnline;
+		const stopped = () => this.#retriesCancelled;
 		if (Schedule.isSchedule(retry)) {
 			return Effect.suspend(() => {
 				let first = true;
+				let lastError: unknown;
 				const each = Effect.suspend(() => {
-					const wait = first ? Effect.void : online;
-					first = false;
-					return wait.pipe(Effect.andThen(counted));
+					if (first) {
+						first = false;
+						return counted;
+					}
+					return online.pipe(
+						Effect.andThen(
+							Effect.suspend(() =>
+								stopped() ? Effect.fail(lastError) : counted,
+							),
+						),
+					);
+				}).pipe(
+					Effect.tapError((error) =>
+						Effect.sync(() => {
+							lastError = error;
+						}),
+					),
+				);
+				return Effect.retry(each, {
+					schedule: retry,
+					while: () => !stopped(),
 				});
-				return Effect.retry(each, retry);
 			});
 		}
 		const retryDelay = this.#behavior("retryDelay");
@@ -686,12 +774,14 @@ export class QueryEntry implements Query {
 		const attempt: Effect.Effect<unknown, unknown> = counted.pipe(
 			Effect.catch((error) => {
 				const failureCount = this.#state.failureCount;
-				if (!shouldRetry(retry, failureCount, error)) {
+				if (stopped() || !shouldRetry(retry, failureCount, error)) {
 					return Effect.fail(error);
 				}
 				return Effect.sleep(delayFor(failureCount, error)).pipe(
 					Effect.andThen(online),
-					Effect.andThen(Effect.suspend(() => attempt)),
+					Effect.andThen(
+						Effect.suspend(() => (stopped() ? Effect.fail(error) : attempt)),
+					),
 				);
 			}),
 		);
