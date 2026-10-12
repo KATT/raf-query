@@ -38,9 +38,3 @@ export function AssigneeCard(props: { readonly userId: string }) {
 export function AssigneeCardSkeleton() {
 	return <Skeleton className="h-[74px]" />;
 }
-
-export function UserName(props: { readonly userId: string }) {
-	const handle = useWaterfall(userQuery, { id: props.userId });
-	const [userPromise] = useQuery(userQuery, handle);
-	return use(userPromise).name;
-}

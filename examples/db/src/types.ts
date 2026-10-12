@@ -37,10 +37,13 @@ export const CommentsInput = Schema.Struct({
 	cursor: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
 	issueId: Id,
 });
+export type CommentsInput = typeof CommentsInput.Type;
 
 export const UpdateTitleInput = Schema.Struct({ id: Id, title: Text });
+export type UpdateTitleInput = typeof UpdateTitleInput.Type;
 
 export const AddCommentInput = Schema.Struct({ body: Text, issueId: Id });
+export type AddCommentInput = typeof AddCommentInput.Type;
 
 export interface User {
 	readonly id: string;
@@ -59,8 +62,15 @@ export interface Issue {
 	readonly title: string;
 }
 
+/** Who the example apps are signed in as. */
+export const currentUser: User = {
+	id: "ada",
+	name: "Ada Lovelace",
+	title: "Analyst",
+};
+
 export interface Comment {
-	readonly authorId: string;
+	readonly author: User;
 	readonly body: string;
 	/** ISO date. */
 	readonly createdAt: string;

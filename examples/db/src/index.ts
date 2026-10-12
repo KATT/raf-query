@@ -1,14 +1,15 @@
 import { seed } from "./seed.ts";
-import type {
-	Comment,
-	CommentPage,
-	Issue,
-	IssueCounts,
-	IssueList,
-	IssueListInput,
-	IssueStatus,
-	Store,
-	User,
+import {
+	type Comment,
+	currentUser,
+	type CommentPage,
+	type Issue,
+	type IssueCounts,
+	type IssueList,
+	type IssueListInput,
+	type IssueStatus,
+	type Store,
+	type User,
 } from "./types.ts";
 
 export * from "./types.ts";
@@ -135,7 +136,7 @@ export async function addComment(input: {
 		throw new Error("Comment can't be empty");
 	}
 	const comment: Comment = {
-		authorId: data.users[0]?.id ?? "unknown",
+		author: currentUser,
 		body,
 		createdAt: new Date().toISOString(),
 		id: Math.max(0, ...data.comments.map((existing) => existing.id)) + 1,

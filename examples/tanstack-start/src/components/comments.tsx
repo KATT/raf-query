@@ -1,14 +1,12 @@
-import type { Comment } from "@examples/db/types";
+import { type Comment, currentUser } from "@examples/db/types";
 import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { Textarea } from "@examples/ui/components/textarea";
 import { type QueryHandle, useQuery, useQueryClient } from "@raf-query/react";
-import { Suspense, use, useOptimistic } from "react";
+import { use, useOptimistic } from "react";
 
 import { commentsQuery } from "~/queries.ts";
 import { addComment } from "~/server-functions.ts";
-
-import { UserName } from "./user.tsx";
 
 const timeFormat = new Intl.DateTimeFormat("en", {
 	day: "numeric",
@@ -41,9 +39,7 @@ export function Comments(props: {
 					<li className="rounded-lg border p-3" key={comment.id}>
 						<div className="mb-1 flex gap-2 text-xs text-muted-foreground">
 							<span className="font-medium text-foreground">
-								<Suspense fallback="…">
-									<UserName userId={comment.authorId} />
-								</Suspense>
+								{comment.author.name}
 							</span>
 							<time dateTime={comment.createdAt}>
 								{timeFormat.format(new Date(comment.createdAt))}
@@ -68,7 +64,7 @@ export function Comments(props: {
 				action={async (formData) => {
 					const body = String(formData.get("body") ?? "");
 					addOptimistic({
-						authorId: "ada",
+						author: currentUser,
 						body,
 						createdAt: new Date().toISOString(),
 						id: -Date.now(),

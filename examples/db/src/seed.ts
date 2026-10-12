@@ -1,7 +1,14 @@
-import type { Comment, Issue, IssueStatus, Store, User } from "./types.ts";
+import {
+	type Comment,
+	currentUser,
+	type Issue,
+	type IssueStatus,
+	type Store,
+	type User,
+} from "./types.ts";
 
 const users: ReadonlyArray<User> = [
-	{ id: "ada", name: "Ada Lovelace", title: "Analyst" },
+	currentUser,
 	{ id: "grace", name: "Grace Hopper", title: "Compiler engineer" },
 	{ id: "alan", name: "Alan Turing", title: "Researcher" },
 	{ id: "katherine", name: "Katherine Johnson", title: "Mathematician" },
@@ -73,7 +80,7 @@ export function seed(): Store {
 		const commentCount = Math.floor(next() * 11);
 		for (let index = 0; index < commentCount; index++) {
 			comments.push({
-				authorId: pick(next, users).id,
+				author: pick(next, users),
 				body: pick(next, replies),
 				createdAt: new Date(createdAt + (index + 1) * 3_600_000).toISOString(),
 				id: comments.length + 1,
