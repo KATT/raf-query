@@ -59,7 +59,10 @@ export type LoadArgs<TFactory extends QueryFactory> =
 	| InputArgs<TFactory>
 	| [input: InputOf<TFactory>, options: LoadOptions<TFactory>];
 
-/** A new value, or a function of the current one. */
+/**
+ * A new value, or a function of the current one. `previous` is `undefined`
+ * both with no data and with `undefined` data.
+ */
 export type Updater<TData> = TData | ((previous: TData | undefined) => TData);
 
 /** Effect-returning twins of the client's async methods. */
@@ -235,11 +238,13 @@ export class QueryClient {
 	): Promise<DataOf<TFactory>> {
 		const entry = this.#build(factory, args[0]);
 		await this.#load(entry, args[1]?.pages);
-		const data = typed<TFactory>(entry).getState().data;
-		if (data === undefined) {
+		const state = entry.getState();
+		if (!state.hasData) {
 			throw new Error(`Query ${entry.hash} has no data`);
 		}
-		return data;
+		// SAFETY: `hasData` means `data` came from this factory's queryFn or
+		// setData, so it's `DataOf<TFactory>` even when that includes `undefined`.
+		return unsafeCast<DataOf<TFactory>>(state.data);
 	}
 
 	/**
@@ -305,7 +310,10 @@ export class QueryClient {
 		entry.setData(next);
 	}
 
-	/** Cached data for a factory call, or `undefined`. */
+	/**
+	 * Cached data for a factory call, or `undefined` if there is none. Data can
+	 * itself be `undefined`; `getQuery(...).getState().hasData` tells them apart.
+	 */
 	getData<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>

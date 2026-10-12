@@ -363,6 +363,8 @@ function EditTitle(props: { post: Post }) {
 | `qc.setData(factory, input, updater)` | Write data directly                                                     |
 | `qc.getData(factory, input)`          | Read cached data, or `undefined`                                        |
 
+Data can be `undefined` when the `queryFn`'s type allows it (`Promise<User | undefined>`); it's cached and reused like any other value, unlike in TanStack Query, where an `undefined` result is an error. So `getData` and an updater's `previous` return `undefined` both with no data and with `undefined` data; `qc.getQuery(factory, input).getState().hasData` tells them apart.
+
 ## SSR and hydration
 
 The server's query client streams its cache to the browser's query client as entries settle. Pending queries cross as promises, so the browser resumes the server's request instead of starting a new one. Components never hydrate anything themselves; a handle only needs its key to find the entry.
