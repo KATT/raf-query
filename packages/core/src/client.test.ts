@@ -175,6 +175,65 @@ describe("read", () => {
 	});
 });
 
+describe("structural sharing", () => {
+	function listQuery(options: { structuralSharing?: boolean } = {}) {
+		return () =>
+			queryOptions({
+				queryFn: () => [
+					{ id: 1, tags: ["a"], title: "First" },
+					{ id: 2, tags: ["b"], title: "Second" },
+				],
+				queryKey: ["list"],
+				...options,
+			});
+	}
+
+	it("keeps the data and promise when a refetch returns equal data", async () => {
+		const qc = new QueryClient({ isServer: false });
+		const query = qc.getQuery(listQuery());
+		await query.fetch();
+		const before = query.getState();
+
+		await query.refetch();
+
+		const after = query.getState();
+		expect(after.data).toBe(before.data);
+		expect(after.promise).toBe(before.promise);
+		expect(after.updatedAt).toBeGreaterThanOrEqual(before.updatedAt);
+	});
+
+	it("reuses unchanged parts of new data", async () => {
+		const qc = new QueryClient({ isServer: false });
+		const factory = listQuery();
+		const data = await qc.fetch(factory);
+		const promise = qc.getQuery(factory).getState().promise;
+
+		qc.setData(factory, undefined, [
+			{ id: 1, tags: ["a"], title: "First" },
+			{ id: 2, tags: ["b"], title: "Renamed" },
+		]);
+
+		const next = qc.getData(factory);
+		expect(next).not.toBe(data);
+		expect(next?.[0]).toBe(data[0]);
+		expect(next?.[1]).not.toBe(data[1]);
+		expect(next?.[1]?.tags).toBe(data[1]?.tags);
+		expect(qc.getQuery(factory).getState().promise).not.toBe(promise);
+	});
+
+	it("is skipped with structuralSharing: false", async () => {
+		const qc = new QueryClient({ isServer: false });
+		const query = qc.getQuery(listQuery({ structuralSharing: false }));
+		await query.fetch();
+		const before = query.getState();
+
+		await query.refetch();
+
+		expect(query.getState().data).not.toBe(before.data);
+		expect(query.getState().promise).not.toBe(before.promise);
+	});
+});
+
 describe("subscriptions", () => {
 	it("notify once per microtask batch", async () => {
 		const backend = createBackend();
