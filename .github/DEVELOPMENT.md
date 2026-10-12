@@ -30,7 +30,7 @@ pnpm build
 ## Formatting
 
 [Vite+ fmt](https://viteplus.dev/) (Oxfmt) is used to format code.
-Auto-formatting should happen when you save files in your editor via [lint-staged](https://github.com/lint-staged/lint-staged) and [husky](https://typicode.github.io/husky).
+A [husky](https://typicode.github.io/husky) pre-commit hook runs [lint-staged](https://github.com/lint-staged/lint-staged) on staged files: `vp lint --fix` on JS/TS, then `vp fmt` on everything. Fixes are added to the commit; lint errors that can't be auto-fixed block it.
 
 ## Testing
 
