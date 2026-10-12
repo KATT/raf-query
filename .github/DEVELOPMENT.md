@@ -27,6 +27,27 @@ Runs [Vite+ pack](https://viteplus.dev/guide/pack) in every package:
 pnpm build
 ```
 
+## Example apps
+
+`examples/` holds the same issue tracker on two frameworks, plus the packages they share:
+
+| Directory                 | What                                                                   |
+| ------------------------- | ---------------------------------------------------------------------- |
+| `examples/tanstack-start` | TanStack Start app, <http://localhost:3000>                            |
+| `examples/nextjs`         | Next.js App Router app, <http://localhost:3001>                        |
+| `examples/ui`             | shadcn/ui components and the Tailwind theme (`@examples/ui`)           |
+| `examples/db`             | In-memory fake database with latency (`@examples/db`), and its schemas |
+
+They import the libraries' source, so there is nothing to build first:
+
+```shell
+pnpm --filter @examples/tanstack-start dev
+pnpm --filter @examples/nextjs dev
+pnpm build:examples   # production builds of both apps, as CI runs them
+```
+
+Every database call waits `DB_LATENCY_MS` (default 400) ± 50%. Data lives in memory and resets when the server restarts. To add a shadcn component, run `pnpm dlx shadcn@latest add <name>` in `examples/ui`, then check that it imports `cn` from `@examples/ui/lib/utils` (the CLI can write a bare `"cn"` import and add a `cn` dependency).
+
 ## Formatting
 
 [Vite+ fmt](https://viteplus.dev/) (Oxfmt) is used to format code.

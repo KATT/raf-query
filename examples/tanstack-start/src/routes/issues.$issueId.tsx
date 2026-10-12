@@ -12,9 +12,9 @@ import { AssigneeCard, AssigneeCardSkeleton } from "~/components/user.tsx";
 import { commentsQuery, issueQuery } from "~/queries.ts";
 
 export const Route = createFileRoute("/issues/$issueId")({
-	loader: async (context) => {
-		const qc = context.context.queryClient;
-		const id = Number(context.params.issueId);
+	loader: async (args) => {
+		const qc = args.context.queryClient;
+		const id = Number(args.params.issueId);
 		const comments = qc.prefetch(commentsQuery, { issueId: id });
 		const issue = await qc.ensure(issueQuery, { id });
 		return { comments, issue };

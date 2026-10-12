@@ -10,11 +10,14 @@ import { issueCountsQuery, issueListQuery } from "~/queries.ts";
 
 export const Route = createFileRoute("/issues/")({
 	validateSearch: Schema.toStandardSchemaV1(IssueListInput),
-	loaderDeps: (context) => context.search,
-	loader: (context) => ({
-		counts: context.context.queryClient.prefetch(issueCountsQuery),
-		issues: context.context.queryClient.prefetch(issueListQuery, context.deps),
-	}),
+	loaderDeps: (args) => args.search,
+	loader: (args) => {
+		const qc = args.context.queryClient;
+		return {
+			counts: qc.prefetch(issueCountsQuery),
+			issues: qc.prefetch(issueListQuery, args.deps),
+		};
+	},
 	component: IssuesPage,
 });
 
