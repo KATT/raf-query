@@ -10,6 +10,7 @@ import type {
 	QueryFactory,
 	QueryHandle,
 	QueryKey,
+	Thenable,
 } from "@raf-query/core";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
@@ -25,7 +26,7 @@ export interface UseQueryOptions {
 	readonly refetchOnWindowFocus?: boolean;
 	/**
 	 * What to render while the handle's input has no data yet:
-	 * - `"suspend"` (default): the promise is pending, so `use()` suspends.
+	 * - `"suspend"` (default): the promise is pending, so `unwrap()` suspends.
 	 * - `"previous"`: keep returning the last input's data, with `isPrevious`.
 	 */
 	readonly whilePending?: "previous" | "suspend";
@@ -71,14 +72,14 @@ export type UseQueryControls<TFactory extends QueryFactory> =
 		: QueryControls<TFactory>;
 
 export type UseQueryResult<TFactory extends QueryFactory> = readonly [
-	promise: Promise<DataOf<TFactory>>,
+	promise: Thenable<DataOf<TFactory>>,
 	controls: UseQueryControls<TFactory>,
 ];
 
 interface Shown {
 	readonly handle: { readonly input: unknown; readonly key: QueryKey };
 	readonly hash: string;
-	readonly promise: Promise<unknown>;
+	readonly promise: Thenable<unknown>;
 	readonly updatedAt: number;
 }
 
@@ -112,16 +113,16 @@ function useRefetchInterval(
 }
 
 /**
- * Read the query a handle points at. Returns a promise to unwrap with
- * `use()` and the query's controls:
+ * Read the query a handle points at. Returns a promise to read with
+ * `unwrap()` (or `use()`) and the query's controls:
  *
  * ```tsx
  * const [postPromise, postState] = useQuery(postQuery, loaderData.post);
- * const post = use(postPromise);
+ * const post = unwrap(postPromise);
  * ```
  *
  * The promise is stable per data version and already fulfilled once the
- * cache has data, so `use()` only suspends while there is nothing to show.
+ * cache has data, so reading it only suspends while there is nothing to show.
  */
 export function useQuery<TFactory extends QueryFactory>(
 	factory: TFactory,
