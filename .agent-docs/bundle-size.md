@@ -1,6 +1,6 @@
 # Bundle size
 
-Reference for when bundle size matters more. Measure with `pnpm bundle-size` (see `decisions.md`, "Bundle size").
+Reference for when bundle size matters more. Measure with `pnpm bundle-size` (see [decisions/bundle-size-measurement.md](./decisions/bundle-size-measurement.md)).
 
 ## Current: Effect-native core (#23 onward)
 
