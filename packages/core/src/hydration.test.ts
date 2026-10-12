@@ -1,0 +1,110 @@
+import { describe, expect, it } from "@effect/vitest";
+
+import { dehydrate, hydrate, QueryClient, queryOptions } from "./index.ts";
+import { createBackend } from "./test-utils.ts";
+
+describe("dehydrate", () => {
+	it("sends settled data and in-flight requests, nothing else", async () => {
+		const backend = createBackend();
+		const server = new QueryClient({ isServer: true });
+		server.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
+		server.prefetch(backend.issueQuery, { id: 2 });
+		server.getQuery(backend.issueQuery, { id: 3 });
+
+		const state = dehydrate(server);
+
+		expect(state.queries.map((query) => query.key)).toEqual([
+			["issue", 1],
+			["issue", 2],
+		]);
+		expect(state.queries[0]).toMatchObject({ data: { id: 1, title: "A" } });
+		expect(state.queries[1]?.promise).toBeInstanceOf(Promise);
+	});
+
+	it("redacts errors of pending queries unless keepErrors", async () => {
+		const backend = createBackend();
+		const server = new QueryClient({ isServer: true });
+		server.prefetch(backend.issueQuery, { id: 404 });
+
+		const redacted = dehydrate(server).queries[0]?.promise;
+		const kept = dehydrate(server, { keepErrors: true }).queries[0]?.promise;
+		backend.respondAll();
+
+		await expect(redacted).rejects.toThrow('Query ["issue",404] failed');
+		await expect(kept).rejects.toThrow("No issue 404");
+	});
+});
+
+describe("hydrate", () => {
+	it("writes data without fetching", async () => {
+		const backend = createBackend();
+		const server = new QueryClient({ isServer: true });
+		const browser = new QueryClient({ isServer: false });
+		server.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
+
+		hydrate(browser, dehydrate(server));
+
+		const query = browser.getQuery(backend.issueQuery, { id: 1 });
+		expect(query.read()).toMatchObject({ status: "fulfilled" });
+		expect(backend.requests).toHaveLength(0);
+	});
+
+	it("resumes the server's request instead of starting one", async () => {
+		const backend = createBackend();
+		const server = new QueryClient({ isServer: true });
+		const browser = new QueryClient({ isServer: false });
+		server.prefetch(backend.issueQuery, { id: 1 });
+
+		hydrate(browser, dehydrate(server));
+		const query = browser.getQuery(backend.issueQuery, { id: 1 });
+		const promise = query.read();
+
+		expect(backend.requests).toHaveLength(1);
+		backend.respondAll();
+		expect(await promise).toEqual({ id: 1, title: "First" });
+		expect(query.getState().status).toBe("success");
+	});
+
+	it("only replaces older data", async () => {
+		const backend = createBackend();
+		const browser = new QueryClient({ isServer: false });
+		browser.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "New" });
+		const updatedAt = browser
+			.getQuery(backend.issueQuery, { id: 1 })
+			.getState().updatedAt;
+
+		hydrate(browser, {
+			queries: [
+				{ data: { id: 1, title: "Old" }, key: ["issue", 1], updatedAt: 1 },
+				{
+					data: { id: 2, title: "Newer" },
+					key: ["issue", 2],
+					updatedAt: updatedAt + 1,
+				},
+			],
+		});
+
+		expect(browser.getData(backend.issueQuery, { id: 1 })?.title).toBe("New");
+		expect(browser.getData(backend.issueQuery, { id: 2 })?.title).toBe("Newer");
+	});
+
+	it("round-trips data through serializeData and deserializeData", async () => {
+		const server = new QueryClient({ isServer: true });
+		const browser = new QueryClient({ isServer: false });
+		function dateQuery() {
+			return queryOptions({
+				queryFn: () => new Date(0),
+				queryKey: ["date"],
+			});
+		}
+		await server.fetch(dateQuery);
+
+		const state = dehydrate(server, { serializeData: JSON.stringify });
+		hydrate(browser, state, {
+			deserializeData: (data) => new Date(JSON.parse(String(data))),
+		});
+
+		expect(state.queries[0]?.data).toBe('"1970-01-01T00:00:00.000Z"');
+		expect(browser.getData(dateQuery)?.getTime()).toBe(0);
+	});
+});

@@ -438,6 +438,17 @@
 			}
 		},
 		{
+			// Library internals are type-erased on purpose: the cache stores any
+			// query's data and errors, and factory generics restore the types at
+			// the public boundary.
+			"files": ["packages/*/src/**"],
+			"rules": {
+				"anti-slop/no-unknown-parameters": "off",
+				"anti-slop/no-unknown-returns": "off",
+				"anti-slop/no-unsafe-dictionary-type": "off"
+			}
+		},
+		{
 			"files": ["examples/*/src/**/*.{ts,tsx}", "examples/*/app/**/*.{ts,tsx}"],
 			"rules": {
 				"workspace/infer-callback-params": "error",

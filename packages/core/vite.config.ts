@@ -12,5 +12,6 @@ export default defineConfig({
 			reporter: ["html", "lcov"],
 		},
 		exclude: ["dist", "node_modules"],
+		unstubGlobals: true,
 	},
 });
