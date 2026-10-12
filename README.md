@@ -465,6 +465,7 @@ raf-query's cache is written in [Effect](https://effect.website): `QueryClient` 
 - `retry` accepts a `Schedule` as well as a count or predicate.
 - `qc.effect` has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidate`, `reset`, `remove`, `setData`, `getData` (an `Option`), `dehydrate`, `hydrate`. `watch` is a `Stream` of an entry's state, and `events` a `Stream` of cache events.
 - Entries are a data type with module functions, as in Effect's own modules: `Query.fetch(query)`, `Query.refetch(query)`, `Query.invalidate(query)`, `Query.changes(query)`, and `Query.getUnsafe(query)` / `Query.subscribeUnsafe(query, listener)` for synchronous reads.
+- `QueryObserver` is a data type too: one reader's view of a query, as `useQuery` sees it (the controls and the promise, with `whilePending`, `refetchInterval` and the focus / reconnect options). `QueryObserver.make(query, options)` creates one, and `QueryObserver.changes(observer)` streams its results; while it runs, the query counts as read and polls on `refetchInterval`.
 - Time comes from the `Clock` and the page from the `Platform` service (focus, visibility, `navigator.onLine`; the default reads the globals). Provide `TestClock` or another `Platform` to test staleness, gc and offline retries without a browser.
 
 ```ts

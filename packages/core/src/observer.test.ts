@@ -1,5 +1,5 @@
 import { describe, expect, it, onTestFinished, vi } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, Fiber, Stream } from "effect";
 
 import { Query, QueryObserver } from "./index.ts";
 import { createBackend, flush, makeCacheUnsafe } from "./test-utils.ts";
@@ -14,25 +14,35 @@ async function setup() {
 	return { backend, qc, query };
 }
 
+function useFakeTimers() {
+	vi.useFakeTimers();
+	onTestFinished(() => {
+		vi.useRealTimers();
+	});
+}
+
 describe("QueryObserver", () => {
 	it("notifies on every result change while nothing is tracked", async () => {
 		const test = await setup();
-		const observer = new QueryObserver(test.query);
+		const observer = QueryObserver.makeUnsafe(test.query);
 		const listener = vi.fn();
-		observer.subscribe(listener);
+		QueryObserver.subscribeUnsafe(observer, listener);
 
 		Effect.runFork(Query.refetch(test.query));
 		await flush();
 		expect(listener).toHaveBeenCalledOnce();
-		expect(observer.getCurrentResult().isFetching).toBe(true);
+		expect(QueryObserver.getUnsafe(observer).isFetching).toBe(true);
 	});
 
 	it("notifies only for tracked properties once one is read", async () => {
 		const test = await setup();
-		const observer = new QueryObserver(test.query);
+		const observer = QueryObserver.makeUnsafe(test.query);
 		const listener = vi.fn();
-		observer.subscribe(listener);
-		const result = observer.trackResult(observer.getCurrentResult());
+		QueryObserver.subscribeUnsafe(observer, listener);
+		const result = QueryObserver.trackResult(
+			observer,
+			QueryObserver.getUnsafe(observer),
+		);
 		void result.promise;
 
 		Effect.runFork(Query.refetch(test.query));
@@ -44,7 +54,8 @@ describe("QueryObserver", () => {
 		await flush();
 		expect(listener).toHaveBeenCalledOnce();
 
-		void observer.trackResult(observer.getCurrentResult()).isFetching;
+		void QueryObserver.trackResult(observer, QueryObserver.getUnsafe(observer))
+			.isFetching;
 		Effect.runFork(Query.refetch(test.query));
 		await flush();
 		expect(listener).toHaveBeenCalledTimes(2);
@@ -53,25 +64,27 @@ describe("QueryObserver", () => {
 	it("keeps the previous query's data with whilePending: previous", async () => {
 		const test = await setup();
 		const options = { whilePending: "previous" } as const;
-		const observer = new QueryObserver(test.query, options);
-		observer.subscribe(() => {});
+		const observer = QueryObserver.makeUnsafe(test.query, options);
+		QueryObserver.subscribeUnsafe(observer, () => {});
 		const second = test.qc.getQueryUnsafe(test.backend.issueQuery, {
 			id: 2,
 		});
 		Query.readUnsafe(second);
 
-		observer.setOptions(second, options);
-		expect(observer.getCurrentResult()).toMatchObject({
+		QueryObserver.setOptionsUnsafe(observer, second, options);
+		expect(QueryObserver.getUnsafe(observer)).toMatchObject({
 			input: { id: 1 },
 			isPending: true,
 			isPrevious: true,
 			key: ["issue", 1],
 			promise: Query.getUnsafe(test.query).promise,
 		});
+		expect(Query.observerCountUnsafe(test.query)).toBe(0);
+		expect(Query.observerCountUnsafe(second)).toBe(1);
 
 		test.backend.respondAll();
 		await flush();
-		expect(observer.getCurrentResult()).toMatchObject({
+		expect(QueryObserver.getUnsafe(observer)).toMatchObject({
 			input: { id: 2 },
 			isPrevious: false,
 			promise: Query.getUnsafe(second).promise,
@@ -80,19 +93,80 @@ describe("QueryObserver", () => {
 
 	it("refetches on refetchInterval while subscribed", async () => {
 		const test = await setup();
-		vi.useFakeTimers();
-		onTestFinished(() => {
-			vi.useRealTimers();
+		useFakeTimers();
+		const observer = QueryObserver.makeUnsafe(test.query, {
+			refetchInterval: 1000,
 		});
-		const observer = new QueryObserver(test.query, { refetchInterval: 1000 });
-		const unsubscribe = observer.subscribe(() => {});
+		const unsubscribe = QueryObserver.subscribeUnsafe(observer, () => {});
 
 		vi.advanceTimersByTime(1000);
 		expect(test.backend.requests).toHaveLength(1);
 		test.backend.respondAll();
 
 		unsubscribe();
+		expect(Query.observerCountUnsafe(test.query)).toBe(0);
 		vi.advanceTimersByTime(5000);
 		expect(test.backend.requests).toHaveLength(0);
 	});
+
+	it("restarts polling when refetchInterval changes", async () => {
+		const test = await setup();
+		useFakeTimers();
+		const observer = QueryObserver.makeUnsafe(test.query, {
+			refetchInterval: 1000,
+		});
+		QueryObserver.subscribeUnsafe(observer, () => {});
+
+		QueryObserver.setOptionsUnsafe(observer, test.query, {
+			refetchInterval: 3000,
+		});
+		vi.advanceTimersByTime(2000);
+		expect(test.backend.requests).toHaveLength(0);
+		vi.advanceTimersByTime(1000);
+		expect(test.backend.requests).toHaveLength(1);
+		test.backend.respondAll();
+
+		QueryObserver.setOptionsUnsafe(observer, test.query, {});
+		vi.advanceTimersByTime(10_000);
+		expect(test.backend.requests).toHaveLength(0);
+	});
+
+	it("stops polling when its query leaves the cache", async () => {
+		const test = await setup();
+		useFakeTimers();
+		const observer = QueryObserver.makeUnsafe(test.query, {
+			refetchInterval: 1000,
+		});
+		QueryObserver.subscribeUnsafe(observer, () => {});
+
+		Effect.runSync(test.qc.remove(test.backend.issueQuery, { id: 1 }));
+		expect(Query.observerCountUnsafe(test.query)).toBe(0);
+		vi.advanceTimersByTime(5000);
+		expect(test.backend.requests).toHaveLength(0);
+	});
+
+	it.effect("changes streams the current result, then every change", () =>
+		Effect.gen(function* () {
+			const test = yield* Effect.promise(setup);
+			const observer = yield* QueryObserver.make(test.query);
+			const fiber = yield* Effect.forkChild(
+				QueryObserver.changes(observer).pipe(
+					Stream.map((result) => result.isFetching),
+					Stream.take(3),
+					Stream.runCollect,
+				),
+				{ startImmediately: true },
+			);
+			expect(Query.observerCountUnsafe(test.query)).toBe(1);
+
+			yield* Effect.forkChild(Query.refetch(test.query), {
+				startImmediately: true,
+			});
+			yield* Effect.promise(flush);
+			test.backend.respondAll();
+
+			expect(yield* Fiber.join(fiber)).toEqual([false, true, false]);
+			expect(Query.observerCountUnsafe(test.query)).toBe(0);
+		}),
+	);
 });

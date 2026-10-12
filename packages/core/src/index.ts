@@ -1,6 +1,7 @@
 export * as Platform from "./platform.ts";
 export * as Query from "./query.ts";
 export * as QueryCache from "./cache.ts";
+export * as QueryObserver from "./observer.ts";
 export {
 	canDehydrate,
 	type DehydratedQuery,
@@ -33,9 +34,4 @@ export {
 	queryOptions,
 	type RetryPolicy,
 } from "./options.ts";
-export {
-	QueryObserver,
-	type QueryObserverOptions,
-	type QueryObserverResult,
-} from "./observer.ts";
 export type { Thenable } from "./thenable.ts";

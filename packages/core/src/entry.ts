@@ -32,7 +32,7 @@ import type {
 	QueryFnResult,
 	QueryHandle,
 } from "./options.ts";
-import { Platform, type PlatformEvent, whenOnline } from "./platform.ts";
+import { type Platform, type PlatformEvent, whenOnline } from "./platform.ts";
 import type { FetchRequest, Query, State, SubscribeOptions } from "./query.ts";
 import { fromQueryFn } from "./request.ts";
 import { retrySchedule } from "./retry.ts";
@@ -265,29 +265,6 @@ export function changes(entry: Entry): Stream.Stream<State<unknown>> {
 		push(entry.state);
 		return subscribeUnsafe(entry, () => push(entry.state));
 	});
-}
-
-/**
- * Refetch `entry` every `interval` ms while the page is visible, until the
- * returned function is called or the entry leaves the cache.
- */
-export function pollUnsafe(entry: Entry, interval: number): () => void {
-	const tick = Effect.gen(function* () {
-		const platform = yield* Platform;
-		if (platform.isVisibleUnsafe()) {
-			yield* Effect.forkChild(entry.commands.refetch, {
-				startImmediately: true,
-			});
-		}
-	});
-	const fiber = Effect.runSyncWith(entry.cache.services)(
-		Effect.sleep(interval).pipe(
-			Effect.andThen(tick),
-			Effect.forever,
-			Effect.forkIn(entry.scope),
-		),
-	);
-	return () => fiber.interruptUnsafe();
 }
 
 // Requests
