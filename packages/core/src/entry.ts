@@ -9,6 +9,7 @@ import {
 	FiberMap,
 	Pipeable,
 	Predicate,
+	Schedule,
 	Scope,
 	type Stream,
 } from "effect";
@@ -90,6 +91,8 @@ export interface Entry extends Query {
 	readonly commands: Commands;
 	/** A failed first load was shown; the next read retries it. */
 	errorShown: boolean;
+	/** `failureCount` before the request in flight, restored if it's cancelled. */
+	failureCountBefore: number;
 	handle: QueryHandle;
 	/** Awaited by every caller of the request in flight; outlives restarts. */
 	inFlight: Deferred.Deferred<unknown, unknown> | undefined;
@@ -97,6 +100,8 @@ export interface Entry extends Query {
 	options: AnyQueryOptions | undefined;
 	/** The first load's promise, until it settles. */
 	pending: Pending<unknown> | undefined;
+	/** The last reader left during the request in flight: it retries no more. */
+	retriesStopped: boolean;
 	/** Open while the entry is cached; owns its fibers. */
 	readonly scope: Scope.Closeable;
 	/**
@@ -104,6 +109,11 @@ export interface Entry extends Query {
 	 * latest verb that called for this entry ({@link provide}).
 	 */
 	services: Context.Context<never>;
+	/**
+	 * The request in flight read its `signal`, or returned an Effect, so
+	 * interrupting it cancels its work (TanStack's `abortSignalConsumed`).
+	 */
+	signalRead: boolean;
 	state: State<unknown>;
 	readonly tasks: Tasks;
 }
@@ -159,6 +169,7 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 	const entry: Entry = Object.assign(Object.create(Proto), {
 		cache,
 		errorShown: false,
+		failureCountBefore: 0,
 		handle: { input: undefined, key },
 		hash,
 		inFlight: undefined,
@@ -166,8 +177,10 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 		listeners: new Map(),
 		options: undefined,
 		pending: first,
+		retriesStopped: false,
 		scope,
 		services: cache.services,
+		signalRead: false,
 		state: {
 			data: undefined,
 			error: null,
@@ -251,6 +264,7 @@ export function subscribeUnsafe(
 	options = defaultSubscribeOptions,
 ): () => void {
 	entry.listeners.set(listener, options);
+	entry.retriesStopped = false;
 	entry.tasks.cancel("gc");
 	scheduleStale(entry);
 	emit(entry.cache, { query: entry, type: "observers" });
@@ -261,6 +275,13 @@ export function subscribeUnsafe(
 		if (entry.listeners.size === 0) {
 			entry.tasks.cancel("stale");
 			scheduleGc(entry);
+			const inFlight = entry.inFlight;
+			if (inFlight) {
+				// React unsubscribes and resubscribes in one commit (StrictMode,
+				// a route swapping in a page that reads the same query), so the
+				// decision waits until that commit is done.
+				scheduleNotify(() => unobserved(entry, inFlight));
+			}
 		}
 		emit(entry.cache, { query: entry, type: "observers" });
 	};
@@ -466,8 +487,13 @@ function startRequest(
 	request: Effect.Effect<unknown, unknown>,
 	direction: Direction | undefined,
 ): Deferred.Deferred<unknown, unknown> {
+	if (!entry.inFlight) {
+		entry.failureCountBefore = entry.state.failureCount;
+	}
 	const awaiter = entry.inFlight ?? Deferred.makeUnsafe<unknown, unknown>();
 	entry.inFlight = awaiter;
+	entry.retriesStopped = false;
+	entry.signalRead = false;
 	entry.tasks.cancel("gc");
 	if (!entry.state.hasData && entry.state.status === "error") {
 		entry.pending = pending();
@@ -514,6 +540,38 @@ function settle(
 		fail(entry, Cause.squash(exit.cause));
 		Deferred.doneUnsafe(awaiter, exit);
 	}
+	scheduleGc(entry);
+}
+
+/**
+ * The last reader left while `awaiter`'s request was in flight. A refetch
+ * whose work an interrupt cancels (`signalRead`) is interrupted, and the
+ * entry goes back to its state before the request; its awaiters get the
+ * cached data. Any other request finishes, so its result is cached, but
+ * runs no more retries.
+ */
+function unobserved(
+	entry: Entry,
+	awaiter: Deferred.Deferred<unknown, unknown>,
+) {
+	if (isObserved(entry) || entry.inFlight !== awaiter) {
+		return;
+	}
+	// A render suspended on a first load isn't subscribed. It waits on
+	// `entry.pending`, which an interrupted request leaves pending until a
+	// later read, so a first load always finishes.
+	if (!entry.signalRead || !entry.state.hasData) {
+		entry.retriesStopped = true;
+		return;
+	}
+	entry.inFlight = undefined;
+	entry.tasks.cancel("request");
+	set(entry, {
+		failureCount: entry.failureCountBefore,
+		fetchDirection: undefined,
+		isFetching: false,
+	});
+	Deferred.doneUnsafe(awaiter, Exit.succeed(entry.state.data));
 	scheduleGc(entry);
 }
 
@@ -586,27 +644,53 @@ function requestEffect(
 ): Effect.Effect<unknown, unknown> {
 	const queryKey = options.queryKey;
 	if (options.kind === "query") {
-		return attempt(entry, (signal) => options.queryFn({ queryKey, signal }));
+		return attempt(entry, (readSignal) =>
+			options.queryFn({
+				queryKey,
+				get signal() {
+					return readSignal();
+				},
+			}),
+		);
 	}
 	const current = isInfiniteData(entry.state.data)
 		? entry.state.data
 		: undefined;
 	return fetchPages(options, current, request, (pageParam, direction) =>
-		attempt(entry, (signal) =>
-			options.queryFn({ direction, pageParam, queryKey, signal }),
+		attempt(entry, (readSignal) =>
+			options.queryFn({
+				direction,
+				pageParam,
+				queryKey,
+				get signal() {
+					return readSignal();
+				},
+			}),
 		),
 	);
 }
 
 /**
  * One `queryFn` call, retried per the query's policy. Every failure counts.
- * Its services are erased with its data type; `runRequest` provides them.
+ * `call` reads the signal through `readSignal`, which marks the entry's
+ * `signalRead`. Its services are erased with its data type; `runRequest`
+ * provides them.
  */
 function attempt(
 	entry: Entry,
-	call: (signal: AbortSignal) => QueryFnResult<unknown>,
+	call: (readSignal: () => AbortSignal) => QueryFnResult<unknown>,
 ): Effect.Effect<unknown, unknown> {
-	const once = fromQueryFn<unknown, unknown, never>(call).pipe(
+	const once = fromQueryFn<unknown, unknown, never>((signal) => {
+		const result = call(() => {
+			entry.signalRead = true;
+			return signal;
+		});
+		// Interrupting an Effect cancels it, whether it reads the signal or not.
+		if (Effect.isEffect(result)) {
+			entry.signalRead = true;
+		}
+		return result;
+	}).pipe(
 		Effect.tapError(() =>
 			Effect.sync(() =>
 				set(entry, { failureCount: entry.state.failureCount + 1 }),
@@ -627,12 +711,29 @@ function attempt(
 	const online = entry.cache.isServer ? Effect.void : whenOnline;
 	return Effect.suspend(() => {
 		let retrying = false;
+		let lastError: unknown;
+		// Readers can leave while a retry waits out its delay or the network.
+		const unlessStopped = <A>(next: Effect.Effect<A, unknown>) =>
+			Effect.suspend(() =>
+				entry.retriesStopped ? Effect.fail(lastError) : next,
+			);
 		const gated = Effect.suspend(() => {
-			const wait = retrying ? online : Effect.void;
-			retrying = true;
-			return Effect.andThen(wait, once);
-		});
-		return Effect.retry(gated, schedule);
+			if (!retrying) {
+				retrying = true;
+				return once;
+			}
+			return unlessStopped(Effect.andThen(online, unlessStopped(once)));
+		}).pipe(
+			Effect.tapError((error) =>
+				Effect.sync(() => {
+					lastError = error;
+				}),
+			),
+		);
+		return Effect.retry(
+			gated,
+			Schedule.while(schedule, () => !entry.retriesStopped),
+		);
 	});
 }
 
