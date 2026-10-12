@@ -74,7 +74,11 @@ describe("ensure and fetch", () => {
 		const data = qc.fetch(backend.issueQuery, { id: 1 });
 		backend.respondAll();
 
-		expect(await handle).toEqual({ input: { id: 1 }, key: ["issue", 1] });
+		expect(await handle).toEqual({
+			ensured: true,
+			input: { id: 1 },
+			key: ["issue", 1],
+		});
 		expect(await data).toEqual({ id: 1, title: "First" });
 		expect(backend.requests).toHaveLength(0);
 	});

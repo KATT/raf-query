@@ -4,6 +4,7 @@ import { unsafeCast } from "./cast.ts";
 import { hashKey, matchesKey, type QueryKey } from "./key.ts";
 import {
 	type DataOf,
+	type EnsuredQueryHandle,
 	type InputArgs,
 	type InputOf,
 	type LoadOptions,
@@ -64,7 +65,7 @@ export interface QueryClientEffect {
 	ensure<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: LoadArgs<TFactory>
-	): Effect.Effect<QueryHandle<TFactory>, unknown>;
+	): Effect.Effect<EnsuredQueryHandle<TFactory>, unknown>;
 	fetch<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: LoadArgs<TFactory>
@@ -127,6 +128,12 @@ function handleOf<TFactory extends QueryFactory>(
 	// this factory, which `InputArgs<TFactory>` type-checked.
 	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return handle as QueryHandle<TFactory>;
+}
+
+function ensuredHandleOf<TFactory extends QueryFactory>(
+	entry: QueryEntry,
+): EnsuredQueryHandle<TFactory> {
+	return { ...handleOf<TFactory>(entry), ensured: true };
 }
 
 /**
@@ -204,15 +211,16 @@ export class QueryClient {
 
 	/**
 	 * Start a query and wait for it on a cache miss. Rejects if that request
-	 * fails. Stale cached data resolves immediately and revalidates.
+	 * fails. Stale cached data resolves immediately and revalidates. The
+	 * handle is marked `ensured`, so `useQuery` returns its data directly.
 	 */
 	async ensure<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: LoadArgs<TFactory>
-	): Promise<QueryHandle<TFactory>> {
+	): Promise<EnsuredQueryHandle<TFactory>> {
 		const entry = this.#build(factory, args[0]);
 		await this.#load(entry, args[1]?.pages);
-		return handleOf<TFactory>(entry);
+		return ensuredHandleOf<TFactory>(entry);
 	}
 
 	/** Like `ensure`, but resolves to the data. */
