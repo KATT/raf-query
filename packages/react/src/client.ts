@@ -124,7 +124,7 @@ export class QueryClient<TServices = never> {
 	/**
 	 * Mark queries stale and refetch the ones being read. Resolves once those
 	 * refetches settle, so an action stays pending until fresh data is on
-	 * screen. Takes a factory and its input, or a {@link QueryFilter}.
+	 * screen. Takes a factory and its input, or a {@link QueryCache.Filter}.
 	 */
 	invalidate<TFactory extends QueryFactory<TServices>>(
 		...target: QueryCache.Target<TFactory>

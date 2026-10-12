@@ -82,10 +82,21 @@ export type Event =
 			readonly type: "failed";
 	  };
 
-/** Matches cache entries by key prefix, or by exact key with `exact`. */
+/**
+ * Selects cache entries: by key prefix (exact key with `exact`), then by
+ * `predicate`. Without `queryKey` every key matches, so `{}` selects the
+ * whole cache.
+ */
 export interface Filter {
 	readonly exact?: boolean;
-	readonly queryKey: QueryKey;
+	/**
+	 * Keep only entries this returns `true` for; runs after key matching.
+	 * `query.handle.input` is the input of the latest factory call, and stays
+	 * `undefined` for an entry only hydrated so far; match on `query.key` to
+	 * include those.
+	 */
+	readonly predicate?: (query: Query.Query) => boolean;
+	readonly queryKey?: QueryKey;
 }
 
 /** `ensure` / `fetch` arguments: the input, then load options for paged factories. */
@@ -282,6 +293,18 @@ function dataOf<TFactory extends QueryFactory>(
 	return unsafeCast<DataOf<TFactory>>(entry.state.data);
 }
 
+function keyMatcher(filter: Filter): (entry: Entry.Entry) => boolean {
+	const prefix = filter.queryKey;
+	if (prefix === undefined) {
+		return () => true;
+	}
+	if (filter.exact) {
+		const hash = hashKey(prefix);
+		return (entry) => entry.hash === hash;
+	}
+	return (entry) => matchesKey(entry.key, prefix);
+}
+
 /**
  * Background refetch of cached data a verb reuses. A server cache renders
  * once, so a refetch there could only duplicate a request whose result is
@@ -375,11 +398,9 @@ export const make: (
 				);
 				return entry ? [entry] : [];
 			}
-			const hash = hashKey(first.queryKey);
-			return [...state.entries.values()].filter((entry) =>
-				first.exact
-					? entry.hash === hash
-					: matchesKey(entry.key, first.queryKey),
+			const keyMatches = keyMatcher(first);
+			return [...state.entries.values()].filter(
+				(entry) => keyMatches(entry) && (first.predicate?.(entry) ?? true),
 			);
 		};
 
