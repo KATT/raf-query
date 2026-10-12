@@ -1,6 +1,6 @@
 {
 	"name": "@raf-query/tanstack-react-query",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"private": true,
 	"description": "Experiment: raf-query's render-as-you-fetch API on top of TanStack Query",
 	"keywords": [
