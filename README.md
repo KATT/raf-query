@@ -570,20 +570,20 @@ In the browser, retries pause while `navigator.onLine` is `false`: after the ret
 
 `@raf-query/core`:
 
-| Export                                                       | Use                                                                            |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| `QueryCache`                                                 | The cache service (`qc.effect`): `make`, `layer`, and the verbs as Effects     |
-| `Query`                                                      | Cache entries: `Query.fetch`, `Query.changes`, `Query.getUnsafe`, …            |
-| `Platform`                                                   | The page the cache watches (focus, network); swap it in tests                  |
-| `queryOptions(options)`                                      | Typed options for a query factory                                              |
-| `infiniteQueryOptions(options)`                              | Typed options for a paged query factory                                        |
-| `hashKey(key)`, `matchesKey(key, prefix)`                    | Key helpers                                                                    |
-| `QueryObserver`                                              | One reader's view of a query, with tracked results and `changes`; for bindings |
-| `Query.CancelledError`                                       | Failure of a request whose entry was removed or cleared before it settled      |
-| `QueryHandle<TFactory>`                                      | Handle type for props                                                          |
-| `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                          |
-| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`                    |
-| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                        |
+| Export                                                       | Use                                                                        |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `QueryCache`                                                 | The cache service (`qc.effect`): `make`, `layer`, and the verbs as Effects |
+| `Query`                                                      | Cache entries: `Query.fetch`, `Query.changes`, `Query.getUnsafe`, …        |
+| `Platform`                                                   | The page the cache watches (focus, network); swap it in tests              |
+| `queryOptions(options)`                                      | Typed options for a query factory                                          |
+| `infiniteQueryOptions(options)`                              | Typed options for a paged query factory                                    |
+| `hashKey(key)`, `matchesKey(key, prefix)`                    | Key helpers                                                                |
+| `QueryObserver`                                              | One reader's view of a query, with tracked results; for bindings           |
+| `Query.CancelledError`                                       | Failure of a request whose entry was removed or cleared before it settled  |
+| `QueryHandle<TFactory>`                                      | Handle type for props                                                      |
+| `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                      |
+| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`                |
+| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                    |
 
 `@raf-query/react` (plus all of the above):
 
