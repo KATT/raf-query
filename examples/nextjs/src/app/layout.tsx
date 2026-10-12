@@ -1,5 +1,6 @@
 import "./globals.css";
 
+import { QueryDevtools } from "@raf-query/react/devtools";
 import { QueryProvider } from "@raf-query/react/next";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -28,6 +29,7 @@ export default function RootLayout(props: { readonly children: ReactNode }) {
 				<main className="mx-auto max-w-5xl px-6 py-8">
 					<QueryProvider config={queryClientConfig}>
 						{props.children}
+						<QueryDevtools />
 					</QueryProvider>
 				</main>
 			</body>
