@@ -18,3 +18,4 @@
 **/.tanstack
 **/.output
 **/next-env.d.ts
+**/*.tsbuildinfo
