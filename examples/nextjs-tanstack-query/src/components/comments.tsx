@@ -6,11 +6,10 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { Textarea } from "@examples/ui/components/textarea";
 import {
 	type QueryHandle,
-	unwrap,
 	useQuery,
 	useQueryClient,
 } from "@raf-query/tanstack-react-query";
-import { useOptimistic } from "react";
+import { use, useOptimistic } from "react";
 
 import { commentsQuery } from "~/queries.ts";
 import { addComment } from "~/actions.ts";
@@ -27,7 +26,7 @@ export function Comments(props: {
 }) {
 	const queryClient = useQueryClient();
 	const [pagesPromise, comments] = useQuery(commentsQuery, props.handle);
-	const pages = unwrap(pagesPromise);
+	const pages = use(pagesPromise);
 	const issueId = props.handle.input.issueId;
 	const loaded = pages.pages.flatMap((page) => page.comments);
 	const [shown, addOptimistic] = useOptimistic<ReadonlyArray<Comment>, Comment>(

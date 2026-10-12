@@ -1,7 +1,8 @@
 import { Avatar, AvatarFallback } from "@examples/ui/components/avatar";
 import { Card, CardContent } from "@examples/ui/components/card";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { unwrap, useQuery, useWaterfall } from "@raf-query/react";
+import { useQuery, useWaterfall } from "@raf-query/react";
+import { use } from "react";
 
 import { userQuery } from "~/queries.ts";
 
@@ -16,7 +17,7 @@ function initials(name: string) {
 export function AssigneeCard(props: { readonly userId: string }) {
 	const handle = useWaterfall(userQuery, { id: props.userId });
 	const [userPromise] = useQuery(userQuery, handle);
-	const user = unwrap(userPromise);
+	const user = use(userPromise);
 
 	return (
 		<Card className="py-4">

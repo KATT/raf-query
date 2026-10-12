@@ -1,9 +1,9 @@
 import { Button } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
-import { unwrap, useQuery } from "@raf-query/react";
+import { useQuery } from "@raf-query/react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
-import { Suspense } from "react";
+import { Suspense, use } from "react";
 
 import { Comments, CommentsSkeleton } from "~/components/comments.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/issues/$issueId")({
 function IssuePage() {
 	const data = Route.useLoaderData();
 	const [issuePromise] = useQuery(issueQuery, data.issue);
-	const issue = unwrap(issuePromise);
+	const issue = use(issuePromise);
 
 	return (
 		<div className="grid gap-6">
