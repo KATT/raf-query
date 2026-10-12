@@ -8,5 +8,4 @@ export {
 	type UseQueryOptions,
 	type UseQueryResult,
 } from "./use-query.ts";
-export { unwrap } from "./unwrap.ts";
 export { useWaterfall } from "./use-waterfall.ts";

@@ -39,7 +39,7 @@ export interface UseQueryOptions {
 	readonly refetchOnWindowFocus?: boolean;
 	/**
 	 * What to render while the handle's input has no data yet:
-	 * - `"suspend"` (default): the promise is pending, so `unwrap()` suspends.
+	 * - `"suspend"` (default): the promise is pending, so `use()` suspends.
 	 * - `"previous"`: keep returning the last input's data, with `isPrevious`.
 	 */
 	readonly whilePending?: "previous" | "suspend";
@@ -224,16 +224,16 @@ function isInfiniteResult(
 }
 
 /**
- * Read the query a handle points at. Returns a promise to read with
- * `unwrap()` (or `use()`) and the query's controls:
+ * Read the query a handle points at. Returns a promise to unwrap with
+ * `use()` and the query's controls:
  *
  * ```tsx
  * const [postPromise, postState] = useQuery(postQuery, loaderData.post);
- * const post = unwrap(postPromise);
+ * const post = use(postPromise);
  * ```
  *
  * The promise is stable per data version and already fulfilled once the
- * cache has data, so reading it only suspends while there is nothing to show.
+ * cache has data, so `use()` only suspends while there is nothing to show.
  */
 export function useQuery<TFactory extends QueryFactory>(
 	factory: TFactory,
@@ -264,7 +264,7 @@ export function useQuery<TFactory extends QueryFactory>(
 	}, [defaulted, observer]);
 
 	const query: Query = observer.getCurrentQuery();
-	// A read suspends before effects run, so a read that has to start its
+	// `use()` suspends before effects run, so a read that has to start its
 	// own request (a garbage-collected entry, an error boundary retrying)
 	// can't wait for the observer's mount to do it.
 	const promise = promiseFor(client, query, () => {

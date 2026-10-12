@@ -47,4 +47,4 @@ export {
 	type QueryObserver,
 	type QueryState,
 } from "./query.ts";
-export { type Thenable, track } from "./thenable.ts";
+export type { Thenable } from "./thenable.ts";
