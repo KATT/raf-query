@@ -1,10 +1,38 @@
 {
 	"editor.defaultFormatter": "oxc.oxc-vscode",
+	"[javascript]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode"
+	},
+	"[javascriptreact]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode"
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode"
+	},
+	"[typescriptreact]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode"
+	},
+	"[json]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode"
+	},
+	"[jsonc]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode"
+	},
+	"[markdown]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode",
+		"editor.formatOnSave": true
+	},
+	"markdownlint.enable": false,
+	"oxc.path.oxfmt": "./node_modules/oxfmt/bin/oxfmt",
+	"oxc.path.oxlint": "./node_modules/oxlint/bin/oxlint",
+	"oxc.fmt.configPath": "./.oxfmtrc.json",
+	"oxc.configPath": "./.oxlintrc.json",
+	"oxc.disableNestedConfig": true,
+	"oxc.fmt.disableNestedConfig": true,
 	"editor.formatOnSave": true,
 	"editor.formatOnSaveMode": "file",
 	"editor.codeActionsOnSave": {
-		"source.fixAll.oxc": "explicit",
-		"source.fixAll.markdownlint": "explicit"
+		"source.fixAll.oxc": "explicit"
 	},
 	"editor.stickyScroll.enabled": true,
 	"typescript.tsdk": "node_modules/typescript/lib",

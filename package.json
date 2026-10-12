@@ -18,11 +18,13 @@
 	"devDependencies": {
 		"@release-it/conventional-changelog": "12.0.2",
 		"@tanstack/react-query": "5.104.1",
+		"@tanstack/react-router": "1.170.42",
 		"@types/node": "26.6.4",
 		"@vitest/coverage-v8": "5.0.1",
 		"husky": "9.1.7",
 		"lint-staged": "17.6.0",
 		"oxfmt": "0.70.0",
+		"oxlint": "1.85.0",
 		"raf-query": "workspace:*",
 		"release-it": "21.1.0",
 		"typescript": "7.0.2",

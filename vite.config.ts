@@ -9,6 +9,7 @@ export default defineConfig({
 		useTabs: true,
 		printWidth: 80,
 		sortPackageJson: false,
+		embeddedLanguageFormatting: "auto",
 		ignorePatterns: [
 			".husky/**",
 			"coverage/**",

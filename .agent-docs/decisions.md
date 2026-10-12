@@ -21,6 +21,19 @@ Append-only in spirit; rewrite in place when a decision changes. Keep each entry
 - `AGENTS.md`: short environment + pointers agents need every session.
 - `.agent-docs/`: durable agent notes (this folder). Agents may reshape it.
 
+## 2026-10-10 — Markdown via oxfmt, not markdownlint
+
+- Oxfmt formats `.md` and embedded JS/TS fences (`embeddedLanguageFormatting: "auto"`).
+- Oxlint does **not** lint Markdown (out of scope); do not add markdownlint for parity.
+- Keep `fmt` options in sync between `vite.config.ts` and `.oxfmtrc.json` (tabs, width, ignores).
+- Workspace disables markdownlint (`markdownlint.enable: false` + unwanted recommendation). Keep `.markdownlint.json` with `MD010: false` as a belt-and-suspenders if the extension is still installed globally.
+
+## 2026-10-10 — Oxc editor LSP bypasses `vp`
+
+- Oxc VS Code prefers `vite-plus`’s `vp fmt|lint --lsp`. That crashes when the extension’s `node` is older than 22 (`styleText` missing) — Cursor’s PATH can still be Node 20.
+- Workspace pins `oxc.path.oxfmt` / `oxc.path.oxlint` to the package bins and `oxc.fmt.configPath` / `oxc.configPath` to `.oxfmtrc.json` / `.oxlintrc.json`.
+- `oxlint` is a direct devDependency so the bin path stays stable (not only nested under vite-plus).
+
 ## 2026-10-10 — Vendored TanStack Query
 
 - `vendor-src` dogfoods at the workspace root (`postinstall`: `vendor-src check`).
