@@ -1,28 +1,31 @@
 "use client";
 
-import type {
-	DataOf,
-	EnsuredQueryHandle,
-	ErrorOf,
-	InputOf,
-	QueryHandle,
-	QueryKey,
-	Thenable,
-} from "@raf-query/core";
+import type { QueryKey, Thenable } from "@raf-query/core";
 import { Cause, Option } from "effect";
 import { AsyncResult } from "effect/reactivity";
 import { use, useCallback, useSyncExternalStore } from "react";
 
 import { unsafeCast } from "./cast.ts";
-import type { QueryFactory } from "./client.ts";
 import * as Entry from "./entry.ts";
+import type {
+	DataOf,
+	EnsuredQueryHandle,
+	ErrorOf,
+	InputOf,
+	QueryFactory,
+	QueryHandle,
+} from "./options.ts";
 import { useQueryClient } from "./provider.tsx";
 import { promiseFor } from "./thenable.ts";
 
 /** The second element of {@link useQuery}'s result. */
 export interface QueryControls<TFactory extends QueryFactory> {
-	/** Error of the last failed request. Existing data stays readable. */
-	readonly error: ErrorOf<TFactory> | null;
+	/**
+	 * Error of the last failed request, squashed from its `Cause`: a typed
+	 * failure or a defect. Existing data stays readable. `result` has the
+	 * whole `Cause`.
+	 */
+	readonly error: unknown;
 	/** Stable string form of the handle's key, for `key` props. */
 	readonly hash: string;
 	/** Input of the data in the promise. */
@@ -37,6 +40,12 @@ export interface QueryControls<TFactory extends QueryFactory> {
 	readonly key: QueryKey;
 	/** Refetch now. Resolves when the request settles; never rejects. */
 	refetch(): Promise<void>;
+	/**
+	 * The query atom's current `AsyncResult`, for rendering with
+	 * `AsyncResult.match` / `AsyncResult.builder` instead of suspending, or
+	 * for matching on the failure's `Cause`.
+	 */
+	readonly result: AsyncResult.AsyncResult<DataOf<TFactory>, ErrorOf<TFactory>>;
 	/** When the data in the promise was fetched or set (ms since epoch); `0` before that. */
 	readonly updatedAt: number;
 }
@@ -86,7 +95,7 @@ export function useQuery<TFactory extends QueryFactory>(
 	// SAFETY: `handle.input` is typed to the factory's input through
 	// `QueryHandle<TFactory>`.
 	const args = unsafeCast<[input: InputOf<TFactory>]>([handle.input]);
-	const entry = client.getQuery(factory, ...args);
+	const entry = client.effect.getQueryUnsafe(factory, ...args);
 	const registry = client.registry;
 	const subscribe = useCallback(
 		(onChange: () => void) =>
@@ -110,10 +119,12 @@ export function useQuery<TFactory extends QueryFactory>(
 		isStale: Entry.isStaleUnsafe(entry, result),
 		key: entry.options.queryKey,
 		refetch: entry.refetch,
+		result,
 		updatedAt: Entry.updatedAt(result) ?? 0,
 	};
 	// SAFETY: the entry under this factory's key holds this factory's data,
-	// fails with its `queryFn`'s errors, and `input` is the handle's.
+	// fails with its `queryFn`'s errors (`result`), and `input` is the
+	// handle's.
 	const typed = unsafeCast<QueryControls<TFactory>>(controls);
 	if (handle.ensured) {
 		// SAFETY: as above, for the promise's value.

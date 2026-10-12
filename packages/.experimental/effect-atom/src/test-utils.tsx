@@ -1,4 +1,4 @@
-import { queryOptions } from "@raf-query/core";
+import { queryOptions } from "./options.ts";
 import { act, render } from "@testing-library/react";
 import { Component, type ReactNode } from "react";
 

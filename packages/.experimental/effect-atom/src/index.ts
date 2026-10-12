@@ -1,23 +1,25 @@
 export {
+	hashKey,
+	type QueryBehavior,
+	type QueryFunctionContext,
+	type QueryKey,
+	type Thenable,
+} from "@raf-query/core";
+export * as QueryCache from "./cache.ts";
+export { QueryClient, type QueryClientConfig } from "./client.ts";
+export {
 	type DataOf,
 	type EnsuredQueryHandle,
 	type ErrorOf,
-	hashKey,
 	type InputArgs,
 	type InputOf,
-	type QueryBehavior,
+	type QueryFactory,
+	type QueryFnResult,
 	type QueryHandle,
-	type QueryKey,
 	type QueryOptions,
 	queryOptions,
-	type Thenable,
-} from "@raf-query/core";
-export {
-	QueryClient,
-	type QueryClientConfig,
-	type QueryFactory,
-	type Updater,
-} from "./client.ts";
+	type ServicesOf,
+} from "./options.ts";
 export { QueryClientProvider, useQueryClient } from "./provider.tsx";
 export {
 	type QueryControls,

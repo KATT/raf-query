@@ -1,12 +1,16 @@
-import type { QueryBehavior, QueryOptions } from "@raf-query/core";
-import { Duration, Effect, Option } from "effect";
+import type { QueryBehavior } from "@raf-query/core";
+import { type Context, Duration, Effect, Option } from "effect";
 import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
 
+import type { QueryOptions } from "./options.ts";
 import { request } from "./request.ts";
 import type { Thenable } from "./thenable.ts";
 
-/** A plain (not paged) query's options, with data and error erased. */
-export type PlainOptions = QueryOptions<unknown, unknown>;
+/**
+ * A plain (not paged) query's options, with data, error and services
+ * erased. The services come from the entry's `services` context.
+ */
+export type PlainOptions = QueryOptions<unknown, unknown, never>;
 
 export type Result = AsyncResult.AsyncResult<unknown, unknown>;
 
@@ -15,6 +19,8 @@ export interface Store {
 	readonly defaults: QueryBehavior;
 	readonly isServer: boolean;
 	readonly registry: AtomRegistry.AtomRegistry;
+	/** The services the cache was built with; every request can read them. */
+	readonly services: Context.Context<never>;
 }
 
 /** The promises handed out for one entry, shared by every reader. */
@@ -53,6 +59,11 @@ export interface Entry {
 	readonly read: Atom.Atom<Result>;
 	/** {@link refetch} as a Promise function with a stable identity. */
 	readonly refetch: () => Promise<void>;
+	/**
+	 * What the request's Effect runs with: the cache's services, plus those
+	 * of the last verb that was handed this entry.
+	 */
+	services: Context.Context<never>;
 	readonly store: Store;
 }
 
@@ -126,7 +137,13 @@ export function make(store: Store, hash: string, options: PlainOptions): Entry {
 	const gcTime = settings.gcTime ?? (store.isServer ? Infinity : 300_000);
 	const fetcher = Atom.make(
 		Effect.suspend(() =>
-			request(entry.options, behavior(entry), store.isServer),
+			request({
+				behavior: behavior(entry),
+				hash,
+				isServer: store.isServer,
+				options: entry.options,
+				services: entry.services,
+			}),
 		),
 	);
 	const data = Atom.writable<Result, unknown>(fetcher.read, (ctx, value) => {
@@ -148,6 +165,7 @@ export function make(store: Store, hash: string, options: PlainOptions): Entry {
 		promises: {},
 		read,
 		refetch: () => Effect.runPromise(refetch(entry)),
+		services: store.services,
 		store,
 	};
 	return entry;

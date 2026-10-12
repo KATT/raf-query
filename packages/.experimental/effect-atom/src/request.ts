@@ -1,9 +1,7 @@
-import type {
-	QueryBehavior,
-	QueryFnResult,
-	QueryOptions,
-} from "@raf-query/core";
-import { Effect, Predicate, Schedule } from "effect";
+import type { QueryBehavior } from "@raf-query/core";
+import { Context, Effect, Predicate, Schedule } from "effect";
+
+import type { QueryFnResult, QueryOptions } from "./options.ts";
 
 /** Doubling from 1 s, at most 30 s. */
 const defaultDelays = Schedule.min([
@@ -56,9 +54,9 @@ function retrySchedule(
 	);
 }
 
-function isEffectResult<T, E>(
-	result: QueryFnResult<T, E>,
-): result is Effect.Effect<T, E> {
+function isEffectResult<T, E, R>(
+	result: QueryFnResult<T, E, R>,
+): result is Effect.Effect<T, E, R> {
 	return Effect.isEffect(result);
 }
 
@@ -67,11 +65,11 @@ function isEffectResult<T, E>(
  * interrupted (the atom is refreshed or disposed). A `queryFn` that throws
  * instead of returning is a defect, so it isn't retried.
  */
-function fromQueryFn<T, E>(
-	call: (signal: AbortSignal) => QueryFnResult<T, E>,
-): Effect.Effect<T, E> {
-	return Effect.callback<T, E>((resume, signal) => {
-		let result: QueryFnResult<T, E>;
+function fromQueryFn<T, E, R>(
+	call: (signal: AbortSignal) => QueryFnResult<T, E, R>,
+): Effect.Effect<T, E, R> {
+	return Effect.callback<T, E, R>((resume, signal) => {
+		let result: QueryFnResult<T, E, R>;
 		try {
 			result = call(signal);
 		} catch (error) {
@@ -91,14 +89,38 @@ function fromQueryFn<T, E>(
 	});
 }
 
-/** A query's request: its `queryFn`, retried per its policy. */
+export interface RequestOptions {
+	readonly behavior: QueryBehavior;
+	readonly hash: string;
+	readonly isServer: boolean;
+	readonly options: QueryOptions<unknown, unknown, never>;
+	/** What the `queryFn`'s Effect may read, beneath the atom's own services. */
+	readonly services: Context.Context<never>;
+}
+
+/**
+ * A query's request: its `queryFn`, retried per its policy, in a
+ * `raf-query.request` span. Typed failures are the query's state; defects
+ * are also logged, since nothing else reports them.
+ */
 export function request(
-	options: QueryOptions<unknown, unknown>,
-	behavior: QueryBehavior,
-	isServer: boolean,
+	input: RequestOptions,
 ): Effect.Effect<unknown, unknown> {
-	const queryKey = options.queryKey;
-	const once = fromQueryFn((signal) => options.queryFn({ queryKey, signal }));
-	const schedule = retrySchedule(behavior, isServer);
-	return schedule ? Effect.retry(once, schedule) : once;
+	const queryKey = input.options.queryKey;
+	const once = fromQueryFn<unknown, unknown, never>((signal) =>
+		input.options.queryFn({ queryKey, signal }),
+	);
+	const schedule = retrySchedule(input.behavior, input.isServer);
+	const traced = (schedule ? Effect.retry(once, schedule) : once).pipe(
+		Effect.tapDefect((defect) =>
+			Effect.logError("raf-query: queryFn died", defect),
+		),
+		Effect.withSpan("raf-query.request", {
+			attributes: { "raf_query.hash": input.hash },
+		}),
+	);
+	// The atom's own services (its Scope, the registry) win.
+	return Effect.updateContext(traced, (atom: Context.Context<never>) =>
+		Context.merge(input.services, atom),
+	);
 }

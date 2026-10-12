@@ -1,4 +1,6 @@
 import { cleanup, screen } from "@testing-library/react";
+import { Cause } from "effect";
+import { AsyncResult } from "effect/reactivity";
 import { type ReactNode, Suspense, use } from "react";
 import { describe, expect, test } from "vitest";
 
@@ -142,6 +144,30 @@ describe("useQuery", () => {
 		expect(text()).toBe("Third");
 	});
 
+	test("controls.result renders without suspending", async () => {
+		const t = setup();
+		function Status() {
+			const [, state] = useQuery(t.backend.issueQuery, {
+				input: { id: 3 },
+				key: ["issue", 3],
+			});
+			return (
+				<p>
+					{AsyncResult.match(state.result, {
+						onFailure: (failure) =>
+							`failed: ${String(Cause.squash(failure.cause))}`,
+						onInitial: () => "loading",
+						onSuccess: (success) => success.value.title,
+					})}
+				</p>
+			);
+		}
+		await t.render(<Status />);
+		expect(text()).toBe("loading");
+		await t.backend.respond();
+		expect(text()).toBe("failed: Error: No issue 3");
+	});
+
 	test("refetches stale data on window focus", async () => {
 		const t = setup();
 		await t.render(<t.Issue id={1} />);
@@ -169,7 +195,9 @@ describe("useQuery", () => {
 		await t.backend.respond();
 		cleanup();
 		await flush();
-		const entry = t.client.getQuery(t.backend.issueQuery, { id: 1 });
+		const entry = t.client.effect.getQueryUnsafe(t.backend.issueQuery, {
+			id: 1,
+		});
 		const node = t.client.registry.getNodes().get(entry.data);
 		expect(node?.listeners.size).toBe(0);
 		expect(t.client.getData(t.backend.issueQuery, { id: 1 })?.title).toBe(
