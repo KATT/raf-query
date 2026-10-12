@@ -1,7 +1,8 @@
 import type { QueryBehavior } from "@raf-query/core";
 import { Context, Effect, Predicate, Schedule } from "effect";
 
-import type { QueryFnResult, QueryOptions } from "./options.ts";
+import { fetchPages, isInfiniteData, type PageRequest } from "./infinite.ts";
+import type { AnyQueryOptions, QueryFnResult } from "./options.ts";
 
 /** Doubling from 1 s, at most 30 s. */
 const defaultDelays = Schedule.min([
@@ -91,27 +92,51 @@ function fromQueryFn<T, E, R>(
 
 export interface RequestOptions {
 	readonly behavior: QueryBehavior;
+	/** A paged query's data before this request. */
+	readonly current: unknown;
 	readonly hash: string;
 	readonly isServer: boolean;
-	readonly options: QueryOptions<unknown, unknown, never>;
+	readonly options: AnyQueryOptions;
+	/** What a paged request loads; a plain query ignores it. */
+	readonly page: PageRequest;
 	/** What the `queryFn`'s Effect may read, beneath the atom's own services. */
 	readonly services: Context.Context<never>;
 }
 
+/** One `queryFn` call, retried per the query's policy. */
+function attempt(
+	input: RequestOptions,
+	call: (signal: AbortSignal) => QueryFnResult<unknown, unknown, never>,
+): Effect.Effect<unknown, unknown> {
+	const once = fromQueryFn<unknown, unknown, never>(call);
+	const schedule = retrySchedule(input.behavior, input.isServer);
+	return schedule ? Effect.retry(once, schedule) : once;
+}
+
+function pagesOrQuery(input: RequestOptions): Effect.Effect<unknown, unknown> {
+	const options = input.options;
+	const queryKey = options.queryKey;
+	if (options.kind === "query") {
+		return attempt(input, (signal) => options.queryFn({ queryKey, signal }));
+	}
+	const current = isInfiniteData(input.current) ? input.current : undefined;
+	return fetchPages(options, current, input.page, (pageParam, direction) =>
+		attempt(input, (signal) =>
+			options.queryFn({ direction, pageParam, queryKey, signal }),
+		),
+	);
+}
+
 /**
- * A query's request: its `queryFn`, retried per its policy, in a
- * `raf-query.request` span. Typed failures are the query's state; defects
- * are also logged, since nothing else reports them.
+ * A query's request: its `queryFn` (once per page for paged queries),
+ * retried per its policy, in a `raf-query.request` span. Typed failures are
+ * the query's state; defects are also logged, since nothing else reports
+ * them.
  */
 export function request(
 	input: RequestOptions,
 ): Effect.Effect<unknown, unknown> {
-	const queryKey = input.options.queryKey;
-	const once = fromQueryFn<unknown, unknown, never>((signal) =>
-		input.options.queryFn({ queryKey, signal }),
-	);
-	const schedule = retrySchedule(input.behavior, input.isServer);
-	const traced = (schedule ? Effect.retry(once, schedule) : once).pipe(
+	const traced = pagesOrQuery(input).pipe(
 		Effect.tapDefect((defect) =>
 			Effect.logError("raf-query: queryFn died", defect),
 		),

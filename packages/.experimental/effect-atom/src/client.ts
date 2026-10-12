@@ -4,10 +4,16 @@ import { AtomRegistry } from "effect/reactivity";
 import * as QueryCache from "./cache.ts";
 import { unsafeCast } from "./cast.ts";
 import type {
+	DehydratedState,
+	DehydrateOptions,
+	HydrateOptions,
+} from "./hydration.ts";
+import type {
 	DataOf,
 	EnsuredQueryHandle,
 	InputArgs,
 	InputOf,
+	LoadArgs,
 	QueryFactory,
 	QueryHandle,
 } from "./options.ts";
@@ -83,7 +89,7 @@ export class QueryClient<TServices = never> {
 	/** See {@link QueryCache.QueryCache.ensure}. */
 	ensure<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
-		...args: InputArgs<TFactory>
+		...args: LoadArgs<TFactory>
 	): Promise<EnsuredQueryHandle<TFactory>> {
 		return Effect.runPromise(
 			this.#provide(this.effect.ensure(factory, ...args)),
@@ -93,10 +99,30 @@ export class QueryClient<TServices = never> {
 	/** See {@link QueryCache.QueryCache.fetch}. */
 	fetch<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
-		...args: InputArgs<TFactory>
+		...args: LoadArgs<TFactory>
 	): Promise<DataOf<TFactory>> {
 		return Effect.runPromise(
 			this.#provide(this.effect.fetch(factory, ...args)),
+		);
+	}
+
+	/** See {@link QueryCache.QueryCache.fetchNextPage}. */
+	fetchNextPage<TFactory extends QueryFactory<TServices>>(
+		factory: TFactory,
+		...args: InputArgs<TFactory>
+	): Promise<void> {
+		return Effect.runPromise(
+			this.#provide(this.effect.fetchNextPage(factory, ...args)),
+		);
+	}
+
+	/** See {@link QueryCache.QueryCache.fetchPreviousPage}. */
+	fetchPreviousPage<TFactory extends QueryFactory<TServices>>(
+		factory: TFactory,
+		...args: InputArgs<TFactory>
+	): Promise<void> {
+		return Effect.runPromise(
+			this.#provide(this.effect.fetchPreviousPage(factory, ...args)),
 		);
 	}
 
@@ -144,4 +170,24 @@ export class QueryClient<TServices = never> {
 	dispose(): Promise<void> {
 		return Effect.runPromise(Scope.close(this.#scope, Exit.void));
 	}
+}
+
+/** Snapshot the cache for transfer to another client (server → browser). */
+export function dehydrate(
+	client: QueryClient<never>,
+	options?: DehydrateOptions,
+): DehydratedState {
+	return Effect.runSync(client.effect.dehydrate(options));
+}
+
+/**
+ * Write dehydrated queries into a client. Existing entries only take newer
+ * data; pending queries resume the sender's request.
+ */
+export function hydrate(
+	client: QueryClient<never>,
+	state: DehydratedState,
+	options?: HydrateOptions,
+): void {
+	Effect.runSync(client.effect.hydrate(state, options));
 }

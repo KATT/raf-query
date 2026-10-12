@@ -121,6 +121,11 @@ export function promiseFor(entry: Entry, result: Result): Thenable<unknown> {
 		}
 		startUnsafe(entry);
 	}
-	promises.pending ??= firstLoad(entry);
-	return promises.pending;
+	return firstLoadPromise(entry);
+}
+
+/** The promise of an entry's first data (or first-load error), shared by every reader. */
+export function firstLoadPromise(entry: Entry): Thenable<unknown> {
+	entry.promises.pending ??= firstLoad(entry);
+	return entry.promises.pending;
 }

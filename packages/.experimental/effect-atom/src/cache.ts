@@ -4,12 +4,23 @@ import { type AsyncResult, type Atom, AtomRegistry } from "effect/reactivity";
 
 import { unsafeCast } from "./cast.ts";
 import * as Entry from "./entry.ts";
+import {
+	type DehydratedQuery,
+	type DehydratedState,
+	type DehydrateOptions,
+	deserialize,
+	dehydrateUnsafe,
+	type HydrateOptions,
+	hydrateUnsafe,
+	newer,
+} from "./hydration.ts";
 import type {
 	DataOf,
 	EnsuredQueryHandle,
 	ErrorOf,
 	InputArgs,
 	InputOf,
+	LoadArgs,
 	QueryFactory,
 	QueryHandle,
 	ServicesOf,
@@ -58,9 +69,11 @@ export interface QueryCache {
 	 * fails. Stale cached data succeeds right away and revalidates in the
 	 * browser. The handle is marked `ensured`.
 	 */
+	/** Snapshot the cache for transfer to another cache (server → browser). */
+	dehydrate(options?: DehydrateOptions): Effect.Effect<DehydratedState>;
 	ensure<TFactory extends QueryFactory>(
 		factory: TFactory,
-		...args: InputArgs<TFactory>
+		...args: LoadArgs<TFactory>
 	): Effect.Effect<
 		EnsuredQueryHandle<TFactory>,
 		ErrorOf<TFactory>,
@@ -69,8 +82,21 @@ export interface QueryCache {
 	/** Like `ensure`, but succeeds with the data. */
 	fetch<TFactory extends QueryFactory>(
 		factory: TFactory,
-		...args: InputArgs<TFactory>
+		...args: LoadArgs<TFactory>
 	): Effect.Effect<DataOf<TFactory>, ErrorOf<TFactory>, ServicesOf<TFactory>>;
+	/**
+	 * Load the page after a paged query's last one, once the request in
+	 * flight settles. Never fails; the error is the query's state.
+	 */
+	fetchNextPage<TFactory extends QueryFactory>(
+		factory: TFactory,
+		...args: InputArgs<TFactory>
+	): Effect.Effect<void, never, ServicesOf<TFactory>>;
+	/** Like `fetchNextPage`, at the start of the list. */
+	fetchPreviousPage<TFactory extends QueryFactory>(
+		factory: TFactory,
+		...args: InputArgs<TFactory>
+	): Effect.Effect<void, never, ServicesOf<TFactory>>;
 	/** Cached data, without fetching. */
 	getData<TFactory extends QueryFactory>(
 		factory: TFactory,
@@ -81,6 +107,15 @@ export interface QueryCache {
 		factory: TFactory,
 		...args: InputArgs<TFactory>
 	): Entry.Entry;
+	/**
+	 * Write dehydrated queries. Existing entries only take newer data;
+	 * pending queries resume the sender's request. Queries no factory has
+	 * asked for yet wait until one does, taking newer data in the meantime.
+	 */
+	hydrate(
+		state: DehydratedState,
+		options?: HydrateOptions,
+	): Effect.Effect<void>;
 	/**
 	 * Refetch a query if something reads it, and wait for that; otherwise
 	 * mark it stale for the next `prefetch` / `ensure`.
@@ -120,15 +155,11 @@ function optionsFor(factory: QueryFactory, input: unknown) {
 	// `InputArgs<TFactory>`); `QueryFactory` erases it to `never` only so that
 	// any one-argument factory is assignable.
 	// oxlint-disable-next-line typescript/consistent-type-assertions
-	const call = factory as (input: unknown) => Entry.PlainOptions;
-	const options = call(input);
-	if (options.kind !== "query") {
-		throw new Error(
-			"raf-query (effect-atom experiment): paged queries aren't supported",
-		);
-	}
-	return options;
+	const call = factory as (input: unknown) => Entry.EntryOptions;
+	return call(input);
 }
+
+function noop() {}
 
 function isUpdateFunction<TData>(
 	updater: Updater<TData>,
@@ -163,6 +194,8 @@ export const make = Effect.fnUntraced(function* (config: Config = {}) {
 		services,
 	};
 	const entries = new Map<string, Entry.Entry>();
+	/** Hydrated queries without an entry yet, like `AtomRegistry`'s preloaded serializable values. */
+	const preloaded = new Map<string, DehydratedQuery>();
 
 	const previous = registry.onNodeRemoved;
 	registry.onNodeRemoved = (node) => {
@@ -187,8 +220,38 @@ export const make = Effect.fnUntraced(function* (config: Config = {}) {
 		} else {
 			entry = Entry.make(store, hash, options);
 			entries.set(hash, entry);
+			const seed = preloaded.get(hash);
+			if (seed) {
+				preloaded.delete(hash);
+				hydrateUnsafe(entry, seed);
+			}
 		}
 		return entry;
+	}
+
+	/** Keep a hydrated query until its entry exists; a pending one settles into data. */
+	function preload(hash: string, query: DehydratedQuery) {
+		const current = preloaded.get(hash);
+		const kept = current ? newer(current, query) : query;
+		preloaded.set(hash, kept);
+		if (kept !== query || query.promise === undefined) {
+			return;
+		}
+		query.promise.then((data) => {
+			if (preloaded.get(hash) === query) {
+				preloaded.set(hash, { data, key: query.key, updatedAt: Date.now() });
+			}
+		}, noop);
+	}
+
+	function hydrateQuery(query: DehydratedQuery) {
+		const hash = hashKey(query.key);
+		const entry = entries.get(hash);
+		if (entry) {
+			hydrateUnsafe(entry, query);
+		} else {
+			preload(hash, query);
+		}
 	}
 
 	/** The entry, with its requests reading the calling fiber's services too. */
@@ -204,7 +267,10 @@ export const make = Effect.fnUntraced(function* (config: Config = {}) {
 	}
 
 	function getDataUnsafe(factory: QueryFactory, input: unknown) {
-		const entry = entries.get(hashKey(optionsFor(factory, input).queryKey));
+		const hash = hashKey(optionsFor(factory, input).queryKey);
+		const entry =
+			entries.get(hash) ??
+			(preloaded.has(hash) ? entryFor(factory, input) : undefined);
 		return entry ? Entry.getDataUnsafe(entry) : Option.none();
 	}
 
@@ -213,10 +279,21 @@ export const make = Effect.fnUntraced(function* (config: Config = {}) {
 			// SAFETY: the entry under this factory's key holds this factory's
 			// data and fails with its `queryFn`'s errors.
 			unsafeCast(entryFor(factory, args[0]).read),
+		dehydrate: (options = {}) =>
+			Effect.sync(() => {
+				const queries: Array<DehydratedQuery> = [];
+				for (const entry of entries.values()) {
+					const query = dehydrateUnsafe(entry, options);
+					if (query) {
+						queries.push(query);
+					}
+				}
+				return { queries: [...queries, ...preloaded.values()] };
+			}),
 		ensure: (factory, ...args) =>
 			entryWith(factory, args[0]).pipe(
 				Effect.flatMap((entry) =>
-					Entry.load(entry).pipe(
+					Entry.load(entry, { pages: args[1]?.pages }).pipe(
 						Effect.as({
 							...handleOf<typeof factory>(entry, args[0]),
 							ensured: true as const,
@@ -229,11 +306,31 @@ export const make = Effect.fnUntraced(function* (config: Config = {}) {
 		fetch: (factory, ...args) =>
 			// SAFETY: the entry under this factory's key holds this factory's
 			// data and fails with its `queryFn`'s errors.
-			unsafeCast(entryWith(factory, args[0]).pipe(Effect.flatMap(Entry.load))),
+			unsafeCast(
+				entryWith(factory, args[0]).pipe(
+					Effect.flatMap((entry) =>
+						Entry.load(entry, { pages: args[1]?.pages }),
+					),
+				),
+			),
+		fetchNextPage: (factory, ...args) =>
+			entryWith(factory, args[0]).pipe(
+				Effect.flatMap((entry) => Entry.fetchPage(entry, "forward")),
+			),
+		fetchPreviousPage: (factory, ...args) =>
+			entryWith(factory, args[0]).pipe(
+				Effect.flatMap((entry) => Entry.fetchPage(entry, "backward")),
+			),
 		getData: (factory, ...args) =>
 			// SAFETY: the entry under this factory's key holds this factory's data.
 			Effect.sync(() => unsafeCast(getDataUnsafe(factory, args[0]))),
 		getQueryUnsafe: (factory, ...args) => entryFor(factory, args[0]),
+		hydrate: (state, options = {}) =>
+			Effect.sync(() => {
+				for (const query of state.queries) {
+					hydrateQuery(deserialize(query, options));
+				}
+			}),
 		invalidate: (factory, ...args) =>
 			entryWith(factory, args[0]).pipe(Effect.flatMap(Entry.invalidate)),
 		isServer: store.isServer,

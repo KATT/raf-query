@@ -2,15 +2,23 @@ import type { QueryBehavior } from "@raf-query/core";
 import { type Context, Duration, Effect, Option } from "effect";
 import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
 
-import type { QueryOptions } from "./options.ts";
+import {
+	type Direction,
+	isInfiniteData,
+	nextPageParam,
+	type PageRequest,
+	previousPageParam,
+} from "./infinite.ts";
+import type { AnyQueryOptions } from "./options.ts";
 import { request } from "./request.ts";
+import { replaceEqualDeep } from "./share.ts";
 import type { Thenable } from "./thenable.ts";
 
 /**
- * A plain (not paged) query's options, with data, error and services
- * erased. The services come from the entry's `services` context.
+ * A query's options (plain or paged), with data, error and services erased.
+ * The services come from the entry's `services` context.
  */
-export type PlainOptions = QueryOptions<unknown, unknown, never>;
+export type EntryOptions = AnyQueryOptions;
 
 export type Result = AsyncResult.AsyncResult<unknown, unknown>;
 
@@ -41,10 +49,22 @@ export interface Promises {
  */
 export interface Entry {
 	/**
-	 * The query's `AsyncResult`: its request's, or what `setData` wrote.
-	 * Idles out of the registry `gcTime` after its last reader leaves.
+	 * What the next request does, for paged queries. Set right before the
+	 * data atom is rebuilt, and taken by that build.
 	 */
-	readonly data: Atom.Writable<Result, unknown>;
+	command: PageRequest | undefined;
+	/**
+	 * The query's `AsyncResult`: its request's, or what `setData` /
+	 * hydration wrote. Idles out of the registry `gcTime` after its last
+	 * reader leaves.
+	 */
+	readonly data: Atom.Writable<Result, Result>;
+	/** The end a paged request is adding a page to; `undefined` for full loads. */
+	fetchDirection: Direction | undefined;
+	/** {@link fetchPage} forward, as a Promise function with a stable identity. */
+	readonly fetchNextPage: () => Promise<void>;
+	/** {@link fetchPage} backward, as a Promise function with a stable identity. */
+	readonly fetchPreviousPage: () => Promise<void>;
 	readonly hash: string;
 	/**
 	 * Set by `invalidate` when nothing reads the entry. Refreshing an atom
@@ -53,12 +73,17 @@ export interface Entry {
 	 */
 	invalidated: boolean;
 	/** The latest factory call's options; the request reads them when it runs. */
-	options: PlainOptions;
+	options: EntryOptions;
 	readonly promises: Promises;
 	/** `data`, refetched on window focus and reconnect while read and stale. */
 	readonly read: Atom.Atom<Result>;
 	/** {@link refetch} as a Promise function with a stable identity. */
 	readonly refetch: () => Promise<void>;
+	/**
+	 * A request started elsewhere (the server's, from hydration). The next
+	 * build adopts it instead of calling the `queryFn`.
+	 */
+	resumed: PromiseLike<unknown> | undefined;
 	/**
 	 * What the request's Effect runs with: the cache's services, plus those
 	 * of the last verb that was handed this entry.
@@ -85,6 +110,7 @@ function behaviorOf(
 		retry: options.retry ?? defaults.retry,
 		retryDelay: options.retryDelay ?? defaults.retryDelay,
 		staleTime: options.staleTime ?? defaults.staleTime,
+		structuralSharing: options.structuralSharing ?? defaults.structuralSharing,
 	};
 }
 
@@ -127,27 +153,55 @@ function millis(value: number): Duration.Duration {
 	return Number.isFinite(value) ? Duration.millis(value) : Duration.infinity;
 }
 
+/** `next`, keeping the parts equal to `previous` unless the query opts out. */
+function shared(entry: Entry, previous: Option.Option<unknown>, next: unknown) {
+	return Option.isSome(previous) && behavior(entry).structuralSharing !== false
+		? replaceEqualDeep(previous.value, next)
+		: next;
+}
+
+/**
+ * The request a build of the data atom starts: the hydrated one if there
+ * is one, else the `queryFn` (per page, for paged queries). Takes the
+ * entry's `command` and `resumed`, so each applies to one build.
+ */
+function startRequest(
+	entry: Entry,
+	previous: Option.Option<Result>,
+): Effect.Effect<unknown, unknown> {
+	const page = entry.command ?? {};
+	const resumed = entry.resumed;
+	entry.command = undefined;
+	entry.resumed = undefined;
+	entry.fetchDirection = page.direction;
+	const current = Option.flatMap(previous, AsyncResult.value);
+	// The sender's error type doesn't survive the trip, so a rejection is a
+	// defect.
+	const effect = resumed
+		? Effect.promise(() => Promise.resolve(resumed))
+		: request({
+				behavior: behavior(entry),
+				current: Option.getOrUndefined(current),
+				hash: entry.hash,
+				isServer: entry.store.isServer,
+				options: entry.options,
+				page,
+				services: entry.services,
+			});
+	return Effect.map(effect, (data) => shared(entry, current, data));
+}
+
 /**
  * An entry for a query hash. `gcTime`, `staleTime` and the revalidation
  * settings are read once here, since they shape the atoms; the request
  * reads the latest options each time it runs.
  */
-export function make(store: Store, hash: string, options: PlainOptions): Entry {
+export function make(store: Store, hash: string, options: EntryOptions): Entry {
 	const settings = behaviorOf(store.defaults, options);
 	const gcTime = settings.gcTime ?? (store.isServer ? Infinity : 300_000);
-	const fetcher = Atom.make(
-		Effect.suspend(() =>
-			request({
-				behavior: behavior(entry),
-				hash,
-				isServer: store.isServer,
-				options: entry.options,
-				services: entry.services,
-			}),
-		),
-	);
-	const data = Atom.writable<Result, unknown>(fetcher.read, (ctx, value) => {
-		ctx.setSelf(AsyncResult.success(value));
+	const fetcher = Atom.make((get) => startRequest(entry, get.self<Result>()));
+	const data = Atom.writable<Result, Result>(fetcher.read, (ctx, value) => {
+		ctx.setSelf(value);
 	}).pipe(Atom.setIdleTTL(millis(gcTime)), Atom.withLabel(hash));
 	const signal = revalidationSignal(settings, store.isServer);
 	const read = Atom.swr(data, {
@@ -158,13 +212,18 @@ export function make(store: Store, hash: string, options: PlainOptions): Entry {
 		staleTime: millis(settings.staleTime ?? 0),
 	});
 	const entry: Entry = {
+		command: undefined,
 		data,
+		fetchDirection: undefined,
+		fetchNextPage: () => Effect.runPromise(fetchPage(entry, "forward")),
+		fetchPreviousPage: () => Effect.runPromise(fetchPage(entry, "backward")),
 		hash,
 		invalidated: false,
 		options,
 		promises: {},
 		read,
 		refetch: () => Effect.runPromise(refetch(entry)),
+		resumed: undefined,
 		services: store.services,
 		store,
 	};
@@ -209,6 +268,23 @@ export function isReadUnsafe(entry: Entry): boolean {
 	);
 }
 
+/** The data atom's result if the registry holds one, without building it (which would fetch). */
+export function peekUnsafe(entry: Entry): Option.Option<Result> {
+	const node = entry.store.registry.getNodes().get(entry.data);
+	if (node === undefined || node.currentState() !== "valid") {
+		return Option.none();
+	}
+	return Option.some<Result>(node.value());
+}
+
+/** A request is in flight. Doesn't build the atom. */
+export function isFetchingUnsafe(entry: Entry): boolean {
+	return Option.match(peekUnsafe(entry), {
+		onNone: () => false,
+		onSome: (result) => result.waiting,
+	});
+}
+
 /** Refresh the data atom and read it, so the request starts even unread. */
 function refreshUnsafe(entry: Entry): Result {
 	const registry = entry.store.registry;
@@ -219,16 +295,26 @@ function refreshUnsafe(entry: Entry): Result {
 
 /**
  * Start the query unless its data is fresh or a request is in flight.
- * Server clients only fetch what's missing. Returns the current result.
+ * Server clients only fetch what's missing or invalidated. Returns the
+ * current result.
+ * `page` shapes the request this starts (`{ pages }` for a first load).
  */
-export function startUnsafe(entry: Entry): Result {
+export function startUnsafe(entry: Entry, page: PageRequest = {}): Result {
+	entry.command = page;
 	// Reading an atom the registry doesn't hold yet builds it, which starts
-	// its first request; that result is `waiting`, so it isn't stale.
+	// its first request (taking the command); that result is `waiting`.
 	const current = entry.store.registry.get(entry.data);
-	const missing = Option.isNone(AsyncResult.value(current));
-	if (isStaleUnsafe(entry, current) && (missing || !entry.store.isServer)) {
+	if (entry.command === undefined) {
+		return current;
+	}
+	const wanted =
+		!entry.store.isServer ||
+		entry.invalidated ||
+		Option.isNone(AsyncResult.value(current));
+	if (wanted && isStaleUnsafe(entry, current)) {
 		return refreshUnsafe(entry);
 	}
+	entry.command = undefined;
 	return current;
 }
 
@@ -244,9 +330,12 @@ function settled(entry: Entry): Effect.Effect<unknown, unknown> {
  * some (stale data revalidates in the background), else once the request
  * settles.
  */
-export function load(entry: Entry): Effect.Effect<unknown, unknown> {
+export function load(
+	entry: Entry,
+	page: PageRequest = {},
+): Effect.Effect<unknown, unknown> {
 	return Effect.suspend(() => {
-		const value = AsyncResult.value(startUnsafe(entry));
+		const value = AsyncResult.value(startUnsafe(entry, page));
 		return Option.isSome(value) ? Effect.succeed(value.value) : settled(entry);
 	});
 }
@@ -257,6 +346,52 @@ export function refetch(entry: Entry): Effect.Effect<void> {
 		refreshUnsafe(entry);
 		return Effect.ignore(settled(entry));
 	});
+}
+
+/**
+ * Load one more page at `direction`'s end, after the request in flight (a
+ * page joins the list that request returns). Without data, loads the first
+ * page. Never fails.
+ */
+export function fetchPage(
+	entry: Entry,
+	direction: Direction,
+): Effect.Effect<void> {
+	return Effect.suspend(() => {
+		const inFlight = isFetchingUnsafe(entry)
+			? Effect.ignore(settled(entry))
+			: Effect.void;
+		return Effect.andThen(
+			inFlight,
+			Effect.suspend(() => {
+				entry.command = { direction };
+				refreshUnsafe(entry);
+				return Effect.ignore(settled(entry));
+			}),
+		);
+	});
+}
+
+function pagesOf(entry: Entry, result: Result) {
+	const options = entry.options;
+	const data = Option.getOrUndefined(AsyncResult.value(result));
+	return options.kind === "infinite" && isInfiniteData(data)
+		? { data, options }
+		: undefined;
+}
+
+export function hasNextPageUnsafe(entry: Entry, result: Result): boolean {
+	const paged = pagesOf(entry, result);
+	return (
+		paged !== undefined && nextPageParam(paged.options, paged.data) != null
+	);
+}
+
+export function hasPreviousPageUnsafe(entry: Entry, result: Result): boolean {
+	const paged = pagesOf(entry, result);
+	return (
+		paged !== undefined && previousPageParam(paged.options, paged.data) != null
+	);
 }
 
 /**
@@ -275,15 +410,35 @@ export function invalidate(entry: Entry): Effect.Effect<void> {
 
 /** The cached data, without building the atom (which would fetch). */
 export function getDataUnsafe(entry: Entry): Option.Option<unknown> {
-	const node = entry.store.registry.getNodes().get(entry.data);
-	if (node === undefined || node.currentState() !== "valid") {
-		return Option.none();
-	}
-	return AsyncResult.value(node.value());
+	return Option.flatMap(peekUnsafe(entry), AsyncResult.value);
 }
 
-/** Write data. Readers re-render with it without suspending. */
-export function setDataUnsafe(entry: Entry, data: unknown): void {
+/**
+ * Write data as if a request had returned it at `at`. Readers re-render
+ * with it without suspending; equal data keeps its identity.
+ */
+export function setDataUnsafe(
+	entry: Entry,
+	data: unknown,
+	at: number = Date.now(),
+): void {
 	entry.invalidated = false;
-	entry.store.registry.set(entry.data, data);
+	entry.store.registry.set(
+		entry.data,
+		AsyncResult.success(shared(entry, getDataUnsafe(entry), data), {
+			timestamp: at,
+		}),
+	);
+}
+
+/**
+ * Adopt a request started elsewhere (the server's, during hydration),
+ * unless the entry has data or a request of its own.
+ */
+export function resumeUnsafe(entry: Entry, promise: PromiseLike<unknown>) {
+	if (Option.isSome(getDataUnsafe(entry)) || isFetchingUnsafe(entry)) {
+		return;
+	}
+	entry.resumed = promise;
+	refreshUnsafe(entry);
 }
