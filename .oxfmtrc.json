@@ -9,6 +9,9 @@
 		"coverage/**",
 		"**/dist/**",
 		"pnpm-lock.yaml",
-		".repos/**"
+		".repos/**",
+		"**/routeTree.gen.ts",
+		"**/.next/**",
+		"**/.tanstack/**"
 	]
 }

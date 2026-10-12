@@ -12,3 +12,10 @@
 /packages/*/LICENSE.md
 /packages/*/CHANGELOG.md
 /packages/*/*.tgz
+
+# Framework build output
+**/.next
+**/.tanstack
+**/.output
+**/next-env.d.ts
+**/*.tsbuildinfo

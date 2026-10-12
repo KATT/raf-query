@@ -8,7 +8,7 @@ The cache's mechanics (dedupe, staleness, retries, infinite paging, SSR hydratio
 
 ## Status
 
-Design spec. This README describes the API being built; nothing is published yet.
+Early. Both packages are on npm at `0.0.x`, and the API can still change between patch releases. [`examples/`](examples/) has the same issue tracker built on TanStack Start and on Next.js App Router.
 
 ## Packages
 
@@ -39,13 +39,13 @@ A query is a **factory**: a function of zero or one argument that returns `query
 ```ts
 import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
 
+// TanStack Start server functions (`createServerFn`); in Next.js, server actions.
+import { getPost, listComments } from "./posts.functions.ts";
+
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
 		queryKey: ["post", input.slug],
-		queryFn: async ({ signal }) => {
-			const res = await fetch(`/api/posts/${input.slug}`, { signal });
-			return (await res.json()) as Post;
-		},
+		queryFn: () => getPost({ data: input }),
 		staleTime: 30_000,
 	});
 }
@@ -53,15 +53,17 @@ export function postQuery(input: { slug: string }) {
 export function commentsQuery(input: { slug: string }) {
 	return infiniteQueryOptions({
 		queryKey: ["comments", input.slug],
-		queryFn: ({ pageParam, signal }) =>
-			api.comments.list({ slug: input.slug, cursor: pageParam }, { signal }),
-		initialPageParam: null as string | null,
+		queryFn: (context) =>
+			listComments({ data: { slug: input.slug, cursor: context.pageParam } }),
+		initialPageParam: 0,
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
 	});
 }
 ```
 
 Factories must take at most one argument; the type rejects two or more. The single argument is the query's **input** and must be serializable, because it is what a handle carries.
+
+A `queryFn` returns a value, a promise, or an [Effect](#effect). It receives `queryKey` and an abort `signal`; paged ones also get `pageParam` and `direction`. TypeScript infers the page type from `queryFn`, so if `getNextPageParam` comes first in the object literal (sorted keys), pass the types instead: `infiniteQueryOptions<CommentPage, number>({ ... })`.
 
 The factory is the only place a query is declared paged. Every other API — `prefetch`, `ensure`, `fetch`, `useQuery`, `useWaterfall`, `invalidate`, `setData` — takes either kind and infers the rest from the factory's type.
 
@@ -78,9 +80,10 @@ All three verbs live on the query client and accept a factory plus its input.
 ```tsx
 // TanStack Start
 export const Route = createFileRoute("/posts/$slug")({
-	loader: async ({ context: { queryClient: qc }, params }) => {
-		const comments = qc.prefetch(commentsQuery, { slug: params.slug });
-		const post = await qc.ensure(postQuery, { slug: params.slug });
+	loader: async (args) => {
+		const qc = args.context.queryClient;
+		const comments = qc.prefetch(commentsQuery, { slug: args.params.slug });
+		const post = await qc.ensure(postQuery, { slug: args.params.slug });
 		return { post, comments };
 	},
 	component: PostPage,
@@ -133,26 +136,26 @@ Handles hold no data and no functions. Data reaches the client cache through the
 const [promise, controls] = useQuery(factory, handle, options?);
 ```
 
-`options` takes [`whilePending`](#when-the-url-changes) and per-read refetch settings (`refetchInterval`, `refetchOnWindowFocus`). There is no option to change the input; the handle decides what is read.
+`options` takes [`whilePending`](#when-the-url-changes) and per-read refetch settings (`refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`). There is no option to change the input; the handle decides what is read.
 
 `promise` is a stable `Promise<Data>` owned by the cache. Unwrap it with `use()`. When the cache already has data, the promise is pre-resolved and `use()` returns synchronously without suspending.
 
 ```tsx
 function PostPage() {
 	const loaderData = Route.useLoaderData();
-	const [postPromise, post] = useQuery(postQuery, loaderData.post);
-	const { title, body } = use(postPromise);
+	const [postPromise, postState] = useQuery(postQuery, loaderData.post);
+	const post = use(postPromise);
 
 	return (
 		<article>
-			<h1>{title}</h1>
+			<h1>{post.title}</h1>
 			<button
-				disabled={post.isFetching}
-				onClick={() => startTransition(() => post.refetch())}
+				disabled={postState.isFetching}
+				onClick={() => startTransition(() => postState.refetch())}
 			>
 				Refresh
 			</button>
-			<p>{body}</p>
+			<p>{post.body}</p>
 			<Suspense fallback={<CommentsSkeleton />}>
 				<Comments handle={loaderData.comments} />
 			</Suspense>
@@ -186,11 +189,11 @@ With an `infiniteQueryOptions` factory, `useQuery` returns the same tuple. The p
 ```tsx
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	const [pagesPromise, comments] = useQuery(commentsQuery, props.handle);
-	const { pages } = use(pagesPromise);
+	const data = use(pagesPromise);
 
 	return (
 		<>
-			{pages
+			{data.pages
 				.flatMap((page) => page.items)
 				.map((comment) => (
 					<Comment key={comment.id} {...comment} />
@@ -222,16 +225,16 @@ export const Route = createFileRoute("/posts")({
 		sort: search.sort === "oldest" ? "oldest" : "newest",
 		page: Number(search.page ?? 1),
 	}),
-	loaderDeps: ({ search }) => search,
-	loader: ({ context: { queryClient: qc }, deps }) => ({
-		posts: qc.prefetch(postsQuery, deps),
+	loaderDeps: (args) => args.search,
+	loader: (args) => ({
+		posts: args.context.queryClient.prefetch(postsQuery, args.deps),
 	}),
 	component: PostsPage,
 });
 
 function PostsPage() {
-	const { posts } = Route.useLoaderData();
-	const [postsPromise, postsState] = useQuery(postsQuery, posts, {
+	const loaderData = Route.useLoaderData();
+	const [postsPromise, postsState] = useQuery(postsQuery, loaderData.posts, {
 		whilePending: "previous",
 	});
 
@@ -305,6 +308,13 @@ function PostAuthor(props: { post: Post }) {
 
 The name is the warning: each waterfall is an extra round trip after render. First try to get the input from route params so the loader can start it, or have the backend return it with its parent.
 
+During SSR the `queryFn` runs on the server. TanStack Start server functions work there. Next.js rejects server actions called while rendering, so in Next.js start the dependent query in the server component instead:
+
+```tsx
+const post = await qc.fetch(postQuery, { slug });
+const author = qc.prefetch(authorQuery, { id: post.authorId });
+```
+
 For event-driven preloading, call the client directly: `onPointerEnter={() => qc.prefetch(postQuery, { slug })}`.
 
 ## Mutations
@@ -331,7 +341,7 @@ function EditTitle(props: { post: Post }) {
 }
 ```
 
-`await qc.invalidate(...)` resolves once every query currently being read has refetched, so the action's pending state lasts until the fresh data is on screen.
+`updatePost` is a server function (or a Next.js server action). `await qc.invalidate(...)` resolves once every query currently being read has refetched, so the action's pending state lasts until the fresh data is on screen. For an error message, wrap the action in `useActionState` and return the caught error.
 
 | Call                                  | Effect                                                                  |
 | ------------------------------------- | ----------------------------------------------------------------------- |
@@ -367,7 +377,7 @@ export function getRouter() {
 }
 ```
 
-`setupRouterIntegration` streams queries during SSR, clears the request's cache when the response finishes, and turns `redirect()` thrown from a `queryFn` into a router navigation. `getRouter` runs per request on the server, so each request gets its own client.
+`setupRouterIntegration` streams queries during SSR, clears the request's cache when the response finishes, and turns `redirect()` thrown from a `queryFn` into a router navigation. `getRouter` runs per request on the server, so each request gets its own client. Options: `dehydrateOptions` (`filter`, `keepErrors`, `serializeData`), `hydrateOptions` (`deserializeData`), and `handleRedirects: false` to handle redirects yourself. By default a server error crosses to the browser as a generic error, so its message doesn't leak into the page.
 
 ### Next.js App Router
 
@@ -401,11 +411,11 @@ import { HydrationBoundary } from "@raf-query/react/rsc";
 export default async function Page(props: {
 	params: Promise<{ slug: string }>;
 }) {
-	const { slug } = await props.params;
+	const params = await props.params;
 	const qc = getQueryClient();
 
-	const comments = qc.prefetch(commentsQuery, { slug });
-	const post = await qc.fetch(postQuery, { slug });
+	const comments = qc.prefetch(commentsQuery, { slug: params.slug });
+	const post = await qc.fetch(postQuery, { slug: params.slug });
 
 	return (
 		<HydrationBoundary client={qc}>
@@ -422,25 +432,85 @@ export default async function Page(props: {
 
 - `getQueryClient` is scoped to one request by React's `cache()`.
 - `HydrationBoundary` sends the request client's entries to the browser cache; pending ones stream as promises. Render one in each server component that starts queries for client components. Entries already sent in this request are skipped.
-- `QueryProvider` creates the browser client, and streams queries that client components start during SSR (`useWaterfall`) into the HTML.
+- `QueryProvider` creates the browser client, and streams queries that client components start during SSR (`useWaterfall`) into the HTML. Pass `config` for the client's options; it must be serializable.
 - Server components that only render data can `await qc.fetch(...)` anywhere; the per-request client dedupes them.
+- Factories can call server actions: server components call them directly, and the browser calls them on refetch. Validate their arguments, since anyone can call them.
 
 #### Server-only queries
 
 A factory that imports server-only code (a database client) can't be imported by a client component, so it can't be read with `useQuery`. Render its data in a server component, or pass a plain promise prop and `use()` it on the client. Refresh it with `router.refresh()`.
 
+## Effect
+
+raf-query runs requests on [Effect](https://effect.website), and Effect code can use it without wrapping:
+
+- A `queryFn` can return an `Effect`. Cancelling the request interrupts it.
+- `retry` accepts a `Schedule` as well as a count or predicate.
+- `qc.effect` has Effect versions of `ensure`, `fetch` and `invalidate`, plus `watch`, a `Stream` of the entry's state.
+
+```ts
+import { Effect, Schedule, Stream } from "effect";
+
+export function issueQuery(input: { id: number }) {
+	return queryOptions({
+		queryKey: ["issue", input.id],
+		queryFn: () => IssueRepo.get(input.id), // Effect<Issue, IssueNotFound>
+		retry: Schedule.exponential("200 millis").pipe(Schedule.upTo({ times: 3 })),
+	});
+}
+
+const program = Effect.gen(function* () {
+	const issue = yield* qc.effect.fetch(issueQuery, { id: 1 });
+	yield* qc.effect.watch(issueQuery, { id: 1 }).pipe(
+		Stream.map((state) => state.data?.title),
+		Stream.runForEach((title) => Effect.log(title)),
+	);
+});
+```
+
+`watch` counts as a reader while it runs, so invalidation and window focus refetch the entry.
+
 ## API reference
+
+`QueryClient`:
+
+| Member                                  | Use                                                                             |
+| --------------------------------------- | ------------------------------------------------------------------------------- |
+| `new QueryClient(config?)`              | `config.defaults` (query options below), `config.onError`, `config.isServer`    |
+| `prefetch`, `ensure`, `fetch`           | [Start queries](#starting-queries)                                              |
+| `invalidate`, `setData`, `getData`      | [Write and read the cache](#mutations)                                          |
+| `effect`                                | [Effect versions](#effect) of `ensure`, `fetch`, `invalidate`, plus `watch`     |
+| `subscribe(listener)`                   | Cache events: `added`, `updated`, `removed`, and `failed` (with the `error`)    |
+| `getAll()`, `getQuery(factory, input?)` | Cache entries, for devtools and integrations                                    |
+| `clear()`                               | Drop every entry and abort in-flight requests                                   |
+| `mount()`                               | Start window-focus and reconnect refetching. The providers call it              |
+| `isServer`                              | Detected from `window`. Server clients don't retry, never gc, skip stale timers |
+
+Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
+
+| Option                                                | Default                                   |
+| ----------------------------------------------------- | ----------------------------------------- |
+| `staleTime`                                           | `0` ms                                    |
+| `gcTime`                                              | 5 minutes; `Infinity` on the server       |
+| `retry` (count, `boolean`, predicate, `Schedule`)     | `3`; `0` on the server                    |
+| `retryDelay` (ms, or a function of the failure count) | Doubling from 1 s, at most 30 s           |
+| `refetchOnWindowFocus`, `refetchOnReconnect`          | `true` (only read, stale queries refetch) |
+
+`infiniteQueryOptions` also takes `getPreviousPageParam` and `maxPages`.
 
 `@raf-query/core`:
 
-| Export                                         | Use                                               |
-| ---------------------------------------------- | ------------------------------------------------- |
-| `QueryClient`                                  | The cache. Methods listed above                   |
-| `queryOptions(options)`                        | Typed options for a query factory                 |
-| `infiniteQueryOptions(options)`                | Typed options for a paged query factory           |
-| `allKeyed(record)`                             | Await a record of promises, keeping keys          |
-| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations |
-| `QueryHandle<TFactory>`                        | Handle type for props                             |
+| Export                                         | Use                                                        |
+| ---------------------------------------------- | ---------------------------------------------------------- |
+| `QueryClient`                                  | The cache                                                  |
+| `queryOptions(options)`                        | Typed options for a query factory                          |
+| `infiniteQueryOptions(options)`                | Typed options for a paged query factory                    |
+| `allKeyed(record)`                             | Await a record of promises, keeping keys                   |
+| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations          |
+| `hashKey(key)`, `matchesKey(key, prefix)`      | Key helpers                                                |
+| `CancelledError`                               | Rejection of a request cancelled by `clear()` or a restart |
+| `QueryHandle<TFactory>`                        | Handle type for props                                      |
+| `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                           |
 
 `@raf-query/react` (plus all of the above):
 

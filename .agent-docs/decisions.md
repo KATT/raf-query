@@ -6,7 +6,7 @@ Append-only in spirit; rewrite in place when a decision changes. Keep each entry
 
 - Vite+/pnpm workspace, husky, oxlint/oxfmt, release-it, GitHub workflows.
 - Publishable packages: `packages/core` (`@raf-query/core`) and `packages/react` (`@raf-query/react`), each a library entry only (`src/index.ts` → `dist/index.mjs`). No `bin`.
-- Root scripts fan out with `pnpm -r --filter "./packages/*"` (build / test / typecheck); lint / format / check run once at the root.
+- Root scripts fan out with `pnpm -r --filter`: `build` (packages), `build:examples`, `test` (packages, tooling), `typecheck` (examples, packages, tooling). Lint / format / check run once at the root. CI has a Build Examples job.
 - Package `exports` point at `./src/index.ts` so workspace consumers (react → core, examples) need no build; `publishConfig.exports` swaps in `./dist/index.mjs`, which `pnpm pack` applies.
 - Root `scripts/` holds repo scripts (`sync-package-docs.ts`); root `CHANGELOG.md` is shared by both packages.
 
@@ -77,7 +77,6 @@ Spec lives in root `README.md`. Picks, and what lost:
 - `examples/ui` layout: shadcn components in `src/components/*.tsx`, `src/lib/utils.ts`, `src/hooks/*`, Tailwind v4 `src/styles/globals.css` (no tailwind config). `package.json` `exports`: `./globals.css`, `./components/*`, `./lib/*`, `./hooks/*`. Its `components.json` aliases point at `@examples/ui/...`, so `shadcn add` run there lands in the shared package.
 - Each app's `components.json` sets `ui` → `@examples/ui/components` and `utils` → `@examples/ui/lib/utils`, and `tailwind.css` → the shared `globals.css`.
 - Set `rsc: true` in `examples/ui/components.json` so interactive components get `"use client"`; Next server components import from the shared package, and TanStack Start ignores the directive.
-- `pnpm-workspace.yaml` needs `examples/*` when the first example lands.
 
 App scope, small enough to read in one sitting, covering every README feature:
 
@@ -86,11 +85,26 @@ App scope, small enough to read in one sitting, covering every README feature:
 | Issue list with status filter, sort, page in URL | search params → loader → `prefetch`, `whilePending: "previous"`, `isPrevious` dimming |
 | Issue detail                                     | `ensure` (blocking) + keyed Suspense skeleton when switching issues                   |
 | Comments under an issue                          | paged `useQuery`, streamed `prefetch`, Load more                                      |
-| Assignee card                                    | `useWaterfall` (assignee id only known from the issue)                                |
+| Assignee card                                    | Start: `useWaterfall`. Next.js: `await qc.fetch` the issue, then `prefetch` the user  |
 | Edit title, add comment                          | form Actions + `useOptimistic` + `await qc.invalidate`                                |
-| Next.js only: sidebar counts                     | server component `await qc.fetch(...)` with a server-only factory                     |
 
 App: **issue tracker** (confirmed). Data: an in-memory fake DB with artificial latency, shared by both apps so their behavior matches. **`queryFn`s call server functions** — `createServerFn` in TanStack Start, server functions in Next.js — not HTTP route handlers.
+
+## 2026-10-12 — How the examples are built (agent)
+
+- **`examples/db`** (`@examples/db`) is the fake DB; **`@examples/db/types`** is its client-safe half (Effect schemas, interfaces, `currentUser`). Client code imports only `/types`; the root entry reads `process.env` and the store on `globalThis`, which must stay out of client bundles.
+- Inputs are **Effect Schemas** in `/types`. Start validators and `validateSearch` take `Schema.toStandardSchemaV1(schema)`; Next server actions call `Schema.decodeUnknownSync(schema)(input)` (they're public endpoints, so they validate even though the parameter is typed). Next pages decode `searchParams` with `IssueListSearchParams` (strings → `IssueListInput`).
+- **Next.js rejects server actions during SSR** ("Server Functions cannot be called during initial render"). So no `useWaterfall` with a server-action `queryFn` in the Next app: the issue page `await`s the issue, then `prefetch`es its assignee. Comments embed their `author` (backend returns it with the parent) in both apps, so there's no per-comment lookup.
+- Comments list newest first, with the form on top: a new comment must land on the loaded first page, or it vanishes when the optimistic entry settles.
+- Start: `vite` is overridden to `@voidzero-dev/vite-plus-core` (no `vite` bin), so scripts are `vp build` / `vp dev` / `vp preview`. React Compiler runs via `@rolldown/plugin-babel` + `reactCompilerPreset()`. **Don't name a source file `server.ts`**: it becomes `dist/server/server.js` and replaces the server entry (500 `serverBuild.fetch` undefined).
+- `routeTree.gen.ts` is regenerated on every Start build in its own style, so oxfmt and oxlint both ignore it. Next: `reactCompiler: true`, `transpilePackages` for the workspace packages (their `exports` point at `.ts` source).
+
+## 2026-10-12 — Library internals (agent)
+
+- `.oxlintrc.json` turns off `anti-slop/no-unknown-parameters`, `no-unknown-returns`, `no-unsafe-dictionary-type` for `packages/*/src/**`: the cache is type-erased on purpose and factory generics restore types at the public boundary. Each remaining cast has a `SAFETY:` comment and an oxlint disable. Where a value must be widened before the cast, use the package's `unsafeCast<T>(value: unknown)` (`cast.ts`, not exported): `anti-slop/no-widen-then-assert` bans the inline `const x: unknown = …; x as T` form.
+- The TanStack Router integration stores its payload under the `raf` key of the router's dehydrated state (`{ raf: { initial, stream } }`).
+- The `"failed"` `CacheEvent` exists for integrations (redirect handling) and fires after retries.
+- React tests: render, rerender and click inside **async** `act` (`await act(async () => …)`); a sync `act` never resumes a suspended tree after its promise resolves. Responding to a fake request needs a macrotask wait inside the act. Effect tests that fork a stream before a cache write need `Effect.forkChild(x, { startImmediately: true })`.
 
 ## 2026-10-12 — npm release path
 

@@ -21,6 +21,16 @@ jobs:
           npm install --engine-strict "$RUNNER_TEMP/core.tgz" "$RUNNER_TEMP/react.tgz" react
           node -e "import('@raf-query/react').then((m) => console.log(m.name))"
 
+  build_examples:
+    name: Build Examples
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - run: pnpm build:examples
+
   engines_check:
     name: Engines Check
     runs-on: ubuntu-latest
