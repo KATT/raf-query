@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.17](https://github.com/KATT/raf-query/compare/0.0.16...0.0.17) (2026-10-12)
+
+### Features
+
+- **core:** pause retries while the browser is offline ([#18](https://github.com/KATT/raf-query/issues/18)) ([a25c664](https://github.com/KATT/raf-query/commit/a25c664359fe7248cdc8d91a14d524e37b467c6c))
+
 ## [0.0.16](https://github.com/KATT/raf-query/compare/0.0.15...0.0.16) (2026-10-12)
 
 ### Bug Fixes
