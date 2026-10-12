@@ -5,7 +5,7 @@ import type { InfiniteData, InfiniteQueryOptions } from "./options.ts";
 export type Direction = "backward" | "forward";
 
 type Pages = InfiniteData<unknown, unknown>;
-type PagedOptions = InfiniteQueryOptions<unknown, unknown>;
+type PagedOptions = InfiniteQueryOptions<unknown, unknown, unknown, unknown>;
 
 export function isInfiniteData(data: unknown): data is Pages {
 	return (

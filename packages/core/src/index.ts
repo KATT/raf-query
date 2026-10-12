@@ -35,5 +35,6 @@ export {
 	type QueryOptions,
 	queryOptions,
 	type RetryPolicy,
+	type ServicesOf,
 } from "./options.ts";
 export type { Thenable } from "./thenable.ts";

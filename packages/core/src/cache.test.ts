@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from "@effect/vitest";
 import {
 	Cause,
+	Context,
 	Data,
 	Deferred,
 	Effect,
 	Exit,
 	Fiber,
+	Layer,
 	Option,
 	Scope,
 	Stream,
@@ -53,6 +55,107 @@ function issueQuery(input: { id: number }) {
 		retry: false,
 	});
 }
+
+class Greeting extends Context.Service<Greeting, string>()("test/Greeting") {}
+
+function greetingQuery(input: { name: string }) {
+	return queryOptions({
+		queryFn: () =>
+			Effect.gen(function* () {
+				const greeting = yield* Greeting;
+				if (input.name === "") {
+					return yield* Effect.fail(new NotFound({ id: 0 }));
+				}
+				const span = yield* Effect.orDie(Effect.currentSpan);
+				return { span: span.name, text: `${greeting}, ${input.name}` };
+			}),
+		queryKey: ["greeting", input.name],
+		retry: false,
+	});
+}
+
+describe("QueryCache services", () => {
+	it.effect("a queryFn reads services the cache was built with", () =>
+		Effect.gen(function* () {
+			const services = yield* Layer.build(
+				QueryCache.layer({ isServer: false }).pipe(
+					Layer.provide(Layer.succeed(Greeting, "Hello")),
+				),
+			);
+			const cache = Context.get(services, QueryCache.QueryCache);
+			const query = cache.getQueryUnsafe(greetingQuery, { name: "Ada" });
+
+			const greeting = yield* Effect.promise(() => Query.readUnsafe(query));
+
+			expect(greeting).toEqual({
+				span: "raf-query.request",
+				text: "Hello, Ada",
+			});
+		}),
+	);
+
+	it.effect("a verb's caller provides services, over the cache's", () =>
+		Effect.gen(function* () {
+			const cache = yield* QueryCache.make({ isServer: false });
+
+			const handle = yield* cache
+				.ensure(greetingQuery, { name: "Ada" })
+				.pipe(Effect.provide(Layer.succeed(Greeting, "Hi")));
+			const layered = yield* Effect.gen(function* () {
+				const inner = yield* QueryCache.QueryCache;
+				return yield* inner
+					.fetch(greetingQuery, { name: "Bob" })
+					.pipe(Effect.provideService(Greeting, "Hey"));
+			}).pipe(
+				Effect.provide(
+					QueryCache.layer({ isServer: false }).pipe(
+						Layer.provideMerge(Layer.succeed(Greeting, "Hello")),
+					),
+				),
+			);
+
+			expect(handle.ensured).toBe(true);
+			const data = yield* cache.getData(greetingQuery, { name: "Ada" });
+			expect(Option.map(data, (greeting) => greeting.text)).toEqual(
+				Option.some("Hi, Ada"),
+			);
+			expect(layered.text).toBe("Hey, Bob");
+		}),
+	);
+
+	it.effect("a queryFn's typed failure stays typed", () =>
+		Effect.gen(function* () {
+			const cache = yield* QueryCache.make({ isServer: false });
+
+			const error = yield* Effect.flip(
+				cache
+					.fetch(greetingQuery, { name: "" })
+					.pipe(Effect.provideService(Greeting, "Hi")),
+			);
+
+			expect(error).toBeInstanceOf(NotFound);
+		}),
+	);
+
+	it.effect("requests a render starts reuse the latest caller's services", () =>
+		Effect.gen(function* () {
+			const cache = yield* QueryCache.make({ isServer: false });
+			const query = yield* cache
+				.getQuery(greetingQuery, { name: "Ada" })
+				.pipe(Effect.provideService(Greeting, "Hi"));
+			const first = yield* Effect.promise(() => Query.readUnsafe(query));
+			yield* cache
+				.prefetch(greetingQuery, { name: "Ada" })
+				.pipe(Effect.provideService(Greeting, "Hey"));
+			Query.subscribeUnsafe(query, () => {});
+
+			yield* cache.invalidate(greetingQuery, { name: "Ada" });
+
+			expect(first.text).toBe("Hi, Ada");
+			expect(Query.getUnsafe(query).data?.text).toBe("Hey, Ada");
+		}),
+	);
+});
 
 describe("QueryCache", () => {
 	it.effect("ensure and fetch succeed with the handle and the data", () =>

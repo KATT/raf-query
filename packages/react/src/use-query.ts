@@ -74,7 +74,7 @@ export type UseEnsuredQueryResult<TFactory extends QueryFactory> = readonly [
 ];
 
 export function queryFor<TFactory extends QueryFactory>(
-	client: QueryClient,
+	client: QueryClient<unknown>,
 	factory: TFactory,
 	input: unknown,
 ): Query.Of<TFactory> {

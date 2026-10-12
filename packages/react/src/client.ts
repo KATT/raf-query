@@ -11,28 +11,61 @@ import {
 	type QueryFactory,
 	type QueryHandle,
 } from "@raf-query/core";
-import { Effect, Exit, Option, Scope } from "effect";
+import { Context, Effect, Exit, Layer, Option, Scope } from "effect";
 
-export interface QueryClientConfig extends QueryCache.Config {
+import { unsafeCast } from "./cast.ts";
+
+export interface QueryClientConfig<TServices = never>
+	extends QueryCache.Config {
+	/**
+	 * Services for queries whose `queryFn` returns an Effect. Built with the
+	 * client, so it must build synchronously; `dispose()` runs its
+	 * finalizers.
+	 */
+	readonly layer?: Layer.Layer<TServices>;
 	/** Called with every failed request, including failed prefetches. */
 	onError?(error: unknown, query: Query.Query): void;
 }
 
 /**
+ * A verb's Effect, run by a client. Its requirement is the factory's
+ * `ServicesOf`, which the client's verbs only accept when its `layer`
+ * provides them.
+ */
+function provided<A, E, R>(
+	effect: Effect.Effect<A, E, R>,
+): Effect.Effect<A, E> {
+	// SAFETY: the cache was built over the client's `layer`, so every request
+	// already runs with those services, and the verbs take only factories of
+	// `QueryFactory<TServices>`.
+	return unsafeCast<Effect.Effect<A, E>>(effect);
+}
+
+/**
  * The query cache, with Promise methods. Create one per request on the
  * server and one per browser tab. `effect` is the same cache's Effect API.
+ * Its verbs take factories whose `queryFn` needs at most `TServices`, the
+ * services of `config.layer`.
  */
-export class QueryClient {
+export class QueryClient<TServices = never> {
 	/** The Effect-native cache behind this client. */
 	readonly effect: QueryCache.QueryCache;
 	readonly isServer: boolean;
-	/** Owns the cache's fibers and mounts; lives as long as the client. */
+	/**
+	 * Owns the cache's fibers, mounts and the layer's services; lives until
+	 * `dispose()`.
+	 */
 	readonly #scope = Scope.makeUnsafe();
 
-	constructor(config: QueryClientConfig = {}) {
-		this.effect = Effect.runSync(
-			QueryCache.make(config).pipe(Scope.provide(this.#scope)),
+	constructor(config: QueryClientConfig<TServices> = {}) {
+		const cache = QueryCache.layer(config);
+		const services = Effect.runSync(
+			Layer.buildWithScope(
+				config.layer ? Layer.provide(cache, config.layer) : cache,
+				this.#scope,
+			),
 		);
+		this.effect = Context.get(services, QueryCache.QueryCache);
 		this.isServer = this.effect.isServer;
 		const onError = config.onError;
 		if (onError) {
@@ -48,7 +81,7 @@ export class QueryClient {
 	 * The cache entry for a factory call, created if missing. Doesn't fetch.
 	 * For bindings; apps use the verbs.
 	 */
-	getQuery<TFactory extends QueryFactory>(
+	getQuery<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
 	): Query.Of<TFactory> {
@@ -60,11 +93,11 @@ export class QueryClient {
 	 * reused; stale data refetches in the background (in the browser only).
 	 * Errors surface where the data is read, never here.
 	 */
-	prefetch<TFactory extends QueryFactory>(
+	prefetch<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
 	): QueryHandle<TFactory> {
-		return Effect.runSync(this.effect.prefetch(factory, ...args));
+		return Effect.runSync(provided(this.effect.prefetch(factory, ...args)));
 	}
 
 	/**
@@ -73,19 +106,19 @@ export class QueryClient {
 	 * browser. The handle is marked `ensured`, so `useQuery` returns its data
 	 * directly.
 	 */
-	ensure<TFactory extends QueryFactory>(
+	ensure<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
 		...args: QueryCache.LoadArgs<TFactory>
 	): Promise<EnsuredQueryHandle<TFactory>> {
-		return Effect.runPromise(this.effect.ensure(factory, ...args));
+		return Effect.runPromise(provided(this.effect.ensure(factory, ...args)));
 	}
 
 	/** Like `ensure`, but resolves to the data. */
-	fetch<TFactory extends QueryFactory>(
+	fetch<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
 		...args: QueryCache.LoadArgs<TFactory>
 	): Promise<DataOf<TFactory>> {
-		return Effect.runPromise(this.effect.fetch(factory, ...args));
+		return Effect.runPromise(provided(this.effect.fetch(factory, ...args)));
 	}
 
 	/**
@@ -93,7 +126,7 @@ export class QueryClient {
 	 * refetches settle, so an action stays pending until fresh data is on
 	 * screen. Takes a factory and its input, or a {@link QueryFilter}.
 	 */
-	invalidate<TFactory extends QueryFactory>(
+	invalidate<TFactory extends QueryFactory<TServices>>(
 		...target: QueryCache.Target<TFactory>
 	): Promise<void> {
 		return Effect.runPromise(this.effect.invalidate(...target));
@@ -103,7 +136,7 @@ export class QueryClient {
 	 * Drop queries' data and errors, as if they were never fetched. Read ones
 	 * suspend and refetch; resolves once those refetches settle.
 	 */
-	reset<TFactory extends QueryFactory>(
+	reset<TFactory extends QueryFactory<TServices>>(
 		...target: QueryCache.Target<TFactory>
 	): Promise<void> {
 		return Effect.runPromise(this.effect.reset(...target));
@@ -113,14 +146,14 @@ export class QueryClient {
 	 * Remove queries from the cache and abort their requests. Readers keep the
 	 * removed entry until they render again.
 	 */
-	remove<TFactory extends QueryFactory>(
+	remove<TFactory extends QueryFactory<TServices>>(
 		...target: QueryCache.Target<TFactory>
 	): void {
 		Effect.runSync(this.effect.remove(...target));
 	}
 
 	/** Write data for a factory call. Readers re-render without suspending. */
-	setData<TFactory extends QueryFactory>(
+	setData<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
 		input: InputOf<TFactory>,
 		updater: QueryCache.Updater<DataOf<TFactory>>,
@@ -133,7 +166,7 @@ export class QueryClient {
 	 * itself be `undefined`; `Query.getUnsafe(getQuery(...)).hasData` tells
 	 * them apart.
 	 */
-	getData<TFactory extends QueryFactory>(
+	getData<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
 	): DataOf<TFactory> | undefined {
@@ -167,6 +200,14 @@ export class QueryClient {
 		return () => {
 			Effect.runSync(Scope.close(scope, Exit.void));
 		};
+	}
+
+	/**
+	 * Close the client: interrupt every request and timer, and release the
+	 * layer's services. Resolves once the layer's finalizers have run.
+	 */
+	dispose(): Promise<void> {
+		return Effect.runPromise(Scope.close(this.#scope, Exit.void));
 	}
 }
 

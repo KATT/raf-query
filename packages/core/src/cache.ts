@@ -3,6 +3,12 @@
  * scope; closing the scope interrupts every request and timer it started.
  * Everything that waits, or changes the cache, is an Effect; `getQueryUnsafe`
  * and `subscribeUnsafe` are for renders and external stores.
+ *
+ * Requests run with the services the cache was built with, under those of
+ * the latest verb that called for the entry. So the verbs that can start a
+ * request (`ensure`, `fetch`, `prefetch`, `getQuery`, `watch`) require the
+ * factory's {@link ServicesOf}; requests a render, a refetch or `invalidate`
+ * starts reuse the entry's last services.
  */
 import {
 	Clock,
@@ -40,6 +46,7 @@ import {
 	type QueryBehavior,
 	type QueryFactory,
 	type QueryHandle,
+	type ServicesOf,
 } from "./options.ts";
 import { Platform } from "./platform.ts";
 import type * as Query from "./query.ts";
@@ -123,7 +130,8 @@ export interface QueryCache {
 		...args: LoadArgs<TFactory>
 	): Effect.Effect<
 		EnsuredQueryHandle<TFactory>,
-		ErrorOf<TFactory> | Query.CancelledError
+		ErrorOf<TFactory> | Query.CancelledError,
+		ServicesOf<TFactory>
 	>;
 	/** Cache events from the moment the stream starts. */
 	readonly events: Stream.Stream<Event>;
@@ -131,7 +139,11 @@ export interface QueryCache {
 	fetch<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: LoadArgs<TFactory>
-	): Effect.Effect<DataOf<TFactory>, ErrorOf<TFactory> | Query.CancelledError>;
+	): Effect.Effect<
+		DataOf<TFactory>,
+		ErrorOf<TFactory> | Query.CancelledError,
+		ServicesOf<TFactory>
+	>;
 	/**
 	 * Cached data for a factory call. `Some(undefined)` when the data itself
 	 * is `undefined`.
@@ -141,14 +153,18 @@ export interface QueryCache {
 		...args: InputArgs<TFactory>
 	): Effect.Effect<Option.Option<DataOf<TFactory>>>;
 	/**
-	 * The cache entry for a factory call, created if missing. Doesn't fetch.
-	 * For bindings; apps use the verbs.
+	 * The cache entry for a factory call, created if missing. Doesn't fetch,
+	 * but its requests run with this fiber's services from now on. For
+	 * bindings; apps use the verbs.
 	 */
 	getQuery<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
-	): Effect.Effect<Query.Of<TFactory>>;
-	/** `getQuery`, synchronously, for renders. */
+	): Effect.Effect<Query.Of<TFactory>, never, ServicesOf<TFactory>>;
+	/**
+	 * `getQuery`, synchronously, for renders. Leaves the entry's services as
+	 * they are: the cache's, or the latest verb caller's.
+	 */
 	getQueryUnsafe<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
@@ -190,7 +206,7 @@ export interface QueryCache {
 	prefetch<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
-	): Effect.Effect<QueryHandle<TFactory>>;
+	): Effect.Effect<QueryHandle<TFactory>, never, ServicesOf<TFactory>>;
 	/**
 	 * Remove queries from the cache and interrupt their requests. Readers keep
 	 * the removed entry until they render again.
@@ -218,7 +234,7 @@ export interface QueryCache {
 	watch<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
-	): Stream.Stream<Query.State<DataOf<TFactory>>>;
+	): Stream.Stream<Query.State<DataOf<TFactory>>, never, ServicesOf<TFactory>>;
 }
 
 export const QueryCache = Context.Service<QueryCache>(TypeId);
@@ -332,6 +348,14 @@ export const make: (
 			return entry;
 		};
 
+		/** `build`, for a verb: the entry's requests get the caller's services. */
+		const buildFor = (factory: QueryFactory, input: unknown) =>
+			Effect.contextWith((caller: Context.Context<never>) => {
+				const entry = build(factory, input);
+				Entry.provide(entry, caller);
+				return Effect.succeed(entry);
+			});
+
 		const match = <TFactory extends QueryFactory>(target: Target<TFactory>) => {
 			// SAFETY: a target is a factory and its input, or a lone filter;
 			// `InputArgs` only narrows the input's type.
@@ -390,16 +414,15 @@ export const make: (
 			dehydrateStream: (options = {}) =>
 				dehydrateStream(() => state.entries.values(), subscribeUnsafe, options),
 			ensure: (factory, ...args) =>
-				Effect.suspend(() => {
-					const entry = build(factory, args[0]);
-					return load<typeof factory>(entry, args[1]?.pages).pipe(
+				Effect.flatMap(buildFor(factory, args[0]), (entry) =>
+					load<typeof factory>(entry, args[1]?.pages).pipe(
 						Effect.as({ ...handleOf<typeof factory>(entry), ensured: true }),
-					);
-				}),
+					),
+				),
 			events: listen(subscribeUnsafe),
 			fetch: (factory, ...args) =>
-				Effect.suspend(() =>
-					load<typeof factory>(build(factory, args[0]), args[1]?.pages),
+				Effect.flatMap(buildFor(factory, args[0]), (entry) =>
+					load<typeof factory>(entry, args[1]?.pages),
 				),
 			getData: (factory, ...args) =>
 				Effect.sync(() => {
@@ -410,7 +433,7 @@ export const make: (
 						: Option.none();
 				}),
 			getQuery: (factory, ...args) =>
-				Effect.sync(() => getQueryUnsafe(factory, ...args)),
+				Effect.map(buildFor(factory, args[0]), typed<typeof factory>),
 			getQueryUnsafe,
 			hydrate: (dehydrated, options = {}) =>
 				Effect.sync(() => hydrateEntries(entryFor, dehydrated, options)),
@@ -425,8 +448,7 @@ export const make: (
 				? Effect.void
 				: Effect.asVoid(RcRef.get(subscription)),
 			prefetch: (factory, ...args) =>
-				Effect.sync(() => {
-					const entry = build(factory, args[0]);
+				Effect.map(buildFor(factory, args[0]), (entry) => {
 					if (entry.state.hasData) {
 						revalidate(entry);
 					} else {
@@ -455,10 +477,12 @@ export const make: (
 			subscribeUnsafe,
 			[TypeId]: TypeId,
 			watch: (factory, ...args) =>
-				Stream.suspend(() =>
-					// SAFETY: as in `typed`, for every element.
-					unsafeCast<Stream.Stream<Query.State<DataOf<typeof factory>>>>(
-						Entry.changes(build(factory, args[0])),
+				Stream.unwrap(
+					Effect.map(buildFor(factory, args[0]), (entry) =>
+						// SAFETY: as in `typed`, for every element.
+						unsafeCast<Stream.Stream<Query.State<DataOf<typeof factory>>>>(
+							Entry.changes(entry),
+						),
 					),
 				),
 		};

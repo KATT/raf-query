@@ -6,7 +6,7 @@
  * Requests are Effects. The `*Unsafe` functions read and subscribe
  * synchronously, for renders and external stores that can't run an Effect.
  */
-import { Effect, type Pipeable, type Stream } from "effect";
+import { type Context, Effect, type Pipeable, type Stream } from "effect";
 import { dual } from "effect/Function";
 
 import { unsafeCast } from "./cast.ts";
@@ -19,6 +19,7 @@ import type {
 	ErrorOf,
 	QueryFactory,
 	QueryHandle,
+	ServicesOf,
 } from "./options.ts";
 import type { Thenable } from "./thenable.ts";
 
@@ -101,13 +102,15 @@ export type CancelledError = internal.CancelledError;
 
 export const isQuery: (value: unknown) => value is Query = internal.isQuery;
 
-function typed<TData, TError>(
-	effect: Effect.Effect<unknown, unknown>,
-): Effect.Effect<TData, TError | CancelledError> {
+function typed<TData, TError, TServices>(
+	effect: Effect.Effect<unknown, unknown, TServices>,
+): Effect.Effect<TData, TError | CancelledError, TServices> {
 	// SAFETY: an entry is keyed by its factory's `queryKey`, and only that
 	// factory's `queryFn` (or data written through it) fills it, so its data
 	// and failures have the factory's types. Interrupts become CancelledError.
-	return unsafeCast<Effect.Effect<TData, TError | CancelledError>>(effect);
+	return unsafeCast<Effect.Effect<TData, TError | CancelledError, TServices>>(
+		effect,
+	);
 }
 
 function typedState<TData>(state: State<unknown>): State<TData> {
@@ -118,23 +121,32 @@ function typedState<TData>(state: State<unknown>): State<TData> {
 /**
  * Start a request, or join the one in flight. Fails with the request's
  * error, or a {@link CancelledError} if the entry leaves the cache first.
+ * The entry's requests run with this fiber's services from now on, as after
+ * a `QueryCache` verb.
  */
 export const fetch: {
 	(
 		request?: FetchRequest,
 	): <TData, TFactory extends QueryFactory, TError>(
 		self: Query<TData, TFactory, TError>,
-	) => Effect.Effect<TData, TError | CancelledError>;
+	) => Effect.Effect<TData, TError | CancelledError, ServicesOf<TFactory>>;
 	<TData, TFactory extends QueryFactory, TError>(
 		self: Query<TData, TFactory, TError>,
 		request?: FetchRequest,
-	): Effect.Effect<TData, TError | CancelledError>;
+	): Effect.Effect<TData, TError | CancelledError, ServicesOf<TFactory>>;
 } = dual(
 	(args) => isQuery(args[0]),
 	<TData, TFactory extends QueryFactory, TError>(
 		self: Query<TData, TFactory, TError>,
 		request?: FetchRequest,
-	) => typed<TData, TError>(internal.fetch(internal.entryOf(self), request)),
+	) =>
+		typed<TData, TError, ServicesOf<TFactory>>(
+			Effect.contextWith((caller: Context.Context<never>) => {
+				const entry = internal.entryOf(self);
+				internal.provide(entry, caller);
+				return internal.fetch(entry, request);
+			}),
+		),
 );
 
 /** Refetch now; succeeds when the request settles, whatever its outcome. */
