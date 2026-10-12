@@ -729,7 +729,7 @@ function Panel(props: QueryDevtoolsPanelProps) {
 						))}
 					</select>
 					<button
-						onClick={() => void client.invalidate({ queryKey: [] })}
+						onClick={() => void client.invalidate({})}
 						style={{ ...control, cursor: "pointer" }}
 						type="button"
 					>

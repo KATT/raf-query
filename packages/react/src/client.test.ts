@@ -489,6 +489,31 @@ describe("invalidate", () => {
 		]);
 	});
 
+	it("narrows a filter with predicate, and matches everything with {}", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		function labelsQuery() {
+			return queryOptions({ queryFn: () => [], queryKey: ["labels"] });
+		}
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
+		qc.setData(backend.issueQuery, { id: 2 }, { id: 2, title: "B" });
+		qc.setData(labelsQuery, undefined, []);
+		const invalidated = () =>
+			qc
+				.getAll()
+				.filter((query) => Query.getUnsafe(query).isInvalidated)
+				.map((query) => query.hash);
+
+		await qc.invalidate({
+			predicate: (query) => query.key[1] === 2,
+			queryKey: ["issue"],
+		});
+		expect(invalidated()).toEqual(['["issue",2]']);
+
+		await qc.invalidate({});
+		expect(invalidated()).toHaveLength(3);
+	});
+
 	it("restarts an in-flight request and aborts the old one", async () => {
 		const backend = createBackend();
 		const qc = new QueryClient({ isServer: false });
