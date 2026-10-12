@@ -544,17 +544,18 @@ Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.de
 
 `@raf-query/core`:
 
-| Export                                         | Use                                                        |
-| ---------------------------------------------- | ---------------------------------------------------------- |
-| `QueryClient`                                  | The cache                                                  |
-| `queryOptions(options)`                        | Typed options for a query factory                          |
-| `infiniteQueryOptions(options)`                | Typed options for a paged query factory                    |
-| `allKeyed(record)`                             | Await a record of promises, keeping keys                   |
-| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations          |
-| `hashKey(key)`, `matchesKey(key, prefix)`      | Key helpers                                                |
-| `CancelledError`                               | Rejection of a request cancelled by `clear()` or a restart |
-| `QueryHandle<TFactory>`                        | Handle type for props                                      |
-| `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                           |
+| Export                                         | Use                                                              |
+| ---------------------------------------------- | ---------------------------------------------------------------- |
+| `QueryClient`                                  | The cache                                                        |
+| `queryOptions(options)`                        | Typed options for a query factory                                |
+| `infiniteQueryOptions(options)`                | Typed options for a paged query factory                          |
+| `allKeyed(record)`                             | Await a record of promises, keeping keys                         |
+| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations                |
+| `hashKey(key)`, `matchesKey(key, prefix)`      | Key helpers                                                      |
+| `QueryObserver`                                | One reader's view of a query, with tracked results; for bindings |
+| `CancelledError`                               | Rejection of a request cancelled by `clear()` or a restart       |
+| `QueryHandle<TFactory>`                        | Handle type for props                                            |
+| `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                                 |
 
 `@raf-query/react` (plus all of the above):
 

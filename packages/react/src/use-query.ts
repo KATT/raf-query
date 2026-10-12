@@ -1,42 +1,25 @@
 "use client";
 
-import type {
-	DataOf,
-	InputArgs,
-	InputOf,
-	IsPaged,
-	Query,
-	QueryClient,
-	QueryFactory,
-	QueryHandle,
-	QueryKey,
-} from "@raf-query/core";
 import {
-	useCallback,
-	useEffect,
-	useLayoutEffect,
-	useState,
-	useSyncExternalStore,
-} from "react";
+	type DataOf,
+	type InputArgs,
+	type InputOf,
+	type IsPaged,
+	type Query,
+	type QueryClient,
+	type QueryFactory,
+	type QueryHandle,
+	type QueryKey,
+	QueryObserver,
+	type QueryObserverOptions,
+} from "@raf-query/core";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { unsafeCast } from "./cast.ts";
 import { useQueryClient } from "./provider.tsx";
-import { ControlsTracker } from "./tracked.ts";
 
-export interface UseQueryOptions {
-	/** Refetch on this interval (ms) while mounted and the page is visible. */
-	readonly refetchInterval?: number;
-	/** Refetch on reconnect while stale. Default: the query's option, else `true`. */
-	readonly refetchOnReconnect?: boolean;
-	/** Refetch on window focus while stale. Default: the query's option, else `true`. */
-	readonly refetchOnWindowFocus?: boolean;
-	/**
-	 * What to render while the handle's input has no data yet:
-	 * - `"suspend"` (default): the promise is pending, so `use()` suspends.
-	 * - `"previous"`: keep returning the last input's data, with `isPrevious`.
-	 */
-	readonly whilePending?: "previous" | "suspend";
-}
+/** `refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`, `whilePending`. */
+export type UseQueryOptions = QueryObserverOptions;
 
 /** The second element of {@link useQuery}'s result. */
 export interface QueryControls<TFactory extends QueryFactory> {
@@ -82,13 +65,6 @@ export type UseQueryResult<TFactory extends QueryFactory> = readonly [
 	controls: UseQueryControls<TFactory>,
 ];
 
-interface Shown {
-	readonly handle: { readonly input: unknown; readonly key: QueryKey };
-	readonly hash: string;
-	readonly promise: Promise<unknown>;
-	readonly updatedAt: number;
-}
-
 export function queryFor<TFactory extends QueryFactory>(
 	client: QueryClient,
 	factory: TFactory,
@@ -99,23 +75,6 @@ export function queryFor<TFactory extends QueryFactory>(
 	// oxlint-disable-next-line typescript/consistent-type-assertions
 	const args = [input] as InputArgs<TFactory>;
 	return client.getQuery(factory, ...args);
-}
-
-function useRefetchInterval(
-	query: { refetch(): Promise<void> },
-	interval: number | undefined,
-) {
-	useEffect(() => {
-		if (interval === undefined || !Number.isFinite(interval) || interval <= 0) {
-			return;
-		}
-		const timer = setInterval(() => {
-			if (document.visibilityState !== "hidden") {
-				void query.refetch();
-			}
-		}, interval);
-		return () => clearInterval(timer);
-	}, [query, interval]);
 }
 
 /**
@@ -141,69 +100,41 @@ export function useQuery<TFactory extends QueryFactory>(
 	const query = queryFor(client, factory, handle.input);
 	query.read();
 
-	const [tracker] = useState(() => new ControlsTracker());
+	const refetchInterval = options.refetchInterval;
 	const refetchOnReconnect = options.refetchOnReconnect;
 	const refetchOnWindowFocus = options.refetchOnWindowFocus;
-	const subscribe = useCallback(
-		(onChange: () => void) =>
-			query.subscribe(
-				() => {
-					if (tracker.changed(query.getState())) {
-						onChange();
-					}
-				},
-				{ refetchOnReconnect, refetchOnWindowFocus },
-			),
-		[query, tracker, refetchOnReconnect, refetchOnWindowFocus],
+	const whilePending = options.whilePending;
+	const [observer] = useState(() => new QueryObserver(query, options));
+	const result = observer.getOptimisticResult(query, options);
+	useSyncExternalStore(
+		observer.subscribe,
+		observer.getCurrentResult,
+		observer.getCurrentResult,
 	);
-	const state = useSyncExternalStore(subscribe, query.getState, query.getState);
-	useLayoutEffect(() => {
-		tracker.committed(state);
-	});
-	useRefetchInterval(query, options.refetchInterval);
-
-	const keepPrevious = options.whilePending === "previous";
-	const [lastShown, setLastShown] = useState<Shown | undefined>(undefined);
-	if (keepPrevious && state.hasData && lastShown?.promise !== state.promise) {
-		setLastShown({
-			handle: query.handle,
-			hash: query.hash,
-			promise: state.promise,
-			updatedAt: state.updatedAt,
+	useEffect(() => {
+		observer.setOptions(query, {
+			refetchInterval,
+			refetchOnReconnect,
+			refetchOnWindowFocus,
+			whilePending,
 		});
-	}
-	const previous =
-		keepPrevious &&
-		!state.hasData &&
-		state.status !== "error" &&
-		lastShown !== undefined &&
-		lastShown.hash !== query.hash
-			? lastShown
-			: undefined;
+	}, [
+		observer,
+		query,
+		refetchInterval,
+		refetchOnReconnect,
+		refetchOnWindowFocus,
+		whilePending,
+	]);
 
-	const shown: Shown = previous ?? {
-		handle: query.handle,
-		hash: query.hash,
-		promise: state.promise,
-		updatedAt: state.updatedAt,
-	};
-	const controls = tracker.controls(state, shown.updatedAt, {
-		fetchNextPage: query.fetchNextPage,
-		fetchPreviousPage: query.fetchPreviousPage,
-		hash: query.hash,
-		hasNextPage: query.hasNextPage(),
-		hasPreviousPage: query.hasPreviousPage(),
-		input: shown.handle.input,
-		isPending: !state.hasData,
-		isPrevious: previous !== undefined,
-		key: shown.handle.key,
-		refetch: query.refetch,
-	}) satisfies Record<
-		keyof QueryControls<QueryFactory> | keyof PagingControls,
-		unknown
-	>;
-	// SAFETY: `shown.promise` is this factory's entry's promise (or an earlier
-	// input's entry of the same factory), and `controls` has every field of
-	// both control shapes.
-	return unsafeCast<UseQueryResult<TFactory>>([shown.promise, controls]);
+	// The promise is returned as the tuple's first element, where reads can't
+	// be seen, so it always counts as read.
+	observer.trackProp("promise");
+	// SAFETY: the result's promise is this factory's entry's promise (or an
+	// earlier input's entry of the same factory), and the result has every
+	// field of both control shapes.
+	return unsafeCast<UseQueryResult<TFactory>>([
+		result.promise,
+		observer.trackResult(result),
+	]);
 }
