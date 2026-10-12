@@ -421,7 +421,7 @@
 			// so it memoizes by hand.
 			"files": [
 				"packages/react/src/**/*.{ts,tsx}",
-				"packages/tanstack-react-query/src/**/*.{ts,tsx}"
+				"packages/.experimental/tanstack-react-query/src/**/*.{ts,tsx}"
 			],
 			"rules": {
 				"workspace/no-use-effect": "off",
@@ -444,7 +444,7 @@
 			// Library internals are type-erased on purpose: the cache stores any
 			// query's data and errors, and factory generics restore the types at
 			// the public boundary.
-			"files": ["packages/*/src/**"],
+			"files": ["packages/*/src/**", "packages/.experimental/*/src/**"],
 			"rules": {
 				"anti-slop/no-unknown-parameters": "off",
 				"anti-slop/no-unknown-returns": "off",
@@ -452,7 +452,12 @@
 			}
 		},
 		{
-			"files": ["examples/*/src/**/*.{ts,tsx}", "examples/*/app/**/*.{ts,tsx}"],
+			"files": [
+				"examples/*/src/**/*.{ts,tsx}",
+				"examples/*/app/**/*.{ts,tsx}",
+				"examples/.experimental/*/src/**/*.{ts,tsx}",
+				"examples/.shared/*/src/**/*.{ts,tsx}"
+			],
 			"rules": {
 				"workspace/infer-callback-params": "error",
 				"workspace/inline-jsx-callback": "error"
@@ -461,14 +466,20 @@
 		{
 			// TanStack Router infers loader/search/context types from option key
 			// order (`validateSearch` before `loader`, `loader` before `head`).
-			"files": ["examples/*/src/routes/**/*.{ts,tsx}"],
+			"files": [
+				"examples/*/src/routes/**/*.{ts,tsx}",
+				"examples/.experimental/*/src/routes/**/*.{ts,tsx}"
+			],
 			"rules": {
 				"perfectionist/sort-objects": "off"
 			}
 		},
 		{
 			// Vendored shadcn/ui registry components — not first-party code.
-			"files": ["examples/ui/src/components/**", "examples/ui/src/hooks/**"],
+			"files": [
+				"examples/.shared/ui/src/components/**",
+				"examples/.shared/ui/src/hooks/**"
+			],
 			"rules": {
 				"typescript/consistent-type-assertions": "off",
 				"typescript/no-deprecated": "off",

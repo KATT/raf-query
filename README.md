@@ -179,7 +179,7 @@ function PostPage() {
 | `hash`         | Stable string form of the handle's key, for `key` props on Suspense boundaries                                           |
 | `refetch()`    | Refetch now. Returns a promise, so it can be awaited inside a transition or action                                       |
 
-When the cache updates — refetch, invalidation, `setData` — the hook returns a new, pre-resolved promise and the component re-renders without suspending. Controls are tracked: reading `controls.isFetching` subscribes the component to `isFetching`, and a change to a control it never read doesn't re-render it. When the **first** load fails, the promise rejects and `use()` throws to the nearest error boundary. Resetting that boundary refetches the query.
+When the cache updates — refetch, invalidation, `setData` — the hook returns a new, pre-resolved promise and the component re-renders without suspending. New data is structurally shared with the old: objects and arrays that are deeply equal keep their identity, and a refetch that returns equal data keeps the same promise, so nothing re-renders. Controls are tracked: reading `controls.isFetching` subscribes the component to `isFetching`, and a change to a control it never read doesn't re-render it. When the **first** load fails, the promise rejects and `use()` throws to the nearest error boundary. Resetting that boundary refetches the query.
 
 Queries do not refetch on mount. They refetch when a loader starts them again, when invalidated, on window focus or reconnect while stale, on `refetch()`, or on `refetchInterval`.
 
@@ -539,6 +539,7 @@ Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.de
 | `retry` (count, `boolean`, predicate, `Schedule`)     | `3`; `0` on the server                    |
 | `retryDelay` (ms, or a function of the failure count) | Doubling from 1 s, at most 30 s           |
 | `refetchOnWindowFocus`, `refetchOnReconnect`          | `true` (only read, stale queries refetch) |
+| `structuralSharing` (keep deeply equal parts of data) | `true`                                    |
 
 `infiniteQueryOptions` also takes `getPreviousPageParam` and `maxPages`.
 

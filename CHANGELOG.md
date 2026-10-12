@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.0.12](https://github.com/KATT/raf-query/compare/0.0.11...0.0.12) (2026-10-12)
+
+- **examples:** move the shared db and ui packages into examples/.shared ([#14](https://github.com/KATT/raf-query/issues/14)) ([fccdc7b](https://github.com/KATT/raf-query/commit/fccdc7bb8075ce2fb0cdbe07b26b36f2ace2bd9c))
+
+## [0.0.11](https://github.com/KATT/raf-query/compare/0.0.10...0.0.11) (2026-10-12)
+
+### Features
+
+- **core:** structurally share new data with the old (structuralSharing) ([#15](https://github.com/KATT/raf-query/issues/15)) ([bf4392a](https://github.com/KATT/raf-query/commit/bf4392a56936ead6fb8b2726981cb19dadf51304))
+
+## [0.0.10](https://github.com/KATT/raf-query/compare/0.0.9...0.0.10) (2026-10-12)
+
+- move the TanStack Query experiment into .experimental folders ([#12](https://github.com/KATT/raf-query/issues/12)) ([e9613a6](https://github.com/KATT/raf-query/commit/e9613a608f100fb17de6baf37c0f1fcfa479e909))
+
+## [0.0.9](https://github.com/KATT/raf-query/compare/0.0.8...0.0.9) (2026-10-12)
+
+### Bug Fixes
+
+- **examples:** let the client pick new comment ids ([#9](https://github.com/KATT/raf-query/issues/9)) ([de3a723](https://github.com/KATT/raf-query/commit/de3a7238b2568458a9771450a8c94d82576f5f7d))
+
+## [0.0.8](https://github.com/KATT/raf-query/compare/0.0.7...0.0.8) (2026-10-12)
+
+- rename the TanStack Query experiment to make clear it's experimental and unpublished ([#11](https://github.com/KATT/raf-query/issues/11)) ([146c3be](https://github.com/KATT/raf-query/commit/146c3be5034f8c4c642ea9faea693a7558ca4aac))
+
 ## [0.0.7](https://github.com/KATT/raf-query/compare/0.0.6...0.0.7) (2026-10-12)
 
 ### Features
