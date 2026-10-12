@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "@effect/vitest";
+import { describe, expect, expectTypeOf, it, vi } from "@effect/vitest";
 import {
 	Cause,
 	Context,
@@ -9,6 +9,7 @@ import {
 	Fiber,
 	Layer,
 	Option,
+	Predicate,
 	Schedule,
 	Scope,
 	Stream,
@@ -276,6 +277,70 @@ describe("QueryCache", () => {
 				'updated ["issue",1]',
 				'removed ["issue",1]',
 			]);
+		}),
+	);
+
+	it.effect("isFetching counts entries with a request in flight", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: false });
+			const counts: Array<number> = [];
+			cache.subscribeUnsafe((event) => {
+				if (event.type === "updated") {
+					counts.push(cache.isFetchingUnsafe());
+				}
+			});
+			expect(yield* cache.isFetching()).toBe(0);
+
+			yield* cache.prefetch(backend.issueQuery, { id: 1 });
+			yield* cache.prefetch(backend.issueQuery, { id: 2 });
+			yield* cache.setData(
+				backend.issueQuery,
+				{ id: 3 },
+				{ id: 3, title: "Third" },
+			);
+			expect(yield* cache.isFetching()).toBe(2);
+
+			backend.respondAll();
+			yield* settle;
+			expect(yield* cache.isFetching()).toBe(0);
+			expect(counts).toEqual([1, 2, 2, 1, 0]);
+		}),
+	);
+
+	it.effect("isFetching matches a filter by key prefix, or exactly", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: false });
+			yield* cache.prefetch(backend.issueQuery, { id: 1 });
+			yield* cache.prefetch(backend.issueQuery, { id: 2 });
+			yield* cache.prefetch(() =>
+				queryOptions({ queryFn: () => Effect.never, queryKey: ["issue"] }),
+			);
+
+			expect(yield* cache.isFetching()).toBe(3);
+			expect(yield* cache.isFetching({ queryKey: ["issue"] })).toBe(3);
+			expect(
+				yield* cache.isFetching({ exact: true, queryKey: ["issue"] }),
+			).toBe(1);
+			expect(cache.isFetchingUnsafe({ queryKey: ["issue", 1] })).toBe(1);
+			expect(cache.isFetchingUnsafe({ queryKey: ["user"] })).toBe(0);
+		}),
+	);
+
+	it.effect("isFetching drops a request that failed", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: false });
+			yield* cache.prefetch(backend.issueQuery, { id: 1 });
+			expect(cache.isFetchingUnsafe()).toBe(1);
+
+			backend.requests[0]?.fail(new Error("boom"));
+			yield* settle;
+
+			expect(yield* cache.isFetching()).toBe(0);
+			const query = yield* cache.getQuery(backend.issueQuery, { id: 1 });
+			expect((yield* Query.get(query)).status).toBe("error");
 		}),
 	);
 
@@ -1071,4 +1136,146 @@ describe("when the last reader leaves mid-request", () => {
 			expect(source.attempts).toHaveLength(2);
 		}),
 	);
+});
+
+describe("QueryCache filters", () => {
+	function issuesQuery(input: { projectId: number; status: string }) {
+		return queryOptions({
+			queryFn: () => [],
+			queryKey: ["issues", input],
+			staleTime: Infinity,
+		});
+	}
+	function labelsQuery(input: { projectId: number }) {
+		return queryOptions({
+			queryFn: () => [],
+			queryKey: ["labels", input.projectId],
+			staleTime: Infinity,
+		});
+	}
+	const inputIs = (name: string, value: unknown) => (query: Query.Query) =>
+		Predicate.hasProperty(query.handle.input, name) &&
+		query.handle.input[name] === value;
+
+	const seed = Effect.fnUntraced(function* () {
+		const cache = yield* QueryCache.make({ isServer: false });
+		yield* cache.setData(issuesQuery, { projectId: 3, status: "open" }, []);
+		yield* cache.setData(issuesQuery, { projectId: 3, status: "closed" }, []);
+		yield* cache.setData(issuesQuery, { projectId: 4, status: "open" }, []);
+		yield* cache.setData(labelsQuery, { projectId: 3 }, []);
+		return cache;
+	});
+	const hashesWhere = (
+		cache: QueryCache.QueryCache,
+		keep: (state: Query.State<unknown>) => boolean,
+	) =>
+		Effect.map(cache.all, (queries) =>
+			queries
+				.filter((query) => keep(Query.getUnsafe(query)))
+				.map((query) => query.hash),
+		);
+
+	it.effect("predicate narrows a key-prefix match", () =>
+		Effect.gen(function* () {
+			const cache = yield* seed();
+
+			yield* cache.invalidate({
+				predicate: inputIs("status", "open"),
+				queryKey: ["issues"],
+			});
+
+			expect(yield* hashesWhere(cache, (state) => state.isInvalidated)).toEqual(
+				[
+					'["issues",{"projectId":3,"status":"open"}]',
+					'["issues",{"projectId":4,"status":"open"}]',
+				],
+			);
+		}),
+	);
+
+	it.effect("predicate alone matches across keys, by handle input", () =>
+		Effect.gen(function* () {
+			const cache = yield* seed();
+
+			yield* cache.invalidate({ predicate: inputIs("projectId", 3) });
+
+			expect(yield* hashesWhere(cache, (state) => state.isInvalidated)).toEqual(
+				[
+					'["issues",{"projectId":3,"status":"open"}]',
+					'["issues",{"projectId":3,"status":"closed"}]',
+					'["labels",3]',
+				],
+			);
+		}),
+	);
+
+	it.effect("an empty filter matches every entry", () =>
+		Effect.gen(function* () {
+			const cache = yield* seed();
+
+			yield* cache.invalidate({});
+
+			expect(
+				yield* hashesWhere(cache, (state) => state.isInvalidated),
+			).toHaveLength(4);
+		}),
+	);
+
+	it.effect("reset applies the predicate", () =>
+		Effect.gen(function* () {
+			const cache = yield* seed();
+
+			yield* cache.reset({ predicate: inputIs("projectId", 4) });
+
+			expect(yield* hashesWhere(cache, (state) => state.hasData)).toEqual([
+				'["issues",{"projectId":3,"status":"open"}]',
+				'["issues",{"projectId":3,"status":"closed"}]',
+				'["labels",3]',
+			]);
+		}),
+	);
+
+	it.effect("remove applies the predicate", () =>
+		Effect.gen(function* () {
+			const cache = yield* seed();
+			Query.subscribeUnsafe(
+				cache.getQueryUnsafe(labelsQuery, { projectId: 3 }),
+				() => {},
+			);
+
+			yield* cache.remove({
+				predicate: (query) => Query.observerCountUnsafe(query) === 0,
+			});
+
+			expect(yield* hashesWhere(cache, () => true)).toEqual(['["labels",3]']);
+		}),
+	);
+
+	it.effect("a hydrated-only entry has no input yet", () =>
+		Effect.gen(function* () {
+			const cache = yield* QueryCache.make({ isServer: false });
+			yield* cache.hydrate({
+				queries: [{ data: [], key: ["labels", 3], updatedAt: 1 }],
+			});
+
+			yield* cache.remove({ predicate: inputIs("projectId", 3) });
+			expect(yield* cache.all).toHaveLength(1);
+			yield* cache.remove({ predicate: (query) => query.key[1] === 3 });
+			expect(yield* cache.all).toHaveLength(0);
+		}),
+	);
+
+	it("passes the predicate a Query", () => {
+		expectTypeOf<QueryCache.Filter["predicate"]>().toEqualTypeOf<
+			((query: Query.Query) => boolean) | undefined
+		>();
+		const removeAll = (cache: QueryCache.QueryCache) =>
+			cache.remove({
+				predicate: (query) => {
+					expectTypeOf(query).toEqualTypeOf<Query.Query>();
+					return true;
+				},
+			});
+		expectTypeOf(removeAll).returns.toEqualTypeOf<Effect.Effect<void>>();
+	});
 });

@@ -1,8 +1,9 @@
 /**
  * The query cache, as an Effect service. `make` builds one in the current
  * scope; closing the scope interrupts every request and timer it started.
- * Everything that waits, or changes the cache, is an Effect; `getQueryUnsafe`
- * and `subscribeUnsafe` are for renders and external stores.
+ * Everything that waits, or changes the cache, is an Effect; `getQueryUnsafe`,
+ * `isFetchingUnsafe` and `subscribeUnsafe` are for renders and external
+ * stores.
  *
  * Requests run with the services the cache was built with, under those of
  * the latest verb that called for the entry. So the verbs that can start a
@@ -81,10 +82,21 @@ export type Event =
 			readonly type: "failed";
 	  };
 
-/** Matches cache entries by key prefix, or by exact key with `exact`. */
+/**
+ * Selects cache entries: by key prefix (exact key with `exact`), then by
+ * `predicate`. Without `queryKey` every key matches, so `{}` selects the
+ * whole cache.
+ */
 export interface Filter {
 	readonly exact?: boolean;
-	readonly queryKey: QueryKey;
+	/**
+	 * Keep only entries this returns `true` for; runs after key matching.
+	 * `query.handle.input` is the input of the latest factory call, and stays
+	 * `undefined` for an entry only hydrated so far; match on `query.key` to
+	 * include those.
+	 */
+	readonly predicate?: (query: Query.Query) => boolean;
+	readonly queryKey?: QueryKey;
 }
 
 /** `ensure` / `fetch` arguments: the input, then load options for paged factories. */
@@ -190,6 +202,13 @@ export interface QueryCache {
 	invalidate<TFactory extends QueryFactory>(
 		...target: Target<TFactory>
 	): Effect.Effect<void>;
+	/**
+	 * How many entries have a request in flight: all of them, or those
+	 * matching `filter`. For global loading indicators.
+	 */
+	isFetching(filter?: Filter): Effect.Effect<number>;
+	/** `isFetching`, synchronously, for renders. */
+	isFetchingUnsafe(filter?: Filter): number;
 	readonly isServer: boolean;
 	/**
 	 * Refetch read, stale queries on window focus and reconnect while the
@@ -272,6 +291,18 @@ function dataOf<TFactory extends QueryFactory>(
 	// SAFETY: only called when `hasData` is set, so `data` came from this
 	// factory's queryFn or Entry.setData, even when its type includes `undefined`.
 	return unsafeCast<DataOf<TFactory>>(entry.state.data);
+}
+
+function keyMatcher(filter: Filter): (entry: Entry.Entry) => boolean {
+	const prefix = filter.queryKey;
+	if (prefix === undefined) {
+		return () => true;
+	}
+	if (filter.exact) {
+		const hash = hashKey(prefix);
+		return (entry) => entry.hash === hash;
+	}
+	return (entry) => matchesKey(entry.key, prefix);
 }
 
 /**
@@ -367,11 +398,9 @@ export const make: (
 				);
 				return entry ? [entry] : [];
 			}
-			const hash = hashKey(first.queryKey);
-			return [...state.entries.values()].filter((entry) =>
-				first.exact
-					? entry.hash === hash
-					: matchesKey(entry.key, first.queryKey),
+			const keyMatches = keyMatcher(first);
+			return [...state.entries.values()].filter(
+				(entry) => keyMatches(entry) && (first.predicate?.(entry) ?? true),
 			);
 		};
 
@@ -401,6 +430,11 @@ export const make: (
 			factory: TFactory,
 			...args: InputArgs<TFactory>
 		) => typed<TFactory>(build(factory, args[0]));
+
+		const isFetchingUnsafe = (filter?: Filter) =>
+			(filter ? match([filter]) : [...state.entries.values()]).filter(
+				(entry) => entry.state.isFetching,
+			).length;
 
 		const cache: QueryCache = {
 			all: Effect.sync(() => [...state.entries.values()]),
@@ -443,6 +477,8 @@ export const make: (
 				),
 			invalidate: (...target) =>
 				Effect.suspend(() => settleAll(match(target).map(Entry.invalidate))),
+			isFetching: (filter) => Effect.sync(() => isFetchingUnsafe(filter)),
+			isFetchingUnsafe,
 			isServer: state.isServer,
 			mount: state.isServer
 				? Effect.void

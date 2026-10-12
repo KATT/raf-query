@@ -124,7 +124,7 @@ export class QueryClient<TServices = never> {
 	/**
 	 * Mark queries stale and refetch the ones being read. Resolves once those
 	 * refetches settle, so an action stays pending until fresh data is on
-	 * screen. Takes a factory and its input, or a {@link QueryFilter}.
+	 * screen. Takes a factory and its input, or a {@link QueryCache.Filter}.
 	 */
 	invalidate<TFactory extends QueryFactory<TServices>>(
 		...target: QueryCache.Target<TFactory>
@@ -178,6 +178,14 @@ export class QueryClient<TServices = never> {
 	/** Every entry, for devtools and integrations. */
 	getAll(): ReadonlyArray<Query.Query> {
 		return Effect.runSync(this.effect.all);
+	}
+
+	/**
+	 * How many entries have a request in flight: all of them, or those
+	 * matching `filter`. For global loading indicators.
+	 */
+	isFetching(filter?: QueryCache.Filter): number {
+		return this.effect.isFetchingUnsafe(filter);
 	}
 
 	/** Listen to entries being added, updated, and removed. */

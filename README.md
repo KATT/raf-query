@@ -196,6 +196,16 @@ When the cache updates — refetch, invalidation, `setData` — the hook returns
 
 Queries do not refetch on mount. They refetch when a loader starts them again, when invalidated, on window focus or reconnect while stale, on `refetch()`, or on `refetchInterval`.
 
+For an app-wide indicator, `useIsFetching()` returns how many queries have a request in flight, background refetches included, and re-renders when that changes. Pass a filter to count only some: `useIsFetching({ queryKey: ["comments"] })`. It's `0` on the server and during hydration, so the indicator never appears in server HTML. Outside React, `qc.isFetching(filter?)` returns the same number.
+
+```tsx
+// Rendered once, in the root layout.
+function GlobalProgress() {
+	const fetching = useIsFetching();
+	return fetching > 0 ? <ProgressBar /> : null;
+}
+```
+
 ### Paged queries
 
 With an `infiniteQueryOptions` factory, `useQuery` returns the same tuple. The promise resolves to `{ pages, pageParams }`, and the controls add paging:
@@ -358,12 +368,22 @@ function EditTitle(props: { post: Post }) {
 
 `updatePost` is a server function (or a Next.js server action). `await qc.invalidate(...)` resolves once every query currently being read has refetched, so the action's pending state lasts until the fresh data is on screen. For an error message, wrap the action in `useActionState` and return the caught error.
 
-| Call                                  | Effect                                                                  |
-| ------------------------------------- | ----------------------------------------------------------------------- |
-| `qc.invalidate(factory, input)`       | Mark one query stale and refetch it if it is being read                 |
-| `qc.invalidate({ queryKey, exact? })` | Same, for every query whose key starts with `queryKey` (unless `exact`) |
-| `qc.setData(factory, input, updater)` | Write data directly                                                     |
-| `qc.getData(factory, input)`          | Read cached data, or `undefined`                                        |
+| Call                                  | Effect                                                  |
+| ------------------------------------- | ------------------------------------------------------- |
+| `qc.invalidate(factory, input)`       | Mark one query stale and refetch it if it is being read |
+| `qc.invalidate(filter)`               | Same, for every query the [filter](#filters) selects    |
+| `qc.setData(factory, input, updater)` | Write data directly                                     |
+| `qc.getData(factory, input)`          | Read cached data, or `undefined`                        |
+
+### Filters
+
+`invalidate`, `reset` and `remove` also take a filter, `{ queryKey?, exact?, predicate? }`. `queryKey` selects every query whose key starts with it, or only that key with `exact: true`; object segments match partially, so `{ queryKey: ["issues", { projectId: 3 }] }` selects every issue list in project 3. `predicate` gets each remaining `Query` and keeps the ones it returns `true` for: read its `key` and `handle.input`, or use the `Query` functions (`Query.getUnsafe(query)` for its state, `Query.observerCountUnsafe(query)`, `Query.isStaleUnsafe(query)`). Without `queryKey` every key matches, so `{}` selects the whole cache.
+
+```ts
+qc.remove({ predicate: (query) => Query.observerCountUnsafe(query) === 0 }); // everything not being read
+```
+
+`handle.input` is the input of the latest factory call for that entry. An entry that was only hydrated, and not yet read or started on this client, has `undefined` input, so match on `key` to include those.
 
 Data can be `undefined` when the `queryFn`'s type allows it (`Promise<User | undefined>`); it's cached and reused like any other value, unlike in TanStack Query, where an `undefined` result is an error. So `getData` and an updater's `previous` return `undefined` both with no data and with `undefined` data; `Query.getUnsafe(qc.getQuery(factory, input)).hasData` tells them apart.
 
@@ -465,7 +485,7 @@ raf-query's cache is written in [Effect](https://effect.website): `QueryClient` 
 - A `queryFn` can return an `Effect`. Cancelling the request interrupts it.
 - An Effect `queryFn`'s error type is the query's: `qc.effect.fetch(issueQuery, input)` fails with `IssueNotFound | Query.CancelledError`. `ErrorOf<TFactory>` names it; it's `unknown` for promises. A `queryFn` that throws instead of returning is a defect, and isn't retried.
 - `retry` accepts a `Schedule` as well as a count or predicate.
-- `qc.effect` has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidate`, `reset`, `remove`, `setData`, `getData` (an `Option`), `dehydrate`, `hydrate`. `watch` is a `Stream` of an entry's state, and `events` a `Stream` of cache events.
+- `qc.effect` has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidate`, `reset`, `remove`, `setData`, `getData` (an `Option`), `isFetching` (a count), `dehydrate`, `hydrate`. `watch` is a `Stream` of an entry's state, and `events` a `Stream` of cache events.
 - SSR streaming is Effect too, and the integrations are thin wrappers over it. `dehydrateStream(options)` (scoped) returns the cache's `initial` state and a `Stream` of `updates`: entries that start or settle later, each sent once, batched per microtask. The stream ends when the scope closes. `hydrateStream(stream)` hydrates each state as it arrives. `Stream.toReadableStream` / `Stream.fromReadableStream` carry it over a web stream. The `sent` option (a `Set` of hashes) makes separate `dehydrate` calls of one request skip entries already sent.
 - Entries are a data type with module functions, as in Effect's own modules: `Query.fetch(query)`, `Query.refetch(query)`, `Query.invalidate(query)`, `Query.changes(query)`, and `Query.getUnsafe(query)` / `Query.subscribeUnsafe(query, listener)` for synchronous reads.
 - `QueryObserver` is a data type too: one reader's view of a query, as `useQuery` sees it (the controls and the promise, with `whilePending`, `refetchInterval` and the focus / reconnect options). `QueryObserver.make(query, options)` creates one, and `QueryObserver.changes(observer)` streams its results; while it runs, the query counts as read and polls on `refetchInterval`.
@@ -598,10 +618,11 @@ Both render nothing on the server, since the server's cache isn't the browser's.
 | `new QueryClient(config?)`                  | `config.defaults` (query options below), `config.onError`, `config.isServer`, `config.layer` ([services](#services))    |
 | `prefetch`, `ensure`, `fetch`               | [Start queries](#starting-queries)                                                                                      |
 | `invalidate`, `setData`, `getData`          | [Write and read the cache](#mutations)                                                                                  |
-| `reset(factory, input)` / `reset(filter)`   | Drop data and errors; read queries suspend and refetch. Resolves when they settle                                       |
-| `remove(factory, input)` / `remove(filter)` | Remove entries and abort their requests                                                                                 |
+| `reset(factory, input)` / `reset(filter)`   | Drop data and errors; read queries suspend and refetch. Resolves when they settle. [Filters](#filters)                  |
+| `remove(factory, input)` / `remove(filter)` | Remove entries and abort their requests. [Filters](#filters)                                                            |
 | `effect`                                    | The [Effect](#effect) `QueryCache` behind the client                                                                    |
 | `subscribe(listener)`                       | Cache events: `added`, `updated`, `observers` (a reader subscribed or left), `removed`, and `failed` (with the `error`) |
+| `isFetching(filter?)`                       | How many entries have a request in flight, optionally only those matching `{ queryKey, exact? }`                        |
 | `getAll()`, `getQuery(factory, input?)`     | Cache entries, for devtools and integrations                                                                            |
 | `clear()`                                   | Drop every entry and abort in-flight requests                                                                           |
 | `mount()`                                   | Start window-focus and reconnect refetching. The providers call it                                                      |
@@ -655,6 +676,7 @@ When the last reader of a query unsubscribes during a background refetch, a `que
 | `useQueryClient()`                             | Read the client                                                                                                 |
 | `useQuery(factory, handle, options?)`          | `[Thenable<Data>, controls]`; for paged factories `Data` is `{ pages, pageParams }` and controls include paging |
 | `useWaterfall(factory, input)`                 | Start a query during render and return its handle                                                               |
+| `useIsFetching(filter?)`                       | How many queries have a request in flight, re-rendering when it changes; for global loading indicators          |
 
 ## Development
 
