@@ -1,27 +1,27 @@
-export { allKeyed, type Settled } from "./all-keyed.ts";
 export {
 	type CacheEvent,
 	type LoadArgs,
-	QueryClient,
-	type QueryClientConfig,
-	type QueryClientEffect,
+	QueryCache,
+	type QueryCacheConfig,
 	type QueryFilter,
+	type QueryOf,
+	type QueryTarget,
 	type Updater,
-} from "./client.ts";
+} from "./cache.ts";
 export {
 	canDehydrate,
-	dehydrate,
+	type DehydratableQuery,
 	type DehydratedQuery,
 	type DehydratedState,
 	type DehydrateOptions,
 	dehydrateQuery,
-	hydrate,
 	type HydrateOptions,
 } from "./hydration.ts";
 export { hashKey, matchesKey, type QueryKey } from "./key.ts";
 export {
 	type AnyQueryOptions,
 	type DataOf,
+	type ErrorOf,
 	type InfiniteData,
 	type InfiniteQueryOptions,
 	infiniteQueryOptions,

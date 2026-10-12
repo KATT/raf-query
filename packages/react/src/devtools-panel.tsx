@@ -1,7 +1,6 @@
 "use client";
 
-import type { QueryClient } from "@raf-query/core";
-import { Predicate } from "effect";
+import { Effect, Predicate } from "effect";
 import {
 	type CSSProperties,
 	type PointerEvent as ReactPointerEvent,
@@ -9,6 +8,7 @@ import {
 	useSyncExternalStore,
 } from "react";
 
+import type { QueryClient } from "./client.ts";
 import {
 	countByStatus,
 	type DevtoolsStatus,
@@ -483,17 +483,17 @@ function QueryDetails(props: {
 					color={statusColors.fetching}
 					disabled={options === undefined || state.isFetching}
 					label="Refetch"
-					onClick={() => void query.refetch()}
+					onClick={() => void Effect.runPromise(query.refetch)}
 				/>
 				<ActionButton
 					color={statusColors.stale}
 					label="Invalidate"
-					onClick={() => void query.invalidate()}
+					onClick={() => void Effect.runPromise(query.invalidate)}
 				/>
 				<ActionButton
 					color={statusColors.inactive}
 					label="Reset"
-					onClick={() => void query.reset()}
+					onClick={() => void Effect.runPromise(query.reset)}
 				/>
 				<ActionButton
 					color={statusColors.error}

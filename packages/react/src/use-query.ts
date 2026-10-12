@@ -6,14 +6,16 @@ import type {
 	InputOf,
 	IsPaged,
 	Query,
-	QueryClient,
 	QueryFactory,
 	QueryHandle,
 	QueryKey,
+	QueryOf,
 } from "@raf-query/core";
+import { Effect } from "effect";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 import { unsafeCast } from "./cast.ts";
+import type { QueryClient } from "./client.ts";
 import { useQueryClient } from "./provider.tsx";
 
 export interface UseQueryOptions {
@@ -82,11 +84,35 @@ interface Shown {
 	readonly updatedAt: number;
 }
 
+/** A query's commands as stable Promise functions, for props and effects. */
+interface Commands {
+	fetchNextPage(): Promise<void>;
+	fetchPreviousPage(): Promise<void>;
+	refetch(): Promise<void>;
+}
+
+const commandsByQuery = new WeakMap<object, Commands>();
+
+function commandsOf(
+	query: Pick<Query, "fetchNextPage" | "fetchPreviousPage" | "refetch">,
+): Commands {
+	let commands = commandsByQuery.get(query);
+	if (!commands) {
+		commands = {
+			fetchNextPage: () => Effect.runPromise(query.fetchNextPage),
+			fetchPreviousPage: () => Effect.runPromise(query.fetchPreviousPage),
+			refetch: () => Effect.runPromise(query.refetch),
+		};
+		commandsByQuery.set(query, commands);
+	}
+	return commands;
+}
+
 export function queryFor<TFactory extends QueryFactory>(
 	client: QueryClient,
 	factory: TFactory,
 	input: unknown,
-): Query<DataOf<TFactory>, TFactory> {
+): QueryOf<TFactory> {
 	// SAFETY: `input` is a handle's input, and handles are typed to the
 	// factory they were created through (`QueryHandle<TFactory>`).
 	// oxlint-disable-next-line typescript/consistent-type-assertions
@@ -94,21 +120,18 @@ export function queryFor<TFactory extends QueryFactory>(
 	return client.getQuery(factory, ...args);
 }
 
-function useRefetchInterval(
-	query: { refetch(): Promise<void> },
-	interval: number | undefined,
-) {
+function useRefetchInterval(commands: Commands, interval: number | undefined) {
 	useEffect(() => {
 		if (interval === undefined || !Number.isFinite(interval) || interval <= 0) {
 			return;
 		}
 		const timer = setInterval(() => {
 			if (document.visibilityState !== "hidden") {
-				void query.refetch();
+				void commands.refetch();
 			}
 		}, interval);
 		return () => clearInterval(timer);
-	}, [query, interval]);
+	}, [commands, interval]);
 }
 
 /**
@@ -130,17 +153,25 @@ export function useQuery<TFactory extends QueryFactory>(
 ): UseQueryResult<TFactory> {
 	const client = useQueryClient();
 	const query = queryFor(client, factory, handle.input);
-	query.read();
+	query.readUnsafe();
+	const commands = commandsOf(query);
 
 	const refetchOnReconnect = options.refetchOnReconnect;
 	const refetchOnWindowFocus = options.refetchOnWindowFocus;
 	const subscribe = useCallback(
 		(onChange: () => void) =>
-			query.subscribe(onChange, { refetchOnReconnect, refetchOnWindowFocus }),
+			query.subscribeUnsafe(onChange, {
+				refetchOnReconnect,
+				refetchOnWindowFocus,
+			}),
 		[query, refetchOnReconnect, refetchOnWindowFocus],
 	);
-	const state = useSyncExternalStore(subscribe, query.getState, query.getState);
-	useRefetchInterval(query, options.refetchInterval);
+	const state = useSyncExternalStore(
+		subscribe,
+		query.getStateUnsafe,
+		query.getStateUnsafe,
+	);
+	useRefetchInterval(commands, options.refetchInterval);
 
 	const keepPrevious = options.whilePending === "previous";
 	const [lastShown, setLastShown] = useState<Shown | undefined>(undefined);
@@ -169,11 +200,11 @@ export function useQuery<TFactory extends QueryFactory>(
 	};
 	const controls = {
 		error: state.error,
-		fetchNextPage: query.fetchNextPage,
-		fetchPreviousPage: query.fetchPreviousPage,
+		fetchNextPage: commands.fetchNextPage,
+		fetchPreviousPage: commands.fetchPreviousPage,
 		hash: query.hash,
-		hasNextPage: query.hasNextPage(),
-		hasPreviousPage: query.hasPreviousPage(),
+		hasNextPage: query.hasNextPageUnsafe(),
+		hasPreviousPage: query.hasPreviousPageUnsafe(),
 		input: shown.handle.input,
 		isFetching: state.isFetching,
 		isFetchingNextPage: state.fetchDirection === "forward",
@@ -182,7 +213,7 @@ export function useQuery<TFactory extends QueryFactory>(
 		isPrevious: previous !== undefined,
 		isStale: state.isStale,
 		key: shown.handle.key,
-		refetch: query.refetch,
+		refetch: commands.refetch,
 		updatedAt: shown.updatedAt,
 	} satisfies Record<
 		keyof QueryControls<QueryFactory> | keyof PagingControls,

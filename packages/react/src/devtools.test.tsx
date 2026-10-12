@@ -194,7 +194,7 @@ describe("QueryDevtoolsPanel", () => {
 		await act(async () => {
 			fireEvent.click(within(details).getByRole("button", { name: "Reset" }));
 		});
-		expect(query.getState().hasData).toBe(false);
+		expect(query.getStateUnsafe().hasData).toBe(false);
 		expect(screen.getByText("loading")).toBeTruthy();
 		await app.backend.respond();
 		expect(screen.getByText("Issue 1")).toBeTruthy();
@@ -258,7 +258,7 @@ describe("QueryDevtoolsPanel", () => {
 			fireEvent.click(screen.getByRole("button", { name: "Invalidate all" }));
 		});
 		expect(
-			app.client.getQuery(app.backend.issueQuery, { id: 1 }).getState()
+			app.client.getQuery(app.backend.issueQuery, { id: 1 }).getStateUnsafe()
 				.isInvalidated,
 		).toBe(true);
 

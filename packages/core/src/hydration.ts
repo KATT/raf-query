@@ -1,6 +1,7 @@
-import { cacheOf, type QueryClient } from "./client.ts";
+import { Effect } from "effect";
+
 import type { QueryKey } from "./key.ts";
-import type { Query } from "./query.ts";
+import type { Query, QueryEntry } from "./query.ts";
 
 /**
  * One cache entry in transit. Settled entries carry `data`; entries still
@@ -40,21 +41,23 @@ export interface HydrateOptions {
 	readonly deserializeData?: (data: unknown) => unknown;
 }
 
+/** What dehydrating reads from an entry; any typed `Query` has it. */
+export type DehydratableQuery = Pick<Query, "getStateUnsafe" | "hash" | "key">;
+
 const noop = () => {};
 const identity = <T>(value: T) => value;
 
 /** The default dehydrate filter: entries with data or a request in flight. */
-export function canDehydrate(query: Query): boolean {
-	const state = query.getState();
+export function canDehydrate(query: DehydratableQuery): boolean {
+	const state = query.getStateUnsafe();
 	return state.hasData || state.isFetching;
 }
 
-/** Snapshot one entry for transfer. */
-export function dehydrateQuery(
-	query: Query,
-	options: DehydrateOptions = {},
+export function dehydrateUnsafe(
+	query: DehydratableQuery,
+	options: DehydrateOptions,
 ): DehydratedQuery {
-	const state = query.getState();
+	const state = query.getStateUnsafe();
 	const serialize = options.serializeData ?? identity;
 	if (state.hasData) {
 		return {
@@ -70,34 +73,27 @@ export function dehydrateQuery(
 	return { key: query.key, promise, updatedAt: 0 };
 }
 
-/** Snapshot the cache for transfer to another client (server → browser). */
-export function dehydrate(
-	client: QueryClient,
+/** Snapshot one entry for transfer. */
+export function dehydrateQuery(
+	query: DehydratableQuery,
 	options: DehydrateOptions = {},
-): DehydratedState {
-	const filter = options.filter ?? canDehydrate;
-	return {
-		queries: client
-			.getAll()
-			.filter(filter)
-			.map((query) => dehydrateQuery(query, options)),
-	};
+): Effect.Effect<DehydratedQuery> {
+	return Effect.sync(() => dehydrateUnsafe(query, options));
 }
 
 /**
- * Write dehydrated entries into a client. Existing entries only take newer
+ * Write dehydrated entries into a cache. Existing entries only take newer
  * data; pending entries resume the sender's request.
  */
-export function hydrate(
-	client: QueryClient,
+export function hydrateEntries(
+	entryFor: (key: QueryKey) => QueryEntry,
 	state: DehydratedState,
-	options: HydrateOptions = {},
+	options: HydrateOptions,
 ): void {
 	const deserialize = options.deserializeData ?? identity;
-	const cache = cacheOf(client);
 	for (const query of state.queries) {
-		const entry = cache.entryFor(query.key);
-		const current = entry.getState();
+		const entry = entryFor(query.key);
+		const current = entry.getStateUnsafe();
 		if (query.updatedAt > 0) {
 			if (!current.hasData || current.updatedAt < query.updatedAt) {
 				entry.setData(deserialize(query.data), query.updatedAt);

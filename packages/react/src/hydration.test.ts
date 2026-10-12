@@ -45,7 +45,7 @@ describe("hydrate", () => {
 		hydrate(browser, dehydrate(server));
 
 		const query = browser.getQuery(backend.issueQuery, { id: 1 });
-		expect(query.read()).toMatchObject({ status: "fulfilled" });
+		expect(query.readUnsafe()).toMatchObject({ status: "fulfilled" });
 		expect(backend.requests).toHaveLength(0);
 	});
 
@@ -57,12 +57,12 @@ describe("hydrate", () => {
 
 		hydrate(browser, dehydrate(server));
 		const query = browser.getQuery(backend.issueQuery, { id: 1 });
-		const promise = query.read();
+		const promise = query.readUnsafe();
 
 		expect(backend.requests).toHaveLength(1);
 		backend.respondAll();
 		expect(await promise).toEqual({ id: 1, title: "First" });
-		expect(query.getState().status).toBe("success");
+		expect(query.getStateUnsafe().status).toBe("success");
 	});
 
 	it("only replaces older data", async () => {
@@ -71,7 +71,7 @@ describe("hydrate", () => {
 		browser.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "New" });
 		const updatedAt = browser
 			.getQuery(backend.issueQuery, { id: 1 })
-			.getState().updatedAt;
+			.getStateUnsafe().updatedAt;
 
 		hydrate(browser, {
 			queries: [

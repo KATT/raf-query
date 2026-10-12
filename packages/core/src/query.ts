@@ -7,6 +7,7 @@ import {
 	FiberMap,
 	Predicate,
 	Scope,
+	Stream,
 } from "effect";
 
 import {
@@ -17,6 +18,7 @@ import {
 	previousPageParam,
 } from "./infinite.ts";
 import type { QueryKey } from "./key.ts";
+import { listen } from "./listen.ts";
 import { scheduleNotify } from "./notify.ts";
 import type {
 	AnyQueryOptions,
@@ -56,7 +58,7 @@ export interface QueryState<TData> {
 	readonly updatedAt: number;
 }
 
-/** Per-reader preferences, registered with {@link Query.subscribe}. */
+/** Per-reader preferences, registered with {@link Query.subscribeUnsafe}. */
 export interface QueryObserver {
 	readonly refetchOnReconnect?: boolean;
 	readonly refetchOnWindowFocus?: boolean;
@@ -72,27 +74,41 @@ export interface FetchRequest {
 }
 
 /**
- * A cache entry, as seen by bindings. Obtain one with
- * `QueryClient.getQuery(factory, input)`.
+ * A cache entry. Obtain one with `QueryCache.getQuery(factory, input)`.
+ *
+ * Its requests are Effects. The `*Unsafe` methods read and subscribe
+ * synchronously, for renders and external stores that can't run an Effect.
  */
 export interface Query<
 	TData = unknown,
 	TFactory extends QueryFactory = QueryFactory,
+	TError = unknown,
 > {
-	/** Start a request, or join the one in flight. */
-	fetch(request?: FetchRequest): Promise<TData>;
-	fetchNextPage(): Promise<void>;
-	fetchPreviousPage(): Promise<void>;
-	getState(): QueryState<TData>;
+	/**
+	 * The entry's current state, then every change. Counts as a reader while
+	 * the stream runs, so invalidation and focus refetch it.
+	 */
+	readonly changes: Stream.Stream<QueryState<TData>>;
+	/**
+	 * Start a request, or join the one in flight. Fails with the request's
+	 * error, or a {@link CancelledError} if the entry leaves the cache first.
+	 */
+	fetch(request?: FetchRequest): Effect.Effect<TData, TError | CancelledError>;
+	/** Load the page after the last one; succeeds once it settles. */
+	readonly fetchNextPage: Effect.Effect<void>;
+	/** Load the page before the first one; succeeds once it settles. */
+	readonly fetchPreviousPage: Effect.Effect<void>;
+	getStateUnsafe(): QueryState<TData>;
 	/** The serializable handle for this entry's factory call. */
 	readonly handle: QueryHandle<TFactory>;
 	/** Stable string form of `key`. */
 	readonly hash: string;
-	hasNextPage(): boolean;
-	hasPreviousPage(): boolean;
-	invalidate(): Promise<void>;
-	/** Staleness as of now; `getState().isStale` is only kept current while read. */
-	isStaleNow(): boolean;
+	hasNextPageUnsafe(): boolean;
+	hasPreviousPageUnsafe(): boolean;
+	/** Mark stale, and refetch if read; succeeds once that refetch settles. */
+	readonly invalidate: Effect.Effect<void>;
+	/** Staleness as of now; `state.isStale` is only kept current while read. */
+	isStaleUnsafe(): boolean;
 	readonly key: QueryKey;
 	/** Readers currently subscribed. */
 	readonly observerCount: number;
@@ -102,16 +118,17 @@ export interface Query<
 	 * The promise a render should unwrap. Starts the first request if nothing
 	 * has, and retries a failed first load once its error has been shown.
 	 */
-	read(): Promise<TData>;
-	/** Refetch now; resolves when the request settles. */
-	refetch(): Promise<void>;
+	readUnsafe(): Promise<TData>;
+	/** Refetch now; succeeds when the request settles, whatever its outcome. */
+	readonly refetch: Effect.Effect<void>;
 	/**
 	 * Drop data and errors, back to the state of a new entry. Readers suspend
-	 * and refetch; resolves when that refetch settles.
+	 * and refetch; succeeds when that refetch settles.
 	 */
-	reset(): Promise<void>;
+	readonly reset: Effect.Effect<void>;
+	readonly state: Effect.Effect<QueryState<TData>>;
 	/** Listen for state changes. Subscribed entries count as read. */
-	subscribe(listener: () => void, observer?: QueryObserver): () => void;
+	subscribeUnsafe(listener: () => void, observer?: QueryObserver): () => void;
 }
 
 /**
@@ -136,7 +153,6 @@ export interface QueryHost {
 /** The background work of an entry, one fiber per kind. */
 type Task = "errorShown" | "gc" | "request" | "stale";
 
-const identity = <T>(value: T) => value;
 const defaultObserver: QueryObserver = {};
 
 /**
@@ -165,14 +181,15 @@ function makeTasks(scope: Scope.Scope) {
 }
 
 export class QueryEntry implements Query {
-	/** Effect versions of the entry's async methods. */
-	readonly effect: {
-		fetch(request?: FetchRequest): Effect.Effect<unknown, unknown>;
-		readonly invalidate: Effect.Effect<void>;
-		readonly reset: Effect.Effect<void>;
-	};
+	readonly changes: Stream.Stream<QueryState<unknown>>;
+	readonly fetchNextPage: Effect.Effect<void>;
+	readonly fetchPreviousPage: Effect.Effect<void>;
 	readonly hash: string;
+	readonly invalidate: Effect.Effect<void>;
 	readonly key: QueryKey;
+	readonly refetch: Effect.Effect<void>;
+	readonly reset: Effect.Effect<void>;
+	readonly state: Effect.Effect<QueryState<unknown>>;
 	#errorShown = false;
 	#handle: QueryHandle;
 	#host: QueryHost;
@@ -205,11 +222,18 @@ export class QueryEntry implements Query {
 			status: "pending",
 			updatedAt: 0,
 		};
-		this.effect = {
-			fetch: (request = {}) => Effect.suspend(() => this.#load(request)),
-			invalidate: Effect.suspend(() => this.#invalidate()),
-			reset: Effect.suspend(() => this.#reset()),
-		};
+		this.changes = listen((emit) => {
+			emit(this.#state);
+			return this.subscribeUnsafe(() => emit(this.#state));
+		});
+		this.fetchNextPage = Effect.ignore(this.fetch({ direction: "forward" }));
+		this.fetchPreviousPage = Effect.ignore(
+			this.fetch({ direction: "backward" }),
+		);
+		this.invalidate = Effect.suspend(() => this.#invalidate());
+		this.refetch = Effect.ignore(this.fetch());
+		this.reset = Effect.suspend(() => this.#reset());
+		this.state = Effect.sync(() => this.#state);
 		this.#scheduleGc();
 	}
 
@@ -230,11 +254,15 @@ export class QueryEntry implements Query {
 		return this.#listeners.size;
 	}
 
-	getState = () => this.#state;
+	fetch(request: FetchRequest = {}): Effect.Effect<unknown, unknown> {
+		return Effect.suspend(() => this.#load(request));
+	}
 
-	isStaleNow = () => this.#computeStale(this.#state);
+	getStateUnsafe = () => this.#state;
 
-	subscribe = (listener: () => void, observer = defaultObserver) => {
+	isStaleUnsafe = () => this.#computeStale(this.#state);
+
+	subscribeUnsafe = (listener: () => void, observer = defaultObserver) => {
 		this.#listeners.set(listener, observer);
 		this.#tasks.cancel("gc");
 		this.#scheduleStale();
@@ -259,7 +287,7 @@ export class QueryEntry implements Query {
 		}
 	}
 
-	read = () => {
+	readUnsafe = () => {
 		const state = this.#state;
 		if (!state.hasData && !state.isFetching) {
 			if (state.status !== "error" || this.#errorShown) {
@@ -276,22 +304,7 @@ export class QueryEntry implements Query {
 		this.#begin(request);
 	}
 
-	fetch = (request?: FetchRequest) =>
-		Effect.runPromise(this.effect.fetch(request));
-
-	refetch = () => Effect.runPromise(Effect.ignore(this.effect.fetch()));
-
-	fetchNextPage = () =>
-		Effect.runPromise(
-			Effect.ignore(this.effect.fetch({ direction: "forward" })),
-		);
-
-	fetchPreviousPage = () =>
-		Effect.runPromise(
-			Effect.ignore(this.effect.fetch({ direction: "backward" })),
-		);
-
-	hasNextPage = () => {
+	hasNextPageUnsafe = () => {
 		const options = this.#options;
 		const data = this.#state.data;
 		return (
@@ -301,7 +314,7 @@ export class QueryEntry implements Query {
 		);
 	};
 
-	hasPreviousPage = () => {
+	hasPreviousPageUnsafe = () => {
 		const options = this.#options;
 		const data = this.#state.data;
 		return (
@@ -310,10 +323,6 @@ export class QueryEntry implements Query {
 			previousPageParam(options, data) != null
 		);
 	};
-
-	invalidate = () => Effect.runPromise(this.effect.invalidate);
-
-	reset = () => Effect.runPromise(this.effect.reset);
 
 	/** Write data directly, as if a request had returned it. */
 	setData(data: unknown, updatedAt = Date.now()) {
@@ -325,11 +334,10 @@ export class QueryEntry implements Query {
 		if (this.#state.hasData || this.#inFlight) {
 			return;
 		}
+		// The sender's error type doesn't survive the trip, so a rejection is
+		// a defect.
 		this.#start(
-			Effect.tryPromise({
-				catch: identity,
-				try: () => Promise.resolve(promise),
-			}),
+			Effect.promise(() => Promise.resolve(promise)),
 			undefined,
 		);
 	}
@@ -366,7 +374,7 @@ export class QueryEntry implements Query {
 			// A page joins the list the in-flight request returns.
 			return Deferred.await(inFlight).pipe(
 				Effect.exit,
-				Effect.andThen(this.effect.fetch(request)),
+				Effect.andThen(this.fetch(request)),
 			);
 		}
 		return this.#begin(request);
@@ -386,10 +394,7 @@ export class QueryEntry implements Query {
 			return Deferred.await(inFlight);
 		}
 		if (!options) {
-			return Effect.tryPromise({
-				catch: identity,
-				try: () => this.#state.promise,
-			});
+			return Effect.promise(() => this.#state.promise);
 		}
 		this.#tasks.cancel("request");
 		return Deferred.await(
@@ -502,9 +507,8 @@ export class QueryEntry implements Query {
 			this.#set({ fetchDirection: undefined, isFetching: false });
 			Deferred.doneUnsafe(awaiter, Exit.fail(new CancelledError()));
 		} else {
-			const error = Cause.squash(exit.cause);
-			this.#fail(error);
-			Deferred.doneUnsafe(awaiter, Exit.fail(error));
+			this.#fail(Cause.squash(exit.cause));
+			Deferred.doneUnsafe(awaiter, exit);
 		}
 		this.#scheduleGc();
 	}

@@ -20,6 +20,6 @@ export function useWaterfall<TFactory extends QueryFactory>(
 ): QueryHandle<TFactory> {
 	const client = useQueryClient();
 	const query = client.getQuery(factory, ...args);
-	query.read();
+	query.readUnsafe();
 	return query.handle;
 }

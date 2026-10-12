@@ -2,11 +2,14 @@ import type { Effect, Schedule } from "effect";
 
 import type { QueryKey } from "./key.ts";
 
-/** What a `queryFn` may return: a value, a promise, or an `Effect`. */
-export type QueryFnResult<TData> =
+/**
+ * What a `queryFn` may return: a value, a promise, or an `Effect`. An
+ * Effect's error type becomes the query's; promises reject with `unknown`.
+ */
+export type QueryFnResult<TData, TError = unknown> =
 	| TData
 	| PromiseLike<TData>
-	| Effect.Effect<TData, unknown>;
+	| Effect.Effect<TData, TError>;
 
 export interface QueryFunctionContext {
 	/** The query's key, as returned by the factory. */
@@ -32,7 +35,7 @@ export type RetryPolicy =
 	| Schedule.Schedule<unknown, unknown>
 	| ((failureCount: number, error: unknown) => boolean);
 
-/** Options every query accepts. `QueryClient` defaults fill in the rest. */
+/** Options every query accepts. `QueryCache` defaults fill in the rest. */
 export interface QueryBehavior {
 	/** How long an unread entry stays cached, in ms. `Infinity` keeps it. */
 	readonly gcTime?: number;
@@ -50,13 +53,17 @@ export interface QueryBehavior {
 	readonly staleTime?: number;
 }
 
-export interface QueryOptions<TData> extends QueryBehavior {
+export interface QueryOptions<TData, TError = unknown> extends QueryBehavior {
 	readonly kind: "query";
-	queryFn(context: QueryFunctionContext): QueryFnResult<TData>;
+	queryFn(context: QueryFunctionContext): QueryFnResult<TData, TError>;
 	readonly queryKey: QueryKey;
 }
 
-export interface InfiniteQueryOptions<TPage, TPageParam> extends QueryBehavior {
+export interface InfiniteQueryOptions<
+	TPage,
+	TPageParam,
+	TError = unknown,
+> extends QueryBehavior {
 	/** Param for the page after `lastPage`, or `null` / `undefined` at the end. */
 	getNextPageParam(
 		lastPage: TPage,
@@ -75,7 +82,9 @@ export interface InfiniteQueryOptions<TPage, TPageParam> extends QueryBehavior {
 	readonly kind: "infinite";
 	/** Keep at most this many pages; the far end is dropped when paging. */
 	readonly maxPages?: number;
-	queryFn(context: PageFunctionContext<TPageParam>): QueryFnResult<TPage>;
+	queryFn(
+		context: PageFunctionContext<TPageParam>,
+	): QueryFnResult<TPage, TError>;
 	readonly queryKey: QueryKey;
 }
 
@@ -86,8 +95,8 @@ export interface InfiniteData<TPage, TPageParam = unknown> {
 }
 
 export type AnyQueryOptions =
-	| QueryOptions<unknown>
-	| InfiniteQueryOptions<unknown, unknown>;
+	| QueryOptions<unknown, unknown>
+	| InfiniteQueryOptions<unknown, unknown, unknown>;
 
 /**
  * Typed options for a query factory:
@@ -101,16 +110,16 @@ export type AnyQueryOptions =
  * }
  * ```
  */
-export function queryOptions<TData>(
-	options: Omit<QueryOptions<TData>, "kind">,
-): QueryOptions<TData> {
+export function queryOptions<TData, TError = unknown>(
+	options: Omit<QueryOptions<TData, TError>, "kind">,
+): QueryOptions<TData, TError> {
 	return { ...options, kind: "query" };
 }
 
 /** Typed options for a paged query factory. */
-export function infiniteQueryOptions<TPage, TPageParam>(
-	options: Omit<InfiniteQueryOptions<TPage, TPageParam>, "kind">,
-): InfiniteQueryOptions<TPage, TPageParam> {
+export function infiniteQueryOptions<TPage, TPageParam, TError = unknown>(
+	options: Omit<InfiniteQueryOptions<TPage, TPageParam, TError>, "kind">,
+): InfiniteQueryOptions<TPage, TPageParam, TError> {
 	return { ...options, kind: "infinite" };
 }
 
@@ -145,6 +154,21 @@ export type DataOf<TFactory extends QueryFactory> =
 		: ReturnType<TFactory> extends QueryOptions<infer TData>
 			? TData
 			: never;
+
+/**
+ * The error a factory's request fails with: the `queryFn`'s Effect error
+ * type, or `unknown` for promises and plain values.
+ */
+export type ErrorOf<TFactory extends QueryFactory> =
+	ReturnType<TFactory> extends InfiniteQueryOptions<
+		infer _TPage,
+		infer _TPageParam,
+		infer TError
+	>
+		? TError
+		: ReturnType<TFactory> extends QueryOptions<infer _TData, infer TError>
+			? TError
+			: unknown;
 
 /** Page type of a paged factory. */
 export type PageOf<TFactory extends QueryFactory> =

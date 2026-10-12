@@ -1,7 +1,8 @@
 "use client";
 
-import type { QueryClient } from "@raf-query/core";
 import { createContext, type ReactNode, use, useEffect } from "react";
+
+import type { QueryClient } from "./client.ts";
 
 const QueryClientContext = createContext<QueryClient | null>(null);
 
