@@ -307,6 +307,111 @@ describe("invalidate", () => {
 	});
 });
 
+describe("observers", () => {
+	it("are counted, and changes emit an observers event", () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		const query = qc.getQuery(backend.issueQuery, { id: 1 });
+		const events: Array<string> = [];
+		qc.subscribe((event) => events.push(event.type));
+
+		const first = query.subscribe(() => {});
+		const second = query.subscribe(() => {});
+		expect(query.observerCount).toBe(2);
+		first();
+		first();
+		second();
+
+		expect(query.observerCount).toBe(0);
+		expect(events).toEqual([
+			"observers",
+			"observers",
+			"observers",
+			"observers",
+		]);
+	});
+});
+
+describe("reset", () => {
+	it("drops data and refetches read entries behind a pending promise", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		const query = qc.getQuery(backend.issueQuery, { id: 1 });
+		query.subscribe(() => {});
+		query.read();
+		backend.respondAll();
+		await flush();
+
+		const reset = qc.reset(backend.issueQuery, { id: 1 });
+		const state = query.getState();
+		expect(state).toMatchObject({
+			data: undefined,
+			hasData: false,
+			isFetching: true,
+			status: "pending",
+		});
+
+		backend.issues.set(1, { id: 1, title: "Again" });
+		backend.respondAll();
+		await reset;
+		expect(await state.promise).toEqual({ id: 1, title: "Again" });
+		expect(query.getState().status).toBe("success");
+	});
+
+	it("leaves unread entries empty until they are read", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
+
+		await qc.reset({ queryKey: ["issue"] });
+
+		const query = qc.getQuery(backend.issueQuery, { id: 1 });
+		expect(query.getState().hasData).toBe(false);
+		expect(backend.requests).toHaveLength(0);
+		query.read();
+		expect(backend.requests).toHaveLength(1);
+	});
+
+	it("restarts an in-flight request so its old response can't restore data", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
+		qc.getQuery(backend.issueQuery, { id: 1 }).refetch();
+		const [oldRequest] = backend.requests;
+
+		const reset = qc.reset(backend.issueQuery, { id: 1 });
+
+		expect(oldRequest?.signal.aborted).toBe(true);
+		backend.respondAll();
+		await reset;
+		expect(qc.getData(backend.issueQuery, { id: 1 })).toEqual({
+			id: 1,
+			title: "First",
+		});
+	});
+});
+
+describe("remove", () => {
+	it("drops matching entries and aborts their requests", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		const events: Array<string> = [];
+		qc.subscribe((event) => events.push(`${event.type} ${event.query.hash}`));
+		const pending = qc.fetch(backend.issueQuery, { id: 1 });
+		qc.setData(backend.issueQuery, { id: 2 }, { id: 2, title: "B" });
+
+		qc.remove(backend.issueQuery, { id: 1 });
+
+		await expect(pending).rejects.toBeInstanceOf(CancelledError);
+		expect(backend.requests[0]?.signal.aborted).toBe(true);
+		expect(qc.getAll().map((query) => query.hash)).toEqual(['["issue",2]']);
+		expect(events).toContain('removed ["issue",1]');
+
+		qc.remove({ queryKey: ["issue"] });
+		expect(qc.getAll()).toHaveLength(0);
+	});
+});
+
 describe("retry", () => {
 	it("retries the configured number of times", async () => {
 		const queryFn = vi.fn(() => Promise.reject(new Error("down")));

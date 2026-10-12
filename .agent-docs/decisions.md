@@ -108,6 +108,31 @@ App: **issue tracker** (confirmed). Data: an in-memory fake DB with artificial l
 - The `"failed"` `CacheEvent` exists for integrations (redirect handling) and fires after retries.
 - React tests: render, rerender and click inside **async** `act` (`await act(async () => …)`); a sync `act` never resumes a suspended tree after its promise resolves. Responding to a fake request needs a macrotask wait inside the act. Effect tests that fork a stream before a cache write need `Effect.forkChild(x, { startImmediately: true })`.
 
+## 2026-10-12 — Devtools (agent)
+
+- Ship as subpath `@raf-query/react/devtools` (like the integrations), not a separate package. Hand-written React + inline styles: no CSS file, no extra dependency, no Solid core like `@tanstack/query-devtools`.
+- Mirrors `@tanstack/react-query-devtools` (`.repos/query/packages/react-query-devtools/src/index.ts`): the default entry swaps in `() => null` when `process.env.NODE_ENV === "production"` so bundlers drop the panel; `/devtools/production` always renders it. We check `=== "production"` (TanStack: `!== "development"`) so tests and dev both get the panel. Verified by grepping both example apps' production builds for a panel-only string. TS 7 doesn't auto-include `@types/node`, so `devtools.tsx` declares `process` locally.
+- Renders nothing until hydrated (`useSyncExternalStore` server snapshot `false`): the server's cache isn't the browser's, and `localStorage` state is read in the client-only child's `useState` initializer.
+- Cache events fire synchronously, sometimes during another component's render, so `devtools-store.ts` notifies React in a microtask and caches the row snapshot per event version.
+- Core gained what the panel needs: `Query.observerCount`, `Query.isStaleNow()`, `Query.reset()`, `qc.reset` / `qc.remove`, and the `observers` cache event (subscribe/unsubscribe don't otherwise emit). A suspended reader isn't counted until it commits.
+
+## 2026-10-12 — Experiment: `@raf-query/tanstack-react-query` (human asked)
+
+One package giving raf-query's API on TanStack Query, to compare against the own-engine pair. Human picks: keep core/react for now; `@tanstack/react-query` is a regular `dependency` and the only one (no Effect); the cache is TanStack's own `QueryClient`, so TanStack hooks and devtools work on it; same API as the README minus Effect entry points; private, with experimental copies of both example apps (`examples/*-tanstack-query`, ports 3002 / 3003).
+
+Agent decisions:
+
+- **Verbs are free functions** taking the client first — `prefetch(qc, factory, input)`, `ensure`, `ensureData`, `invalidate`, `setData`, `getData` — since the client is TanStack's class. `qc.fetch` became `ensureData` (`fetch` shadows the global). Prefix invalidation is TanStack's own `qc.invalidateQueries({ queryKey })`. TanStack's hooks are not re-exported.
+- Verbs call `client.query()` / `client.infiniteQuery()` (the non-deprecated API). Those default `retry` to `false`, so verbs pass the read default instead: 0 on the server, 3 in the browser, unless the factory or client sets one.
+- **One observer per query hash**, recreated when the hash changes. Moving a `QueryObserver` to a new key refetches stale data (`shouldFetchOptionally`), which would refetch what the loader just fetched. Observers set `refetchOnMount: false`.
+- **Stable thenables** live in `thenable.ts`, one set per `Query` in a `WeakMap`: a fulfilled thenable per data identity, and one pending thenable fed by `QueryCache.subscribe`. A read with no data and nothing in flight starts the fetch during render (`observer.fetchOptimistic`), because `use()` suspends before effects run.
+- **An error is shown once, then the next read retries.** React re-renders a throwing tree once before the error boundary takes it, so the rejected thenable is returned until a microtask passes; after that, a read (an error boundary reset) refetches. This replaces TanStack's `retryOnMount`.
+- Paged factories use `InfiniteQueryObserver`; `{ pages }` maps to `client.infiniteQuery({ pages })`.
+- Dev-only check: two inputs with the same key hash warn once per key (`console.warn`).
+- Integrations: TanStack Router uses TanStack's own `@tanstack/react-router-ssr-query` (no `/tanstack-router` subpath). `/rsc` exports a `HydrationBoundary` that dehydrates pending entries as promises and skips entries an earlier boundary already sent in the request; `/next` exports `QueryProvider` (client per server render, singleton in the browser).
+- Not released: `.release-it.json` publishes core and react by name only.
+- Tests: TanStack batches observer notifications on a `setTimeout(0)`, so React tests wait a macrotask inside `act` after any cache write (`flush()` in `test-utils.tsx`).
+
 ## 2026-10-12 — npm release path
 
 - release-it + GitHub Actions: push to `main` → `.github/workflows/release.yaml`, run from the repo root (`.release-it.json`). Setup steps live in `.github/DEVELOPMENT.md`.

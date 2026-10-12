@@ -20,6 +20,11 @@ export function QueryClientProvider(props: {
 	);
 }
 
+/** The nearest provider's client, or `null` outside one. */
+export function useOptionalQueryClient(): QueryClient | null {
+	return use(QueryClientContext);
+}
+
 /** The client from the nearest {@link QueryClientProvider}. */
 export function useQueryClient(): QueryClient {
 	const client = use(QueryClientContext);
