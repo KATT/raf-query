@@ -4,7 +4,6 @@ export {
 	type LoadArgs,
 	QueryClient,
 	type QueryClientConfig,
-	type QueryClientEffect,
 	type QueryFilter,
 	type Updater,
 } from "./client.ts";
@@ -40,6 +39,7 @@ export {
 	type QueryOptions,
 	queryOptions,
 	type RetryPolicy,
+	type RetryStrategy,
 } from "./options.ts";
 export {
 	QueryObserver,

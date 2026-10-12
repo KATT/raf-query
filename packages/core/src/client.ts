@@ -1,4 +1,4 @@
-import { Effect, Predicate, Queue, Stream } from "effect";
+import { Predicate } from "effect";
 
 import { unsafeCast } from "./cast.ts";
 import { hashKey, matchesKey, type QueryKey } from "./key.ts";
@@ -13,12 +13,7 @@ import {
 	type QueryFactory,
 	type QueryHandle,
 } from "./options.ts";
-import {
-	type Query,
-	QueryEntry,
-	type QueryHost,
-	type QueryState,
-} from "./query.ts";
+import { type Query, QueryEntry, type QueryHost } from "./query.ts";
 
 export interface QueryClientConfig {
 	/** Defaults for every query; a factory's own options win. */
@@ -65,35 +60,12 @@ export type LoadArgs<TFactory extends QueryFactory> =
  */
 export type Updater<TData> = TData | ((previous: TData | undefined) => TData);
 
-/** Effect-returning twins of the client's async methods. */
-export interface QueryClientEffect {
-	ensure<TFactory extends QueryFactory>(
-		factory: TFactory,
-		...args: LoadArgs<TFactory>
-	): Effect.Effect<EnsuredQueryHandle<TFactory>, unknown>;
-	fetch<TFactory extends QueryFactory>(
-		factory: TFactory,
-		...args: LoadArgs<TFactory>
-	): Effect.Effect<DataOf<TFactory>, unknown>;
-	invalidate<TFactory extends QueryFactory>(
-		factory: TFactory,
-		...args: InputArgs<TFactory>
-	): Effect.Effect<void>;
-	invalidate(filter: QueryFilter): Effect.Effect<void>;
-	/**
-	 * The entry's current state, then every change. Counts as a reader while
-	 * the stream runs, so invalidation and focus refetch it.
-	 */
-	watch<TFactory extends QueryFactory>(
-		factory: TFactory,
-		...args: InputArgs<TFactory>
-	): Stream.Stream<QueryState<DataOf<TFactory>>>;
-}
-
 /** Cache internals shared with `hydrate` / `dehydrate`; not exported publicly. */
 export interface CacheAccess {
 	all(): ReadonlyArray<QueryEntry>;
 	entryFor(key: QueryKey): QueryEntry;
+	/** `invalidate` with the factory-or-filter target untyped. */
+	invalidate(target: QueryFactory | QueryFilter, input: unknown): Promise<void>;
 }
 
 const caches = new WeakMap<QueryClient, CacheAccess>();
@@ -107,7 +79,6 @@ export function cacheOf(client: QueryClient): CacheAccess {
 }
 
 const noop = () => {};
-const identity = <T>(value: T) => value;
 
 function isUpdateFunction<TData>(
 	updater: Updater<TData>,
@@ -146,8 +117,6 @@ function ensuredHandleOf<TFactory extends QueryFactory>(
  * tab.
  */
 export class QueryClient {
-	/** Effect-returning versions of `ensure`, `fetch`, `invalidate`, plus `watch`. */
-	readonly effect: QueryClientEffect;
 	readonly isServer: boolean;
 	#cache = new Map<string, QueryEntry>();
 	#host: QueryHost;
@@ -182,8 +151,8 @@ export class QueryClient {
 		caches.set(this, {
 			all: () => [...this.#cache.values()],
 			entryFor: (key) => this.#entryFor(key, hashKey(key)),
+			invalidate: (target, input) => this.#invalidate(target, input),
 		});
-		this.effect = this.#effectApi();
 	}
 
 	/**
@@ -250,13 +219,8 @@ export class QueryClient {
 		...args: InputArgs<TFactory>
 	): Promise<void>;
 	invalidate(filter: QueryFilter): Promise<void>;
-	async invalidate(
-		target: QueryFactory | QueryFilter,
-		input?: unknown,
-	): Promise<void> {
-		await Promise.all(
-			this.#match(target, input).map((entry) => entry.invalidate()),
-		);
+	invalidate(target: QueryFactory | QueryFilter, input?: unknown) {
+		return this.#invalidate(target, input);
 	}
 
 	/**
@@ -412,6 +376,12 @@ export class QueryClient {
 		}
 	}
 
+	async #invalidate(target: QueryFactory | QueryFilter, input: unknown) {
+		await Promise.all(
+			this.#match(target, input).map((entry) => entry.invalidate()),
+		);
+	}
+
 	#match(target: QueryFactory | QueryFilter, input: unknown) {
 		if (Predicate.isFunction(target)) {
 			const entry = this.#cache.get(
@@ -446,41 +416,6 @@ export class QueryClient {
 		return () => {
 			window.removeEventListener("visibilitychange", onVisibilityChange);
 			window.removeEventListener("online", onOnline);
-		};
-	}
-
-	#effectApi(): QueryClientEffect {
-		const invalidate = (target: QueryFactory | QueryFilter, input?: unknown) =>
-			Effect.promise(() =>
-				Promise.all(
-					this.#match(target, input).map((entry) => entry.invalidate()),
-				),
-			).pipe(Effect.asVoid);
-		return {
-			ensure: (factory, ...args) =>
-				Effect.tryPromise({
-					catch: identity,
-					try: () => this.ensure(factory, ...args),
-				}),
-			fetch: (factory, ...args) =>
-				Effect.tryPromise({
-					catch: identity,
-					try: () => this.fetch(factory, ...args),
-				}),
-			invalidate,
-			watch: (factory, ...args) =>
-				Stream.callback((queue) => {
-					const query = this.getQuery(factory, ...args);
-					return Effect.acquireRelease(
-						Effect.sync(() => {
-							Queue.offerUnsafe(queue, query.getState());
-							return query.subscribe(() =>
-								Queue.offerUnsafe(queue, query.getState()),
-							);
-						}),
-						(unsubscribe) => Effect.sync(unsubscribe),
-					);
-				}),
 		};
 	}
 }

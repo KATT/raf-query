@@ -1,8 +1,8 @@
-import { Cause, Effect, Exit, Predicate, Schedule } from "effect";
+import { Predicate } from "effect";
 
 import type { QueryKey } from "./key.ts";
 import { scheduleNotify } from "./notify.ts";
-import { whenOnline } from "./online.ts";
+import { sleep, whenOnline } from "./online.ts";
 import { replaceEqualDeep } from "./share.ts";
 import type {
 	AnyQueryOptions,
@@ -13,6 +13,7 @@ import type {
 	QueryFnResult,
 	QueryHandle,
 	RetryPolicy,
+	RetryStrategy,
 } from "./options.ts";
 import { fulfilled, type Pending, pending, type Thenable } from "./thenable.ts";
 
@@ -125,15 +126,15 @@ interface InFlight {
 	readonly deferred: Pending<unknown>;
 }
 
-const noop = () => {};
-const identity = <T>(value: T) => value;
-const defaultObserver: SubscribeOptions = {};
+/** Runs one request; `signal` aborts when it's cancelled or superseded. */
+type Request = (signal: AbortSignal) => Promise<unknown>;
 
-function isEffectResult<T>(
-	result: QueryFnResult<T>,
-): result is Effect.Effect<T, unknown> {
-	return Effect.isEffect(result);
-}
+type Outcome =
+	| { readonly error: unknown; readonly ok: false }
+	| { readonly ok: true; readonly value: unknown };
+
+const noop = () => {};
+const defaultObserver: SubscribeOptions = {};
 
 export function isInfiniteData(
 	data: unknown,
@@ -147,7 +148,7 @@ export function isInfiniteData(
 }
 
 function shouldRetry(
-	retry: Exclude<RetryPolicy, Schedule.Schedule<unknown, unknown>>,
+	retry: Exclude<RetryPolicy, RetryStrategy>,
 	failureCount: number,
 	error: unknown,
 ) {
@@ -393,13 +394,7 @@ export class QueryEntry implements Query {
 		if (this.#state.hasData || this.#inFlight) {
 			return;
 		}
-		this.#start(
-			Effect.tryPromise({
-				catch: identity,
-				try: () => Promise.resolve(promise),
-			}),
-			undefined,
-		).catch(noop);
+		this.#start(async () => promise, undefined).catch(noop);
 	}
 
 	/** Refetch a read, stale entry whose readers want it on this event. */
@@ -452,10 +447,7 @@ export class QueryEntry implements Query {
 		this.#scheduleStale();
 	}
 
-	#start(
-		request: Effect.Effect<unknown, unknown>,
-		direction: "backward" | "forward" | undefined,
-	) {
+	#start(request: Request, direction: "backward" | "forward" | undefined) {
 		const deferred = this.#inFlight?.deferred ?? pending<unknown>();
 		const run: InFlight = { controller: new AbortController(), deferred };
 		this.#inFlight = run;
@@ -477,27 +469,26 @@ export class QueryEntry implements Query {
 				isFetching: true,
 			});
 		}
-		Effect.runPromiseExit(request, { signal: run.controller.signal }).then(
-			(exit) => this.#settle(run, exit),
-			noop,
+		request(run.controller.signal).then(
+			(value) => this.#settle(run, { ok: true, value }),
+			(error: unknown) => this.#settle(run, { error, ok: false }),
 		);
 		return deferred.promise;
 	}
 
-	#settle(run: InFlight, exit: Exit.Exit<unknown, unknown>) {
+	#settle(run: InFlight, outcome: Outcome) {
 		if (this.#inFlight !== run) {
 			return;
 		}
 		this.#inFlight = undefined;
-		if (Exit.isSuccess(exit)) {
-			run.deferred.resolve(this.#succeed(exit.value, Date.now()));
-		} else if (Cause.hasInterruptsOnly(exit.cause)) {
+		if (outcome.ok) {
+			run.deferred.resolve(this.#succeed(outcome.value, Date.now()));
+		} else if (outcome.error instanceof CancelledError) {
 			this.#set({ fetchDirection: undefined, isFetching: false });
-			run.deferred.reject(new CancelledError());
+			run.deferred.reject(outcome.error);
 		} else {
-			const error = Cause.squash(exit.cause);
-			this.#fail(error);
-			run.deferred.reject(error);
+			this.#fail(outcome.error);
+			run.deferred.reject(outcome.error);
 		}
 		this.#scheduleGc();
 	}
@@ -560,14 +551,17 @@ export class QueryEntry implements Query {
 		}, 0);
 	}
 
-	#request(
-		options: AnyQueryOptions,
-		request: FetchRequest,
-	): Effect.Effect<unknown, unknown> {
+	#request(options: AnyQueryOptions, request: FetchRequest): Request {
 		if (options.kind === "query") {
-			return this.#attempt((signal) =>
-				options.queryFn({ queryKey: options.queryKey, signal }),
-			);
+			return (signal) =>
+				this.#attempt(
+					(attemptSignal) =>
+						options.queryFn({
+							queryKey: options.queryKey,
+							signal: attemptSignal,
+						}),
+					signal,
+				);
 		}
 		return this.#pagedRequest(options, request);
 	}
@@ -575,21 +569,27 @@ export class QueryEntry implements Query {
 	#pagedRequest(
 		options: InfiniteQueryOptions<unknown, unknown>,
 		request: FetchRequest,
-	): Effect.Effect<InfiniteData<unknown, unknown>, unknown> {
+	): Request {
 		const current = isInfiniteData(this.#state.data)
 			? this.#state.data
 			: undefined;
-		const fetchPage = (pageParam: unknown, direction: "backward" | "forward") =>
-			this.#attempt((signal) =>
-				options.queryFn({
-					direction,
-					pageParam,
-					queryKey: options.queryKey,
-					signal,
-				}),
-			);
 
-		return Effect.gen(function* () {
+		return async (signal) => {
+			const fetchPage = (
+				pageParam: unknown,
+				direction: "backward" | "forward",
+			) =>
+				this.#attempt(
+					(attemptSignal) =>
+						options.queryFn({
+							direction,
+							pageParam,
+							queryKey: options.queryKey,
+							signal: attemptSignal,
+						}),
+					signal,
+				);
+
 			if (request.direction && current) {
 				const pageParam =
 					request.direction === "forward"
@@ -598,7 +598,7 @@ export class QueryEntry implements Query {
 				if (pageParam == null) {
 					return current;
 				}
-				const page = yield* fetchPage(pageParam, request.direction);
+				const page = await fetchPage(pageParam, request.direction);
 				return addPage(
 					current,
 					page,
@@ -622,60 +622,54 @@ export class QueryEntry implements Query {
 					}
 					pageParam = next;
 				}
-				const page = yield* fetchPage(pageParam, "forward");
+				const page = await fetchPage(pageParam, "forward");
 				data = addPage(data, page, pageParam, "forward", options.maxPages);
 			}
 			return data;
-		});
+		};
 	}
 
-	/** One request: run the `queryFn` with a fresh signal, retrying per policy. */
-	#attempt(
+	/**
+	 * One request: run the `queryFn`, retrying per policy. Retries wait for
+	 * the browser to be online; the first attempt doesn't.
+	 */
+	async #attempt(
 		call: (signal: AbortSignal) => QueryFnResult<unknown>,
-	): Effect.Effect<unknown, unknown> {
-		const once = Effect.suspend(() => {
-			const controller = new AbortController();
-			return Effect.try({
-				catch: identity,
-				try: () => call(controller.signal),
-			}).pipe(
-				Effect.flatMap((result) =>
-					isEffectResult(result)
-						? result
-						: Effect.tryPromise({
-								catch: identity,
-								try: () => Promise.resolve(result),
-							}),
-				),
-				Effect.onInterrupt(() => Effect.sync(() => controller.abort())),
-			);
-		});
-		return this.#withRetry(once);
+		signal: AbortSignal,
+	): Promise<unknown> {
+		const nextDelay = this.#retryPolicy();
+		for (;;) {
+			try {
+				return await call(signal);
+			} catch (error) {
+				if (signal.aborted || error instanceof CancelledError) {
+					throw error;
+				}
+				const failureCount = this.#state.failureCount + 1;
+				this.#set({ failureCount });
+				const delay = nextDelay(failureCount, error);
+				if (delay === false) {
+					throw error;
+				}
+				await sleep(delay, signal);
+				if (!this.#host.isServer) {
+					await whenOnline(signal);
+				}
+			}
+		}
 	}
 
-	#withRetry(
-		once: Effect.Effect<unknown, unknown>,
-	): Effect.Effect<unknown, unknown> {
+	/** This request's retry decisions: delay before the next attempt, or `false`. */
+	#retryPolicy(): (failureCount: number, error: unknown) => number | false {
 		const retry = this.#behavior("retry") ?? (this.#host.isServer ? 0 : 3);
-		const countFailure = Effect.sync(() =>
-			this.#set({ failureCount: this.#state.failureCount + 1 }),
-		);
-		const counted = once.pipe(Effect.tapError(() => countFailure));
-		// Retries wait while the browser is offline; the first attempt doesn't.
-		const online = this.#host.isServer ? Effect.void : whenOnline;
-		if (Schedule.isSchedule(retry)) {
-			return Effect.suspend(() => {
-				let first = true;
-				const each = Effect.suspend(() => {
-					const wait = first ? Effect.void : online;
-					first = false;
-					return wait.pipe(Effect.andThen(counted));
-				});
-				return Effect.retry(each, retry);
-			});
+		if (Predicate.hasProperty(retry, "start")) {
+			return retry.start();
 		}
 		const retryDelay = this.#behavior("retryDelay");
-		const delayFor = (failureCount: number, error: unknown) => {
+		return (failureCount, error) => {
+			if (!shouldRetry(retry, failureCount, error)) {
+				return false;
+			}
 			if (retryDelay === undefined) {
 				return Math.min(1000 * 2 ** (failureCount - 1), 30_000);
 			}
@@ -683,19 +677,6 @@ export class QueryEntry implements Query {
 				? retryDelay
 				: retryDelay(failureCount, error);
 		};
-		const attempt: Effect.Effect<unknown, unknown> = counted.pipe(
-			Effect.catch((error) => {
-				const failureCount = this.#state.failureCount;
-				if (!shouldRetry(retry, failureCount, error)) {
-					return Effect.fail(error);
-				}
-				return Effect.sleep(delayFor(failureCount, error)).pipe(
-					Effect.andThen(online),
-					Effect.andThen(Effect.suspend(() => attempt)),
-				);
-			}),
-		);
-		return attempt;
 	}
 
 	#clearGc() {

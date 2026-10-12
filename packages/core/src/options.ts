@@ -1,12 +1,10 @@
-import type { Effect, Schedule } from "effect";
-
 import type { QueryKey } from "./key.ts";
 
-/** What a `queryFn` may return: a value, a promise, or an `Effect`. */
-export type QueryFnResult<TData> =
-	| TData
-	| PromiseLike<TData>
-	| Effect.Effect<TData, unknown>;
+/**
+ * What a `queryFn` may return: a value or a promise. `effectQueryOptions`
+ * (`@raf-query/core/effect`) also takes an `Effect`.
+ */
+export type QueryFnResult<TData> = TData | PromiseLike<TData>;
 
 export interface QueryFunctionContext {
 	/** The query's key, as returned by the factory. */
@@ -22,14 +20,24 @@ export interface PageFunctionContext<TPageParam> extends QueryFunctionContext {
 }
 
 /**
+ * Retry decisions with state, such as an Effect `Schedule`
+ * (`retrySchedule` in `@raf-query/core/effect`). `start` runs once per request; the function it
+ * returns gets each failure and returns the delay before the next attempt in
+ * ms, or `false` to give up. `retryDelay` doesn't apply.
+ */
+export interface RetryStrategy {
+	start(): (failureCount: number, error: unknown) => number | false;
+}
+
+/**
  * How many times to retry a failed request: `false`, `true` (forever), a
- * count, a predicate, or an Effect `Schedule`. The predicate gets the number
- * of failures so far (1 after the first).
+ * count, a predicate, or a {@link RetryStrategy}. The predicate gets the
+ * number of failures so far (1 after the first).
  */
 export type RetryPolicy =
 	| boolean
 	| number
-	| Schedule.Schedule<unknown, unknown>
+	| RetryStrategy
 	| ((failureCount: number, error: unknown) => boolean);
 
 /** Options every query accepts. `QueryClient` defaults fill in the rest. */

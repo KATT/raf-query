@@ -1,20 +1,26 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Fiber, Stream } from "effect";
 
+import {
+	ensureEffect,
+	fetchEffect,
+	invalidateEffect,
+	watch,
+} from "./effect.ts";
 import { QueryClient } from "./index.ts";
 import { createBackend, flush } from "./test-utils.ts";
 
 const settle = Effect.promise(flush);
 
-describe("QueryClient.effect", () => {
+describe("@raf-query/core/effect", () => {
 	it.effect("ensure and fetch succeed with the handle and the data", () =>
 		Effect.gen(function* () {
 			const backend = createBackend();
 			const qc = new QueryClient({ isServer: false });
 			const fiber = yield* Effect.forkChild(
 				Effect.all([
-					qc.effect.ensure(backend.issueQuery, { id: 1 }),
-					qc.effect.fetch(backend.issueQuery, { id: 1 }),
+					ensureEffect(qc, backend.issueQuery, { id: 1 }),
+					fetchEffect(qc, backend.issueQuery, { id: 1 }),
 				]),
 			);
 			yield* settle;
@@ -32,7 +38,7 @@ describe("QueryClient.effect", () => {
 			const backend = createBackend();
 			const qc = new QueryClient({ isServer: false });
 			const fiber = yield* Effect.forkChild(
-				Effect.flip(qc.effect.fetch(backend.issueQuery, { id: 404 })),
+				Effect.flip(fetchEffect(qc, backend.issueQuery, { id: 404 })),
 			);
 			yield* settle;
 			backend.respondAll();
@@ -49,7 +55,7 @@ describe("QueryClient.effect", () => {
 			const qc = new QueryClient({ isServer: false });
 			qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
 			const fiber = yield* Effect.forkChild(
-				qc.effect.watch(backend.issueQuery, { id: 1 }).pipe(
+				watch(qc, backend.issueQuery, { id: 1 }).pipe(
 					Stream.map((state) => state.data?.title),
 					Stream.take(2),
 					Stream.runCollect,
@@ -71,7 +77,7 @@ describe("QueryClient.effect", () => {
 			const qc = new QueryClient({ isServer: false });
 			qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
 			const fiber = yield* Effect.forkChild(
-				qc.effect.watch(backend.issueQuery, { id: 1 }).pipe(
+				watch(qc, backend.issueQuery, { id: 1 }).pipe(
 					Stream.filter((state) => state.data?.title === "C"),
 					Stream.take(1),
 					Stream.runCollect,
@@ -81,7 +87,7 @@ describe("QueryClient.effect", () => {
 			yield* settle;
 
 			const invalidated = yield* Effect.forkChild(
-				qc.effect.invalidate({ queryKey: ["issue"] }),
+				invalidateEffect(qc, { queryKey: ["issue"] }),
 			);
 			yield* settle;
 			backend.issues.set(1, { id: 1, title: "C" });

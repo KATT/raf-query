@@ -46,7 +46,7 @@ Render-as-you-fetch with plain TanStack Query has a few traps. This package remo
 | Write and read      | `qc.invalidate`, `qc.setData`, `qc.getData` | `invalidate(qc, …)`, `setData(qc, …)`, `getData(qc, …)` |
 | Invalidate a prefix | `qc.invalidate({ queryKey })`               | TanStack's `qc.invalidateQueries({ queryKey })`         |
 | Client options      | `new QueryClient({ defaults })`             | TanStack's `new QueryClient({ defaultOptions })`        |
-| Effect              | Effect `queryFn`s, `qc.effect`              | None                                                    |
+| Effect              | `@raf-query/react/effect`                   | None                                                    |
 | TanStack Router     | `@raf-query/react/tanstack-router`          | TanStack's `@tanstack/react-router-ssr-query`           |
 | Devtools            | `@raf-query/react/devtools`                 | TanStack's devtools                                     |
 

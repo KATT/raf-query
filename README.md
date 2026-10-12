@@ -25,6 +25,7 @@ Early. Both packages are on npm at `0.0.x`, and the API can still change between
 | `@raf-query/react/rsc`             | `HydrationBoundary` for passing server-component queries to the client |
 | `@raf-query/react/next`            | `QueryProvider` for Next.js App Router                                 |
 | `@raf-query/react/devtools`        | [Devtools](#devtools) panel for inspecting the cache in development    |
+| `@raf-query/react/effect`          | [Effect](#effect) `queryFn`s, `Schedule` retries, Effect verbs         |
 
 ## Principles
 
@@ -64,7 +65,7 @@ export function commentsQuery(input: { slug: string }) {
 
 Factories must take at most one argument; the type rejects two or more. The single argument is the query's **input** and must be serializable, because it is what a handle carries.
 
-A `queryFn` returns a value, a promise, or an [Effect](#effect). It receives `queryKey` and an abort `signal`; paged ones also get `pageParam` and `direction`. TypeScript infers the page type from `queryFn`, so if `getNextPageParam` comes first in the object literal (sorted keys), pass the types instead: `infiniteQueryOptions<CommentPage, number>({ ... })`.
+A `queryFn` returns a value or a promise (or an [Effect](#effect), through `@raf-query/react/effect`). It receives `queryKey` and an abort `signal`; paged ones also get `pageParam` and `direction`. TypeScript infers the page type from `queryFn`, so if `getNextPageParam` comes first in the object literal (sorted keys), pass the types instead: `infiniteQueryOptions<CommentPage, number>({ ... })`.
 
 The factory is the only place a query is declared paged. Every other API — `prefetch`, `ensure`, `fetch`, `useQuery`, `useWaterfall`, `invalidate`, `setData` — takes either kind and infers the rest from the factory's type.
 
@@ -458,17 +459,22 @@ A factory that imports server-only code (a database client) can't be imported by
 
 ## Effect
 
-raf-query runs requests on [Effect](https://effect.website), and Effect code can use it without wrapping:
+[Effect](https://effect.website) code uses raf-query through `@raf-query/react/effect`. Nothing else imports that entry, so apps that don't use it don't bundle the Effect runtime:
 
-- A `queryFn` can return an `Effect`. Cancelling the request interrupts it.
-- `retry` accepts a `Schedule` as well as a count or predicate.
-- `qc.effect` has Effect versions of `ensure`, `fetch` and `invalidate`, plus `watch`, a `Stream` of the entry's state.
+- `effectQueryOptions` and `effectInfiniteQueryOptions` take a `queryFn` that returns an `Effect`; cancelling the request interrupts it. Their `retry` also accepts a `Schedule`. They return the same options as `queryOptions` / `infiniteQueryOptions`, so the factory works with every other API.
+- `retrySchedule(schedule)` turns a `Schedule` into a retry policy for `config.defaults` or plain `queryOptions`. Each request steps its own copy with every failure, and the schedule's delay is the wait before the next attempt.
+- `ensureEffect`, `fetchEffect` and `invalidateEffect` are the client's methods as Effects, taking the client first. `watch` is a `Stream` of an entry's state: the current state, then every change.
 
 ```ts
+import {
+	effectQueryOptions,
+	fetchEffect,
+	watch,
+} from "@raf-query/react/effect";
 import { Effect, Schedule, Stream } from "effect";
 
 export function issueQuery(input: { id: number }) {
-	return queryOptions({
+	return effectQueryOptions({
 		queryKey: ["issue", input.id],
 		queryFn: () => IssueRepo.get(input.id), // Effect<Issue, IssueNotFound>
 		retry: Schedule.exponential("200 millis").pipe(Schedule.upTo({ times: 3 })),
@@ -476,8 +482,8 @@ export function issueQuery(input: { id: number }) {
 }
 
 const program = Effect.gen(function* () {
-	const issue = yield* qc.effect.fetch(issueQuery, { id: 1 });
-	yield* qc.effect.watch(issueQuery, { id: 1 }).pipe(
+	const issue = yield* fetchEffect(qc, issueQuery, { id: 1 });
+	yield* watch(qc, issueQuery, { id: 1 }).pipe(
 		Stream.map((state) => state.data?.title),
 		Stream.runForEach((title) => Effect.log(title)),
 	);
@@ -538,7 +544,6 @@ Both render nothing on the server, since the server's cache isn't the browser's.
 | `invalidate`, `setData`, `getData`          | [Write and read the cache](#mutations)                                                                                  |
 | `reset(factory, input)` / `reset(filter)`   | Drop data and errors; read queries suspend and refetch. Resolves when they settle                                       |
 | `remove(factory, input)` / `remove(filter)` | Remove entries and abort their requests                                                                                 |
-| `effect`                                    | [Effect versions](#effect) of `ensure`, `fetch`, `invalidate`, plus `watch`                                             |
 | `subscribe(listener)`                       | Cache events: `added`, `updated`, `observers` (a reader subscribed or left), `removed`, and `failed` (with the `error`) |
 | `getAll()`, `getQuery(factory, input?)`     | Cache entries, for devtools and integrations                                                                            |
 | `clear()`                                   | Drop every entry and abort in-flight requests                                                                           |
@@ -547,14 +552,14 @@ Both render nothing on the server, since the server's cache isn't the browser's.
 
 Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
 
-| Option                                                | Default                                   |
-| ----------------------------------------------------- | ----------------------------------------- |
-| `staleTime`                                           | `0` ms                                    |
-| `gcTime`                                              | 5 minutes; `Infinity` on the server       |
-| `retry` (count, `boolean`, predicate, `Schedule`)     | `3`; `0` on the server                    |
-| `retryDelay` (ms, or a function of the failure count) | Doubling from 1 s, at most 30 s           |
-| `refetchOnWindowFocus`, `refetchOnReconnect`          | `true` (only read, stale queries refetch) |
-| `structuralSharing` (keep deeply equal parts of data) | `true`                                    |
+| Option                                                       | Default                                   |
+| ------------------------------------------------------------ | ----------------------------------------- |
+| `staleTime`                                                  | `0` ms                                    |
+| `gcTime`                                                     | 5 minutes; `Infinity` on the server       |
+| `retry` (count, `boolean`, predicate, [`Schedule`](#effect)) | `3`; `0` on the server                    |
+| `retryDelay` (ms, or a function of the failure count)        | Doubling from 1 s, at most 30 s           |
+| `refetchOnWindowFocus`, `refetchOnReconnect`                 | `true` (only read, stale queries refetch) |
+| `structuralSharing` (keep deeply equal parts of data)        | `true`                                    |
 
 `infiniteQueryOptions` also takes `getPreviousPageParam` and `maxPages`.
 
@@ -576,6 +581,8 @@ In the browser, retries pause while `navigator.onLine` is `false`: after the ret
 | `EnsuredQueryHandle<TFactory>`                 | Handle type for props fed by `ensure`                            |
 | `Thenable<T>`                                  | Promise with `status` / `value` / `reason`, read by `use()`      |
 | `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                                 |
+
+`@raf-query/core/effect` (re-exported as `@raf-query/react/effect`): `effectQueryOptions`, `effectInfiniteQueryOptions`, `retrySchedule`, `ensureEffect`, `fetchEffect`, `invalidateEffect`, `watch`; see [Effect](#effect).
 
 `@raf-query/react` (plus all of the above):
 
