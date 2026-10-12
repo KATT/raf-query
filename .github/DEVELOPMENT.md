@@ -7,7 +7,7 @@ This is a Vite+ / pnpm monorepo. The publishable packages live in `packages/`:
 | `packages/core`  | `@raf-query/core`  |
 | `packages/react` | `@raf-query/react` |
 
-Experiments live in `.experimental/` folders, which the release and the root `./packages/*` / `./examples/*` globs don't reach. `packages/.experimental/tanstack-react-query` (`@raf-query/experimental-tanstack-react-query`) is the same API built on TanStack Query instead of raf-query's own engine. It's private, isn't published, and stays at version `0.0.0`. See [its README](../packages/.experimental/tanstack-react-query/README.md).
+Experiments live in `.experimental/` folders, which the release and the root `./packages/*` / `./examples/*` globs don't reach. `packages/.experimental/tanstack-react-query` (`@raf-query/experimental-tanstack-react-query`) is the same API built on TanStack Query instead of raf-query's own engine. `packages/.experimental/effect-atom` (`@raf-query/experimental-effect-atom`) builds it on Effect's `effect/reactivity` `AtomRegistry`. Both are private, aren't published, and stay at version `0.0.0`. See their READMEs: [TanStack](../packages/.experimental/tanstack-react-query/README.md), [Effect atoms](../packages/.experimental/effect-atom/README.md).
 
 Root `README.md` / `LICENSE.md` / `CHANGELOG.md` are canonical. Each package's `prepack` runs [`scripts/sync-package-docs.ts`](../scripts/sync-package-docs.ts), which copies them into the package so the npm tarball includes them without a second copy in git.
 
