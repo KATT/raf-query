@@ -87,6 +87,13 @@ App scope, small enough to read in one sitting, covering every README feature:
 
 App: **issue tracker** (confirmed). Data: an in-memory fake DB with artificial latency, shared by both apps so their behavior matches. **`queryFn`s call server functions** — `createServerFn` in TanStack Start, server functions in Next.js — not HTTP route handlers.
 
+## 2026-10-12 — GitHub repo settings as code
+
+- Merge methods and the `main` ruleset are GitHub settings, not files, so they don't come along when copying the vendor-src scaffold. `scripts/configure-github.ts` (`pnpm configure:github`) is the source of truth. Edit it and re-run it as a repo admin instead of changing settings by hand.
+- Mirrors vendor-src's "Branch protection for main" ruleset (no deletion, PR required with 0 approvals, squash only, the six CI job names required) plus a force-push block. Repo admins bypass it because `release.yaml` pushes `chore: release vX.Y.Z` directly to `main`. Without the bypass, releases break.
+- Required check names must match the `name:` of jobs in `.github/workflows/ci.yaml`; update both together.
+- The `gh` token in cloud agents is read-only (403 on settings and rulesets), so the user has to run the script.
+
 ## 2026-10-12 — npm release path
 
 - release-it + GitHub Actions: push to `main` → `.github/workflows/release.yaml`, run from the repo root (`.release-it.json`). Setup steps live in `.github/DEVELOPMENT.md`.

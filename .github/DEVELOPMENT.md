@@ -67,9 +67,10 @@ Do not set `NODE_AUTH_TOKEN` / `NPM_TOKEN` in the release job — a placeholder 
 
 Recreate these when forking, or when adding a new package to `packages/`.
 
-1. **GitHub secret `ACCESS_TOKEN`**: a PAT that can push to `main` and create releases. The workflow checks out and pushes the release commit with it.
-2. **npm org `raf-query`**, which owns the `@raf-query` scope: create it at <https://www.npmjs.com/org/create> (free for public packages). The publishing account needs 2FA enabled.
-3. **First publish from your machine.** npm only lets you add a trusted publisher to a package that already exists, so each new package is published once by hand. Provenance is CI-only, so turn it off for this publish:
+1. **GitHub repo settings**: run `pnpm configure:github` logged into `gh` as a repo admin. [`scripts/configure-github.ts`](../scripts/configure-github.ts) allows only squash merges (PR title becomes the commit subject, which feeds the changelog), deletes merged branches, and adds the "Branch protection for main" ruleset: no deletion or force push, changes go through a PR, and the CI checks must pass. Repo admins bypass the ruleset so the release workflow can push its release commit. Safe to re-run after editing the script.
+2. **GitHub secret `ACCESS_TOKEN`**: a PAT from a repo admin that can push to `main` and create releases. The workflow checks out and pushes the release commit with it.
+3. **npm org `raf-query`**, which owns the `@raf-query` scope: create it at <https://www.npmjs.com/org/create> (free for public packages). The publishing account needs 2FA enabled.
+4. **First publish from your machine.** npm only lets you add a trusted publisher to a package that already exists, so each new package is published once by hand. Provenance is CI-only, so turn it off for this publish:
 
    ```shell
    npm login
@@ -79,7 +80,7 @@ Recreate these when forking, or when adding a new package to `packages/`.
    done
    ```
 
-4. **Trusted publisher** for each package, pointing at this repo's release workflow:
+5. **Trusted publisher** for each package, pointing at this repo's release workflow:
 
    ```shell
    npm trust github @raf-query/core --file release.yaml --repo KATT/raf-query --allow-publish -y

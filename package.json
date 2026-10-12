@@ -13,6 +13,7 @@
 		"test": "pnpm -r --filter \"./packages/*\" test",
 		"typecheck": "pnpm -r --filter \"./packages/*\" typecheck",
 		"check": "vp check",
+		"configure:github": "node scripts/configure-github.ts",
 		"postinstall": "vendor-src check"
 	},
 	"devDependencies": {
