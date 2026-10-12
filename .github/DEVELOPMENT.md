@@ -7,7 +7,7 @@ This is a Vite+ / pnpm monorepo. The publishable packages live in `packages/`:
 | `packages/core`  | `@raf-query/core`  |
 | `packages/react` | `@raf-query/react` |
 
-`packages/experimental-tanstack-react-query` (`@raf-query/experimental-tanstack-react-query`) is an experiment: the same API built on TanStack Query instead of raf-query's own engine. It's private and isn't published.
+`packages/experimental-tanstack-react-query` (`@raf-query/experimental-tanstack-react-query`) is an experiment: the same API built on TanStack Query instead of raf-query's own engine. It's private, isn't published, and stays at version `0.0.0`: releases skip it.
 
 Root `README.md` / `LICENSE.md` / `CHANGELOG.md` are canonical. Each package's `prepack` runs [`scripts/sync-package-docs.ts`](../scripts/sync-package-docs.ts), which copies them into the package so the npm tarball includes them without a second copy in git.
 
@@ -84,7 +84,7 @@ Both packages are released together and always share a version. The latest git t
 Pushing to `main` runs [`.github/workflows/release.yaml`](./workflows/release.yaml), which runs [release-it](https://github.com/release-it/release-it) from the repo root:
 
 1. Computes the next version from conventional commits since the latest tag and updates `CHANGELOG.md`.
-2. Writes the version into every `packages/*/package.json`.
+2. Writes the version into `packages/core/package.json` and `packages/react/package.json`.
 3. Builds, then publishes `@raf-query/core` and `@raf-query/react` (each `pnpm pack` + `npm publish`, using npm trusted publishing over OIDC — no `NPM_TOKEN`). `pnpm pack` rewrites `workspace:*` and `catalog:` to real versions.
 4. Only after publishing: commits `chore: release vX.Y.Z`, tags, pushes, and creates a GitHub Release. A failed publish leaves nothing pushed.
 
