@@ -31,7 +31,7 @@ pnpm build
 
 ## Example apps
 
-`examples/` holds the same issue tracker on two frameworks, plus the packages they share. The copies in `examples/.experimental/` run the same app on the experimental `@raf-query/experimental-tanstack-react-query`:
+`examples/` holds the same issue tracker on two frameworks. The packages they share live in `examples/.shared/`. The copies in `examples/.experimental/` run the same app on the experimental `@raf-query/experimental-tanstack-react-query`:
 
 | Directory                                      | What                                                                   |
 | ---------------------------------------------- | ---------------------------------------------------------------------- |
@@ -39,8 +39,8 @@ pnpm build
 | `examples/nextjs`                              | Next.js App Router app, <http://localhost:3001>                        |
 | `examples/.experimental/tanstack-query-start`  | TanStack Start app on TanStack Query, <http://localhost:3002>          |
 | `examples/.experimental/tanstack-query-nextjs` | Next.js App Router app on TanStack Query, <http://localhost:3003>      |
-| `examples/ui`                                  | shadcn/ui components and the Tailwind theme (`@examples/ui`)           |
-| `examples/db`                                  | In-memory fake database with latency (`@examples/db`), and its schemas |
+| `examples/.shared/ui`                          | shadcn/ui components and the Tailwind theme (`@examples/ui`)           |
+| `examples/.shared/db`                          | In-memory fake database with latency (`@examples/db`), and its schemas |
 
 They import the libraries' source, so there is nothing to build first:
 
@@ -52,7 +52,7 @@ pnpm --filter @examples/experimental-tanstack-query-nextjs dev
 pnpm build:examples   # production builds of every app, as CI runs them
 ```
 
-Every database call waits `DB_LATENCY_MS` (default 400) ± 50%. Data lives in memory and resets when the server restarts. To add a shadcn component, run `pnpm dlx shadcn@latest add <name>` in `examples/ui`, then check that it imports `cn` from `@examples/ui/lib/utils` (the CLI can write a bare `"cn"` import and add a `cn` dependency).
+Every database call waits `DB_LATENCY_MS` (default 400) ± 50%. Data lives in memory and resets when the server restarts. To add a shadcn component, run `pnpm dlx shadcn@latest add <name>` in `examples/.shared/ui`, then check that it imports `cn` from `@examples/ui/lib/utils` (the CLI can write a bare `"cn"` import and add a `cn` dependency).
 
 ## Formatting
 

@@ -73,10 +73,11 @@ Spec lives in root `README.md`. Picks, and what lost:
 ## 2026-10-12 — Example apps (human decided)
 
 - `examples/tanstack-start` and `examples/nextjs` build **the same small, representative app**, so the two integrations can be compared side by side.
-- UI is shadcn. The components live in one shared private workspace package, **`examples/ui`** (`@examples/ui`), so the example apps contain only routes, query factories, and app-specific components.
-- `examples/ui` layout: shadcn components in `src/components/*.tsx`, `src/lib/utils.ts`, `src/hooks/*`, Tailwind v4 `src/styles/globals.css` (no tailwind config). `package.json` `exports`: `./globals.css`, `./components/*`, `./lib/*`, `./hooks/*`. Its `components.json` aliases point at `@examples/ui/...`, so `shadcn add` run there lands in the shared package.
+- UI is shadcn. The components live in one shared private workspace package, **`examples/.shared/ui`** (`@examples/ui`), so the example apps contain only routes, query factories, and app-specific components.
+- `examples/.shared/ui` layout: shadcn components in `src/components/*.tsx`, `src/lib/utils.ts`, `src/hooks/*`, Tailwind v4 `src/styles/globals.css` (no tailwind config). `package.json` `exports`: `./globals.css`, `./components/*`, `./lib/*`, `./hooks/*`. Its `components.json` aliases point at `@examples/ui/...`, so `shadcn add` run there lands in the shared package.
+- **The apps' shared packages live in `examples/.shared/`** (human): `db` and `ui`, so `examples/` lists only apps (plus `.experimental/`). Like `.experimental/`, it's listed separately in `pnpm-workspace.yaml`, the root `typecheck` filter, and the oxlint overrides, because `examples/*` globs don't reach it. Package names stay `@examples/db` / `@examples/ui`.
 - Each app's `components.json` sets `ui` → `@examples/ui/components` and `utils` → `@examples/ui/lib/utils`, and `tailwind.css` → the shared `globals.css`.
-- Set `rsc: true` in `examples/ui/components.json` so interactive components get `"use client"`; Next server components import from the shared package, and TanStack Start ignores the directive.
+- Set `rsc: true` in `examples/.shared/ui/components.json` so interactive components get `"use client"`; Next server components import from the shared package, and TanStack Start ignores the directive.
 
 App scope, small enough to read in one sitting, covering every README feature:
 
@@ -92,8 +93,8 @@ App: **issue tracker** (confirmed). Data: an in-memory fake DB with artificial l
 
 ## 2026-10-12 — How the examples are built (agent)
 
-- **`examples/db`** (`@examples/db`) is the fake DB; **`@examples/db/types`** is its client-safe half (Zod schemas, interfaces, `currentUser`). Client code imports only `/types`; the root entry reads `process.env` and the store on `globalThis`, which must stay out of client bundles.
-- **No Effect in the example apps or `examples/db`** (human, 2026-10-12): they show raf-query to people who don't use Effect. When they need a schema library, use **Zod**. Effect stays in the libraries.
+- **`examples/.shared/db`** (`@examples/db`) is the fake DB; **`@examples/db/types`** is its client-safe half (Zod schemas, interfaces, `currentUser`). Client code imports only `/types`; the root entry reads `process.env` and the store on `globalThis`, which must stay out of client bundles.
+- **No Effect in the example apps or `@examples/db`** (human, 2026-10-12): they show raf-query to people who don't use Effect. When they need a schema library, use **Zod**. Effect stays in the libraries.
 - Inputs are **Zod schemas** in `/types`. Start validators and `validateSearch` take the schema directly (Zod implements Standard Schema); Next server actions call `schema.parse(input)` (they're public endpoints, so they validate even though the parameter is typed). Next pages parse `searchParams` with `IssueListSearchParams` (strings → `IssueListInput`).
 - **Next.js rejects server actions during SSR** ("Server Functions cannot be called during initial render"). So no `useWaterfall` with a server-action `queryFn` in the Next app: the issue page `await`s the issue, then `prefetch`es its assignee. Comments embed their `author` (backend returns it with the parent) in both apps, so there's no per-comment lookup.
 - Comments list newest first, with the form on top: a new comment must land on the loaded first page, or it vanishes when the optimistic entry settles.

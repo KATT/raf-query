@@ -455,7 +455,8 @@
 			"files": [
 				"examples/*/src/**/*.{ts,tsx}",
 				"examples/*/app/**/*.{ts,tsx}",
-				"examples/.experimental/*/src/**/*.{ts,tsx}"
+				"examples/.experimental/*/src/**/*.{ts,tsx}",
+				"examples/.shared/*/src/**/*.{ts,tsx}"
 			],
 			"rules": {
 				"workspace/infer-callback-params": "error",
@@ -475,7 +476,10 @@
 		},
 		{
 			// Vendored shadcn/ui registry components — not first-party code.
-			"files": ["examples/ui/src/components/**", "examples/ui/src/hooks/**"],
+			"files": [
+				"examples/.shared/ui/src/components/**",
+				"examples/.shared/ui/src/hooks/**"
+			],
 			"rules": {
 				"typescript/consistent-type-assertions": "off",
 				"typescript/no-deprecated": "off",

@@ -244,10 +244,10 @@ importers:
     dependencies:
       '@examples/db':
         specifier: workspace:*
-        version: link:../../db
+        version: link:../../.shared/db
       '@examples/ui':
         specifier: workspace:*
-        version: link:../../ui
+        version: link:../../.shared/ui
       '@raf-query/experimental-tanstack-react-query':
         specifier: workspace:*
         version: link:../../../packages/.experimental/tanstack-react-query
@@ -293,10 +293,10 @@ importers:
     dependencies:
       '@examples/db':
         specifier: workspace:*
-        version: link:../../db
+        version: link:../../.shared/db
       '@examples/ui':
         specifier: workspace:*
-        version: link:../../ui
+        version: link:../../.shared/ui
       '@raf-query/experimental-tanstack-react-query':
         specifier: workspace:*
         version: link:../../../packages/.experimental/tanstack-react-query
@@ -359,7 +359,7 @@ importers:
         specifier: 1.0.0
         version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
 
-  examples/db:
+  examples/.shared/db:
     dependencies:
       zod:
         specifier: 4.6.5
@@ -372,14 +372,54 @@ importers:
         specifier: 7.0.2
         version: 7.0.2
 
+  examples/.shared/ui:
+    dependencies:
+      class-variance-authority:
+        specifier: 0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: 2.1.1
+        version: 2.1.1
+      lucide-react:
+        specifier: 1.55.0
+        version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
+      radix-ui:
+        specifier: 1.8.0
+        version: 1.8.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      tailwind-merge:
+        specifier: 3.7.0
+        version: 3.7.0
+      tw-animate-css:
+        specifier: 1.4.0
+        version: 1.4.0
+    devDependencies:
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: 19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: 19.3.0
+        version: 19.3.0(react@19.3.0)
+      tailwindcss:
+        specifier: 4.3.3
+        version: 4.3.3
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+
   examples/nextjs:
     dependencies:
       '@examples/db':
         specifier: workspace:*
-        version: link:../db
+        version: link:../.shared/db
       '@examples/ui':
         specifier: workspace:*
-        version: link:../ui
+        version: link:../.shared/ui
       '@raf-query/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -425,10 +465,10 @@ importers:
     dependencies:
       '@examples/db':
         specifier: workspace:*
-        version: link:../db
+        version: link:../.shared/db
       '@examples/ui':
         specifier: workspace:*
-        version: link:../ui
+        version: link:../.shared/ui
       '@raf-query/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -484,46 +524,6 @@ importers:
       vite-plus:
         specifier: 1.0.0
         version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
-
-  examples/ui:
-    dependencies:
-      class-variance-authority:
-        specifier: 0.7.1
-        version: 0.7.1
-      clsx:
-        specifier: 2.1.1
-        version: 2.1.1
-      lucide-react:
-        specifier: 1.55.0
-        version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
-      radix-ui:
-        specifier: 1.8.0
-        version: 1.8.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      tailwind-merge:
-        specifier: 3.7.0
-        version: 3.7.0
-      tw-animate-css:
-        specifier: 1.4.0
-        version: 1.4.0
-    devDependencies:
-      '@types/react':
-        specifier: 19.3.0
-        version: 19.3.0
-      '@types/react-dom':
-        specifier: 19.3.0
-        version: 19.3.0(@types/react@19.3.0)
-      react:
-        specifier: 19.3.0
-        version: 19.3.0
-      react-dom:
-        specifier: 19.3.0
-        version: 19.3.0(react@19.3.0)
-      tailwindcss:
-        specifier: 4.3.3
-        version: 4.3.3
-      typescript:
-        specifier: 7.0.2
-        version: 7.0.2
 
   packages/.experimental/tanstack-react-query:
     dependencies:
