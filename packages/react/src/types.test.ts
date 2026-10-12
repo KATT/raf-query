@@ -1,13 +1,19 @@
 import { describe, expect, expectTypeOf, it } from "@effect/vitest";
+import { Context, Effect, Layer } from "effect";
+import type { ComponentProps } from "react";
 
 import {
 	allKeyed,
 	type DataOf,
+	dehydrate,
+	type ErrorOf,
 	type InfiniteData,
 	infiniteQueryOptions,
 	QueryClient,
+	QueryClientProvider,
 	type QueryHandle,
 	queryOptions,
+	type ServicesOf,
 } from "./index.ts";
 
 describe("allKeyed", () => {
@@ -48,6 +54,40 @@ function meQuery() {
 	return queryOptions({ queryFn: () => "me", queryKey: ["me"] });
 }
 
+class Api extends Context.Service<
+	Api,
+	{ readonly user: (id: number) => Effect.Effect<string> }
+>()("test/Api") {}
+
+class Other extends Context.Service<Other, string>()("test/Other") {}
+
+class NotFound {
+	readonly _tag = "NotFound";
+}
+
+function userQuery(input: { id: number }) {
+	return queryOptions({
+		queryFn: () =>
+			Effect.gen(function* () {
+				const api = yield* Api;
+				if (input.id < 0) {
+					return yield* Effect.fail(new NotFound());
+				}
+				return yield* api.user(input.id);
+			}),
+		queryKey: ["user", input.id],
+	});
+}
+
+function otherQuery() {
+	return queryOptions({
+		queryFn: () => Effect.service(Other),
+		queryKey: ["other"],
+	});
+}
+
+const apiLayer = Layer.succeed(Api, { user: (id) => Effect.succeed(`#${id}`) });
+
 describe("types", () => {
 	it("flow from the factory to every Promise verb", () => {
 		const qc = new QueryClient({ isServer: true });
@@ -85,5 +125,39 @@ describe("types", () => {
 			qc.prefetch((a: string, b: string) => postQuery({ slug: a + b }), "a");
 		};
 		expect(typeOnly).toBeTypeOf("function");
+	});
+
+	it("infer a queryFn Effect's services and error", () => {
+		expectTypeOf<ServicesOf<typeof userQuery>>().toEqualTypeOf<Api>();
+		expectTypeOf<ErrorOf<typeof userQuery>>().toEqualTypeOf<NotFound>();
+		expectTypeOf<DataOf<typeof userQuery>>().toEqualTypeOf<string>();
+		expectTypeOf<ServicesOf<typeof postQuery>>().toEqualTypeOf<never>();
+	});
+
+	it("take only factories whose services the client's layer provides", () => {
+		const qc = new QueryClient({ isServer: true, layer: apiLayer });
+		const plain = new QueryClient({ isServer: true });
+		expectTypeOf(qc).toEqualTypeOf<QueryClient<Api>>();
+		const typeOnly = () => {
+			void qc.fetch(userQuery, { id: 1 });
+			qc.prefetch(postQuery, { slug: "a" });
+			// @ts-expect-error `Other` isn't in the client's layer
+			void qc.ensure(otherQuery);
+			// @ts-expect-error the client has no layer
+			void plain.fetch(userQuery, { id: 1 });
+			// @ts-expect-error the client has no layer
+			plain.prefetch(userQuery, { id: 1 });
+			// @ts-expect-error the client has no layer
+			void plain.invalidate(userQuery, { id: 1 });
+		};
+		expect(typeOnly).toBeTypeOf("function");
+	});
+
+	it("accept a client of any services where any client goes", () => {
+		const qc = new QueryClient({ isServer: true, layer: apiLayer });
+		expectTypeOf(qc).toExtend<
+			ComponentProps<typeof QueryClientProvider>["client"]
+		>();
+		expectTypeOf(qc).toExtend<Parameters<typeof dehydrate>[0]>();
 	});
 });

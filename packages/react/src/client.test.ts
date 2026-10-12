@@ -6,7 +6,7 @@ import {
 	onTestFinished,
 	vi,
 } from "@effect/vitest";
-import { Effect, Schedule } from "effect";
+import { Context, Effect, Layer, Schedule } from "effect";
 
 import { Query, QueryClient, queryOptions } from "./index.ts";
 import { createBackend, flush } from "./test-utils.ts";
@@ -965,5 +965,70 @@ describe("window events", () => {
 
 		expect(backend.requests).toHaveLength(0);
 		unmount();
+	});
+});
+
+class Api extends Context.Service<
+	Api,
+	{ readonly user: (id: number) => Effect.Effect<string, NotFound> }
+>()("test/Api") {}
+
+class NotFound extends Error {
+	readonly _tag = "NotFound";
+}
+
+function userQuery(input: { id: number }) {
+	return queryOptions({
+		queryFn: () =>
+			Effect.flatMap(Effect.service(Api), (api) => api.user(input.id)),
+		queryKey: ["user", input.id],
+		retry: false,
+	});
+}
+
+function apiLayer(released: Array<string>) {
+	return Layer.effect(
+		Api,
+		Effect.acquireRelease(
+			Effect.succeed({
+				user: (id: number) =>
+					id > 0 ? Effect.succeed(`#${id}`) : Effect.fail(new NotFound()),
+			}),
+			() =>
+				Effect.sync(() => {
+					released.push("api");
+				}),
+		),
+	);
+}
+
+describe("layer", () => {
+	it("provides services to queryFn Effects", async () => {
+		const qc = new QueryClient({ isServer: false, layer: apiLayer([]) });
+
+		expect(await qc.fetch(userQuery, { id: 1 })).toBe("#1");
+		const query = qc.getQuery(userQuery, { id: 2 });
+		expect(await Query.readUnsafe(query)).toBe("#2");
+	});
+
+	it("rejects with a queryFn Effect's typed failure", async () => {
+		const qc = new QueryClient({ isServer: false, layer: apiLayer([]) });
+
+		await expect(qc.ensure(userQuery, { id: 0 })).rejects.toBeInstanceOf(
+			NotFound,
+		);
+	});
+
+	it("dispose runs the layer's finalizers and interrupts requests", async () => {
+		const backend = createBackend();
+		const released: Array<string> = [];
+		const qc = new QueryClient({ isServer: false, layer: apiLayer(released) });
+		await qc.fetch(userQuery, { id: 1 });
+		qc.prefetch(backend.issueQuery, { id: 1 });
+
+		await qc.dispose();
+
+		expect(released).toEqual(["api"]);
+		expect(backend.requests[0]?.signal.aborted).toBe(true);
 	});
 });

@@ -1,5 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "@effect/vitest";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { Context, Effect, Layer } from "effect";
 import { Component, type ReactNode, Suspense, use } from "react";
 
 import {
@@ -80,6 +81,19 @@ function createBackend() {
 			}),
 		userQuery,
 	};
+}
+
+class Greeting extends Context.Service<Greeting, string>()("test/Greeting") {}
+
+function greetingQuery(input: { name: string }) {
+	return queryOptions({
+		queryFn: () =>
+			Effect.map(
+				Effect.service(Greeting),
+				(greeting) => `${greeting}, ${input.name}`,
+			),
+		queryKey: ["greeting", input.name],
+	});
 }
 
 /** Render inside an awaited `act`, so React resumes suspended trees later. */
@@ -471,6 +485,33 @@ describe("useQuery", () => {
 			void controls.fetchNextPage;
 		};
 		expect(useTypes).toBeTypeOf("function");
+	});
+
+	it("starts a request with the client's layer services during render", async () => {
+		const client = new QueryClient({
+			isServer: false,
+			layer: Layer.succeed(Greeting, "Hello"),
+		});
+		function Greet(props: {
+			readonly handle: QueryHandle<typeof greetingQuery>;
+		}) {
+			const [greetingPromise] = useQuery(greetingQuery, props.handle);
+			return <p>{use(greetingPromise)}</p>;
+		}
+
+		await mount(
+			<QueryClientProvider client={client}>
+				<Suspense fallback={<p>Loading</p>}>
+					<Greet
+						handle={{ input: { name: "Ada" }, key: ["greeting", "Ada"] }}
+					/>
+				</Suspense>
+			</QueryClientProvider>,
+		);
+
+		await waitFor(() => screen.getByText("Hello, Ada"));
+		expect(screen.queryByText("Loading")).toBeNull();
+		cleanup();
 	});
 });
 
