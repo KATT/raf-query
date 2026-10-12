@@ -37,8 +37,10 @@ export {
 	type QueryFnResult,
 	type QueryFunctionContext,
 	type QueryHandle,
+	type QueryMeta,
 	type QueryOptions,
 	queryOptions,
+	type Register,
 	type RetryPolicy,
 } from "./options.ts";
 export {

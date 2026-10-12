@@ -8,7 +8,16 @@ import {
 } from "@effect/vitest";
 import { Effect, Schedule } from "effect";
 
-import { CancelledError, QueryClient, queryOptions } from "./index.ts";
+import {
+	CancelledError,
+	hydrate,
+	infiniteQueryOptions,
+	type Query,
+	QueryClient,
+	type QueryFunctionContext,
+	type QueryMeta,
+	queryOptions,
+} from "./index.ts";
 import { createBackend, flush } from "./test-utils.ts";
 
 function useFakeTimers(options?: Parameters<typeof vi.useFakeTimers>[0]) {
@@ -171,6 +180,92 @@ describe("undefined data", () => {
 		expectTypeOf(fetchMaybe).returns.resolves.toEqualTypeOf<
 			number | undefined
 		>();
+	});
+});
+
+describe("meta", () => {
+	function metaQuery(input: { id: number; label: string }) {
+		return queryOptions({
+			meta: { label: input.label },
+			queryFn: (context) => Promise.resolve(context.meta),
+			queryKey: ["meta", input.id],
+			retry: false,
+		});
+	}
+
+	it("reaches the queryFn context", async () => {
+		const qc = new QueryClient({ isServer: false });
+
+		await expect(qc.fetch(metaQuery, { id: 1, label: "one" })).resolves.toEqual(
+			{ label: "one" },
+		);
+	});
+
+	it("reaches the page function context", async () => {
+		const qc = new QueryClient({ isServer: false });
+		function pagedQuery() {
+			return infiniteQueryOptions({
+				getNextPageParam: (_last: QueryMeta | undefined, pages) =>
+					pages.length < 2 ? pages.length : undefined,
+				initialPageParam: 0,
+				meta: { label: "paged" },
+				queryFn: (context) => Promise.resolve(context.meta),
+				queryKey: ["meta", "paged"],
+			});
+		}
+
+		const data = await qc.fetch(pagedQuery, undefined, { pages: 2 });
+
+		expect(data.pages).toEqual([{ label: "paged" }, { label: "paged" }]);
+	});
+
+	it("is on the query onError gets", async () => {
+		const onError = vi.fn();
+		const qc = new QueryClient({ isServer: false, onError });
+		function failingQuery() {
+			return queryOptions({
+				meta: { errorMessage: "Couldn't load issues" },
+				queryFn: () => Promise.reject(new Error("boom")),
+				queryKey: ["meta", "failing"],
+				retry: false,
+			});
+		}
+
+		await expect(qc.fetch(failingQuery)).rejects.toThrow("boom");
+
+		expect(onError).toHaveBeenCalledOnce();
+		const query: Query = onError.mock.calls[0]?.[1];
+		expect(query.meta).toEqual({ errorMessage: "Couldn't load issues" });
+	});
+
+	it("follows the latest factory call, and is undefined for hydrated entries", async () => {
+		const qc = new QueryClient({ isServer: false });
+		hydrate(qc, {
+			queries: [{ data: { label: "server" }, key: ["meta", 1], updatedAt: 1 }],
+		});
+		expect(qc.getAll()[0]?.meta).toBeUndefined();
+
+		expect(qc.getQuery(metaQuery, { id: 1, label: "a" }).meta).toEqual({
+			label: "a",
+		});
+		qc.prefetch(metaQuery, { id: 1, label: "b" });
+		expect(qc.getAll()[0]?.meta).toEqual({ label: "b" });
+	});
+
+	it("is a string-keyed record unless Register declares queryMeta", () => {
+		expectTypeOf<QueryMeta>().toEqualTypeOf<Record<string, unknown>>();
+		expectTypeOf<QueryFunctionContext["meta"]>().toEqualTypeOf<
+			QueryMeta | undefined
+		>();
+		expectTypeOf(metaQuery({ id: 1, label: "a" }).meta).toEqualTypeOf<
+			QueryMeta | undefined
+		>();
+		queryOptions({
+			// @ts-expect-error meta is an object, not a string
+			meta: "label",
+			queryFn: () => 1,
+			queryKey: ["meta", "typed"],
+		});
 	});
 });
 

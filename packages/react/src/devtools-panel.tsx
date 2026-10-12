@@ -550,6 +550,14 @@ function QueryDetails(props: {
 			<div style={{ ...section, fontFamily: monoFamily }}>
 				<Explorer depth={0} palette={palette} value={query.handle.input} />
 			</div>
+			{query.meta === undefined ? null : (
+				<>
+					<Heading palette={palette} title="Meta" />
+					<div style={{ ...section, fontFamily: monoFamily }}>
+						<Explorer depth={0} palette={palette} value={query.meta} />
+					</div>
+				</>
+			)}
 		</section>
 	);
 }

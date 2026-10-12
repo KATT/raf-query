@@ -12,6 +12,7 @@ import type {
 	QueryFactory,
 	QueryFnResult,
 	QueryHandle,
+	QueryMeta,
 	RetryPolicy,
 } from "./options.ts";
 import { fulfilled, type Pending, pending } from "./thenable.ts";
@@ -81,6 +82,8 @@ export interface Query<
 	/** Staleness as of now; `getState().isStale` is only kept current while read. */
 	isStaleNow(): boolean;
 	readonly key: QueryKey;
+	/** `meta` from the latest factory call; `undefined` for an entry only hydrated so far. */
+	readonly meta: QueryMeta | undefined;
 	/** Readers currently subscribed. */
 	readonly observerCount: number;
 	/** Options from the latest factory call; `undefined` for an entry only hydrated so far. */
@@ -256,6 +259,10 @@ export class QueryEntry implements Query {
 
 	get options() {
 		return this.#options;
+	}
+
+	get meta() {
+		return this.#options?.meta;
 	}
 
 	/** Readers are subscribed; `invalidate` and focus refetch only what is read. */
@@ -566,7 +573,11 @@ export class QueryEntry implements Query {
 	): Effect.Effect<unknown, unknown> {
 		if (options.kind === "query") {
 			return this.#attempt((signal) =>
-				options.queryFn({ queryKey: options.queryKey, signal }),
+				options.queryFn({
+					meta: options.meta,
+					queryKey: options.queryKey,
+					signal,
+				}),
 			);
 		}
 		return this.#pagedRequest(options, request);
@@ -583,6 +594,7 @@ export class QueryEntry implements Query {
 			this.#attempt((signal) =>
 				options.queryFn({
 					direction,
+					meta: options.meta,
 					pageParam,
 					queryKey: options.queryKey,
 					signal,

@@ -64,9 +64,41 @@ export function commentsQuery(input: { slug: string }) {
 
 Factories must take at most one argument; the type rejects two or more. The single argument is the query's **input** and must be serializable, because it is what a handle carries.
 
-A `queryFn` returns a value, a promise, or an [Effect](#effect). It receives `queryKey` and an abort `signal`; paged ones also get `pageParam` and `direction`. TypeScript infers the page type from `queryFn`, so if `getNextPageParam` comes first in the object literal (sorted keys), pass the types instead: `infiniteQueryOptions<CommentPage, number>({ ... })`.
+A `queryFn` returns a value, a promise, or an [Effect](#effect). It receives `queryKey`, the query's [`meta`](#query-meta) and an abort `signal`; paged ones also get `pageParam` and `direction`. TypeScript infers the page type from `queryFn`, so if `getNextPageParam` comes first in the object literal (sorted keys), pass the types instead: `infiniteQueryOptions<CommentPage, number>({ ... })`.
 
 The factory is the only place a query is declared paged. Every other API — `prefetch`, `ensure`, `fetch`, `useQuery`, `useWaterfall`, `invalidate`, `setData` — takes either kind and infers the rest from the factory's type.
+
+### Query meta
+
+`meta` attaches anything you want to know about a query elsewhere. It reaches the `queryFn` context, `query.meta` (taken from the latest factory call) and the devtools. A common use is a per-query message for one global error handler:
+
+```ts
+export function issuesQuery() {
+	return queryOptions({
+		queryKey: ["issues"],
+		queryFn: () => listIssues(),
+		meta: { errorMessage: "Couldn't load issues" },
+	});
+}
+
+const queryClient = new QueryClient({
+	onError: (error, query) => {
+		toast.error(query.meta?.errorMessage ?? "Something went wrong");
+	},
+});
+```
+
+`meta` is `Record<string, unknown>` by default. Type it for the whole app by augmenting `Register` in the package you import from (`@raf-query/react` re-exports it from `@raf-query/core`, so either works):
+
+```ts
+declare module "@raf-query/react" {
+	interface Register {
+		queryMeta: { errorMessage?: string };
+	}
+}
+```
+
+`meta` is set per factory, not in `config.defaults`, and isn't sent with dehydrated state: the receiving side's factory call provides it.
 
 ## Starting queries
 
@@ -511,7 +543,7 @@ A button in the corner opens a panel docked to the edge of the viewport. The pan
 | `fresh`    | Read, and within `staleTime`               |
 | `inactive` | Nothing reads it; it's removed at `gcTime` |
 
-Select an entry to see its key, input, data, error, and last update, and to **Refetch**, **Invalidate**, **Reset** (drop its data, so readers suspend and refetch) or **Remove** it. The header filters entries by key, sorts them, and has **Invalidate all** and **Clear cache**. The panel keeps its open state and size in `localStorage`.
+Select an entry to see its key, input, meta, data, error, and last update, and to **Refetch**, **Invalidate**, **Reset** (drop its data, so readers suspend and refetch) or **Remove** it. The header filters entries by key, sorts them, and has **Invalidate all** and **Clear cache**. The panel keeps its open state and size in `localStorage`.
 
 `QueryDevtools` props, all optional:
 
@@ -556,25 +588,26 @@ Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.de
 | `refetchOnWindowFocus`, `refetchOnReconnect`          | `true` (only read, stale queries refetch) |
 | `structuralSharing` (keep deeply equal parts of data) | `true`                                    |
 
-`infiniteQueryOptions` also takes `getPreviousPageParam` and `maxPages`.
+`queryOptions` and `infiniteQueryOptions` (not `config.defaults`) also take [`meta`](#query-meta). `infiniteQueryOptions` also takes `getPreviousPageParam` and `maxPages`.
 
 In the browser, retries pause while `navigator.onLine` is `false`: after the retry delay, the next attempt waits for the window's `online` event. The request stays fetching meanwhile, and cancelling it (`remove`, `clear`, a restart) stops the wait. The first attempt runs regardless.
 
 `@raf-query/core`:
 
-| Export                                         | Use                                                              |
-| ---------------------------------------------- | ---------------------------------------------------------------- |
-| `QueryClient`                                  | The cache                                                        |
-| `queryOptions(options)`                        | Typed options for a query factory                                |
-| `infiniteQueryOptions(options)`                | Typed options for a paged query factory                          |
-| `allKeyed(record)`                             | Await a record of promises, keeping keys                         |
-| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations                |
-| `hashKey(key)`, `matchesKey(key, prefix)`      | Key helpers                                                      |
-| `QueryObserver`                                | One reader's view of a query, with tracked results; for bindings |
-| `CancelledError`                               | Rejection of a request cancelled by `clear()` or a restart       |
-| `QueryHandle<TFactory>`                        | Handle type for props                                            |
-| `EnsuredQueryHandle<TFactory>`                 | Handle type for props fed by `ensure`                            |
-| `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                                 |
+| Export                                         | Use                                                               |
+| ---------------------------------------------- | ----------------------------------------------------------------- |
+| `QueryClient`                                  | The cache                                                         |
+| `queryOptions(options)`                        | Typed options for a query factory                                 |
+| `infiniteQueryOptions(options)`                | Typed options for a paged query factory                           |
+| `allKeyed(record)`                             | Await a record of promises, keeping keys                          |
+| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations                 |
+| `hashKey(key)`, `matchesKey(key, prefix)`      | Key helpers                                                       |
+| `QueryObserver`                                | One reader's view of a query, with tracked results; for bindings  |
+| `CancelledError`                               | Rejection of a request cancelled by `clear()` or a restart        |
+| `QueryHandle<TFactory>`                        | Handle type for props                                             |
+| `EnsuredQueryHandle<TFactory>`                 | Handle type for props fed by `ensure`                             |
+| `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                                  |
+| `Register`, `QueryMeta`                        | Augment `Register` with `queryMeta` to type [`meta`](#query-meta) |
 
 `@raf-query/react` (plus all of the above):
 

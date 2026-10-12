@@ -8,7 +8,33 @@ export type QueryFnResult<TData> =
 	| PromiseLike<TData>
 	| Effect.Effect<TData, unknown>;
 
+/**
+ * App-wide types, filled in by module augmentation. Declare `queryMeta` to
+ * type every query's `meta`. Augment the package you import from;
+ * `@raf-query/react` re-exports this interface, so either works:
+ *
+ * ```ts
+ * declare module "@raf-query/react" {
+ *   interface Register {
+ *     queryMeta: { errorMessage?: string };
+ *   }
+ * }
+ * ```
+ */
+// oxlint-disable-next-line typescript/no-empty-object-type -- apps add members by declaration merging
+export interface Register {}
+
+/**
+ * Type of a query's `meta`. `Record<string, unknown>` unless `queryMeta` is
+ * declared on {@link Register}.
+ */
+export type QueryMeta = Register extends { queryMeta: infer TQueryMeta }
+	? TQueryMeta
+	: Record<string, unknown>;
+
 export interface QueryFunctionContext {
+	/** The `meta` of the factory call that started this request. */
+	readonly meta: QueryMeta | undefined;
 	/** The query's key, as returned by the factory. */
 	readonly queryKey: QueryKey;
 	/** Aborted when the request is cancelled or superseded. */
@@ -58,6 +84,12 @@ export interface QueryBehavior {
 
 export interface QueryOptions<TData> extends QueryBehavior {
 	readonly kind: "query";
+	/**
+	 * Anything to know about the query elsewhere: the `queryFn` context,
+	 * `query.meta` (e.g. in the client's `onError`), devtools. Not sent
+	 * with dehydrated state.
+	 */
+	readonly meta?: QueryMeta;
 	queryFn(context: QueryFunctionContext): QueryFnResult<TData>;
 	readonly queryKey: QueryKey;
 }
@@ -81,6 +113,8 @@ export interface InfiniteQueryOptions<TPage, TPageParam> extends QueryBehavior {
 	readonly kind: "infinite";
 	/** Keep at most this many pages; the far end is dropped when paging. */
 	readonly maxPages?: number;
+	/** As {@link QueryOptions.meta}. */
+	readonly meta?: QueryMeta;
 	queryFn(context: PageFunctionContext<TPageParam>): QueryFnResult<TPage>;
 	readonly queryKey: QueryKey;
 }
