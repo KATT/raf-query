@@ -356,12 +356,22 @@ function EditTitle(props: { post: Post }) {
 
 `updatePost` is a server function (or a Next.js server action). `await qc.invalidate(...)` resolves once every query currently being read has refetched, so the action's pending state lasts until the fresh data is on screen. For an error message, wrap the action in `useActionState` and return the caught error.
 
-| Call                                  | Effect                                                                  |
-| ------------------------------------- | ----------------------------------------------------------------------- |
-| `qc.invalidate(factory, input)`       | Mark one query stale and refetch it if it is being read                 |
-| `qc.invalidate({ queryKey, exact? })` | Same, for every query whose key starts with `queryKey` (unless `exact`) |
-| `qc.setData(factory, input, updater)` | Write data directly                                                     |
-| `qc.getData(factory, input)`          | Read cached data, or `undefined`                                        |
+| Call                                  | Effect                                                  |
+| ------------------------------------- | ------------------------------------------------------- |
+| `qc.invalidate(factory, input)`       | Mark one query stale and refetch it if it is being read |
+| `qc.invalidate(filter)`               | Same, for every query the [filter](#filters) selects    |
+| `qc.setData(factory, input, updater)` | Write data directly                                     |
+| `qc.getData(factory, input)`          | Read cached data, or `undefined`                        |
+
+### Filters
+
+`invalidate`, `reset` and `remove` also take a filter, `{ queryKey?, exact?, predicate? }`. `queryKey` selects every query whose key starts with it, or only that key with `exact: true`; object segments match partially, so `{ queryKey: ["issues", { projectId: 3 }] }` selects every issue list in project 3. `predicate` gets each remaining `Query` (`key`, `handle.input`, `getState()`, `observerCount`, `isStaleNow()`) and keeps the ones it returns `true` for. Without `queryKey` every key matches, so `{}` selects the whole cache.
+
+```ts
+qc.remove({ predicate: (query) => query.observerCount === 0 }); // everything not being read
+```
+
+`handle.input` is the input of the latest factory call for that entry. An entry that was only hydrated, and not yet read or started on this client, has `undefined` input, so match on `key` to include those.
 
 Data can be `undefined` when the `queryFn`'s type allows it (`Promise<User | undefined>`); it's cached and reused like any other value, unlike in TanStack Query, where an `undefined` result is an error. So `getData` and an updater's `previous` return `undefined` both with no data and with `undefined` data; `qc.getQuery(factory, input).getState().hasData` tells them apart.
 
@@ -536,8 +546,8 @@ Both render nothing on the server, since the server's cache isn't the browser's.
 | `new QueryClient(config?)`                  | `config.defaults` (query options below), `config.onError`, `config.isServer`                                            |
 | `prefetch`, `ensure`, `fetch`               | [Start queries](#starting-queries)                                                                                      |
 | `invalidate`, `setData`, `getData`          | [Write and read the cache](#mutations)                                                                                  |
-| `reset(factory, input)` / `reset(filter)`   | Drop data and errors; read queries suspend and refetch. Resolves when they settle                                       |
-| `remove(factory, input)` / `remove(filter)` | Remove entries and abort their requests                                                                                 |
+| `reset(factory, input)` / `reset(filter)`   | Drop data and errors; read queries suspend and refetch. Resolves when they settle. [Filters](#filters)                  |
+| `remove(factory, input)` / `remove(filter)` | Remove entries and abort their requests. [Filters](#filters)                                                            |
 | `effect`                                    | [Effect versions](#effect) of `ensure`, `fetch`, `invalidate`, plus `watch`                                             |
 | `subscribe(listener)`                       | Cache events: `added`, `updated`, `observers` (a reader subscribed or left), `removed`, and `failed` (with the `error`) |
 | `getAll()`, `getQuery(factory, input?)`     | Cache entries, for devtools and integrations                                                                            |

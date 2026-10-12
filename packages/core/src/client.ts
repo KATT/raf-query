@@ -48,10 +48,21 @@ export type CacheEvent =
 			readonly type: "failed";
 	  };
 
-/** Matches cache entries by key prefix, or by exact key with `exact`. */
+/**
+ * Selects cache entries: by key prefix (exact key with `exact`), then by
+ * `predicate`. Without `queryKey` every key matches, so `{}` selects the
+ * whole cache.
+ */
 export interface QueryFilter {
 	readonly exact?: boolean;
-	readonly queryKey: QueryKey;
+	/**
+	 * Keep only entries this returns `true` for; runs after key matching.
+	 * `query.handle.input` is the input of the latest factory call, and stays
+	 * `undefined` for an entry only hydrated so far; match on `query.key` to
+	 * include those.
+	 */
+	readonly predicate?: (query: Query) => boolean;
+	readonly queryKey?: QueryKey;
 }
 
 /** `ensure` / `fetch` arguments: the input, then load options for paged factories. */
@@ -133,6 +144,18 @@ function handleOf<TFactory extends QueryFactory>(
 	// this factory, which `InputArgs<TFactory>` type-checked.
 	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return handle as QueryHandle<TFactory>;
+}
+
+function keyMatcher(filter: QueryFilter): (entry: QueryEntry) => boolean {
+	const prefix = filter.queryKey;
+	if (!prefix) {
+		return () => true;
+	}
+	if (filter.exact) {
+		const hash = hashKey(prefix);
+		return (entry) => entry.hash === hash;
+	}
+	return (entry) => matchesKey(entry.key, prefix);
 }
 
 function ensuredHandleOf<TFactory extends QueryFactory>(
@@ -420,11 +443,9 @@ export class QueryClient {
 			);
 			return entry ? [entry] : [];
 		}
-		const hash = hashKey(target.queryKey);
-		return [...this.#cache.values()].filter((entry) =>
-			target.exact
-				? entry.hash === hash
-				: matchesKey(entry.key, target.queryKey),
+		const keyMatches = keyMatcher(target);
+		return [...this.#cache.values()].filter(
+			(entry) => keyMatches(entry) && (target.predicate?.(entry) ?? true),
 		);
 	}
 

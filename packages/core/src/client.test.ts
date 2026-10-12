@@ -6,9 +6,15 @@ import {
 	onTestFinished,
 	vi,
 } from "@effect/vitest";
-import { Effect, Schedule } from "effect";
+import { Effect, Predicate, Schedule } from "effect";
 
-import { CancelledError, QueryClient, queryOptions } from "./index.ts";
+import {
+	CancelledError,
+	type Query,
+	QueryClient,
+	type QueryFilter,
+	queryOptions,
+} from "./index.ts";
 import { createBackend, flush } from "./test-utils.ts";
 
 function useFakeTimers(options?: Parameters<typeof vi.useFakeTimers>[0]) {
@@ -579,6 +585,113 @@ describe("remove", () => {
 
 		qc.remove({ queryKey: ["issue"] });
 		expect(qc.getAll()).toHaveLength(0);
+	});
+});
+
+describe("filters", () => {
+	function issuesQuery(input: { projectId: number; status: string }) {
+		return queryOptions({
+			queryFn: () => [],
+			queryKey: ["issues", input],
+			staleTime: Infinity,
+		});
+	}
+	function labelsQuery(input: { projectId: number }) {
+		return queryOptions({
+			queryFn: () => [],
+			queryKey: ["labels", input.projectId],
+			staleTime: Infinity,
+		});
+	}
+	const inProject = (projectId: number) => (query: Query) =>
+		Predicate.hasProperty(query.handle.input, "projectId") &&
+		query.handle.input.projectId === projectId;
+
+	function seed() {
+		const qc = new QueryClient({ isServer: false });
+		qc.setData(issuesQuery, { projectId: 3, status: "open" }, []);
+		qc.setData(issuesQuery, { projectId: 3, status: "closed" }, []);
+		qc.setData(issuesQuery, { projectId: 4, status: "open" }, []);
+		qc.setData(labelsQuery, { projectId: 3 }, []);
+		return qc;
+	}
+	const invalidated = (qc: QueryClient) =>
+		qc
+			.getAll()
+			.filter((query) => query.getState().isInvalidated)
+			.map((query) => query.hash);
+
+	it("narrows a key-prefix match with predicate", async () => {
+		const qc = seed();
+
+		await qc.invalidate({
+			predicate: (query) => query.hash.includes('"status":"open"'),
+			queryKey: ["issues"],
+		});
+
+		expect(invalidated(qc)).toEqual([
+			'["issues",{"projectId":3,"status":"open"}]',
+			'["issues",{"projectId":4,"status":"open"}]',
+		]);
+	});
+
+	it("matches across keys with predicate alone, by handle input", async () => {
+		const qc = seed();
+
+		await qc.invalidate({ predicate: inProject(3) });
+
+		expect(invalidated(qc)).toEqual([
+			'["issues",{"projectId":3,"status":"open"}]',
+			'["issues",{"projectId":3,"status":"closed"}]',
+			'["labels",3]',
+		]);
+	});
+
+	it("matches every entry with an empty filter", async () => {
+		const qc = seed();
+
+		await qc.invalidate({});
+
+		expect(invalidated(qc)).toHaveLength(4);
+	});
+
+	it("applies predicate in reset", async () => {
+		const qc = seed();
+
+		await qc.reset({ predicate: inProject(4) });
+
+		const withData = qc
+			.getAll()
+			.filter((query) => query.getState().hasData)
+			.map((query) => query.hash);
+		expect(withData).toEqual([
+			'["issues",{"projectId":3,"status":"open"}]',
+			'["issues",{"projectId":3,"status":"closed"}]',
+			'["labels",3]',
+		]);
+	});
+
+	it("applies predicate in remove", () => {
+		const qc = seed();
+		qc.getQuery(labelsQuery, { projectId: 3 }).subscribe(() => {});
+
+		qc.remove({ predicate: (query) => query.observerCount === 0 });
+
+		expect(qc.getAll().map((query) => query.hash)).toEqual(['["labels",3]']);
+	});
+
+	it("passes predicate a Query", () => {
+		expectTypeOf<QueryFilter["predicate"]>().toEqualTypeOf<
+			((query: Query) => boolean) | undefined
+		>();
+		const removeAll = (qc: QueryClient) =>
+			qc.remove({
+				predicate: (query) => {
+					expectTypeOf(query).toEqualTypeOf<Query>();
+					return true;
+				},
+			});
+		expectTypeOf(removeAll).returns.toBeVoid();
 	});
 });
 
