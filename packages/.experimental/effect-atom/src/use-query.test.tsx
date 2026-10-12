@@ -1,13 +1,18 @@
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, screen, waitFor } from "@testing-library/react";
 import { Cause } from "effect";
 import { AsyncResult } from "effect/reactivity";
 import { type ReactNode, Suspense, use } from "react";
 import { describe, expect, test } from "vitest";
 
 import { QueryClient } from "./client.ts";
+import {
+	type EnsuredQueryHandle,
+	infiniteQueryOptions,
+	type QueryHandle,
+} from "./options.ts";
 import { QueryClientProvider } from "./provider.tsx";
 import { Boundary, createBackend, flush, mount } from "./test-utils.tsx";
-import { useQuery } from "./use-query.ts";
+import { useQuery, type UseQueryOptions } from "./use-query.ts";
 
 /** A backend, a client, and an `<Issue>` that shows one issue's title. */
 function setup(client = new QueryClient({ isServer: false })) {
@@ -30,19 +35,40 @@ function setup(client = new QueryClient({ isServer: false })) {
 			</button>
 		);
 	}
+	function IssueTitle(props: {
+		readonly handle: QueryHandle<typeof backend.issueQuery>;
+		readonly options?: UseQueryOptions;
+	}) {
+		const [promise, state] = useQuery(
+			backend.issueQuery,
+			props.handle,
+			props.options,
+		);
+		const issue = use(promise);
+		return (
+			<p data-previous={state.isPrevious}>
+				{issue.title}
+				{state.isFetching ? " (fetching)" : ""}
+			</p>
+		);
+	}
+	function view(ui: ReactNode) {
+		return (
+			<QueryClientProvider client={client}>
+				<Boundary>
+					<Suspense fallback={<p>Loading</p>}>{ui}</Suspense>
+				</Boundary>
+			</QueryClientProvider>
+		);
+	}
 	return {
 		backend,
 		client,
 		Issue,
+		IssueTitle,
+		view,
 		/** Mount `ui` under a provider, an error boundary and a Suspense fallback. */
-		render: (ui: ReactNode) =>
-			mount(
-				<QueryClientProvider client={client}>
-					<Boundary>
-						<Suspense fallback={<p>Loading</p>}>{ui}</Suspense>
-					</Boundary>
-				</QueryClientProvider>,
-			),
+		render: (ui: ReactNode) => mount(view(ui)),
 	};
 }
 
@@ -203,5 +229,86 @@ describe("useQuery", () => {
 		expect(t.client.getData(t.backend.issueQuery, { id: 1 })?.title).toBe(
 			"First",
 		);
+	});
+
+	test("suspends on a new input by default", async () => {
+		const t = setup();
+		const first = t.client.prefetch(t.backend.issueQuery, { id: 1 });
+		await t.backend.respond();
+		const result = await mount(t.view(<t.IssueTitle handle={first} />));
+
+		const second = t.client.prefetch(t.backend.issueQuery, { id: 2 });
+		await result.rerender(t.view(<t.IssueTitle handle={second} />));
+
+		expect(screen.getByText("Loading")).toBeDefined();
+		await t.backend.respond();
+		expect(screen.getByText("Second")).toBeDefined();
+	});
+
+	test("keeps the previous input's data with whilePending: previous", async () => {
+		const t = setup();
+		const options: UseQueryOptions = { whilePending: "previous" };
+		const first = t.client.prefetch(t.backend.issueQuery, { id: 1 });
+		await t.backend.respond();
+		const result = await mount(
+			t.view(<t.IssueTitle handle={first} options={options} />),
+		);
+
+		const second = t.client.prefetch(t.backend.issueQuery, { id: 2 });
+		await result.rerender(
+			t.view(<t.IssueTitle handle={second} options={options} />),
+		);
+
+		const previous = screen.getByText("First (fetching)");
+		expect(previous.dataset["previous"]).toBe("true");
+		await t.backend.respond();
+		expect(screen.getByText("Second").dataset["previous"]).toBe("false");
+	});
+
+	test("exposes paging controls for paged factories", async () => {
+		cleanup();
+		const client = new QueryClient({ isServer: false });
+		function numbersQuery() {
+			return infiniteQueryOptions({
+				getNextPageParam: (lastPage: number) =>
+					lastPage < 3 ? lastPage + 1 : null,
+				initialPageParam: 1,
+				queryFn: (context) => context.pageParam,
+				queryKey: ["numbers"],
+			});
+		}
+		function Numbers(props: {
+			readonly handle: EnsuredQueryHandle<typeof numbersQuery>;
+		}) {
+			const [data, numbers] = useQuery(numbersQuery, props.handle);
+			return (
+				<button
+					disabled={!numbers.hasNextPage}
+					onClick={() => {
+						void numbers.fetchNextPage();
+					}}
+					type="button"
+				>
+					{data.pages.join(",")}
+					{numbers.isFetchingNextPage ? "…" : ""}
+				</button>
+			);
+		}
+		const handle = await client.ensure(numbersQuery);
+		await mount(
+			<QueryClientProvider client={client}>
+				<Numbers handle={handle} />
+			</QueryClientProvider>,
+		);
+
+		await flush(() => {
+			screen.getByText("1").click();
+		});
+		await waitFor(() => screen.getByText("1,2"));
+		await flush(() => {
+			screen.getByText("1,2").click();
+		});
+		const button = await screen.findByText("1,2,3");
+		expect(button.hasAttribute("disabled")).toBe(true);
 	});
 });

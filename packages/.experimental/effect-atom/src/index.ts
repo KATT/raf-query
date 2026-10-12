@@ -41,8 +41,10 @@ export {
 } from "./options.ts";
 export { QueryClientProvider, useQueryClient } from "./provider.tsx";
 export {
+	type PagingControls,
 	type QueryControls,
 	useQuery,
 	type UseEnsuredQueryResult,
+	type UseQueryOptions,
 	type UseQueryResult,
 } from "./use-query.ts";
