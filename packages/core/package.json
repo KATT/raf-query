@@ -31,7 +31,7 @@
 	"type": "module",
 	"sideEffects": false,
 	"exports": {
-		".": "./dist/index.mjs"
+		".": "./src/index.ts"
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/sync-package-docs.ts",
@@ -52,6 +52,9 @@
 	},
 	"publishConfig": {
 		"access": "public",
+		"exports": {
+			".": "./dist/index.mjs"
+		},
 		"provenance": true
 	},
 	"engines": {
