@@ -556,6 +556,8 @@ Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.de
 
 `infiniteQueryOptions` also takes `getPreviousPageParam` and `maxPages`.
 
+In the browser, retries pause while `navigator.onLine` is `false`: after the retry delay, the next attempt waits for the window's `online` event. The request stays fetching meanwhile, and cancelling it (`remove`, `clear`, a restart) stops the wait. The first attempt runs regardless.
+
 `@raf-query/core`:
 
 | Export                                         | Use                                                              |

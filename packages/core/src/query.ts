@@ -2,6 +2,7 @@ import { Cause, Effect, Exit, Predicate, Schedule } from "effect";
 
 import type { QueryKey } from "./key.ts";
 import { scheduleNotify } from "./notify.ts";
+import { whenOnline } from "./online.ts";
 import { replaceEqualDeep } from "./share.ts";
 import type {
 	AnyQueryOptions,
@@ -660,8 +661,18 @@ export class QueryEntry implements Query {
 			this.#set({ failureCount: this.#state.failureCount + 1 }),
 		);
 		const counted = once.pipe(Effect.tapError(() => countFailure));
+		// Retries wait while the browser is offline; the first attempt doesn't.
+		const online = this.#host.isServer ? Effect.void : whenOnline;
 		if (Schedule.isSchedule(retry)) {
-			return Effect.retry(counted, retry);
+			return Effect.suspend(() => {
+				let first = true;
+				const each = Effect.suspend(() => {
+					const wait = first ? Effect.void : online;
+					first = false;
+					return wait.pipe(Effect.andThen(counted));
+				});
+				return Effect.retry(each, retry);
+			});
 		}
 		const retryDelay = this.#behavior("retryDelay");
 		const delayFor = (failureCount: number, error: unknown) => {
@@ -679,6 +690,7 @@ export class QueryEntry implements Query {
 					return Effect.fail(error);
 				}
 				return Effect.sleep(delayFor(failureCount, error)).pipe(
+					Effect.andThen(online),
 					Effect.andThen(Effect.suspend(() => attempt)),
 				);
 			}),
