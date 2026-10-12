@@ -162,6 +162,18 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@effect/platform-node':
+      specifier: 4.0.1
+      version: 4.0.1
+    '@effect/vitest':
+      specifier: 4.0.1
+      version: 4.0.1
+    effect:
+      specifier: 4.0.1
+      version: 4.0.1
+
 overrides:
   vite@*: npm:@voidzero-dev/vite-plus-core@1.0.0
   vitest@*: 5.0.1
@@ -216,14 +228,14 @@ importers:
   packages/raf-query:
     dependencies:
       '@effect/platform-node':
-        specifier: 4.0.1
+        specifier: 'catalog:'
         version: 4.0.1(effect@4.0.1)(redis@6.3.0)
       effect:
-        specifier: 4.0.1
+        specifier: 'catalog:'
         version: 4.0.1
     devDependencies:
       '@effect/vitest':
-        specifier: 4.0.1
+        specifier: 'catalog:'
         version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
       '@types/node':
         specifier: 26.6.4

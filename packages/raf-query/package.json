@@ -39,11 +39,11 @@
 		"typecheck": "tsc"
 	},
 	"dependencies": {
-		"@effect/platform-node": "4.0.1",
-		"effect": "4.0.1"
+		"@effect/platform-node": "catalog:",
+		"effect": "catalog:"
 	},
 	"devDependencies": {
-		"@effect/vitest": "4.0.1",
+		"@effect/vitest": "catalog:",
 		"@types/node": "26.6.4",
 		"@vitest/coverage-v8": "5.0.1",
 		"typescript": "7.0.2",

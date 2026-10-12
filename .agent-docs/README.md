@@ -2,10 +2,11 @@
 
 Working memory for coding agents on this repo. **Agents own this folder** — create, edit, and delete freely. Prefer durable facts over chat transcript fluff.
 
-| Doc                            | What belongs here                                                    |
-| ------------------------------ | -------------------------------------------------------------------- |
-| [decisions.md](./decisions.md) | Choices (human or agent) that later work should not quietly reverse  |
-| [origin.md](./origin.md)       | How this repo was bootstrapped and what was intentionally not copied |
+| Doc                                                  | What belongs here                                                                     |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| [decisions.md](./decisions.md)                       | Choices (human or agent) that later work should not quietly reverse                   |
+| [origin.md](./origin.md)                             | What the name means and the tooling baseline                                          |
+| [implementation-notes.md](./implementation-notes.md) | Verified mechanisms to copy from TanStack / React source, and which package owns what |
 
 ## Rules of thumb
 
