@@ -22,10 +22,13 @@ function subscribeDeferred(client: QueryClient, onStoreChange: () => void) {
 	});
 }
 
+const none = () => 0;
+
 /**
  * How many queries have a request in flight: all of them, or those matching
  * `filter`. Re-renders when the count changes, for global loading
- * indicators:
+ * indicators. It's `0` on the server and while hydrating, so the server's
+ * HTML and the browser's first render agree:
  *
  * ```tsx
  * const fetching = useIsFetching();
@@ -39,5 +42,5 @@ export function useIsFetching(filter?: QueryFilter): number {
 		[client],
 	);
 	const getSnapshot = () => client.isFetching(filter);
-	return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+	return useSyncExternalStore(subscribe, getSnapshot, none);
 }

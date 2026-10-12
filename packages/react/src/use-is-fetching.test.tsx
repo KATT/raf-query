@@ -1,6 +1,8 @@
 import { describe, expect, it, onTestFinished, vi } from "@effect/vitest";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { type ReactNode, Suspense } from "react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 
 import {
 	QueryClient,
@@ -124,5 +126,30 @@ describe("useIsFetching", () => {
 		await test.respond();
 		expect(screen.getByText("Fetching: 0")).toBeDefined();
 		cleanup();
+	});
+
+	it("is 0 on the server and while hydrating, then catches up", async () => {
+		const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+		onTestFinished(() => {
+			errors.mockRestore();
+		});
+		const test = setup();
+		test.client.prefetch(test.issueQuery, { id: 1 });
+		const html = renderToString(test.view(<test.Count />));
+		expect(html).toContain("Fetching: 0");
+
+		const container = document.createElement("div");
+		container.innerHTML = html;
+		document.body.append(container);
+		const root = await act(async () =>
+			hydrateRoot(container, test.view(<test.Count />)),
+		);
+
+		expect(container.textContent).toBe("Fetching: 1");
+		expect(errors).not.toHaveBeenCalled();
+		await act(async () => {
+			root.unmount();
+		});
+		container.remove();
 	});
 });

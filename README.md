@@ -194,7 +194,7 @@ When the cache updates — refetch, invalidation, `setData` — the hook returns
 
 Queries do not refetch on mount. They refetch when a loader starts them again, when invalidated, on window focus or reconnect while stale, on `refetch()`, or on `refetchInterval`.
 
-For an app-wide indicator, `useIsFetching()` returns how many queries have a request in flight, background refetches included, and re-renders when that changes. Pass a filter to count only some: `useIsFetching({ queryKey: ["comments"] })`. Outside React, `qc.isFetching(filter?)` returns the same number.
+For an app-wide indicator, `useIsFetching()` returns how many queries have a request in flight, background refetches included, and re-renders when that changes. Pass a filter to count only some: `useIsFetching({ queryKey: ["comments"] })`. It's `0` on the server and during hydration, so the indicator never appears in server HTML. Outside React, `qc.isFetching(filter?)` returns the same number.
 
 ```tsx
 // Rendered once, in the root layout.
