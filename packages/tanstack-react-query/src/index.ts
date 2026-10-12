@@ -34,6 +34,8 @@ export {
 	type UseQueryOptions,
 	type UseQueryResult,
 } from "./use-query.ts";
+export { type Thenable, track } from "./thenable.ts";
+export { unwrap } from "./unwrap.ts";
 export { useWaterfall } from "./use-waterfall.ts";
 
 // The cache is TanStack's own. Its hooks are deliberately not re-exported.
