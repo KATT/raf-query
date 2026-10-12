@@ -11,11 +11,11 @@
 	"scripts": {
 		"typecheck": "tsc"
 	},
-	"dependencies": {
-		"effect": "catalog:"
-	},
 	"devDependencies": {
 		"@types/node": "26.6.4",
 		"typescript": "7.0.2"
+	},
+	"dependencies": {
+		"zod": "4.6.5"
 	}
 }

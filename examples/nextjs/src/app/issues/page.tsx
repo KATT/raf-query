@@ -1,7 +1,6 @@
 import { IssueListSearchParams } from "@examples/db/types";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { HydrationBoundary } from "@raf-query/react/rsc";
-import { Schema } from "effect";
 import { Suspense } from "react";
 
 import { IssueList, IssueListSkeleton } from "~/components/issue-list.tsx";
@@ -14,9 +13,7 @@ export default async function IssuesPage(props: {
 		Record<string, string | ReadonlyArray<string>>
 	>;
 }) {
-	const input = Schema.decodeUnknownSync(IssueListSearchParams)(
-		await props.searchParams,
-	);
+	const input = IssueListSearchParams.parse(await props.searchParams);
 	const qc = getQueryClient();
 	const counts = qc.prefetch(issueCountsQuery);
 	const issues = qc.prefetch(issueListQuery, input);

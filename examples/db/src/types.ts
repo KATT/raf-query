@@ -1,49 +1,47 @@
-import { Effect, Schema } from "effect";
+import { z } from "zod";
 
 export const issueStatuses = ["open", "in_progress", "closed"] as const;
-export const IssueStatus = Schema.Literals(issueStatuses);
-export type IssueStatus = typeof IssueStatus.Type;
+export const IssueStatus = z.enum(issueStatuses);
+export type IssueStatus = z.infer<typeof IssueStatus>;
 
 export const issueSorts = ["newest", "oldest"] as const;
-export const IssueSort = Schema.Literals(issueSorts);
-export type IssueSort = typeof IssueSort.Type;
+export const IssueSort = z.enum(issueSorts);
+export type IssueSort = z.infer<typeof IssueSort>;
 
-const Id = Schema.Int.check(Schema.isGreaterThan(0));
-const Text = Schema.Trim.check(Schema.isNonEmpty());
+const Id = z.int().positive();
+const Text = z.string().trim().min(1);
 
 /**
  * What the issue list shows. Lives in the URL's search params; missing keys
  * get defaults.
  */
-export const IssueListInput = Schema.Struct({
-	page: Id.pipe(Schema.withDecodingDefault(Effect.succeed(1))),
-	sort: IssueSort.pipe(Schema.withDecodingDefault(Effect.succeed("newest"))),
-	status: Schema.Literals(["all", ...issueStatuses]).pipe(
-		Schema.withDecodingDefault(Effect.succeed("all")),
-	),
+export const IssueListInput = z.object({
+	page: Id.default(1),
+	sort: IssueSort.default("newest"),
+	status: z.enum(["all", ...issueStatuses]).default("all"),
 });
-export type IssueListInput = typeof IssueListInput.Type;
+export type IssueListInput = z.infer<typeof IssueListInput>;
 
 /** {@link IssueListInput} as URL search params, where every value is a string. */
-export const IssueListSearchParams = Schema.Struct({
-	page: Schema.optional(Schema.FiniteFromString),
-	sort: Schema.optional(IssueSort),
-	status: Schema.optional(Schema.Literals(["all", ...issueStatuses])),
-}).pipe(Schema.decodeTo(IssueListInput));
+export const IssueListSearchParams = IssueListInput.extend({
+	page: z.coerce.number<string>().pipe(Id).default(1),
+});
 
 export const IssueId = Id;
 
-export const CommentsInput = Schema.Struct({
-	cursor: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+export const UserId = z.string();
+
+export const CommentsInput = z.object({
+	cursor: z.int().nonnegative(),
 	issueId: Id,
 });
-export type CommentsInput = typeof CommentsInput.Type;
+export type CommentsInput = z.infer<typeof CommentsInput>;
 
-export const UpdateTitleInput = Schema.Struct({ id: Id, title: Text });
-export type UpdateTitleInput = typeof UpdateTitleInput.Type;
+export const UpdateTitleInput = z.object({ id: Id, title: Text });
+export type UpdateTitleInput = z.infer<typeof UpdateTitleInput>;
 
-export const AddCommentInput = Schema.Struct({ body: Text, issueId: Id });
-export type AddCommentInput = typeof AddCommentInput.Type;
+export const AddCommentInput = z.object({ body: Text, issueId: Id });
+export type AddCommentInput = z.infer<typeof AddCommentInput>;
 
 export interface User {
 	readonly id: string;
