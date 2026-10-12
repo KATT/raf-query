@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.9](https://github.com/KATT/raf-query/compare/0.0.8...0.0.9) (2026-10-12)
+
+### Bug Fixes
+
+- **examples:** let the client pick new comment ids ([#9](https://github.com/KATT/raf-query/issues/9)) ([de3a723](https://github.com/KATT/raf-query/commit/de3a7238b2568458a9771450a8c94d82576f5f7d))
+
 ## [0.0.8](https://github.com/KATT/raf-query/compare/0.0.7...0.0.8) (2026-10-12)
 
 - rename the TanStack Query experiment to make clear it's experimental and unpublished ([#11](https://github.com/KATT/raf-query/issues/11)) ([146c3be](https://github.com/KATT/raf-query/commit/146c3be5034f8c4c642ea9faea693a7558ca4aac))
