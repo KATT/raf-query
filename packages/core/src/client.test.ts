@@ -1,7 +1,12 @@
 import { describe, expect, it, onTestFinished, vi } from "@effect/vitest";
 import { Effect, Schedule } from "effect";
 
-import { CancelledError, QueryClient, queryOptions } from "./index.ts";
+import {
+	CancelledError,
+	infiniteQueryOptions,
+	QueryClient,
+	queryOptions,
+} from "./index.ts";
 import { createBackend, flush } from "./test-utils.ts";
 
 function useFakeTimers(options?: Parameters<typeof vi.useFakeTimers>[0]) {
@@ -176,6 +181,107 @@ describe("read", () => {
 		expect(retried).not.toBe(failed);
 		backend.respondAll();
 		expect(await retried).toEqual({ id: 1, title: "Back" });
+	});
+});
+
+describe("undefined data", () => {
+	function emptyQuery(queryFn: () => undefined) {
+		return () =>
+			queryOptions({ queryFn, queryKey: ["empty"], retry: 3, retryDelay: 0 });
+	}
+
+	it("fails a request that resolves to undefined, without retrying", async () => {
+		const onError = vi.fn();
+		const qc = new QueryClient({ isServer: false, onError });
+		const queryFn = vi.fn(() => undefined);
+		const query = qc.getQuery(emptyQuery(queryFn));
+
+		await expect(query.fetch()).rejects.toThrow(
+			'Query ["empty"] data cannot be undefined',
+		);
+
+		expect(queryFn).toHaveBeenCalledOnce();
+		expect(onError).toHaveBeenCalledOnce();
+		expect(query.getState()).toMatchObject({
+			failureCount: 1,
+			hasData: false,
+			status: "error",
+		});
+	});
+
+	it("rejects the first read and fetch", async () => {
+		const qc = new QueryClient({ isServer: false });
+		const factory = emptyQuery(() => undefined);
+
+		await expect(qc.getQuery(factory).read()).rejects.toThrow(
+			'Query ["empty"] data cannot be undefined',
+		);
+		await expect(qc.fetch(factory)).rejects.toThrow(
+			'Query ["empty"] data cannot be undefined',
+		);
+	});
+
+	it("keeps existing data when a refetch resolves to undefined", async () => {
+		const qc = new QueryClient({ isServer: false });
+		function maybeQuery() {
+			return queryOptions({
+				queryFn: (): string | undefined => undefined,
+				queryKey: ["maybe"],
+				retry: false,
+			});
+		}
+		qc.setData(maybeQuery, undefined, "Kept");
+		const query = qc.getQuery(maybeQuery);
+
+		await query.refetch();
+
+		expect(query.getState()).toMatchObject({
+			data: "Kept",
+			hasData: true,
+			status: "error",
+		});
+	});
+
+	it("fails a paged request when a page resolves to undefined", async () => {
+		const qc = new QueryClient({ isServer: false });
+		const query = qc.getQuery(() =>
+			infiniteQueryOptions({
+				getNextPageParam: (_lastPage: number | undefined, pages) =>
+					pages.length,
+				initialPageParam: 0,
+				queryFn: (context) => (context.pageParam === 0 ? 0 : undefined),
+				queryKey: ["paged"],
+				retry: 3,
+				retryDelay: 0,
+			}),
+		);
+		await query.fetch();
+
+		await query.fetchNextPage();
+
+		expect(query.getState()).toMatchObject({
+			data: { pageParams: [0], pages: [0] },
+			error: new Error('Query ["paged"] data cannot be undefined'),
+			failureCount: 1,
+			status: "error",
+		});
+	});
+
+	it("makes setData with undefined a no-op", () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+
+		qc.setData(backend.issueQuery, { id: 2 }, () => undefined);
+		expect(qc.getAll()).toHaveLength(0);
+
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "Kept" });
+		const before = qc.getQuery(backend.issueQuery, { id: 1 }).getState();
+		qc.setData(backend.issueQuery, { id: 1 }, undefined);
+		qc.setData(backend.issueQuery, { id: 1 }, () => undefined);
+
+		const after = qc.getQuery(backend.issueQuery, { id: 1 }).getState();
+		expect(after).toBe(before);
+		expect(after.data).toEqual({ id: 1, title: "Kept" });
 	});
 });
 

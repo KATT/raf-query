@@ -57,8 +57,11 @@ export type LoadArgs<TFactory extends QueryFactory> =
 	| InputArgs<TFactory>
 	| [input: InputOf<TFactory>, options: LoadOptions<TFactory>];
 
-/** A new value, or a function of the current one. */
-export type Updater<TData> = TData | ((previous: TData | undefined) => TData);
+/** A new value, or a function of the current one. `undefined` writes nothing. */
+export type Updater<TData> =
+	| TData
+	| ((previous: TData | undefined) => TData | undefined)
+	| undefined;
 
 /** Effect-returning twins of the client's async methods. */
 export interface QueryClientEffect {
@@ -106,7 +109,7 @@ const identity = <T>(value: T) => value;
 
 function isUpdateFunction<TData>(
 	updater: Updater<TData>,
-): updater is (previous: TData | undefined) => TData {
+): updater is (previous: TData | undefined) => TData | undefined {
 	return Predicate.isFunction(updater);
 }
 
@@ -287,16 +290,28 @@ export class QueryClient {
 		}
 	}
 
-	/** Write data for a factory call. Readers re-render without suspending. */
+	/**
+	 * Write data for a factory call. Readers re-render without suspending.
+	 * `undefined` (or an updater returning it) leaves the cache untouched.
+	 */
 	setData<TFactory extends QueryFactory>(
 		factory: TFactory,
 		input: InputOf<TFactory>,
 		updater: Updater<DataOf<TFactory>>,
 	): void {
-		const entry = this.#build(factory, input);
+		const options = optionsFor(factory, input);
+		const hash = hashKey(options.queryKey);
+		const existing = this.#cache.get(hash);
 		const next = isUpdateFunction(updater)
-			? updater(typed<TFactory>(entry).getState().data)
+			? updater(
+					existing ? typed<TFactory>(existing).getState().data : undefined,
+				)
 			: updater;
+		if (next === undefined) {
+			return;
+		}
+		const entry = this.#entryFor(options.queryKey, hash);
+		entry.setOptions(options, input);
 		entry.setData(next);
 	}
 

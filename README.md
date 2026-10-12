@@ -64,7 +64,7 @@ export function commentsQuery(input: { slug: string }) {
 
 Factories must take at most one argument; the type rejects two or more. The single argument is the query's **input** and must be serializable, because it is what a handle carries.
 
-A `queryFn` returns a value, a promise, or an [Effect](#effect). It receives `queryKey` and an abort `signal`; paged ones also get `pageParam` and `direction`. TypeScript infers the page type from `queryFn`, so if `getNextPageParam` comes first in the object literal (sorted keys), pass the types instead: `infiniteQueryOptions<CommentPage, number>({ ... })`.
+A `queryFn` returns a value, a promise, or an [Effect](#effect). It receives `queryKey` and an abort `signal`; paged ones also get `pageParam` and `direction`. The result (each page, for paged queries) must not be `undefined`: an `undefined` result fails the query with an error naming its key, without retrying. Return `null` for "nothing". TypeScript infers the page type from `queryFn`, so if `getNextPageParam` comes first in the object literal (sorted keys), pass the types instead: `infiniteQueryOptions<CommentPage, number>({ ... })`.
 
 The factory is the only place a query is declared paged. Every other API — `prefetch`, `ensure`, `fetch`, `useQuery`, `useWaterfall`, `invalidate`, `setData` — takes either kind and infers the rest from the factory's type.
 
@@ -359,7 +359,7 @@ function EditTitle(props: { post: Post }) {
 | ------------------------------------- | ----------------------------------------------------------------------- |
 | `qc.invalidate(factory, input)`       | Mark one query stale and refetch it if it is being read                 |
 | `qc.invalidate({ queryKey, exact? })` | Same, for every query whose key starts with `queryKey` (unless `exact`) |
-| `qc.setData(factory, input, updater)` | Write data directly                                                     |
+| `qc.setData(factory, input, updater)` | Write data directly; an `undefined` value is skipped                    |
 | `qc.getData(factory, input)`          | Read cached data, or `undefined`                                        |
 
 ## SSR and hydration

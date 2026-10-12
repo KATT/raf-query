@@ -382,9 +382,14 @@ export class QueryEntry implements Query {
 		return this.fetch({ restart: true }).then(noop, noop);
 	};
 
-	/** Write data directly, as if a request had returned it. */
+	/**
+	 * Write data directly, as if a request had returned it. `undefined` is
+	 * ignored: it can't be told apart from having no data.
+	 */
 	setData(data: unknown, updatedAt = Date.now()) {
-		this.#succeed(data, updatedAt);
+		if (data !== undefined) {
+			this.#succeed(data, updatedAt);
+		}
 	}
 
 	/** Adopt a request started elsewhere (the server's, during hydration). */
@@ -393,10 +398,12 @@ export class QueryEntry implements Query {
 			return;
 		}
 		this.#start(
-			Effect.tryPromise({
-				catch: identity,
-				try: () => Promise.resolve(promise),
-			}),
+			this.#requireData(
+				Effect.tryPromise({
+					catch: identity,
+					try: () => Promise.resolve(promise),
+				}),
+			),
 			undefined,
 		).catch(noop);
 	}
@@ -628,7 +635,10 @@ export class QueryEntry implements Query {
 		});
 	}
 
-	/** One request: run the `queryFn` with a fresh signal, retrying per policy. */
+	/**
+	 * One request: run the `queryFn` with a fresh signal, retrying per policy.
+	 * An `undefined` result fails without retrying, as in TanStack Query.
+	 */
 	#attempt(
 		call: (signal: AbortSignal) => QueryFnResult<unknown>,
 	): Effect.Effect<unknown, unknown> {
@@ -649,17 +659,39 @@ export class QueryEntry implements Query {
 				Effect.onInterrupt(() => Effect.sync(() => controller.abort())),
 			);
 		});
-		return this.#withRetry(once);
+		return this.#requireData(this.#withRetry(once));
+	}
+
+	/** Fail on an `undefined` result, which would read as "no data". */
+	#requireData(
+		request: Effect.Effect<unknown, unknown>,
+	): Effect.Effect<unknown, unknown> {
+		return request.pipe(
+			Effect.flatMap((value) =>
+				value === undefined
+					? this.#countFailure().pipe(
+							Effect.andThen(
+								Effect.fail(
+									new Error(`Query ${this.hash} data cannot be undefined`),
+								),
+							),
+						)
+					: Effect.succeed(value),
+			),
+		);
+	}
+
+	#countFailure() {
+		return Effect.sync(() =>
+			this.#set({ failureCount: this.#state.failureCount + 1 }),
+		);
 	}
 
 	#withRetry(
 		once: Effect.Effect<unknown, unknown>,
 	): Effect.Effect<unknown, unknown> {
 		const retry = this.#behavior("retry") ?? (this.#host.isServer ? 0 : 3);
-		const countFailure = Effect.sync(() =>
-			this.#set({ failureCount: this.#state.failureCount + 1 }),
-		);
-		const counted = once.pipe(Effect.tapError(() => countFailure));
+		const counted = once.pipe(Effect.tapError(() => this.#countFailure()));
 		if (Schedule.isSchedule(retry)) {
 			return Effect.retry(counted, retry);
 		}

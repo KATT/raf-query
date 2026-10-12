@@ -88,6 +88,26 @@ describe("hydrate", () => {
 		expect(browser.getData(backend.issueQuery, { id: 2 })?.title).toBe("Newer");
 	});
 
+	it("ignores undefined data and fails a request that resolves to undefined", async () => {
+		const backend = createBackend();
+		const browser = new QueryClient({ isServer: false });
+
+		hydrate(browser, {
+			queries: [
+				{ data: undefined, key: ["issue", 1], updatedAt: 1 },
+				{ key: ["issue", 2], promise: Promise.resolve(), updatedAt: 0 },
+			],
+		});
+
+		const written = browser.getQuery(backend.issueQuery, { id: 1 });
+		expect(written.getState().hasData).toBe(false);
+		const resumed = browser.getQuery(backend.issueQuery, { id: 2 });
+		await expect(resumed.read()).rejects.toThrow(
+			'Query ["issue",2] data cannot be undefined',
+		);
+		expect(backend.requests).toHaveLength(0);
+	});
+
 	it("round-trips data through serializeData and deserializeData", async () => {
 		const server = new QueryClient({ isServer: true });
 		const browser = new QueryClient({ isServer: false });
