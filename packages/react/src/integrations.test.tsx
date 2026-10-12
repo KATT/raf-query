@@ -15,6 +15,7 @@ import {
 	queryOptions,
 	useQuery,
 } from "./index.ts";
+import { Hydrate } from "./hydrate.tsx";
 import { QueryProvider } from "./next.tsx";
 import { HydrationBoundary } from "./rsc.tsx";
 import { setupRouterIntegration } from "./tanstack-router.ts";
@@ -94,6 +95,46 @@ describe("HydrationBoundary", () => {
 		await backend.respond();
 		expect(screen.getByText("Issue 2")).toBeDefined();
 		expect(backend.calls()).toBe(1);
+		cleanup();
+	});
+
+	it("writes new entries during render, newer data for shown ones after commit", async () => {
+		const backend = createBackend();
+		const browser = new QueryClient({ isServer: false });
+		browser.setData(backend.issueQuery, { id: 1 }, "Old");
+		const rendered: Array<string> = [];
+		function Issue(props: { readonly id: number }) {
+			const [issuePromise] = useQuery(backend.issueQuery, {
+				input: { id: props.id },
+				key: ["issue", props.id],
+			});
+			const issue = use(issuePromise);
+			rendered.push(issue);
+			return <p>{issue}</p>;
+		}
+		const later = Date.now() + 1000;
+
+		await mount(
+			<QueryClientProvider client={browser}>
+				<Suspense fallback={<p>Loading</p>}>
+					<Hydrate
+						state={{
+							queries: [
+								{ data: "New", key: ["issue", 1], updatedAt: later },
+								{ data: "Three", key: ["issue", 3], updatedAt: later },
+							],
+						}}
+					>
+						<Issue id={1} />
+						<Issue id={3} />
+					</Hydrate>
+				</Suspense>
+			</QueryClientProvider>,
+		);
+
+		expect(rendered.slice(0, 2)).toEqual(["Old", "Three"]);
+		expect(screen.getByText("New")).toBeDefined();
+		expect(backend.calls()).toBe(0);
 		cleanup();
 	});
 });
