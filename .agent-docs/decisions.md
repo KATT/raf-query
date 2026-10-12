@@ -55,11 +55,12 @@ Spec lives in root `README.md`. Picks, and what lost:
 - **Pending-input behavior is `whilePending: "suspend" | "previous"`**, with `isPrevious` in controls, instead of TanStack's `placeholderData: keepPreviousData` + `isPlaceholderData`. `"suspend"` relies on both routers committing navigations in `startTransition` (TanStack Router: `link.ts` "All navigations now use startTransition under the hood"; `Transitioner.tsx`). Skeleton-on-change is a keyed Suspense (`key={state.hash}`), not a third mode — a hook can't force an already-revealed boundary back to its fallback inside a transition.
 - **No refetch on mount.** Loaders, invalidation, focus/reconnect-while-stale, `refetch()`, `refetchInterval` are the only refetch triggers.
 - **Server-only factories** (importing DB code) can't be read by client hooks; pass a plain promise prop or render in RSC. (An earlier proposal for a `server: true` flag didn't work: the client component would still have to import the factory.)
-- **Effect is a runtime dependency of both libraries** (human, 2026-10-12). Use it for subscriptions, dedupe, scheduling, retries — functionally like TanStack Query, not a line-by-line port. Public API is Promise-first **and** exposes Effect-native entry points (e.g. Effect-returning `queryFn`, Stream-based subscriptions). Versions come from the `catalog:` in `pnpm-workspace.yaml`; source is vendored at `.repos/effect` — read it (start with its `LLMS.md`) before writing Effect code.
+- **Effect is a runtime dependency of both libraries** (human, 2026-10-12). Use it for subscriptions, dedupe, scheduling, retries — functionally like TanStack Query, not a line-by-line port. The app-facing API (`@raf-query/react`) is Promise-first **and** exposes the Effect cache as `qc.effect` (Effect-returning `queryFn`, typed errors, Stream-based subscriptions). Versions come from the `catalog:` in `pnpm-workspace.yaml`; source is vendored at `.repos/effect` — read it (start with its `LLMS.md`) before writing Effect code.
 
 ## 2026-10-12 — Two packages, React-agnostic core
 
 - `@raf-query/core` (framework-agnostic, mirrors `@tanstack/query-core`) and `@raf-query/react` (bindings, re-exports core — apps install only this).
+- **Core is Effect-only** (human, 2026-10-12: "it's okay if the core lib _only_ exposes effect-like apis… react is the only consumer… as exact as possible"). Core exports `QueryCache`, whose verbs are Effects with exact types; the Promise `QueryClient`, `dehydrate(client)` / `hydrate(client)` and `allKeyed` live in `@raf-query/react` (`src/client.ts`). Sync access during render follows Effect's `*Unsafe` naming (`getQueryUnsafe`, `getStateUnsafe`, `readUnsafe`, `subscribeUnsafe`).
 - Framework integrations are subpath exports of `@raf-query/react` (`/tanstack-router`, `/rsc`, `/next`), not separate packages.
 - **Lockstep versions:** both packages always share a version and release together.
 - `@raf-query/react` depends on `@raf-query/core` via `workspace:*`, which `pnpm pack` publishes as the exact lockstep version. `react` is a peer (`^19.2.0`). Both depend on `effect` through the catalog, which is a caret range (`^4.0.1`) because `pnpm pack` publishes the catalog value as-is and an exact pin would duplicate Effect in apps.
@@ -104,8 +105,21 @@ App: **issue tracker** (confirmed). Data: an in-memory fake DB with artificial l
 
 - `.oxlintrc.json` turns off `anti-slop/no-unknown-parameters`, `no-unknown-returns`, `no-unsafe-dictionary-type` for `packages/*/src/**`: the cache is type-erased on purpose and factory generics restore types at the public boundary. Each remaining cast has a `SAFETY:` comment and an oxlint disable. Where a value must be widened before the cast, use the package's `unsafeCast<T>(value: unknown)` (`cast.ts`, not exported): `anti-slop/no-widen-then-assert` bans the inline `const x: unknown = …; x as T` form.
 - The TanStack Router integration stores its payload under the `raf` key of the router's dehydrated state (`{ raf: { initial, stream } }`).
-- The `"failed"` `CacheEvent` exists for integrations (redirect handling) and fires after retries.
+- The `"failed"` `CacheEvent` exists for integrations (redirect handling) and fires after retries. React's `QueryClient` implements `config.onError` on it.
 - React tests: render, rerender and click inside **async** `act` (`await act(async () => …)`); a sync `act` never resumes a suspended tree after its promise resolves. Responding to a fake request needs a macrotask wait inside the act. Effect tests that fork a stream before a cache write need `Effect.forkChild(x, { startImmediately: true })`.
+- Behavior tests of the Promise API (`client`, `hydration`, `infinite`, `types`) live in `packages/react` with `QueryClient`; core's tests drive `QueryCache` with `it.effect`.
+
+## 2026-10-12 — Effect-native engine (agent, human asked)
+
+Human: the core copied TanStack's _code style_ too closely; keep the features, write it with `.repos/effect` patterns.
+
+- **One fiber per background task** (`request`, `gc`, `stale`, `errorShown`) in a `FiberMap` owned by the entry's `Scope`. Forking a task interrupts its previous fiber; removing the entry closes the scope, which interrupts them all. No `setTimeout`, `AbortController` or hand-rolled deferreds.
+- **A request's result is a `Deferred`** that outlives restarts (`invalidate` restarts the fiber; awaiters keep waiting). It's completed with the request's full `Exit`, so typed failures stay typed and defects stay defects. Interrupts become `CancelledError` (a `Data.TaggedError`). A removed entry fails new requests with `CancelledError` instead of fetching.
+- `queryFn` → `Effect.callback` (`request.ts`): the callback's signal aborts when the fiber is interrupted. Plain values still settle a microtask later, so `isFetching` / `fetchDirection` are observable. A synchronous throw is a defect (not retried); a hydrated promise's rejection is a defect too (`Effect.promise`), since the sender's error type doesn't survive the wire.
+- `retry` / `retryDelay` compile to one `Schedule` (`retry.ts`); `Schedule.while` uses `step.attempt` (1 on the first failure).
+- `mount` is an `RcRef` over scoped window listeners: acquired by the first mount, released when the last mount's scope closes. `RcRef.get` completes synchronously when `acquire` is sync, so `runSync` works in React's effect.
+- **Streams subscribe synchronously** (`listen.ts`: `Stream.unwrap` + scoped `Queue`). `Stream.callback` runs its registration on a forked fiber a scheduler tick later, and `Stream.fromEventListener` attaches lazily too, so both miss events emitted right after the stream starts.
+- `QueryState.promise` stays a real Promise (a `thenable.ts` thenable): it's React's `use()` protocol, not an API style.
 
 ## 2026-10-12 — Devtools (agent)
 
@@ -113,7 +127,7 @@ App: **issue tracker** (confirmed). Data: an in-memory fake DB with artificial l
 - Mirrors `@tanstack/react-query-devtools` (`.repos/query/packages/react-query-devtools/src/index.ts`): the default entry swaps in `() => null` when `process.env.NODE_ENV === "production"` so bundlers drop the panel; `/devtools/production` always renders it. We check `=== "production"` (TanStack: `!== "development"`) so tests and dev both get the panel. Verified by grepping both example apps' production builds for a panel-only string. TS 7 doesn't auto-include `@types/node`, so `devtools.tsx` declares `process` locally.
 - Renders nothing until hydrated (`useSyncExternalStore` server snapshot `false`): the server's cache isn't the browser's, and `localStorage` state is read in the client-only child's `useState` initializer.
 - Cache events fire synchronously, sometimes during another component's render, so `devtools-store.ts` notifies React in a microtask and caches the row snapshot per event version.
-- Core gained what the panel needs: `Query.observerCount`, `Query.isStaleNow()`, `Query.reset()`, `qc.reset` / `qc.remove`, and the `observers` cache event (subscribe/unsubscribe don't otherwise emit). A suspended reader isn't counted until it commits.
+- Core gained what the panel needs: `Query.observerCount`, `Query.isStaleUnsafe()`, `Query.reset`, `reset` / `remove`, and the `observers` cache event (subscribe/unsubscribe don't otherwise emit). A suspended reader isn't counted until it commits.
 
 ## 2026-10-12 — Experiment: `@raf-query/tanstack-react-query` (human asked)
 
