@@ -465,6 +465,7 @@ raf-query's cache is written in [Effect](https://effect.website): `QueryClient` 
 - `retry` accepts a `Schedule` as well as a count or predicate.
 - `qc.effect` has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidate`, `reset`, `remove`, `setData`, `getData` (an `Option`), `dehydrate`, `hydrate`. `watch` is a `Stream` of an entry's state, and `events` a `Stream` of cache events.
 - Entries are a data type with module functions, as in Effect's own modules: `Query.fetch(query)`, `Query.refetch(query)`, `Query.invalidate(query)`, `Query.changes(query)`, and `Query.getUnsafe(query)` / `Query.subscribeUnsafe(query, listener)` for synchronous reads.
+- `QueryObserver` is a data type too: one reader's view of a query, as `useQuery` sees it (the controls and the promise, with `whilePending`, `refetchInterval` and the focus / reconnect options). `QueryObserver.make(query, options)` creates one, and `QueryObserver.changes(observer)` streams its results; while it runs, the query counts as read and polls on `refetchInterval`.
 - Time comes from the `Clock` and the page from the `Platform` service (focus, visibility, `navigator.onLine`; the default reads the globals). Provide `TestClock` or another `Platform` to test staleness, gc and offline retries without a browser.
 
 ```ts
@@ -569,20 +570,20 @@ In the browser, retries pause while `navigator.onLine` is `false`: after the ret
 
 `@raf-query/core`:
 
-| Export                                                       | Use                                                                        |
-| ------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| `QueryCache`                                                 | The cache service (`qc.effect`): `make`, `layer`, and the verbs as Effects |
-| `Query`                                                      | Cache entries: `Query.fetch`, `Query.changes`, `Query.getUnsafe`, …        |
-| `Platform`                                                   | The page the cache watches (focus, network); swap it in tests              |
-| `queryOptions(options)`                                      | Typed options for a query factory                                          |
-| `infiniteQueryOptions(options)`                              | Typed options for a paged query factory                                    |
-| `hashKey(key)`, `matchesKey(key, prefix)`                    | Key helpers                                                                |
-| `QueryObserver`                                              | One reader's view of a query, with tracked results; for bindings           |
-| `Query.CancelledError`                                       | Failure of a request whose entry was removed or cleared before it settled  |
-| `QueryHandle<TFactory>`                                      | Handle type for props                                                      |
-| `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                      |
-| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`                |
-| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                    |
+| Export                                                       | Use                                                                            |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `QueryCache`                                                 | The cache service (`qc.effect`): `make`, `layer`, and the verbs as Effects     |
+| `Query`                                                      | Cache entries: `Query.fetch`, `Query.changes`, `Query.getUnsafe`, …            |
+| `Platform`                                                   | The page the cache watches (focus, network); swap it in tests                  |
+| `queryOptions(options)`                                      | Typed options for a query factory                                              |
+| `infiniteQueryOptions(options)`                              | Typed options for a paged query factory                                        |
+| `hashKey(key)`, `matchesKey(key, prefix)`                    | Key helpers                                                                    |
+| `QueryObserver`                                              | One reader's view of a query, with tracked results and `changes`; for bindings |
+| `Query.CancelledError`                                       | Failure of a request whose entry was removed or cleared before it settled      |
+| `QueryHandle<TFactory>`                                      | Handle type for props                                                          |
+| `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                          |
+| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`                    |
+| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                        |
 
 `@raf-query/react` (plus all of the above):
 
