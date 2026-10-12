@@ -82,15 +82,15 @@ export async function countIssues(): Promise<IssueCounts> {
 	};
 }
 
-/** Oldest first; `cursor` is the index of the first comment to return. */
+/** Newest first; `cursor` is the index of the first comment to return. */
 export async function listComments(input: {
 	readonly cursor: number;
 	readonly issueId: number;
 }): Promise<CommentPage> {
 	await latency();
-	const comments = store().comments.filter(
-		(comment) => comment.issueId === input.issueId,
-	);
+	const comments = store()
+		.comments.filter((comment) => comment.issueId === input.issueId)
+		.toReversed();
 	const end = input.cursor + COMMENTS_PER_PAGE;
 	return {
 		comments: comments.slice(input.cursor, end),

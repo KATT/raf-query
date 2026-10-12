@@ -27,7 +27,7 @@ export function Comments(props: {
 	const loaded = pages.pages.flatMap((page) => page.comments);
 	const [shown, addOptimistic] = useOptimistic<ReadonlyArray<Comment>, Comment>(
 		loaded,
-		(current, comment) => [...current, comment],
+		(current, comment) => [comment, ...current],
 	);
 	const total = pages.pages.at(-1)?.total ?? 0;
 
@@ -36,6 +36,26 @@ export function Comments(props: {
 			<h2 className="font-semibold">
 				{total} {total === 1 ? "comment" : "comments"}
 			</h2>
+			<form
+				action={async (formData) => {
+					const body = String(formData.get("body") ?? "");
+					addOptimistic({
+						author: currentUser,
+						body,
+						createdAt: new Date().toISOString(),
+						id: -Date.now(),
+						issueId,
+					});
+					await addComment({ body, issueId });
+					await queryClient.invalidate({ queryKey: ["issues"] });
+				}}
+				className="grid gap-2"
+			>
+				<Textarea name="body" placeholder="Add a comment" required />
+				<Button className="justify-self-end" type="submit">
+					Comment
+				</Button>
+			</form>
 			<ol className="grid gap-3">
 				{shown.map((comment) => (
 					<li className="rounded-lg border p-3" key={comment.id}>
@@ -62,26 +82,6 @@ export function Comments(props: {
 					{comments.isFetchingNextPage ? "Loading…" : "Load more"}
 				</Button>
 			) : null}
-			<form
-				action={async (formData) => {
-					const body = String(formData.get("body") ?? "");
-					addOptimistic({
-						author: currentUser,
-						body,
-						createdAt: new Date().toISOString(),
-						id: -Date.now(),
-						issueId,
-					});
-					await addComment({ body, issueId });
-					await queryClient.invalidate({ queryKey: ["issues"] });
-				}}
-				className="grid gap-2"
-			>
-				<Textarea name="body" placeholder="Add a comment" required />
-				<Button className="justify-self-end" type="submit">
-					Comment
-				</Button>
-			</form>
 		</section>
 	);
 }
