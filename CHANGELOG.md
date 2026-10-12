@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.4](https://github.com/KATT/raf-query/compare/0.0.3...0.0.4) (2026-10-12)
+
+### Features
+
+- @raf-query/core, @raf-query/react and the example apps ([#1](https://github.com/KATT/raf-query/issues/1)) ([3881014](https://github.com/KATT/raf-query/commit/3881014b7f07d17d733256e184b627ead1f5788b))
+
 ## [0.0.3](https://github.com/KATT/raf-query/compare/0.0.2...0.0.3) (2026-10-12)
 
 - lint-fix staged files in pre-commit hook ([#2](https://github.com/KATT/raf-query/issues/2)) ([858a4e0](https://github.com/KATT/raf-query/commit/858a4e02563daec4c6de9a07d438f03573d0339b))
