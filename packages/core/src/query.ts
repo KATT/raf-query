@@ -1,17 +1,32 @@
-import { Cause, Effect, Exit, Predicate, Schedule } from "effect";
+import {
+	Cause,
+	Data,
+	Deferred,
+	Effect,
+	Exit,
+	FiberMap,
+	Predicate,
+	Scope,
+} from "effect";
 
+import {
+	type Direction,
+	fetchPages,
+	isInfiniteData,
+	nextPageParam,
+	previousPageParam,
+} from "./infinite.ts";
 import type { QueryKey } from "./key.ts";
 import { scheduleNotify } from "./notify.ts";
 import type {
 	AnyQueryOptions,
-	InfiniteData,
-	InfiniteQueryOptions,
 	QueryBehavior,
 	QueryFactory,
 	QueryFnResult,
 	QueryHandle,
-	RetryPolicy,
 } from "./options.ts";
+import { fromQueryFn } from "./request.ts";
+import { retrySchedule } from "./retry.ts";
 import { fulfilled, type Pending, pending } from "./thenable.ts";
 
 /** A snapshot of one cache entry. Replaced, never mutated, on every change. */
@@ -23,7 +38,7 @@ export interface QueryState<TData> {
 	/** Failed attempts of the current request, retries included. */
 	readonly failureCount: number;
 	/** Set while a paged query loads a page at one end of the list. */
-	readonly fetchDirection: "backward" | "forward" | undefined;
+	readonly fetchDirection: Direction | undefined;
 	readonly hasData: boolean;
 	/** A request is in flight. */
 	readonly isFetching: boolean;
@@ -49,10 +64,10 @@ export interface QueryObserver {
 
 export interface FetchRequest {
 	/** Load one more page at this end of a paged query. */
-	readonly direction?: "backward" | "forward";
+	readonly direction?: Direction;
 	/** Pages to load when a paged query has none yet. */
 	readonly pages?: number;
-	/** Abort an in-flight request and start over (used by `invalidate`). */
+	/** Interrupt an in-flight request and start over (used by `invalidate`). */
 	readonly restart?: boolean;
 }
 
@@ -99,12 +114,12 @@ export interface Query<
 	subscribe(listener: () => void, observer?: QueryObserver): () => void;
 }
 
-/** Thrown into a request's awaiters when the cache is cleared mid-request. */
-export class CancelledError extends Error {
-	constructor() {
-		super("The query was cancelled");
-		this.name = "CancelledError";
-	}
+/**
+ * The failure of a request that was interrupted rather than settled: its
+ * entry was removed or cleared, or an Effect `queryFn` was interrupted.
+ */
+export class CancelledError extends Data.TaggedError("CancelledError") {
+	override readonly message = "The query was cancelled";
 }
 
 /** What an entry needs from its client. */
@@ -118,113 +133,58 @@ export interface QueryHost {
 	reportError(error: unknown, query: QueryEntry): void;
 }
 
-interface InFlight {
-	readonly controller: AbortController;
-	readonly deferred: Pending<unknown>;
-}
+/** The background work of an entry, one fiber per kind. */
+type Task = "errorShown" | "gc" | "request" | "stale";
 
-const noop = () => {};
 const identity = <T>(value: T) => value;
 const defaultObserver: QueryObserver = {};
 
-function isEffectResult<T>(
-	result: QueryFnResult<T>,
-): result is Effect.Effect<T, unknown> {
-	return Effect.isEffect(result);
-}
-
-export function isInfiniteData(
-	data: unknown,
-): data is InfiniteData<unknown, unknown> {
-	return (
-		Predicate.hasProperty(data, "pages") &&
-		Predicate.hasProperty(data, "pageParams") &&
-		Array.isArray(data.pages) &&
-		Array.isArray(data.pageParams)
+/**
+ * Fibers keyed by task, owned by `scope`: forking a task interrupts its
+ * previous fiber, and closing the scope interrupts them all.
+ */
+function makeTasks(scope: Scope.Scope) {
+	const tasks = Effect.runSync(
+		FiberMap.make<Task, void, never>().pipe(Scope.provide(scope)),
 	);
-}
-
-function shouldRetry(
-	retry: Exclude<RetryPolicy, Schedule.Schedule<unknown, unknown>>,
-	failureCount: number,
-	error: unknown,
-) {
-	if (Predicate.isBoolean(retry)) {
-		return retry;
-	}
-	if (Predicate.isNumber(retry)) {
-		return failureCount <= retry;
-	}
-	return retry(failureCount, error);
-}
-
-export function nextPageParam(
-	options: InfiniteQueryOptions<unknown, unknown>,
-	data: InfiniteData<unknown, unknown>,
-) {
-	if (data.pages.length === 0) {
-		return undefined;
-	}
-	return options.getNextPageParam(
-		data.pages.at(-1),
-		data.pages,
-		data.pageParams.at(-1),
-		data.pageParams,
-	);
-}
-
-export function previousPageParam(
-	options: InfiniteQueryOptions<unknown, unknown>,
-	data: InfiniteData<unknown, unknown>,
-) {
-	if (data.pages.length === 0 || !options.getPreviousPageParam) {
-		return undefined;
-	}
-	return options.getPreviousPageParam(
-		data.pages[0],
-		data.pages,
-		data.pageParams[0],
-		data.pageParams,
-	);
-}
-
-function addPage(
-	data: InfiniteData<unknown, unknown>,
-	page: unknown,
-	pageParam: unknown,
-	direction: "backward" | "forward",
-	maxPages: number | undefined,
-): InfiniteData<unknown, unknown> {
-	const forward = direction === "forward";
-	const pages = forward ? [...data.pages, page] : [page, ...data.pages];
-	const pageParams = forward
-		? [...data.pageParams, pageParam]
-		: [pageParam, ...data.pageParams];
-	if (maxPages === undefined || pages.length <= maxPages) {
-		return { pageParams, pages };
-	}
-	return forward
-		? { pageParams: pageParams.slice(-maxPages), pages: pages.slice(-maxPages) }
-		: {
-				pageParams: pageParams.slice(0, maxPages),
-				pages: pages.slice(0, maxPages),
-			};
+	const run = Effect.runSync(FiberMap.runtime(tasks)<never>());
+	return {
+		cancel(task: Task) {
+			if (FiberMap.hasUnsafe(tasks, task)) {
+				Effect.runFork(FiberMap.remove(tasks, task));
+			}
+		},
+		fork(
+			task: Task,
+			effect: Effect.Effect<void>,
+			options?: { readonly onlyIfMissing?: boolean },
+		) {
+			run(task, effect, options);
+		},
+	};
 }
 
 export class QueryEntry implements Query {
+	/** Effect versions of the entry's async methods. */
+	readonly effect: {
+		fetch(request?: FetchRequest): Effect.Effect<unknown, unknown>;
+		readonly invalidate: Effect.Effect<void>;
+		readonly reset: Effect.Effect<void>;
+	};
 	readonly hash: string;
 	readonly key: QueryKey;
 	#errorShown = false;
-	#errorShownTimer: ReturnType<typeof setTimeout> | undefined;
-	#gcTimer: ReturnType<typeof setTimeout> | undefined;
 	#handle: QueryHandle;
 	#host: QueryHost;
-	#inFlight: InFlight | undefined;
+	/** Awaited by every caller of the request in flight; outlives restarts. */
+	#inFlight: Deferred.Deferred<unknown, unknown> | undefined;
 	#listeners = new Map<() => void, QueryObserver>();
 	#options: AnyQueryOptions | undefined;
 	#pending: Pending<unknown> | undefined;
-	#staleTimer: ReturnType<typeof setTimeout> | undefined;
+	/** Open while the entry is cached. */
+	#scope = Scope.makeUnsafe();
 	#state: QueryState<unknown>;
+	#tasks = makeTasks(this.#scope);
 
 	constructor(host: QueryHost, key: QueryKey, hash: string) {
 		this.#host = host;
@@ -244,6 +204,11 @@ export class QueryEntry implements Query {
 			promise: this.#pending.promise,
 			status: "pending",
 			updatedAt: 0,
+		};
+		this.effect = {
+			fetch: (request = {}) => Effect.suspend(() => this.#load(request)),
+			invalidate: Effect.suspend(() => this.#invalidate()),
+			reset: Effect.suspend(() => this.#reset()),
 		};
 		this.#scheduleGc();
 	}
@@ -271,7 +236,7 @@ export class QueryEntry implements Query {
 
 	subscribe = (listener: () => void, observer = defaultObserver) => {
 		this.#listeners.set(listener, observer);
-		this.#clearGc();
+		this.#tasks.cancel("gc");
 		this.#scheduleStale();
 		this.#host.observersChanged(this);
 		return () => {
@@ -279,7 +244,7 @@ export class QueryEntry implements Query {
 				return;
 			}
 			if (this.#listeners.size === 0) {
-				clearTimeout(this.#staleTimer);
+				this.#tasks.cancel("stale");
 				this.#scheduleGc();
 			}
 			this.#host.observersChanged(this);
@@ -298,7 +263,7 @@ export class QueryEntry implements Query {
 		const state = this.#state;
 		if (!state.hasData && !state.isFetching) {
 			if (state.status !== "error" || this.#errorShown) {
-				this.fetch().catch(noop);
+				this.start();
 			} else {
 				this.#markErrorShown();
 			}
@@ -306,29 +271,25 @@ export class QueryEntry implements Query {
 		return this.#state.promise;
 	};
 
-	fetch = (request: FetchRequest = {}): Promise<unknown> => {
-		const options = this.#options;
-		const inFlight = this.#inFlight;
-		if (inFlight && !(request.restart && options)) {
-			if (request.direction) {
-				const next = () => this.fetch(request);
-				return inFlight.deferred.promise.then(next, next);
-			}
-			return inFlight.deferred.promise;
-		}
-		if (!options) {
-			return this.#state.promise;
-		}
-		inFlight?.controller.abort();
-		return this.#start(this.#request(options, request), request.direction);
-	};
+	/** Start a request unless one is in flight, without waiting for it. */
+	start(request: FetchRequest = {}) {
+		this.#begin(request);
+	}
 
-	refetch = () => this.fetch().then(noop, noop);
+	fetch = (request?: FetchRequest) =>
+		Effect.runPromise(this.effect.fetch(request));
 
-	fetchNextPage = () => this.fetch({ direction: "forward" }).then(noop, noop);
+	refetch = () => Effect.runPromise(Effect.ignore(this.effect.fetch()));
+
+	fetchNextPage = () =>
+		Effect.runPromise(
+			Effect.ignore(this.effect.fetch({ direction: "forward" })),
+		);
 
 	fetchPreviousPage = () =>
-		this.fetch({ direction: "backward" }).then(noop, noop);
+		Effect.runPromise(
+			Effect.ignore(this.effect.fetch({ direction: "backward" })),
+		);
 
 	hasNextPage = () => {
 		const options = this.#options;
@@ -350,36 +311,9 @@ export class QueryEntry implements Query {
 		);
 	};
 
-	invalidate = () => {
-		this.#set({ isInvalidated: true });
-		if (!this.isObserved || !this.#options) {
-			return Promise.resolve();
-		}
-		return this.fetch({ restart: true }).then(noop, noop);
-	};
+	invalidate = () => Effect.runPromise(this.effect.invalidate);
 
-	reset = () => {
-		clearTimeout(this.#errorShownTimer);
-		this.#errorShownTimer = undefined;
-		this.#errorShown = false;
-		this.#pending ??= pending();
-		this.#set({
-			data: undefined,
-			error: null,
-			failureCount: 0,
-			hasData: false,
-			isInvalidated: false,
-			promise: this.#pending.promise,
-			status: "pending",
-			updatedAt: 0,
-		});
-		// An in-flight request restarts too, or its response would restore the
-		// data that was just dropped.
-		if (!this.#options || (!this.isObserved && !this.#inFlight)) {
-			return Promise.resolve();
-		}
-		return this.fetch({ restart: true }).then(noop, noop);
-	};
+	reset = () => Effect.runPromise(this.effect.reset);
 
 	/** Write data directly, as if a request had returned it. */
 	setData(data: unknown, updatedAt = Date.now()) {
@@ -397,7 +331,7 @@ export class QueryEntry implements Query {
 				try: () => Promise.resolve(promise),
 			}),
 			undefined,
-		).catch(noop);
+		);
 	}
 
 	/** Refetch a read, stale entry whose readers want it on this event. */
@@ -409,21 +343,88 @@ export class QueryEntry implements Query {
 			(observer) => observer[option] ?? fallback,
 		);
 		if (wanted && this.#computeStale(this.#state)) {
-			this.fetch().catch(noop);
+			this.start();
 		}
 	}
 
-	/** Stop timers and abort the in-flight request; the entry is leaving the cache. */
+	/**
+	 * The entry is leaving the cache: interrupt its request and timers, and
+	 * fail the request's awaiters with a {@link CancelledError}.
+	 */
 	destroy() {
-		clearTimeout(this.#gcTimer);
-		clearTimeout(this.#staleTimer);
-		clearTimeout(this.#errorShownTimer);
 		const inFlight = this.#inFlight;
 		this.#inFlight = undefined;
+		Effect.runFork(Scope.close(this.#scope, Exit.void));
 		if (inFlight) {
-			inFlight.controller.abort();
-			inFlight.deferred.reject(new CancelledError());
+			Deferred.doneUnsafe(inFlight, Exit.fail(new CancelledError()));
 		}
+	}
+
+	#load(request: FetchRequest): Effect.Effect<unknown, unknown> {
+		const inFlight = this.#inFlight;
+		if (inFlight && request.direction && !request.restart) {
+			// A page joins the list the in-flight request returns.
+			return Deferred.await(inFlight).pipe(
+				Effect.exit,
+				Effect.andThen(this.effect.fetch(request)),
+			);
+		}
+		return this.#begin(request);
+	}
+
+	/**
+	 * Start a request now, or join the one in flight. The returned Effect
+	 * waits for its result.
+	 */
+	#begin(request: FetchRequest): Effect.Effect<unknown, unknown> {
+		if (Predicate.isTagged(this.#scope.state, "Closed")) {
+			return Effect.fail(new CancelledError());
+		}
+		const options = this.#options;
+		const inFlight = this.#inFlight;
+		if (inFlight && !(request.restart && options)) {
+			return Deferred.await(inFlight);
+		}
+		if (!options) {
+			return Effect.tryPromise({
+				catch: identity,
+				try: () => this.#state.promise,
+			});
+		}
+		this.#tasks.cancel("request");
+		return Deferred.await(
+			this.#start(this.#request(options, request), request.direction),
+		);
+	}
+
+	#invalidate(): Effect.Effect<void> {
+		this.#set({ isInvalidated: true });
+		if (!this.isObserved || !this.#options) {
+			return Effect.void;
+		}
+		return Effect.ignore(this.#begin({ restart: true }));
+	}
+
+	#reset(): Effect.Effect<void> {
+		this.#tasks.cancel("errorShown");
+		this.#errorShown = false;
+		this.#pending ??= pending();
+		this.#set({
+			data: undefined,
+			error: null,
+			failureCount: 0,
+			hasData: false,
+			isInvalidated: false,
+			promise: this.#pending.promise,
+			status: "pending",
+			updatedAt: 0,
+		});
+		// An in-flight request restarts too, or its response would restore the
+		// data that was just dropped.
+		if (!this.#options || (!this.isObserved && !this.#inFlight)) {
+			return Effect.void;
+		}
+		return Effect.ignore(this.#begin({ restart: true }));
 	}
 
 	#behavior<TName extends keyof QueryBehavior>(
@@ -450,14 +451,14 @@ export class QueryEntry implements Query {
 		this.#scheduleStale();
 	}
 
+	/** Run `request` as the entry's request fiber, settling into its awaiter. */
 	#start(
 		request: Effect.Effect<unknown, unknown>,
-		direction: "backward" | "forward" | undefined,
-	) {
-		const deferred = this.#inFlight?.deferred ?? pending<unknown>();
-		const run: InFlight = { controller: new AbortController(), deferred };
-		this.#inFlight = run;
-		this.#clearGc();
+		direction: Direction | undefined,
+	): Deferred.Deferred<unknown, unknown> {
+		const awaiter = this.#inFlight ?? Deferred.makeUnsafe<unknown, unknown>();
+		this.#inFlight = awaiter;
+		this.#tasks.cancel("gc");
 		if (!this.#state.hasData && this.#state.status === "error") {
 			this.#pending = pending();
 			this.#set({
@@ -475,28 +476,35 @@ export class QueryEntry implements Query {
 				isFetching: true,
 			});
 		}
-		Effect.runPromiseExit(request, { signal: run.controller.signal }).then(
-			(exit) => this.#settle(run, exit),
-			noop,
+		this.#tasks.fork(
+			"request",
+			Effect.exit(request).pipe(
+				Effect.flatMap((exit) =>
+					Effect.sync(() => this.#settle(awaiter, exit)),
+				),
+			),
 		);
-		return deferred.promise;
+		return awaiter;
 	}
 
-	#settle(run: InFlight, exit: Exit.Exit<unknown, unknown>) {
-		if (this.#inFlight !== run) {
+	#settle(
+		awaiter: Deferred.Deferred<unknown, unknown>,
+		exit: Exit.Exit<unknown, unknown>,
+	) {
+		if (this.#inFlight !== awaiter) {
 			return;
 		}
 		this.#inFlight = undefined;
 		if (Exit.isSuccess(exit)) {
 			this.#succeed(exit.value, Date.now());
-			run.deferred.resolve(exit.value);
+			Deferred.doneUnsafe(awaiter, exit);
 		} else if (Cause.hasInterruptsOnly(exit.cause)) {
 			this.#set({ fetchDirection: undefined, isFetching: false });
-			run.deferred.reject(new CancelledError());
+			Deferred.doneUnsafe(awaiter, Exit.fail(new CancelledError()));
 		} else {
 			const error = Cause.squash(exit.cause);
 			this.#fail(error);
-			run.deferred.reject(error);
+			Deferred.doneUnsafe(awaiter, Exit.fail(error));
 		}
 		this.#scheduleGc();
 	}
@@ -542,173 +550,91 @@ export class QueryEntry implements Query {
 	 * task — the boundary was reset — starts a new request.
 	 */
 	#markErrorShown() {
-		if (this.#errorShownTimer !== undefined) {
-			return;
-		}
-		this.#errorShownTimer = setTimeout(() => {
-			this.#errorShownTimer = undefined;
-			this.#errorShown = true;
-		}, 0);
+		this.#tasks.fork(
+			"errorShown",
+			Effect.yieldNow.pipe(
+				Effect.andThen(
+					Effect.sync(() => {
+						this.#errorShown = true;
+					}),
+				),
+			),
+			{ onlyIfMissing: true },
+		);
 	}
 
 	#request(
 		options: AnyQueryOptions,
 		request: FetchRequest,
 	): Effect.Effect<unknown, unknown> {
+		const queryKey = options.queryKey;
 		if (options.kind === "query") {
-			return this.#attempt((signal) =>
-				options.queryFn({ queryKey: options.queryKey, signal }),
-			);
+			return this.#attempt((signal) => options.queryFn({ queryKey, signal }));
 		}
-		return this.#pagedRequest(options, request);
-	}
-
-	#pagedRequest(
-		options: InfiniteQueryOptions<unknown, unknown>,
-		request: FetchRequest,
-	): Effect.Effect<InfiniteData<unknown, unknown>, unknown> {
 		const current = isInfiniteData(this.#state.data)
 			? this.#state.data
 			: undefined;
-		const fetchPage = (pageParam: unknown, direction: "backward" | "forward") =>
+		return fetchPages(options, current, request, (pageParam, direction) =>
 			this.#attempt((signal) =>
-				options.queryFn({
-					direction,
-					pageParam,
-					queryKey: options.queryKey,
-					signal,
-				}),
-			);
-
-		return Effect.gen(function* () {
-			if (request.direction && current) {
-				const pageParam =
-					request.direction === "forward"
-						? nextPageParam(options, current)
-						: previousPageParam(options, current);
-				if (pageParam == null) {
-					return current;
-				}
-				const page = yield* fetchPage(pageParam, request.direction);
-				return addPage(
-					current,
-					page,
-					pageParam,
-					request.direction,
-					options.maxPages,
-				);
-			}
-
-			const count = Math.max(request.pages ?? 1, current?.pages.length ?? 0);
-			let data: InfiniteData<unknown, unknown> = { pageParams: [], pages: [] };
-			let pageParam =
-				current && current.pageParams.length > 0
-					? current.pageParams[0]
-					: options.initialPageParam;
-			for (let index = 0; index < count; index++) {
-				if (index > 0) {
-					const next = nextPageParam(options, data);
-					if (next == null) {
-						break;
-					}
-					pageParam = next;
-				}
-				const page = yield* fetchPage(pageParam, "forward");
-				data = addPage(data, page, pageParam, "forward", options.maxPages);
-			}
-			return data;
-		});
+				options.queryFn({ direction, pageParam, queryKey, signal }),
+			),
+		);
 	}
 
-	/** One request: run the `queryFn` with a fresh signal, retrying per policy. */
+	/** One `queryFn` call, retried per the query's policy. Every failure counts. */
 	#attempt(
 		call: (signal: AbortSignal) => QueryFnResult<unknown>,
 	): Effect.Effect<unknown, unknown> {
-		const once = Effect.suspend(() => {
-			const controller = new AbortController();
-			return Effect.try({
-				catch: identity,
-				try: () => call(controller.signal),
-			}).pipe(
-				Effect.flatMap((result) =>
-					isEffectResult(result)
-						? result
-						: Effect.tryPromise({
-								catch: identity,
-								try: () => Promise.resolve(result),
-							}),
+		const attempt = fromQueryFn(call).pipe(
+			Effect.tapError(() =>
+				Effect.sync(() =>
+					this.#set({ failureCount: this.#state.failureCount + 1 }),
 				),
-				Effect.onInterrupt(() => Effect.sync(() => controller.abort())),
-			);
-		});
-		return this.#withRetry(once);
-	}
-
-	#withRetry(
-		once: Effect.Effect<unknown, unknown>,
-	): Effect.Effect<unknown, unknown> {
-		const retry = this.#behavior("retry") ?? (this.#host.isServer ? 0 : 3);
-		const countFailure = Effect.sync(() =>
-			this.#set({ failureCount: this.#state.failureCount + 1 }),
+			),
 		);
-		const counted = once.pipe(Effect.tapError(() => countFailure));
-		if (Schedule.isSchedule(retry)) {
-			return Effect.retry(counted, retry);
-		}
-		const retryDelay = this.#behavior("retryDelay");
-		const delayFor = (failureCount: number, error: unknown) => {
-			if (retryDelay === undefined) {
-				return Math.min(1000 * 2 ** (failureCount - 1), 30_000);
-			}
-			return Predicate.isNumber(retryDelay)
-				? retryDelay
-				: retryDelay(failureCount, error);
-		};
-		const attempt: Effect.Effect<unknown, unknown> = counted.pipe(
-			Effect.catch((error) => {
-				const failureCount = this.#state.failureCount;
-				if (!shouldRetry(retry, failureCount, error)) {
-					return Effect.fail(error);
-				}
-				return Effect.sleep(delayFor(failureCount, error)).pipe(
-					Effect.andThen(Effect.suspend(() => attempt)),
-				);
-			}),
+		const schedule = retrySchedule(
+			{
+				retry: this.#behavior("retry"),
+				retryDelay: this.#behavior("retryDelay"),
+			},
+			this.#host.isServer,
 		);
-		return attempt;
-	}
-
-	#clearGc() {
-		clearTimeout(this.#gcTimer);
-		this.#gcTimer = undefined;
+		return schedule ? Effect.retry(attempt, schedule) : attempt;
 	}
 
 	#scheduleGc() {
-		this.#clearGc();
-		if (this.isObserved || this.#inFlight) {
-			return;
-		}
 		const gcTime =
 			this.#behavior("gcTime") ?? (this.#host.isServer ? Infinity : 300_000);
-		if (Number.isFinite(gcTime)) {
-			this.#gcTimer = setTimeout(() => this.#host.remove(this), gcTime);
+		if (this.isObserved || this.#inFlight || !Number.isFinite(gcTime)) {
+			this.#tasks.cancel("gc");
+			return;
 		}
+		this.#tasks.fork(
+			"gc",
+			Effect.sleep(gcTime).pipe(
+				Effect.andThen(Effect.sync(() => this.#host.remove(this))),
+			),
+		);
 	}
 
 	#scheduleStale() {
-		clearTimeout(this.#staleTimer);
 		const state = this.#state;
-		if (this.#host.isServer || !this.isObserved || state.isStale) {
-			return;
-		}
 		const staleTime = this.#behavior("staleTime") ?? 0;
-		if (!Number.isFinite(staleTime)) {
+		if (
+			this.#host.isServer ||
+			!this.isObserved ||
+			state.isStale ||
+			!Number.isFinite(staleTime)
+		) {
+			this.#tasks.cancel("stale");
 			return;
 		}
 		const remaining = state.updatedAt + staleTime - Date.now();
-		this.#staleTimer = setTimeout(
-			() => this.#set({}),
-			Math.max(remaining, 0) + 1,
+		this.#tasks.fork(
+			"stale",
+			Effect.sleep(Math.max(remaining, 0) + 1).pipe(
+				Effect.andThen(Effect.sync(() => this.#set({}))),
+			),
 		);
 	}
 }

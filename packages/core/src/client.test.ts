@@ -410,6 +410,21 @@ describe("remove", () => {
 		qc.remove({ queryKey: ["issue"] });
 		expect(qc.getAll()).toHaveLength(0);
 	});
+
+	it("leaves removed entries cancelled instead of fetching", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
+		const removed = qc.getQuery(backend.issueQuery, { id: 1 });
+
+		qc.remove(backend.issueQuery, { id: 1 });
+
+		await expect(removed.fetch({ restart: true })).rejects.toBeInstanceOf(
+			CancelledError,
+		);
+		await removed.refetch();
+		expect(backend.requests).toHaveLength(0);
+	});
 });
 
 describe("retry", () => {
@@ -446,6 +461,34 @@ describe("retry", () => {
 		expect(calls).toBe(2);
 		await vi.advanceTimersByTimeAsync(2000);
 		expect(await result).toBe("ok");
+	});
+
+	it("waits retryDelay(failureCount, error) between attempts", async () => {
+		useFakeTimers();
+		const retryDelay = vi.fn((failureCount: number) => failureCount * 100);
+		let calls = 0;
+		const qc = new QueryClient({ isServer: false });
+		const result = qc.fetch(() =>
+			queryOptions({
+				queryFn: () => {
+					calls++;
+					return calls < 3 ? Promise.reject(new Error("down")) : "ok";
+				},
+				queryKey: ["delay"],
+				retryDelay,
+			}),
+		);
+
+		await vi.advanceTimersByTimeAsync(99);
+		expect(calls).toBe(1);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(calls).toBe(2);
+		await vi.advanceTimersByTimeAsync(200);
+		expect(await result).toBe("ok");
+		expect(retryDelay.mock.calls).toEqual([
+			[1, new Error("down")],
+			[2, new Error("down")],
+		]);
 	});
 
 	it("accepts a predicate and an Effect schedule", async () => {
@@ -577,8 +620,12 @@ describe("window events", () => {
 		await unread;
 		target.dispatchEvent(new Event("online"));
 		expect(backend.requests.map((request) => request.id)).toEqual([1]);
+		backend.respondAll();
+		await flush();
 
 		unmount();
+		target.dispatchEvent(new Event("online"));
+		expect(backend.requests).toHaveLength(0);
 	});
 
 	it("respect per-reader opt-outs", async () => {

@@ -1,4 +1,4 @@
-import { Effect, Predicate, Queue, Stream } from "effect";
+import { Effect, type Fiber, Predicate, Queue, Stream } from "effect";
 
 import { unsafeCast } from "./cast.ts";
 import { hashKey, matchesKey, type QueryKey } from "./key.ts";
@@ -59,7 +59,10 @@ export type LoadArgs<TFactory extends QueryFactory> =
 /** A new value, or a function of the current one. */
 export type Updater<TData> = TData | ((previous: TData | undefined) => TData);
 
-/** Effect-returning twins of the client's async methods. */
+/**
+ * The client's async methods as Effects. The Promise methods run these, so
+ * both start requests the same way.
+ */
 export interface QueryClientEffect {
 	ensure<TFactory extends QueryFactory>(
 		factory: TFactory,
@@ -74,6 +77,11 @@ export interface QueryClientEffect {
 		...args: InputArgs<TFactory>
 	): Effect.Effect<void>;
 	invalidate(filter: QueryFilter): Effect.Effect<void>;
+	reset<TFactory extends QueryFactory>(
+		factory: TFactory,
+		...args: InputArgs<TFactory>
+	): Effect.Effect<void>;
+	reset(filter: QueryFilter): Effect.Effect<void>;
 	/**
 	 * The entry's current state, then every change. Counts as a reader while
 	 * the stream runs, so invalidation and focus refetch it.
@@ -99,9 +107,6 @@ export function cacheOf(client: QueryClient): CacheAccess {
 	}
 	return cache;
 }
-
-const noop = () => {};
-const identity = <T>(value: T) => value;
 
 function isUpdateFunction<TData>(
 	updater: Updater<TData>,
@@ -130,41 +135,84 @@ function handleOf<TFactory extends QueryFactory>(
 }
 
 /**
+ * Waits for an entry's data on a cache miss. Cached data returns at once,
+ * and revalidates in the background if stale.
+ */
+const loadEntry = Effect.fnUntraced(function* (
+	entry: QueryEntry,
+	pages: number | undefined,
+) {
+	const state = entry.getState();
+	if (!state.hasData) {
+		yield* entry.effect.fetch({ pages });
+	} else if (!state.isFetching && entry.isStaleNow()) {
+		entry.start();
+	}
+});
+
+/** Settles every effect, started together. */
+function settleAll(effects: ReadonlyArray<Effect.Effect<void>>) {
+	return Effect.all(effects, { concurrency: "unbounded", discard: true });
+}
+
+/**
+ * Calls `onEvent` with `"focus"` when the page becomes visible and with
+ * `"reconnect"` when the browser comes back online, until interrupted.
+ * Listeners are added synchronously when the fiber starts.
+ */
+function onWindowEvents(
+	onEvent: (event: "focus" | "reconnect") => void,
+): Effect.Effect<never> {
+	const onVisibilityChange = () => {
+		if (document.visibilityState === "visible") {
+			onEvent("focus");
+		}
+	};
+	const onOnline = () => onEvent("reconnect");
+	return Effect.acquireRelease(
+		Effect.sync(() => {
+			window.addEventListener("visibilitychange", onVisibilityChange);
+			window.addEventListener("online", onOnline);
+		}),
+		() =>
+			Effect.sync(() => {
+				window.removeEventListener("visibilitychange", onVisibilityChange);
+				window.removeEventListener("online", onOnline);
+			}),
+	).pipe(Effect.andThen(Effect.never), Effect.scoped);
+}
+
+/**
  * The query cache. Create one per request on the server and one per browser
  * tab.
  */
 export class QueryClient {
-	/** Effect-returning versions of `ensure`, `fetch`, `invalidate`, plus `watch`. */
+	/** Effect versions of `ensure`, `fetch`, `invalidate`, `reset`, plus `watch`. */
 	readonly effect: QueryClientEffect;
 	readonly isServer: boolean;
 	#cache = new Map<string, QueryEntry>();
 	#host: QueryHost;
 	#listeners = new Set<(event: CacheEvent) => void>();
 	#mounts = 0;
-	#unmountWindow = noop;
+	#windowFiber: Fiber.Fiber<never> | undefined;
 
 	constructor(config: QueryClientConfig = {}) {
 		this.isServer = config.isServer ?? !("window" in globalThis);
-		const emit = (event: CacheEvent) => {
-			for (const listener of this.#listeners) {
-				listener(event);
-			}
-		};
 		this.#host = {
-			changed: (query) => emit({ query, type: "updated" }),
+			changed: (query) => this.#emit({ query, type: "updated" }),
 			defaults: config.defaults ?? {},
 			isServer: this.isServer,
-			observersChanged: (query) => emit({ query, type: "observers" }),
+			observersChanged: (query) => this.#emit({ query, type: "observers" }),
 			remove: (query) => {
 				if (this.#cache.get(query.hash) === query) {
 					this.#cache.delete(query.hash);
 					query.destroy();
-					emit({ query, type: "removed" });
+					this.#emit({ query, type: "removed" });
 				}
 			},
 			reportError: (error, query) => {
 				config.onError?.(error, query);
-				emit({ error, query, type: "failed" });
+				this.#emit({ error, query, type: "failed" });
 			},
 		};
 		caches.set(this, {
@@ -197,7 +245,7 @@ export class QueryClient {
 		const entry = this.#build(factory, args[0]);
 		const state = entry.getState();
 		if (!state.isFetching && (!state.hasData || entry.isStaleNow())) {
-			entry.fetch().catch(noop);
+			entry.start();
 		}
 		return handleOf<TFactory>(entry);
 	}
@@ -206,27 +254,19 @@ export class QueryClient {
 	 * Start a query and wait for it on a cache miss. Rejects if that request
 	 * fails. Stale cached data resolves immediately and revalidates.
 	 */
-	async ensure<TFactory extends QueryFactory>(
+	ensure<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: LoadArgs<TFactory>
 	): Promise<QueryHandle<TFactory>> {
-		const entry = this.#build(factory, args[0]);
-		await this.#load(entry, args[1]?.pages);
-		return handleOf<TFactory>(entry);
+		return Effect.runPromise(this.effect.ensure(factory, ...args));
 	}
 
 	/** Like `ensure`, but resolves to the data. */
-	async fetch<TFactory extends QueryFactory>(
+	fetch<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: LoadArgs<TFactory>
 	): Promise<DataOf<TFactory>> {
-		const entry = this.#build(factory, args[0]);
-		await this.#load(entry, args[1]?.pages);
-		const data = typed<TFactory>(entry).getState().data;
-		if (data === undefined) {
-			throw new Error(`Query ${entry.hash} has no data`);
-		}
-		return data;
+		return Effect.runPromise(this.effect.fetch(factory, ...args));
 	}
 
 	/**
@@ -239,13 +279,8 @@ export class QueryClient {
 		...args: InputArgs<TFactory>
 	): Promise<void>;
 	invalidate(filter: QueryFilter): Promise<void>;
-	async invalidate(
-		target: QueryFactory | QueryFilter,
-		input?: unknown,
-	): Promise<void> {
-		await Promise.all(
-			this.#match(target, input).map((entry) => entry.invalidate()),
-		);
+	invalidate(target: QueryFactory | QueryFilter, input?: unknown) {
+		return Effect.runPromise(this.#invalidate(target, input));
 	}
 
 	/**
@@ -257,11 +292,8 @@ export class QueryClient {
 		...args: InputArgs<TFactory>
 	): Promise<void>;
 	reset(filter: QueryFilter): Promise<void>;
-	async reset(
-		target: QueryFactory | QueryFilter,
-		input?: unknown,
-	): Promise<void> {
-		await Promise.all(this.#match(target, input).map((entry) => entry.reset()));
+	reset(target: QueryFactory | QueryFilter, input?: unknown) {
+		return Effect.runPromise(this.#reset(target, input));
 	}
 
 	/**
@@ -321,9 +353,7 @@ export class QueryClient {
 		this.#cache.clear();
 		for (const entry of entries) {
 			entry.destroy();
-			for (const listener of this.#listeners) {
-				listener({ query: entry, type: "removed" });
-			}
+			this.#emit({ query: entry, type: "removed" });
 		}
 	}
 
@@ -334,7 +364,15 @@ export class QueryClient {
 	mount(): () => void {
 		this.#mounts++;
 		if (this.#mounts === 1 && !this.isServer) {
-			this.#unmountWindow = this.#listenToWindow();
+			this.#windowFiber = Effect.runFork(
+				onWindowEvents((event) => {
+					for (const entry of this.#cache.values()) {
+						if (entry.isObserved) {
+							entry.onWindowEvent(event);
+						}
+					}
+				}),
+			);
 		}
 		let mounted = true;
 		return () => {
@@ -344,10 +382,16 @@ export class QueryClient {
 			mounted = false;
 			this.#mounts--;
 			if (this.#mounts === 0) {
-				this.#unmountWindow();
-				this.#unmountWindow = noop;
+				this.#windowFiber?.interruptUnsafe();
+				this.#windowFiber = undefined;
 			}
 		};
+	}
+
+	#emit(event: CacheEvent) {
+		for (const listener of this.#listeners) {
+			listener(event);
+		}
 	}
 
 	#entryFor(key: QueryKey, hash: string) {
@@ -357,9 +401,7 @@ export class QueryClient {
 		}
 		const entry = new QueryEntry(this.#host, key, hash);
 		this.#cache.set(hash, entry);
-		for (const listener of this.#listeners) {
-			listener({ query: entry, type: "added" });
-		}
+		this.#emit({ query: entry, type: "added" });
 		return entry;
 	}
 
@@ -368,17 +410,6 @@ export class QueryClient {
 		const entry = this.#entryFor(options.queryKey, hashKey(options.queryKey));
 		entry.setOptions(options, input);
 		return entry;
-	}
-
-	#load(entry: QueryEntry, pages: number | undefined): Promise<unknown> {
-		const state = entry.getState();
-		if (!state.hasData) {
-			return entry.fetch({ pages });
-		}
-		if (!state.isFetching && entry.isStaleNow()) {
-			entry.fetch().catch(noop);
-		}
-		return Promise.resolve(state.data);
 	}
 
 	#match(target: QueryFactory | QueryFilter, input: unknown) {
@@ -396,60 +427,58 @@ export class QueryClient {
 		);
 	}
 
-	#listenToWindow() {
-		const each = (event: "focus" | "reconnect") => {
-			for (const entry of this.#cache.values()) {
-				if (entry.isObserved) {
-					entry.onWindowEvent(event);
-				}
-			}
-		};
-		const onVisibilityChange = () => {
-			if (document.visibilityState === "visible") {
-				each("focus");
-			}
-		};
-		const onOnline = () => each("reconnect");
-		window.addEventListener("visibilitychange", onVisibilityChange);
-		window.addEventListener("online", onOnline);
-		return () => {
-			window.removeEventListener("visibilitychange", onVisibilityChange);
-			window.removeEventListener("online", onOnline);
-		};
+	#invalidate(target: QueryFactory | QueryFilter, input: unknown) {
+		return Effect.suspend(() =>
+			settleAll(
+				this.#match(target, input).map((entry) => entry.effect.invalidate),
+			),
+		);
+	}
+
+	#reset(target: QueryFactory | QueryFilter, input: unknown) {
+		return Effect.suspend(() =>
+			settleAll(this.#match(target, input).map((entry) => entry.effect.reset)),
+		);
 	}
 
 	#effectApi(): QueryClientEffect {
-		const invalidate = (target: QueryFactory | QueryFilter, input?: unknown) =>
-			Effect.promise(() =>
-				Promise.all(
-					this.#match(target, input).map((entry) => entry.invalidate()),
-				),
-			).pipe(Effect.asVoid);
 		return {
 			ensure: (factory, ...args) =>
-				Effect.tryPromise({
-					catch: identity,
-					try: () => this.ensure(factory, ...args),
+				Effect.suspend(() => {
+					const entry = this.#build(factory, args[0]);
+					return loadEntry(entry, args[1]?.pages).pipe(
+						Effect.as(handleOf<typeof factory>(entry)),
+					);
 				}),
 			fetch: (factory, ...args) =>
-				Effect.tryPromise({
-					catch: identity,
-					try: () => this.fetch(factory, ...args),
+				Effect.suspend(() => {
+					const entry = this.#build(factory, args[0]);
+					return loadEntry(entry, args[1]?.pages).pipe(
+						Effect.flatMap(() => {
+							const data = typed<typeof factory>(entry).getState().data;
+							return data === undefined
+								? Effect.fail(new Error(`Query ${entry.hash} has no data`))
+								: Effect.succeed(data);
+						}),
+					);
 				}),
-			invalidate,
+			invalidate: (target: QueryFactory | QueryFilter, input?: unknown) =>
+				this.#invalidate(target, input),
+			reset: (target: QueryFactory | QueryFilter, input?: unknown) =>
+				this.#reset(target, input),
 			watch: (factory, ...args) =>
-				Stream.callback((queue) => {
-					const query = this.getQuery(factory, ...args);
-					return Effect.acquireRelease(
+				Stream.callback((queue) =>
+					Effect.acquireRelease(
 						Effect.sync(() => {
+							const query = this.getQuery(factory, ...args);
 							Queue.offerUnsafe(queue, query.getState());
 							return query.subscribe(() =>
 								Queue.offerUnsafe(queue, query.getState()),
 							);
 						}),
 						(unsubscribe) => Effect.sync(unsubscribe),
-					);
-				}),
+					),
+				),
 		};
 	}
 }
