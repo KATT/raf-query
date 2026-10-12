@@ -3,10 +3,13 @@ import {
 	issueSorts,
 	issueStatuses,
 } from "@examples/db/types";
-import { type QueryHandle, useQuery } from "@raf-query/tanstack-react-query";
+import {
+	type QueryHandle,
+	unwrap,
+	useQuery,
+} from "@raf-query/tanstack-react-query";
 import { cn } from "@examples/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
-import { use } from "react";
 
 import { issueCountsQuery } from "~/queries.ts";
 
@@ -17,7 +20,7 @@ export function StatusFilter(props: {
 	readonly current: IssueListInput;
 }) {
 	const [countsPromise] = useQuery(issueCountsQuery, props.counts);
-	const counts = use(countsPromise);
+	const counts = unwrap(countsPromise);
 	const current = props.current;
 
 	return (

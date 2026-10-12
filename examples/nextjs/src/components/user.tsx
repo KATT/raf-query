@@ -3,8 +3,7 @@
 import { Avatar, AvatarFallback } from "@examples/ui/components/avatar";
 import { Card, CardContent } from "@examples/ui/components/card";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { type QueryHandle, useQuery } from "@raf-query/react";
-import { use } from "react";
+import { type QueryHandle, unwrap, useQuery } from "@raf-query/react";
 
 import { userQuery } from "~/queries.ts";
 
@@ -19,7 +18,7 @@ export function AssigneeCard(props: {
 	readonly handle: QueryHandle<typeof userQuery>;
 }) {
 	const [userPromise] = useQuery(userQuery, props.handle);
-	const user = use(userPromise);
+	const user = unwrap(userPromise);
 
 	return (
 		<Card className="py-4">

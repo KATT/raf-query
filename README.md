@@ -2,9 +2,9 @@
 
 Render-as-you-fetch data fetching for React.
 
-Queries start in route loaders and React Server Components, travel to components as small serializable **handles**, and are read with React's `use()` under Suspense. Fetch-on-render is an explicitly named escape hatch, not the default.
+Queries start in route loaders and React Server Components, travel to components as small serializable **handles**, and are read with `unwrap()` under Suspense. Fetch-on-render is an explicitly named escape hatch, not the default.
 
-The cache's mechanics (dedupe, staleness, retries, infinite paging, SSR hydration) follow [TanStack Query](https://tanstack.com/query); the public API is built around loaders, RSC, and `use()` instead of `useQuery`-in-render.
+The cache's mechanics (dedupe, staleness, retries, infinite paging, SSR hydration) follow [TanStack Query](https://tanstack.com/query); the public API is built around loaders, RSC, and Suspense instead of `useQuery`-in-render.
 
 ## Status
 
@@ -29,7 +29,7 @@ Early. Both packages are on npm at `0.0.x`, and the API can still change between
 ## Principles
 
 - **Fetch where React recommends.** Loaders and server components start queries. Components read them.
-- **Promises in, `use()` out.** The read hook returns a stable promise; components unwrap it with `use()`, so reads can be conditional or happen in a child.
+- **Promises in, `unwrap()` out.** The read hook returns a stable promise that knows its own result; components read it with `unwrap()`, so reads can be conditional, happen in a child, or happen in an event handler.
 - **The URL is the input.** Anything that changes what a query fetches (filters, sort, page) lives in path or search params, so the loader starts the right query on every navigation. Components never derive query input from local state.
 - **Actions for writes.** Mutations are plain async functions in form actions or transitions. The cache provides invalidation, React provides pending and optimistic state.
 
@@ -139,13 +139,13 @@ const [promise, controls] = useQuery(factory, handle, options?);
 
 `options` takes [`whilePending`](#when-the-url-changes) and per-read refetch settings (`refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`). There is no option to change the input; the handle decides what is read.
 
-`promise` is a stable `Promise<Data>` owned by the cache. Unwrap it with `use()`. When the cache already has data, the promise is pre-resolved and `use()` returns synchronously without suspending.
+`promise` is a stable [`Thenable<Data>`](#unwrap-and-thenables) owned by the cache. Read it with `unwrap()`. When the cache already has data, the promise is pre-resolved and `unwrap()` returns synchronously without suspending.
 
 ```tsx
 function PostPage() {
 	const loaderData = Route.useLoaderData();
 	const [postPromise, postState] = useQuery(postQuery, loaderData.post);
-	const post = use(postPromise);
+	const post = unwrap(postPromise);
 
 	return (
 		<article>
@@ -169,7 +169,7 @@ function PostPage() {
 
 | Field          | Meaning                                                                                                                  |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `isPending`    | No data yet for the handle's input; `use(promise)` will suspend                                                          |
+| `isPending`    | No data yet for the handle's input; `unwrap(promise)` will suspend                                                       |
 | `isPrevious`   | The promise holds data for a previous input while the handle's input loads (see [`whilePending`](#when-the-url-changes)) |
 | `isFetching`   | A request is in flight: first load, new input, or background refetch                                                     |
 | `isStale`      | Data is older than `staleTime`                                                                                           |
@@ -179,7 +179,7 @@ function PostPage() {
 | `hash`         | Stable string form of the handle's key, for `key` props on Suspense boundaries                                           |
 | `refetch()`    | Refetch now. Returns a promise, so it can be awaited inside a transition or action                                       |
 
-When the cache updates — refetch, invalidation, `setData` — the hook returns a new, pre-resolved promise and the component re-renders without suspending. When the **first** load fails, the promise rejects and `use()` throws to the nearest error boundary. Resetting that boundary refetches the query.
+When the cache updates — refetch, invalidation, `setData` — the hook returns a new, pre-resolved promise and the component re-renders without suspending. When the **first** load fails, the promise rejects and `unwrap()` throws to the nearest error boundary. Resetting that boundary refetches the query.
 
 Queries do not refetch on mount. They refetch when a loader starts them again, when invalidated, on window focus or reconnect while stale, on `refetch()`, or on `refetchInterval`.
 
@@ -190,7 +190,7 @@ With an `infiniteQueryOptions` factory, `useQuery` returns the same tuple. The p
 ```tsx
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	const [pagesPromise, comments] = useQuery(commentsQuery, props.handle);
-	const data = use(pagesPromise);
+	const data = unwrap(pagesPromise);
 
 	return (
 		<>
@@ -249,7 +249,7 @@ function PostsPage() {
 					Oldest
 				</Link>
 			</nav>
-			<PostList posts={use(postsPromise)} dimmed={postsState.isPrevious} />
+			<PostList posts={unwrap(postsPromise)} dimmed={postsState.isPrevious} />
 		</>
 	);
 }
@@ -257,10 +257,10 @@ function PostsPage() {
 
 Clicking a link navigates, the loader prefetches `{ sort: "oldest", page: 1 }` without blocking, and the component receives a new handle. What it renders while that input loads is set by `whilePending`:
 
-| `whilePending`        | While the new input loads                                                                                                                                                                  | Use for                                                        |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
-| `"suspend"` (default) | `use()` suspends. TanStack Router and Next.js run navigations as React transitions, so React keeps the whole previous screen, including the old URL's active links, until the data arrives | Short loads, and pages that shouldn't show stale data          |
-| `"previous"`          | The navigation commits immediately. The promise keeps the previous input's data and `isPrevious` is true until the new data lands                                                          | Lists, filters, pagination — anything that should feel instant |
+| `whilePending`        | While the new input loads                                                                                                                                                                     | Use for                                                        |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `"suspend"` (default) | `unwrap()` suspends. TanStack Router and Next.js run navigations as React transitions, so React keeps the whole previous screen, including the old URL's active links, until the data arrives | Short loads, and pages that shouldn't show stale data          |
+| `"previous"`          | The navigation commits immediately. The promise keeps the previous input's data and `isPrevious` is true until the new data lands                                                             | Lists, filters, pagination — anything that should feel instant |
 
 Either way, an input that's already cached renders immediately. A component that mounts with a pending handle has no previous data, so `"previous"` suspends like `"suspend"` on first load.
 
@@ -295,6 +295,36 @@ return (
 
 The parent re-renders when `controls` change. If it only passes the promise down, call the hook in the child instead.
 
+### `unwrap` and thenables
+
+`unwrap(promise)` returns a promise's value, or throws its error, without waiting when the promise has already settled. A pending promise suspends through React's `use()`.
+
+```tsx
+const [postPromise] = useQuery(postQuery, loaderData.post);
+const post = unwrap(postPromise);
+```
+
+The promises `useQuery` returns are `Thenable`s: promises that carry their result in the same `status` / `value` / `reason` fields React's `use()` reads. TypeScript narrows on `status`:
+
+```ts
+type Thenable<T> = Promise<T> &
+	(
+		| { status: "pending" }
+		| { status: "fulfilled"; value: T }
+		| { status: "rejected"; reason: unknown }
+	);
+```
+
+Because a settled thenable is read synchronously, `unwrap()` also works outside render. An event handler or action can read the data a component was given without asking the cache again:
+
+```tsx
+<button onClick={() => copyToClipboard(unwrap(postPromise).body)}>Copy</button>
+```
+
+`use()` still works on the same promises; the two differ only outside render, where `use()` always fails. A pending promise can't suspend outside render either, so there `unwrap()` fails the same way `use()` does (React's "Invalid hook call").
+
+Any other promise, such as a prop from a server component, can be passed to `unwrap()` too. The first read starts tracking it, and suspends until it settles. To read it synchronously from the start, call `track(promise)` when the promise is created; it sets `status` and keeps it current, and returns the same promise typed as a `Thenable`.
+
 ## Render-time inputs: `useWaterfall`
 
 When an input is only known at render time (an id from a parent query's result), no loader can start the query. `useWaterfall` starts it during render and returns a handle, so the consumer looks the same as one fed by a loader:
@@ -303,7 +333,7 @@ When an input is only known at render time (an id from a parent query's result),
 function PostAuthor(props: { post: Post }) {
 	const author = useWaterfall(authorQuery, { id: props.post.authorId });
 	const [authorPromise] = useQuery(authorQuery, author);
-	return <AuthorCard author={use(authorPromise)} />;
+	return <AuthorCard author={unwrap(authorPromise)} />;
 }
 ```
 
@@ -439,7 +469,7 @@ export default async function Page(props: {
 
 #### Server-only queries
 
-A factory that imports server-only code (a database client) can't be imported by a client component, so it can't be read with `useQuery`. Render its data in a server component, or pass a plain promise prop and `use()` it on the client. Refresh it with `router.refresh()`.
+A factory that imports server-only code (a database client) can't be imported by a client component, so it can't be read with `useQuery`. Render its data in a server component, or pass a plain promise prop and `unwrap()` it on the client. Refresh it with `router.refresh()`.
 
 ## Effect
 
@@ -544,26 +574,29 @@ Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.de
 
 `@raf-query/core`:
 
-| Export                                         | Use                                                        |
-| ---------------------------------------------- | ---------------------------------------------------------- |
-| `QueryClient`                                  | The cache                                                  |
-| `queryOptions(options)`                        | Typed options for a query factory                          |
-| `infiniteQueryOptions(options)`                | Typed options for a paged query factory                    |
-| `allKeyed(record)`                             | Await a record of promises, keeping keys                   |
-| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations          |
-| `hashKey(key)`, `matchesKey(key, prefix)`      | Key helpers                                                |
-| `CancelledError`                               | Rejection of a request cancelled by `clear()` or a restart |
-| `QueryHandle<TFactory>`                        | Handle type for props                                      |
-| `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                           |
+| Export                                         | Use                                                           |
+| ---------------------------------------------- | ------------------------------------------------------------- |
+| `QueryClient`                                  | The cache                                                     |
+| `queryOptions(options)`                        | Typed options for a query factory                             |
+| `infiniteQueryOptions(options)`                | Typed options for a paged query factory                       |
+| `allKeyed(record)`                             | Await a record of promises, keeping keys                      |
+| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations             |
+| `hashKey(key)`, `matchesKey(key, prefix)`      | Key helpers                                                   |
+| `CancelledError`                               | Rejection of a request cancelled by `clear()` or a restart    |
+| `QueryHandle<TFactory>`                        | Handle type for props                                         |
+| `Thenable<T>`                                  | A promise with `status` / `value` / `reason`                  |
+| `track(promise)`                               | Keep a promise's `status` current; returns it as a `Thenable` |
+| `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                              |
 
 `@raf-query/react` (plus all of the above):
 
-| Export                                | Use                                                                                                            |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `QueryClientProvider`                 | Provides a client to the tree                                                                                  |
-| `useQueryClient()`                    | Read the client                                                                                                |
-| `useQuery(factory, handle, options?)` | `[Promise<Data>, controls]`; for paged factories `Data` is `{ pages, pageParams }` and controls include paging |
-| `useWaterfall(factory, input)`        | Start a query during render and return its handle                                                              |
+| Export                                | Use                                                                                                             |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `QueryClientProvider`                 | Provides a client to the tree                                                                                   |
+| `useQueryClient()`                    | Read the client                                                                                                 |
+| `useQuery(factory, handle, options?)` | `[Thenable<Data>, controls]`; for paged factories `Data` is `{ pages, pageParams }` and controls include paging |
+| `unwrap(promise)`                     | A promise's value; [suspends while pending](#unwrap-and-thenables)                                              |
+| `useWaterfall(factory, input)`        | Start a query during render and return its handle                                                               |
 
 ## Development
 

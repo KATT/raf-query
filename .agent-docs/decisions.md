@@ -44,7 +44,7 @@ Append-only in spirit; rewrite in place when a decision changes. Keep each entry
 
 Spec lives in root `README.md`. Picks, and what lost:
 
-- **Read API: `[promise, controls] = useQuery(factory, handle)` + `use()`.** Lost: suspense-direct `{ data } = useQuery(...)` (hides `use()`, can't pass promises down; could be sugar later), registry-based `useQuery(handle)` (every definition in the root bundle, global name uniqueness).
+- **Read API: `[promise, controls] = useQuery(factory, handle)` + `unwrap()`.** (See the `Thenable` entry below.) Lost: suspense-direct `{ data } = useQuery(...)` (hides `use()`, can't pass promises down; could be sugar later), registry-based `useQuery(handle)` (every definition in the root bundle, global name uniqueness).
 - **Definitions: TanStack-style factories `(input?) => queryOptions({ queryKey, queryFn })`.** Lost: `defineQuery({ name, fn })` with derived keys. Consequence: invalidation is by `(factory, input)` or key-prefix filter, not by definition alone.
 - **Hydration: cache-level stream, handles are `{ key, input }` only.** Lost: handle-carried promises. Consequence: handles never carry data, so `qc.fetch()` exists for RSC rendering / dependent loader inputs, and every framework needs an integration (`/tanstack-router`, `/rsc`, `/next`).
 - **Engine: own core**, copying mechanisms from TanStack — not a wrapper around `@tanstack/query-core`. See [implementation-notes.md](./implementation-notes.md).
@@ -131,6 +131,14 @@ Agent decisions:
 - Integrations: TanStack Router uses TanStack's own `@tanstack/react-router-ssr-query` (no `/tanstack-router` subpath). `/rsc` exports a `HydrationBoundary` that dehydrates pending entries as promises and skips entries an earlier boundary already sent in the request; `/next` exports `QueryProvider` (client per server render, singleton in the browser).
 - Not released: `.release-it.json` publishes core and react by name only.
 - Tests: TanStack batches observer notifications on a `setTimeout(0)`, so React tests wait a macrotask inside `act` after any cache write (`flush()` in `test-utils.tsx`).
+
+## 2026-10-12 — `Thenable` + `unwrap()` (human asked)
+
+- Human wanted a Thenable abstraction "so we can just unwrap promises rather than `use()` them". README, examples and docs read with `unwrap()`; `use()` keeps working on the same objects.
+- `Thenable<T>` = `Promise<T>` & a `status` union (`pending` / `fulfilled` + `value` / `rejected` + `reason`), the fields React's `use()` reads. `track(promise)` stamps and maintains them like React's `trackUsedThenable` (react-dom 19.3), returning the same object. Both live in core (React-agnostic); `QueryState.promise` and `useQuery`'s promise are typed `Thenable`.
+- `unwrap()` (react package) returns `value` / throws `reason` synchronously when settled, so it works in handlers and actions, and calls `use()` only while pending. It is not a hook: the `rules-of-hooks` line is disabled with a reason. Throwing the thenable instead of calling `use()` was rejected: React 19 handles it as `SuspendedOnDeprecatedThrowPromise`.
+- Outside render a pending `unwrap()` fails exactly like `use()` (React's "Invalid hook call" + `TypeError`). There's no public way to detect "in render", so no friendlier error.
+- `@raf-query/tanstack-react-query` has its own copy (`thenable.ts`, `unwrap.ts`), since it doesn't depend on core.
 
 ## 2026-10-12 — npm release path
 

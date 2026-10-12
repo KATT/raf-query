@@ -7,7 +7,8 @@ Mechanisms the build should copy, each verified against vendored or local source
 | Concern                                                                                                                   | Package                                                                                |
 | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | Cache entries, dedupe, retries, gc, staleness, focus/reconnect managers, infinite paging, invalidation, dehydrate/hydrate | `@raf-query/core`                                                                      |
-| Stable thenables per (key, data version)                                                                                  | `@raf-query/core` (React-agnostic: a thenable with `status`/`value` is just an object) |
+| Stable thenables per (key, data version), `Thenable` / `track`                                                            | `@raf-query/core` (React-agnostic: a thenable with `status`/`value` is just an object) |
+| `unwrap()`                                                                                                                | `@raf-query/react` (calls `use()` while pending)                                       |
 | Observers, `useSyncExternalStore` subscription, provider, `useWaterfall`                                                  | `@raf-query/react`                                                                     |
 | SSR stream glue                                                                                                           | `@raf-query/react/tanstack-router`, `/rsc`, `/next`                                    |
 

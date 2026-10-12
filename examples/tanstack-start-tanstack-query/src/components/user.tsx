@@ -1,8 +1,11 @@
 import { Avatar, AvatarFallback } from "@examples/ui/components/avatar";
 import { Card, CardContent } from "@examples/ui/components/card";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { useQuery, useWaterfall } from "@raf-query/tanstack-react-query";
-import { use } from "react";
+import {
+	unwrap,
+	useQuery,
+	useWaterfall,
+} from "@raf-query/tanstack-react-query";
 
 import { userQuery } from "~/queries.ts";
 
@@ -17,7 +20,7 @@ function initials(name: string) {
 export function AssigneeCard(props: { readonly userId: string }) {
 	const handle = useWaterfall(userQuery, { id: props.userId });
 	const [userPromise] = useQuery(userQuery, handle);
-	const user = use(userPromise);
+	const user = unwrap(userPromise);
 
 	return (
 		<Card className="py-4">

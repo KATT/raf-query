@@ -1,12 +1,15 @@
 import type { IssueListInput } from "@examples/db/types";
-import { type QueryHandle, useQuery } from "@raf-query/tanstack-react-query";
+import {
+	type QueryHandle,
+	unwrap,
+	useQuery,
+} from "@raf-query/tanstack-react-query";
 import { Button } from "@examples/ui/components/button";
 import { Card } from "@examples/ui/components/card";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { MessageSquare } from "lucide-react";
-import { use } from "react";
 
 import { issueListQuery } from "~/queries.ts";
 
@@ -23,7 +26,7 @@ export function IssueList(props: {
 	const [listPromise, listState] = useQuery(issueListQuery, props.handle, {
 		whilePending: "previous",
 	});
-	const list = use(listPromise);
+	const list = unwrap(listPromise);
 	const input: IssueListInput = listState.input;
 
 	return (

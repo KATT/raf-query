@@ -2,10 +2,14 @@
 
 import { Button } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
-import { type QueryHandle, useQuery } from "@raf-query/tanstack-react-query";
+import {
+	type QueryHandle,
+	unwrap,
+	useQuery,
+} from "@raf-query/tanstack-react-query";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { Suspense, use } from "react";
+import { Suspense } from "react";
 
 import { commentsQuery, issueQuery, userQuery } from "~/queries.ts";
 
@@ -20,7 +24,7 @@ export function IssuePage(props: {
 	readonly issue: QueryHandle<typeof issueQuery>;
 }) {
 	const [issuePromise] = useQuery(issueQuery, props.issue);
-	const issue = use(issuePromise);
+	const issue = unwrap(issuePromise);
 
 	return (
 		<div className="grid gap-6">
