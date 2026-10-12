@@ -7,7 +7,7 @@ This is a Vite+ / pnpm monorepo. The publishable packages live in `packages/`:
 | `packages/core`  | `@raf-query/core`  |
 | `packages/react` | `@raf-query/react` |
 
-`packages/experimental-tanstack-react-query` (`@raf-query/experimental-tanstack-react-query`) is an experiment: the same API built on TanStack Query instead of raf-query's own engine. It's private, isn't published, and stays at version `0.0.0`: releases skip it. See [its README](../packages/experimental-tanstack-react-query/README.md).
+Experiments live in `.experimental/` folders, which the release and the root `./packages/*` / `./examples/*` globs don't reach. `packages/.experimental/tanstack-react-query` (`@raf-query/experimental-tanstack-react-query`) is the same API built on TanStack Query instead of raf-query's own engine. It's private, isn't published, and stays at version `0.0.0`. See [its README](../packages/.experimental/tanstack-react-query/README.md).
 
 Root `README.md` / `LICENSE.md` / `CHANGELOG.md` are canonical. Each package's `prepack` runs [`scripts/sync-package-docs.ts`](../scripts/sync-package-docs.ts), which copies them into the package so the npm tarball includes them without a second copy in git.
 
@@ -31,16 +31,16 @@ pnpm build
 
 ## Example apps
 
-`examples/` holds the same issue tracker on two frameworks, plus the packages they share. The `experimental-tanstack-query-*` copies run the same app on the experimental `@raf-query/experimental-tanstack-react-query`:
+`examples/` holds the same issue tracker on two frameworks, plus the packages they share. The copies in `examples/.experimental/` run the same app on the experimental `@raf-query/experimental-tanstack-react-query`:
 
-| Directory                                     | What                                                                   |
-| --------------------------------------------- | ---------------------------------------------------------------------- |
-| `examples/tanstack-start`                     | TanStack Start app, <http://localhost:3000>                            |
-| `examples/nextjs`                             | Next.js App Router app, <http://localhost:3001>                        |
-| `examples/experimental-tanstack-query-start`  | TanStack Start app on TanStack Query, <http://localhost:3002>          |
-| `examples/experimental-tanstack-query-nextjs` | Next.js App Router app on TanStack Query, <http://localhost:3003>      |
-| `examples/ui`                                 | shadcn/ui components and the Tailwind theme (`@examples/ui`)           |
-| `examples/db`                                 | In-memory fake database with latency (`@examples/db`), and its schemas |
+| Directory                                      | What                                                                   |
+| ---------------------------------------------- | ---------------------------------------------------------------------- |
+| `examples/tanstack-start`                      | TanStack Start app, <http://localhost:3000>                            |
+| `examples/nextjs`                              | Next.js App Router app, <http://localhost:3001>                        |
+| `examples/.experimental/tanstack-query-start`  | TanStack Start app on TanStack Query, <http://localhost:3002>          |
+| `examples/.experimental/tanstack-query-nextjs` | Next.js App Router app on TanStack Query, <http://localhost:3003>      |
+| `examples/ui`                                  | shadcn/ui components and the Tailwind theme (`@examples/ui`)           |
+| `examples/db`                                  | In-memory fake database with latency (`@examples/db`), and its schemas |
 
 They import the libraries' source, so there is nothing to build first:
 
