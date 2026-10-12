@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.14](https://github.com/KATT/raf-query/compare/0.0.13...0.0.14) (2026-10-12)
+
+### Features
+
+- tracked query results via a core QueryObserver, like TanStack Query ([#13](https://github.com/KATT/raf-query/issues/13)) ([7b99b47](https://github.com/KATT/raf-query/commit/7b99b4704be110c999b41277afd5dac4c515f45f))
+
 ## [0.0.13](https://github.com/KATT/raf-query/compare/0.0.12...0.0.13) (2026-10-12)
 
 ### Features
