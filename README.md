@@ -72,7 +72,7 @@ The factory is the only place a query is declared paged. Every other API — `pr
 
 ### Query meta
 
-`meta` attaches anything you want to know about a query elsewhere. It reaches the `queryFn` context, `Query.metaUnsafe(query)` (taken from the latest factory call) and the devtools. A common use is a per-query message for one global error handler:
+`meta` attaches anything you want to know about a query elsewhere. It reaches the `queryFn` context, `Query.metaUnsafe(query)` (from the latest factory call) and the devtools. A common use is a per-query message for one global error handler:
 
 ```ts
 import { Query, QueryClient, queryOptions } from "@raf-query/react";
@@ -104,7 +104,7 @@ declare module "@raf-query/react" {
 }
 ```
 
-`meta` is set per factory, not in `config.defaults`, and isn't sent with dehydrated state: the receiving side's factory call provides it.
+`config.defaults` takes `meta` too, for queries that set none; a query's own `meta` replaces the default as a whole. `meta` is sent with dehydrated state, so keep it serializable: a hydrated entry reports the sender's `meta` until the receiving side calls its factory.
 
 ## Starting queries
 
@@ -675,8 +675,9 @@ Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.de
 | `retryDelay` (ms, or a function of the failure count) | Doubling from 1 s, at most 30 s           |
 | `refetchOnWindowFocus`, `refetchOnReconnect`          | `true` (only read, stale queries refetch) |
 | `structuralSharing` (keep deeply equal parts of data) | `true`                                    |
+| [`meta`](#query-meta)                                 | None                                      |
 
-`queryOptions` and `infiniteQueryOptions` (not `config.defaults`) also take [`meta`](#query-meta). `infiniteQueryOptions` also takes `getPreviousPageParam` and `maxPages`.
+`infiniteQueryOptions` also takes `getPreviousPageParam` and `maxPages`.
 
 In the browser, retries pause while `navigator.onLine` is `false`: after the retry delay, the next attempt waits for the window's `online` event. The request stays fetching meanwhile, and cancelling it (`remove`, `clear`, a restart) stops the wait. The first attempt runs regardless.
 

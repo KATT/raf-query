@@ -3,7 +3,7 @@ import { type Cause, Data, Effect, Queue, type Scope, Stream } from "effect";
 import type { Event as CacheEvent } from "./cache.ts";
 import * as Entry from "./entry.ts";
 import type { QueryKey } from "./key.ts";
-import type { QueryFactory } from "./options.ts";
+import type { QueryFactory, QueryMeta } from "./options.ts";
 import * as Query from "./query.ts";
 
 /**
@@ -14,6 +14,8 @@ import * as Query from "./query.ts";
 export interface DehydratedQuery {
 	readonly data?: unknown;
 	readonly key: QueryKey;
+	/** The query's `meta`, for receivers that haven't called its factory. */
+	readonly meta?: QueryMeta;
 	readonly promise?: Promise<unknown>;
 	/** When `data` was fetched; `0` while pending. */
 	readonly updatedAt: number;
@@ -90,18 +92,17 @@ export function dehydrateUnsafe<TData, TFactory extends QueryFactory, TError>(
 ): DehydratedQuery {
 	const state = Query.getUnsafe(query);
 	const serialize = options.serializeData ?? identity;
+	const meta = Query.metaUnsafe(query);
+	const sent =
+		meta === undefined ? { key: query.key } : { key: query.key, meta };
 	if (state.hasData) {
-		return {
-			data: serialize(state.data),
-			key: query.key,
-			updatedAt: state.updatedAt,
-		};
+		return { ...sent, data: serialize(state.data), updatedAt: state.updatedAt };
 	}
 	const promise = state.promise.then(serialize, (error: unknown) => {
 		throw options.keepErrors ? error : new RedactedError({ hash: query.hash });
 	});
 	promise.catch(noop);
-	return { key: query.key, promise, updatedAt: 0 };
+	return { ...sent, promise, updatedAt: 0 };
 }
 
 /** Snapshot one entry for transfer. */
@@ -198,6 +199,9 @@ export function hydrateEntries(
 	const deserialize = options.deserializeData ?? identity;
 	for (const query of state.queries) {
 		const entry = entryFor(query.key);
+		if (!entry.options && query.meta !== undefined) {
+			entry.hydratedMeta = query.meta;
+		}
 		const current = entry.state;
 		if (query.updatedAt > 0) {
 			if (!current.hasData || current.updatedAt < query.updatedAt) {

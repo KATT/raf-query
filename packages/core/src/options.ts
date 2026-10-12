@@ -37,7 +37,7 @@ export type QueryMeta = Register extends { queryMeta: infer TQueryMeta }
 	: Record<string, unknown>;
 
 export interface QueryFunctionContext {
-	/** The `meta` of the factory call that started this request. */
+	/** The query's `meta` when this request started ({@link QueryBehavior.meta}). */
 	readonly meta: QueryMeta | undefined;
 	/** The query's key, as returned by the factory. */
 	readonly queryKey: QueryKey;
@@ -66,6 +66,12 @@ export type RetryPolicy =
 export interface QueryBehavior {
 	/** How long an unread entry stays cached, in ms. `Infinity` keeps it. */
 	readonly gcTime?: number;
+	/**
+	 * Anything to know about the query elsewhere: the `queryFn` context,
+	 * `Query.metaUnsafe(query)` (e.g. in the client's `onError`), devtools. A
+	 * query's own `meta` replaces the default's as a whole.
+	 */
+	readonly meta?: QueryMeta;
 	/** Refetch read, stale queries when the browser comes back online. */
 	readonly refetchOnReconnect?: boolean;
 	/** Refetch read, stale queries when the window regains focus. */
@@ -100,12 +106,6 @@ interface ServicesField<TServices> {
 export interface QueryOptions<TData, TError = unknown, TServices = never>
 	extends QueryBehavior, ServicesField<TServices> {
 	readonly kind: "query";
-	/**
-	 * Anything to know about the query elsewhere: the `queryFn` context,
-	 * `Query.metaUnsafe(query)` (e.g. in the client's `onError`), devtools. Not
-	 * sent with dehydrated state.
-	 */
-	readonly meta?: QueryMeta;
 	queryFn(
 		context: QueryFunctionContext,
 	): QueryFnResult<TData, TError, TServices>;
@@ -137,8 +137,6 @@ export interface InfiniteQueryOptions<
 	readonly kind: "infinite";
 	/** Keep at most this many pages; the far end is dropped when paging. */
 	readonly maxPages?: number;
-	/** As {@link QueryOptions.meta}. */
-	readonly meta?: QueryMeta;
 	queryFn(
 		context: PageFunctionContext<TPageParam>,
 	): QueryFnResult<TPage, TError, TServices>;

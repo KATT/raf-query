@@ -188,11 +188,14 @@ export function reset<TData, TFactory extends QueryFactory, TError>(
 	return internal.reset(internal.entryOf(self));
 }
 
-/** `meta` from the latest factory call; `undefined` for an entry only hydrated so far. */
+/**
+ * The query's `meta`: the latest factory call's (the one it was hydrated
+ * with, before any), else the cache default's.
+ */
 export function metaUnsafe<TData, TFactory extends QueryFactory, TError>(
 	self: Query<TData, TFactory, TError>,
 ): QueryMeta | undefined {
-	return self.options?.meta;
+	return internal.metaOf(internal.entryOf(self));
 }
 
 /** The entry's current state. */

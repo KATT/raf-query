@@ -32,6 +32,7 @@ import type {
 	QueryFactory,
 	QueryFnResult,
 	QueryHandle,
+	QueryMeta,
 } from "./options.ts";
 import { type Platform, type PlatformEvent, whenOnline } from "./platform.ts";
 import type { FetchRequest, Query, State, SubscribeOptions } from "./query.ts";
@@ -94,6 +95,8 @@ export interface Entry extends Query {
 	/** `failureCount` before the request in flight, restored if it's cancelled. */
 	failureCountBefore: number;
 	handle: QueryHandle;
+	/** `meta` sent with dehydrated state, for an entry no factory call has reached. */
+	hydratedMeta: QueryMeta | undefined;
 	/** Awaited by every caller of the request in flight; outlives restarts. */
 	inFlight: Deferred.Deferred<unknown, unknown> | undefined;
 	readonly listeners: Map<() => void, SubscribeOptions>;
@@ -172,6 +175,7 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 		failureCountBefore: 0,
 		handle: { input: undefined, key },
 		hash,
+		hydratedMeta: undefined,
 		inFlight: undefined,
 		key,
 		listeners: new Map(),
@@ -222,6 +226,13 @@ function behavior<TName extends keyof QueryBehavior>(
 	name: TName,
 ): QueryBehavior[TName] {
 	return entry.options?.[name] ?? entry.cache.defaults[name];
+}
+
+/** Until a factory call attaches options, `meta` comes from hydration. */
+export function metaOf(entry: Entry): QueryMeta | undefined {
+	return entry.options
+		? behavior(entry, "meta")
+		: (entry.hydratedMeta ?? entry.cache.defaults.meta);
 }
 
 function computeStale(entry: Entry, state: State<unknown>) {
@@ -642,7 +653,7 @@ function requestEffect(
 	options: AnyQueryOptions,
 	request: FetchRequest,
 ): Effect.Effect<unknown, unknown> {
-	const meta = options.meta;
+	const meta = metaOf(entry);
 	const queryKey = options.queryKey;
 	if (options.kind === "query") {
 		return attempt(entry, (readSignal) =>

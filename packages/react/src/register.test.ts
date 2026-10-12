@@ -1,7 +1,13 @@
 import { describe, expectTypeOf, it } from "@effect/vitest";
 import type { QueryMeta as CoreQueryMeta } from "@raf-query/core";
 
-import { Query, type QueryMeta, queryOptions } from "./index.ts";
+import {
+	type DehydratedQuery,
+	Query,
+	type QueryClientConfig,
+	type QueryMeta,
+	queryOptions,
+} from "./index.ts";
 
 declare module "@raf-query/react" {
 	interface Register {
@@ -30,5 +36,11 @@ describe("Register", () => {
 			queryFn: () => 1,
 			queryKey: ["issues"],
 		});
+		expectTypeOf<DehydratedQuery["meta"]>().toEqualTypeOf<
+			QueryMeta | undefined
+		>();
+		expectTypeOf<
+			NonNullable<QueryClientConfig["defaults"]>["meta"]
+		>().toEqualTypeOf<QueryMeta | undefined>();
 	});
 });
