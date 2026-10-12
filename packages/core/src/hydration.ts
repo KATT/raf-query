@@ -1,6 +1,10 @@
-import { cacheOf, type QueryClient } from "./client.ts";
+import { type Cause, Data, Effect, Queue, type Scope, Stream } from "effect";
+
+import type { Event as CacheEvent } from "./cache.ts";
+import * as Entry from "./entry.ts";
 import type { QueryKey } from "./key.ts";
-import type { Query } from "./query.ts";
+import type { QueryFactory } from "./options.ts";
+import * as Query from "./query.ts";
 
 /**
  * One cache entry in transit. Settled entries carry `data`; entries still
@@ -19,18 +23,35 @@ export interface DehydratedState {
 	readonly queries: ReadonlyArray<DehydratedQuery>;
 }
 
+/** The cache now, then entries as they start or settle. */
+export interface DehydratedStream {
+	/** The entries to send first. */
+	readonly initial: DehydratedState;
+	/**
+	 * Later entries, in batches. Ends once the scope `dehydrateStream` ran in
+	 * closes, after a last batch of what changed before. One consumer only.
+	 */
+	readonly updates: Stream.Stream<DehydratedState>;
+}
+
 export interface DehydrateOptions {
 	/**
 	 * Which entries to send. Default: entries with data or a request in
 	 * flight ({@link canDehydrate}).
 	 */
-	readonly filter?: (query: Query) => boolean;
+	readonly filter?: (query: Query.Query) => boolean;
 	/**
 	 * Send a pending query's rejection as-is. By default the receiving side
-	 * gets a generic error, so server errors don't leak into the page; its
-	 * error boundary can still retry on the client.
+	 * gets a {@link RedactedError}, so server errors don't leak into the page;
+	 * its error boundary can still retry on the client.
 	 */
 	readonly keepErrors?: boolean;
+	/**
+	 * Hashes of entries sent already, shared by every dehydration of one
+	 * transfer (e.g. one request). Those entries are skipped, and the ones
+	 * sent are added.
+	 */
+	readonly sent?: Set<string>;
 	/** Transform data before it is serialized. */
 	readonly serializeData?: (data: unknown) => unknown;
 }
@@ -40,21 +61,34 @@ export interface HydrateOptions {
 	readonly deserializeData?: (data: unknown) => unknown;
 }
 
+/**
+ * What a dehydrated pending query rejects with when its request failed and
+ * `keepErrors` is off: the receiving side learns which query failed, not why.
+ */
+export class RedactedError extends Data.TaggedError("RedactedError")<{
+	readonly hash: string;
+}> {
+	override get message() {
+		return `Query ${this.hash} failed`;
+	}
+}
+
 const noop = () => {};
 const identity = <T>(value: T) => value;
 
 /** The default dehydrate filter: entries with data or a request in flight. */
-export function canDehydrate(query: Query): boolean {
-	const state = query.getState();
+export function canDehydrate<TData, TFactory extends QueryFactory, TError>(
+	query: Query.Query<TData, TFactory, TError>,
+): boolean {
+	const state = Query.getUnsafe(query);
 	return state.hasData || state.isFetching;
 }
 
-/** Snapshot one entry for transfer. */
-export function dehydrateQuery(
-	query: Query,
-	options: DehydrateOptions = {},
+export function dehydrateUnsafe<TData, TFactory extends QueryFactory, TError>(
+	query: Query.Query<TData, TFactory, TError>,
+	options: DehydrateOptions,
 ): DehydratedQuery {
-	const state = query.getState();
+	const state = Query.getUnsafe(query);
 	const serialize = options.serializeData ?? identity;
 	if (state.hasData) {
 		return {
@@ -64,47 +98,114 @@ export function dehydrateQuery(
 		};
 	}
 	const promise = state.promise.then(serialize, (error: unknown) => {
-		throw options.keepErrors ? error : new Error(`Query ${query.hash} failed`);
+		throw options.keepErrors ? error : new RedactedError({ hash: query.hash });
 	});
 	promise.catch(noop);
 	return { key: query.key, promise, updatedAt: 0 };
 }
 
-/** Snapshot the cache for transfer to another client (server → browser). */
-export function dehydrate(
-	client: QueryClient,
+/** Snapshot one entry for transfer. */
+export function dehydrateQuery<TData, TFactory extends QueryFactory, TError>(
+	query: Query.Query<TData, TFactory, TError>,
 	options: DehydrateOptions = {},
+): Effect.Effect<DehydratedQuery> {
+	return Effect.sync(() => dehydrateUnsafe(query, options));
+}
+
+/** Dehydrate the entries `options` selects, recording them in `options.sent`. */
+export function dehydrateEntries(
+	queries: Iterable<Query.Query>,
+	options: DehydrateOptions,
 ): DehydratedState {
 	const filter = options.filter ?? canDehydrate;
-	return {
-		queries: client
-			.getAll()
-			.filter(filter)
-			.map((query) => dehydrateQuery(query, options)),
-	};
+	const sent = options.sent;
+	const dehydrated: Array<DehydratedQuery> = [];
+	for (const query of queries) {
+		if (!sent?.has(query.hash) && filter(query)) {
+			sent?.add(query.hash);
+			dehydrated.push(dehydrateUnsafe(query, options));
+		}
+	}
+	return { queries: dehydrated };
 }
 
 /**
- * Write dehydrated entries into a client. Existing entries only take newer
+ * Snapshots `queries()` and subscribes in the same synchronous step, so no
+ * change falls between the two. Changed entries are collected for a
+ * microtask, so entries that settle together share a batch, and the batch is
+ * handed to the reader before that microtask ends: ahead of the Suspense
+ * boundaries React resumes for those entries.
+ */
+export const dehydrateStream: (
+	queries: () => Iterable<Query.Query>,
+	subscribe: (listener: (event: CacheEvent) => void) => () => void,
+	options: DehydrateOptions,
+) => Effect.Effect<DehydratedStream, never, Scope.Scope> = Effect.fnUntraced(
+	function* (queries, subscribe, options) {
+		const sent = options.sent ?? new Set<string>();
+		const send = { ...options, sent };
+		const queue = yield* Queue.unbounded<DehydratedState, Cause.Done>();
+		let batch: Map<string, Query.Query> | undefined;
+		const flush = () => {
+			const changed = batch;
+			batch = undefined;
+			if (!changed) {
+				return;
+			}
+			const state = dehydrateEntries(changed.values(), send);
+			if (state.queries.length > 0) {
+				Queue.offerUnsafe(queue, state);
+				// Wake the reader now, not on the queue's next scheduler tick.
+				Queue.flushUnsafe(queue);
+			}
+		};
+		yield* Effect.acquireRelease(
+			Effect.sync(() =>
+				subscribe((event) => {
+					if (event.type === "removed" || sent.has(event.query.hash)) {
+						return;
+					}
+					if (!batch) {
+						batch = new Map();
+						queueMicrotask(flush);
+					}
+					batch.set(event.query.hash, event.query);
+				}),
+			),
+			(unsubscribe) =>
+				Effect.sync(() => {
+					flush();
+					unsubscribe();
+					Queue.endUnsafe(queue);
+				}),
+		);
+		return {
+			initial: dehydrateEntries(queries(), send),
+			updates: Stream.fromQueue(queue),
+		};
+	},
+);
+
+/**
+ * Write dehydrated entries into a cache. Existing entries only take newer
  * data; pending entries resume the sender's request.
  */
-export function hydrate(
-	client: QueryClient,
+export function hydrateEntries(
+	entryFor: (key: QueryKey) => Entry.Entry,
 	state: DehydratedState,
-	options: HydrateOptions = {},
+	options: HydrateOptions,
 ): void {
 	const deserialize = options.deserializeData ?? identity;
-	const cache = cacheOf(client);
 	for (const query of state.queries) {
-		const entry = cache.entryFor(query.key);
-		const current = entry.getState();
+		const entry = entryFor(query.key);
+		const current = entry.state;
 		if (query.updatedAt > 0) {
 			if (!current.hasData || current.updatedAt < query.updatedAt) {
-				entry.setData(deserialize(query.data), query.updatedAt);
+				Entry.setData(entry, deserialize(query.data), query.updatedAt);
 			}
 		} else if (query.promise && !current.hasData) {
 			// Flight-decoded promises are thenables, not always real promises.
-			entry.resume(Promise.resolve(query.promise).then(deserialize));
+			Entry.resume(entry, Promise.resolve(query.promise).then(deserialize));
 		}
 	}
 }
