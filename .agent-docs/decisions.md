@@ -23,6 +23,11 @@ Append-only in spirit; rewrite in place when a decision changes. Keep each entry
 - Keep `fmt` options in sync between `vite.config.ts` and `.oxfmtrc.json` (tabs, width, ignores).
 - Workspace disables markdownlint (`markdownlint.enable: false` + unwanted recommendation). Keep `.markdownlint.json` with `MD010: false` as a belt-and-suspenders if the extension is still installed globally.
 
+## 2026-10-12 — Pre-commit lint-fix + `vp lint -c .oxlintrc.json`
+
+- `vp lint` does **not** read `.oxlintrc.json` on its own (it reads `vite.config.ts` `lint`, which is unset). Without `-c .oxlintrc.json` it uses defaults: findings are warnings (exit 0) and `.repos/` isn't ignored. Every `vp lint` invocation (scripts, lint-staged) passes `-c .oxlintrc.json`.
+- Pre-commit: husky → `lint-staged --concurrent false`: `vp lint --fix` on JS/TS first, then `vp fmt` on all files, so formatting cleans up after fixes. Unfixable lint errors block the commit.
+
 ## 2026-10-10 — Oxc editor LSP bypasses `vp`
 
 - Oxc VS Code prefers `vite-plus`’s `vp fmt|lint --lsp`. That crashes when the extension’s `node` is older than 22 (`styleText` missing) — Cursor’s PATH can still be Node 20.
