@@ -127,6 +127,7 @@ export async function updateIssue(input: {
 
 export async function addComment(input: {
 	readonly body: string;
+	readonly id: string;
 	readonly issueId: number;
 }): Promise<Comment> {
 	await latency();
@@ -135,11 +136,14 @@ export async function addComment(input: {
 	if (body === "") {
 		throw new Error("Comment can't be empty");
 	}
+	if (data.comments.some((existing) => existing.id === input.id)) {
+		throw new Error(`Comment ${input.id} already exists`);
+	}
 	const comment: Comment = {
 		author: currentUser,
 		body,
 		createdAt: new Date().toISOString(),
-		id: Math.max(0, ...data.comments.map((existing) => existing.id)) + 1,
+		id: input.id,
 		issueId: input.issueId,
 	};
 	data.comments = [...data.comments, comment];

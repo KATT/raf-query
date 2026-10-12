@@ -83,7 +83,7 @@ export function seed(): Store {
 				author: pick(next, users),
 				body: pick(next, replies),
 				createdAt: new Date(createdAt + (index + 1) * 3_600_000).toISOString(),
-				id: comments.length + 1,
+				id: `seed-${comments.length + 1}`,
 				issueId: id,
 			});
 		}
