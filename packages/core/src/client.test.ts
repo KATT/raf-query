@@ -1,4 +1,11 @@
-import { describe, expect, it, onTestFinished, vi } from "@effect/vitest";
+import {
+	describe,
+	expect,
+	expectTypeOf,
+	it,
+	onTestFinished,
+	vi,
+} from "@effect/vitest";
 import { Effect, Schedule } from "effect";
 
 import { CancelledError, QueryClient, queryOptions } from "./index.ts";
@@ -115,6 +122,55 @@ describe("ensure and fetch", () => {
 			input: undefined,
 			key: ["count"],
 		});
+	});
+});
+
+describe("undefined data", () => {
+	function maybeQuery() {
+		return queryOptions({
+			queryFn: (): Promise<number | undefined> => Promise.resolve(undefined),
+			queryKey: ["maybe"],
+			staleTime: Infinity,
+		});
+	}
+
+	it("is data like any other value", async () => {
+		const queryFn = vi.fn(() => Promise.resolve(undefined));
+		const qc = new QueryClient({ isServer: false });
+		function noneQuery() {
+			return queryOptions({ queryFn, queryKey: ["none"], staleTime: Infinity });
+		}
+
+		await expect(qc.fetch(noneQuery)).resolves.toBeUndefined();
+		await expect(qc.ensure(noneQuery)).resolves.toMatchObject({
+			ensured: true,
+		});
+		await expect(qc.getQuery(noneQuery).read()).resolves.toBeUndefined();
+		expect(qc.getQuery(noneQuery).getState()).toMatchObject({
+			data: undefined,
+			hasData: true,
+			status: "success",
+		});
+		expect(queryFn).toHaveBeenCalledOnce();
+	});
+
+	it("can be written with setData, and hasData tells it from no data", async () => {
+		const qc = new QueryClient({ isServer: false });
+		expect(qc.getData(maybeQuery)).toBeUndefined();
+		expect(qc.getQuery(maybeQuery).getState().hasData).toBe(false);
+
+		qc.setData(maybeQuery, undefined, undefined);
+
+		expect(qc.getData(maybeQuery)).toBeUndefined();
+		expect(qc.getQuery(maybeQuery).getState().hasData).toBe(true);
+		await expect(qc.fetch(maybeQuery)).resolves.toBeUndefined();
+	});
+
+	it("types data from the queryFn, including undefined", () => {
+		const fetchMaybe = (qc: QueryClient) => qc.fetch(maybeQuery);
+		expectTypeOf(fetchMaybe).returns.resolves.toEqualTypeOf<
+			number | undefined
+		>();
 	});
 });
 

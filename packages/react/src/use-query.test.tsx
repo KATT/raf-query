@@ -415,6 +415,29 @@ describe("useQuery", () => {
 		cleanup();
 	});
 
+	it("returns undefined data without suspending", async () => {
+		const test = setup();
+		function assigneeQuery() {
+			return queryOptions({
+				queryFn: (): Promise<string | undefined> => Promise.resolve(undefined),
+				queryKey: ["assignee"],
+				staleTime: Infinity,
+			});
+		}
+		function Assignee(props: {
+			readonly handle: EnsuredQueryHandle<typeof assigneeQuery>;
+		}) {
+			const [name] = useQuery(assigneeQuery, props.handle);
+			return <p>{name ?? "Unassigned"}</p>;
+		}
+		const handle = await test.client.ensure(assigneeQuery);
+
+		await mount(test.view(<Assignee handle={handle} />));
+
+		expect(screen.getByText("Unassigned")).toBeDefined();
+		cleanup();
+	});
+
 	it("types reads of ensured handles as data", () => {
 		const backend = createBackend();
 		expectTypeOf<EnsuredQueryHandle<typeof backend.issueQuery>>().not.toExtend<
