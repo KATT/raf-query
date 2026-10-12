@@ -6,26 +6,51 @@ import {
 } from "@tanstack/react-query";
 
 /**
- * Promises that React's `use()` reads synchronously: it checks `status` /
- * `value` / `reason` before suspending, so a settled one renders without a
- * fallback.
+ * Promises that carry their own result, in the fields React's `use()` reads
+ * before suspending (`status`, `value`, `reason`). A settled one can be read
+ * synchronously, so React renders it without a fallback.
  */
 
-function fulfilled(value: unknown): Promise<unknown> {
-	return Object.assign(Promise.resolve(value), { status: "fulfilled", value });
+interface PendingStatus {
+	readonly status: "pending";
 }
 
-function rejected(reason: unknown): Promise<unknown> {
+interface FulfilledStatus<T> {
+	readonly status: "fulfilled";
+	readonly value: T;
+}
+
+interface RejectedStatus {
+	readonly reason: unknown;
+	readonly status: "rejected";
+}
+
+/**
+ * A promise that says whether it has settled, and with what. `status` moves
+ * from `"pending"` to `"fulfilled"` (with `value`) or `"rejected"` (with
+ * `reason`) once, when the promise settles.
+ */
+export type Thenable<T> = Promise<T> &
+	(FulfilledStatus<T> | PendingStatus | RejectedStatus);
+
+function fulfilled(value: unknown): Thenable<unknown> {
+	return Object.assign(Promise.resolve(value), {
+		status: "fulfilled" as const,
+		value,
+	});
+}
+
+function rejected(reason: unknown): Thenable<unknown> {
 	const promise = Object.assign(Promise.reject(reason), {
 		reason,
-		status: "rejected",
+		status: "rejected" as const,
 	});
 	promise.catch(noop);
 	return promise;
 }
 
 interface Settled {
-	readonly promise: Promise<unknown>;
+	readonly promise: Thenable<unknown>;
 	readonly value: unknown;
 }
 
@@ -38,7 +63,7 @@ interface Failed extends Settled {
 interface QueryPromises {
 	failed?: Failed;
 	loaded?: Settled;
-	pending?: Promise<unknown>;
+	pending?: Thenable<unknown>;
 }
 
 const promisesByQuery = new WeakMap<Query, QueryPromises>();
@@ -52,9 +77,11 @@ function firstLoad(
 	client: QueryClient,
 	query: Query,
 	promises: QueryPromises,
-): Promise<unknown> {
+): Thenable<unknown> {
 	const deferred = Promise.withResolvers<unknown>();
-	const promise = Object.assign(deferred.promise, { status: "pending" });
+	const promise = Object.assign(deferred.promise, {
+		status: "pending" as const,
+	});
 	// A rejection nobody reads (a failed prefetch) must not crash the process.
 	promise.catch(noop);
 	const cache = client.getQueryCache();
@@ -98,7 +125,7 @@ function firstLoad(
 /**
  * The promise for a query's current state: fulfilled with its data, rejected
  * with a first-load error, or pending until one of those. One object per
- * data (or error) version, so `use()` re-renders only when it changes.
+ * data (or error) version, so readers re-render only when it changes.
  *
  * With no data and no request in flight, calls `fetch`. A first-load error
  * is handed out until the end of the current task (React re-renders a
@@ -109,7 +136,7 @@ export function promiseFor(
 	client: QueryClient,
 	query: Query,
 	fetch: () => void,
-): Promise<unknown> {
+): Thenable<unknown> {
 	let promises = promisesByQuery.get(query);
 	if (!promises) {
 		promises = {};

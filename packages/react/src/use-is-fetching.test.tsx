@@ -5,9 +5,9 @@ import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 
 import {
+	type QueryCache,
 	QueryClient,
 	QueryClientProvider,
-	type QueryFilter,
 	queryOptions,
 	useIsFetching,
 	useWaterfall,
@@ -33,7 +33,7 @@ function setup() {
 			queryKey: ["user", input.id],
 		});
 	}
-	function Count(props: { readonly filter?: QueryFilter }) {
+	function Count(props: { readonly filter?: QueryCache.Filter }) {
 		return <p>{`Fetching: ${useIsFetching(props.filter)}`}</p>;
 	}
 	function view(children: ReactNode) {
