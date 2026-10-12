@@ -4,6 +4,7 @@ import {
 	type DehydratedState,
 	hashKey,
 	type HydrateOptions,
+	Query,
 } from "@raf-query/core";
 import { type ReactNode, useEffect, useState } from "react";
 
@@ -36,7 +37,7 @@ function split(client: QueryClient, state: DehydratedState) {
 	const shown = new Set(
 		client
 			.getAll()
-			.filter((query) => query.getStateUnsafe().hasData)
+			.filter((query) => Query.getUnsafe(query).hasData)
 			.map((query) => query.hash),
 	);
 	const isShown = (query: DehydratedState["queries"][number]) =>

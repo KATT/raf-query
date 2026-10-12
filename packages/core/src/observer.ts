@@ -1,8 +1,9 @@
-import { Effect, type Fiber } from "effect";
+import type { Effect } from "effect";
 
+import { entryOf, pollUnsafe } from "./entry.ts";
 import type { QueryKey } from "./key.ts";
 import type { QueryFactory } from "./options.ts";
-import type { Query, SubscribeOptions } from "./query.ts";
+import * as Query from "./query.ts";
 import type { Thenable } from "./thenable.ts";
 
 /** How one reader observes its query. */
@@ -47,7 +48,7 @@ export interface QueryObserverResult<TData = unknown> {
 	readonly isStale: boolean;
 	/** Key of the data in `promise`; differs from the query's while `isPrevious`. */
 	readonly key: QueryKey;
-	/** Settles with the data to show; see `QueryState.promise`. */
+	/** Settles with the data to show; see `Query.State.promise`. */
 	readonly promise: Thenable<TData>;
 	/** The query's `refetch`. */
 	readonly refetch: Effect.Effect<void>;
@@ -102,16 +103,16 @@ export class QueryObserver<
 	TFactory extends QueryFactory = QueryFactory,
 > {
 	#current: QueryObserverResult<TData>;
-	#interval: Fiber.Fiber<never> | undefined;
-	#lastWithData: Query<TData, TFactory> | undefined;
+	#lastWithData: Query.Query<TData, TFactory> | undefined;
 	#listeners = new Set<() => void>();
 	#options: QueryObserverOptions;
-	#query: Query<TData, TFactory>;
+	#query: Query.Query<TData, TFactory>;
+	#stopInterval: (() => void) | undefined;
 	#trackedProps = new Set<ResultKey>();
 	#unsubscribe: (() => void) | undefined;
 
 	constructor(
-		query: Query<TData, TFactory>,
+		query: Query.Query<TData, TFactory>,
 		options: QueryObserverOptions = {},
 	) {
 		this.#query = query;
@@ -125,7 +126,7 @@ export class QueryObserver<
 	 * it. Bindings call this during render, before `setOptions` commits.
 	 */
 	getOptimisticResult(
-		query: Query<TData, TFactory>,
+		query: Query.Query<TData, TFactory>,
 		options: QueryObserverOptions,
 	): QueryObserverResult<TData> {
 		const result = this.#createResult(query, options);
@@ -138,7 +139,10 @@ export class QueryObserver<
 	getCurrentResult = (): QueryObserverResult<TData> => this.#current;
 
 	/** Observe `query` with `options` from now on. */
-	setOptions(query: Query<TData, TFactory>, options: QueryObserverOptions) {
+	setOptions(
+		query: Query.Query<TData, TFactory>,
+		options: QueryObserverOptions,
+	) {
 		const previous = this.#query;
 		const previousInterval = this.#options.refetchInterval;
 		this.#query = query;
@@ -169,7 +173,8 @@ export class QueryObserver<
 			}
 			this.#unsubscribe?.();
 			this.#unsubscribe = undefined;
-			this.#stopInterval();
+			this.#stopInterval?.();
+			this.#stopInterval = undefined;
 		};
 	};
 
@@ -201,7 +206,7 @@ export class QueryObserver<
 	updateResult() {
 		const previous = this.#current;
 		const next = this.#createResult(this.#query, this.#options);
-		if (this.#query.getStateUnsafe().hasData) {
+		if (Query.getUnsafe(this.#query).hasData) {
 			this.#lastWithData = this.#query;
 		}
 		if (shallowEqual(previous, next)) {
@@ -229,7 +234,7 @@ export class QueryObserver<
 
 	#subscribeToQuery() {
 		const options = (): QueryObserverOptions => this.#options;
-		const preferences: SubscribeOptions = {
+		const preferences: Query.SubscribeOptions = {
 			get refetchOnReconnect() {
 				return options().refetchOnReconnect;
 			},
@@ -237,36 +242,29 @@ export class QueryObserver<
 				return options().refetchOnWindowFocus;
 			},
 		};
-		return this.#query.subscribeUnsafe(() => this.updateResult(), preferences);
-	}
-
-	#stopInterval() {
-		this.#interval?.interruptUnsafe();
-		this.#interval = undefined;
+		return Query.subscribeUnsafe(
+			this.#query,
+			() => this.updateResult(),
+			preferences,
+		);
 	}
 
 	/** Refetch every `refetchInterval` ms while the page is visible. */
 	#startInterval() {
-		this.#stopInterval();
+		this.#stopInterval?.();
+		this.#stopInterval = undefined;
 		const interval = this.#options.refetchInterval;
 		if (interval === undefined || !Number.isFinite(interval) || interval <= 0) {
 			return;
 		}
-		const tick = Effect.suspend(() =>
-			!("document" in globalThis) || document.visibilityState !== "hidden"
-				? Effect.forkChild(this.#query.refetch, { startImmediately: true })
-				: Effect.void,
-		);
-		this.#interval = Effect.runFork(
-			Effect.sleep(interval).pipe(Effect.andThen(tick), Effect.forever),
-		);
+		this.#stopInterval = pollUnsafe(entryOf(this.#query), interval);
 	}
 
 	#createResult(
-		query: Query<TData, TFactory>,
+		query: Query.Query<TData, TFactory>,
 		options: QueryObserverOptions,
 	): QueryObserverResult<TData> {
-		const state = query.getStateUnsafe();
+		const state = Query.getUnsafe(query);
 		const last = this.#lastWithData;
 		const previous =
 			options.whilePending === "previous" &&
@@ -277,14 +275,14 @@ export class QueryObserver<
 				? last
 				: undefined;
 		const shown = previous ?? query;
-		const shownState = previous ? previous.getStateUnsafe() : state;
+		const shownState = previous ? Query.getUnsafe(previous) : state;
 		return {
 			error: state.error,
-			fetchNextPage: query.fetchNextPage,
-			fetchPreviousPage: query.fetchPreviousPage,
+			fetchNextPage: Query.fetchNextPage(query),
+			fetchPreviousPage: Query.fetchPreviousPage(query),
 			hash: query.hash,
-			hasNextPage: query.hasNextPageUnsafe(),
-			hasPreviousPage: query.hasPreviousPageUnsafe(),
+			hasNextPage: Query.hasNextPageUnsafe(query),
+			hasPreviousPage: Query.hasPreviousPageUnsafe(query),
 			input: shown.handle.input,
 			isFetching: state.isFetching,
 			isFetchingNextPage: state.fetchDirection === "forward",
@@ -294,7 +292,7 @@ export class QueryObserver<
 			isStale: state.isStale,
 			key: shown.handle.key,
 			promise: shownState.promise,
-			refetch: query.refetch,
+			refetch: Query.refetch(query),
 			updatedAt: shownState.updatedAt,
 		};
 	}

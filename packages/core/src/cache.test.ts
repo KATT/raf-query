@@ -10,14 +10,16 @@ import {
 	Scope,
 	Stream,
 } from "effect";
+import { TestClock } from "effect/testing";
 
 import {
-	CancelledError,
 	dehydrateQuery,
+	Platform,
+	Query,
 	QueryCache,
 	queryOptions,
 } from "./index.ts";
-import { createBackend, flush } from "./test-utils.ts";
+import { createBackend, fakePlatform, flush } from "./test-utils.ts";
 
 const settle = Effect.promise(flush);
 
@@ -54,7 +56,7 @@ describe("QueryCache", () => {
 	it.effect("ensure and fetch succeed with the handle and the data", () =>
 		Effect.gen(function* () {
 			const backend = createBackend();
-			const cache = new QueryCache({ isServer: false });
+			const cache = yield* QueryCache.make({ isServer: false });
 			const fiber = yield* Effect.forkChild(
 				Effect.all([
 					cache.ensure(backend.issueQuery, { id: 1 }),
@@ -73,13 +75,13 @@ describe("QueryCache", () => {
 
 	it.effect("fetch fails with the queryFn's typed error", () =>
 		Effect.gen(function* () {
-			const cache = new QueryCache({ isServer: false });
+			const cache = yield* QueryCache.make({ isServer: false });
 
 			const error = yield* Effect.flip(cache.fetch(issueQuery, { id: 0 }));
 
 			expect(error).toBeInstanceOf(NotFound);
 			const query = yield* cache.getQuery(issueQuery, { id: 0 });
-			const state = yield* query.state;
+			const state = yield* Query.get(query);
 			expect(state.error).toBe(error);
 		}),
 	);
@@ -89,7 +91,7 @@ describe("QueryCache", () => {
 			const queryFn = vi.fn((): number => {
 				throw new Error("bug");
 			});
-			const cache = new QueryCache({ isServer: false });
+			const cache = yield* QueryCache.make({ isServer: false });
 			const failed = vi.fn();
 			cache.subscribeUnsafe((event) => {
 				if (event.type === "failed") {
@@ -112,7 +114,7 @@ describe("QueryCache", () => {
 	it.effect("fetch fails with a CancelledError when the entry is removed", () =>
 		Effect.gen(function* () {
 			const backend = createBackend();
-			const cache = new QueryCache({ isServer: false });
+			const cache = yield* QueryCache.make({ isServer: false });
 			const fiber = yield* Effect.forkChild(
 				Effect.flip(cache.fetch(backend.issueQuery, { id: 1 })),
 				{ startImmediately: true },
@@ -121,7 +123,7 @@ describe("QueryCache", () => {
 			yield* cache.remove(backend.issueQuery, { id: 1 });
 
 			const error = yield* Fiber.join(fiber);
-			expect(error).toBeInstanceOf(CancelledError);
+			expect(error).toBeInstanceOf(Query.CancelledError);
 			expect(backend.requests[0]?.signal.aborted).toBe(true);
 		}),
 	);
@@ -129,7 +131,7 @@ describe("QueryCache", () => {
 	it.effect("getData is None until the entry has data", () =>
 		Effect.gen(function* () {
 			const backend = createBackend();
-			const cache = new QueryCache({ isServer: false });
+			const cache = yield* QueryCache.make({ isServer: false });
 			yield* cache.getQuery(backend.issueQuery, { id: 1 });
 			expect(
 				Option.isNone(yield* cache.getData(backend.issueQuery, { id: 1 })),
@@ -148,7 +150,7 @@ describe("QueryCache", () => {
 	it.effect("events stream every cache change", () =>
 		Effect.gen(function* () {
 			const backend = createBackend();
-			const cache = new QueryCache({ isServer: false });
+			const cache = yield* QueryCache.make({ isServer: false });
 			const fiber = yield* Effect.forkChild(
 				cache.events.pipe(
 					Stream.map((event) => `${event.type} ${event.query.hash}`),
@@ -172,7 +174,7 @@ describe("QueryCache", () => {
 	it.effect("reset drops data and refetches what watch is reading", () =>
 		Effect.gen(function* () {
 			const backend = createBackend();
-			const cache = new QueryCache({ isServer: false });
+			const cache = yield* QueryCache.make({ isServer: false });
 			yield* cache.setData(
 				backend.issueQuery,
 				{ id: 1 },
@@ -204,7 +206,7 @@ describe("QueryCache", () => {
 	it.effect("watch streams the current state, then every change", () =>
 		Effect.gen(function* () {
 			const backend = createBackend();
-			const cache = new QueryCache({ isServer: false });
+			const cache = yield* QueryCache.make({ isServer: false });
 			yield* cache.setData(
 				backend.issueQuery,
 				{ id: 1 },
@@ -234,7 +236,7 @@ describe("QueryCache", () => {
 	it.effect("invalidate refetches what watch is reading", () =>
 		Effect.gen(function* () {
 			const backend = createBackend();
-			const cache = new QueryCache({ isServer: false });
+			const cache = yield* QueryCache.make({ isServer: false });
 			yield* cache.setData(
 				backend.issueQuery,
 				{ id: 1 },
@@ -265,41 +267,101 @@ describe("QueryCache", () => {
 	);
 
 	it.effect(
-		"mount listens to the window while any mounting scope is open",
+		"mount listens to the platform while any mounting scope is open",
 		() =>
 			Effect.gen(function* () {
-				const target = new EventTarget();
-				vi.stubGlobal("window", target);
-				vi.stubGlobal("document", { visibilityState: "visible" });
+				const platform = fakePlatform();
 				const backend = createBackend();
-				const cache = new QueryCache({ isServer: false });
+				const cache = yield* QueryCache.make({ isServer: false }).pipe(
+					Effect.provideService(Platform.Platform, platform),
+				);
 				const query = cache.getQueryUnsafe(backend.issueQuery, { id: 1 });
-				query.subscribeUnsafe(() => {});
-				query.readUnsafe();
+				Query.subscribeUnsafe(query, () => {});
+				Query.readUnsafe(query);
 				backend.respondAll();
 				yield* settle;
 
-				const first = Scope.makeUnsafe();
-				const second = Scope.makeUnsafe();
+				const first = yield* Scope.make();
+				const second = yield* Scope.make();
 				yield* cache.mount.pipe(Scope.provide(first));
 				yield* cache.mount.pipe(Scope.provide(second));
 				yield* Scope.close(first, Exit.void);
-				target.dispatchEvent(new Event("online"));
+				platform.emit("online");
 				expect(backend.requests).toHaveLength(1);
 				backend.respondAll();
 				yield* settle;
 
 				yield* Scope.close(second, Exit.void);
-				target.dispatchEvent(new Event("online"));
+				platform.emit("online");
 				expect(backend.requests).toHaveLength(0);
+			}),
+	);
+
+	it.effect("retries wait for the platform to come back online", () =>
+		Effect.gen(function* () {
+			const platform = fakePlatform({ online: false });
+			let calls = 0;
+			const cache = yield* QueryCache.make({ isServer: false }).pipe(
+				Effect.provideService(Platform.Platform, platform),
+			);
+			const fiber = yield* Effect.forkChild(
+				cache.fetch(() =>
+					queryOptions({
+						queryFn: () => {
+							calls++;
+							return calls === 1 ? Promise.reject(new Error("down")) : "ok";
+						},
+						queryKey: ["offline"],
+						retryDelay: 1000,
+					}),
+				),
+				{ startImmediately: true },
+			);
+			yield* settle;
+
+			yield* TestClock.adjust("1 minute");
+			expect(calls).toBe(1);
+
+			platform.emit("online");
+			expect(yield* Fiber.join(fiber)).toBe("ok");
+			expect(calls).toBe(2);
+		}),
+	);
+
+	it.effect(
+		"stale data refetches on focus once staleTime passes on the Clock",
+		() =>
+			Effect.gen(function* () {
+				const platform = fakePlatform();
+				const backend = createBackend();
+				const cache = yield* QueryCache.make({
+					defaults: { staleTime: 10_000 },
+					isServer: false,
+				}).pipe(Effect.provideService(Platform.Platform, platform));
+				yield* cache.mount;
+				yield* cache.setData(
+					backend.issueQuery,
+					{ id: 1 },
+					{ id: 1, title: "A" },
+				);
+				const query = cache.getQueryUnsafe(backend.issueQuery, { id: 1 });
+				Query.subscribeUnsafe(query, () => {});
+
+				platform.emit("focus");
+				expect(backend.requests).toHaveLength(0);
+
+				yield* TestClock.adjust("11 seconds");
+				expect(Query.getUnsafe(query).isStale).toBe(true);
+				platform.emit("focus");
+				expect(backend.requests).toHaveLength(1);
 			}),
 	);
 
 	it.effect("hydrate resumes a dehydrated request", () =>
 		Effect.gen(function* () {
 			const backend = createBackend();
-			const server = new QueryCache({ isServer: true });
-			const browser = new QueryCache({ isServer: false });
+			const server = yield* QueryCache.make({ isServer: true });
+			const browser = yield* QueryCache.make({ isServer: false });
 			yield* server.prefetch(backend.issueQuery, { id: 1 });
 
 			yield* browser.hydrate(yield* server.dehydrate());
@@ -316,7 +378,7 @@ describe("QueryCache", () => {
 
 	it.effect("a resumed request's rejection is a defect", () =>
 		Effect.gen(function* () {
-			const browser = new QueryCache({ isServer: false });
+			const browser = yield* QueryCache.make({ isServer: false });
 			const promise = Promise.reject(new Error("Query failed"));
 			promise.catch(() => {});
 
@@ -332,7 +394,7 @@ describe("QueryCache", () => {
 	it.effect("dehydrateQuery sends data, or the pending promise", () =>
 		Effect.gen(function* () {
 			const backend = createBackend();
-			const cache = new QueryCache({ isServer: true });
+			const cache = yield* QueryCache.make({ isServer: true });
 			yield* cache.setData(
 				backend.issueQuery,
 				{ id: 1 },

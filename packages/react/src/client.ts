@@ -1,5 +1,4 @@
 import {
-	type CacheEvent,
 	type DataOf,
 	type DehydratedState,
 	type DehydrateOptions,
@@ -7,21 +6,16 @@ import {
 	type HydrateOptions,
 	type InputArgs,
 	type InputOf,
-	type LoadArgs,
-	type Query,
+	Query,
 	QueryCache,
-	type QueryCacheConfig,
 	type QueryFactory,
 	type QueryHandle,
-	type QueryOf,
-	type QueryTarget,
-	type Updater,
 } from "@raf-query/core";
 import { Effect, Exit, Option, Scope } from "effect";
 
-export interface QueryClientConfig extends QueryCacheConfig {
+export interface QueryClientConfig extends QueryCache.Config {
 	/** Called with every failed request, including failed prefetches. */
-	onError?(error: unknown, query: Query): void;
+	onError?(error: unknown, query: Query.Query): void;
 }
 
 /**
@@ -30,11 +24,15 @@ export interface QueryClientConfig extends QueryCacheConfig {
  */
 export class QueryClient {
 	/** The Effect-native cache behind this client. */
-	readonly effect: QueryCache;
+	readonly effect: QueryCache.QueryCache;
 	readonly isServer: boolean;
+	/** Owns the cache's fibers and mounts; lives as long as the client. */
+	readonly #scope = Scope.makeUnsafe();
 
 	constructor(config: QueryClientConfig = {}) {
-		this.effect = new QueryCache(config);
+		this.effect = Effect.runSync(
+			QueryCache.make(config).pipe(Scope.provide(this.#scope)),
+		);
 		this.isServer = this.effect.isServer;
 		const onError = config.onError;
 		if (onError) {
@@ -53,7 +51,7 @@ export class QueryClient {
 	getQuery<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
-	): QueryOf<TFactory> {
+	): Query.Of<TFactory> {
 		return this.effect.getQueryUnsafe(factory, ...args);
 	}
 
@@ -77,7 +75,7 @@ export class QueryClient {
 	 */
 	ensure<TFactory extends QueryFactory>(
 		factory: TFactory,
-		...args: LoadArgs<TFactory>
+		...args: QueryCache.LoadArgs<TFactory>
 	): Promise<EnsuredQueryHandle<TFactory>> {
 		return Effect.runPromise(this.effect.ensure(factory, ...args));
 	}
@@ -85,7 +83,7 @@ export class QueryClient {
 	/** Like `ensure`, but resolves to the data. */
 	fetch<TFactory extends QueryFactory>(
 		factory: TFactory,
-		...args: LoadArgs<TFactory>
+		...args: QueryCache.LoadArgs<TFactory>
 	): Promise<DataOf<TFactory>> {
 		return Effect.runPromise(this.effect.fetch(factory, ...args));
 	}
@@ -96,7 +94,7 @@ export class QueryClient {
 	 * screen. Takes a factory and its input, or a {@link QueryFilter}.
 	 */
 	invalidate<TFactory extends QueryFactory>(
-		...target: QueryTarget<TFactory>
+		...target: QueryCache.Target<TFactory>
 	): Promise<void> {
 		return Effect.runPromise(this.effect.invalidate(...target));
 	}
@@ -106,7 +104,7 @@ export class QueryClient {
 	 * suspend and refetch; resolves once those refetches settle.
 	 */
 	reset<TFactory extends QueryFactory>(
-		...target: QueryTarget<TFactory>
+		...target: QueryCache.Target<TFactory>
 	): Promise<void> {
 		return Effect.runPromise(this.effect.reset(...target));
 	}
@@ -116,7 +114,7 @@ export class QueryClient {
 	 * removed entry until they render again.
 	 */
 	remove<TFactory extends QueryFactory>(
-		...target: QueryTarget<TFactory>
+		...target: QueryCache.Target<TFactory>
 	): void {
 		Effect.runSync(this.effect.remove(...target));
 	}
@@ -125,14 +123,14 @@ export class QueryClient {
 	setData<TFactory extends QueryFactory>(
 		factory: TFactory,
 		input: InputOf<TFactory>,
-		updater: Updater<DataOf<TFactory>>,
+		updater: QueryCache.Updater<DataOf<TFactory>>,
 	): void {
 		Effect.runSync(this.effect.setData(factory, input, updater));
 	}
 
 	/**
 	 * Cached data for a factory call, or `undefined` if there is none. Data can
-	 * itself be `undefined`; `getQuery(...).getStateUnsafe().hasData` tells
+	 * itself be `undefined`; `Query.getUnsafe(getQuery(...)).hasData` tells
 	 * them apart.
 	 */
 	getData<TFactory extends QueryFactory>(
@@ -145,12 +143,12 @@ export class QueryClient {
 	}
 
 	/** Every entry, for devtools and integrations. */
-	getAll(): ReadonlyArray<Query> {
+	getAll(): ReadonlyArray<Query.Query> {
 		return Effect.runSync(this.effect.all);
 	}
 
 	/** Listen to entries being added, updated, and removed. */
-	subscribe(listener: (event: CacheEvent) => void): () => void {
+	subscribe(listener: (event: QueryCache.Event) => void): () => void {
 		return this.effect.subscribeUnsafe(listener);
 	}
 
@@ -164,7 +162,7 @@ export class QueryClient {
 	 * Returns the matching unmount. Providers call this; mounts are counted.
 	 */
 	mount(): () => void {
-		const scope = Scope.makeUnsafe();
+		const scope = Scope.forkUnsafe(this.#scope);
 		Effect.runSync(this.effect.mount.pipe(Scope.provide(scope)));
 		return () => {
 			Effect.runSync(Scope.close(scope, Exit.void));

@@ -1,6 +1,6 @@
 "use client";
 
-import { type DehydratedState, dehydrateQuery } from "@raf-query/core";
+import { type DehydratedState, dehydrateQuery, Query } from "@raf-query/core";
 import { Effect } from "effect";
 import { useServerInsertedHTML } from "next/navigation";
 import { type ReactNode, useState } from "react";
@@ -48,7 +48,7 @@ function useServerStream(client: QueryClient) {
 			.getAll()
 			.filter(
 				(query) =>
-					query.getStateUnsafe().hasData &&
+					Query.getUnsafe(query).hasData &&
 					!sent.has(query.hash) &&
 					!hydrated.has(query.hash),
 			)

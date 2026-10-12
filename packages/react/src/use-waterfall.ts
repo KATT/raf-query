@@ -1,6 +1,11 @@
 "use client";
 
-import type { InputArgs, QueryFactory, QueryHandle } from "@raf-query/core";
+import {
+	type InputArgs,
+	Query,
+	type QueryFactory,
+	type QueryHandle,
+} from "@raf-query/core";
 
 import { useQueryClient } from "./provider.tsx";
 
@@ -20,6 +25,6 @@ export function useWaterfall<TFactory extends QueryFactory>(
 ): QueryHandle<TFactory> {
 	const client = useQueryClient();
 	const query = client.getQuery(factory, ...args);
-	query.readUnsafe();
+	Query.readUnsafe(query);
 	return query.handle;
 }

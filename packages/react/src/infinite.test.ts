@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 
-import { infiniteQueryOptions, QueryClient } from "./index.ts";
+import { infiniteQueryOptions, QueryClient, Query } from "./index.ts";
 
 interface Page {
 	readonly items: ReadonlyArray<number>;
@@ -52,69 +52,69 @@ describe("paged queries", () => {
 	it("page forward and backward until the ends", async () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, {});
-		await Effect.runPromise(query.fetch());
+		await Effect.runPromise(Query.fetch(query));
 
-		await Effect.runPromise(query.fetchNextPage);
-		expect(itemsOf(query.getStateUnsafe().data)).toEqual([4, 5, 6, 7]);
-		await Effect.runPromise(query.fetchPreviousPage);
-		await Effect.runPromise(query.fetchPreviousPage);
-		expect(itemsOf(query.getStateUnsafe().data)).toEqual([
+		await Effect.runPromise(Query.fetchNextPage(query));
+		expect(itemsOf(Query.getUnsafe(query).data)).toEqual([4, 5, 6, 7]);
+		await Effect.runPromise(Query.fetchPreviousPage(query));
+		await Effect.runPromise(Query.fetchPreviousPage(query));
+		expect(itemsOf(Query.getUnsafe(query).data)).toEqual([
 			0, 1, 2, 3, 4, 5, 6, 7,
 		]);
 
-		expect(query.hasPreviousPageUnsafe()).toBe(false);
-		expect(query.hasNextPageUnsafe()).toBe(true);
-		await Effect.runPromise(query.fetchNextPage);
-		expect(query.hasNextPageUnsafe()).toBe(false);
-		await Effect.runPromise(query.fetchNextPage);
-		expect(query.getStateUnsafe().data?.pages).toHaveLength(5);
+		expect(Query.hasPreviousPageUnsafe(query)).toBe(false);
+		expect(Query.hasNextPageUnsafe(query)).toBe(true);
+		await Effect.runPromise(Query.fetchNextPage(query));
+		expect(Query.hasNextPageUnsafe(query)).toBe(false);
+		await Effect.runPromise(Query.fetchNextPage(query));
+		expect(Query.getUnsafe(query).data?.pages).toHaveLength(5);
 	});
 
 	it("set fetchDirection while a page loads", async () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, {});
-		await Effect.runPromise(query.fetch());
+		await Effect.runPromise(Query.fetch(query));
 
-		const next = Effect.runPromise(query.fetchNextPage);
-		expect(query.getStateUnsafe().fetchDirection).toBe("forward");
+		const next = Effect.runPromise(Query.fetchNextPage(query));
+		expect(Query.getUnsafe(query).fetchDirection).toBe("forward");
 		await next;
-		expect(query.getStateUnsafe().fetchDirection).toBeUndefined();
+		expect(Query.getUnsafe(query).fetchDirection).toBeUndefined();
 	});
 
 	it("queue a page request behind the one in flight", async () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, {});
 
-		const first = Effect.runPromise(query.fetch());
-		const next = Effect.runPromise(query.fetchNextPage);
+		const first = Effect.runPromise(Query.fetch(query));
+		const next = Effect.runPromise(Query.fetchNextPage(query));
 		await first;
 		await next;
 
-		expect(query.getStateUnsafe().data?.pageParams).toEqual([4, 6]);
+		expect(Query.getUnsafe(query).data?.pageParams).toEqual([4, 6]);
 	});
 
 	it("drop pages at the far end past maxPages", async () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, { maxPages: 2 });
-		await Effect.runPromise(query.fetch());
+		await Effect.runPromise(Query.fetch(query));
 
-		await Effect.runPromise(query.fetchNextPage);
-		await Effect.runPromise(query.fetchNextPage);
-		expect(query.getStateUnsafe().data?.pageParams).toEqual([6, 8]);
+		await Effect.runPromise(Query.fetchNextPage(query));
+		await Effect.runPromise(Query.fetchNextPage(query));
+		expect(Query.getUnsafe(query).data?.pageParams).toEqual([6, 8]);
 
-		await Effect.runPromise(query.fetchPreviousPage);
-		expect(query.getStateUnsafe().data?.pageParams).toEqual([4, 6]);
+		await Effect.runPromise(Query.fetchPreviousPage(query));
+		expect(Query.getUnsafe(query).data?.pageParams).toEqual([4, 6]);
 	});
 
 	it("refetch every loaded page from the first param", async () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, {});
-		await Effect.runPromise(query.fetch());
-		await Effect.runPromise(query.fetchNextPage);
-		await Effect.runPromise(query.fetchPreviousPage);
+		await Effect.runPromise(Query.fetch(query));
+		await Effect.runPromise(Query.fetchNextPage(query));
+		await Effect.runPromise(Query.fetchPreviousPage(query));
 
-		await Effect.runPromise(query.refetch);
+		await Effect.runPromise(Query.refetch(query));
 
-		expect(query.getStateUnsafe().data?.pageParams).toEqual([2, 4, 6]);
+		expect(Query.getUnsafe(query).data?.pageParams).toEqual([2, 4, 6]);
 	});
 });

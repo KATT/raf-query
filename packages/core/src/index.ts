@@ -1,16 +1,8 @@
-export {
-	type CacheEvent,
-	type LoadArgs,
-	QueryCache,
-	type QueryCacheConfig,
-	type QueryFilter,
-	type QueryOf,
-	type QueryTarget,
-	type Updater,
-} from "./cache.ts";
+export * as Platform from "./platform.ts";
+export * as Query from "./query.ts";
+export * as QueryCache from "./cache.ts";
 export {
 	canDehydrate,
-	type DehydratableQuery,
 	type DehydratedQuery,
 	type DehydratedState,
 	type DehydrateOptions,
@@ -46,11 +38,4 @@ export {
 	type QueryObserverOptions,
 	type QueryObserverResult,
 } from "./observer.ts";
-export {
-	CancelledError,
-	type FetchRequest,
-	type Query,
-	type QueryState,
-	type SubscribeOptions,
-} from "./query.ts";
 export type { Thenable } from "./thenable.ts";

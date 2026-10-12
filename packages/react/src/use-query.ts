@@ -12,8 +12,8 @@ import {
 	QueryObserver,
 	type QueryObserverOptions,
 	type QueryObserverResult,
-	type QueryOf,
 	type Thenable,
+	Query,
 } from "@raf-query/core";
 import { Effect } from "effect";
 import { use, useEffect, useState, useSyncExternalStore } from "react";
@@ -79,7 +79,7 @@ export function queryFor<TFactory extends QueryFactory>(
 	client: QueryClient,
 	factory: TFactory,
 	input: unknown,
-): QueryOf<TFactory> {
+): Query.Of<TFactory> {
 	// SAFETY: `input` is a handle's input, and handles are typed to the
 	// factory they were created through (`QueryHandle<TFactory>`).
 	// oxlint-disable-next-line typescript/consistent-type-assertions
@@ -166,7 +166,7 @@ export function useQuery<TFactory extends QueryFactory>(
 ): UseEnsuredQueryResult<TFactory> | UseQueryResult<TFactory> {
 	const client = useQueryClient();
 	const query = queryFor(client, factory, handle.input);
-	query.readUnsafe();
+	Query.readUnsafe(query);
 
 	const refetchInterval = options.refetchInterval;
 	const refetchOnReconnect = options.refetchOnReconnect;

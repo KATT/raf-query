@@ -8,6 +8,6 @@ describe("@raf-query/react", () => {
 	});
 
 	it("runs QueryClient on an Effect QueryCache", () => {
-		expect(new QueryClient().effect).toBeInstanceOf(QueryCache);
+		expect(QueryCache.isQueryCache(new QueryClient().effect)).toBe(true);
 	});
 });

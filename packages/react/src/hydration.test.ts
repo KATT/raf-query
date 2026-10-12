@@ -6,6 +6,7 @@ import {
 	hydrate,
 	QueryClient,
 	queryOptions,
+	Query,
 } from "./index.ts";
 import { createBackend } from "./test-utils.ts";
 
@@ -57,11 +58,11 @@ describe("hydrate", () => {
 		hydrate(browser, sent);
 
 		const query = browser.getQuery(noneQuery);
-		expect(query.getStateUnsafe()).toMatchObject({
+		expect(Query.getUnsafe(query)).toMatchObject({
 			data: undefined,
 			hasData: true,
 		});
-		await expect(query.readUnsafe()).resolves.toBeUndefined();
+		await expect(Query.readUnsafe(query)).resolves.toBeUndefined();
 		expect(queryFn).toHaveBeenCalledOnce();
 	});
 
@@ -74,7 +75,7 @@ describe("hydrate", () => {
 		hydrate(browser, dehydrate(server));
 
 		const query = browser.getQuery(backend.issueQuery, { id: 1 });
-		expect(query.readUnsafe()).toMatchObject({ status: "fulfilled" });
+		expect(Query.readUnsafe(query)).toMatchObject({ status: "fulfilled" });
 		expect(backend.requests).toHaveLength(0);
 	});
 
@@ -86,21 +87,21 @@ describe("hydrate", () => {
 
 		hydrate(browser, dehydrate(server));
 		const query = browser.getQuery(backend.issueQuery, { id: 1 });
-		const promise = query.readUnsafe();
+		const promise = Query.readUnsafe(query);
 
 		expect(backend.requests).toHaveLength(1);
 		backend.respondAll();
 		expect(await promise).toEqual({ id: 1, title: "First" });
-		expect(query.getStateUnsafe().status).toBe("success");
+		expect(Query.getUnsafe(query).status).toBe("success");
 	});
 
 	it("only replaces older data", async () => {
 		const backend = createBackend();
 		const browser = new QueryClient({ isServer: false });
 		browser.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "New" });
-		const updatedAt = browser
-			.getQuery(backend.issueQuery, { id: 1 })
-			.getStateUnsafe().updatedAt;
+		const updatedAt = Query.getUnsafe(
+			browser.getQuery(backend.issueQuery, { id: 1 }),
+		).updatedAt;
 
 		hydrate(browser, {
 			queries: [

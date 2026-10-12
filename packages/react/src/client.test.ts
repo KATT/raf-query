@@ -8,7 +8,7 @@ import {
 } from "@effect/vitest";
 import { Effect, Schedule } from "effect";
 
-import { CancelledError, QueryClient, queryOptions } from "./index.ts";
+import { Query, QueryClient, queryOptions } from "./index.ts";
 import { createBackend, flush } from "./test-utils.ts";
 
 function useFakeTimers(options?: Parameters<typeof vi.useFakeTimers>[0]) {
@@ -29,7 +29,7 @@ describe("prefetch", () => {
 		expect(handle).toEqual({ input: { id: 1 }, key: ["issue", 1] });
 		expect(backend.requests).toHaveLength(1);
 		expect(
-			qc.getQuery(backend.issueQuery, { id: 1 }).getStateUnsafe(),
+			Query.getUnsafe(qc.getQuery(backend.issueQuery, { id: 1 })),
 		).toMatchObject({ isFetching: true, status: "pending" });
 	});
 
@@ -67,8 +67,8 @@ describe("prefetch", () => {
 
 		expect(onError).toHaveBeenCalledOnce();
 		const query = qc.getQuery(backend.issueQuery, { id: 404 });
-		expect(query.getStateUnsafe().status).toBe("error");
-		await expect(query.getStateUnsafe().promise).rejects.toThrow(
+		expect(Query.getUnsafe(query).status).toBe("error");
+		await expect(Query.getUnsafe(query).promise).rejects.toThrow(
 			"No issue 404",
 		);
 	});
@@ -147,8 +147,10 @@ describe("undefined data", () => {
 		await expect(qc.ensure(noneQuery)).resolves.toMatchObject({
 			ensured: true,
 		});
-		await expect(qc.getQuery(noneQuery).readUnsafe()).resolves.toBeUndefined();
-		expect(qc.getQuery(noneQuery).getStateUnsafe()).toMatchObject({
+		await expect(
+			Query.readUnsafe(qc.getQuery(noneQuery)),
+		).resolves.toBeUndefined();
+		expect(Query.getUnsafe(qc.getQuery(noneQuery))).toMatchObject({
 			data: undefined,
 			hasData: true,
 			status: "success",
@@ -159,12 +161,12 @@ describe("undefined data", () => {
 	it("can be written with setData, and hasData tells it from no data", async () => {
 		const qc = new QueryClient({ isServer: false });
 		expect(qc.getData(maybeQuery)).toBeUndefined();
-		expect(qc.getQuery(maybeQuery).getStateUnsafe().hasData).toBe(false);
+		expect(Query.getUnsafe(qc.getQuery(maybeQuery)).hasData).toBe(false);
 
 		qc.setData(maybeQuery, undefined, undefined);
 
 		expect(qc.getData(maybeQuery)).toBeUndefined();
-		expect(qc.getQuery(maybeQuery).getStateUnsafe().hasData).toBe(true);
+		expect(Query.getUnsafe(qc.getQuery(maybeQuery)).hasData).toBe(true);
 		await expect(qc.fetch(maybeQuery)).resolves.toBeUndefined();
 	});
 
@@ -184,9 +186,9 @@ describe("on the server", () => {
 		const data = qc.fetch(backend.issueQuery, { id: 1 });
 		backend.respondAll();
 		expect(await data).toEqual({ id: 1, title: "First" });
-		expect(qc.getQuery(backend.issueQuery, { id: 1 }).isStaleUnsafe()).toBe(
-			true,
-		);
+		expect(
+			Query.isStaleUnsafe(qc.getQuery(backend.issueQuery, { id: 1 })),
+		).toBe(true);
 
 		const handle = await qc.ensure(backend.issueQuery, { id: 1 });
 		qc.prefetch(backend.issueQuery, { id: 1 });
@@ -205,7 +207,7 @@ describe("on the server", () => {
 		const data = qc.fetch(backend.issueQuery, { id: 1 });
 		backend.respondAll();
 		await data;
-		qc.getQuery(backend.issueQuery, { id: 1 }).subscribeUnsafe(() => {});
+		Query.subscribeUnsafe(qc.getQuery(backend.issueQuery, { id: 1 }), () => {});
 
 		const invalidated = qc.invalidate(backend.issueQuery, { id: 1 });
 		expect(backend.requests).toHaveLength(1);
@@ -235,7 +237,7 @@ describe("read", () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
 
-		const first = query.readUnsafe();
+		const first = Query.readUnsafe(query);
 		expect(first).toMatchObject({ status: "pending" });
 		backend.respondAll();
 		await first;
@@ -244,7 +246,7 @@ describe("read", () => {
 			status: "fulfilled",
 			value: { id: 1, title: "First" },
 		});
-		expect(query.readUnsafe()).toBe(first);
+		expect(Query.readUnsafe(query)).toBe(first);
 	});
 
 	it("creates a new fulfilled promise per data version", async () => {
@@ -252,15 +254,15 @@ describe("read", () => {
 		const qc = new QueryClient({ isServer: false });
 		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
-		const before = query.readUnsafe();
+		const before = Query.readUnsafe(query);
 
 		qc.setData(backend.issueQuery, { id: 1 }, (issue) => ({
 			id: 1,
 			title: `${issue?.title}B`,
 		}));
 
-		expect(query.readUnsafe()).not.toBe(before);
-		expect(query.readUnsafe()).toMatchObject({
+		expect(Query.readUnsafe(query)).not.toBe(before);
+		expect(Query.readUnsafe(query)).toMatchObject({
 			status: "fulfilled",
 			value: { title: "AB" },
 		});
@@ -272,18 +274,18 @@ describe("read", () => {
 		backend.issues.delete(1);
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
 
-		const failed = query.readUnsafe();
+		const failed = Query.readUnsafe(query);
 		backend.respondAll();
 		await expect(failed).rejects.toThrow("No issue 1");
 
 		// Same task: React re-rendering the throwing component.
-		expect(query.readUnsafe()).toBe(failed);
+		expect(Query.readUnsafe(query)).toBe(failed);
 		expect(backend.requests).toHaveLength(0);
 
 		// A later task: the error boundary was reset.
 		await flush();
 		backend.issues.set(1, { id: 1, title: "Back" });
-		const retried = query.readUnsafe();
+		const retried = Query.readUnsafe(query);
 		expect(retried).not.toBe(failed);
 		backend.respondAll();
 		expect(await retried).toEqual({ id: 1, title: "Back" });
@@ -306,12 +308,12 @@ describe("structural sharing", () => {
 	it("keeps the data and promise when a refetch returns equal data", async () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(listQuery());
-		await Effect.runPromise(query.fetch());
-		const before = query.getStateUnsafe();
+		await Effect.runPromise(Query.fetch(query));
+		const before = Query.getUnsafe(query);
 
-		await Effect.runPromise(query.refetch);
+		await Effect.runPromise(Query.refetch(query));
 
-		const after = query.getStateUnsafe();
+		const after = Query.getUnsafe(query);
 		expect(after.data).toBe(before.data);
 		expect(after.promise).toBe(before.promise);
 		expect(after.updatedAt).toBeGreaterThanOrEqual(before.updatedAt);
@@ -321,7 +323,7 @@ describe("structural sharing", () => {
 		const qc = new QueryClient({ isServer: false });
 		const factory = listQuery();
 		const data = await qc.fetch(factory);
-		const promise = qc.getQuery(factory).getStateUnsafe().promise;
+		const promise = Query.getUnsafe(qc.getQuery(factory)).promise;
 
 		qc.setData(factory, undefined, [
 			{ id: 1, tags: ["a"], title: "First" },
@@ -333,19 +335,19 @@ describe("structural sharing", () => {
 		expect(next?.[0]).toBe(data[0]);
 		expect(next?.[1]).not.toBe(data[1]);
 		expect(next?.[1]?.tags).toBe(data[1]?.tags);
-		expect(qc.getQuery(factory).getStateUnsafe().promise).not.toBe(promise);
+		expect(Query.getUnsafe(qc.getQuery(factory)).promise).not.toBe(promise);
 	});
 
 	it("is skipped with structuralSharing: false", async () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(listQuery({ structuralSharing: false }));
-		await Effect.runPromise(query.fetch());
-		const before = query.getStateUnsafe();
+		await Effect.runPromise(Query.fetch(query));
+		const before = Query.getUnsafe(query);
 
-		await Effect.runPromise(query.refetch);
+		await Effect.runPromise(Query.refetch(query));
 
-		expect(query.getStateUnsafe().data).not.toBe(before.data);
-		expect(query.getStateUnsafe().promise).not.toBe(before.promise);
+		expect(Query.getUnsafe(query).data).not.toBe(before.data);
+		expect(Query.getUnsafe(query).promise).not.toBe(before.promise);
 	});
 });
 
@@ -355,7 +357,7 @@ describe("subscriptions", () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
 		const listener = vi.fn();
-		query.subscribeUnsafe(listener);
+		Query.subscribeUnsafe(query, listener);
 
 		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
 		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "B" });
@@ -387,13 +389,13 @@ describe("subscriptions", () => {
 		const query = qc.getQuery(() =>
 			queryOptions({ queryFn: () => 1, queryKey: ["n"], staleTime: 100 }),
 		);
-		query.subscribeUnsafe(() => {});
-		await Effect.runPromise(query.fetch());
-		expect(query.getStateUnsafe().isStale).toBe(false);
+		Query.subscribeUnsafe(query, () => {});
+		await Effect.runPromise(Query.fetch(query));
+		expect(Query.getUnsafe(query).isStale).toBe(false);
 
 		await vi.advanceTimersByTimeAsync(101);
 
-		expect(query.getStateUnsafe().isStale).toBe(true);
+		expect(Query.getUnsafe(query).isStale).toBe(true);
 	});
 });
 
@@ -402,8 +404,8 @@ describe("invalidate", () => {
 		const backend = createBackend();
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
-		query.subscribeUnsafe(() => {});
-		query.readUnsafe();
+		Query.subscribeUnsafe(query, () => {});
+		Query.readUnsafe(query);
 		backend.respondAll();
 		await flush();
 
@@ -420,8 +422,8 @@ describe("invalidate", () => {
 		backend.issues.set(1, { id: 1, title: "Edited" });
 		backend.respondAll();
 		await invalidated;
-		expect(query.getStateUnsafe().data?.title).toBe("Edited");
-		expect(query.getStateUnsafe().isInvalidated).toBe(false);
+		expect(Query.getUnsafe(query).data?.title).toBe("Edited");
+		expect(Query.getUnsafe(query).isInvalidated).toBe(false);
 	});
 
 	it("only marks unread entries stale", async () => {
@@ -456,7 +458,7 @@ describe("invalidate", () => {
 
 		const invalidated = qc
 			.getAll()
-			.filter((query) => query.getStateUnsafe().isInvalidated)
+			.filter((query) => Query.getUnsafe(query).isInvalidated)
 			.map((query) => query.hash);
 		expect(invalidated).toEqual([
 			'["issues",{"page":1,"status":"open"}]',
@@ -468,8 +470,8 @@ describe("invalidate", () => {
 		const backend = createBackend();
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
-		query.subscribeUnsafe(() => {});
-		const first = query.readUnsafe();
+		Query.subscribeUnsafe(query, () => {});
+		const first = Query.readUnsafe(query);
 		const [oldRequest] = backend.requests;
 
 		const invalidated = qc.invalidate(backend.issueQuery, { id: 1 });
@@ -489,14 +491,14 @@ describe("observers", () => {
 		const events: Array<string> = [];
 		qc.subscribe((event) => events.push(event.type));
 
-		const first = query.subscribeUnsafe(() => {});
-		const second = query.subscribeUnsafe(() => {});
-		expect(query.observerCount).toBe(2);
+		const first = Query.subscribeUnsafe(query, () => {});
+		const second = Query.subscribeUnsafe(query, () => {});
+		expect(Query.observerCountUnsafe(query)).toBe(2);
 		first();
 		first();
 		second();
 
-		expect(query.observerCount).toBe(0);
+		expect(Query.observerCountUnsafe(query)).toBe(0);
 		expect(events).toEqual([
 			"observers",
 			"observers",
@@ -511,13 +513,13 @@ describe("reset", () => {
 		const backend = createBackend();
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
-		query.subscribeUnsafe(() => {});
-		query.readUnsafe();
+		Query.subscribeUnsafe(query, () => {});
+		Query.readUnsafe(query);
 		backend.respondAll();
 		await flush();
 
 		const reset = qc.reset(backend.issueQuery, { id: 1 });
-		const state = query.getStateUnsafe();
+		const state = Query.getUnsafe(query);
 		expect(state).toMatchObject({
 			data: undefined,
 			hasData: false,
@@ -529,7 +531,7 @@ describe("reset", () => {
 		backend.respondAll();
 		await reset;
 		expect(await state.promise).toEqual({ id: 1, title: "Again" });
-		expect(query.getStateUnsafe().status).toBe("success");
+		expect(Query.getUnsafe(query).status).toBe("success");
 	});
 
 	it("leaves unread entries empty until they are read", async () => {
@@ -540,9 +542,9 @@ describe("reset", () => {
 		await qc.reset({ queryKey: ["issue"] });
 
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
-		expect(query.getStateUnsafe().hasData).toBe(false);
+		expect(Query.getUnsafe(query).hasData).toBe(false);
 		expect(backend.requests).toHaveLength(0);
-		query.readUnsafe();
+		Query.readUnsafe(query);
 		expect(backend.requests).toHaveLength(1);
 	});
 
@@ -550,7 +552,9 @@ describe("reset", () => {
 		const backend = createBackend();
 		const qc = new QueryClient({ isServer: false });
 		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
-		void Effect.runPromise(qc.getQuery(backend.issueQuery, { id: 1 }).refetch);
+		void Effect.runPromise(
+			Query.refetch(qc.getQuery(backend.issueQuery, { id: 1 })),
+		);
 		const [oldRequest] = backend.requests;
 
 		const reset = qc.reset(backend.issueQuery, { id: 1 });
@@ -576,7 +580,7 @@ describe("remove", () => {
 
 		qc.remove(backend.issueQuery, { id: 1 });
 
-		await expect(pending).rejects.toBeInstanceOf(CancelledError);
+		await expect(pending).rejects.toBeInstanceOf(Query.CancelledError);
 		expect(backend.requests[0]?.signal.aborted).toBe(true);
 		expect(qc.getAll().map((query) => query.hash)).toEqual(['["issue",2]']);
 		expect(events).toContain('removed ["issue",1]');
@@ -594,9 +598,9 @@ describe("remove", () => {
 		qc.remove(backend.issueQuery, { id: 1 });
 
 		await expect(
-			Effect.runPromise(removed.fetch({ restart: true })),
-		).rejects.toBeInstanceOf(CancelledError);
-		await Effect.runPromise(removed.refetch);
+			Effect.runPromise(Query.fetch(removed, { restart: true })),
+		).rejects.toBeInstanceOf(Query.CancelledError);
+		await Effect.runPromise(Query.refetch(removed));
 		expect(backend.requests).toHaveLength(0);
 	});
 });
@@ -609,10 +613,10 @@ describe("retry", () => {
 			queryOptions({ queryFn, queryKey: ["flaky"], retry: 2, retryDelay: 0 }),
 		);
 
-		await expect(Effect.runPromise(query.fetch())).rejects.toThrow("down");
+		await expect(Effect.runPromise(Query.fetch(query))).rejects.toThrow("down");
 
 		expect(queryFn).toHaveBeenCalledTimes(3);
-		expect(query.getStateUnsafe().failureCount).toBe(3);
+		expect(Query.getUnsafe(query).failureCount).toBe(3);
 	});
 
 	it("backs off exponentially by default", async () => {
@@ -725,11 +729,11 @@ describe("retry", () => {
 			const query = qc.getQuery(() =>
 				queryOptions({ queryFn, queryKey: ["offline"] }),
 			);
-			const result = Effect.runPromise(query.fetch());
+			const result = Effect.runPromise(Query.fetch(query));
 
 			await vi.advanceTimersByTimeAsync(60_000);
 			expect(queryFn).toHaveBeenCalledOnce();
-			expect(query.getStateUnsafe()).toMatchObject({
+			expect(Query.getUnsafe(query)).toMatchObject({
 				failureCount: 1,
 				isFetching: true,
 				status: "pending",
@@ -793,7 +797,7 @@ describe("retry", () => {
 
 			qc.remove(factory);
 
-			await expect(result).rejects.toBeInstanceOf(CancelledError);
+			await expect(result).rejects.toBeInstanceOf(Query.CancelledError);
 			expect(removeListener).toHaveBeenCalledWith(
 				"online",
 				expect.any(Function),
@@ -877,7 +881,7 @@ describe("Effect queryFn", () => {
 		await flush();
 		qc.clear();
 
-		await expect(slow).rejects.toBeInstanceOf(CancelledError);
+		await expect(slow).rejects.toBeInstanceOf(Query.CancelledError);
 		await flush();
 		expect(interrupted).toBe(true);
 	});
@@ -889,8 +893,8 @@ describe("garbage collection", () => {
 		const backend = createBackend();
 		const qc = new QueryClient({ defaults: { gcTime: 50 }, isServer: false });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
-		const unsubscribe = query.subscribeUnsafe(() => {});
-		query.readUnsafe();
+		const unsubscribe = Query.subscribeUnsafe(query, () => {});
+		Query.readUnsafe(query);
 		backend.respondAll();
 		await vi.advanceTimersByTimeAsync(100);
 		expect(qc.getAll()).toHaveLength(1);
@@ -921,8 +925,8 @@ describe("window events", () => {
 		const qc = new QueryClient({ isServer: false });
 		const unmount = qc.mount();
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
-		query.subscribeUnsafe(() => {});
-		query.readUnsafe();
+		Query.subscribeUnsafe(query, () => {});
+		Query.readUnsafe(query);
 		backend.respondAll();
 		await flush();
 
@@ -952,8 +956,8 @@ describe("window events", () => {
 		const qc = new QueryClient({ isServer: false });
 		const unmount = qc.mount();
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
-		query.subscribeUnsafe(() => {}, { refetchOnWindowFocus: false });
-		query.readUnsafe();
+		Query.subscribeUnsafe(query, () => {}, { refetchOnWindowFocus: false });
+		Query.readUnsafe(query);
 		backend.respondAll();
 		await flush();
 

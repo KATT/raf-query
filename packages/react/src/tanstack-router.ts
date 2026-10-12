@@ -82,7 +82,7 @@ function setupServer<TRouter extends AnyRouter>(
 				controller = streamController;
 			},
 		});
-		let batch: Map<string, Query> | undefined;
+		let batch: Map<string, Query.Query> | undefined;
 		const flush = () => {
 			const queries = batch;
 			batch = undefined;

@@ -2,17 +2,17 @@ import { describe, expect, expectTypeOf, it } from "@effect/vitest";
 import { Data, Effect, type Option } from "effect";
 
 import {
-	type CancelledError,
 	type DataOf,
 	type ErrorOf,
 	hashKey,
 	type InfiniteData,
 	infiniteQueryOptions,
 	matchesKey,
-	QueryCache,
+	Query,
 	type QueryHandle,
 	queryOptions,
 } from "./index.ts";
+import { makeCacheUnsafe } from "./test-utils.ts";
 
 describe("keys", () => {
 	it("hash plain objects independent of key order", () => {
@@ -64,7 +64,7 @@ function meQuery() {
 
 describe("types", () => {
 	it("flow from the factory to every verb", () => {
-		const cache = new QueryCache({ isServer: true });
+		const cache = makeCacheUnsafe({ isServer: true });
 
 		expectTypeOf(cache.prefetch(postQuery, { slug: "a" })).toEqualTypeOf<
 			Effect.Effect<QueryHandle<typeof postQuery>>
@@ -84,21 +84,23 @@ describe("types", () => {
 	});
 
 	it("keep an Effect queryFn's error type", () => {
-		const cache = new QueryCache({ isServer: true });
+		const cache = makeCacheUnsafe({ isServer: true });
 
 		expectTypeOf<DataOf<typeof issueQuery>>().toEqualTypeOf<{ id: number }>();
 		expectTypeOf<ErrorOf<typeof issueQuery>>().toEqualTypeOf<NotFound>();
 		expectTypeOf<ErrorOf<typeof postQuery>>().toEqualTypeOf<unknown>();
 		expectTypeOf(cache.fetch(issueQuery, { id: 1 })).toEqualTypeOf<
-			Effect.Effect<{ id: number }, NotFound | CancelledError>
+			Effect.Effect<{ id: number }, NotFound | Query.CancelledError>
 		>();
 		expectTypeOf(
-			cache.getQueryUnsafe(issueQuery, { id: 1 }).fetch(),
-		).toEqualTypeOf<Effect.Effect<{ id: number }, NotFound | CancelledError>>();
+			Query.fetch(cache.getQueryUnsafe(issueQuery, { id: 1 })),
+		).toEqualTypeOf<
+			Effect.Effect<{ id: number }, NotFound | Query.CancelledError>
+		>();
 	});
 
 	it("reject wrong inputs and paging options on plain factories", () => {
-		const cache = new QueryCache({ isServer: true });
+		const cache = makeCacheUnsafe({ isServer: true });
 		const typeOnly = () => {
 			// @ts-expect-error the input is required
 			cache.prefetch(postQuery);
