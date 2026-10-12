@@ -477,6 +477,64 @@ describe("invalidate", () => {
 	});
 });
 
+describe("isFetching", () => {
+	it("counts entries with a request in flight until they settle", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		const counts: Array<number> = [];
+		qc.subscribe((event) => {
+			if (event.type === "updated") {
+				counts.push(qc.isFetching());
+			}
+		});
+		expect(qc.isFetching()).toBe(0);
+
+		qc.prefetch(backend.issueQuery, { id: 1 });
+		qc.prefetch(backend.issueQuery, { id: 2 });
+		qc.setData(backend.issueQuery, { id: 3 }, { id: 3, title: "Third" });
+		expect(qc.isFetching()).toBe(2);
+
+		backend.respondAll();
+		await flush();
+		expect(qc.isFetching()).toBe(0);
+		expect(counts).toEqual([1, 2, 2, 1, 0]);
+	});
+
+	it("matches a filter by key prefix, or exactly with exact", () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		qc.prefetch(backend.issueQuery, { id: 1 });
+		qc.prefetch(backend.issueQuery, { id: 2 });
+		qc.prefetch(() =>
+			queryOptions({
+				queryFn: () => new Promise<number>(() => {}),
+				queryKey: ["issue"],
+			}),
+		);
+
+		expect(qc.isFetching()).toBe(3);
+		expect(qc.isFetching({ queryKey: ["issue"] })).toBe(3);
+		expect(qc.isFetching({ exact: true, queryKey: ["issue"] })).toBe(1);
+		expect(qc.isFetching({ queryKey: ["issue", 1] })).toBe(1);
+		expect(qc.isFetching({ queryKey: ["user"] })).toBe(0);
+	});
+
+	it("drops a request that failed", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		qc.prefetch(backend.issueQuery, { id: 1 });
+		expect(qc.isFetching()).toBe(1);
+
+		backend.requests[0]?.fail(new Error("boom"));
+		await flush();
+
+		expect(qc.isFetching()).toBe(0);
+		expect(qc.getQuery(backend.issueQuery, { id: 1 }).getState().status).toBe(
+			"error",
+		);
+	});
+});
+
 describe("observers", () => {
 	it("are counted, and changes emit an observers event", () => {
 		const backend = createBackend();

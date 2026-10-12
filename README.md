@@ -194,6 +194,16 @@ When the cache updates — refetch, invalidation, `setData` — the hook returns
 
 Queries do not refetch on mount. They refetch when a loader starts them again, when invalidated, on window focus or reconnect while stale, on `refetch()`, or on `refetchInterval`.
 
+For an app-wide indicator, `useIsFetching()` returns how many queries have a request in flight, background refetches included, and re-renders when that changes. Pass a filter to count only some: `useIsFetching({ queryKey: ["comments"] })`. Outside React, `qc.isFetching(filter?)` returns the same number.
+
+```tsx
+// Rendered once, in the root layout.
+function GlobalProgress() {
+	const fetching = useIsFetching();
+	return fetching > 0 ? <ProgressBar /> : null;
+}
+```
+
 ### Paged queries
 
 With an `infiniteQueryOptions` factory, `useQuery` returns the same tuple. The promise resolves to `{ pages, pageParams }`, and the controls add paging:
@@ -540,6 +550,7 @@ Both render nothing on the server, since the server's cache isn't the browser's.
 | `remove(factory, input)` / `remove(filter)` | Remove entries and abort their requests                                                                                 |
 | `effect`                                    | [Effect versions](#effect) of `ensure`, `fetch`, `invalidate`, plus `watch`                                             |
 | `subscribe(listener)`                       | Cache events: `added`, `updated`, `observers` (a reader subscribed or left), `removed`, and `failed` (with the `error`) |
+| `isFetching(filter?)`                       | How many entries have a request in flight, optionally only those matching `{ queryKey, exact? }`                        |
 | `getAll()`, `getQuery(factory, input?)`     | Cache entries, for devtools and integrations                                                                            |
 | `clear()`                                   | Drop every entry and abort in-flight requests                                                                           |
 | `mount()`                                   | Start window-focus and reconnect refetching. The providers call it                                                      |
@@ -584,6 +595,7 @@ In the browser, retries pause while `navigator.onLine` is `false`: after the ret
 | `useQueryClient()`                    | Read the client                                                                                                |
 | `useQuery(factory, handle, options?)` | `[Promise<Data>, controls]`; for paged factories `Data` is `{ pages, pageParams }` and controls include paging |
 | `useWaterfall(factory, input)`        | Start a query during render and return its handle                                                              |
+| `useIsFetching(filter?)`              | How many queries have a request in flight, re-rendering when it changes; for global loading indicators         |
 
 ## Development
 

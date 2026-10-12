@@ -328,6 +328,17 @@ export class QueryClient {
 		return [...this.#cache.values()];
 	}
 
+	/**
+	 * How many entries have a request in flight: all of them, or those
+	 * matching `filter`. For global loading indicators.
+	 */
+	isFetching(filter?: QueryFilter): number {
+		const entries = filter
+			? this.#match(filter, undefined)
+			: [...this.#cache.values()];
+		return entries.filter((entry) => entry.getState().isFetching).length;
+	}
+
 	/** Listen to entries being added, updated, and removed. */
 	subscribe(listener: (event: CacheEvent) => void): () => void {
 		this.#listeners.add(listener);
