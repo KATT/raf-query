@@ -9,7 +9,7 @@
 		"releaseName": "v${version}"
 	},
 	"hooks": {
-		"after:bump": "pnpm -r --filter \"./packages/*\" --filter \"!@raf-query/experimental-tanstack-react-query\" exec npm pkg set version=${version}",
+		"after:bump": "pnpm -r --filter \"./packages/*\" exec npm pkg set version=${version}",
 		"before:git:release": "pnpm build && pnpm --filter @raf-query/core run publish:npm && pnpm --filter @raf-query/react run publish:npm"
 	},
 	"npm": false,

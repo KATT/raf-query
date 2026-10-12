@@ -1,6 +1,8 @@
 packages:
   - "examples/*"
+  - "examples/.experimental/*"
   - "packages/*"
+  - "packages/.experimental/*"
   - "tooling/*"
 
 catalog:

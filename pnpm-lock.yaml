@@ -240,30 +240,17 @@ importers:
         specifier: 1.0.0
         version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
 
-  examples/db:
-    dependencies:
-      zod:
-        specifier: 4.6.5
-        version: 4.6.5
-    devDependencies:
-      '@types/node':
-        specifier: 26.6.4
-        version: 26.6.4
-      typescript:
-        specifier: 7.0.2
-        version: 7.0.2
-
-  examples/experimental-tanstack-query-nextjs:
+  examples/.experimental/tanstack-query-nextjs:
     dependencies:
       '@examples/db':
         specifier: workspace:*
-        version: link:../db
+        version: link:../../db
       '@examples/ui':
         specifier: workspace:*
-        version: link:../ui
+        version: link:../../ui
       '@raf-query/experimental-tanstack-react-query':
         specifier: workspace:*
-        version: link:../../packages/experimental-tanstack-react-query
+        version: link:../../../packages/.experimental/tanstack-react-query
       lucide-react:
         specifier: 1.55.0
         version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
@@ -302,17 +289,17 @@ importers:
         specifier: 7.0.2
         version: 7.0.2
 
-  examples/experimental-tanstack-query-start:
+  examples/.experimental/tanstack-query-start:
     dependencies:
       '@examples/db':
         specifier: workspace:*
-        version: link:../db
+        version: link:../../db
       '@examples/ui':
         specifier: workspace:*
-        version: link:../ui
+        version: link:../../ui
       '@raf-query/experimental-tanstack-react-query':
         specifier: workspace:*
-        version: link:../../packages/experimental-tanstack-react-query
+        version: link:../../../packages/.experimental/tanstack-react-query
       '@tanstack/react-query':
         specifier: 5.104.1
         version: 5.104.1(react@19.3.0)
@@ -371,6 +358,19 @@ importers:
       vite-plus:
         specifier: 1.0.0
         version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
+
+  examples/db:
+    dependencies:
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.4
+        version: 26.6.4
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
 
   examples/nextjs:
     dependencies:
@@ -525,29 +525,7 @@ importers:
         specifier: 7.0.2
         version: 7.0.2
 
-  packages/core:
-    dependencies:
-      effect:
-        specifier: 'catalog:'
-        version: 4.0.1
-    devDependencies:
-      '@effect/vitest':
-        specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
-      '@types/node':
-        specifier: 26.6.4
-        version: 26.6.4
-      '@vitest/coverage-v8':
-        specifier: 5.0.1
-        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
-      typescript:
-        specifier: 7.0.2
-        version: 7.0.2
-      vite-plus:
-        specifier: 1.0.0
-        version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
-
-  packages/experimental-tanstack-react-query:
+  packages/.experimental/tanstack-react-query:
     dependencies:
       '@tanstack/react-query':
         specifier: ^5.104.1
@@ -586,6 +564,28 @@ importers:
       vitest:
         specifier: 5.0.1
         version: 5.0.1(@types/node@26.6.4)(@vitest/browser-preview@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
+
+  packages/core:
+    dependencies:
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.1
+    devDependencies:
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
+      '@types/node':
+        specifier: 26.6.4
+        version: 26.6.4
+      '@vitest/coverage-v8':
+        specifier: 5.0.1
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite-plus:
+        specifier: 1.0.0
+        version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
 
   packages/react:
     dependencies:

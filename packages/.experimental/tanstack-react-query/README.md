@@ -2,7 +2,7 @@
 
 > **Experiment. Private, and not published to npm.** It lives in this repo to compare two ways of building raf-query. Its API can change or go away at any time. It stays at version `0.0.0`, and releases skip it.
 
-This package gives you raf-query's render-as-you-fetch API on top of [TanStack Query](https://tanstack.com/query). The published packages, `@raf-query/core` and `@raf-query/react`, run on raf-query's own engine instead. The [root README](../../README.md) explains the API in full: handles, `use()`, `whilePending`, mutations with Actions. This page covers what is different here.
+This package gives you raf-query's render-as-you-fetch API on top of [TanStack Query](https://tanstack.com/query). The published packages, `@raf-query/core` and `@raf-query/react`, run on raf-query's own engine instead. The [root README](../../../README.md) explains the API in full: handles, `use()`, `whilePending`, mutations with Actions. This page covers what is different here.
 
 ## What it is
 
@@ -52,7 +52,7 @@ Render-as-you-fetch with plain TanStack Query has a few traps. This package remo
 
 The verbs are free functions that take the client first, because the client is TanStack's class. `ensureData` plays the part of `qc.fetch`; a function named `fetch` would hide the global one.
 
-`useQuery`, `useWaterfall`, `queryOptions`, `infiniteQueryOptions`, `allKeyed` and handles work as in the [root README](../../README.md). TanStack's own hooks (its `useQuery`, `useSuspenseQuery`, `useMutation`, …) are not re-exported. Import them from `@tanstack/react-query` if you need them; they share the cache.
+`useQuery`, `useWaterfall`, `queryOptions`, `infiniteQueryOptions`, `allKeyed` and handles work as in the [root README](../../../README.md). TanStack's own hooks (its `useQuery`, `useSuspenseQuery`, `useMutation`, …) are not re-exported. Import them from `@tanstack/react-query` if you need them; they share the cache.
 
 ## Defining queries
 
@@ -245,9 +245,9 @@ export default async function Page(props: {
 
 Both run the same issue tracker as the main examples, on this package:
 
-| App                                                                                                | Run                                                              | URL                     |
-| -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------- |
-| [`examples/experimental-tanstack-query-start`](../../examples/experimental-tanstack-query-start)   | `pnpm --filter @examples/experimental-tanstack-query-start dev`  | <http://localhost:3002> |
-| [`examples/experimental-tanstack-query-nextjs`](../../examples/experimental-tanstack-query-nextjs) | `pnpm --filter @examples/experimental-tanstack-query-nextjs dev` | <http://localhost:3003> |
+| App                                                                                                     | Run                                                              | URL                     |
+| ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------- |
+| [`examples/.experimental/tanstack-query-start`](../../../examples/.experimental/tanstack-query-start)   | `pnpm --filter @examples/experimental-tanstack-query-start dev`  | <http://localhost:3002> |
+| [`examples/.experimental/tanstack-query-nextjs`](../../../examples/.experimental/tanstack-query-nextjs) | `pnpm --filter @examples/experimental-tanstack-query-nextjs dev` | <http://localhost:3003> |
 
 Compare them with `examples/tanstack-start` and `examples/nextjs`, which run on `@raf-query/react`.
