@@ -23,8 +23,10 @@ Next.js should be RSC driven for data fetching but fetching in components should
 
 You don't have to implement it exactly like this
 
+### Basic usage
+
 ```tsx
-import { queryOptions, infiniteQueryOptions } from "raf-query";
+import { queryOptions, infiniteQueryOptions, resolveAll } from "raf-query";
 
 function fetchPost(opts: { slug: string }) {
 	return queryOptions({
@@ -64,5 +66,72 @@ export const Route = createFileRoute("/posts/$slug")({
 
 function PostPage() {
 	const loaderData = Route.useLoaderData();
+
+	const post = useQuery(fetchPost, loaderData.post, {
+		/// ... options
+	});
+
+	const comments = useInfiniteQuery(fetchComments, loaderData.comments, {
+		/// ... options
+	});
+}
+```
+
+### Not awaiting the data
+
+```tsx
+import { queryOptions, infiniteQueryOptions, resolveAll } from "raf-query";
+
+function fetchPost(opts: { slug: string }) {
+	return queryOptions({
+		queryKey: ["post", opts.slug],
+		queryFn: async () => {
+			// ....
+		},
+	});
+}
+
+function fetchComments(opts: { slug: string }) {
+	return infiniteQueryOptions({
+		queryKey: ["comments", opts.slug],
+		queryFn: async () => {
+			// ....
+		},
+	});
+}
+
+export const Route = createFileRoute("/posts/$slug")({
+	component: PostPage,
+	loader: async (opts) => {
+		const { queryClient } = opts.context;
+		const slug = opts.params.slug;
+
+		return {
+			post: deferred(
+				queryClient.ensureQueryData(fetchPost, {
+					slug: publicId,
+				}),
+			),
+			// probably resolves something like
+			// { data: Promise<Post>, meta: { key: ["post", slug] } }
+			comments: deferred(
+				queryClient.ensureInfiniteQueryData(fetchComments, {
+					slug: slug,
+				}),
+			),
+		};
+	},
+});
+
+function PostPage() {
+	const loaderData = Route.useLoaderData();
+
+	const post = useQuery(fetchPost, loaderData.post, {
+		/// ... options
+	});
+
+	const comments = useInfiniteQuery(fetchComments, loaderData.comments, {
+		/// ... options
+	});
 }
 ```
