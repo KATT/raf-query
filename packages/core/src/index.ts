@@ -1,28 +1,23 @@
-export { allKeyed, type Settled } from "./all-keyed.ts";
-export {
-	type CacheEvent,
-	type LoadArgs,
-	QueryClient,
-	type QueryClientConfig,
-	type QueryClientEffect,
-	type QueryFilter,
-	type Updater,
-} from "./client.ts";
+export * as Platform from "./platform.ts";
+export * as Query from "./query.ts";
+export * as QueryCache from "./cache.ts";
+export * as QueryObserver from "./observer.ts";
 export {
 	canDehydrate,
-	dehydrate,
 	type DehydratedQuery,
 	type DehydratedState,
+	type DehydratedStream,
 	type DehydrateOptions,
 	dehydrateQuery,
-	hydrate,
 	type HydrateOptions,
+	RedactedError,
 } from "./hydration.ts";
 export { hashKey, matchesKey, type QueryKey } from "./key.ts";
 export {
 	type AnyQueryOptions,
 	type DataOf,
 	type EnsuredQueryHandle,
+	type ErrorOf,
 	type InfiniteData,
 	type InfiniteQueryOptions,
 	infiniteQueryOptions,
@@ -40,17 +35,6 @@ export {
 	type QueryOptions,
 	queryOptions,
 	type RetryPolicy,
+	type ServicesOf,
 } from "./options.ts";
-export {
-	QueryObserver,
-	type QueryObserverOptions,
-	type QueryObserverResult,
-} from "./observer.ts";
-export {
-	CancelledError,
-	type FetchRequest,
-	type Query,
-	type QueryState,
-	type SubscribeOptions,
-} from "./query.ts";
 export type { Thenable } from "./thenable.ts";

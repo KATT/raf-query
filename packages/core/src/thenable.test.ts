@@ -1,6 +1,8 @@
 import { describe, expect, expectTypeOf, it } from "@effect/vitest";
+import { Effect } from "effect";
 
-import { QueryClient, queryOptions, type Thenable } from "./index.ts";
+import { Query, QueryCache, queryOptions, type Thenable } from "./index.ts";
+import { makeCacheUnsafe } from "./test-utils.ts";
 import { fulfilled } from "./thenable.ts";
 
 describe("Thenable", () => {
@@ -13,22 +15,24 @@ describe("Thenable", () => {
 	});
 
 	it("types the cache's promises", () => {
-		const qc = new QueryClient({ isServer: false });
+		const qc = makeCacheUnsafe({ isServer: false });
 		const countQuery = () =>
 			queryOptions({ queryFn: () => 1, queryKey: ["count"] });
-		qc.setData(countQuery, undefined, 1);
+		Effect.runSync(qc.setData(countQuery, undefined, 1));
 
-		const promise = qc.getQuery(countQuery).getState().promise;
+		const promise = Query.getUnsafe(qc.getQueryUnsafe(countQuery)).promise;
 		expectTypeOf(promise).toEqualTypeOf<Thenable<number>>();
 		expect(promise).toMatchObject({ status: "fulfilled", value: 1 });
 	});
 
-	it("lets `fetch` resolve to data on a cache miss and a hit", async () => {
-		const qc = new QueryClient({ isServer: false });
-		const countQuery = () =>
-			queryOptions({ queryFn: async () => 2, queryKey: ["count"] });
+	it.effect("lets `fetch` succeed with data on a cache miss and a hit", () =>
+		Effect.gen(function* () {
+			const qc = yield* QueryCache.make({ isServer: false });
+			const countQuery = () =>
+				queryOptions({ queryFn: async () => 2, queryKey: ["count"] });
 
-		await expect(qc.fetch(countQuery)).resolves.toBe(2);
-		await expect(qc.fetch(countQuery)).resolves.toBe(2);
-	});
+			expect(yield* qc.fetch(countQuery)).toBe(2);
+			expect(yield* qc.fetch(countQuery)).toBe(2);
+		}),
+	);
 });

@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.0](https://github.com/KATT/raf-query/compare/0.0.19...0.1.0) (2026-10-12)
+
+### ⚠ BREAKING CHANGES
+
+- Effect-native engine; core exposes only Effect APIs ([#23](https://github.com/KATT/raf-query/issues/23))
+- **core:** make QueryObserver an Effect-style data type ([#29](https://github.com/KATT/raf-query/issues/29))
+
+- **core:** make QueryObserver an Effect-style data type ([#29](https://github.com/KATT/raf-query/issues/29)) ([50fbb45](https://github.com/KATT/raf-query/commit/50fbb45bf3edcaa83673e2177894a76bdf76560b))
+- Effect-native engine; core exposes only Effect APIs ([#23](https://github.com/KATT/raf-query/issues/23)) ([8e0bb09](https://github.com/KATT/raf-query/commit/8e0bb09a63d644ede053f443406a521ff2613a6f))
+
+### Features
+
+- **core:** stream SSR dehydration as Effect APIs; integrations become thin edges ([#30](https://github.com/KATT/raf-query/issues/30)) ([6b2b570](https://github.com/KATT/raf-query/commit/6b2b5703f5463c0f3805c233cf4ead90df9efb76)), references [#29](https://github.com/KATT/raf-query/issues/29)
+- typed services for Effect queries; QueryClient layer and dispose() ([#31](https://github.com/KATT/raf-query/issues/31)) ([6aeaa3d](https://github.com/KATT/raf-query/commit/6aeaa3d356f6483654729620ac26762508eb8fd8))
+
 ## [0.0.19](https://github.com/KATT/raf-query/compare/0.0.18...0.0.19) (2026-10-12)
 
 ### Features

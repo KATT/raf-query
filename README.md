@@ -6,16 +6,18 @@ Queries start in route loaders and React Server Components, travel to components
 
 The cache's mechanics (dedupe, staleness, retries, infinite paging, SSR hydration) follow [TanStack Query](https://tanstack.com/query); the public API is built around loaders, RSC, and `use()` instead of `useQuery`-in-render.
 
+The cache is written in [Effect](https://effect.website), but using raf-query doesn't take any Effect: `queryFn`s return promises, and `QueryClient`, the hooks and the integrations speak promises. Apps that do use Effect get the same cache as Effects, with typed errors and services ([Effect](#effect)).
+
 ## Status
 
 Early. Both packages are on npm at `0.0.x`, and the API can still change between patch releases. [`examples/`](examples/) has the same issue tracker built on TanStack Start and on Next.js App Router.
 
 ## Packages
 
-| Package            | Contents                                                                                                                           |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `@raf-query/core`  | Framework-agnostic: `QueryClient`, cache, `queryOptions` / `infiniteQueryOptions`, handles, dehydrate / hydrate stream, `allKeyed` |
-| `@raf-query/react` | Hooks and provider. Re-exports everything from `@raf-query/core`, so apps install and import only this package                     |
+| Package            | Contents                                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@raf-query/core`  | Framework-agnostic and Effect-only: `QueryCache`, `queryOptions` / `infiniteQueryOptions`, handles, dehydrate / hydrate                     |
+| `@raf-query/react` | `QueryClient` (the cache with Promise methods), hooks, provider, `allKeyed`. Re-exports `@raf-query/core`, so apps import only this package |
 
 `@raf-query/react` subpath entries for framework integrations and tooling:
 
@@ -363,7 +365,7 @@ function EditTitle(props: { post: Post }) {
 | `qc.setData(factory, input, updater)` | Write data directly                                                     |
 | `qc.getData(factory, input)`          | Read cached data, or `undefined`                                        |
 
-Data can be `undefined` when the `queryFn`'s type allows it (`Promise<User | undefined>`); it's cached and reused like any other value, unlike in TanStack Query, where an `undefined` result is an error. So `getData` and an updater's `previous` return `undefined` both with no data and with `undefined` data; `qc.getQuery(factory, input).getState().hasData` tells them apart.
+Data can be `undefined` when the `queryFn`'s type allows it (`Promise<User | undefined>`); it's cached and reused like any other value, unlike in TanStack Query, where an `undefined` result is an error. So `getData` and an updater's `previous` return `undefined` both with no data and with `undefined` data; `Query.getUnsafe(qc.getQuery(factory, input)).hasData` tells them apart.
 
 ## SSR and hydration
 
@@ -392,7 +394,7 @@ export function getRouter() {
 }
 ```
 
-`setupRouterIntegration` streams queries during SSR, clears the request's cache when the response finishes, and turns `redirect()` thrown from a `queryFn` into a router navigation. `getRouter` runs per request on the server, so each request gets its own client. Options: `dehydrateOptions` (`filter`, `keepErrors`, `serializeData`), `hydrateOptions` (`deserializeData`), and `handleRedirects: false` to handle redirects yourself. By default a server error crosses to the browser as a generic error, so its message doesn't leak into the page.
+`setupRouterIntegration` streams queries during SSR, clears the request's cache when the response finishes, and turns `redirect()` thrown from a `queryFn` into a router navigation. `getRouter` runs per request on the server, so each request gets its own client. Options: `dehydrateOptions` (`filter`, `keepErrors`, `serializeData`), `hydrateOptions` (`deserializeData`), and `handleRedirects: false` to handle redirects yourself. By default a server error crosses to the browser as a `RedactedError` naming the query, so its message doesn't leak into the page.
 
 ### Next.js App Router
 
@@ -458,13 +460,19 @@ A factory that imports server-only code (a database client) can't be imported by
 
 ## Effect
 
-raf-query runs requests on [Effect](https://effect.website), and Effect code can use it without wrapping:
+raf-query's cache is written in [Effect](https://effect.website): `QueryClient` is a Promise wrapper around a `QueryCache` service from `@raf-query/core`, available as `qc.effect`. Effect code uses the cache directly, or builds its own with `QueryCache.make(config)` (scoped: closing the scope interrupts every request and timer) or `QueryCache.layer(config)`:
 
 - A `queryFn` can return an `Effect`. Cancelling the request interrupts it.
+- An Effect `queryFn`'s error type is the query's: `qc.effect.fetch(issueQuery, input)` fails with `IssueNotFound | Query.CancelledError`. `ErrorOf<TFactory>` names it; it's `unknown` for promises. A `queryFn` that throws instead of returning is a defect, and isn't retried.
 - `retry` accepts a `Schedule` as well as a count or predicate.
-- `qc.effect` has Effect versions of `ensure`, `fetch` and `invalidate`, plus `watch`, a `Stream` of the entry's state.
+- `qc.effect` has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidate`, `reset`, `remove`, `setData`, `getData` (an `Option`), `dehydrate`, `hydrate`. `watch` is a `Stream` of an entry's state, and `events` a `Stream` of cache events.
+- SSR streaming is Effect too, and the integrations are thin wrappers over it. `dehydrateStream(options)` (scoped) returns the cache's `initial` state and a `Stream` of `updates`: entries that start or settle later, each sent once, batched per microtask. The stream ends when the scope closes. `hydrateStream(stream)` hydrates each state as it arrives. `Stream.toReadableStream` / `Stream.fromReadableStream` carry it over a web stream. The `sent` option (a `Set` of hashes) makes separate `dehydrate` calls of one request skip entries already sent.
+- Entries are a data type with module functions, as in Effect's own modules: `Query.fetch(query)`, `Query.refetch(query)`, `Query.invalidate(query)`, `Query.changes(query)`, and `Query.getUnsafe(query)` / `Query.subscribeUnsafe(query, listener)` for synchronous reads.
+- `QueryObserver` is a data type too: one reader's view of a query, as `useQuery` sees it (the controls and the promise, with `whilePending`, `refetchInterval` and the focus / reconnect options). `QueryObserver.make(query, options)` creates one, and `QueryObserver.changes(observer)` streams its results; while it runs, the query counts as read and polls on `refetchInterval`.
+- Time comes from the `Clock` and the page from the `Platform` service (focus, visibility, `navigator.onLine`; the default reads the globals). Provide `TestClock` or another `Platform` to test staleness, gc and offline retries without a browser.
 
 ```ts
+import { QueryCache, queryOptions } from "@raf-query/core";
 import { Effect, Schedule, Stream } from "effect";
 
 export function issueQuery(input: { id: number }) {
@@ -476,15 +484,69 @@ export function issueQuery(input: { id: number }) {
 }
 
 const program = Effect.gen(function* () {
-	const issue = yield* qc.effect.fetch(issueQuery, { id: 1 });
-	yield* qc.effect.watch(issueQuery, { id: 1 }).pipe(
+	const cache = yield* QueryCache.QueryCache;
+	const issue = yield* cache.fetch(issueQuery, { id: 1 });
+	yield* cache.watch(issueQuery, { id: 1 }).pipe(
 		Stream.map((state) => state.data?.title),
 		Stream.runForEach((title) => Effect.log(title)),
 	);
 });
+
+Effect.runFork(program.pipe(Effect.provide(QueryCache.layer())));
 ```
 
-`watch` counts as a reader while it runs, so invalidation and window focus refetch the entry.
+`watch` counts as a reader while it runs, so invalidation and window focus refetch the entry. Outside React, `cache.mount` (`Effect<void, never, Scope>`) refetches read, stale entries on window focus and reconnect while its scope is open.
+
+### Services
+
+A `queryFn`'s Effect can require services. They're part of the factory's type, `ServicesOf<TFactory>`, and every verb that can start the query requires them:
+
+```ts
+import { QueryCache, queryOptions } from "@raf-query/core";
+import { Context, Effect, Layer } from "effect";
+
+class IssueApi extends Context.Service<
+	IssueApi,
+	{ readonly get: (id: number) => Effect.Effect<Issue, IssueNotFound> }
+>()("app/IssueApi") {}
+
+const IssueApiLive = Layer.succeed(IssueApi, { get: IssueRepo.get });
+
+export function issueQuery(input: { id: number }) {
+	return queryOptions({
+		queryKey: ["issue", input.id],
+		queryFn: () =>
+			Effect.gen(function* () {
+				const api = yield* IssueApi;
+				return yield* api.get(input.id);
+			}),
+	});
+}
+
+// Effect<Issue, IssueNotFound | Query.CancelledError, QueryCache | IssueApi>
+const issue = QueryCache.QueryCache.use((cache) =>
+	cache.fetch(issueQuery, { id: 1 }),
+);
+
+Effect.runFork(
+	issue.pipe(Effect.provide(QueryCache.layer()), Effect.provide(IssueApiLive)),
+);
+```
+
+- On `QueryCache`, `ensure`, `fetch`, `prefetch`, `getQuery` and `watch` require the factory's services, and so does `Query.fetch`. A request runs with the services the cache was built with, under those of the latest of these calls for its entry. Requests that start without a caller (a render's read, `refetch`, polling, focus and reconnect, `invalidate`) reuse the entry's last services.
+- The caller's `Scope` isn't passed on: a request outlives the call that started it. Scope a `queryFn`'s resources with `Effect.scoped`.
+- Each request runs in a `raf-query.request` span with a `raf_query.hash` attribute, under the latest caller's span if it had one. Defects are logged with `Effect.logError`; typed failures are the query's error.
+
+`QueryClient` gets its services from a `layer`. It's built into the client's scope with the cache, so it must build synchronously. The client's type is `QueryClient<TServices>`, and its verbs accept only factories whose services the layer provides; any other factory is a type error. `dispose()` interrupts every request and runs the layer's finalizers:
+
+```ts
+const queryClient = new QueryClient({ layer: IssueApiLive }); // QueryClient<IssueApi>
+const handle = queryClient.prefetch(issueQuery, { id: 1 });
+
+await queryClient.dispose();
+```
+
+`QueryClientProvider` takes a client of any services. A hook can't know which ones, so `useQueryClient()` returns a `QueryClient<unknown>`, whose verbs accept any factory, and `useQuery` reads any factory: a request then fails with a defect if the client's layer lacks a service it needs.
 
 ## Devtools
 
@@ -533,17 +595,18 @@ Both render nothing on the server, since the server's cache isn't the browser's.
 
 | Member                                      | Use                                                                                                                     |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `new QueryClient(config?)`                  | `config.defaults` (query options below), `config.onError`, `config.isServer`                                            |
+| `new QueryClient(config?)`                  | `config.defaults` (query options below), `config.onError`, `config.isServer`, `config.layer` ([services](#services))    |
 | `prefetch`, `ensure`, `fetch`               | [Start queries](#starting-queries)                                                                                      |
 | `invalidate`, `setData`, `getData`          | [Write and read the cache](#mutations)                                                                                  |
 | `reset(factory, input)` / `reset(filter)`   | Drop data and errors; read queries suspend and refetch. Resolves when they settle                                       |
 | `remove(factory, input)` / `remove(filter)` | Remove entries and abort their requests                                                                                 |
-| `effect`                                    | [Effect versions](#effect) of `ensure`, `fetch`, `invalidate`, plus `watch`                                             |
+| `effect`                                    | The [Effect](#effect) `QueryCache` behind the client                                                                    |
 | `subscribe(listener)`                       | Cache events: `added`, `updated`, `observers` (a reader subscribed or left), `removed`, and `failed` (with the `error`) |
 | `getAll()`, `getQuery(factory, input?)`     | Cache entries, for devtools and integrations                                                                            |
 | `clear()`                                   | Drop every entry and abort in-flight requests                                                                           |
 | `mount()`                                   | Start window-focus and reconnect refetching. The providers call it                                                      |
 | `isServer`                                  | Detected from `window`. Server clients don't retry, never gc, skip stale timers, and never revalidate cached data       |
+| `dispose()`                                 | Interrupt every request and release the layer's services. Resolves when its finalizers have run                         |
 
 Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
 
@@ -560,33 +623,36 @@ Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.de
 
 In the browser, retries pause while `navigator.onLine` is `false`: after the retry delay, the next attempt waits for the window's `online` event. The request stays fetching meanwhile, and cancelling it (`remove`, `clear`, a restart) stops the wait. The first attempt runs regardless.
 
-When the last reader of a query unsubscribes during a background refetch, a `queryFn` that read its `signal` (or returned an Effect) is aborted, and the entry goes back to how it was before the request: data kept, no error, not fetching. Other requests, including every first load (a render may be suspended on it), finish so their result is cached, but don't retry unless a reader comes back. Requests nothing has subscribed to yet, like a loader's `prefetch`, keep running.
-
 `@raf-query/core`:
 
-| Export                                         | Use                                                              |
-| ---------------------------------------------- | ---------------------------------------------------------------- |
-| `QueryClient`                                  | The cache                                                        |
-| `queryOptions(options)`                        | Typed options for a query factory                                |
-| `infiniteQueryOptions(options)`                | Typed options for a paged query factory                          |
-| `allKeyed(record)`                             | Await a record of promises, keeping keys                         |
-| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations                |
-| `hashKey(key)`, `matchesKey(key, prefix)`      | Key helpers                                                      |
-| `QueryObserver`                                | One reader's view of a query, with tracked results; for bindings |
-| `CancelledError`                               | Rejection of a request cancelled by `clear()` or a restart       |
-| `QueryHandle<TFactory>`                        | Handle type for props                                            |
-| `EnsuredQueryHandle<TFactory>`                 | Handle type for props fed by `ensure`                            |
-| `Thenable<T>`                                  | Promise with `status` / `value` / `reason`, read by `use()`      |
-| `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                                 |
+| Export                                                       | Use                                                                        |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `QueryCache`                                                 | The cache service (`qc.effect`): `make`, `layer`, and the verbs as Effects |
+| `Query`                                                      | Cache entries: `Query.fetch`, `Query.changes`, `Query.getUnsafe`, …        |
+| `Platform`                                                   | The page the cache watches (focus, network); swap it in tests              |
+| `queryOptions(options)`                                      | Typed options for a query factory                                          |
+| `infiniteQueryOptions(options)`                              | Typed options for a paged query factory                                    |
+| `hashKey(key)`, `matchesKey(key, prefix)`                    | Key helpers                                                                |
+| `QueryObserver`                                              | One reader's view of a query, with tracked results; for bindings           |
+| `Query.CancelledError`                                       | Failure of a request whose entry was removed or cleared before it settled  |
+| `RedactedError`                                              | What a streamed pending query rejects with when its server request failed  |
+| `QueryHandle<TFactory>`                                      | Handle type for props                                                      |
+| `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                      |
+| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`                |
+| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                    |
+| `ServicesOf<TFactory>`                                       | The services a factory's `queryFn` Effect needs; `never` for promises      |
 
 `@raf-query/react` (plus all of the above):
 
-| Export                                | Use                                                                                                             |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `QueryClientProvider`                 | Provides a client to the tree                                                                                   |
-| `useQueryClient()`                    | Read the client                                                                                                 |
-| `useQuery(factory, handle, options?)` | `[Thenable<Data>, controls]`; for paged factories `Data` is `{ pages, pageParams }` and controls include paging |
-| `useWaterfall(factory, input)`        | Start a query during render and return its handle                                                               |
+| Export                                         | Use                                                                                                             |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `QueryClient`                                  | The cache with Promise methods ([above](#api-reference))                                                        |
+| `allKeyed(record)`                             | Await a record of promises, keeping keys                                                                        |
+| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations                                                               |
+| `QueryClientProvider`                          | Provides a client to the tree                                                                                   |
+| `useQueryClient()`                             | Read the client                                                                                                 |
+| `useQuery(factory, handle, options?)`          | `[Thenable<Data>, controls]`; for paged factories `Data` is `{ pages, pageParams }` and controls include paging |
+| `useWaterfall(factory, input)`                 | Start a query during render and return its handle                                                               |
 
 ## Development
 

@@ -199,7 +199,6 @@
 		"for-direction": "error",
 		"getter-return": "error",
 		"import-x/export": "error",
-		"import-x/no-namespace": "error",
 		// Side-effect CSS / module-augmentation imports are required.
 		"import/no-unassigned-import": "off",
 		"no-array-constructor": "error",

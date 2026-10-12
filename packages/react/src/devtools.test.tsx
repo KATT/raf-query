@@ -18,6 +18,7 @@ import {
 	type QueryHandle,
 	queryOptions,
 	useQuery,
+	Query,
 } from "./index.ts";
 
 function createBackend() {
@@ -194,7 +195,7 @@ describe("QueryDevtoolsPanel", () => {
 		await act(async () => {
 			fireEvent.click(within(details).getByRole("button", { name: "Reset" }));
 		});
-		expect(query.getState().hasData).toBe(false);
+		expect(Query.getUnsafe(query).hasData).toBe(false);
 		expect(screen.getByText("loading")).toBeTruthy();
 		await app.backend.respond();
 		expect(screen.getByText("Issue 1")).toBeTruthy();
@@ -258,7 +259,7 @@ describe("QueryDevtoolsPanel", () => {
 			fireEvent.click(screen.getByRole("button", { name: "Invalidate all" }));
 		});
 		expect(
-			app.client.getQuery(app.backend.issueQuery, { id: 1 }).getState()
+			Query.getUnsafe(app.client.getQuery(app.backend.issueQuery, { id: 1 }))
 				.isInvalidated,
 		).toBe(true);
 
