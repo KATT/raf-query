@@ -1,15 +1,12 @@
-import {
-	canDehydrate,
-	type DehydratedQuery,
-	dehydrateQuery,
-	type DehydrateOptions,
-	type HydrateOptions,
-	type Query,
+import type {
+	DehydratedState,
+	DehydrateOptions,
+	HydrateOptions,
 } from "@raf-query/core";
 import { type AnyRouter, isRedirect } from "@tanstack/react-router";
-import { Effect, Predicate } from "effect";
+import { Effect, Exit, Predicate, Scope, Stream } from "effect";
 
-import { hydrate, type QueryClient } from "./client.ts";
+import type { QueryClient } from "./client.ts";
 
 export interface RouterIntegrationOptions<TRouter extends AnyRouter> {
 	readonly dehydrateOptions?: DehydrateOptions;
@@ -24,8 +21,8 @@ const noop = () => {};
 
 interface DehydratedRouterQueries {
 	readonly raf: {
-		readonly initial: ReadonlyArray<DehydratedQuery>;
-		readonly stream: ReadableStream<ReadonlyArray<DehydratedQuery>>;
+		readonly initial: DehydratedState;
+		readonly stream: ReadableStream<DehydratedState>;
 	};
 }
 
@@ -34,8 +31,6 @@ function setupServer<TRouter extends AnyRouter>(
 ) {
 	const router = options.router;
 	const queryClient = options.queryClient;
-	const dehydrateOptions = options.dehydrateOptions;
-	const shouldSend = dehydrateOptions?.filter ?? canDehydrate;
 	const originalDehydrate = router.options.dehydrate;
 	let finish = noop;
 	let cleanedUp = false;
@@ -65,66 +60,25 @@ function setupServer<TRouter extends AnyRouter>(
 			return undefined;
 		}
 
-		const sent = new Set<string>();
-		const initial: Array<DehydratedQuery> = [];
-		for (const query of queryClient.getAll()) {
-			if (shouldSend(query)) {
-				initial.push(Effect.runSync(dehydrateQuery(query, dehydrateOptions)));
-				sent.add(query.hash);
-			}
-		}
-
-		let controller:
-			| ReadableStreamDefaultController<ReadonlyArray<DehydratedQuery>>
-			| undefined;
-		const stream = new ReadableStream<ReadonlyArray<DehydratedQuery>>({
-			start(streamController) {
-				controller = streamController;
-			},
-		});
-		let batch: Map<string, Query.Query> | undefined;
-		const flush = () => {
-			const queries = batch;
-			batch = undefined;
-			if (!queries || !controller) {
-				return;
-			}
-			const chunk: Array<DehydratedQuery> = [];
-			for (const query of queries.values()) {
-				if (!sent.has(query.hash) && shouldSend(query)) {
-					chunk.push(Effect.runSync(dehydrateQuery(query, dehydrateOptions)));
-					sent.add(query.hash);
-				}
-			}
-			if (chunk.length > 0) {
-				controller.enqueue(chunk);
-			}
-		};
-		const unsubscribe = queryClient.subscribe((event) => {
-			if (event.type === "removed" || sent.has(event.query.hash)) {
-				return;
-			}
-			if (!batch) {
-				batch = new Map();
-				// Before React resumes the Suspense boundaries those queries
-				// unblock, while batching queries that settle together.
-				queueMicrotask(flush);
-			}
-			batch.set(event.query.hash, event.query);
-		});
+		const scope = Scope.makeUnsafe();
+		const stream = Effect.runSync(
+			queryClient.effect
+				.dehydrateStream(options.dehydrateOptions)
+				.pipe(Scope.provide(scope)),
+		);
 		finish = () => {
 			finish = noop;
-			flush();
-			unsubscribe();
-			try {
-				controller?.close();
-			} catch {
-				// The consumer may already have cancelled the stream.
-			}
+			Effect.runSync(Scope.close(scope, Exit.void));
 		};
 		router.serverSsr?.onRenderFinished(() => finish());
 
-		return { ...dehydrated, raf: { initial, stream } };
+		return {
+			...dehydrated,
+			raf: {
+				initial: stream.initial,
+				stream: Stream.toReadableStream(stream.updates),
+			},
+		};
 	};
 }
 
@@ -136,7 +90,7 @@ function setupClient<TRouter extends AnyRouter>(
 	options: RouterIntegrationOptions<TRouter>,
 ) {
 	const router = options.router;
-	const queryClient = options.queryClient;
+	const cache = options.queryClient.effect;
 	const hydrateOptions = options.hydrateOptions;
 	const originalHydrate = router.options.hydrate;
 	router.options.hydrate = async (dehydrated: unknown) => {
@@ -144,26 +98,27 @@ function setupClient<TRouter extends AnyRouter>(
 		if (!hasRafQueries(dehydrated)) {
 			return;
 		}
-		hydrate(queryClient, { queries: dehydrated.raf.initial }, hydrateOptions);
-		const reader = dehydrated.raf.stream.getReader();
-		void (async () => {
-			try {
-				for (;;) {
-					const chunk = await reader.read();
-					if (chunk.done) {
-						return;
-					}
-					hydrate(queryClient, { queries: chunk.value }, hydrateOptions);
-				}
-			} catch (error) {
-				// Entries still pending stay pending; surface why.
-				// oxlint-disable-next-line eslint/no-console
-				console.error("raf-query: reading the query stream failed", error);
-				void reader.cancel(error).catch(() => {});
-			} finally {
-				reader.releaseLock();
-			}
-		})();
+		const raf = dehydrated.raf;
+		Effect.runSync(cache.hydrate(raf.initial, hydrateOptions));
+		Effect.runFork(
+			cache
+				.hydrateStream(
+					Stream.fromReadableStream({
+						evaluate: () => raf.stream,
+						onError: (error) => error,
+					}),
+					hydrateOptions,
+				)
+				.pipe(
+					// Entries still pending stay pending; surface why.
+					Effect.catchCause((cause) =>
+						Effect.logError(
+							"raf-query: reading the query stream failed",
+							cause,
+						),
+					),
+				),
+		);
 	};
 }
 

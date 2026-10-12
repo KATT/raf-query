@@ -19,10 +19,11 @@ import {
 import { unsafeCast } from "./cast.ts";
 import * as Entry from "./entry.ts";
 import {
-	canDehydrate,
+	dehydrateEntries,
 	type DehydratedState,
+	type DehydratedStream,
 	type DehydrateOptions,
-	dehydrateUnsafe,
+	dehydrateStream,
 	hydrateEntries,
 	type HydrateOptions,
 } from "./hydration.ts";
@@ -103,6 +104,15 @@ export interface QueryCache {
 	/** Snapshot the cache for transfer to another cache (server → browser). */
 	dehydrate(options?: DehydrateOptions): Effect.Effect<DehydratedState>;
 	/**
+	 * Snapshot the cache, then stream entries as they start or settle, each
+	 * entry once. Entries that change in the same tick share a batch, which
+	 * is sent a microtask later. `updates` ends when the scope closes, after
+	 * sending what changed before; `hydrateStream` is the receiving end.
+	 */
+	dehydrateStream(
+		options?: DehydrateOptions,
+	): Effect.Effect<DehydratedStream, never, Scope.Scope>;
+	/**
 	 * Start a query and wait for it on a cache miss. Fails if that request
 	 * fails. Stale cached data succeeds immediately and revalidates in the
 	 * browser. The handle is marked `ensured`, so `useQuery` returns its data
@@ -151,6 +161,11 @@ export interface QueryCache {
 		state: DehydratedState,
 		options?: HydrateOptions,
 	): Effect.Effect<void>;
+	/** `hydrate` every state of a stream as it arrives (`dehydrateStream`'s `updates`). */
+	hydrateStream<E, R>(
+		states: Stream.Stream<DehydratedState, E, R>,
+		options?: HydrateOptions,
+	): Effect.Effect<void, E, R>;
 	/**
 	 * Mark queries stale and refetch the ones being read. Succeeds once those
 	 * refetches settle, so an action stays pending until fresh data is on
@@ -371,14 +386,9 @@ export const make: (
 				}
 			}),
 			dehydrate: (options = {}) =>
-				Effect.sync(() => {
-					const filter = options.filter ?? canDehydrate;
-					return {
-						queries: [...state.entries.values()]
-							.filter(filter)
-							.map((entry) => dehydrateUnsafe(entry, options)),
-					};
-				}),
+				Effect.sync(() => dehydrateEntries(state.entries.values(), options)),
+			dehydrateStream: (options = {}) =>
+				dehydrateStream(() => state.entries.values(), subscribeUnsafe, options),
 			ensure: (factory, ...args) =>
 				Effect.suspend(() => {
 					const entry = build(factory, args[0]);
@@ -404,6 +414,10 @@ export const make: (
 			getQueryUnsafe,
 			hydrate: (dehydrated, options = {}) =>
 				Effect.sync(() => hydrateEntries(entryFor, dehydrated, options)),
+			hydrateStream: (states, options = {}) =>
+				Stream.runForEach(states, (dehydrated) =>
+					Effect.sync(() => hydrateEntries(entryFor, dehydrated, options)),
+				),
 			invalidate: (...target) =>
 				Effect.suspend(() => settleAll(match(target).map(Entry.invalidate))),
 			isServer: state.isServer,

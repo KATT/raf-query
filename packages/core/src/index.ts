@@ -6,9 +6,11 @@ export {
 	canDehydrate,
 	type DehydratedQuery,
 	type DehydratedState,
+	type DehydratedStream,
 	type DehydrateOptions,
 	dehydrateQuery,
 	type HydrateOptions,
+	RedactedError,
 } from "./hydration.ts";
 export { hashKey, matchesKey, type QueryKey } from "./key.ts";
 export {
