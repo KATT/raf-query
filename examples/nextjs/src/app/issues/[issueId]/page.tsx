@@ -30,7 +30,7 @@ export default async function Page(props: {
 			<IssuePage
 				assignee={assignee}
 				comments={comments}
-				issue={qc.prefetch(issueQuery, { id })}
+				issue={await qc.ensure(issueQuery, { id })}
 			/>
 		</HydrationBoundary>
 	);

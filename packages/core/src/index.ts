@@ -22,6 +22,7 @@ export { hashKey, matchesKey, type QueryKey } from "./key.ts";
 export {
 	type AnyQueryOptions,
 	type DataOf,
+	type EnsuredQueryHandle,
 	type InfiniteData,
 	type InfiniteQueryOptions,
 	infiniteQueryOptions,

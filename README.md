@@ -72,11 +72,11 @@ The factory is the only place a query is declared paged. Every other API — `pr
 
 All three verbs live on the query client and accept a factory plus its input.
 
-| Call                              | Returns                | Blocks? | Use for                                                    |
-| --------------------------------- | ---------------------- | ------- | ---------------------------------------------------------- |
-| `qc.prefetch(factory, input)`     | `QueryHandle`          | No      | Data the route can render without; it streams in           |
-| `await qc.ensure(factory, input)` | `Promise<QueryHandle>` | Yes     | Data the route must not render without                     |
-| `await qc.fetch(factory, input)`  | `Promise<Data>`        | Yes     | Rendering in a server component, or building another input |
+| Call                              | Returns                       | Blocks? | Use for                                                                |
+| --------------------------------- | ----------------------------- | ------- | ---------------------------------------------------------------------- |
+| `qc.prefetch(factory, input)`     | `QueryHandle`                 | No      | Data the route can render without; it streams in                       |
+| `await qc.ensure(factory, input)` | `Promise<EnsuredQueryHandle>` | Yes     | Data the route must not render without; `useQuery` returns it directly |
+| `await qc.fetch(factory, input)`  | `Promise<Data>`               | Yes     | Rendering in a server component, or building another input             |
 
 ```tsx
 // TanStack Start
@@ -125,9 +125,16 @@ interface QueryHandle<TFactory> {
 	readonly key: QueryKey; // ["post", "hello"]
 	readonly input: InputOf<TFactory>; // { slug: "hello" }
 }
+
+// From `ensure`: the route waited for the data.
+interface EnsuredQueryHandle<TFactory> {
+	readonly key: QueryKey;
+	readonly input: InputOf<TFactory>;
+	readonly ensured: true;
+}
 ```
 
-Handles hold no data and no functions. Data reaches the client cache through the [hydration stream](#ssr-and-hydration), so loader data stays tiny and each query is serialized once. The loader's return value lists exactly which queries a route started, and a handle from `ensure` versus `prefetch` shows whether the route waited for it.
+Handles hold no data and no functions. Data reaches the client cache through the [hydration stream](#ssr-and-hydration), so loader data stays tiny and each query is serialized once. The loader's return value lists exactly which queries a route started, and its types show which ones the route waited for: `useQuery` returns the data for an `EnsuredQueryHandle` and a promise for a `QueryHandle`. The two aren't assignable to each other, so type a prop with the one its loader returns.
 
 ## Reading queries
 
@@ -135,17 +142,20 @@ Handles hold no data and no functions. Data reaches the client cache through the
 
 ```ts
 const [promise, controls] = useQuery(factory, handle, options?);
+const [data, controls] = useQuery(factory, ensuredHandle, options?);
 ```
 
 `options` takes [`whilePending`](#when-the-url-changes) and per-read refetch settings (`refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`). There is no option to change the input; the handle decides what is read.
 
 `promise` is a stable `Promise<Data>` owned by the cache. Unwrap it with `use()`. When the cache already has data, the promise is pre-resolved and `use()` returns synchronously without suspending.
 
+A handle from `ensure` had its data loaded before the route rendered, so `useQuery` returns the data itself. If the entry has lost that data since (it was garbage-collected while the router kept the loader data, or `reset`), the hook suspends until it is refetched.
+
 ```tsx
 function PostPage() {
 	const loaderData = Route.useLoaderData();
-	const [postPromise, postState] = useQuery(postQuery, loaderData.post);
-	const post = use(postPromise);
+	// `post` came from `qc.ensure`, `comments` from `qc.prefetch`.
+	const [post, postState] = useQuery(postQuery, loaderData.post);
 
 	return (
 		<article>
@@ -267,6 +277,7 @@ Either way, an input that's already cached renders immediately. A component that
 To show a skeleton instead, for instance when moving between unrelated posts, give the Suspense boundary the query's key. React treats it as new content and shows its fallback, even inside a transition:
 
 ```tsx
+// This loader prefetches the post instead of ensuring it.
 const [postPromise, postState] = useQuery(postQuery, loaderData.post);
 
 return (
@@ -282,10 +293,10 @@ In Next.js the same rules apply: read `searchParams` in the page, `prefetch` wit
 
 ### Passing promises down
 
-A component can call the hook and hand the promise to a child, so only the child suspends:
+A component can call the hook with a prefetched handle and hand the promise to a child, so only the child suspends:
 
 ```tsx
-const [postPromise] = useQuery(postQuery, loaderData.post);
+const [postPromise] = useQuery(postQuery, loaderData.post); // from `qc.prefetch`
 return (
 	<Suspense fallback={<Spinner />}>
 		<PostBody post={postPromise} />
@@ -435,6 +446,7 @@ export default async function Page(props: {
 - `HydrationBoundary` sends the request client's entries to the browser cache; pending ones stream as promises. Render one in each server component that starts queries for client components. Entries already sent in this request are skipped.
 - `QueryProvider` creates the browser client, and streams queries that client components start during SSR (`useWaterfall`) into the HTML. Pass `config` for the client's options; it must be serializable.
 - Server components that only render data can `await qc.fetch(...)` anywhere; the per-request client dedupes them.
+- `fetch` returns data, not a handle. When a server component renders the data and also hands the query to a client component, pass `await qc.ensure(...)`: after the `fetch` it resolves from the cache, and the client component gets the data from `useQuery` without a promise.
 - Factories can call server actions: server components call them directly, and the browser calls them on refetch. Validate their arguments, since anyone can call them.
 
 #### Server-only queries
@@ -556,6 +568,7 @@ Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.de
 | `QueryObserver`                                | One reader's view of a query, with tracked results; for bindings |
 | `CancelledError`                               | Rejection of a request cancelled by `clear()` or a restart       |
 | `QueryHandle<TFactory>`                        | Handle type for props                                            |
+| `EnsuredQueryHandle<TFactory>`                 | Handle type for props fed by `ensure`                            |
 | `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                                 |
 
 `@raf-query/react` (plus all of the above):
