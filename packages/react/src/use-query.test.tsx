@@ -302,6 +302,93 @@ describe("useQuery", () => {
 		cleanup();
 	});
 
+	it("re-renders only for the controls a component reads", async () => {
+		const test = setup();
+		const renders = { all: 0, promiseOnly: 0 };
+		function PromiseOnly(props: {
+			readonly handle: QueryHandle<typeof test.backend.issueQuery>;
+		}) {
+			renders.promiseOnly++;
+			const [issuePromise] = useQuery(test.backend.issueQuery, props.handle);
+			return <p>{use(issuePromise).title}</p>;
+		}
+		function ReadsFetching(props: {
+			readonly handle: QueryHandle<typeof test.backend.issueQuery>;
+		}) {
+			renders.all++;
+			const [issuePromise, issueState] = useQuery(
+				test.backend.issueQuery,
+				props.handle,
+			);
+			const issue = use(issuePromise);
+			return <p>{`${issue.title}${issueState.isFetching ? "…" : ""}`}</p>;
+		}
+		const handle = test.client.prefetch(test.backend.issueQuery, { id: 1 });
+		await test.backend.respond();
+		await mount(
+			test.view(
+				<>
+					<PromiseOnly handle={handle} />
+					<ReadsFetching handle={handle} />
+				</>,
+			),
+		);
+		expect(renders).toEqual({ all: 1, promiseOnly: 1 });
+
+		await act(async () => {
+			void test.client.invalidate(test.backend.issueQuery, { id: 1 });
+			await Promise.resolve();
+		});
+		expect(screen.getByText("First…")).toBeDefined();
+		expect(renders).toEqual({ all: 2, promiseOnly: 1 });
+
+		test.backend.issues.set(1, { assigneeId: 10, id: 1, title: "Renamed" });
+		await test.backend.respond();
+		expect(screen.getAllByText("Renamed")).toHaveLength(2);
+		expect(renders).toEqual({ all: 3, promiseOnly: 2 });
+		cleanup();
+	});
+
+	it("doesn't re-render for retries of a background refetch", async () => {
+		const client = new QueryClient({ isServer: false });
+		let attempt = 0;
+		function flakyQuery() {
+			return queryOptions({
+				queryFn: () => {
+					attempt++;
+					if (attempt > 1 && attempt < 4) {
+						throw new Error("flaky");
+					}
+					return attempt;
+				},
+				queryKey: ["flaky"],
+				retry: 3,
+				retryDelay: 1,
+			});
+		}
+		const renders = { count: 0 };
+		function Value(props: {
+			readonly handle: EnsuredQueryHandle<typeof flakyQuery>;
+		}) {
+			renders.count++;
+			const [value] = useQuery(flakyQuery, props.handle);
+			return <p>{`Value ${value}`}</p>;
+		}
+		const handle = await client.ensure(flakyQuery);
+		await mount(
+			<QueryClientProvider client={client}>
+				<Value handle={handle} />
+			</QueryClientProvider>,
+		);
+
+		await act(async () => {
+			await client.invalidate(flakyQuery);
+		});
+		expect(screen.getByText("Value 4")).toBeDefined();
+		expect(renders.count).toBe(2);
+		cleanup();
+	});
+
 	it("returns the data itself for a handle from ensure", async () => {
 		const test = setup();
 		function EnsuredTitle(props: {

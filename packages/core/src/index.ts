@@ -42,9 +42,14 @@ export {
 	type RetryPolicy,
 } from "./options.ts";
 export {
+	QueryObserver,
+	type QueryObserverOptions,
+	type QueryObserverResult,
+} from "./observer.ts";
+export {
 	CancelledError,
 	type FetchRequest,
 	type Query,
-	type QueryObserver,
 	type QueryState,
+	type SubscribeOptions,
 } from "./query.ts";
