@@ -421,7 +421,7 @@
 			// so it memoizes by hand.
 			"files": [
 				"packages/react/src/**/*.{ts,tsx}",
-				"packages/tanstack-react-query/src/**/*.{ts,tsx}"
+				"packages/experimental-tanstack-react-query/src/**/*.{ts,tsx}"
 			],
 			"rules": {
 				"workspace/no-use-effect": "off",

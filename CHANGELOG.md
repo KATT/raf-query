@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.0.8](https://github.com/KATT/raf-query/compare/0.0.7...0.0.8) (2026-10-12)
+
+- rename the TanStack Query experiment to make clear it's experimental and unpublished ([#11](https://github.com/KATT/raf-query/issues/11)) ([146c3be](https://github.com/KATT/raf-query/commit/146c3be5034f8c4c642ea9faea693a7558ca4aac))
+
 ## [0.0.7](https://github.com/KATT/raf-query/compare/0.0.6...0.0.7) (2026-10-12)
 
 ### Features
