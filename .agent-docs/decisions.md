@@ -115,9 +115,11 @@ App: **issue tracker** (confirmed). Data: an in-memory fake DB with artificial l
 - Cache events fire synchronously, sometimes during another component's render, so `devtools-store.ts` notifies React in a microtask and caches the row snapshot per event version.
 - Core gained what the panel needs: `Query.observerCount`, `Query.isStaleNow()`, `Query.reset()`, `qc.reset` / `qc.remove`, and the `observers` cache event (subscribe/unsubscribe don't otherwise emit). A suspended reader isn't counted until it commits.
 
-## 2026-10-12 — Experiment: `@raf-query/tanstack-react-query` (human asked)
+## 2026-10-12 — Experiment: `@raf-query/experimental-tanstack-react-query` (human asked)
 
-One package giving raf-query's API on TanStack Query, to compare against the own-engine pair. Human picks: keep core/react for now; `@tanstack/react-query` is a regular `dependency` and the only one (no Effect); the cache is TanStack's own `QueryClient`, so TanStack hooks and devtools work on it; same API as the README minus Effect entry points; private, with experimental copies of both example apps (`examples/*-tanstack-query`, ports 3002 / 3003).
+One package (`packages/experimental-tanstack-react-query`) giving raf-query's API on TanStack Query, to compare against the own-engine pair. Human picks: keep core/react for now; `@tanstack/react-query` is a regular `dependency` and the only one (no Effect); the cache is TanStack's own `QueryClient`, so TanStack hooks and devtools work on it; same API as the README minus Effect entry points; private, with experimental copies of both example apps (`examples/experimental-tanstack-query-start` on port 3002, `examples/experimental-tanstack-query-nextjs` on port 3003).
+
+- **Names say "experimental"** (human): the dir, the package, and both example apps carry `experimental-`, so nobody mistakes it for a published package. Its `package.json` has no publish-only fields (`files`, `publishConfig`, npm metadata); `exports` point at `src/`.
 
 Agent decisions:
 
