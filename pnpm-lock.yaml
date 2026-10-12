@@ -242,9 +242,9 @@ importers:
 
   examples/db:
     dependencies:
-      effect:
-        specifier: 'catalog:'
-        version: 4.0.1
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@types/node':
         specifier: 26.6.4
@@ -264,9 +264,6 @@ importers:
       '@raf-query/react':
         specifier: workspace:*
         version: link:../../packages/react
-      effect:
-        specifier: 'catalog:'
-        version: 4.0.1
       lucide-react:
         specifier: 1.55.0
         version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
@@ -279,6 +276,9 @@ importers:
       react-dom:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.3.3
@@ -319,9 +319,6 @@ importers:
       '@tanstack/react-start':
         specifier: 1.168.61
         version: 1.168.61(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(rolldown@1.2.13)
-      effect:
-        specifier: 'catalog:'
-        version: 4.0.1
       lucide-react:
         specifier: 1.55.0
         version: 1.55.0(@types/react@19.3.0)(react@19.3.0)

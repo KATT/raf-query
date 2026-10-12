@@ -1,22 +1,23 @@
 import { IssueId } from "@examples/db/types";
 import { HydrationBoundary } from "@raf-query/react/rsc";
-import { Option, Schema } from "effect";
 import { notFound } from "next/navigation";
+import { z } from "zod";
 
 import { IssuePage } from "~/components/issue-page.tsx";
 import { commentsQuery, issueQuery, userQuery } from "~/queries.ts";
 import { getQueryClient } from "~/query-client.ts";
 
-const IssueIdParam = Schema.FiniteFromString.pipe(Schema.decodeTo(IssueId));
+const IssueIdParam = z.coerce.number<string>().pipe(IssueId);
 
 export default async function Page(props: {
 	readonly params: Promise<{ issueId: string }>;
 }) {
 	const params = await props.params;
-	const id = Option.getOrElse(
-		Schema.decodeUnknownOption(IssueIdParam)(params.issueId),
-		() => notFound(),
-	);
+	const parsed = IssueIdParam.safeParse(params.issueId);
+	if (!parsed.success) {
+		notFound();
+	}
+	const id = parsed.data;
 	const qc = getQueryClient();
 	const comments = qc.prefetch(commentsQuery, { issueId: id });
 	const issue = await qc.fetch(issueQuery, { id });
