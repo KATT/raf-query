@@ -22,6 +22,7 @@ export { hashKey, matchesKey, type QueryKey } from "./key.ts";
 export {
 	type AnyQueryOptions,
 	type DataOf,
+	type EnsuredQueryHandle,
 	type InfiniteData,
 	type InfiniteQueryOptions,
 	infiniteQueryOptions,
@@ -41,10 +42,15 @@ export {
 	type RetryPolicy,
 } from "./options.ts";
 export {
+	QueryObserver,
+	type QueryObserverOptions,
+	type QueryObserverResult,
+} from "./observer.ts";
+export {
 	CancelledError,
 	type FetchRequest,
 	type Query,
-	type QueryObserver,
 	type QueryState,
+	type SubscribeOptions,
 } from "./query.ts";
 export type { Thenable } from "./thenable.ts";

@@ -240,30 +240,17 @@ importers:
         specifier: 1.0.0
         version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
 
-  examples/db:
-    dependencies:
-      zod:
-        specifier: 4.6.5
-        version: 4.6.5
-    devDependencies:
-      '@types/node':
-        specifier: 26.6.4
-        version: 26.6.4
-      typescript:
-        specifier: 7.0.2
-        version: 7.0.2
-
-  examples/nextjs:
+  examples/.experimental/tanstack-query-nextjs:
     dependencies:
       '@examples/db':
         specifier: workspace:*
-        version: link:../db
+        version: link:../../.shared/db
       '@examples/ui':
         specifier: workspace:*
-        version: link:../ui
-      '@raf-query/react':
+        version: link:../../.shared/ui
+      '@raf-query/experimental-tanstack-react-query':
         specifier: workspace:*
-        version: link:../../packages/react
+        version: link:../../../packages/.experimental/tanstack-react-query
       lucide-react:
         specifier: 1.55.0
         version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
@@ -302,130 +289,17 @@ importers:
         specifier: 7.0.2
         version: 7.0.2
 
-  examples/nextjs-tanstack-query:
+  examples/.experimental/tanstack-query-start:
     dependencies:
       '@examples/db':
         specifier: workspace:*
-        version: link:../db
+        version: link:../../.shared/db
       '@examples/ui':
         specifier: workspace:*
-        version: link:../ui
-      '@raf-query/tanstack-react-query':
+        version: link:../../.shared/ui
+      '@raf-query/experimental-tanstack-react-query':
         specifier: workspace:*
-        version: link:../../packages/tanstack-react-query
-      lucide-react:
-        specifier: 1.55.0
-        version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
-      next:
-        specifier: 16.4.0
-        version: 16.4.0(@babel/core@7.29.7)(@types/node@26.6.4)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react:
-        specifier: 19.3.0
-        version: 19.3.0
-      react-dom:
-        specifier: 19.3.0
-        version: 19.3.0(react@19.3.0)
-      zod:
-        specifier: 4.6.5
-        version: 4.6.5
-    devDependencies:
-      '@tailwindcss/postcss':
-        specifier: 4.3.3
-        version: 4.3.3
-      '@types/node':
-        specifier: 26.6.4
-        version: 26.6.4
-      '@types/react':
-        specifier: 19.3.0
-        version: 19.3.0
-      '@types/react-dom':
-        specifier: 19.3.0
-        version: 19.3.0(@types/react@19.3.0)
-      babel-plugin-react-compiler:
-        specifier: 1.0.0
-        version: 1.0.0
-      tailwindcss:
-        specifier: 4.3.3
-        version: 4.3.3
-      typescript:
-        specifier: 7.0.2
-        version: 7.0.2
-
-  examples/tanstack-start:
-    dependencies:
-      '@examples/db':
-        specifier: workspace:*
-        version: link:../db
-      '@examples/ui':
-        specifier: workspace:*
-        version: link:../ui
-      '@raf-query/react':
-        specifier: workspace:*
-        version: link:../../packages/react
-      '@tanstack/react-router':
-        specifier: 1.170.42
-        version: 1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      '@tanstack/react-start':
-        specifier: 1.168.61
-        version: 1.168.61(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(rolldown@1.2.13)
-      lucide-react:
-        specifier: 1.55.0
-        version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
-      react:
-        specifier: 19.3.0
-        version: 19.3.0
-      react-dom:
-        specifier: 19.3.0
-        version: 19.3.0(react@19.3.0)
-    devDependencies:
-      '@babel/core':
-        specifier: 7.29.7
-        version: 7.29.7
-      '@rolldown/plugin-babel':
-        specifier: 0.2.4
-        version: 0.2.4(@babel/core@7.29.7)(@babel/runtime@7.29.10)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(rolldown@1.2.13)
-      '@tailwindcss/vite':
-        specifier: 4.3.3
-        version: 4.3.3(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))
-      '@types/node':
-        specifier: 26.6.4
-        version: 26.6.4
-      '@types/react':
-        specifier: 19.3.0
-        version: 19.3.0
-      '@types/react-dom':
-        specifier: 19.3.0
-        version: 19.3.0(@types/react@19.3.0)
-      '@vitejs/plugin-react':
-        specifier: 6.1.2
-        version: 6.1.2(@rolldown/plugin-babel@0.2.4(@babel/core@7.29.7)(@babel/runtime@7.29.10)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(rolldown@1.2.13))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(babel-plugin-react-compiler@1.0.0)
-      babel-plugin-react-compiler:
-        specifier: 1.0.0
-        version: 1.0.0
-      tailwindcss:
-        specifier: 4.3.3
-        version: 4.3.3
-      typescript:
-        specifier: 7.0.2
-        version: 7.0.2
-      vite:
-        specifier: npm:@voidzero-dev/vite-plus-core@1.0.0
-        version: '@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)'
-      vite-plus:
-        specifier: 1.0.0
-        version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
-
-  examples/tanstack-start-tanstack-query:
-    dependencies:
-      '@examples/db':
-        specifier: workspace:*
-        version: link:../db
-      '@examples/ui':
-        specifier: workspace:*
-        version: link:../ui
-      '@raf-query/tanstack-react-query':
-        specifier: workspace:*
-        version: link:../../packages/tanstack-react-query
+        version: link:../../../packages/.experimental/tanstack-react-query
       '@tanstack/react-query':
         specifier: 5.104.1
         version: 5.104.1(react@19.3.0)
@@ -485,7 +359,20 @@ importers:
         specifier: 1.0.0
         version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
 
-  examples/ui:
+  examples/.shared/db:
+    dependencies:
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.4
+        version: 26.6.4
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+
+  examples/.shared/ui:
     dependencies:
       class-variance-authority:
         specifier: 0.7.1
@@ -524,6 +411,159 @@ importers:
       typescript:
         specifier: 7.0.2
         version: 7.0.2
+
+  examples/nextjs:
+    dependencies:
+      '@examples/db':
+        specifier: workspace:*
+        version: link:../.shared/db
+      '@examples/ui':
+        specifier: workspace:*
+        version: link:../.shared/ui
+      '@raf-query/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      lucide-react:
+        specifier: 1.55.0
+        version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
+      next:
+        specifier: 16.4.0
+        version: 16.4.0(@babel/core@7.29.7)(@types/node@26.6.4)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: 19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: 19.3.0
+        version: 19.3.0(react@19.3.0)
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: 4.3.3
+        version: 4.3.3
+      '@types/node':
+        specifier: 26.6.4
+        version: 26.6.4
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      babel-plugin-react-compiler:
+        specifier: 1.0.0
+        version: 1.0.0
+      tailwindcss:
+        specifier: 4.3.3
+        version: 4.3.3
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+
+  examples/tanstack-start:
+    dependencies:
+      '@examples/db':
+        specifier: workspace:*
+        version: link:../.shared/db
+      '@examples/ui':
+        specifier: workspace:*
+        version: link:../.shared/ui
+      '@raf-query/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      '@tanstack/react-router':
+        specifier: 1.170.42
+        version: 1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@tanstack/react-start':
+        specifier: 1.168.61
+        version: 1.168.61(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(rolldown@1.2.13)
+      lucide-react:
+        specifier: 1.55.0
+        version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
+      react:
+        specifier: 19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: 19.3.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@babel/core':
+        specifier: 7.29.7
+        version: 7.29.7
+      '@rolldown/plugin-babel':
+        specifier: 0.2.4
+        version: 0.2.4(@babel/core@7.29.7)(@babel/runtime@7.29.10)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(rolldown@1.2.13)
+      '@tailwindcss/vite':
+        specifier: 4.3.3
+        version: 4.3.3(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))
+      '@types/node':
+        specifier: 26.6.4
+        version: 26.6.4
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      '@vitejs/plugin-react':
+        specifier: 6.1.2
+        version: 6.1.2(@rolldown/plugin-babel@0.2.4(@babel/core@7.29.7)(@babel/runtime@7.29.10)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(rolldown@1.2.13))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(babel-plugin-react-compiler@1.0.0)
+      babel-plugin-react-compiler:
+        specifier: 1.0.0
+        version: 1.0.0
+      tailwindcss:
+        specifier: 4.3.3
+        version: 4.3.3
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@1.0.0
+        version: '@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)'
+      vite-plus:
+        specifier: 1.0.0
+        version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
+
+  packages/.experimental/tanstack-react-query:
+    dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.104.1
+        version: 5.104.1(react@19.3.0)
+    devDependencies:
+      '@testing-library/react':
+        specifier: 16.3.3
+        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@types/node':
+        specifier: 26.6.4
+        version: 26.6.4
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      '@vitest/coverage-v8':
+        specifier: 5.0.1
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      happy-dom:
+        specifier: 21.0.1
+        version: 21.0.1
+      react:
+        specifier: 19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: 19.3.0
+        version: 19.3.0(react@19.3.0)
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite-plus:
+        specifier: 1.0.0
+        version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
+      vitest:
+        specifier: 5.0.1
+        version: 5.0.1(@types/node@26.6.4)(@vitest/browser-preview@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
 
   packages/core:
     dependencies:
@@ -595,46 +635,6 @@ importers:
       vite-plus:
         specifier: 1.0.0
         version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
-
-  packages/tanstack-react-query:
-    dependencies:
-      '@tanstack/react-query':
-        specifier: ^5.104.1
-        version: 5.104.1(react@19.3.0)
-    devDependencies:
-      '@testing-library/react':
-        specifier: 16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      '@types/node':
-        specifier: 26.6.4
-        version: 26.6.4
-      '@types/react':
-        specifier: 19.3.0
-        version: 19.3.0
-      '@types/react-dom':
-        specifier: 19.3.0
-        version: 19.3.0(@types/react@19.3.0)
-      '@vitest/coverage-v8':
-        specifier: 5.0.1
-        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
-      happy-dom:
-        specifier: 21.0.1
-        version: 21.0.1
-      react:
-        specifier: 19.3.0
-        version: 19.3.0
-      react-dom:
-        specifier: 19.3.0
-        version: 19.3.0(react@19.3.0)
-      typescript:
-        specifier: 7.0.2
-        version: 7.0.2
-      vite-plus:
-        specifier: 1.0.0
-        version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
-      vitest:
-        specifier: 5.0.1
-        version: 5.0.1(@types/node@26.6.4)(@vitest/browser-preview@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
 
   tooling/oxlint-plugins:
     dependencies:

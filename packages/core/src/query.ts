@@ -2,6 +2,8 @@ import { Cause, Effect, Exit, Predicate, Schedule } from "effect";
 
 import type { QueryKey } from "./key.ts";
 import { scheduleNotify } from "./notify.ts";
+import { whenOnline } from "./online.ts";
+import { replaceEqualDeep } from "./share.ts";
 import type {
 	AnyQueryOptions,
 	InfiniteData,
@@ -42,7 +44,7 @@ export interface QueryState<TData> {
 }
 
 /** Per-reader preferences, registered with {@link Query.subscribe}. */
-export interface QueryObserver {
+export interface SubscribeOptions {
 	readonly refetchOnReconnect?: boolean;
 	readonly refetchOnWindowFocus?: boolean;
 }
@@ -96,7 +98,7 @@ export interface Query<
 	 */
 	reset(): Promise<void>;
 	/** Listen for state changes. Subscribed entries count as read. */
-	subscribe(listener: () => void, observer?: QueryObserver): () => void;
+	subscribe(listener: () => void, options?: SubscribeOptions): () => void;
 }
 
 /** Thrown into a request's awaiters when the cache is cleared mid-request. */
@@ -125,7 +127,7 @@ interface InFlight {
 
 const noop = () => {};
 const identity = <T>(value: T) => value;
-const defaultObserver: QueryObserver = {};
+const defaultObserver: SubscribeOptions = {};
 
 function isEffectResult<T>(
 	result: QueryFnResult<T>,
@@ -220,7 +222,7 @@ export class QueryEntry implements Query {
 	#handle: QueryHandle;
 	#host: QueryHost;
 	#inFlight: InFlight | undefined;
-	#listeners = new Map<() => void, QueryObserver>();
+	#listeners = new Map<() => void, SubscribeOptions>();
 	#options: AnyQueryOptions | undefined;
 	#pending: Pending<unknown> | undefined;
 	#staleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -488,8 +490,7 @@ export class QueryEntry implements Query {
 		}
 		this.#inFlight = undefined;
 		if (Exit.isSuccess(exit)) {
-			this.#succeed(exit.value, Date.now());
-			run.deferred.resolve(exit.value);
+			run.deferred.resolve(this.#succeed(exit.value, Date.now()));
 		} else if (Cause.hasInterruptsOnly(exit.cause)) {
 			this.#set({ fetchDirection: undefined, isFetching: false });
 			run.deferred.reject(new CancelledError());
@@ -501,10 +502,16 @@ export class QueryEntry implements Query {
 		this.#scheduleGc();
 	}
 
-	#succeed(data: unknown, updatedAt: number) {
+	#succeed(next: unknown, updatedAt: number) {
+		const previous = this.#state;
+		const data =
+			previous.hasData && this.#behavior("structuralSharing") !== false
+				? replaceEqualDeep(previous.data, next)
+				: next;
 		const firstLoad = this.#pending;
 		this.#pending = undefined;
 		firstLoad?.resolve(data);
+		const unchanged = previous.hasData && data === previous.data;
 		this.#set({
 			data,
 			error: null,
@@ -513,10 +520,12 @@ export class QueryEntry implements Query {
 			hasData: true,
 			isFetching: false,
 			isInvalidated: false,
-			promise: firstLoad ? firstLoad.promise : fulfilled(data),
+			promise:
+				firstLoad?.promise ?? (unchanged ? previous.promise : fulfilled(data)),
 			status: "success",
 			updatedAt,
 		});
+		return data;
 	}
 
 	#fail(error: unknown) {
@@ -652,8 +661,18 @@ export class QueryEntry implements Query {
 			this.#set({ failureCount: this.#state.failureCount + 1 }),
 		);
 		const counted = once.pipe(Effect.tapError(() => countFailure));
+		// Retries wait while the browser is offline; the first attempt doesn't.
+		const online = this.#host.isServer ? Effect.void : whenOnline;
 		if (Schedule.isSchedule(retry)) {
-			return Effect.retry(counted, retry);
+			return Effect.suspend(() => {
+				let first = true;
+				const each = Effect.suspend(() => {
+					const wait = first ? Effect.void : online;
+					first = false;
+					return wait.pipe(Effect.andThen(counted));
+				});
+				return Effect.retry(each, retry);
+			});
 		}
 		const retryDelay = this.#behavior("retryDelay");
 		const delayFor = (failureCount: number, error: unknown) => {
@@ -671,6 +690,7 @@ export class QueryEntry implements Query {
 					return Effect.fail(error);
 				}
 				return Effect.sleep(delayFor(failureCount, error)).pipe(
+					Effect.andThen(online),
 					Effect.andThen(Effect.suspend(() => attempt)),
 				);
 			}),

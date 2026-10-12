@@ -1,36 +1,27 @@
 "use client";
 
-import type {
-	DataOf,
-	InputArgs,
-	InputOf,
-	IsPaged,
-	Query,
-	QueryClient,
-	QueryFactory,
-	QueryHandle,
-	QueryKey,
-	Thenable,
+import {
+	type DataOf,
+	type EnsuredQueryHandle,
+	type InputArgs,
+	type InputOf,
+	type IsPaged,
+	type Query,
+	type QueryClient,
+	type QueryFactory,
+	type QueryHandle,
+	type QueryKey,
+	QueryObserver,
+	type QueryObserverOptions,
+	type Thenable,
 } from "@raf-query/core";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { use, useEffect, useState, useSyncExternalStore } from "react";
 
 import { unsafeCast } from "./cast.ts";
 import { useQueryClient } from "./provider.tsx";
 
-export interface UseQueryOptions {
-	/** Refetch on this interval (ms) while mounted and the page is visible. */
-	readonly refetchInterval?: number;
-	/** Refetch on reconnect while stale. Default: the query's option, else `true`. */
-	readonly refetchOnReconnect?: boolean;
-	/** Refetch on window focus while stale. Default: the query's option, else `true`. */
-	readonly refetchOnWindowFocus?: boolean;
-	/**
-	 * What to render while the handle's input has no data yet:
-	 * - `"suspend"` (default): the promise is pending, so `use()` suspends.
-	 * - `"previous"`: keep returning the last input's data, with `isPrevious`.
-	 */
-	readonly whilePending?: "previous" | "suspend";
-}
+/** `refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`, `whilePending`. */
+export type UseQueryOptions = QueryObserverOptions;
 
 /** The second element of {@link useQuery}'s result. */
 export interface QueryControls<TFactory extends QueryFactory> {
@@ -76,12 +67,11 @@ export type UseQueryResult<TFactory extends QueryFactory> = readonly [
 	controls: UseQueryControls<TFactory>,
 ];
 
-interface Shown {
-	readonly handle: { readonly input: unknown; readonly key: QueryKey };
-	readonly hash: string;
-	readonly promise: Thenable<unknown>;
-	readonly updatedAt: number;
-}
+/** {@link useQuery}'s result for a handle from `ensure`. */
+export type UseEnsuredQueryResult<TFactory extends QueryFactory> = readonly [
+	data: DataOf<TFactory>,
+	controls: UseQueryControls<TFactory>,
+];
 
 export function queryFor<TFactory extends QueryFactory>(
 	client: QueryClient,
@@ -95,23 +85,6 @@ export function queryFor<TFactory extends QueryFactory>(
 	return client.getQuery(factory, ...args);
 }
 
-function useRefetchInterval(
-	query: { refetch(): Promise<void> },
-	interval: number | undefined,
-) {
-	useEffect(() => {
-		if (interval === undefined || !Number.isFinite(interval) || interval <= 0) {
-			return;
-		}
-		const timer = setInterval(() => {
-			if (document.visibilityState !== "hidden") {
-				void query.refetch();
-			}
-		}, interval);
-		return () => clearInterval(timer);
-	}, [query, interval]);
-}
-
 /**
  * Read the query a handle points at. Returns a promise to unwrap with
  * `use()` and the query's controls:
@@ -123,74 +96,78 @@ function useRefetchInterval(
  *
  * The promise is stable per data version and already fulfilled once the
  * cache has data, so `use()` only suspends while there is nothing to show.
+ * The component re-renders when the promise changes, and when a control it
+ * has read changes; changes to controls it never reads are skipped.
+ *
+ * A handle from `ensure` had its data loaded before the route rendered, so
+ * the hook returns the data itself:
+ *
+ * ```tsx
+ * const [post, postState] = useQuery(postQuery, loaderData.post);
+ * ```
+ *
+ * If that entry has lost its data since (garbage-collected, `reset`), the
+ * hook suspends until it is refetched.
  */
 export function useQuery<TFactory extends QueryFactory>(
 	factory: TFactory,
+	handle: EnsuredQueryHandle<TFactory>,
+	options?: UseQueryOptions,
+): UseEnsuredQueryResult<TFactory>;
+export function useQuery<TFactory extends QueryFactory>(
+	factory: TFactory,
 	handle: QueryHandle<TFactory>,
+	options?: UseQueryOptions,
+): UseQueryResult<TFactory>;
+export function useQuery<TFactory extends QueryFactory>(
+	factory: TFactory,
+	handle: EnsuredQueryHandle<TFactory> | QueryHandle<TFactory>,
 	options: UseQueryOptions = {},
-): UseQueryResult<TFactory> {
+): UseEnsuredQueryResult<TFactory> | UseQueryResult<TFactory> {
 	const client = useQueryClient();
 	const query = queryFor(client, factory, handle.input);
 	query.read();
 
+	const refetchInterval = options.refetchInterval;
 	const refetchOnReconnect = options.refetchOnReconnect;
 	const refetchOnWindowFocus = options.refetchOnWindowFocus;
-	const subscribe = useCallback(
-		(onChange: () => void) =>
-			query.subscribe(onChange, { refetchOnReconnect, refetchOnWindowFocus }),
-		[query, refetchOnReconnect, refetchOnWindowFocus],
+	const whilePending = options.whilePending;
+	const [observer] = useState(() => new QueryObserver(query, options));
+	const result = observer.getOptimisticResult(query, options);
+	useSyncExternalStore(
+		observer.subscribe,
+		observer.getCurrentResult,
+		observer.getCurrentResult,
 	);
-	const state = useSyncExternalStore(subscribe, query.getState, query.getState);
-	useRefetchInterval(query, options.refetchInterval);
-
-	const keepPrevious = options.whilePending === "previous";
-	const [lastShown, setLastShown] = useState<Shown | undefined>(undefined);
-	if (keepPrevious && state.hasData && lastShown?.promise !== state.promise) {
-		setLastShown({
-			handle: query.handle,
-			hash: query.hash,
-			promise: state.promise,
-			updatedAt: state.updatedAt,
+	useEffect(() => {
+		observer.setOptions(query, {
+			refetchInterval,
+			refetchOnReconnect,
+			refetchOnWindowFocus,
+			whilePending,
 		});
-	}
-	const previous =
-		keepPrevious &&
-		!state.hasData &&
-		state.status !== "error" &&
-		lastShown !== undefined &&
-		lastShown.hash !== query.hash
-			? lastShown
-			: undefined;
+	}, [
+		observer,
+		query,
+		refetchInterval,
+		refetchOnReconnect,
+		refetchOnWindowFocus,
+		whilePending,
+	]);
 
-	const shown: Shown = previous ?? {
-		handle: query.handle,
-		hash: query.hash,
-		promise: state.promise,
-		updatedAt: state.updatedAt,
-	};
-	const controls = {
-		error: state.error,
-		fetchNextPage: query.fetchNextPage,
-		fetchPreviousPage: query.fetchPreviousPage,
-		hash: query.hash,
-		hasNextPage: query.hasNextPage(),
-		hasPreviousPage: query.hasPreviousPage(),
-		input: shown.handle.input,
-		isFetching: state.isFetching,
-		isFetchingNextPage: state.fetchDirection === "forward",
-		isFetchingPreviousPage: state.fetchDirection === "backward",
-		isPending: !state.hasData,
-		isPrevious: previous !== undefined,
-		isStale: state.isStale,
-		key: shown.handle.key,
-		refetch: query.refetch,
-		updatedAt: shown.updatedAt,
-	} satisfies Record<
-		keyof QueryControls<QueryFactory> | keyof PagingControls,
-		unknown
-	>;
-	// SAFETY: `shown.promise` is this factory's entry's promise (or an earlier
-	// input's entry of the same factory), and `controls` has every field of
-	// both control shapes.
-	return unsafeCast<UseQueryResult<TFactory>>([shown.promise, controls]);
+	// The promise is returned as the tuple's first element, where reads can't
+	// be seen, so it always counts as read.
+	observer.trackProp("promise");
+	const controls = observer.trackResult(result);
+	if (handle.ensured === true) {
+		// SAFETY: as below; `use` unwraps the promise to its data.
+		return unsafeCast<UseEnsuredQueryResult<TFactory>>([
+			use(result.promise),
+			controls,
+		]);
+	}
+	// SAFETY: the result's promise is this factory's entry's promise (or an
+	// earlier input's entry of the same factory), and the result has every
+	// field of both control shapes.
+	return unsafeCast<UseQueryResult<TFactory>>([result.promise, controls]);
 }
