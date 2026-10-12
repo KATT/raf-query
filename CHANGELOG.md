@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.4](https://github.com/KATT/raf-query/compare/0.1.3...0.1.4) (2026-10-12)
+
+### Features
+
+- **core:** add per-query meta ([#26](https://github.com/KATT/raf-query/issues/26)) ([863c915](https://github.com/KATT/raf-query/commit/863c915d884bdfa3bcb3053da348d51aa0e697cf))
+
 ## [0.1.3](https://github.com/KATT/raf-query/compare/0.1.2...0.1.3) (2026-10-12)
 
 ### Features
