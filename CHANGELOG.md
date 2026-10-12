@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.16](https://github.com/KATT/raf-query/compare/0.0.15...0.0.16) (2026-10-12)
+
+### Bug Fixes
+
+- **core:** don't revalidate cached data in server verbs ([#19](https://github.com/KATT/raf-query/issues/19)) ([0ed7d9f](https://github.com/KATT/raf-query/commit/0ed7d9fefd0b70a8aa9a85c8d2c309a9fed42903))
+
 ## [0.0.15](https://github.com/KATT/raf-query/compare/0.0.14...0.0.15) (2026-10-12)
 
 - **agent-docs:** replace local ~/dev path with upstream React link ([#17](https://github.com/KATT/raf-query/issues/17)) ([79c0314](https://github.com/KATT/raf-query/commit/79c031475c3ed62ce5a07fb91d68733534e452b3))
