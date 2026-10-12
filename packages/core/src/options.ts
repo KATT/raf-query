@@ -4,12 +4,13 @@ import type { QueryKey } from "./key.ts";
 
 /**
  * What a `queryFn` may return: a value, a promise, or an `Effect`. An
- * Effect's error type becomes the query's; promises reject with `unknown`.
+ * Effect's error type becomes the query's (promises reject with `unknown`),
+ * and the services it needs become requirements of the verbs that start it.
  */
-export type QueryFnResult<TData, TError = unknown> =
+export type QueryFnResult<TData, TError = unknown, TServices = never> =
 	| TData
 	| PromiseLike<TData>
-	| Effect.Effect<TData, TError>;
+	| Effect.Effect<TData, TError, TServices>;
 
 export interface QueryFunctionContext {
 	/** The query's key, as returned by the factory. */
@@ -59,9 +60,23 @@ export interface QueryBehavior {
 	readonly structuralSharing?: boolean;
 }
 
-export interface QueryOptions<TData, TError = unknown> extends QueryBehavior {
+declare const servicesType: unique symbol;
+
+interface ServicesField<TServices> {
+	/**
+	 * Type-only: the services the `queryFn`'s Effect needs. Never present at
+	 * runtime. A `queryFn`'s return type can't carry them on its own: with
+	 * `unknown` data, any return type is assignable to `QueryFnResult`.
+	 */
+	readonly [servicesType]?: () => TServices;
+}
+
+export interface QueryOptions<TData, TError = unknown, TServices = never>
+	extends QueryBehavior, ServicesField<TServices> {
 	readonly kind: "query";
-	queryFn(context: QueryFunctionContext): QueryFnResult<TData, TError>;
+	queryFn(
+		context: QueryFunctionContext,
+	): QueryFnResult<TData, TError, TServices>;
 	readonly queryKey: QueryKey;
 }
 
@@ -69,7 +84,9 @@ export interface InfiniteQueryOptions<
 	TPage,
 	TPageParam,
 	TError = unknown,
-> extends QueryBehavior {
+	TServices = never,
+>
+	extends QueryBehavior, ServicesField<TServices> {
 	/** Param for the page after `lastPage`, or `null` / `undefined` at the end. */
 	getNextPageParam(
 		lastPage: TPage,
@@ -90,7 +107,7 @@ export interface InfiniteQueryOptions<
 	readonly maxPages?: number;
 	queryFn(
 		context: PageFunctionContext<TPageParam>,
-	): QueryFnResult<TPage, TError>;
+	): QueryFnResult<TPage, TError, TServices>;
 	readonly queryKey: QueryKey;
 }
 
@@ -101,8 +118,8 @@ export interface InfiniteData<TPage, TPageParam = unknown> {
 }
 
 export type AnyQueryOptions =
-	| QueryOptions<unknown, unknown>
-	| InfiniteQueryOptions<unknown, unknown, unknown>;
+	| QueryOptions<unknown, unknown, unknown>
+	| InfiniteQueryOptions<unknown, unknown, unknown, unknown>;
 
 /**
  * Typed options for a query factory:
@@ -115,26 +132,51 @@ export type AnyQueryOptions =
  *   });
  * }
  * ```
+ *
+ * A `queryFn` Effect may need services; they're inferred, and every verb
+ * that can start the query requires them.
  */
-export function queryOptions<TData, TError = unknown>(
-	options: Omit<QueryOptions<TData, TError>, "kind">,
-): QueryOptions<TData, TError> {
+export function queryOptions<TData, TError = unknown, TServices = never>(
+	options: Omit<QueryOptions<TData, TError, TServices>, "kind">,
+): QueryOptions<TData, TError, TServices> {
 	return { ...options, kind: "query" };
 }
 
 /** Typed options for a paged query factory. */
-export function infiniteQueryOptions<TPage, TPageParam, TError = unknown>(
-	options: Omit<InfiniteQueryOptions<TPage, TPageParam, TError>, "kind">,
-): InfiniteQueryOptions<TPage, TPageParam, TError> {
+export function infiniteQueryOptions<
+	TPage,
+	TPageParam,
+	TError = unknown,
+	TServices = never,
+>(
+	options: Omit<
+		InfiniteQueryOptions<TPage, TPageParam, TError, TServices>,
+		"kind"
+	>,
+): InfiniteQueryOptions<TPage, TPageParam, TError, TServices> {
 	return { ...options, kind: "infinite" };
+}
+
+interface FactoryResult {
+	readonly kind: "infinite" | "query";
+	readonly queryKey: QueryKey;
 }
 
 /**
  * A function of zero or one argument returning `queryOptions(...)` or
- * `infiniteQueryOptions(...)`. A second parameter is a type error: the single
+ * `infiniteQueryOptions(...)` whose `queryFn` needs at most `TServices`
+ * (any services by default). A second parameter is a type error: the single
  * argument is the query's input, and a handle carries it.
+ *
+ * The return type names no `queryFn`, and no services for the default:
+ * TypeScript infers an inline factory's `queryOptions` type arguments from
+ * it, and an `unknown` there would infer `unknown` services.
  */
-export type QueryFactory = (input: never) => AnyQueryOptions;
+export type QueryFactory<TServices = unknown> = (
+	input: never,
+) => unknown extends TServices
+	? FactoryResult
+	: FactoryResult & ServicesField<TServices>;
 
 /** The factory's input type; `undefined` for factories without one. */
 export type InputOf<TFactory extends QueryFactory> =
@@ -154,10 +196,16 @@ export type IsPaged<TFactory extends QueryFactory> =
 export type DataOf<TFactory extends QueryFactory> =
 	ReturnType<TFactory> extends InfiniteQueryOptions<
 		infer TPage,
-		infer TPageParam
+		infer TPageParam,
+		infer _TError,
+		infer _TServices
 	>
 		? InfiniteData<TPage, TPageParam>
-		: ReturnType<TFactory> extends QueryOptions<infer TData>
+		: ReturnType<TFactory> extends QueryOptions<
+					infer TData,
+					infer _TError,
+					infer _TServices
+			  >
 			? TData
 			: never;
 
@@ -169,16 +217,47 @@ export type ErrorOf<TFactory extends QueryFactory> =
 	ReturnType<TFactory> extends InfiniteQueryOptions<
 		infer _TPage,
 		infer _TPageParam,
-		infer TError
+		infer TError,
+		infer _TServices
 	>
 		? TError
-		: ReturnType<TFactory> extends QueryOptions<infer _TData, infer TError>
+		: ReturnType<TFactory> extends QueryOptions<
+					infer _TData,
+					infer TError,
+					infer _TServices
+			  >
 			? TError
 			: unknown;
 
+/**
+ * The services a factory's `queryFn` Effect needs: what `ensure`, `fetch`,
+ * `prefetch`, `getQuery` and `watch` require. `never` for promises and plain
+ * values, and for a factory of no particular query.
+ */
+export type ServicesOf<TFactory extends QueryFactory> =
+	ReturnType<TFactory> extends InfiniteQueryOptions<
+		infer _TPage,
+		infer _TPageParam,
+		infer _TError,
+		infer TServices
+	>
+		? TServices
+		: ReturnType<TFactory> extends QueryOptions<
+					infer _TData,
+					infer _TError,
+					infer TServices
+			  >
+			? TServices
+			: never;
+
 /** Page type of a paged factory. */
 export type PageOf<TFactory extends QueryFactory> =
-	ReturnType<TFactory> extends InfiniteQueryOptions<infer TPage, unknown>
+	ReturnType<TFactory> extends InfiniteQueryOptions<
+		infer TPage,
+		unknown,
+		infer _TError,
+		infer _TServices
+	>
 		? TPage
 		: never;
 

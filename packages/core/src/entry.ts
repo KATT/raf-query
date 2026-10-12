@@ -34,7 +34,7 @@ import type {
 } from "./options.ts";
 import { type Platform, type PlatformEvent, whenOnline } from "./platform.ts";
 import type { FetchRequest, Query, State, SubscribeOptions } from "./query.ts";
-import { fromQueryFn } from "./request.ts";
+import { fromQueryFn, requestServices, runRequest } from "./request.ts";
 import { retrySchedule } from "./retry.ts";
 import { replaceEqualDeep } from "./share.ts";
 import { fulfilled, type Pending, pending, type Thenable } from "./thenable.ts";
@@ -99,6 +99,11 @@ export interface Entry extends Query {
 	pending: Pending<unknown> | undefined;
 	/** Open while the entry is cached; owns its fibers. */
 	readonly scope: Scope.Closeable;
+	/**
+	 * What its requests run with: the cache's services, under those of the
+	 * latest verb that called for this entry ({@link provide}).
+	 */
+	services: Context.Context<never>;
 	state: State<unknown>;
 	readonly tasks: Tasks;
 }
@@ -162,6 +167,7 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 		options: undefined,
 		pending: first,
 		scope,
+		services: cache.services,
 		state: {
 			data: undefined,
 			error: null,
@@ -268,6 +274,15 @@ export function changes(entry: Entry): Stream.Stream<State<unknown>> {
 }
 
 // Requests
+
+/**
+ * Run this entry's requests with the services of `caller`, a verb's fiber
+ * context, over the cache's: every request from now on, including ones a
+ * render, a refetch or `invalidate` starts.
+ */
+export function provide(entry: Entry, caller: Context.Context<never>) {
+	entry.services = requestServices(entry.cache.services, caller);
+}
 
 /** Attach the options and input of the latest factory call. */
 export function setOptions(
@@ -425,7 +440,11 @@ function begin(
 	return Deferred.await(
 		startRequest(
 			entry,
-			requestEffect(entry, options, request),
+			runRequest(
+				requestEffect(entry, options, request),
+				entry.hash,
+				entry.services,
+			),
 			request.direction,
 		),
 	);
@@ -579,12 +598,15 @@ function requestEffect(
 	);
 }
 
-/** One `queryFn` call, retried per the query's policy. Every failure counts. */
+/**
+ * One `queryFn` call, retried per the query's policy. Every failure counts.
+ * Its services are erased with its data type; `runRequest` provides them.
+ */
 function attempt(
 	entry: Entry,
 	call: (signal: AbortSignal) => QueryFnResult<unknown>,
 ): Effect.Effect<unknown, unknown> {
-	const once = fromQueryFn(call).pipe(
+	const once = fromQueryFn<unknown, unknown, never>(call).pipe(
 		Effect.tapError(() =>
 			Effect.sync(() =>
 				set(entry, { failureCount: entry.state.failureCount + 1 }),
