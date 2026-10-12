@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * Copy the repo-root README.md / LICENSE.md / CHANGELOG.md (canonical, shown
- * on GitHub) into the package being packed, so `pnpm pack` / `npm publish`
- * include them. Runs from a package's `prepack`, so cwd is that package.
+ * Copy the repo-root LICENSE.md / CHANGELOG.md (shared by every package) into
+ * the package being packed, so `pnpm pack` / `npm publish` include them. Each
+ * package keeps its own README.md in git. Runs from a package's `prepack`, so
+ * cwd is that package.
  */
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
 import { Console, Effect, FileSystem, Path } from "effect";
@@ -13,7 +14,7 @@ Effect.gen(function* () {
 	const root = path.join(import.meta.dirname, "..");
 	const pkg = process.cwd();
 
-	for (const name of ["README.md", "LICENSE.md", "CHANGELOG.md"]) {
+	for (const name of ["LICENSE.md", "CHANGELOG.md"]) {
 		yield* fs.copyFile(path.join(root, name), path.join(pkg, name));
 		yield* Console.log(`synced ${name} → ${path.relative(root, pkg)}/${name}`);
 	}
