@@ -118,6 +118,57 @@ describe("ensure and fetch", () => {
 	});
 });
 
+describe("on the server", () => {
+	it("verbs reuse cached data instead of revalidating it", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: true });
+
+		const data = qc.fetch(backend.issueQuery, { id: 1 });
+		backend.respondAll();
+		expect(await data).toEqual({ id: 1, title: "First" });
+		expect(qc.getQuery(backend.issueQuery, { id: 1 }).isStaleNow()).toBe(true);
+
+		const handle = await qc.ensure(backend.issueQuery, { id: 1 });
+		qc.prefetch(backend.issueQuery, { id: 1 });
+		expect(await qc.fetch(backend.issueQuery, { id: 1 })).toEqual({
+			id: 1,
+			title: "First",
+		});
+
+		expect(handle.ensured).toBe(true);
+		expect(backend.requests).toHaveLength(0);
+	});
+
+	it("invalidate refetches read entries", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: true });
+		const data = qc.fetch(backend.issueQuery, { id: 1 });
+		backend.respondAll();
+		await data;
+		qc.getQuery(backend.issueQuery, { id: 1 }).subscribe(() => {});
+
+		const invalidated = qc.invalidate(backend.issueQuery, { id: 1 });
+		expect(backend.requests).toHaveLength(1);
+		backend.issues.set(1, { id: 1, title: "Edited" });
+		backend.respondAll();
+		await invalidated;
+
+		expect(qc.getData(backend.issueQuery, { id: 1 })?.title).toBe("Edited");
+	});
+
+	it("verbs refetch unread entries invalidate marked", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: true });
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
+
+		await qc.invalidate(backend.issueQuery, { id: 1 });
+		expect(backend.requests).toHaveLength(0);
+
+		qc.prefetch(backend.issueQuery, { id: 1 });
+		expect(backend.requests).toHaveLength(1);
+	});
+});
+
 describe("read", () => {
 	it("returns a thenable React can read synchronously once data exists", async () => {
 		const backend = createBackend();

@@ -25,7 +25,9 @@ export interface QueryClientConfig {
 	readonly defaults?: QueryBehavior;
 	/**
 	 * Whether this client runs on the server. Detected from `window`. Server
-	 * clients don't retry, never garbage-collect, and skip stale timers.
+	 * clients don't retry, never garbage-collect, skip stale timers, and reuse
+	 * cached data in `prefetch` / `ensure` / `fetch` instead of revalidating
+	 * it, unless `invalidate` marked it.
 	 */
 	readonly isServer?: boolean;
 	/** Called with every failed request, including failed prefetches. */
@@ -194,16 +196,18 @@ export class QueryClient {
 
 	/**
 	 * Start a query without waiting and return its handle. Fresh data is
-	 * reused; stale data refetches in the background. Errors surface where the
-	 * data is read, never here.
+	 * reused; stale data refetches in the background (in the browser only, see
+	 * {@link QueryClientConfig.isServer}). Errors surface where the data is
+	 * read, never here.
 	 */
 	prefetch<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
 	): QueryHandle<TFactory> {
 		const entry = this.#build(factory, args[0]);
-		const state = entry.getState();
-		if (!state.isFetching && (!state.hasData || entry.isStaleNow())) {
+		if (entry.getState().hasData) {
+			this.#revalidate(entry);
+		} else {
 			entry.fetch().catch(noop);
 		}
 		return handleOf<TFactory>(entry);
@@ -211,8 +215,9 @@ export class QueryClient {
 
 	/**
 	 * Start a query and wait for it on a cache miss. Rejects if that request
-	 * fails. Stale cached data resolves immediately and revalidates. The
-	 * handle is marked `ensured`, so `useQuery` returns its data directly.
+	 * fails. Stale cached data resolves immediately and revalidates in the
+	 * browser. The handle is marked `ensured`, so `useQuery` returns its data
+	 * directly.
 	 */
 	async ensure<TFactory extends QueryFactory>(
 		factory: TFactory,
@@ -383,10 +388,21 @@ export class QueryClient {
 		if (!state.hasData) {
 			return entry.fetch({ pages });
 		}
-		if (!state.isFetching && entry.isStaleNow()) {
+		this.#revalidate(entry);
+		return Promise.resolve(state.data);
+	}
+
+	/**
+	 * Background refetch of cached data a verb reuses. A server client renders
+	 * once, so a refetch there could only duplicate a request whose result is
+	 * never shown; it refetches only what `invalidate` marked.
+	 */
+	#revalidate(entry: QueryEntry) {
+		const state = entry.getState();
+		const wanted = this.isServer ? state.isInvalidated : entry.isStaleNow();
+		if (!state.isFetching && wanted) {
 			entry.fetch().catch(noop);
 		}
-		return Promise.resolve(state.data);
 	}
 
 	#match(target: QueryFactory | QueryFilter, input: unknown) {

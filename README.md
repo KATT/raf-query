@@ -113,6 +113,7 @@ Behavior:
 
 - Every verb dedupes against the cache. A fresh entry is reused; a stale entry is refetched in the background.
 - `ensure` and `fetch` wait only on a cache miss. With stale cached data they resolve immediately and revalidate in the background.
+- On the server, cached data is always reused, whatever `staleTime` says. A server client renders once, so a background refetch could only repeat a request whose result is never shown. Entries marked by `invalidate` still refetch.
 - A failed `prefetch` never throws out of the loader. The error surfaces where the data is read, and is reported to the client's `onError`.
 - A failed `ensure` or `fetch` rejects, so it reaches the route's error boundary.
 
@@ -445,7 +446,7 @@ export default async function Page(props: {
 - `getQueryClient` is scoped to one request by React's `cache()`.
 - `HydrationBoundary` sends the request client's entries to the browser cache; pending ones stream as promises. Render one in each server component that starts queries for client components. Entries already sent in this request are skipped.
 - `QueryProvider` creates the browser client, and streams queries that client components start during SSR (`useWaterfall`) into the HTML. Pass `config` for the client's options; it must be serializable.
-- Server components that only render data can `await qc.fetch(...)` anywhere; the per-request client dedupes them.
+- Server components that only render data can `await qc.fetch(...)` anywhere; the per-request client makes one request per query, whatever its `staleTime`.
 - `fetch` returns data, not a handle. When a server component renders the data and also hands the query to a client component, pass `await qc.ensure(...)`: after the `fetch` it resolves from the cache, and the client component gets the data from `useQuery` without a promise.
 - Factories can call server actions: server components call them directly, and the browser calls them on refetch. Validate their arguments, since anyone can call them.
 
@@ -540,7 +541,7 @@ Both render nothing on the server, since the server's cache isn't the browser's.
 | `getAll()`, `getQuery(factory, input?)`     | Cache entries, for devtools and integrations                                                                            |
 | `clear()`                                   | Drop every entry and abort in-flight requests                                                                           |
 | `mount()`                                   | Start window-focus and reconnect refetching. The providers call it                                                      |
-| `isServer`                                  | Detected from `window`. Server clients don't retry, never gc, skip stale timers                                         |
+| `isServer`                                  | Detected from `window`. Server clients don't retry, never gc, skip stale timers, and never revalidate cached data       |
 
 Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
 
