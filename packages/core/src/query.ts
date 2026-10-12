@@ -19,6 +19,7 @@ import type {
 	ErrorOf,
 	QueryFactory,
 	QueryHandle,
+	QueryMeta,
 	ServicesOf,
 } from "./options.ts";
 import type { Thenable } from "./thenable.ts";
@@ -185,6 +186,16 @@ export function reset<TData, TFactory extends QueryFactory, TError>(
 	self: Query<TData, TFactory, TError>,
 ): Effect.Effect<void> {
 	return internal.reset(internal.entryOf(self));
+}
+
+/**
+ * The query's `meta`: the latest factory call's (the one it was hydrated
+ * with, before any), else the cache default's.
+ */
+export function metaUnsafe<TData, TFactory extends QueryFactory, TError>(
+	self: Query<TData, TFactory, TError>,
+): QueryMeta | undefined {
+	return internal.metaOf(internal.entryOf(self));
 }
 
 /** The entry's current state. */

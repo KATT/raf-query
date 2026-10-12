@@ -159,6 +159,27 @@ describe("QueryDevtoolsPanel", () => {
 		expect(within(details).getByText("query")).toBeTruthy();
 		expect(within(details).getByText('"Two"')).toBeTruthy();
 		expect(within(details).getAllByText("2")).not.toHaveLength(0);
+		expect(within(details).queryByText("Meta")).toBeNull();
+	});
+
+	it("shows the selected entry's meta", async () => {
+		useCleanup();
+		const client = new QueryClient({ isServer: false });
+		function metaQuery() {
+			return queryOptions({
+				meta: { errorMessage: "Couldn't load issues" },
+				queryFn: () => "issues",
+				queryKey: ["issues"],
+			});
+		}
+		client.setData(metaQuery, undefined, "issues");
+
+		await mount(<QueryDevtoolsPanel client={client} />);
+		fireEvent.click(queryButton('["issues"]'));
+
+		const details = screen.getByRole("region", { name: "Query details" });
+		expect(within(details).getByText("Meta")).toBeTruthy();
+		expect(within(details).getByText('"Couldn\'t load issues"')).toBeTruthy();
 	});
 
 	it("refetches, invalidates, resets and removes the selected entry", async () => {

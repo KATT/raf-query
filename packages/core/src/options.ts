@@ -12,7 +12,33 @@ export type QueryFnResult<TData, TError = unknown, TServices = never> =
 	| PromiseLike<TData>
 	| Effect.Effect<TData, TError, TServices>;
 
+/**
+ * App-wide types, filled in by module augmentation. Declare `queryMeta` to
+ * type every query's `meta`. Augment the package you import from;
+ * `@raf-query/react` re-exports this interface, so either works:
+ *
+ * ```ts
+ * declare module "@raf-query/react" {
+ *   interface Register {
+ *     queryMeta: { errorMessage?: string };
+ *   }
+ * }
+ * ```
+ */
+// oxlint-disable-next-line typescript/no-empty-object-type -- apps add members by declaration merging
+export interface Register {}
+
+/**
+ * Type of a query's `meta`. `Record<string, unknown>` unless `queryMeta` is
+ * declared on {@link Register}.
+ */
+export type QueryMeta = Register extends { queryMeta: infer TQueryMeta }
+	? TQueryMeta
+	: Record<string, unknown>;
+
 export interface QueryFunctionContext {
+	/** The query's `meta` when this request started ({@link QueryBehavior.meta}). */
+	readonly meta: QueryMeta | undefined;
 	/** The query's key, as returned by the factory. */
 	readonly queryKey: QueryKey;
 	/** Aborted when the request is cancelled or superseded. */
@@ -40,6 +66,12 @@ export type RetryPolicy =
 export interface QueryBehavior {
 	/** How long an unread entry stays cached, in ms. `Infinity` keeps it. */
 	readonly gcTime?: number;
+	/**
+	 * Anything to know about the query elsewhere: the `queryFn` context,
+	 * `Query.metaUnsafe(query)` (e.g. in the client's `onError`), devtools. A
+	 * query's own `meta` replaces the default's as a whole.
+	 */
+	readonly meta?: QueryMeta;
 	/** Refetch read, stale queries when the browser comes back online. */
 	readonly refetchOnReconnect?: boolean;
 	/** Refetch read, stale queries when the window regains focus. */

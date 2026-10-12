@@ -74,6 +74,52 @@ describe("prefetch", () => {
 	});
 });
 
+describe("meta", () => {
+	it("is on the query onError gets", async () => {
+		const onError = vi.fn();
+		const qc = new QueryClient({ isServer: false, onError });
+		function failingQuery() {
+			return queryOptions({
+				meta: { errorMessage: "Couldn't load issues" },
+				queryFn: () => Promise.reject(new Error("boom")),
+				queryKey: ["meta", "failing"],
+				retry: false,
+			});
+		}
+
+		await expect(qc.fetch(failingQuery)).rejects.toThrow("boom");
+
+		expect(onError).toHaveBeenCalledOnce();
+		const query: Query.Query = onError.mock.calls[0]?.[1];
+		expect(Query.metaUnsafe(query)).toEqual({
+			errorMessage: "Couldn't load issues",
+		});
+	});
+
+	it("comes from defaults for queries that set none", async () => {
+		const onError = vi.fn();
+		const qc = new QueryClient({
+			defaults: { meta: { errorMessage: "Something went wrong" } },
+			isServer: false,
+			onError,
+		});
+		function failingQuery() {
+			return queryOptions({
+				queryFn: () => Promise.reject(new Error("boom")),
+				queryKey: ["meta", "default"],
+				retry: false,
+			});
+		}
+
+		await expect(qc.fetch(failingQuery)).rejects.toThrow("boom");
+
+		const query: Query.Query = onError.mock.calls[0]?.[1];
+		expect(Query.metaUnsafe(query)).toEqual({
+			errorMessage: "Something went wrong",
+		});
+	});
+});
+
 describe("ensure and fetch", () => {
 	it("wait on a cache miss", async () => {
 		const backend = createBackend();

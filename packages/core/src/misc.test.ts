@@ -9,7 +9,9 @@ import {
 	infiniteQueryOptions,
 	matchesKey,
 	Query,
+	type QueryFunctionContext,
 	type QueryHandle,
+	type QueryMeta,
 	queryOptions,
 } from "./index.ts";
 import { makeCacheUnsafe } from "./test-utils.ts";
@@ -97,6 +99,22 @@ describe("types", () => {
 		).toEqualTypeOf<
 			Effect.Effect<{ id: number }, NotFound | Query.CancelledError>
 		>();
+	});
+
+	it("type meta as a string-keyed record unless Register declares queryMeta", () => {
+		expectTypeOf<QueryMeta>().toEqualTypeOf<Record<string, unknown>>();
+		expectTypeOf<QueryFunctionContext["meta"]>().toEqualTypeOf<
+			QueryMeta | undefined
+		>();
+		expectTypeOf(Query.metaUnsafe).returns.toEqualTypeOf<
+			QueryMeta | undefined
+		>();
+		queryOptions({
+			// @ts-expect-error meta is an object, not a string
+			meta: "label",
+			queryFn: () => 1,
+			queryKey: ["meta", "typed"],
+		});
 	});
 
 	it("reject wrong inputs and paging options on plain factories", () => {

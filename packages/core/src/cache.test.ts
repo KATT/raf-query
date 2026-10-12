@@ -23,6 +23,7 @@ import {
 	Platform,
 	Query,
 	QueryCache,
+	type QueryMeta,
 	queryOptions,
 	RedactedError,
 	type RetryPolicy,
@@ -157,6 +158,133 @@ describe("QueryCache services", () => {
 
 			expect(first.text).toBe("Hi, Ada");
 			expect(Query.getUnsafe(query).data?.text).toBe("Hey, Ada");
+		}),
+	);
+});
+
+describe("QueryCache meta", () => {
+	function metaQuery(input: { id: number; label: string }) {
+		return queryOptions({
+			meta: { label: input.label },
+			queryFn: (context) => context.meta,
+			queryKey: ["meta", input.id],
+		});
+	}
+
+	it.effect("reaches the queryFn context", () =>
+		Effect.gen(function* () {
+			const cache = yield* QueryCache.make({ isServer: false });
+
+			const meta = yield* cache.fetch(metaQuery, { id: 1, label: "one" });
+
+			expect(meta).toEqual({ label: "one" });
+		}),
+	);
+
+	it.effect("reaches the page function context", () =>
+		Effect.gen(function* () {
+			const cache = yield* QueryCache.make({ isServer: false });
+			function pagedQuery() {
+				return infiniteQueryOptions({
+					getNextPageParam: (_last: QueryMeta | undefined, pages) =>
+						pages.length < 2 ? pages.length : undefined,
+					initialPageParam: 0,
+					meta: { label: "paged" },
+					queryFn: (context) => context.meta,
+					queryKey: ["meta", "paged"],
+				});
+			}
+
+			const data = yield* cache.fetch(pagedQuery, undefined, { pages: 2 });
+
+			expect(data.pages).toEqual([{ label: "paged" }, { label: "paged" }]);
+		}),
+	);
+
+	it.effect("Query.metaUnsafe follows the latest factory call", () =>
+		Effect.gen(function* () {
+			const cache = yield* QueryCache.make({ isServer: false });
+
+			const query = yield* cache.getQuery(metaQuery, { id: 1, label: "a" });
+			expect(Query.metaUnsafe(query)).toEqual({ label: "a" });
+			yield* cache.prefetch(metaQuery, { id: 1, label: "b" });
+			expect(Query.metaUnsafe(query)).toEqual({ label: "b" });
+		}),
+	);
+
+	it.effect("defaults supply meta, and a query's own replaces it whole", () =>
+		Effect.gen(function* () {
+			const cache = yield* QueryCache.make({
+				defaults: { meta: { label: "default", scope: "app" } },
+				isServer: false,
+			});
+			function plainQuery() {
+				return queryOptions({
+					queryFn: (context) => context.meta,
+					queryKey: ["meta", "plain"],
+				});
+			}
+
+			expect(yield* cache.fetch(plainQuery)).toEqual({
+				label: "default",
+				scope: "app",
+			});
+			expect(Query.metaUnsafe(yield* cache.getQuery(plainQuery))).toEqual({
+				label: "default",
+				scope: "app",
+			});
+			expect(yield* cache.fetch(metaQuery, { id: 1, label: "own" })).toEqual({
+				label: "own",
+			});
+		}),
+	);
+
+	it.effect(
+		"dehydrated meta reaches the receiver until its factory is called",
+		() =>
+			Effect.gen(function* () {
+				const server = yield* QueryCache.make({ isServer: true });
+				const browser = yield* QueryCache.make({
+					defaults: { meta: { label: "browser default" } },
+					isServer: false,
+				});
+				yield* server.prefetch(metaQuery, { id: 1, label: "server" });
+				yield* server.setData(
+					metaQuery,
+					{ id: 2, label: "set" },
+					{ label: "data" },
+				);
+
+				const state = yield* server.dehydrate();
+				expect(state.queries.map((query) => query.meta)).toEqual([
+					{ label: "server" },
+					{ label: "set" },
+				]);
+				yield* browser.hydrate(state);
+				const [first, second] = yield* browser.all;
+				expect(first && Query.metaUnsafe(first)).toEqual({ label: "server" });
+				expect(second && Query.metaUnsafe(second)).toEqual({
+					label: "set",
+				});
+
+				const query = yield* browser.getQuery(metaQuery, {
+					id: 1,
+					label: "browser",
+				});
+				expect(Query.metaUnsafe(query)).toEqual({ label: "browser" });
+				yield* browser.hydrate(state);
+				expect(Query.metaUnsafe(query)).toEqual({ label: "browser" });
+			}),
+	);
+
+	it.effect("entries without meta dehydrate without it", () =>
+		Effect.gen(function* () {
+			const cache = yield* QueryCache.make({ isServer: true });
+			yield* cache.setData(issueQuery, { id: 1 }, { id: 1 });
+
+			const state = yield* cache.dehydrate();
+
+			expect(state.queries[0]).not.toHaveProperty("meta");
 		}),
 	);
 });

@@ -442,6 +442,7 @@ function QueryDetails(props: {
 	const query = props.row.query;
 	const state = props.row.state;
 	const options = query.options;
+	const meta = Query.metaUnsafe(query);
 	const section = { padding: 8 };
 	return (
 		<section
@@ -551,6 +552,14 @@ function QueryDetails(props: {
 			<div style={{ ...section, fontFamily: monoFamily }}>
 				<Explorer depth={0} palette={palette} value={query.handle.input} />
 			</div>
+			{meta === undefined ? null : (
+				<>
+					<Heading palette={palette} title="Meta" />
+					<div style={{ ...section, fontFamily: monoFamily }}>
+						<Explorer depth={0} palette={palette} value={meta} />
+					</div>
+				</>
+			)}
 		</section>
 	);
 }
