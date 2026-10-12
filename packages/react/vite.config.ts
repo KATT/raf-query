@@ -4,6 +4,8 @@ export default defineConfig({
 	pack: {
 		entry: [
 			"src/index.ts",
+			"src/devtools.tsx",
+			"src/devtools-production.tsx",
 			"src/next.tsx",
 			"src/rsc.tsx",
 			"src/tanstack-router.ts",
