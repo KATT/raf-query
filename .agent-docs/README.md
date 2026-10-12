@@ -27,7 +27,7 @@ Many PRs are open at once, so each decision is its own file and PRs rarely touch
 
 The files keep the short version. The full reasoning lives in git: the diff that made the decision, its commit message, and the PR description and review thread behind it. Use them before reversing something or when a file doesn't say why.
 
-- `git log --follow -p -- .agent-docs/decisions/<topic>.md`: every change to a decision, with its commit message.
-- `git blame -C -C .agent-docs/decisions/<topic>.md` (`-C -C` follows lines moved between files), then `git show <sha>`. Squash merges end in `(#N)`; `gh pr view N --comments` has the PR's description and discussion.
+- `git blame -C -C .agent-docs/decisions/<topic>.md`, then `git show <sha>`. `-C -C` follows lines moved between files, so lines older than their file still point at the commit that wrote them. Squash merges end in `(#N)`; `gh pr view N --comments` has the PR's description and discussion.
+- `git log -p -- .agent-docs/decisions/<topic>.md`: every change to the file since it was created.
 - `git log -S '<distinctive phrase>' --oneline -- .agent-docs` finds the commit that added a line wherever it lived. Run without `-- .agent-docs` to find the code change too.
 - For the code a decision names, `git blame -L <start>,<end> <file>` and `git log -L <start>,<end>:<file>` lead to the PR that introduced it.
