@@ -1,7 +1,7 @@
 {
-	"name": "raf-query",
+	"name": "@raf-query/core",
 	"version": "0.0.1",
-	"description": "Render-as-you-fetch query library",
+	"description": "Framework-agnostic core of raf-query, a render-as-you-fetch query library",
 	"keywords": [
 		"query",
 		"raf",
@@ -16,7 +16,7 @@
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/KATT/raf-query.git",
-		"directory": "packages/raf-query"
+		"directory": "packages/core"
 	},
 	"homepage": "https://github.com/KATT/raf-query#readme",
 	"bugs": {
@@ -24,6 +24,7 @@
 	},
 	"files": [
 		"dist/",
+		"CHANGELOG.md",
 		"LICENSE.md",
 		"README.md"
 	],
@@ -33,13 +34,13 @@
 		".": "./dist/index.mjs"
 	},
 	"scripts": {
-		"prepack": "node scripts/sync-package-docs.ts",
+		"prepack": "node ../../scripts/sync-package-docs.ts",
 		"build": "vp pack",
 		"test": "vp test",
-		"typecheck": "tsc"
+		"typecheck": "tsc",
+		"publish:npm": "pnpm pack --out package.tgz && npm publish package.tgz --access public && rm package.tgz"
 	},
 	"dependencies": {
-		"@effect/platform-node": "catalog:",
 		"effect": "catalog:"
 	},
 	"devDependencies": {
@@ -54,6 +55,6 @@
 		"provenance": true
 	},
 	"engines": {
-		"node": ">=24"
+		"node": ">=22"
 	}
 }

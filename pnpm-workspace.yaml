@@ -4,7 +4,7 @@ packages:
 catalog:
   "@effect/platform-node": 4.0.1
   "@effect/vitest": 4.0.1
-  effect: 4.0.1
+  effect: ^4.0.1
 
 # Keep plugins such as @effect/vitest on the Vitest copy bundled by vite-plus.
 overrides:

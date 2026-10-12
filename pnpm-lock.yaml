@@ -171,7 +171,7 @@ catalogs:
       specifier: 4.0.1
       version: 4.0.1
     effect:
-      specifier: 4.0.1
+      specifier: ^4.0.1
       version: 4.0.1
 
 overrides:
@@ -182,6 +182,9 @@ importers:
 
   .:
     devDependencies:
+      '@effect/platform-node':
+        specifier: 'catalog:'
+        version: 4.0.1(effect@4.0.1)(redis@6.3.0)
       '@release-it/conventional-changelog':
         specifier: 12.0.2
         version: 12.0.2(conventional-commits-filter@6.0.1)(conventional-commits-parser@7.1.3)(release-it@21.1.0(@types/node@26.6.4)(magicast@0.5.5))
@@ -197,6 +200,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 5.0.1
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.1
       husky:
         specifier: 9.1.7
         version: 9.1.7
@@ -209,9 +215,6 @@ importers:
       oxlint:
         specifier: 1.85.0
         version: 1.85.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))
-      raf-query:
-        specifier: workspace:*
-        version: link:packages/raf-query
       release-it:
         specifier: 21.1.0
         version: 21.1.0(@types/node@26.6.4)(magicast@0.5.5)
@@ -225,11 +228,8 @@ importers:
         specifier: 1.0.0
         version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
 
-  packages/raf-query:
+  packages/core:
     dependencies:
-      '@effect/platform-node':
-        specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(redis@6.3.0)
       effect:
         specifier: 'catalog:'
         version: 4.0.1
@@ -243,6 +243,37 @@ importers:
       '@vitest/coverage-v8':
         specifier: 5.0.1
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite-plus:
+        specifier: 1.0.0
+        version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
+
+  packages/react:
+    dependencies:
+      '@raf-query/core':
+        specifier: workspace:*
+        version: link:../core
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.1
+    devDependencies:
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
+      '@types/node':
+        specifier: 26.6.4
+        version: 26.6.4
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@vitest/coverage-v8':
+        specifier: 5.0.1
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      react:
+        specifier: 19.3.0
+        version: 19.3.0
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -931,6 +962,9 @@ packages:
   '@types/parse-path@7.0.3':
     resolution: {integrity: sha512-LriObC2+KYZD3FzCrgWGv/qufdUy4eXrxcLgQMfYXgPbLIecKIsVBaQgUPmxSSLcjmYbDTQbMgr6qr6l/eb7Bg==}
 
+  '@types/react@19.3.0':
+    resolution: {integrity: sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==}
+
   '@types/ws@8.18.2':
     resolution: {integrity: sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w==}
 
@@ -1518,6 +1552,9 @@ packages:
 
   cookie-es@3.1.1:
     resolution: {integrity: sha512-UaXxwISYJPTr9hwQxMFYZ7kNhSXboMXP+Z3TRX6f1/NyaGPfuNUZOWP1pUEb75B2HjfklIYLVRfWiFZJyC6Npg==}
+
+  csstype@3.2.3:
+    resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
   data-uri-to-buffer@8.0.0:
     resolution: {integrity: sha512-6UHfyCux51b8PTGDgveqtz1tvphBku5DrMKKJbFAZAJOI2zsjDpDoYE1+QGj7FOMS4BdTFNJsJiR3zEB0xH0yQ==}
@@ -2835,6 +2872,10 @@ snapshots:
 
   '@types/parse-path@7.0.3': {}
 
+  '@types/react@19.3.0':
+    dependencies:
+      csstype: 3.2.3
+
   '@types/ws@8.18.2':
     dependencies:
       '@types/node': 26.6.4
@@ -3295,6 +3336,8 @@ snapshots:
   convert-source-map@2.0.0: {}
 
   cookie-es@3.1.1: {}
+
+  csstype@3.2.3: {}
 
   data-uri-to-buffer@8.0.0: {}
 

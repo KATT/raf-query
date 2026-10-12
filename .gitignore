@@ -8,5 +8,7 @@
 **/.DS_Store
 
 # Generated into the publishable package on prepack / release
-/packages/raf-query/README.md
-/packages/raf-query/LICENSE.md
+/packages/*/README.md
+/packages/*/LICENSE.md
+/packages/*/CHANGELOG.md
+/packages/*/*.tgz
