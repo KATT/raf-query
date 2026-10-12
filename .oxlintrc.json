@@ -419,7 +419,10 @@
 			// The React bindings are the audited hook seam: subscriptions and
 			// timers need effects, and the library isn't built with React Compiler,
 			// so it memoizes by hand.
-			"files": ["packages/react/src/**/*.{ts,tsx}"],
+			"files": [
+				"packages/react/src/**/*.{ts,tsx}",
+				"packages/tanstack-react-query/src/**/*.{ts,tsx}"
+			],
 			"rules": {
 				"workspace/no-use-effect": "off",
 				"workspace/no-manual-memoization": "off"
