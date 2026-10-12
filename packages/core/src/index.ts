@@ -53,3 +53,4 @@ export {
 	type QueryState,
 	type SubscribeOptions,
 } from "./query.ts";
+export type { Thenable } from "./thenable.ts";

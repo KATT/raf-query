@@ -573,19 +573,20 @@ In the browser, retries pause while `navigator.onLine` is `false`: after the ret
 | `CancelledError`                                             | Failure of a request whose entry was removed or cleared before it settled |
 | `QueryHandle<TFactory>`                                      | Handle type for props                                                     |
 | `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                     |
+| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`               |
 | `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                   |
 
 `@raf-query/react` (plus all of the above):
 
-| Export                                         | Use                                                                                                            |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `QueryClient`                                  | The cache with Promise methods ([above](#api-reference))                                                       |
-| `allKeyed(record)`                             | Await a record of promises, keeping keys                                                                       |
-| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations                                                              |
-| `QueryClientProvider`                          | Provides a client to the tree                                                                                  |
-| `useQueryClient()`                             | Read the client                                                                                                |
-| `useQuery(factory, handle, options?)`          | `[Promise<Data>, controls]`; for paged factories `Data` is `{ pages, pageParams }` and controls include paging |
-| `useWaterfall(factory, input)`                 | Start a query during render and return its handle                                                              |
+| Export                                         | Use                                                                                                             |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `QueryClient`                                  | The cache with Promise methods ([above](#api-reference))                                                        |
+| `allKeyed(record)`                             | Await a record of promises, keeping keys                                                                        |
+| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations                                                               |
+| `QueryClientProvider`                          | Provides a client to the tree                                                                                   |
+| `useQueryClient()`                             | Read the client                                                                                                 |
+| `useQuery(factory, handle, options?)`          | `[Thenable<Data>, controls]`; for paged factories `Data` is `{ pages, pageParams }` and controls include paging |
+| `useWaterfall(factory, input)`                 | Start a query during render and return its handle                                                               |
 
 ## Development
 
