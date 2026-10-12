@@ -25,7 +25,7 @@ Early. Both packages are on npm at `0.0.x`, and the API can still change between
 | `@raf-query/react/rsc`             | `HydrationBoundary` for passing server-component queries to the client |
 | `@raf-query/react/next`            | `QueryProvider` for Next.js App Router                                 |
 | `@raf-query/react/devtools`        | [Devtools](#devtools) panel for inspecting the cache in development    |
-| `@raf-query/react/effect`          | [Effect](#effect) `queryFn`s, `Schedule` retries, Effect verbs         |
+| `@raf-query/react/effect`          | [Effect](#effect) versions of the client verbs, `watch` stream         |
 
 ## Principles
 
@@ -65,7 +65,7 @@ export function commentsQuery(input: { slug: string }) {
 
 Factories must take at most one argument; the type rejects two or more. The single argument is the query's **input** and must be serializable, because it is what a handle carries.
 
-A `queryFn` returns a value or a promise (or an [Effect](#effect), through `@raf-query/react/effect`). It receives `queryKey` and an abort `signal`; paged ones also get `pageParam` and `direction`. TypeScript infers the page type from `queryFn`, so if `getNextPageParam` comes first in the object literal (sorted keys), pass the types instead: `infiniteQueryOptions<CommentPage, number>({ ... })`.
+A `queryFn` returns a value, a promise, or an [Effect](#effect). It receives `queryKey` and an abort `signal`; paged ones also get `pageParam` and `direction`. TypeScript infers the page type from `queryFn`, so if `getNextPageParam` comes first in the object literal (sorted keys), pass the types instead: `infiniteQueryOptions<CommentPage, number>({ ... })`.
 
 The factory is the only place a query is declared paged. Every other API — `prefetch`, `ensure`, `fetch`, `useQuery`, `useWaterfall`, `invalidate`, `setData` — takes either kind and infers the rest from the factory's type.
 
@@ -459,22 +459,19 @@ A factory that imports server-only code (a database client) can't be imported by
 
 ## Effect
 
-[Effect](https://effect.website) code uses raf-query through `@raf-query/react/effect`. Nothing else imports that entry, so apps that don't use it don't bundle the Effect runtime:
+[Effect](https://effect.website) is built in:
 
-- `effectQueryOptions` and `effectInfiniteQueryOptions` take a `queryFn` that returns an `Effect`; cancelling the request interrupts it. Their `retry` also accepts a `Schedule`. They return the same options as `queryOptions` / `infiniteQueryOptions`, so the factory works with every other API.
-- `retrySchedule(schedule)` turns a `Schedule` into a retry policy for `config.defaults` or plain `queryOptions`. Each request steps its own copy with every failure, and the schedule's delay is the wait before the next attempt.
-- `ensureEffect`, `fetchEffect` and `invalidateEffect` are the client's methods as Effects, taking the client first. `watch` is a `Stream` of an entry's state: the current state, then every change.
+- A `queryFn` may return an `Effect`; cancelling the request interrupts it.
+- `retry` accepts a `Schedule`. Each request steps its own copy with every failure, and the schedule's delay is the wait before the next attempt.
+- `@raf-query/react/effect` has the client's methods as Effects, taking the client first: `ensureEffect`, `fetchEffect`, `invalidateEffect`. `watch` is a `Stream` of an entry's state: the current state, then every change.
 
 ```ts
-import {
-	effectQueryOptions,
-	fetchEffect,
-	watch,
-} from "@raf-query/react/effect";
+import { queryOptions } from "@raf-query/react";
+import { fetchEffect, watch } from "@raf-query/react/effect";
 import { Effect, Schedule, Stream } from "effect";
 
 export function issueQuery(input: { id: number }) {
-	return effectQueryOptions({
+	return queryOptions({
 		queryKey: ["issue", input.id],
 		queryFn: () => IssueRepo.get(input.id), // Effect<Issue, IssueNotFound>
 		retry: Schedule.exponential("200 millis").pipe(Schedule.upTo({ times: 3 })),
@@ -582,7 +579,7 @@ In the browser, retries pause while `navigator.onLine` is `false`: after the ret
 | `Thenable<T>`                                  | Promise with `status` / `value` / `reason`, read by `use()`      |
 | `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                                 |
 
-`@raf-query/core/effect` (re-exported as `@raf-query/react/effect`): `effectQueryOptions`, `effectInfiniteQueryOptions`, `retrySchedule`, `ensureEffect`, `fetchEffect`, `invalidateEffect`, `watch`; see [Effect](#effect).
+`@raf-query/core/effect` (re-exported as `@raf-query/react/effect`): `ensureEffect`, `fetchEffect`, `invalidateEffect`, `watch`; see [Effect](#effect).
 
 `@raf-query/react` (plus all of the above):
 

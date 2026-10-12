@@ -36,19 +36,19 @@ Render-as-you-fetch with plain TanStack Query has a few traps. This package remo
 
 ## How it differs from `@raf-query/react`
 
-|                     | `@raf-query/react`                          | This package                                            |
-| ------------------- | ------------------------------------------- | ------------------------------------------------------- |
-| Cache               | raf-query's own `QueryClient`               | TanStack's `QueryClient`                                |
-| Dependencies        | `@raf-query/core`, `effect`                 | `@tanstack/react-query`                                 |
-| Start a query       | `qc.prefetch(factory, input)`               | `prefetch(qc, factory, input)`                          |
-| Wait for a handle   | `qc.ensure(factory, input)`                 | `ensure(qc, factory, input)`                            |
-| Wait for the data   | `qc.fetch(factory, input)`                  | `ensureData(qc, factory, input)`                        |
-| Write and read      | `qc.invalidate`, `qc.setData`, `qc.getData` | `invalidate(qc, …)`, `setData(qc, …)`, `getData(qc, …)` |
-| Invalidate a prefix | `qc.invalidate({ queryKey })`               | TanStack's `qc.invalidateQueries({ queryKey })`         |
-| Client options      | `new QueryClient({ defaults })`             | TanStack's `new QueryClient({ defaultOptions })`        |
-| Effect              | `@raf-query/react/effect`                   | None                                                    |
-| TanStack Router     | `@raf-query/react/tanstack-router`          | TanStack's `@tanstack/react-router-ssr-query`           |
-| Devtools            | `@raf-query/react/devtools`                 | TanStack's devtools                                     |
+|                     | `@raf-query/react`                           | This package                                            |
+| ------------------- | -------------------------------------------- | ------------------------------------------------------- |
+| Cache               | raf-query's own `QueryClient`                | TanStack's `QueryClient`                                |
+| Dependencies        | `@raf-query/core`, `effect`                  | `@tanstack/react-query`                                 |
+| Start a query       | `qc.prefetch(factory, input)`                | `prefetch(qc, factory, input)`                          |
+| Wait for a handle   | `qc.ensure(factory, input)`                  | `ensure(qc, factory, input)`                            |
+| Wait for the data   | `qc.fetch(factory, input)`                   | `ensureData(qc, factory, input)`                        |
+| Write and read      | `qc.invalidate`, `qc.setData`, `qc.getData`  | `invalidate(qc, …)`, `setData(qc, …)`, `getData(qc, …)` |
+| Invalidate a prefix | `qc.invalidate({ queryKey })`                | TanStack's `qc.invalidateQueries({ queryKey })`         |
+| Client options      | `new QueryClient({ defaults })`              | TanStack's `new QueryClient({ defaultOptions })`        |
+| Effect              | Effect `queryFn`s, `@raf-query/react/effect` | None                                                    |
+| TanStack Router     | `@raf-query/react/tanstack-router`           | TanStack's `@tanstack/react-router-ssr-query`           |
+| Devtools            | `@raf-query/react/devtools`                  | TanStack's devtools                                     |
 
 The verbs are free functions that take the client first, because the client is TanStack's class. `ensureData` plays the part of `qc.fetch`; a function named `fetch` would hide the global one.
 

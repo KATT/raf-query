@@ -8,7 +8,6 @@ import {
 } from "@effect/vitest";
 import { Effect, Schedule } from "effect";
 
-import { effectQueryOptions, retrySchedule } from "./effect.ts";
 import { CancelledError, QueryClient, queryOptions } from "./index.ts";
 import { createBackend, flush } from "./test-utils.ts";
 
@@ -623,11 +622,6 @@ describe("retry", () => {
 		const qc = new QueryClient({ isServer: false });
 		const byPredicate = vi.fn(() => Promise.reject(new Error("down")));
 		const bySchedule = vi.fn(() => Promise.reject(new Error("down")));
-		const byDefault = vi.fn(() => Promise.reject(new Error("down")));
-		const withDefaults = new QueryClient({
-			defaults: { retry: retrySchedule(Schedule.recurs(2)) },
-			isServer: false,
-		});
 
 		await expect(
 			qc.fetch(() =>
@@ -641,28 +635,16 @@ describe("retry", () => {
 		).rejects.toThrow("down");
 		await expect(
 			qc.fetch(() =>
-				effectQueryOptions({
+				queryOptions({
 					queryFn: bySchedule,
 					queryKey: ["schedule"],
 					retry: Schedule.recurs(4),
 				}),
 			),
 		).rejects.toThrow("down");
-		await expect(
-			withDefaults.fetch(() =>
-				queryOptions({ queryFn: byDefault, queryKey: ["default"] }),
-			),
-		).rejects.toThrow("down");
-		// Each request steps its own copy of the schedule.
-		await expect(
-			withDefaults.fetch(() =>
-				queryOptions({ queryFn: byDefault, queryKey: ["default", 2] }),
-			),
-		).rejects.toThrow("down");
 
 		expect(byPredicate).toHaveBeenCalledTimes(2);
 		expect(bySchedule).toHaveBeenCalledTimes(5);
-		expect(byDefault).toHaveBeenCalledTimes(6);
 	});
 
 	describe("offline", () => {
@@ -737,7 +719,7 @@ describe("retry", () => {
 			const queryFn = failingOnce();
 			const qc = new QueryClient({ isServer: false });
 			const result = qc.fetch(() =>
-				effectQueryOptions({
+				queryOptions({
 					queryFn,
 					queryKey: ["offline"],
 					retry: Schedule.recurs(3),
@@ -823,7 +805,7 @@ describe("Effect queryFn", () => {
 		let interrupted = false;
 		const qc = new QueryClient({ isServer: false });
 		function slowQuery() {
-			return effectQueryOptions({
+			return queryOptions({
 				queryFn: () =>
 					Effect.sleep(1000).pipe(
 						Effect.as("slow"),
@@ -837,7 +819,7 @@ describe("Effect queryFn", () => {
 			});
 		}
 		function fastQuery() {
-			return effectQueryOptions({
+			return queryOptions({
 				queryFn: () => Effect.succeed("fast"),
 				queryKey: ["fast"],
 			});

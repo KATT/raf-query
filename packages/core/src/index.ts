@@ -39,7 +39,6 @@ export {
 	type QueryOptions,
 	queryOptions,
 	type RetryPolicy,
-	type RetryStrategy,
 } from "./options.ts";
 export {
 	QueryObserver,

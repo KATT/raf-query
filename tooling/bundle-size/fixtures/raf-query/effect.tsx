@@ -2,9 +2,9 @@ import {
 	QueryClient,
 	QueryClientProvider,
 	type QueryHandle,
+	queryOptions,
 	useQuery,
 } from "@raf-query/react";
-import { effectQueryOptions } from "@raf-query/react/effect";
 import { Data, Effect, Schedule } from "effect";
 import { Suspense, use } from "react";
 
@@ -15,7 +15,7 @@ class IssueRequestError extends Data.TaggedError("IssueRequestError")<{
 }> {}
 
 export function effectIssueQuery(input: { readonly id: number }) {
-	return effectQueryOptions({
+	return queryOptions({
 		queryFn: () =>
 			Effect.tryPromise({
 				catch: (cause) => new IssueRequestError({ cause }),
