@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.2](https://github.com/KATT/raf-query/compare/0.1.1...0.1.2) (2026-10-12)
+
+### Features
+
+- add isFetching(filter?) and useIsFetching(filter?) ([#25](https://github.com/KATT/raf-query/issues/25)) ([70c3b98](https://github.com/KATT/raf-query/commit/70c3b981027f717b1d619d5a2b23822f685c032a))
+
 ## [0.1.1](https://github.com/KATT/raf-query/compare/0.1.0...0.1.1) (2026-10-12)
 
 ### Features
