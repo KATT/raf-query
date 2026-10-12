@@ -323,6 +323,29 @@ describe("QueryDevtools", () => {
 		expect(panel.style.right).toBe("0px");
 		expect(panel.style.width).toBe("320px");
 	});
+
+	it("resizes by dragging its edge, and remembers the size", async () => {
+		useCleanup();
+		const client = new QueryClient({ isServer: false });
+		await mount(<QueryDevtools client={client} initialIsOpen />);
+		const handle = screen.getByRole("separator", {
+			name: "Resize raf-query devtools",
+		});
+
+		await act(async () => {
+			fireEvent.pointerDown(handle, { clientY: window.innerHeight - 320 });
+			fireEvent.pointerMove(window, { clientY: window.innerHeight - 400 });
+			fireEvent.pointerUp(window);
+		});
+
+		expect(screen.getByRole("complementary").style.height).toBe("400px");
+		expect(window.localStorage.getItem("raf-query-devtools:size")).toBe("400");
+
+		await act(async () => {
+			fireEvent.pointerMove(window, { clientY: 0 });
+		});
+		expect(screen.getByRole("complementary").style.height).toBe("400px");
+	});
 });
 
 describe("production builds", () => {

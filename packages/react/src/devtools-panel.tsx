@@ -4,7 +4,7 @@ import type { QueryClient } from "@raf-query/core";
 import { Predicate } from "effect";
 import {
 	type CSSProperties,
-	type PointerEvent,
+	type PointerEvent as ReactPointerEvent,
 	useState,
 	useSyncExternalStore,
 } from "react";
@@ -825,19 +825,31 @@ function DockedDevtools(props: QueryDevtoolsProps) {
 		writeStored(storageKeys.open, String(open));
 	};
 
-	const resize = (event: PointerEvent<HTMLDivElement>) => {
-		if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
-			return;
-		}
-		const next = {
-			bottom: window.innerHeight - event.clientY,
-			left: event.clientX,
-			right: window.innerWidth - event.clientX,
-			top: event.clientY,
-		}[position];
-		setSize(
-			clampSize(next, horizontal ? window.innerWidth : window.innerHeight),
-		);
+	// Listening on `window` keeps the drag going when the pointer outruns the
+	// thin handle.
+	const startResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+		event.preventDefault();
+		let latest = size;
+		const onMove = (move: PointerEvent) => {
+			const next = {
+				bottom: window.innerHeight - move.clientY,
+				left: move.clientX,
+				right: window.innerWidth - move.clientX,
+				top: move.clientY,
+			}[position];
+			latest = clampSize(
+				next,
+				horizontal ? window.innerWidth : window.innerHeight,
+			);
+			setSize(latest);
+		};
+		const onUp = () => {
+			window.removeEventListener("pointermove", onMove);
+			window.removeEventListener("pointerup", onUp);
+			writeStored(storageKeys.size, String(latest));
+		};
+		window.addEventListener("pointermove", onMove);
+		window.addEventListener("pointerup", onUp);
 	};
 
 	if (!isOpen) {
@@ -886,10 +898,10 @@ function DockedDevtools(props: QueryDevtoolsProps) {
 		top: { height: size, left: 0, right: 0, top: 0 },
 	}[position];
 	const handleEdge = {
-		bottom: { height: 6, left: 0, right: 0, top: -3 },
-		left: { bottom: 0, right: -3, top: 0, width: 6 },
-		right: { bottom: 0, left: -3, top: 0, width: 6 },
-		top: { bottom: -3, height: 6, left: 0, right: 0 },
+		bottom: { height: 10, left: 0, right: 0, top: -5 },
+		left: { bottom: 0, right: -5, top: 0, width: 10 },
+		right: { bottom: 0, left: -5, top: 0, width: 10 },
+		top: { bottom: -5, height: 10, left: 0, right: 0 },
 	}[position];
 	return (
 		<aside
@@ -912,22 +924,29 @@ function DockedDevtools(props: QueryDevtoolsProps) {
 			<div
 				aria-label="Resize raf-query devtools"
 				aria-orientation={horizontal ? "vertical" : "horizontal"}
-				onPointerDown={(event) =>
-					event.currentTarget.setPointerCapture(event.pointerId)
-				}
-				onPointerMove={resize}
-				onPointerUp={(event) => {
-					event.currentTarget.releasePointerCapture(event.pointerId);
-					writeStored(storageKeys.size, String(size));
-				}}
+				onPointerDown={startResize}
 				role="separator"
 				style={{
 					...handleEdge,
+					alignItems: "center",
 					cursor: horizontal ? "ew-resize" : "ns-resize",
+					display: "flex",
+					justifyContent: "center",
 					position: "absolute",
+					touchAction: "none",
 					zIndex: 1,
 				}}
-			/>
+			>
+				<span
+					aria-hidden
+					style={{
+						background: palette.border,
+						borderRadius: 999,
+						height: horizontal ? 32 : 4,
+						width: horizontal ? 4 : 32,
+					}}
+				/>
+			</div>
 			<QueryDevtoolsPanel
 				client={props.client}
 				onClose={() => setOpen(false)}
