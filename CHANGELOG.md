@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.19](https://github.com/KATT/raf-query/compare/0.0.18...0.0.19) (2026-10-12)
+
+### Features
+
+- **core:** type the cache's promises as Thenable ([#21](https://github.com/KATT/raf-query/issues/21)) ([c0541b0](https://github.com/KATT/raf-query/commit/c0541b0c14e687f25d47f25fe457e49b135d8c06))
+
 ## [0.0.18](https://github.com/KATT/raf-query/compare/0.0.17...0.0.18) (2026-10-12)
 
 ### Bug Fixes

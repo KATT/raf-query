@@ -576,16 +576,17 @@ When the last reader of a query unsubscribes while its request is in flight, a `
 | `CancelledError`                               | Rejection of a request cancelled by `clear()` or a restart       |
 | `QueryHandle<TFactory>`                        | Handle type for props                                            |
 | `EnsuredQueryHandle<TFactory>`                 | Handle type for props fed by `ensure`                            |
+| `Thenable<T>`                                  | Promise with `status` / `value` / `reason`, read by `use()`      |
 | `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                                 |
 
 `@raf-query/react` (plus all of the above):
 
-| Export                                | Use                                                                                                            |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `QueryClientProvider`                 | Provides a client to the tree                                                                                  |
-| `useQueryClient()`                    | Read the client                                                                                                |
-| `useQuery(factory, handle, options?)` | `[Promise<Data>, controls]`; for paged factories `Data` is `{ pages, pageParams }` and controls include paging |
-| `useWaterfall(factory, input)`        | Start a query during render and return its handle                                                              |
+| Export                                | Use                                                                                                             |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `QueryClientProvider`                 | Provides a client to the tree                                                                                   |
+| `useQueryClient()`                    | Read the client                                                                                                 |
+| `useQuery(factory, handle, options?)` | `[Thenable<Data>, controls]`; for paged factories `Data` is `{ pages, pageParams }` and controls include paging |
+| `useWaterfall(factory, input)`        | Start a query during render and return its handle                                                               |
 
 ## Development
 
