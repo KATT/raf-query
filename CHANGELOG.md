@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.5](https://github.com/KATT/raf-query/compare/0.0.4...0.0.5) (2026-10-12)
+
+- **examples:** use Zod instead of Effect Schema ([#6](https://github.com/KATT/raf-query/issues/6)) ([7068cbe](https://github.com/KATT/raf-query/commit/7068cbe95e693787f22908b0ed678f6b7b05a550))
+
+### Bug Fixes
+
+- **react:** HydrationBoundary defers newer data for entries already on screen ([#5](https://github.com/KATT/raf-query/issues/5)) ([881a535](https://github.com/KATT/raf-query/commit/881a53544f65e2ffe858a0d010d7109427b93d55))
+
 ## [0.0.4](https://github.com/KATT/raf-query/compare/0.0.3...0.0.4) (2026-10-12)
 
 ### Features
