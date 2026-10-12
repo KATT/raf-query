@@ -182,3 +182,16 @@ Agent decisions:
 - `npm publish` from an agent shell fails with `EOTP` (2FA web auth needs an interactive terminal); manual publishes have to be run by the user.
 - Publishes via npm OIDC trusted publishing (`id-token: write`, empty `NODE_AUTH_TOKEN`). npm only allows a trusted publisher on a package that exists, so every new package needs one manual first publish (with `--provenance=false`) before `npm trust github`.
 - Locally, nested `pnpm` calls from `pnpm -r` scripts hit the broken corepack shim described in `AGENTS.md`; put the cached pnpm binary first on `PATH` (a symlink named `pnpm`) when running root scripts.
+
+## 2026-10-12 — Experiment: `@raf-query/experimental-effect-atom` (human asked)
+
+`packages/.experimental/effect-atom`, stacked on the Effect-native core. Asks whether `effect/reactivity` (`AtomRegistry` / `Atom` / `AsyncResult`) can replace raf-query's own cache. Human: "everything until the very _edge_ where we expose apis for react should be effect native"; inspiration from [voidhashcom/effect-query](https://github.com/voidhashcom/effect-query) (services via a Layer/runtime, typed failures kept apart from defects, spans, disposable runtime).
+
+- **Layering.** `QueryCache` is a `Context.Service` built by `QueryCache.layer(config)` (requires `AtomRegistry`); its verbs (`atom` / `ensure` / `fetch` / `prefetch` / `invalidate` / `getData` / `setData`) are Effects whose requirements are the factory's `ServicesOf`. `QueryClient<TServices>` is the React-edge runner: it builds the cache, registry and the user's `layer` into a `Scope`, runs verbs as Promises, and `dispose()` closes the scope. `useQuery` reads atoms with `useSyncExternalStore`.
+- **`queryFn` may return an Effect** (`TData | PromiseLike | Effect<TData, TError, TServices>`). A sync throw or rejected promise is a defect, not a typed error. Requests run in a `raf-query.request` span and `Effect.logError` defects.
+- **Services.** The cache captures its build-time context; each verb merges the caller's context over it (last caller wins per entry). The atom's own Scope and registry override both. Erased contexts are typed `Context<never>` because `Context` is invariant.
+- **One entry per hash**: a writable `data` atom (`Atom.make(request)` + `setSelf` for `setData`), labelled with the hash, `setIdleTTL(gcTime)` (Infinity on the server, 5 min in the browser), read through `Atom.swr` (`staleTime`, focus/online signals, `revalidateOnMount: false`). Entries are dropped from the cache's map via a chained `registry.onNodeRemoved` matched by label.
+- **`invalidated` flag.** `registry.refresh` on an unobserved node interrupts the request and leaves a stale node, so invalidating an unread entry only sets a flag; the next read refetches. Read entries refetch immediately.
+- **`getData` never builds a node** (only reads valid ones), so reading the cache doesn't start a fetch.
+- Thenables and the "error shown once, next read retries" rule copy the TanStack experiment.
+- Not supported: paged queries, hydration/streaming, per-read options, offline gating, structural sharing.
