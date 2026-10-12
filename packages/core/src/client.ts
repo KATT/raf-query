@@ -236,15 +236,8 @@ export class QueryClient {
 		factory: TFactory,
 		...args: LoadArgs<TFactory>
 	): Promise<DataOf<TFactory>> {
-		const entry = this.#build(factory, args[0]);
-		await this.#load(entry, args[1]?.pages);
-		const state = entry.getState();
-		if (!state.hasData) {
-			throw new Error(`Query ${entry.hash} has no data`);
-		}
-		// SAFETY: `hasData` means `data` came from this factory's queryFn or
-		// setData, so it's `DataOf<TFactory>` even when that includes `undefined`.
-		return unsafeCast<DataOf<TFactory>>(state.data);
+		const entry = typed<TFactory>(this.#build(factory, args[0]));
+		return this.#load(entry, args[1]?.pages);
 	}
 
 	/**
@@ -391,13 +384,17 @@ export class QueryClient {
 		return entry;
 	}
 
-	#load(entry: QueryEntry, pages: number | undefined): Promise<unknown> {
+	/** Resolves to the entry's data: the cached thenable, or the first fetch. */
+	#load<TData, TFactory extends QueryFactory>(
+		entry: Query<TData, TFactory>,
+		pages: number | undefined,
+	): Promise<TData> {
 		const state = entry.getState();
 		if (!state.hasData) {
 			return entry.fetch({ pages });
 		}
 		this.#revalidate(entry);
-		return Promise.resolve(state.data);
+		return state.promise;
 	}
 
 	/**
@@ -405,7 +402,9 @@ export class QueryClient {
 	 * once, so a refetch there could only duplicate a request whose result is
 	 * never shown; it refetches only what `invalidate` marked.
 	 */
-	#revalidate(entry: QueryEntry) {
+	#revalidate<TData, TFactory extends QueryFactory>(
+		entry: Query<TData, TFactory>,
+	) {
 		const state = entry.getState();
 		const wanted = this.isServer ? state.isInvalidated : entry.isStaleNow();
 		if (!state.isFetching && wanted) {
