@@ -8,97 +8,97 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root";
-import { Route as IndexRouteImport } from "./routes/index";
-import { Route as IssuesIndexRouteImport } from "./routes/issues.index";
-import { Route as IssuesIssueIdRouteImport } from "./routes/issues.$issueId";
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as IssuesIndexRouteImport } from './routes/issues.index'
+import { Route as IssuesIssueIdRouteImport } from './routes/issues.$issueId'
 
 const IndexRoute = IndexRouteImport.update({
-	id: "/",
-	path: "/",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IssuesIndexRoute = IssuesIndexRouteImport.update({
-	id: "/issues/",
-	path: "/issues/",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/issues/',
+  path: '/issues/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IssuesIssueIdRoute = IssuesIssueIdRouteImport.update({
-	id: "/issues/$issueId",
-	path: "/issues/$issueId",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/issues/$issueId',
+  path: '/issues/$issueId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
-	"/": typeof IndexRoute;
-	"/issues/$issueId": typeof IssuesIssueIdRoute;
-	"/issues/": typeof IssuesIndexRoute;
+  '/': typeof IndexRoute
+  '/issues/$issueId': typeof IssuesIssueIdRoute
+  '/issues/': typeof IssuesIndexRoute
 }
 export interface FileRoutesByTo {
-	"/": typeof IndexRoute;
-	"/issues/$issueId": typeof IssuesIssueIdRoute;
-	"/issues": typeof IssuesIndexRoute;
+  '/': typeof IndexRoute
+  '/issues/$issueId': typeof IssuesIssueIdRoute
+  '/issues': typeof IssuesIndexRoute
 }
 export interface FileRoutesById {
-	__root__: typeof rootRouteImport;
-	"/": typeof IndexRoute;
-	"/issues/$issueId": typeof IssuesIssueIdRoute;
-	"/issues/": typeof IssuesIndexRoute;
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/issues/$issueId': typeof IssuesIssueIdRoute
+  '/issues/': typeof IssuesIndexRoute
 }
 export interface FileRouteTypes {
-	fileRoutesByFullPath: FileRoutesByFullPath;
-	fullPaths: "/" | "/issues/$issueId" | "/issues/";
-	fileRoutesByTo: FileRoutesByTo;
-	to: "/" | "/issues/$issueId" | "/issues";
-	id: "__root__" | "/" | "/issues/$issueId" | "/issues/";
-	fileRoutesById: FileRoutesById;
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '/issues/$issueId' | '/issues/'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/issues/$issueId' | '/issues'
+  id: '__root__' | '/' | '/issues/$issueId' | '/issues/'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-	IndexRoute: typeof IndexRoute;
-	IssuesIssueIdRoute: typeof IssuesIssueIdRoute;
-	IssuesIndexRoute: typeof IssuesIndexRoute;
+  IndexRoute: typeof IndexRoute
+  IssuesIssueIdRoute: typeof IssuesIssueIdRoute
+  IssuesIndexRoute: typeof IssuesIndexRoute
 }
 
-declare module "@tanstack/react-router" {
-	interface FileRoutesByPath {
-		"/": {
-			id: "/";
-			path: "/";
-			fullPath: "/";
-			preLoaderRoute: typeof IndexRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/issues/": {
-			id: "/issues/";
-			path: "/issues";
-			fullPath: "/issues/";
-			preLoaderRoute: typeof IssuesIndexRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/issues/$issueId": {
-			id: "/issues/$issueId";
-			path: "/issues/$issueId";
-			fullPath: "/issues/$issueId";
-			preLoaderRoute: typeof IssuesIssueIdRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-	}
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/issues/': {
+      id: '/issues/'
+      path: '/issues'
+      fullPath: '/issues/'
+      preLoaderRoute: typeof IssuesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/issues/$issueId': {
+      id: '/issues/$issueId'
+      path: '/issues/$issueId'
+      fullPath: '/issues/$issueId'
+      preLoaderRoute: typeof IssuesIssueIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  }
 }
 
 const rootRouteChildren: RootRouteChildren = {
-	IndexRoute: IndexRoute,
-	IssuesIssueIdRoute: IssuesIssueIdRoute,
-	IssuesIndexRoute: IssuesIndexRoute,
-};
+  IndexRoute: IndexRoute,
+  IssuesIssueIdRoute: IssuesIssueIdRoute,
+  IssuesIndexRoute: IssuesIndexRoute,
+}
 export const routeTree = rootRouteImport
-	._addFileChildren(rootRouteChildren)
-	._addFileTypes<FileRouteTypes>();
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from "./router.tsx";
-import type { createStart } from "@tanstack/react-start";
-declare module "@tanstack/react-start" {
-	interface Register {
-		ssr: true;
-		router: Awaited<ReturnType<typeof getRouter>>;
-	}
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
 }
