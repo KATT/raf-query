@@ -72,7 +72,7 @@ The factory is the only place a query is declared paged. Every other API — `pr
 
 ### Query meta
 
-`meta` attaches anything you want to know about a query elsewhere. It reaches the `queryFn` context, `Query.meta(query)` (taken from the latest factory call) and the devtools. A common use is a per-query message for one global error handler:
+`meta` attaches anything you want to know about a query elsewhere. It reaches the `queryFn` context, `Query.metaUnsafe(query)` (taken from the latest factory call) and the devtools. A common use is a per-query message for one global error handler:
 
 ```ts
 import { Query, QueryClient, queryOptions } from "@raf-query/react";
@@ -87,7 +87,9 @@ export function issuesQuery() {
 
 const queryClient = new QueryClient({
 	onError: (error, query) => {
-		toast.error(Query.meta(query)?.errorMessage ?? "Something went wrong");
+		toast.error(
+			Query.metaUnsafe(query)?.errorMessage ?? "Something went wrong",
+		);
 	},
 });
 ```
@@ -659,23 +661,23 @@ In the browser, retries pause while `navigator.onLine` is `false`: after the ret
 
 `@raf-query/core`:
 
-| Export                                                       | Use                                                                               |
-| ------------------------------------------------------------ | --------------------------------------------------------------------------------- |
-| `QueryCache`                                                 | The cache service (`qc.effect`): `make`, `layer`, and the verbs as Effects        |
-| `Query`                                                      | Cache entries: `Query.fetch`, `Query.changes`, `Query.getUnsafe`, `Query.meta`, … |
-| `Platform`                                                   | The page the cache watches (focus, network); swap it in tests                     |
-| `queryOptions(options)`                                      | Typed options for a query factory                                                 |
-| `infiniteQueryOptions(options)`                              | Typed options for a paged query factory                                           |
-| `hashKey(key)`, `matchesKey(key, prefix)`                    | Key helpers                                                                       |
-| `QueryObserver`                                              | One reader's view of a query, with tracked results; for bindings                  |
-| `Query.CancelledError`                                       | Failure of a request whose entry was removed or cleared before it settled         |
-| `RedactedError`                                              | What a streamed pending query rejects with when its server request failed         |
-| `QueryHandle<TFactory>`                                      | Handle type for props                                                             |
-| `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                             |
-| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`                       |
-| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                           |
-| `ServicesOf<TFactory>`                                       | The services a factory's `queryFn` Effect needs; `never` for promises             |
-| `Register`, `QueryMeta`                                      | Augment `Register` with `queryMeta` to type [`meta`](#query-meta)                 |
+| Export                                                       | Use                                                                                     |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `QueryCache`                                                 | The cache service (`qc.effect`): `make`, `layer`, and the verbs as Effects              |
+| `Query`                                                      | Cache entries: `Query.fetch`, `Query.changes`, `Query.getUnsafe`, `Query.metaUnsafe`, … |
+| `Platform`                                                   | The page the cache watches (focus, network); swap it in tests                           |
+| `queryOptions(options)`                                      | Typed options for a query factory                                                       |
+| `infiniteQueryOptions(options)`                              | Typed options for a paged query factory                                                 |
+| `hashKey(key)`, `matchesKey(key, prefix)`                    | Key helpers                                                                             |
+| `QueryObserver`                                              | One reader's view of a query, with tracked results; for bindings                        |
+| `Query.CancelledError`                                       | Failure of a request whose entry was removed or cleared before it settled               |
+| `RedactedError`                                              | What a streamed pending query rejects with when its server request failed               |
+| `QueryHandle<TFactory>`                                      | Handle type for props                                                                   |
+| `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                                   |
+| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`                             |
+| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                                 |
+| `ServicesOf<TFactory>`                                       | The services a factory's `queryFn` Effect needs; `never` for promises                   |
+| `Register`, `QueryMeta`                                      | Augment `Register` with `queryMeta` to type [`meta`](#query-meta)                       |
 
 `@raf-query/react` (plus all of the above):
 

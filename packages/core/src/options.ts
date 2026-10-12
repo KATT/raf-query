@@ -102,7 +102,7 @@ export interface QueryOptions<TData, TError = unknown, TServices = never>
 	readonly kind: "query";
 	/**
 	 * Anything to know about the query elsewhere: the `queryFn` context,
-	 * `Query.meta(query)` (e.g. in the client's `onError`), devtools. Not
+	 * `Query.metaUnsafe(query)` (e.g. in the client's `onError`), devtools. Not
 	 * sent with dehydrated state.
 	 */
 	readonly meta?: QueryMeta;

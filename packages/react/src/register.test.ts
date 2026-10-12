@@ -15,7 +15,9 @@ describe("Register", () => {
 			readonly errorMessage?: string;
 		}>();
 		expectTypeOf<CoreQueryMeta>().toEqualTypeOf<QueryMeta>();
-		expectTypeOf(Query.meta).returns.toEqualTypeOf<QueryMeta | undefined>();
+		expectTypeOf(Query.metaUnsafe).returns.toEqualTypeOf<
+			QueryMeta | undefined
+		>();
 
 		queryOptions({
 			meta: { errorMessage: "Couldn't load issues" },

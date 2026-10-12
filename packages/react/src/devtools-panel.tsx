@@ -442,7 +442,7 @@ function QueryDetails(props: {
 	const query = props.row.query;
 	const state = props.row.state;
 	const options = query.options;
-	const meta = Query.meta(query);
+	const meta = Query.metaUnsafe(query);
 	const section = { padding: 8 };
 	return (
 		<section

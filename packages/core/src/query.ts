@@ -189,7 +189,7 @@ export function reset<TData, TFactory extends QueryFactory, TError>(
 }
 
 /** `meta` from the latest factory call; `undefined` for an entry only hydrated so far. */
-export function meta<TData, TFactory extends QueryFactory, TError>(
+export function metaUnsafe<TData, TFactory extends QueryFactory, TError>(
 	self: Query<TData, TFactory, TError>,
 ): QueryMeta | undefined {
 	return self.options?.meta;

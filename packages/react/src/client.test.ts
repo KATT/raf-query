@@ -91,7 +91,9 @@ describe("meta", () => {
 
 		expect(onError).toHaveBeenCalledOnce();
 		const query: Query.Query = onError.mock.calls[0]?.[1];
-		expect(Query.meta(query)).toEqual({ errorMessage: "Couldn't load issues" });
+		expect(Query.metaUnsafe(query)).toEqual({
+			errorMessage: "Couldn't load issues",
+		});
 	});
 });
 

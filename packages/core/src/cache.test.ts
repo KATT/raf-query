@@ -199,7 +199,7 @@ describe("QueryCache meta", () => {
 	);
 
 	it.effect(
-		"Query.meta follows the latest factory call, and is undefined for hydrated entries",
+		"Query.metaUnsafe follows the latest factory call, and is undefined for hydrated entries",
 		() =>
 			Effect.gen(function* () {
 				const cache = yield* QueryCache.make({ isServer: false });
@@ -209,12 +209,12 @@ describe("QueryCache meta", () => {
 					],
 				});
 				const [hydrated] = yield* cache.all;
-				expect(hydrated && Query.meta(hydrated)).toBeUndefined();
+				expect(hydrated && Query.metaUnsafe(hydrated)).toBeUndefined();
 
 				const query = yield* cache.getQuery(metaQuery, { id: 1, label: "a" });
-				expect(Query.meta(query)).toEqual({ label: "a" });
+				expect(Query.metaUnsafe(query)).toEqual({ label: "a" });
 				yield* cache.prefetch(metaQuery, { id: 1, label: "b" });
-				expect(Query.meta(query)).toEqual({ label: "b" });
+				expect(Query.metaUnsafe(query)).toEqual({ label: "b" });
 			}),
 	);
 });

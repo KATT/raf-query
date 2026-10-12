@@ -106,7 +106,9 @@ describe("types", () => {
 		expectTypeOf<QueryFunctionContext["meta"]>().toEqualTypeOf<
 			QueryMeta | undefined
 		>();
-		expectTypeOf(Query.meta).returns.toEqualTypeOf<QueryMeta | undefined>();
+		expectTypeOf(Query.metaUnsafe).returns.toEqualTypeOf<
+			QueryMeta | undefined
+		>();
 		queryOptions({
 			// @ts-expect-error meta is an object, not a string
 			meta: "label",
