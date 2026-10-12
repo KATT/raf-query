@@ -1,6 +1,6 @@
 {
 	"name": "raf-query",
-	"version": "0.0.0",
+	"version": "0.0.1",
 	"description": "Render-as-you-fetch query library",
 	"keywords": [
 		"query",
