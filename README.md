@@ -189,7 +189,7 @@ function PostPage() {
 | `hash`         | Stable string form of the handle's key, for `key` props on Suspense boundaries                                           |
 | `refetch()`    | Refetch now. Returns a promise, so it can be awaited inside a transition or action                                       |
 
-When the cache updates — refetch, invalidation, `setData` — the hook returns a new, pre-resolved promise and the component re-renders without suspending. New data is structurally shared with the old: objects and arrays that are deeply equal keep their identity, and a refetch that returns equal data keeps the same promise, so nothing re-renders. When the **first** load fails, the promise rejects and `use()` throws to the nearest error boundary. Resetting that boundary refetches the query.
+When the cache updates — refetch, invalidation, `setData` — the hook returns a new, pre-resolved promise and the component re-renders without suspending. New data is structurally shared with the old: objects and arrays that are deeply equal keep their identity, and a refetch that returns equal data keeps the same promise, so nothing re-renders. Controls are tracked: reading `controls.isFetching` subscribes the component to `isFetching`, and a change to a control it never read doesn't re-render it. When the **first** load fails, the promise rejects and `use()` throws to the nearest error boundary. Resetting that boundary refetches the query.
 
 Queries do not refetch on mount. They refetch when a loader starts them again, when invalidated, on window focus or reconnect while stale, on `refetch()`, or on `refetchInterval`.
 
@@ -304,7 +304,7 @@ return (
 );
 ```
 
-The parent re-renders when `controls` change. If it only passes the promise down, call the hook in the child instead.
+A component re-renders when the promise changes, and when a control it reads changes. Controls it never reads, like `isFetching` here, don't re-render it, so a parent that only passes the promise down stays put during background refetches.
 
 ## Render-time inputs: `useWaterfall`
 
@@ -557,18 +557,19 @@ Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.de
 
 `@raf-query/core`:
 
-| Export                                         | Use                                                        |
-| ---------------------------------------------- | ---------------------------------------------------------- |
-| `QueryClient`                                  | The cache                                                  |
-| `queryOptions(options)`                        | Typed options for a query factory                          |
-| `infiniteQueryOptions(options)`                | Typed options for a paged query factory                    |
-| `allKeyed(record)`                             | Await a record of promises, keeping keys                   |
-| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations          |
-| `hashKey(key)`, `matchesKey(key, prefix)`      | Key helpers                                                |
-| `CancelledError`                               | Rejection of a request cancelled by `clear()` or a restart |
-| `QueryHandle<TFactory>`                        | Handle type for props                                      |
-| `EnsuredQueryHandle<TFactory>`                 | Handle type for props fed by `ensure`                      |
-| `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                           |
+| Export                                         | Use                                                              |
+| ---------------------------------------------- | ---------------------------------------------------------------- |
+| `QueryClient`                                  | The cache                                                        |
+| `queryOptions(options)`                        | Typed options for a query factory                                |
+| `infiniteQueryOptions(options)`                | Typed options for a paged query factory                          |
+| `allKeyed(record)`                             | Await a record of promises, keeping keys                         |
+| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations                |
+| `hashKey(key)`, `matchesKey(key, prefix)`      | Key helpers                                                      |
+| `QueryObserver`                                | One reader's view of a query, with tracked results; for bindings |
+| `CancelledError`                               | Rejection of a request cancelled by `clear()` or a restart       |
+| `QueryHandle<TFactory>`                        | Handle type for props                                            |
+| `EnsuredQueryHandle<TFactory>`                 | Handle type for props fed by `ensure`                            |
+| `DataOf<TFactory>`, `InputOf<TFactory>`        | A factory's data and input types                                 |
 
 `@raf-query/react` (plus all of the above):
 
