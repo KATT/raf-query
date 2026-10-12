@@ -35,7 +35,8 @@ export interface QueryClientConfig {
 export type CacheEvent =
 	| {
 			readonly query: Query;
-			readonly type: "added" | "removed" | "updated";
+			/** `observers`: a reader subscribed or unsubscribed. */
+			readonly type: "added" | "observers" | "removed" | "updated";
 	  }
 	| {
 			/** A request failed (after retries), with this error. */
@@ -153,6 +154,7 @@ export class QueryClient {
 			changed: (query) => emit({ query, type: "updated" }),
 			defaults: config.defaults ?? {},
 			isServer: this.isServer,
+			observersChanged: (query) => emit({ query, type: "observers" }),
 			remove: (query) => {
 				if (this.#cache.get(query.hash) === query) {
 					this.#cache.delete(query.hash);
@@ -244,6 +246,37 @@ export class QueryClient {
 		await Promise.all(
 			this.#match(target, input).map((entry) => entry.invalidate()),
 		);
+	}
+
+	/**
+	 * Drop queries' data and errors, as if they were never fetched. Read ones
+	 * suspend and refetch; resolves once those refetches settle.
+	 */
+	reset<TFactory extends QueryFactory>(
+		factory: TFactory,
+		...args: InputArgs<TFactory>
+	): Promise<void>;
+	reset(filter: QueryFilter): Promise<void>;
+	async reset(
+		target: QueryFactory | QueryFilter,
+		input?: unknown,
+	): Promise<void> {
+		await Promise.all(this.#match(target, input).map((entry) => entry.reset()));
+	}
+
+	/**
+	 * Remove queries from the cache and abort their requests. Readers keep the
+	 * removed entry until they render again.
+	 */
+	remove<TFactory extends QueryFactory>(
+		factory: TFactory,
+		...args: InputArgs<TFactory>
+	): void;
+	remove(filter: QueryFilter): void;
+	remove(target: QueryFactory | QueryFilter, input?: unknown) {
+		for (const entry of this.#match(target, input)) {
+			this.#host.remove(entry);
+		}
 	}
 
 	/** Write data for a factory call. Readers re-render without suspending. */

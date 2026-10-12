@@ -76,7 +76,11 @@ export interface Query<
 	hasNextPage(): boolean;
 	hasPreviousPage(): boolean;
 	invalidate(): Promise<void>;
+	/** Staleness as of now; `getState().isStale` is only kept current while read. */
+	isStaleNow(): boolean;
 	readonly key: QueryKey;
+	/** Readers currently subscribed. */
+	readonly observerCount: number;
 	/** Options from the latest factory call; `undefined` for an entry only hydrated so far. */
 	readonly options: AnyQueryOptions | undefined;
 	/**
@@ -86,6 +90,11 @@ export interface Query<
 	read(): Promise<TData>;
 	/** Refetch now; resolves when the request settles. */
 	refetch(): Promise<void>;
+	/**
+	 * Drop data and errors, back to the state of a new entry. Readers suspend
+	 * and refetch; resolves when that refetch settles.
+	 */
+	reset(): Promise<void>;
 	/** Listen for state changes. Subscribed entries count as read. */
 	subscribe(listener: () => void, observer?: QueryObserver): () => void;
 }
@@ -103,6 +112,8 @@ export interface QueryHost {
 	changed(query: QueryEntry): void;
 	readonly defaults: QueryBehavior;
 	readonly isServer: boolean;
+	/** A reader subscribed or unsubscribed. */
+	observersChanged(query: QueryEntry): void;
 	remove(query: QueryEntry): void;
 	reportError(error: unknown, query: QueryEntry): void;
 }
@@ -250,21 +261,28 @@ export class QueryEntry implements Query {
 		return this.#listeners.size > 0;
 	}
 
+	get observerCount() {
+		return this.#listeners.size;
+	}
+
 	getState = () => this.#state;
 
-	/** Staleness as of now; `getState().isStale` is only refreshed for read entries. */
 	isStaleNow = () => this.#computeStale(this.#state);
 
 	subscribe = (listener: () => void, observer = defaultObserver) => {
 		this.#listeners.set(listener, observer);
 		this.#clearGc();
 		this.#scheduleStale();
+		this.#host.observersChanged(this);
 		return () => {
-			this.#listeners.delete(listener);
+			if (!this.#listeners.delete(listener)) {
+				return;
+			}
 			if (this.#listeners.size === 0) {
 				clearTimeout(this.#staleTimer);
 				this.#scheduleGc();
 			}
+			this.#host.observersChanged(this);
 		};
 	};
 
@@ -335,6 +353,29 @@ export class QueryEntry implements Query {
 	invalidate = () => {
 		this.#set({ isInvalidated: true });
 		if (!this.isObserved || !this.#options) {
+			return Promise.resolve();
+		}
+		return this.fetch({ restart: true }).then(noop, noop);
+	};
+
+	reset = () => {
+		clearTimeout(this.#errorShownTimer);
+		this.#errorShownTimer = undefined;
+		this.#errorShown = false;
+		this.#pending ??= pending();
+		this.#set({
+			data: undefined,
+			error: null,
+			failureCount: 0,
+			hasData: false,
+			isInvalidated: false,
+			promise: this.#pending.promise,
+			status: "pending",
+			updatedAt: 0,
+		});
+		// An in-flight request restarts too, or its response would restore the
+		// data that was just dropped.
+		if (!this.#options || (!this.isObserved && !this.#inFlight)) {
 			return Promise.resolve();
 		}
 		return this.fetch({ restart: true }).then(noop, noop);
