@@ -8,13 +8,20 @@ Append-only in spirit; rewrite in place when a decision changes. Keep each entry
 - Publishable packages: `packages/core` (`@raf-query/core`) and `packages/react` (`@raf-query/react`), each a library entry only (`src/index.ts` → `dist/index.mjs`). No `bin`.
 - Root scripts fan out with `pnpm -r --filter`: `build` (packages), `build:examples`, `test` (packages, tooling), `typecheck` (examples, packages, tooling). Lint / format / check run once at the root. CI has a Build Examples job.
 - Package `exports` point at `./src/index.ts` so workspace consumers (react → core, examples) need no build; `publishConfig.exports` swaps in `./dist/index.mjs`, which `pnpm pack` applies.
-- Root `scripts/` holds repo scripts (`sync-package-docs.ts`); root `CHANGELOG.md` is shared by both packages.
+- Root `scripts/` holds repo scripts. `sync-package-docs.ts` runs on each package's `prepack` and copies the root `LICENSE.md` and `CHANGELOG.md` (shared by both packages) into it; those copies are git-ignored.
 
 ## 2026-10-10 — Docs split
 
-- Root `README.md`: product sketch / public story (human will draft ideas there).
+- Root `README.md`: the full guide and public API spec (human drafts ideas there).
+- `packages/*/README.md`: one bespoke README per published package, shown on npm (see below).
 - `AGENTS.md`: short environment + pointers agents need every session.
 - `.agent-docs/`: durable agent notes (this folder). Agents may reshape it.
+
+## 2026-10-12 — Bespoke package READMEs (human asked)
+
+- Each published package has its own committed `README.md`, written for that package, not a copy of the root one. `@raf-query/core`'s is for binding / integration authors; `@raf-query/react`'s is install, quick start, entry points, and a compact API overview.
+- Package READMEs link back to the root README for the full guide, with absolute GitHub URLs (`https://github.com/katt/raf-query#readme`), since npm can't resolve relative links.
+- When the public API changes, update the root README and the affected package README together.
 
 ## 2026-10-10 — Markdown via oxfmt, not markdownlint
 

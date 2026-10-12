@@ -12,10 +12,10 @@ Early. Both packages are on npm at `0.0.x`, and the API can still change between
 
 ## Packages
 
-| Package            | Contents                                                                                                                           |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `@raf-query/core`  | Framework-agnostic: `QueryClient`, cache, `queryOptions` / `infiniteQueryOptions`, handles, dehydrate / hydrate stream, `allKeyed` |
-| `@raf-query/react` | Hooks and provider. Re-exports everything from `@raf-query/core`, so apps install and import only this package                     |
+| Package                                        | Contents                                                                                                                           |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| [`@raf-query/core`](packages/core/README.md)   | Framework-agnostic: `QueryClient`, cache, `queryOptions` / `infiniteQueryOptions`, handles, dehydrate / hydrate stream, `allKeyed` |
+| [`@raf-query/react`](packages/react/README.md) | Hooks and provider. Re-exports everything from `@raf-query/core`, so apps install and import only this package                     |
 
 `@raf-query/react` subpath entries for framework integrations and tooling:
 

@@ -9,7 +9,9 @@ This is a Vite+ / pnpm monorepo. The publishable packages live in `packages/`:
 
 `packages/tanstack-react-query` (`@raf-query/tanstack-react-query`) is an experiment: the same API built on TanStack Query instead of raf-query's own engine. It's private and isn't published.
 
-Root `README.md` / `LICENSE.md` / `CHANGELOG.md` are canonical. Each package's `prepack` runs [`scripts/sync-package-docs.ts`](../scripts/sync-package-docs.ts), which copies them into the package so the npm tarball includes them without a second copy in git.
+Each published package has its own `README.md`, which npm shows on the package page. The root `README.md` is the full guide, and package READMEs link to it. npm can't resolve relative links, so links in a package README use full GitHub URLs.
+
+Root `LICENSE.md` / `CHANGELOG.md` are shared by both packages. Each package's `prepack` runs [`scripts/sync-package-docs.ts`](../scripts/sync-package-docs.ts), which copies them into the package so the npm tarball includes them without a second copy in git.
 
 Scripts live in `scripts/` and are written in TypeScript with Effect, run with plain `node`.
 
