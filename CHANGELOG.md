@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.0.12](https://github.com/KATT/raf-query/compare/0.0.11...0.0.12) (2026-10-12)
+
+- **examples:** move the shared db and ui packages into examples/.shared ([#14](https://github.com/KATT/raf-query/issues/14)) ([fccdc7b](https://github.com/KATT/raf-query/commit/fccdc7bb8075ce2fb0cdbe07b26b36f2ace2bd9c))
+
 ## [0.0.11](https://github.com/KATT/raf-query/compare/0.0.10...0.0.11) (2026-10-12)
 
 ### Features
