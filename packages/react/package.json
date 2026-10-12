@@ -32,7 +32,10 @@
 	"type": "module",
 	"sideEffects": false,
 	"exports": {
-		".": "./src/index.ts"
+		".": "./src/index.ts",
+		"./next": "./src/next.tsx",
+		"./rsc": "./src/rsc.tsx",
+		"./tanstack-router": "./src/tanstack-router.ts"
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/sync-package-docs.ts",
@@ -46,21 +49,40 @@
 		"effect": "catalog:"
 	},
 	"peerDependencies": {
+		"@tanstack/react-router": "^1.170.0",
+		"next": "^16.0.0",
 		"react": "^19.2.0"
+	},
+	"peerDependenciesMeta": {
+		"@tanstack/react-router": {
+			"optional": true
+		},
+		"next": {
+			"optional": true
+		}
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:",
+		"@tanstack/react-router": "1.170.42",
+		"@testing-library/react": "16.3.3",
 		"@types/node": "26.6.4",
 		"@types/react": "19.3.0",
+		"@types/react-dom": "19.3.0",
 		"@vitest/coverage-v8": "5.0.1",
+		"happy-dom": "21.0.1",
+		"next": "16.4.0",
 		"react": "19.3.0",
+		"react-dom": "19.3.0",
 		"typescript": "7.0.2",
 		"vite-plus": "1.0.0"
 	},
 	"publishConfig": {
 		"access": "public",
 		"exports": {
-			".": "./dist/index.mjs"
+			".": "./dist/index.mjs",
+			"./next": "./dist/next.mjs",
+			"./rsc": "./dist/rsc.mjs",
+			"./tanstack-router": "./dist/tanstack-router.mjs"
 		},
 		"provenance": true
 	},

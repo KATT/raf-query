@@ -7,6 +7,7 @@ import type {
 	InfiniteData,
 	InfiniteQueryOptions,
 	QueryBehavior,
+	QueryFactory,
 	QueryFnResult,
 	QueryHandle,
 	RetryPolicy,
@@ -59,14 +60,17 @@ export interface FetchRequest {
  * A cache entry, as seen by bindings. Obtain one with
  * `QueryClient.getQuery(factory, input)`.
  */
-export interface Query<TData = unknown> {
+export interface Query<
+	TData = unknown,
+	TFactory extends QueryFactory = QueryFactory,
+> {
 	/** Start a request, or join the one in flight. */
 	fetch(request?: FetchRequest): Promise<TData>;
 	fetchNextPage(): Promise<void>;
 	fetchPreviousPage(): Promise<void>;
 	getState(): QueryState<TData>;
 	/** The serializable handle for this entry's factory call. */
-	readonly handle: QueryHandle;
+	readonly handle: QueryHandle<TFactory>;
 	/** Stable string form of `key`. */
 	readonly hash: string;
 	hasNextPage(): boolean;

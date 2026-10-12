@@ -1,5 +1,6 @@
 import { Effect, Predicate, Queue, Stream } from "effect";
 
+import { unsafeCast } from "./cast.ts";
 import { hashKey, matchesKey, type QueryKey } from "./key.ts";
 import {
 	type DataOf,
@@ -31,10 +32,17 @@ export interface QueryClientConfig {
 }
 
 /** Emitted by {@link QueryClient.subscribe} for every cache change. */
-export interface CacheEvent {
-	readonly query: Query;
-	readonly type: "added" | "removed" | "updated";
-}
+export type CacheEvent =
+	| {
+			readonly query: Query;
+			readonly type: "added" | "removed" | "updated";
+	  }
+	| {
+			/** A request failed (after retries), with this error. */
+			readonly error: unknown;
+			readonly query: Query;
+			readonly type: "failed";
+	  };
 
 /** Matches cache entries by key prefix, or by exact key with `exact`. */
 export interface QueryFilter {
@@ -102,12 +110,11 @@ function isUpdateFunction<TData>(
 
 function typed<TFactory extends QueryFactory>(
 	entry: QueryEntry,
-): Query<DataOf<TFactory>> {
+): Query<DataOf<TFactory>, TFactory> {
 	// SAFETY: an entry's hash comes from its factory's `queryKey`, and only
 	// that factory's `queryFn` (or data written through the same factory)
 	// fills it, so its data has the factory's data type.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
-	return entry as Query<DataOf<TFactory>>;
+	return unsafeCast<Query<DataOf<TFactory>, TFactory>>(entry);
 }
 
 function handleOf<TFactory extends QueryFactory>(
@@ -153,7 +160,10 @@ export class QueryClient {
 					emit({ query, type: "removed" });
 				}
 			},
-			reportError: (error, query) => config.onError?.(error, query),
+			reportError: (error, query) => {
+				config.onError?.(error, query);
+				emit({ error, query, type: "failed" });
+			},
 		};
 		caches.set(this, {
 			all: () => [...this.#cache.values()],
@@ -169,7 +179,7 @@ export class QueryClient {
 	getQuery<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
-	): Query<DataOf<TFactory>> {
+	): Query<DataOf<TFactory>, TFactory> {
 		return typed<TFactory>(this.#build(factory, args[0]));
 	}
 

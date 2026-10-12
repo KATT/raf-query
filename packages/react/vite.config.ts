@@ -2,7 +2,12 @@ import { defineConfig } from "vite-plus";
 
 export default defineConfig({
 	pack: {
-		entry: ["src/index.ts"],
+		entry: [
+			"src/index.ts",
+			"src/next.tsx",
+			"src/rsc.tsx",
+			"src/tanstack-router.ts",
+		],
 		unbundle: true,
 	},
 	test: {
@@ -11,6 +16,7 @@ export default defineConfig({
 			include: ["src"],
 			reporter: ["html", "lcov"],
 		},
+		environment: "happy-dom",
 		exclude: ["dist", "node_modules"],
 		unstubGlobals: true,
 	},

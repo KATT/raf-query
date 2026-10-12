@@ -2,8 +2,9 @@
 	"compilerOptions": {
 		"declaration": true,
 		"esModuleInterop": true,
-		"module": "nodenext",
-		"moduleResolution": "nodenext",
+		"jsx": "react-jsx",
+		"module": "preserve",
+		"moduleResolution": "bundler",
 		"noEmit": true,
 		"resolveJsonModule": true,
 		"rewriteRelativeImportExtensions": true,
