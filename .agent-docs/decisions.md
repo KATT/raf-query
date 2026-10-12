@@ -105,6 +105,7 @@ App: **issue tracker** (confirmed). Data: an in-memory fake DB with artificial l
 - `.oxlintrc.json` turns off `anti-slop/no-unknown-parameters`, `no-unknown-returns`, `no-unsafe-dictionary-type` for `packages/*/src/**`: the cache is type-erased on purpose and factory generics restore types at the public boundary. Each remaining cast has a `SAFETY:` comment and an oxlint disable. Where a value must be widened before the cast, use the package's `unsafeCast<T>(value: unknown)` (`cast.ts`, not exported): `anti-slop/no-widen-then-assert` bans the inline `const x: unknown = …; x as T` form.
 - The TanStack Router integration stores its payload under the `raf` key of the router's dehydrated state (`{ raf: { initial, stream } }`).
 - The `"failed"` `CacheEvent` exists for integrations (redirect handling) and fires after retries.
+- **Structural sharing** (`share.ts`, a port of TanStack's `replaceEqualDeep`) runs in `QueryEntry.#succeed`, so fetch results, `setData` and hydration all share. Equal data keeps the old promise too, so readers see no change. Option is `structuralSharing: boolean` only; TanStack's function form wasn't needed yet.
 - React tests: render, rerender and click inside **async** `act` (`await act(async () => …)`); a sync `act` never resumes a suspended tree after its promise resolves. Responding to a fake request needs a macrotask wait inside the act. Effect tests that fork a stream before a cache write need `Effect.forkChild(x, { startImmediately: true })`.
 
 ## 2026-10-12 — Devtools (agent)

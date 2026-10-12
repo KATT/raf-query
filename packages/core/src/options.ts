@@ -48,6 +48,12 @@ export interface QueryBehavior {
 		| ((failureCount: number, error: unknown) => number);
 	/** How long data counts as fresh, in ms. Fresh data is never refetched. */
 	readonly staleTime?: number;
+	/**
+	 * Keep the parts of new data that are deeply equal to the old data, so
+	 * unchanged objects keep their identity and unchanged data keeps its
+	 * promise. Compares plain objects and arrays. Default `true`.
+	 */
+	readonly structuralSharing?: boolean;
 }
 
 export interface QueryOptions<TData> extends QueryBehavior {
