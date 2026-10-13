@@ -56,17 +56,6 @@ pnpm preview:examples   # build all four, then serve the production builds
 
 Every database call waits `DB_LATENCY_MS` (default 400) ± 50%. Data the server loads for the first render streams in with the HTML. Later loads (scrolling, filters, opening an issue) are requests to the shared REST API (`examples/.shared/api`) in the browser's network tab, such as `GET /api/issues?status=open&cursor=10`, and mutations are `PATCH` / `POST` to it. Both apps serve the same API under `/api`. Data lives in memory and resets when the server restarts. To add a shadcn component, run `pnpm dlx shadcn@latest add <name>` in `examples/.shared/ui`, then check that it imports `cn` from `@examples/ui/lib/utils` (the CLI can write a bare `"cn"` import and add a `cn` dependency).
 
-### StackBlitz
-
-StackBlitz opens one folder of a GitHub repo, but the apps import `@examples/*` and `@raf-query/*` from the workspace. So the `stackblitz` branch holds a standalone copy of each app, and the READMEs link to `stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/<app>`. [`tooling/stackblitz`](../tooling/stackblitz) writes the copies. Each copy is its own pnpm workspace, laid out like a typical one: the app in `apps/<app>` and `examples/.shared/*` copied as-is into `packages/`, so `@examples/*` stay `workspace:*`. `@raf-query/*` become the version in this repo's `packages/*/package.json`, and the root `package.json` runs the app's scripts. The scripts swap in what runs in WebContainers (`vite` for `vp`, `next dev --webpack`), and `.stackblitzrc` preloads `webcontainer-async-context.mjs`, which patches `AsyncLocalStorage` around a WebContainers bug.
-
-[`.github/workflows/stackblitz.yaml`](./workflows/stackblitz.yaml) runs `pnpm --filter @tooling/stackblitz sync` after each Release run on `main`. It waits until npm serves the version just published, then installs and builds each copy with StackBlitz's pnpm (8.15.6). It commits the lockfiles and pushes the branch, so a copy that doesn't build isn't pushed. To check the copies locally:
-
-```shell
-pnpm --filter @tooling/stackblitz generate /tmp/stackblitz
-cd /tmp/stackblitz/examples/nextjs && npx pnpm@8.15.6 install && npx pnpm@8.15.6 dev
-```
-
 ## Formatting
 
 [Vite+ fmt](https://viteplus.dev/) (Oxfmt) is used to format code.

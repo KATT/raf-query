@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.2](https://github.com/KATT/raf-query/compare/0.2.1...0.2.2) (2026-10-13)
+
+- **examples:** remove StackBlitz ([#53](https://github.com/KATT/raf-query/issues/53)) ([f681e30](https://github.com/KATT/raf-query/commit/f681e30475753e6fc98bdf8775b2e517d7565af3)), references [#50](https://github.com/KATT/raf-query/issues/50) [#51](https://github.com/KATT/raf-query/issues/51) [#52](https://github.com/KATT/raf-query/issues/52)
+
+## [0.2.1](https://github.com/KATT/raf-query/compare/0.2.0...0.2.1) (2026-10-13)
+
+### Bug Fixes
+
+- **tooling:** don't walk node_modules when copying StackBlitz examples ([#52](https://github.com/KATT/raf-query/issues/52)) ([1ab1f6a](https://github.com/KATT/raf-query/commit/1ab1f6a813118646b11dd4cb804bb030f02e775d))
+
 ## [0.2.0](https://github.com/KATT/raf-query/compare/0.1.16...0.2.0) (2026-10-13)
 
 ### ⚠ BREAKING CHANGES

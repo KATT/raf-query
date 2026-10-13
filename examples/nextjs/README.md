@@ -1,7 +1,5 @@
 # raf-query on Next.js App Router
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/nextjs?file=apps/nextjs/src/queries.ts,apps/nextjs/src/app/issues/page.tsx)
-
 A small issue tracker built with [raf-query](https://github.com/KATT/raf-query#readme). [`examples/tanstack-start`](https://github.com/KATT/raf-query/tree/main/examples/tanstack-start) is the same app on TanStack Start, so the two integrations can be compared side by side.
 
 | Screen / action                               | Shows                                                                                                  | Files                                                                |
