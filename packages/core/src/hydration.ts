@@ -188,7 +188,10 @@ export const dehydrateStream: (
 
 /**
  * Write dehydrated entries into a cache. Existing entries only take newer
- * data; pending entries resume the sender's request.
+ * data; pending entries resume the sender's request. An entry that keeps its
+ * own data (the sender's is older, as in a router's cached payload, or still
+ * pending) was asked for again, so it revalidates if stale, as `prefetch`
+ * would.
  */
 export function hydrateEntries(
 	entryFor: (key: QueryKey) => Entry.Entry,
@@ -205,10 +208,14 @@ export function hydrateEntries(
 		if (query.updatedAt > 0) {
 			if (!current.hasData || current.updatedAt < query.updatedAt) {
 				Entry.setData(entry, deserialize(query.data), query.updatedAt);
+			} else {
+				Entry.revalidate(entry);
 			}
 		} else if (query.promise && !current.hasData) {
 			// Flight-decoded promises are thenables, not always real promises.
 			Entry.resume(entry, Promise.resolve(query.promise).then(deserialize));
+		} else {
+			Entry.revalidate(entry);
 		}
 	}
 }

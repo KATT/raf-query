@@ -306,23 +306,8 @@ function keyMatcher(filter: Filter): (entry: Entry.Entry) => boolean {
 }
 
 /**
- * Background refetch of cached data a verb reuses. A server cache renders
- * once, so a refetch there could only duplicate a request whose result is
- * never shown; it refetches only what `invalidate` marked.
- */
-function revalidate(entry: Entry.Entry) {
-	const state = entry.state;
-	const wanted = entry.cache.isServer
-		? state.isInvalidated
-		: Entry.isStaleUnsafe(entry);
-	if (!state.isFetching && wanted) {
-		Entry.start(entry);
-	}
-}
-
-/**
  * Waits for an entry's data on a cache miss. Cached data returns at once,
- * and revalidates in the background (see `revalidate`).
+ * and revalidates in the background (see `Entry.revalidate`).
  */
 function load<TFactory extends QueryFactory>(
 	entry: Entry.Entry,
@@ -334,7 +319,7 @@ function load<TFactory extends QueryFactory>(
 			Effect.Effect<DataOf<TFactory>, ErrorOf<TFactory> | Query.CancelledError>
 		>(Entry.fetch(entry, { pages }));
 	}
-	revalidate(entry);
+	Entry.revalidate(entry);
 	return Effect.succeed(dataOf<TFactory>(entry));
 }
 
@@ -486,7 +471,7 @@ export const make: (
 			prefetch: (factory, ...args) =>
 				Effect.map(buildFor(factory, args[0]), (entry) => {
 					if (entry.state.hasData) {
-						revalidate(entry);
+						Entry.revalidate(entry);
 					} else {
 						Entry.start(entry);
 					}
