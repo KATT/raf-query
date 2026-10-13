@@ -33,7 +33,7 @@ export function StatusFilter(props: {
 						)}
 						href={{
 							pathname: "/issues",
-							query: { ...current, page: 1, status },
+							query: { ...current, status },
 						}}
 						key={status}
 					>
@@ -52,7 +52,7 @@ export function StatusFilter(props: {
 							"rounded-md px-3 py-1.5 text-sm capitalize hover:bg-muted",
 							current.sort === sort && "bg-muted font-medium",
 						)}
-						href={{ pathname: "/issues", query: { ...current, page: 1, sort } }}
+						href={{ pathname: "/issues", query: { ...current, sort } }}
 						key={sort}
 					>
 						{sort}

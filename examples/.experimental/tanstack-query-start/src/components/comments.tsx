@@ -1,5 +1,6 @@
 import { type Comment, currentUser } from "@examples/db/types";
 import { Button } from "@examples/ui/components/button";
+import { LoadMore } from "@examples/ui/components/load-more";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { Textarea } from "@examples/ui/components/textarea";
 import {
@@ -78,15 +79,12 @@ export function Comments(props: {
 				))}
 			</ol>
 			{comments.hasNextPage ? (
-				<Button
-					disabled={comments.isFetchingNextPage}
-					onClick={() => {
+				<LoadMore
+					loading={comments.isFetchingNextPage}
+					onLoad={() => {
 						void comments.fetchNextPage();
 					}}
-					variant="outline"
-				>
-					{comments.isFetchingNextPage ? "Loading…" : "Load more"}
-				</Button>
+				/>
 			) : null}
 		</section>
 	);

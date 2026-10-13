@@ -1,7 +1,6 @@
-import type { IssueListInput } from "@examples/db/types";
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { Button } from "@examples/ui/components/button";
 import { Card } from "@examples/ui/components/card";
+import { LoadMore } from "@examples/ui/components/load-more";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
@@ -20,25 +19,26 @@ const dateFormat = new Intl.DateTimeFormat("en", {
 export function IssueList(props: {
 	readonly handle: QueryHandle<typeof issueListQuery>;
 }) {
-	const [listPromise, listState] = useQuery(issueListQuery, props.handle, {
+	const [pagesPromise, list] = useQuery(issueListQuery, props.handle, {
 		whilePending: "previous",
 	});
-	const list = use(listPromise);
-	const input: IssueListInput = listState.input;
+	const pages = use(pagesPromise);
+	const issues = pages.pages.flatMap((page) => page.issues);
+	const total = pages.pages.at(-1)?.total ?? 0;
 
 	return (
 		<div
-			aria-busy={listState.isPrevious}
+			aria-busy={list.isPrevious}
 			className={cn(
 				"grid gap-4 transition-opacity",
-				listState.isPrevious && "opacity-50",
+				list.isPrevious && "opacity-50",
 			)}
 		>
 			<Card className="gap-0 divide-y py-0">
-				{list.issues.length === 0 ? (
+				{issues.length === 0 ? (
 					<p className="p-6 text-sm text-muted-foreground">No issues.</p>
 				) : null}
-				{list.issues.map((issue) => (
+				{issues.map((issue) => (
 					<Link
 						className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50"
 						key={issue.id}
@@ -60,36 +60,17 @@ export function IssueList(props: {
 					</Link>
 				))}
 			</Card>
-			<div className="flex items-center justify-between text-sm text-muted-foreground">
-				<span>
-					Page {list.page} of {list.pageCount} · {list.total} issues
-				</span>
-				<div className="flex gap-2">
-					<Button asChild disabled={list.page <= 1} size="sm" variant="outline">
-						<Link
-							disabled={list.page <= 1}
-							search={{ ...input, page: list.page - 1 }}
-							to="/issues"
-						>
-							Previous
-						</Link>
-					</Button>
-					<Button
-						asChild
-						disabled={list.page >= list.pageCount}
-						size="sm"
-						variant="outline"
-					>
-						<Link
-							disabled={list.page >= list.pageCount}
-							search={{ ...input, page: list.page + 1 }}
-							to="/issues"
-						>
-							Next
-						</Link>
-					</Button>
-				</div>
-			</div>
+			<p className="text-sm text-muted-foreground">
+				Showing {issues.length} of {total} issues
+			</p>
+			{list.hasNextPage ? (
+				<LoadMore
+					loading={list.isFetchingNextPage}
+					onLoad={() => {
+						void list.fetchNextPage();
+					}}
+				/>
+			) : null}
 		</div>
 	);
 }

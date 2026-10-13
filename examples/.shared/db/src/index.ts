@@ -5,8 +5,8 @@ import {
 	type CommentPage,
 	type Issue,
 	type IssueCounts,
-	type IssueList,
-	type IssueListInput,
+	type IssuePage,
+	type IssuePageInput,
 	type IssueStatus,
 	type Store,
 	type User,
@@ -14,7 +14,7 @@ import {
 
 export * from "./types.ts";
 
-export const ISSUES_PER_PAGE = 8;
+export const ISSUES_PER_PAGE = 10;
 export const COMMENTS_PER_PAGE = 4;
 
 declare global {
@@ -35,7 +35,8 @@ async function latency() {
 	});
 }
 
-export async function listIssues(input: IssueListInput): Promise<IssueList> {
+/** `cursor` is the index of the first issue to return. */
+export async function listIssues(input: IssuePageInput): Promise<IssuePage> {
 	await latency();
 	const matching = store()
 		.issues.filter(
@@ -46,15 +47,10 @@ export async function listIssues(input: IssueListInput): Promise<IssueList> {
 				? b.createdAt.localeCompare(a.createdAt)
 				: a.createdAt.localeCompare(b.createdAt),
 		);
-	const pageCount = Math.max(1, Math.ceil(matching.length / ISSUES_PER_PAGE));
-	const page = Math.min(Math.max(1, input.page), pageCount);
+	const end = input.cursor + ISSUES_PER_PAGE;
 	return {
-		issues: matching.slice(
-			(page - 1) * ISSUES_PER_PAGE,
-			page * ISSUES_PER_PAGE,
-		),
-		page,
-		pageCount,
+		issues: matching.slice(input.cursor, end),
+		nextCursor: end < matching.length ? end : null,
 		total: matching.length,
 	};
 }

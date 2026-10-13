@@ -13,7 +13,7 @@ import {
 	AddCommentInput,
 	CommentsInput,
 	IssueId,
-	IssueListInput,
+	IssuePageInput,
 	UpdateTitleInput,
 	UserId,
 } from "@examples/db/types";
@@ -22,8 +22,8 @@ import { notFound } from "next/navigation";
 // Server actions are public endpoints: the parameter types are for callers,
 // the schemas check what actually arrives.
 
-export async function listIssues(input: IssueListInput) {
-	return listIssuesInDb(IssueListInput.parse(input));
+export async function listIssues(input: IssuePageInput) {
+	return listIssuesInDb(IssuePageInput.parse(input));
 }
 
 export async function getIssue(id: number) {

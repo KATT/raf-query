@@ -13,19 +13,18 @@ const Text = z.string().trim().min(1);
 
 /**
  * What the issue list shows. Lives in the URL's search params; missing keys
- * get defaults.
+ * get defaults. Pages are loaded by scrolling, so they stay out of the URL.
  */
 export const IssueListInput = z.object({
-	page: Id.default(1),
 	sort: IssueSort.default("newest"),
 	status: z.enum(["all", ...issueStatuses]).default("all"),
 });
 export type IssueListInput = z.infer<typeof IssueListInput>;
 
-/** {@link IssueListInput} as URL search params, where every value is a string. */
-export const IssueListSearchParams = IssueListInput.extend({
-	page: z.coerce.number<string>().pipe(Id).default(1),
+export const IssuePageInput = IssueListInput.extend({
+	cursor: z.int().nonnegative(),
 });
+export type IssuePageInput = z.infer<typeof IssuePageInput>;
 
 export const IssueId = Id;
 
@@ -81,10 +80,9 @@ export interface Comment {
 	readonly issueId: number;
 }
 
-export interface IssueList {
+export interface IssuePage {
 	readonly issues: ReadonlyArray<Issue>;
-	readonly page: number;
-	readonly pageCount: number;
+	readonly nextCursor: number | null;
 	readonly total: number;
 }
 

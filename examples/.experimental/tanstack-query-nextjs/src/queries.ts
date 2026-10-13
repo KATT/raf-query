@@ -1,4 +1,8 @@
-import type { CommentPage, IssueListInput } from "@examples/db/types";
+import type {
+	CommentPage,
+	IssueListInput,
+	IssuePage,
+} from "@examples/db/types";
 import {
 	infiniteQueryOptions,
 	queryOptions,
@@ -13,8 +17,10 @@ import {
 } from "./actions.ts";
 
 export function issueListQuery(input: IssueListInput) {
-	return queryOptions({
-		queryFn: () => listIssues(input),
+	return infiniteQueryOptions<IssuePage, number>({
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		initialPageParam: 0,
+		queryFn: (context) => listIssues({ ...input, cursor: context.pageParam }),
 		queryKey: ["issues", "list", input],
 	});
 }
