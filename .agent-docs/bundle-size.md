@@ -28,7 +28,7 @@ Effect v4 shakes per export (`sideEffects` lists only a schema file), and app-si
 
 - **Anything reachable from the always-imported path.** Members of a service object (`QueryCache`'s methods), class properties built in a constructor, and engine code that runs on every request can't be shaken, whatever they import.
 - **Top-level calls without `/*#__PURE__*/`** (`Context.Service(...)`, `Effect.fnUntraced(...)`, `Context.Reference(...)`).
-- **Runtime branches on build-time facts.** `if (router.isServer) setupServer()` keeps the server half's imports; even a constant-folded `isServer` left Queue/Stream residue after minification. Use export conditions (`browser`) for a separate module.
+- **Runtime branches on build-time facts.** `if (router.isServer) setupServer()` keeps the server half's imports; even a constant-folded `isServer` left Queue/Stream residue after minification. Use export conditions (`browser`) for a separate module ([decisions/router-browser-build.md](./decisions/router-browser-build.md)).
 - **`export * as X` in a rolldown library build** (`vp pack` / tsdown): an `__exportAll` getter object keeps every member. Packages build with `tsc` for that reason.
 - Dynamic access (`X[key]`) and re-exported `export *` keep everything.
 
