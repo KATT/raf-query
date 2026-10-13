@@ -141,8 +141,8 @@ export const dehydrateStream: (
 	queries: () => Iterable<Query.Query>,
 	subscribe: (listener: (event: CacheEvent) => void) => () => void,
 	options: DehydrateOptions,
-) => Effect.Effect<DehydratedStream, never, Scope.Scope> = Effect.fnUntraced(
-	function* (queries, subscribe, options) {
+) => Effect.Effect<DehydratedStream, never, Scope.Scope> =
+	/*#__PURE__*/ Effect.fnUntraced(function* (queries, subscribe, options) {
 		const sent = options.sent ?? new Set<string>();
 		const send = { ...options, sent };
 		const queue = yield* Queue.unbounded<DehydratedState, Cause.Done>();
@@ -184,8 +184,7 @@ export const dehydrateStream: (
 			initial: dehydrateEntries(queries(), send),
 			updates: Stream.fromQueue(queue),
 		};
-	},
-);
+	});
 
 /**
  * Write dehydrated entries into a cache. Existing entries only take newer
