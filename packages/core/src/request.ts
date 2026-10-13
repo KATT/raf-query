@@ -52,23 +52,19 @@ export function requestServices(
 }
 
 /**
- * A request as it runs: in a `raf-query.request` span, with `services`,
- * which hold what its `queryFn` Effect needs (entries erase that type with
- * the data's). Typed failures become the query's error; defects are logged
- * too, since nothing else reports them.
+ * A request as it runs, with `services`, which hold what its `queryFn`
+ * Effect needs (entries erase that type with the data's). Typed failures
+ * become the query's error; defects are logged too, since nothing else
+ * reports them.
  */
 export function runRequest<A, E>(
 	request: Effect.Effect<A, E>,
-	hash: string,
 	services: Context.Context<never>,
 ): Effect.Effect<A, E> {
 	return request.pipe(
 		Effect.tapDefect((defect) =>
 			Effect.logError("raf-query: queryFn died", defect),
 		),
-		Effect.withSpan("raf-query.request", {
-			attributes: { "raf_query.hash": hash },
-		}),
 		Effect.provideContext(services),
 	);
 }

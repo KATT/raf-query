@@ -27,6 +27,7 @@ import {
 	queryOptions,
 	RedactedError,
 	type RetryPolicy,
+	traceRequest,
 } from "./index.ts";
 import { createBackend, fakePlatform, flush } from "./test-utils.ts";
 
@@ -71,8 +72,11 @@ function greetingQuery(input: { name: string }) {
 				if (input.name === "") {
 					return yield* Effect.fail(new NotFound({ id: 0 }));
 				}
-				const span = yield* Effect.orDie(Effect.currentSpan);
-				return { span: span.name, text: `${greeting}, ${input.name}` };
+				const span = yield* Effect.option(Effect.currentSpan);
+				return {
+					span: Option.getOrUndefined(span)?.name,
+					text: `${greeting}, ${input.name}`,
+				};
 			}),
 		queryKey: ["greeting", input.name],
 		retry: false,
@@ -83,7 +87,7 @@ describe("QueryCache services", () => {
 	it.effect("a queryFn reads services the cache was built with", () =>
 		Effect.gen(function* () {
 			const services = yield* Layer.build(
-				QueryCache.layer({ isServer: false }).pipe(
+				QueryCache.layer({ isServer: false, wrapRequest: traceRequest }).pipe(
 					Layer.provide(Layer.succeed(Greeting, "Hello")),
 				),
 			);
@@ -125,6 +129,8 @@ describe("QueryCache services", () => {
 				Option.some("Hi, Ada"),
 			);
 			expect(layered.text).toBe("Hey, Bob");
+			// Spans only come from `wrapRequest: traceRequest`.
+			expect(layered.span).toBeUndefined();
 		}),
 	);
 

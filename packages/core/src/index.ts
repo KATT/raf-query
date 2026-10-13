@@ -40,3 +40,4 @@ export {
 	type ServicesOf,
 } from "./options.ts";
 export type { Thenable } from "./thenable.ts";
+export { traceRequest } from "./tracing.ts";

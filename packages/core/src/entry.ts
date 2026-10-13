@@ -13,7 +13,7 @@ import {
 	type Stream,
 } from "effect";
 
-import type { Event as CacheEvent } from "./cache.ts";
+import type { Event as CacheEvent, RequestWrapper } from "./cache.ts";
 import { unsafeCast } from "./cast.ts";
 import * as Fibers from "./fibers.ts";
 import {
@@ -37,7 +37,7 @@ import type {
 import { type Platform, type PlatformEvent, whenOnline } from "./platform.ts";
 import type { FetchRequest, Query, State, SubscribeOptions } from "./query.ts";
 import { fromQueryFn, requestServices, runRequest } from "./request.ts";
-import { retrySchedule } from "./retry.ts";
+import { retryPlan } from "./retry.ts";
 import { replaceEqualDeep } from "./share.ts";
 import { fulfilled, type Pending, pending, type Thenable } from "./thenable.ts";
 
@@ -65,6 +65,7 @@ export interface CacheState {
 	readonly platform: Platform;
 	readonly scope: Scope.Scope;
 	readonly services: Context.Context<never>;
+	readonly wrapRequest: RequestWrapper | undefined;
 }
 
 /** The background work of an entry, one fiber per kind. */
@@ -440,14 +441,12 @@ function begin(
 		return Effect.promise(() => promise);
 	}
 	entry.tasks.interrupt("request");
+	const effect = requestEffect(entry, options, request);
+	const wrap = entry.cache.wrapRequest;
 	return Deferred.await(
 		startRequest(
 			entry,
-			runRequest(
-				requestEffect(entry, options, request),
-				entry.hash,
-				entry.services,
-			),
+			runRequest(wrap ? wrap(effect, entry) : effect, entry.services),
 			request.direction,
 		),
 	);
@@ -682,32 +681,52 @@ function attempt(
 			),
 		),
 	);
-	const schedule = retrySchedule(
+	const plan = retryPlan(
 		{
 			retry: behavior(entry, "retry"),
 			retryDelay: behavior(entry, "retryDelay"),
 		},
 		entry.cache.isServer,
 	);
-	if (!schedule) {
+	if (!plan) {
 		return once;
 	}
 	// Retries wait while the browser is offline; the first attempt doesn't.
 	const online = entry.cache.isServer ? Effect.void : whenOnline;
+	// Readers can leave while a retry waits out its delay or the network.
+	const retryOnce = (lastError: unknown) =>
+		Effect.suspend(() =>
+			entry.retriesStopped
+				? Effect.fail(lastError)
+				: Effect.andThen(
+						online,
+						Effect.suspend(() =>
+							entry.retriesStopped ? Effect.fail(lastError) : once,
+						),
+					),
+		);
+	if (!Schedule.isSchedule(plan)) {
+		const after = (
+			failureCount: number,
+			error: unknown,
+		): Effect.Effect<unknown, unknown> =>
+			entry.retriesStopped || !plan.shouldRetry(failureCount, error)
+				? Effect.fail(error)
+				: Effect.sleep(plan.delay(failureCount, error)).pipe(
+						Effect.andThen(retryOnce(error)),
+						Effect.catch((error) => after(failureCount + 1, error)),
+					);
+		return Effect.catch(once, (error) => after(1, error));
+	}
 	return Effect.suspend(() => {
 		let retrying = false;
 		let lastError: unknown;
-		// Readers can leave while a retry waits out its delay or the network.
-		const unlessStopped = <A>(next: Effect.Effect<A, unknown>) =>
-			Effect.suspend(() =>
-				entry.retriesStopped ? Effect.fail(lastError) : next,
-			);
 		const gated = Effect.suspend(() => {
 			if (!retrying) {
 				retrying = true;
 				return once;
 			}
-			return unlessStopped(Effect.andThen(online, unlessStopped(once)));
+			return retryOnce(lastError);
 		}).pipe(
 			Effect.tapError((error) =>
 				Effect.sync(() => {
@@ -717,7 +736,7 @@ function attempt(
 		);
 		return Effect.retry(
 			gated,
-			Schedule.while(schedule, () => !entry.retriesStopped),
+			Schedule.while(plan, () => !entry.retriesStopped),
 		);
 	});
 }

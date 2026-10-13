@@ -58,14 +58,15 @@ export class QueryClient<TServices = never> {
 	readonly #scope = Scope.makeUnsafe();
 
 	constructor(config: QueryClientConfig<TServices> = {}) {
-		const cache = QueryCache.layer(config);
-		const services = Effect.runSync(
-			Layer.buildWithScope(
-				config.layer ? Layer.provide(cache, config.layer) : cache,
-				this.#scope,
+		const services = config.layer
+			? Effect.runSync(Layer.buildWithScope(config.layer, this.#scope))
+			: Context.empty();
+		this.effect = Effect.runSync(
+			QueryCache.make(config).pipe(
+				Scope.provide(this.#scope),
+				Effect.provideContext(services),
 			),
 		);
-		this.effect = Context.get(services, QueryCache.QueryCache);
 		this.isServer = this.effect.isServer;
 		const onError = config.onError;
 		if (onError) {

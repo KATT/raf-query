@@ -65,7 +65,18 @@ export interface Config {
 	 * revalidating it, unless `invalidate` marked it.
 	 */
 	readonly isServer?: boolean;
+	/**
+	 * Wraps every request, retries included, before it runs: add a span, a
+	 * timeout, metrics. `traceRequest` adds a span.
+	 */
+	readonly wrapRequest?: RequestWrapper;
 }
+
+/** See {@link Config.wrapRequest}. */
+export type RequestWrapper = <A, E>(
+	request: Effect.Effect<A, E>,
+	query: Query.Query,
+) => Effect.Effect<A, E>;
 
 /** Emitted on {@link QueryCache.events} for every cache change. */
 export type Event =
@@ -326,6 +337,7 @@ export const make: (
 			platform,
 			scope: yield* Effect.scope,
 			services: yield* Effect.context<never>(),
+			wrapRequest: config.wrapRequest,
 		};
 
 		const entryFor = (key: QueryKey) => {
