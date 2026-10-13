@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.7](https://github.com/KATT/raf-query/compare/0.2.6...0.2.7) (2026-10-13)
+
+- **examples:** open the CodeSandbox links at the issue list routes ([#58](https://github.com/KATT/raf-query/issues/58)) ([8cd518c](https://github.com/KATT/raf-query/commit/8cd518c3e8c6d5fed5e6d38c847401d390731909))
+
 ## [0.2.6](https://github.com/KATT/raf-query/compare/0.2.5...0.2.6) (2026-10-13)
 
 ### Features
