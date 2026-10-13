@@ -19,6 +19,24 @@ jobs:
             git worktree add --orphan -b stackblitz "$RUNNER_TEMP/stackblitz"
           fi
       - run: node scripts/stackblitz-examples.ts "$RUNNER_TEMP/stackblitz"
+      # A version Release just published can take a few minutes to install.
+      # Polls the abbreviated metadata `npm install` reads, which the registry
+      # caches apart from the full document `npm view` reads.
+      - name: Wait for the published version on npm
+        run: |
+          version=$(npm pkg get version --prefix packages/react | tr -d '"')
+          published() {
+            curl -sf -H "Accept: application/vnd.npm.install-v1+json" "https://registry.npmjs.org/@raf-query%2f$1" | grep -qF "\"version\":\"$version\""
+          }
+          for attempt in $(seq 1 30); do
+            if published react && published core; then
+              exit 0
+            fi
+            echo "Waiting for $version on npm ($attempt)…"
+            sleep 20
+          done
+          echo "@raf-query/*@$version isn't on npm."
+          exit 1
       # Each copy installs on its own from npm, as StackBlitz does. The lockfile
       # it writes is committed; a copy that doesn't build isn't pushed.
       - name: Install and build each example
