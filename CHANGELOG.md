@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.4.1](https://github.com/KATT/raf-query/compare/0.4.0...0.4.1) (2026-10-13)
+
+- one table for the query verbs; fetch and ensure wait alike in server components ([#64](https://github.com/KATT/raf-query/issues/64)) ([13e5549](https://github.com/KATT/raf-query/commit/13e5549e9f1b6df4fe0e8f23f79e1aef7bf94e53))
+
 ## [0.4.0](https://github.com/KATT/raf-query/compare/0.3.1...0.4.0) (2026-10-13)
 
 ### ⚠ BREAKING CHANGES
