@@ -8,7 +8,14 @@ import { Effect, FileSystem, Path, type PlatformError } from "effect";
 
 export const repo = "KATT/raf-query";
 export const branch = "codesandbox";
-export const apps: ReadonlyArray<string> = ["nextjs", "tanstack-start"];
+export const apps = ["nextjs", "tanstack-start"] as const;
+export type App = (typeof apps)[number];
+
+/** The route each app's CodeSandbox link opens, relative to the app. */
+const routes = {
+	nextjs: "src/app/issues/page.tsx",
+	"tanstack-start": "src/routes/issues.index.tsx",
+} satisfies Record<App, string>;
 
 const ignored = new Set([
 	".DS_Store",
@@ -40,9 +47,9 @@ export function isIgnored(file: string, separator: string) {
 		.some((part) => ignored.has(part) || part.endsWith(".tsbuildinfo"));
 }
 
-/** The link that opens `app`'s copy on CodeSandbox, at its query factories. */
-export function openUrl(app: string) {
-	return `https://codesandbox.io/p/devbox/github/${repo}/tree/${branch}/examples/${app}?file=/apps/${app}/src/queries.ts`;
+/** The link that opens `app`'s copy on CodeSandbox, at its issue list route. */
+export function openUrl(app: App) {
+	return `https://codesandbox.io/p/devbox/github/${repo}/tree/${branch}/examples/${app}?file=/apps/${app}/${routes[app]}`;
 }
 
 /**
@@ -139,7 +146,7 @@ export function devPort(pkg: PackageJson) {
  * The app's README with a note that it's a generated copy, and `## Run it`
  * replaced with the standalone commands. `undefined` if it has no `## Run it`.
  */
-export function standaloneReadme(app: string, readme: string, port: number) {
+export function standaloneReadme(app: App, readme: string, port: number) {
 	const [title, ...rest] = readme.split("\n");
 	const [body, runIt] = rest.join("\n").split("\n## Run it\n");
 	if (title === undefined || body === undefined || runIt === undefined) {
