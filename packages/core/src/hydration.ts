@@ -78,6 +78,18 @@ export class RedactedError extends Data.TaggedError("RedactedError")<{
 const noop = () => {};
 const identity = <T>(value: T) => value;
 
+/**
+ * A real promise settling with `thenable`. Flight-decoded promises inherit
+ * from Promise.prototype, but their `then` returns nothing, and some
+ * runtimes' Promise.resolve (StackBlitz's WebContainers) hands them back
+ * as they are.
+ */
+function adopt(thenable: PromiseLike<unknown>): Promise<unknown> {
+	return new Promise((resolve, reject) => {
+		thenable.then(resolve, reject);
+	});
+}
+
 /** The default dehydrate filter: entries with data or a request in flight. */
 export function canDehydrate<TData, TFactory extends QueryFactory, TError>(
 	query: Query.Query<TData, TFactory, TError>,
@@ -212,8 +224,7 @@ export function hydrateEntries(
 				Entry.revalidate(entry);
 			}
 		} else if (query.promise && !current.hasData) {
-			// Flight-decoded promises are thenables, not always real promises.
-			Entry.resume(entry, Promise.resolve(query.promise).then(deserialize));
+			Entry.resume(entry, adopt(query.promise).then(deserialize));
 		} else {
 			Entry.revalidate(entry);
 		}

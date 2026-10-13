@@ -692,6 +692,52 @@ describe("QueryCache", () => {
 		}),
 	);
 
+	it.effect(
+		"hydrate resumes a Flight-style thenable under an instanceof Promise.resolve",
+		() =>
+			Effect.gen(function* () {
+				// React's Flight client decodes promises into objects that inherit
+				// from Promise.prototype but whose `then` returns nothing.
+				// StackBlitz's WebContainers hand those back from Promise.resolve.
+				const flightPromise: Promise<unknown> = Object.create(
+					Promise.prototype,
+					{
+						// oxlint-disable-next-line unicorn/no-thenable -- the thenable under test
+						then: {
+							value(onFulfilled: (value: unknown) => void) {
+								onFulfilled({ id: 1, title: "First" });
+							},
+						},
+					},
+				);
+				const browser = yield* QueryCache.make({ isServer: false });
+				const resolve = Promise.resolve.bind(Promise);
+				const spy = vi
+					.spyOn(Promise, "resolve")
+					.mockImplementation((value?: unknown) =>
+						value === flightPromise ? flightPromise : resolve(value),
+					);
+				try {
+					yield* browser.hydrate({
+						queries: [
+							{
+								key: ["typed-issue", 1],
+								promise: flightPromise,
+								updatedAt: 0,
+							},
+						],
+					});
+				} finally {
+					spy.mockRestore();
+				}
+
+				expect(yield* browser.fetch(issueQuery, { id: 1 })).toEqual({
+					id: 1,
+					title: "First",
+				});
+			}),
+	);
+
 	it.effect("dehydrateQuery sends data, or the pending promise", () =>
 		Effect.gen(function* () {
 			const backend = createBackend();
