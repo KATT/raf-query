@@ -5,6 +5,7 @@ export * as QueryObserver from "./observer.ts";
 export {
 	canDehydrate,
 	type DehydratedQuery,
+	type DehydratedResult,
 	type DehydratedState,
 	type DehydratedStream,
 	type DehydrateOptions,
