@@ -1,12 +1,11 @@
-import { Context, Effect } from "effect";
-
 /** `"focus"`: the page became visible. `"online"`: the browser reconnected. */
 export type PlatformEvent = "focus" | "online";
 
 /**
  * The page a cache runs in: whether there is one, and its focus and network
- * state. The default reads the global `window`, `document` and `navigator`;
- * provide another to run a cache against a fake page.
+ * state. The default ({@link globalPlatform}) reads the global `window`,
+ * `document` and `navigator`; pass another as `config.platform` to run a
+ * cache against a fake page.
  */
 export interface Platform {
 	isOnlineUnsafe(): boolean;
@@ -17,7 +16,7 @@ export interface Platform {
 	subscribeUnsafe(listener: (event: PlatformEvent) => void): () => void;
 }
 
-const globalPlatform: Platform = {
+export const globalPlatform: Platform = {
 	isOnlineUnsafe: () =>
 		!("window" in globalThis) ||
 		!("navigator" in globalThis) ||
@@ -47,30 +46,28 @@ const globalPlatform: Platform = {
 	},
 };
 
-export const Platform = /*#__PURE__*/ Context.Reference<Platform>(
-	"@raf-query/core/Platform",
-	{
-		defaultValue: () => globalPlatform,
-	},
-);
-
 /**
- * Succeeds now if the platform is online, else on its next `"online"` event.
- * Interrupting it unsubscribes.
+ * Resolves now if `platform` is online, else on its next `"online"` event,
+ * or when `signal` aborts.
  */
-export const whenOnline: Effect.Effect<void> = /*#__PURE__*/ Effect.gen(
-	function* () {
-		const platform = yield* Platform;
-		if (platform.isOnlineUnsafe()) {
-			return;
-		}
-		yield* Effect.callback<void>((resume) => {
-			const unsubscribe = platform.subscribeUnsafe((event) => {
-				if (event === "online") {
-					resume(Effect.void);
-				}
-			});
-			return Effect.sync(unsubscribe);
+export function whenOnline(
+	platform: Platform,
+	signal: AbortSignal,
+): Promise<void> {
+	if (platform.isOnlineUnsafe() || signal.aborted) {
+		return Promise.resolve();
+	}
+	return new Promise((resolve) => {
+		const done = () => {
+			unsubscribe();
+			signal.removeEventListener("abort", done);
+			resolve();
+		};
+		const unsubscribe = platform.subscribeUnsafe((event) => {
+			if (event === "online") {
+				done();
+			}
 		});
-	},
-);
+		signal.addEventListener("abort", done, { once: true });
+	});
+}

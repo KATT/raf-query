@@ -1,7 +1,7 @@
 import type { Effect } from "effect";
 
 import type { QueryKey } from "./key.ts";
-import type { RetrySchedule } from "./retry.ts";
+import type { RetryStrategy } from "./retry.ts";
 
 /**
  * What a `queryFn` may return: a value, a promise, or an `Effect`. An
@@ -54,13 +54,14 @@ export interface PageFunctionContext<TPageParam> extends QueryFunctionContext {
 
 /**
  * How many times to retry a failed request: `false`, `true` (forever), a
- * count, a predicate, or an Effect `Schedule` wrapped in `retrySchedule`. The
- * predicate gets the number of failures so far (1 after the first).
+ * count, a predicate, or a {@link RetryStrategy} such as an Effect
+ * `Schedule` wrapped in `retrySchedule`. The predicate gets the number of
+ * failures so far (1 after the first).
  */
 export type RetryPolicy =
 	| boolean
 	| number
-	| RetrySchedule
+	| RetryStrategy
 	| ((failureCount: number, error: unknown) => boolean);
 
 /** Options every query accepts. `QueryCache` defaults fill in the rest. */

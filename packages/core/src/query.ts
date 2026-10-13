@@ -1,14 +1,12 @@
 /**
  * One cache entry, as a data type: a `Query` carries its key, handle and
  * options, and the functions here read it, subscribe to it and run its
- * requests. Get one from `QueryCache.getQuery(factory, input)`.
+ * requests. Get one from `QueryCache.getQuery(cache, factory, input)`.
  *
- * Requests are Effects. The `*Unsafe` functions read and subscribe
- * synchronously, for renders and external stores that can't run an Effect.
+ * Requests are promises. The `*Unsafe` functions read and subscribe
+ * synchronously, for renders and external stores. `@raf-query/core/effect`
+ * has the same functions as Effects.
  */
-import { type Context, Effect, type Pipeable, type Stream } from "effect";
-import { dual } from "effect/Function";
-
 import { unsafeCast } from "./cast.ts";
 import * as internal from "./entry.ts";
 import type { Direction } from "./infinite.ts";
@@ -20,8 +18,8 @@ import type {
 	QueryFactory,
 	QueryHandle,
 	QueryMeta,
-	ServicesOf,
 } from "./options.ts";
+import { CancelledError as Cancelled, unwrap } from "./outcome.ts";
 import type { Thenable } from "./thenable.ts";
 
 export const TypeId: typeof internal.TypeId = internal.TypeId;
@@ -32,8 +30,7 @@ export interface Query<
 	TData = unknown,
 	TFactory extends QueryFactory = QueryFactory,
 	TError = unknown,
->
-	extends Pipeable.Pipeable {
+> {
 	/** The serializable handle for this entry's factory call. */
 	readonly handle: QueryHandle<TFactory>;
 	/** Stable string form of `key`. */
@@ -92,99 +89,71 @@ export interface FetchRequest {
 	readonly direction?: Direction;
 	/** Pages to load when a paged query has none yet. */
 	readonly pages?: number;
-	/** Interrupt an in-flight request and start over (used by `invalidate`). */
+	/** Abort an in-flight request and start over (used by `invalidate`). */
 	readonly restart?: boolean;
 }
 
-export const CancelledError: typeof internal.CancelledError =
-	internal.CancelledError;
+export const CancelledError: typeof Cancelled = Cancelled;
 
-export type CancelledError = internal.CancelledError;
+export type CancelledError = Cancelled;
 
 export const isQuery: (value: unknown) => value is Query = internal.isQuery;
 
-function typed<TData, TError, TServices>(
-	effect: Effect.Effect<unknown, unknown, TServices>,
-): Effect.Effect<TData, TError | CancelledError, TServices> {
-	// SAFETY: an entry is keyed by its factory's `queryKey`, and only that
-	// factory's `queryFn` (or data written through it) fills it, so its data
-	// and failures have the factory's types. Interrupts become CancelledError.
-	return unsafeCast<Effect.Effect<TData, TError | CancelledError, TServices>>(
-		effect,
-	);
-}
-
 function typedState<TData>(state: State<unknown>): State<TData> {
-	// SAFETY: as in `typed`; `data` and `promise` hold the factory's data.
+	// SAFETY: an entry is keyed by its factory's `queryKey`, and only that
+	// factory's `queryFn` (or data written through it) fills it, so `data`
+	// and `promise` hold the factory's data.
 	return unsafeCast<State<TData>>(state);
 }
 
 /**
- * Start a request, or join the one in flight. Fails with the request's
+ * Start a request, or join the one in flight. Rejects with the request's
  * error, or a {@link CancelledError} if the entry leaves the cache first.
- * The entry's requests run with this fiber's services from now on, as after
- * a `QueryCache` verb.
  */
-export const fetch: {
-	(
-		request?: FetchRequest,
-	): <TData, TFactory extends QueryFactory, TError>(
-		self: Query<TData, TFactory, TError>,
-	) => Effect.Effect<TData, TError | CancelledError, ServicesOf<TFactory>>;
-	<TData, TFactory extends QueryFactory, TError>(
-		self: Query<TData, TFactory, TError>,
-		request?: FetchRequest,
-	): Effect.Effect<TData, TError | CancelledError, ServicesOf<TFactory>>;
-} = dual(
-	(args) => isQuery(args[0]),
-	<TData, TFactory extends QueryFactory, TError>(
-		self: Query<TData, TFactory, TError>,
-		request?: FetchRequest,
-	) =>
-		typed<TData, TError, ServicesOf<TFactory>>(
-			Effect.contextWith((caller: Context.Context<never>) => {
-				const entry = internal.entryOf(self);
-				internal.provide(entry, caller);
-				return internal.fetch(entry, request);
-			}),
-		),
-);
+export async function fetch<TData, TFactory extends QueryFactory, TError>(
+	self: Query<TData, TFactory, TError>,
+	request?: FetchRequest,
+): Promise<TData> {
+	const outcome = await internal.fetch(internal.entryOf(self), request);
+	// SAFETY: as in `typedState`.
+	return unsafeCast<TData>(unwrap(outcome));
+}
 
-/** Refetch now; succeeds when the request settles, whatever its outcome. */
+/** Refetch now; resolves when the request settles, whatever its outcome. */
 export function refetch<TData, TFactory extends QueryFactory, TError>(
 	self: Query<TData, TFactory, TError>,
-): Effect.Effect<void> {
-	return internal.entryOf(self).commands.refetch;
+): Promise<void> {
+	return internal.entryOf(self).commands.refetch();
 }
 
-/** Load the page after the last one; succeeds once it settles. */
+/** Load the page after the last one; resolves once it settles. */
 export function fetchNextPage<TData, TFactory extends QueryFactory, TError>(
 	self: Query<TData, TFactory, TError>,
-): Effect.Effect<void> {
-	return internal.entryOf(self).commands.fetchNextPage;
+): Promise<void> {
+	return internal.entryOf(self).commands.fetchNextPage();
 }
 
-/** Load the page before the first one; succeeds once it settles. */
+/** Load the page before the first one; resolves once it settles. */
 export function fetchPreviousPage<TData, TFactory extends QueryFactory, TError>(
 	self: Query<TData, TFactory, TError>,
-): Effect.Effect<void> {
-	return internal.entryOf(self).commands.fetchPreviousPage;
+): Promise<void> {
+	return internal.entryOf(self).commands.fetchPreviousPage();
 }
 
-/** Mark stale, and refetch if read; succeeds once that refetch settles. */
+/** Mark stale, and refetch if read; resolves once that refetch settles. */
 export function invalidate<TData, TFactory extends QueryFactory, TError>(
 	self: Query<TData, TFactory, TError>,
-): Effect.Effect<void> {
+): Promise<void> {
 	return internal.invalidate(internal.entryOf(self));
 }
 
 /**
  * Drop data and errors, back to the state of a new entry. Readers suspend
- * and refetch; succeeds when that refetch settles.
+ * and refetch; resolves when that refetch settles.
  */
 export function reset<TData, TFactory extends QueryFactory, TError>(
 	self: Query<TData, TFactory, TError>,
-): Effect.Effect<void> {
+): Promise<void> {
 	return internal.reset(internal.entryOf(self));
 }
 
@@ -199,30 +168,10 @@ export function metaUnsafe<TData, TFactory extends QueryFactory, TError>(
 }
 
 /** The entry's current state. */
-export function get<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
-): Effect.Effect<State<TData>> {
-	return Effect.sync(() => getUnsafe(self));
-}
-
-/** {@link get}, synchronously. */
 export function getUnsafe<TData, TFactory extends QueryFactory, TError>(
 	self: Query<TData, TFactory, TError>,
 ): State<TData> {
 	return typedState<TData>(internal.entryOf(self).state);
-}
-
-/**
- * The entry's current state, then every change. Counts as a reader while
- * the stream runs, so invalidation and focus refetch it.
- */
-export function changes<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
-): Stream.Stream<State<TData>> {
-	// SAFETY: as in `typedState`, for every element.
-	return unsafeCast<Stream.Stream<State<TData>>>(
-		internal.changes(internal.entryOf(self)),
-	);
 }
 
 /**

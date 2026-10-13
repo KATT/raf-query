@@ -1,29 +1,15 @@
 /**
- * The query cache, as an Effect service. `make` builds one in the current
- * scope; closing the scope interrupts every request and timer it started.
- * Everything that waits, or changes the cache, is an Effect; `getQueryUnsafe`,
- * `isFetchingUnsafe` and `subscribeUnsafe` are for renders and external
- * stores.
+ * The query cache, as a data type with functions: `make` builds one, and
+ * every verb takes it first. Waiting verbs return promises; the rest are
+ * synchronous. `QueryClient` in `@raf-query/react` wraps one with methods,
+ * and `@raf-query/core/effect` has it as an Effect service.
  *
- * Requests run with the services the cache was built with, under those of
- * the latest verb that called for the entry. So the verbs that can start a
- * request (`ensure`, `fetch`, `prefetch`, `getQuery`, `watch`) require the
- * factory's {@link ServicesOf}; requests a render, a refetch or `invalidate`
- * starts reuse the entry's last services.
+ * Nothing here imports Effect. A `queryFn` that returns an Effect runs with
+ * `config.services` (`fromLayer` / `fromContext` from
+ * `@raf-query/core/effect`).
  */
-import {
-	Clock,
-	Context,
-	Effect,
-	Fiber,
-	Layer,
-	Option,
-	Predicate,
-	type Scope,
-	Stream,
-} from "effect";
-
 import { unsafeCast } from "./cast.ts";
+import { type Clock, systemClock } from "./clock.ts";
 import * as Entry from "./entry.ts";
 import {
 	dehydrateEntries,
@@ -35,11 +21,9 @@ import {
 	type HydrateOptions,
 } from "./hydration.ts";
 import { hashKey, matchesKey, type QueryKey } from "./key.ts";
-import { listen } from "./listen.ts";
 import {
 	type DataOf,
 	type EnsuredQueryHandle,
-	type ErrorOf,
 	type InputArgs,
 	type InputOf,
 	type LoadOptions,
@@ -47,39 +31,40 @@ import {
 	type QueryBehavior,
 	type QueryFactory,
 	type QueryHandle,
-	type ServicesOf,
 } from "./options.ts";
-import { Platform } from "./platform.ts";
+import { type Outcome, succeeded, unwrap } from "./outcome.ts";
+import { globalPlatform, type Platform } from "./platform.ts";
+import { hasProperty, isFunction } from "./predicate.ts";
 import type * as Query from "./query.ts";
+import type { EffectServices } from "./request.ts";
 
 export const TypeId = "~@raf-query/core/QueryCache";
 
 export type TypeId = typeof TypeId;
 
 export interface Config {
+	/** Time for the cache's timers. Default: `Date.now` and `setTimeout`. */
+	readonly clock?: Clock;
 	/** Defaults for every query; a factory's own options win. */
 	readonly defaults?: QueryBehavior;
 	/**
-	 * Whether this cache runs on the server. Default: the {@link Platform}'s.
+	 * Whether this cache runs on the server. Default: the platform's.
 	 * Server caches don't retry, never garbage-collect, skip stale timers, and
 	 * reuse cached data in `prefetch` / `ensure` / `fetch` instead of
 	 * revalidating it, unless `invalidate` marked it.
 	 */
 	readonly isServer?: boolean;
+	/** The page to watch for focus and reconnects. Default: the global one. */
+	readonly platform?: Platform;
 	/**
-	 * Wraps every request, retries included, before it runs: add a span, a
-	 * timeout, metrics. `traceRequest` adds a span.
+	 * Runs `queryFn`s that return an Effect, with the services they need:
+	 * `fromLayer(layer)` or `fromContext(context)` from
+	 * `@raf-query/core/effect`. `dispose` releases them.
 	 */
-	readonly wrapRequest?: RequestWrapper;
+	readonly services?: EffectServices;
 }
 
-/** See {@link Config.wrapRequest}. */
-export type RequestWrapper = <A, E>(
-	request: Effect.Effect<A, E>,
-	query: Query.Query,
-) => Effect.Effect<A, E>;
-
-/** Emitted on {@link QueryCache.events} for every cache change. */
+/** Emitted to {@link subscribe}rs for every cache change. */
 export type Event =
 	| {
 			readonly query: Query.Query;
@@ -126,126 +111,37 @@ export type Target<TFactory extends QueryFactory> =
  */
 export type Updater<TData> = TData | ((previous: TData | undefined) => TData);
 
+/** A cache built by {@link make}. Its entries and timers are internal. */
 export interface QueryCache {
-	/** Every entry. */
-	readonly all: Effect.Effect<ReadonlyArray<Query.Query>>;
-	/** Drop every entry and interrupt their requests. */
-	readonly clear: Effect.Effect<void>;
-	/**
-	 * Start a query and wait for it on a cache miss. Fails if that request
-	 * fails. Stale cached data succeeds immediately and revalidates in the
-	 * browser. The handle is marked `ensured`, so `useQuery` returns its data
-	 * directly.
-	 */
-	ensure<TFactory extends QueryFactory>(
-		factory: TFactory,
-		...args: LoadArgs<TFactory>
-	): Effect.Effect<
-		EnsuredQueryHandle<TFactory>,
-		ErrorOf<TFactory> | Query.CancelledError,
-		ServicesOf<TFactory>
-	>;
-	/** Like `ensure`, but succeeds with the data. */
-	fetch<TFactory extends QueryFactory>(
-		factory: TFactory,
-		...args: LoadArgs<TFactory>
-	): Effect.Effect<
-		DataOf<TFactory>,
-		ErrorOf<TFactory> | Query.CancelledError,
-		ServicesOf<TFactory>
-	>;
-	/**
-	 * Cached data for a factory call. `Some(undefined)` when the data itself
-	 * is `undefined`.
-	 */
-	getData<TFactory extends QueryFactory>(
-		factory: TFactory,
-		...args: InputArgs<TFactory>
-	): Effect.Effect<Option.Option<DataOf<TFactory>>>;
-	/**
-	 * The cache entry for a factory call, created if missing. Doesn't fetch,
-	 * but its requests run with this fiber's services from now on. For
-	 * bindings; apps use the verbs.
-	 */
-	getQuery<TFactory extends QueryFactory>(
-		factory: TFactory,
-		...args: InputArgs<TFactory>
-	): Effect.Effect<Query.Of<TFactory>, never, ServicesOf<TFactory>>;
-	/**
-	 * `getQuery`, synchronously, for renders. Leaves the entry's services as
-	 * they are: the cache's, or the latest verb caller's.
-	 */
-	getQueryUnsafe<TFactory extends QueryFactory>(
-		factory: TFactory,
-		...args: InputArgs<TFactory>
-	): Query.Of<TFactory>;
-	/**
-	 * Mark queries stale and refetch the ones being read. Succeeds once those
-	 * refetches settle, so an action stays pending until fresh data is on
-	 * screen.
-	 */
-	invalidate<TFactory extends QueryFactory>(
-		...target: Target<TFactory>
-	): Effect.Effect<void>;
-	/**
-	 * How many entries have a request in flight: all of them, or those
-	 * matching `filter`. For global loading indicators.
-	 */
-	isFetching(filter?: Filter): Effect.Effect<number>;
-	/** `isFetching`, synchronously, for renders. */
-	isFetchingUnsafe(filter?: Filter): number;
 	readonly isServer: boolean;
-	/**
-	 * Refetch read, stale queries on window focus and reconnect while the
-	 * scope is open. Mounts share one platform subscription. Does nothing on
-	 * the server.
-	 */
-	readonly mount: Effect.Effect<void, never, Scope.Scope>;
-	/**
-	 * Start a query without waiting and return its handle. Fresh data is
-	 * reused; stale data refetches in the background (in the browser only, see
-	 * {@link Config.isServer}). Errors surface where the data is read, never
-	 * here.
-	 */
-	prefetch<TFactory extends QueryFactory>(
-		factory: TFactory,
-		...args: InputArgs<TFactory>
-	): Effect.Effect<QueryHandle<TFactory>, never, ServicesOf<TFactory>>;
-	/**
-	 * Remove queries from the cache and interrupt their requests. Readers keep
-	 * the removed entry until they render again.
-	 */
-	remove<TFactory extends QueryFactory>(
-		...target: Target<TFactory>
-	): Effect.Effect<void>;
-	/**
-	 * Drop queries' data and errors, as if they were never fetched. Read ones
-	 * suspend and refetch; succeeds once those refetches settle.
-	 */
-	reset<TFactory extends QueryFactory>(
-		...target: Target<TFactory>
-	): Effect.Effect<void>;
-	/** Write data for a factory call. Readers re-render without suspending. */
-	setData<TFactory extends QueryFactory>(
-		factory: TFactory,
-		input: InputOf<TFactory>,
-		updater: Updater<DataOf<TFactory>>,
-	): Effect.Effect<void>;
-	/** Listen to cache events synchronously, as they happen. */
-	subscribeUnsafe(listener: (event: Event) => void): () => void;
 	readonly [TypeId]: TypeId;
 }
 
-export const QueryCache = /*#__PURE__*/ Context.Service<QueryCache>(TypeId);
+interface Impl extends Entry.CacheState, QueryCache {
+	/** Open {@link mount}s; they share one platform subscription. */
+	mounts: number;
+	unsubscribePlatform: (() => void) | undefined;
+}
 
 export function isQueryCache(value: unknown): value is QueryCache {
-	return Predicate.hasProperty(value, TypeId);
+	return hasProperty(value, TypeId);
+}
+
+/** The engine state behind `cache`, for this package's other modules. */
+export function stateOf(cache: QueryCache): Entry.CacheState {
+	return implOf(cache);
+}
+
+function implOf(cache: QueryCache): Impl {
+	// SAFETY: `make` creates every value that carries `TypeId`, and the public
+	// `QueryCache` type is how they leave this module.
+	return unsafeCast<Impl>(cache);
 }
 
 function isUpdateFunction<TData>(
 	updater: Updater<TData>,
 ): updater is (previous: TData | undefined) => TData {
-	return Predicate.isFunction(updater);
+	return isFunction(updater);
 }
 
 function typed<TFactory extends QueryFactory>(
@@ -285,6 +181,81 @@ function keyMatcher(filter: Filter): (entry: Entry.Entry) => boolean {
 	return (entry) => matchesKey(entry.key, prefix);
 }
 
+/** Build a cache. */
+export function make(config: Config = {}): QueryCache {
+	const platform = config.platform ?? globalPlatform;
+	const cache: Impl = {
+		clock: config.clock ?? systemClock,
+		closed: false,
+		defaults: config.defaults ?? {},
+		entries: new Map(),
+		isServer: config.isServer ?? platform.isServer,
+		listeners: new Set(),
+		mounts: 0,
+		platform,
+		services: config.services,
+		[TypeId]: TypeId,
+		unsubscribePlatform: undefined,
+	};
+	return cache;
+}
+
+/** The entry for `key`, created if missing. */
+export function entryFor(cache: QueryCache, key: QueryKey): Entry.Entry {
+	const state = implOf(cache);
+	const hash = hashKey(key);
+	const existing = state.entries.get(hash);
+	if (existing) {
+		return existing;
+	}
+	const entry = Entry.make(state, key, hash);
+	state.entries.set(hash, entry);
+	Entry.emit(state, { query: entry, type: "added" });
+	return entry;
+}
+
+/** The entry for a factory call, created if missing, with its latest options. */
+export function build(
+	cache: QueryCache,
+	factory: QueryFactory,
+	input: unknown,
+): Entry.Entry {
+	const options = optionsFor(factory, input);
+	const entry = entryFor(cache, options.queryKey);
+	Entry.setOptions(entry, options, input);
+	return entry;
+}
+
+/** The entry for a factory call, if cached. */
+export function find(
+	cache: QueryCache,
+	factory: QueryFactory,
+	input: unknown,
+): Entry.Entry | undefined {
+	return implOf(cache).entries.get(
+		hashKey(optionsFor(factory, input).queryKey),
+	);
+}
+
+function match<TFactory extends QueryFactory>(
+	cache: QueryCache,
+	target: Target<TFactory>,
+): Array<Entry.Entry> {
+	const entries = implOf(cache).entries;
+	// SAFETY: a target is a factory and its input, or a lone filter;
+	// `InputArgs` only narrows the input's type.
+	const [first, input] =
+		unsafeCast<readonly [QueryFactory | Filter, unknown?]>(target);
+	if (isFunction(first)) {
+		const entry = find(cache, first, input);
+		return entry ? [entry] : [];
+	}
+	const keyMatches = keyMatcher(first);
+	return [...entries.values()].filter(
+		(entry) => keyMatches(entry) && (first.predicate?.(entry) ?? true),
+	);
+}
+
 /**
  * Background refetch of cached data a verb reuses. A server cache renders
  * once, so a refetch there could only duplicate a request whose result is
@@ -304,276 +275,253 @@ function revalidate(entry: Entry.Entry) {
  * Waits for an entry's data on a cache miss. Cached data returns at once,
  * and revalidates in the background (see `revalidate`).
  */
-function load<TFactory extends QueryFactory>(
+export function load(
 	entry: Entry.Entry,
 	pages: number | undefined,
-): Effect.Effect<DataOf<TFactory>, ErrorOf<TFactory> | Query.CancelledError> {
+): Promise<Outcome> {
 	if (!entry.state.hasData) {
-		// SAFETY: as in `typed`.
-		return unsafeCast<
-			Effect.Effect<DataOf<TFactory>, ErrorOf<TFactory> | Query.CancelledError>
-		>(Entry.fetch(entry, { pages }));
+		return Entry.fetch(entry, { pages });
 	}
 	revalidate(entry);
-	return Effect.succeed(dataOf<TFactory>(entry));
+	return Promise.resolve(succeeded(entry.state.data));
+}
+
+/** Start an entry's request without waiting, unless fresh data is cached. */
+export function startPrefetch(entry: Entry.Entry): void {
+	if (entry.state.hasData) {
+		revalidate(entry);
+	} else {
+		Entry.start(entry);
+	}
+}
+
+/** Every entry. */
+export function all(cache: QueryCache): ReadonlyArray<Query.Query> {
+	return [...implOf(cache).entries.values()];
+}
+
+/** Drop every entry and abort their requests. */
+export function clear(cache: QueryCache): void {
+	for (const entry of implOf(cache).entries.values()) {
+		Entry.remove(entry);
+	}
 }
 
 /**
- * Settles every effect, started together. Forks and joins rather than
- * `Effect.all` with `concurrency`, whose machinery every app would bundle.
+ * Close the cache: drop every entry, abort their requests, stop watching
+ * the platform, and release `config.services`. Resolves once those are
+ * released.
  */
-const settleAll = /*#__PURE__*/ Effect.fnUntraced(function* (
-	effects: ReadonlyArray<Effect.Effect<void>>,
-) {
-	const fibers: Array<Fiber.Fiber<void>> = [];
-	for (const effect of effects) {
-		fibers.push(yield* Effect.forkChild(effect, { startImmediately: true }));
-	}
-	for (const fiber of fibers) {
-		yield* Fiber.join(fiber);
-	}
-});
-
-/** Build a cache in the current scope, with the current `Clock` and {@link Platform}. */
-export const make: (
-	config?: Config,
-) => Effect.Effect<QueryCache, never, Scope.Scope> =
-	/*#__PURE__*/ Effect.fnUntraced(function* (config: Config = {}) {
-		const platform = yield* Platform;
-		const state: Entry.CacheState = {
-			clock: yield* Clock.Clock,
-			defaults: config.defaults ?? {},
-			entries: new Map(),
-			isServer: config.isServer ?? platform.isServer,
-			listeners: new Set(),
-			platform,
-			scope: yield* Effect.scope,
-			services: yield* Effect.context<never>(),
-			wrapRequest: config.wrapRequest,
-		};
-
-		const entryFor = (key: QueryKey) => {
-			const hash = hashKey(key);
-			const existing = state.entries.get(hash);
-			if (existing) {
-				return existing;
-			}
-			const entry = Entry.make(state, key, hash);
-			state.entries.set(hash, entry);
-			Entry.emit(state, { query: entry, type: "added" });
-			return entry;
-		};
-
-		const build = (factory: QueryFactory, input: unknown) => {
-			const options = optionsFor(factory, input);
-			const entry = entryFor(options.queryKey);
-			Entry.setOptions(entry, options, input);
-			return entry;
-		};
-
-		/** `build`, for a verb: the entry's requests get the caller's services. */
-		const buildFor = (factory: QueryFactory, input: unknown) =>
-			Effect.contextWith((caller: Context.Context<never>) => {
-				const entry = build(factory, input);
-				Entry.provide(entry, caller);
-				return Effect.succeed(entry);
-			});
-
-		const match = <TFactory extends QueryFactory>(target: Target<TFactory>) => {
-			// SAFETY: a target is a factory and its input, or a lone filter;
-			// `InputArgs` only narrows the input's type.
-			const [first, input] =
-				unsafeCast<readonly [QueryFactory | Filter, unknown?]>(target);
-			if (Predicate.isFunction(first)) {
-				const entry = state.entries.get(
-					hashKey(optionsFor(first, input).queryKey),
-				);
-				return entry ? [entry] : [];
-			}
-			const keyMatches = keyMatcher(first);
-			return [...state.entries.values()].filter(
-				(entry) => keyMatches(entry) && (first.predicate?.(entry) ?? true),
-			);
-		};
-
-		// Mounts share one platform subscription, held while any is open.
-		let mounts = 0;
-		let unsubscribePlatform: (() => void) | undefined;
-		const mount = Effect.acquireRelease(
-			Effect.sync(() => {
-				mounts += 1;
-				if (mounts === 1) {
-					unsubscribePlatform = platform.subscribeUnsafe((event) => {
-						for (const entry of state.entries.values()) {
-							if (Entry.isObserved(entry)) {
-								Entry.onPlatformEvent(entry, event);
-							}
-						}
-					});
-				}
-			}),
-			() =>
-				Effect.sync(() => {
-					mounts -= 1;
-					if (mounts === 0) {
-						unsubscribePlatform?.();
-						unsubscribePlatform = undefined;
-					}
-				}),
-		);
-
-		const subscribeUnsafe = (listener: (event: Event) => void) => {
-			state.listeners.add(listener);
-			return () => {
-				state.listeners.delete(listener);
-			};
-		};
-
-		const getQueryUnsafe = <TFactory extends QueryFactory>(
-			factory: TFactory,
-			...args: InputArgs<TFactory>
-		) => typed<TFactory>(build(factory, args[0]));
-
-		const isFetchingUnsafe = (filter?: Filter) =>
-			(filter ? match([filter]) : [...state.entries.values()]).filter(
-				(entry) => entry.state.isFetching,
-			).length;
-
-		const cache: QueryCache = {
-			all: Effect.sync(() => [...state.entries.values()]),
-			clear: Effect.sync(() => {
-				for (const entry of state.entries.values()) {
-					Entry.remove(entry);
-				}
-			}),
-			ensure: (factory, ...args) =>
-				Effect.flatMap(buildFor(factory, args[0]), (entry) =>
-					load<typeof factory>(entry, args[1]?.pages).pipe(
-						Effect.as({ ...handleOf<typeof factory>(entry), ensured: true }),
-					),
-				),
-			fetch: (factory, ...args) =>
-				Effect.flatMap(buildFor(factory, args[0]), (entry) =>
-					load<typeof factory>(entry, args[1]?.pages),
-				),
-			getData: (factory, ...args) =>
-				Effect.sync(() => {
-					const options = optionsFor(factory, args[0]);
-					const entry = state.entries.get(hashKey(options.queryKey));
-					return entry?.state.hasData
-						? Option.some(dataOf<typeof factory>(entry))
-						: Option.none();
-				}),
-			getQuery: (factory, ...args) =>
-				Effect.map(buildFor(factory, args[0]), typed<typeof factory>),
-			getQueryUnsafe,
-			invalidate: (...target) =>
-				Effect.suspend(() => settleAll(match(target).map(Entry.invalidate))),
-			isFetching: (filter) => Effect.sync(() => isFetchingUnsafe(filter)),
-			isFetchingUnsafe,
-			isServer: state.isServer,
-			mount: state.isServer ? Effect.void : mount,
-			prefetch: (factory, ...args) =>
-				Effect.map(buildFor(factory, args[0]), (entry) => {
-					if (entry.state.hasData) {
-						revalidate(entry);
-					} else {
-						Entry.start(entry);
-					}
-					return handleOf<typeof factory>(entry);
-				}),
-			remove: (...target) =>
-				Effect.sync(() => {
-					for (const entry of match(target)) {
-						Entry.remove(entry);
-					}
-				}),
-			reset: (...target) =>
-				Effect.suspend(() => settleAll(match(target).map(Entry.reset))),
-			setData: (factory, input, updater) =>
-				Effect.sync(() => {
-					const entry = build(factory, input);
-					const next = isUpdateFunction(updater)
-						? updater(
-								entry.state.hasData ? dataOf<typeof factory>(entry) : undefined,
-							)
-						: updater;
-					Entry.setData(entry, next);
-				}),
-			subscribeUnsafe,
-			[TypeId]: TypeId,
-		};
-		internals.set(cache, { buildFor, entryFor, state });
-		return cache;
-	});
+export function dispose(cache: QueryCache): Promise<void> {
+	const state = implOf(cache);
+	clear(cache);
+	state.closed = true;
+	state.unsubscribePlatform?.();
+	state.unsubscribePlatform = undefined;
+	return state.services?.dispose() ?? Promise.resolve();
+}
 
 /**
- * What the module functions below need beyond the {@link QueryCache}
- * interface. They live outside it so apps that never call them don't bundle
- * them (an object's members can't be tree-shaken).
+ * Start a query and wait for it on a cache miss. Rejects if that request
+ * fails. Stale cached data resolves immediately and revalidates in the
+ * browser. The handle is marked `ensured`, so `useQuery` returns its data
+ * directly.
  */
-interface Internals {
-	readonly buildFor: (
-		factory: QueryFactory,
-		input: unknown,
-	) => Effect.Effect<Entry.Entry>;
-	readonly entryFor: (key: QueryKey) => Entry.Entry;
-	readonly state: Entry.CacheState;
+export async function ensure<TFactory extends QueryFactory>(
+	cache: QueryCache,
+	factory: TFactory,
+	...args: LoadArgs<TFactory>
+): Promise<EnsuredQueryHandle<TFactory>> {
+	const entry = build(cache, factory, args[0]);
+	unwrap(await load(entry, args[1]?.pages));
+	return { ...handleOf<TFactory>(entry), ensured: true };
 }
 
-const internals = new WeakMap<QueryCache, Internals>();
-
-function internalsOf(cache: QueryCache): Internals {
-	const found = internals.get(cache);
-	if (!found) {
-		throw new Error("raf-query: not a cache built by QueryCache.make");
-	}
-	return found;
+/** Like `ensure`, but resolves to the data. */
+export async function fetch<TFactory extends QueryFactory>(
+	cache: QueryCache,
+	factory: TFactory,
+	...args: LoadArgs<TFactory>
+): Promise<DataOf<TFactory>> {
+	const entry = build(cache, factory, args[0]);
+	// SAFETY: as in `typed`.
+	return unsafeCast<DataOf<TFactory>>(
+		unwrap(await load(entry, args[1]?.pages)),
+	);
 }
 
-/** Cache events from the moment the stream starts. */
-export function events(cache: QueryCache): Stream.Stream<Event> {
-	return listen(cache.subscribeUnsafe);
-}
-
-/** A factory call's `Query.changes`. */
-export function watch<TFactory extends QueryFactory>(
+/**
+ * Cached data for a factory call, or `undefined` if there is none. Data can
+ * itself be `undefined`; `Query.getUnsafe(getQuery(...)).hasData` tells
+ * them apart.
+ */
+export function getData<TFactory extends QueryFactory>(
 	cache: QueryCache,
 	factory: TFactory,
 	...args: InputArgs<TFactory>
-): Stream.Stream<Query.State<DataOf<TFactory>>, never, ServicesOf<TFactory>> {
-	return Stream.unwrap(
-		Effect.map(internalsOf(cache).buildFor(factory, args[0]), (entry) =>
-			// SAFETY: as in `typed`, for every element.
-			unsafeCast<Stream.Stream<Query.State<DataOf<TFactory>>>>(
-				Entry.changes(entry),
-			),
-		),
-	);
+): DataOf<TFactory> | undefined {
+	const entry = find(cache, factory, args[0]);
+	return entry?.state.hasData ? dataOf<TFactory>(entry) : undefined;
+}
+
+/**
+ * The cache entry for a factory call, created if missing. Doesn't fetch.
+ * For bindings; apps use the verbs.
+ */
+export function getQuery<TFactory extends QueryFactory>(
+	cache: QueryCache,
+	factory: TFactory,
+	...args: InputArgs<TFactory>
+): Query.Of<TFactory> {
+	return typed<TFactory>(build(cache, factory, args[0]));
+}
+
+/**
+ * Mark queries stale and refetch the ones being read. Resolves once those
+ * refetches settle, so an action stays pending until fresh data is on
+ * screen.
+ */
+export async function invalidate<TFactory extends QueryFactory>(
+	cache: QueryCache,
+	...target: Target<TFactory>
+): Promise<void> {
+	await Promise.all(match(cache, target).map(Entry.invalidate));
+}
+
+/**
+ * How many entries have a request in flight: all of them, or those
+ * matching `filter`. For global loading indicators.
+ */
+export function isFetching(cache: QueryCache, filter?: Filter): number {
+	const entries = filter ? match(cache, [filter]) : all(cache);
+	return entries.filter((query) => Entry.entryOf(query).state.isFetching)
+		.length;
+}
+
+/**
+ * Refetch read, stale queries on window focus and reconnect until the
+ * returned function is called. Mounts share one platform subscription.
+ * Does nothing on the server.
+ */
+export function mount(cache: QueryCache): () => void {
+	const state = implOf(cache);
+	if (state.isServer || state.closed) {
+		return () => {};
+	}
+	state.mounts += 1;
+	if (state.mounts === 1) {
+		state.unsubscribePlatform = state.platform.subscribeUnsafe((event) => {
+			for (const entry of state.entries.values()) {
+				if (Entry.isObserved(entry)) {
+					Entry.onPlatformEvent(entry, event);
+				}
+			}
+		});
+	}
+	let mounted = true;
+	return () => {
+		if (!mounted) {
+			return;
+		}
+		mounted = false;
+		state.mounts -= 1;
+		if (state.mounts === 0) {
+			state.unsubscribePlatform?.();
+			state.unsubscribePlatform = undefined;
+		}
+	};
+}
+
+/**
+ * Start a query without waiting and return its handle. Fresh data is
+ * reused; stale data refetches in the background (in the browser only, see
+ * {@link Config.isServer}). Errors surface where the data is read, never
+ * here.
+ */
+export function prefetch<TFactory extends QueryFactory>(
+	cache: QueryCache,
+	factory: TFactory,
+	...args: InputArgs<TFactory>
+): QueryHandle<TFactory> {
+	const entry = build(cache, factory, args[0]);
+	startPrefetch(entry);
+	return handleOf<TFactory>(entry);
+}
+
+/**
+ * Remove queries from the cache and abort their requests. Readers keep the
+ * removed entry until they render again.
+ */
+export function remove<TFactory extends QueryFactory>(
+	cache: QueryCache,
+	...target: Target<TFactory>
+): void {
+	for (const entry of match(cache, target)) {
+		Entry.remove(entry);
+	}
+}
+
+/**
+ * Drop queries' data and errors, as if they were never fetched. Read ones
+ * suspend and refetch; resolves once those refetches settle.
+ */
+export async function reset<TFactory extends QueryFactory>(
+	cache: QueryCache,
+	...target: Target<TFactory>
+): Promise<void> {
+	await Promise.all(match(cache, target).map(Entry.reset));
+}
+
+/** Write data for a factory call. Readers re-render without suspending. */
+export function setData<TFactory extends QueryFactory>(
+	cache: QueryCache,
+	factory: TFactory,
+	input: InputOf<TFactory>,
+	updater: Updater<DataOf<TFactory>>,
+): void {
+	const entry = build(cache, factory, input);
+	const next = isUpdateFunction(updater)
+		? updater(entry.state.hasData ? dataOf<TFactory>(entry) : undefined)
+		: updater;
+	Entry.setData(entry, next);
+}
+
+/** Listen to cache events synchronously, as they happen. */
+export function subscribe(
+	cache: QueryCache,
+	listener: (event: Event) => void,
+): () => void {
+	const listeners = implOf(cache).listeners;
+	listeners.add(listener);
+	return () => {
+		listeners.delete(listener);
+	};
 }
 
 /** Snapshot the cache for transfer to another cache (server → browser). */
 export function dehydrate(
 	cache: QueryCache,
 	options: DehydrateOptions = {},
-): Effect.Effect<DehydratedState> {
-	return Effect.sync(() =>
-		dehydrateEntries(internalsOf(cache).state.entries.values(), options),
-	);
+): DehydratedState {
+	return dehydrateEntries(implOf(cache).entries.values(), options);
 }
 
 /**
  * Snapshot the cache, then stream entries as they start or settle, each
  * entry once. Entries that change in the same tick share a batch, which is
- * sent a microtask later. `updates` ends when the scope closes, after
- * sending what changed before; {@link hydrateStream} is the receiving end.
+ * sent a microtask later. `close()` sends what changed before, then ends
+ * `updates`; {@link hydrate} each batch on the receiving end.
  */
 export function dehydrateStream(
 	cache: QueryCache,
 	options: DehydrateOptions = {},
-): Effect.Effect<DehydratedStream, never, Scope.Scope> {
-	const entries = internalsOf(cache).state.entries;
-	return streamEntries(() => entries.values(), cache.subscribeUnsafe, options);
+): DehydratedStream {
+	const entries = implOf(cache).entries;
+	return streamEntries(
+		() => entries.values(),
+		(listener) => subscribe(cache, listener),
+		options,
+	);
 }
 
 /**
@@ -584,23 +532,6 @@ export function hydrate(
 	cache: QueryCache,
 	state: DehydratedState,
 	options: HydrateOptions = {},
-): Effect.Effect<void> {
-	const entryFor = internalsOf(cache).entryFor;
-	return Effect.sync(() => hydrateEntries(entryFor, state, options));
+): void {
+	hydrateEntries((key) => entryFor(cache, key), state, options);
 }
-
-/** {@link hydrate} every state of a stream as it arrives ({@link dehydrateStream}'s `updates`). */
-export function hydrateStream<E, R>(
-	cache: QueryCache,
-	states: Stream.Stream<DehydratedState, E, R>,
-	options: HydrateOptions = {},
-): Effect.Effect<void, E, R> {
-	const entryFor = internalsOf(cache).entryFor;
-	return Stream.runForEach(states, (state) =>
-		Effect.sync(() => hydrateEntries(entryFor, state, options)),
-	);
-}
-
-/** A layer that provides a {@link QueryCache} for the layer's lifetime. */
-export const layer = (config?: Config): Layer.Layer<QueryCache> =>
-	Layer.effect(QueryCache, make(config));

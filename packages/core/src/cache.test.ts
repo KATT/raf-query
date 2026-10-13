@@ -16,20 +16,17 @@ import {
 } from "effect";
 import { TestClock } from "effect/testing";
 
+import { Platform, Query, QueryCache, retrySchedule } from "./effect.ts";
 import {
 	type DehydratedState,
 	dehydrateQuery,
 	infiniteQueryOptions,
-	Platform,
-	Query,
-	QueryCache,
 	type QueryMeta,
 	queryOptions,
 	RedactedError,
 	type RetryPolicy,
-	retrySchedule,
-	traceRequest,
 } from "./index.ts";
+import * as CoreCache from "./cache.ts";
 import { createBackend, fakePlatform, flush } from "./test-utils.ts";
 
 const settle = Effect.promise(flush);
@@ -88,7 +85,7 @@ describe("QueryCache services", () => {
 	it.effect("a queryFn reads services the cache was built with", () =>
 		Effect.gen(function* () {
 			const services = yield* Layer.build(
-				QueryCache.layer({ isServer: false, wrapRequest: traceRequest }).pipe(
+				QueryCache.layer({ isServer: false }).pipe(
 					Layer.provide(Layer.succeed(Greeting, "Hello")),
 				),
 			);
@@ -97,10 +94,7 @@ describe("QueryCache services", () => {
 
 			const greeting = yield* Effect.promise(() => Query.readUnsafe(query));
 
-			expect(greeting).toEqual({
-				span: "raf-query.request",
-				text: "Hello, Ada",
-			});
+			expect(greeting).toEqual({ span: undefined, text: "Hello, Ada" });
 		}),
 	);
 
@@ -130,7 +124,7 @@ describe("QueryCache services", () => {
 				Option.some("Hi, Ada"),
 			);
 			expect(layered.text).toBe("Hey, Bob");
-			// Spans only come from `wrapRequest: traceRequest`.
+			// A request adds no span of its own.
 			expect(layered.span).toBeUndefined();
 		}),
 	);
@@ -710,10 +704,10 @@ describe("QueryCache", () => {
 			);
 			yield* cache.prefetch(backend.issueQuery, { id: 2 });
 
-			const settled = yield* dehydrateQuery(
+			const settled = dehydrateQuery(
 				yield* cache.getQuery(backend.issueQuery, { id: 1 }),
 			);
-			const pending = yield* dehydrateQuery(
+			const pending = dehydrateQuery(
 				yield* cache.getQuery(backend.issueQuery, { id: 2 }),
 			);
 
@@ -805,28 +799,28 @@ describe("QueryCache", () => {
 			}),
 	);
 
-	it.effect(
-		"dehydrateStream hands a batch to its reader in the microtask",
-		() =>
-			Effect.gen(function* () {
-				const backend = createBackend();
-				const cache = yield* QueryCache.make({ isServer: true });
-				const stream = yield* QueryCache.dehydrateStream(cache);
-				const received: Array<DehydratedState> = [];
-				yield* Effect.forkChild(
-					Stream.runForEach(stream.updates, (state) =>
-						Effect.sync(() => received.push(state)),
-					),
-					{ startImmediately: true },
-				);
+	it("dehydrateStream hands a batch to its reader within microtasks", async () => {
+		const backend = createBackend();
+		const cache = CoreCache.make({ isServer: true });
+		const stream = CoreCache.dehydrateStream(cache);
+		const received: Array<DehydratedState> = [];
+		void stream.updates
+			.getReader()
+			.read()
+			.then((next) => {
+				if (next.value) {
+					received.push(next.value);
+				}
+			});
 
-				yield* cache.prefetch(backend.issueQuery, { id: 1 });
-				expect(received).toHaveLength(0);
-				yield* Effect.promise(() => Promise.resolve());
+		CoreCache.prefetch(cache, backend.issueQuery, { id: 1 });
+		expect(received).toHaveLength(0);
+		for (let tick = 0; tick < 3; tick++) {
+			await Promise.resolve();
+		}
 
-				expect(received).toHaveLength(1);
-			}),
-	);
+		expect(received).toHaveLength(1);
+	});
 
 	it.effect("hydrateStream resumes requests the server started later", () =>
 		Effect.gen(function* () {

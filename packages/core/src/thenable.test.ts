@@ -1,7 +1,8 @@
 import { describe, expect, expectTypeOf, it } from "@effect/vitest";
 import { Effect } from "effect";
 
-import { Query, QueryCache, queryOptions, type Thenable } from "./index.ts";
+import { Query, QueryCache } from "./effect.ts";
+import { queryOptions, type Thenable } from "./index.ts";
 import { makeCacheUnsafe } from "./test-utils.ts";
 import { fulfilled } from "./thenable.ts";
 

@@ -1,5 +1,3 @@
-import { type Cause, Data, Effect, Queue, type Scope, Stream } from "effect";
-
 import type { Event as CacheEvent } from "./cache.ts";
 import * as Entry from "./entry.ts";
 import type { QueryKey } from "./key.ts";
@@ -27,13 +25,12 @@ export interface DehydratedState {
 
 /** The cache now, then entries as they start or settle. */
 export interface DehydratedStream {
+	/** Send what changed since the last batch, then end `updates`. */
+	close(): void;
 	/** The entries to send first. */
 	readonly initial: DehydratedState;
-	/**
-	 * Later entries, in batches. Ends once the scope `dehydrateStream` ran in
-	 * closes, after a last batch of what changed before. One consumer only.
-	 */
-	readonly updates: Stream.Stream<DehydratedState>;
+	/** Later entries, in batches, until `close()`. One consumer only. */
+	readonly updates: ReadableStream<DehydratedState>;
 }
 
 export interface DehydrateOptions {
@@ -67,11 +64,13 @@ export interface HydrateOptions {
  * What a dehydrated pending query rejects with when its request failed and
  * `keepErrors` is off: the receiving side learns which query failed, not why.
  */
-export class RedactedError extends Data.TaggedError("RedactedError")<{
+export class RedactedError extends Error {
+	readonly _tag = "RedactedError";
 	readonly hash: string;
-}> {
-	override get message() {
-		return `Query ${this.hash} failed`;
+
+	constructor(fields: { readonly hash: string }) {
+		super(`Query ${fields.hash} failed`);
+		this.hash = fields.hash;
 	}
 }
 
@@ -109,8 +108,8 @@ export function dehydrateUnsafe<TData, TFactory extends QueryFactory, TError>(
 export function dehydrateQuery<TData, TFactory extends QueryFactory, TError>(
 	query: Query.Query<TData, TFactory, TError>,
 	options: DehydrateOptions = {},
-): Effect.Effect<DehydratedQuery> {
-	return Effect.sync(() => dehydrateUnsafe(query, options));
+): DehydratedQuery {
+	return dehydrateUnsafe(query, options);
 }
 
 /** Dehydrate the entries `options` selects, recording them in `options.sent`. */
@@ -134,57 +133,59 @@ export function dehydrateEntries(
  * Snapshots `queries()` and subscribes in the same synchronous step, so no
  * change falls between the two. Changed entries are collected for a
  * microtask, so entries that settle together share a batch, and the batch is
- * handed to the reader before that microtask ends: ahead of the Suspense
- * boundaries React resumes for those entries.
+ * enqueued before that microtask ends: ahead of the Suspense boundaries
+ * React resumes for those entries.
  */
-export const dehydrateStream: (
+export function dehydrateStream(
 	queries: () => Iterable<Query.Query>,
 	subscribe: (listener: (event: CacheEvent) => void) => () => void,
 	options: DehydrateOptions,
-) => Effect.Effect<DehydratedStream, never, Scope.Scope> =
-	/*#__PURE__*/ Effect.fnUntraced(function* (queries, subscribe, options) {
-		const sent = options.sent ?? new Set<string>();
-		const send = { ...options, sent };
-		const queue = yield* Queue.unbounded<DehydratedState, Cause.Done>();
-		let batch: Map<string, Query.Query> | undefined;
-		const flush = () => {
-			const changed = batch;
-			batch = undefined;
-			if (!changed) {
+): DehydratedStream {
+	const sent = options.sent ?? new Set<string>();
+	const send = { ...options, sent };
+	let controller!: ReadableStreamDefaultController<DehydratedState>;
+	const updates = new ReadableStream<DehydratedState>({
+		start: (started) => {
+			controller = started;
+		},
+	});
+	let batch: Map<string, Query.Query> | undefined;
+	let closed = false;
+	const flush = () => {
+		const changed = batch;
+		batch = undefined;
+		if (!changed) {
+			return;
+		}
+		const state = dehydrateEntries(changed.values(), send);
+		if (state.queries.length > 0) {
+			controller.enqueue(state);
+		}
+	};
+	const unsubscribe = subscribe((event) => {
+		if (event.type === "removed" || sent.has(event.query.hash)) {
+			return;
+		}
+		if (!batch) {
+			batch = new Map();
+			queueMicrotask(flush);
+		}
+		batch.set(event.query.hash, event.query);
+	});
+	return {
+		close() {
+			if (closed) {
 				return;
 			}
-			const state = dehydrateEntries(changed.values(), send);
-			if (state.queries.length > 0) {
-				Queue.offerUnsafe(queue, state);
-				// Wake the reader now, not on the queue's next scheduler tick.
-				Queue.flushUnsafe(queue);
-			}
-		};
-		yield* Effect.acquireRelease(
-			Effect.sync(() =>
-				subscribe((event) => {
-					if (event.type === "removed" || sent.has(event.query.hash)) {
-						return;
-					}
-					if (!batch) {
-						batch = new Map();
-						queueMicrotask(flush);
-					}
-					batch.set(event.query.hash, event.query);
-				}),
-			),
-			(unsubscribe) =>
-				Effect.sync(() => {
-					flush();
-					unsubscribe();
-					Queue.endUnsafe(queue);
-				}),
-		);
-		return {
-			initial: dehydrateEntries(queries(), send),
-			updates: Stream.fromQueue(queue),
-		};
-	});
+			closed = true;
+			flush();
+			unsubscribe();
+			controller.close();
+		},
+		initial: dehydrateEntries(queries(), send),
+		updates,
+	};
+}
 
 /**
  * Write dehydrated entries into a cache. Existing entries only take newer

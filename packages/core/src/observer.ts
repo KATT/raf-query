@@ -5,21 +5,16 @@
  * `refetchInterval`, and notifies its listeners only when a result property
  * they read changed (see {@link trackResult}). Bindings make one per hook.
  *
- * The `*Unsafe` functions read and update synchronously, for renders and
- * external stores. While it has listeners, the observer holds a `Scope` (a
- * child of its query's) that owns the query subscription and the polling
- * fiber; the last listener leaving, a switch to another query, or the query
- * leaving its cache closes it.
+ * The functions read and update synchronously, for renders and external
+ * stores. While it has listeners, the observer subscribes to its query and
+ * polls it; the last listener leaving, a switch to another query, or the
+ * query leaving its cache ends that.
  */
-import { Effect, Exit, Pipeable, Predicate, Scope, type Stream } from "effect";
-
 import { unsafeCast } from "./cast.ts";
 import { entryOf } from "./entry.ts";
-import * as Fibers from "./fibers.ts";
 import type { QueryKey } from "./key.ts";
-import { listen } from "./listen.ts";
 import type { QueryFactory } from "./options.ts";
-import { Platform } from "./platform.ts";
+import { hasProperty } from "./predicate.ts";
 import * as Query from "./query.ts";
 import type { Thenable } from "./thenable.ts";
 
@@ -47,10 +42,10 @@ export interface Options {
 export interface Result<TData = unknown> {
 	/** Error of the last failed request. Existing data stays readable. */
 	readonly error: unknown;
-	/** The query's `fetchNextPage`. */
-	readonly fetchNextPage: Effect.Effect<void>;
-	/** The query's `fetchPreviousPage`. */
-	readonly fetchPreviousPage: Effect.Effect<void>;
+	/** The query's `fetchNextPage`; one function per query. */
+	readonly fetchNextPage: () => Promise<void>;
+	/** The query's `fetchPreviousPage`; one function per query. */
+	readonly fetchPreviousPage: () => Promise<void>;
 	/** Stable string form of the observed query's key. */
 	readonly hash: string;
 	readonly hasNextPage: boolean;
@@ -71,8 +66,8 @@ export interface Result<TData = unknown> {
 	readonly key: QueryKey;
 	/** Settles with the data to show; see `Query.State.promise`. */
 	readonly promise: Thenable<TData>;
-	/** The query's `refetch`. */
-	readonly refetch: Effect.Effect<void>;
+	/** The query's `refetch`; one function per query. */
+	readonly refetch: () => Promise<void>;
 	/** When the data in `promise` was fetched (ms since epoch); `0` before that. */
 	readonly updatedAt: number;
 }
@@ -82,8 +77,7 @@ export type ResultKey = keyof Result;
 export interface QueryObserver<
 	TData = unknown,
 	TFactory extends QueryFactory = QueryFactory,
->
-	extends Pipeable.Pipeable {
+> {
 	/** The options set by the latest `make` or {@link setOptionsUnsafe}. */
 	readonly options: Options;
 	/** The observed query. */
@@ -93,12 +87,12 @@ export interface QueryObserver<
 	};
 }
 
-/** Open while the observer has listeners. */
+/** Held while the observer has listeners. */
 interface Subscription {
-	/** At most one polling fiber, restarted when `refetchInterval` changes. */
-	readonly polls: Fibers.Fibers<"poll">;
-	/** Owns the query subscription and `polls`. */
-	readonly scope: Scope.Closeable;
+	/** Ends the query subscription and polling. */
+	readonly close: () => void;
+	/** Cancels the next poll; restarted when `refetchInterval` changes. */
+	stopPolling: () => void;
 }
 
 interface Impl<TData, TFactory extends QueryFactory> extends QueryObserver<
@@ -117,9 +111,10 @@ interface Impl<TData, TFactory extends QueryFactory> extends QueryObserver<
 }
 
 const Proto = {
-	...Pipeable.Prototype,
 	[TypeId]: { _A: (value: never) => value },
 };
+
+const noop = () => {};
 
 const resultKeys = {
 	error: true,
@@ -142,7 +137,7 @@ const resultKeys = {
 } satisfies Record<ResultKey, true>;
 
 export function isQueryObserver(value: unknown): value is QueryObserver {
-	return Predicate.hasProperty(value, TypeId);
+	return hasProperty(value, TypeId);
 }
 
 function implOf<TData, TFactory extends QueryFactory>(
@@ -154,7 +149,7 @@ function implOf<TData, TFactory extends QueryFactory>(
 }
 
 function isResultKey(name: PropertyKey): name is ResultKey {
-	return Predicate.isString(name) && Object.hasOwn(resultKeys, name);
+	return typeof name === "string" && Object.hasOwn(resultKeys, name);
 }
 
 function shallowEqual(a: Result, b: Result) {
@@ -183,10 +178,11 @@ function resultOf<TData, TFactory extends QueryFactory>(
 			: undefined;
 	const shown = previous ?? query;
 	const shownState = previous ? Query.getUnsafe(previous) : state;
+	const commands = entryOf(query).commands;
 	return {
 		error: state.error,
-		fetchNextPage: Query.fetchNextPage(query),
-		fetchPreviousPage: Query.fetchPreviousPage(query),
+		fetchNextPage: commands.fetchNextPage,
+		fetchPreviousPage: commands.fetchPreviousPage,
 		hash: query.hash,
 		hasNextPage: Query.hasNextPageUnsafe(query),
 		hasPreviousPage: Query.hasPreviousPageUnsafe(query),
@@ -199,7 +195,7 @@ function resultOf<TData, TFactory extends QueryFactory>(
 		isStale: state.isStale,
 		key: shown.handle.key,
 		promise: shownState.promise,
-		refetch: Query.refetch(query),
+		refetch: commands.refetch,
 		updatedAt: shownState.updatedAt,
 	};
 }
@@ -221,26 +217,11 @@ export function makeUnsafe<TData, TFactory extends QueryFactory>(
 	return self;
 }
 
-/** {@link makeUnsafe}, as an Effect. */
-export function make<TData, TFactory extends QueryFactory>(
-	query: Query.Query<TData, TFactory>,
-	options?: Options,
-): Effect.Effect<QueryObserver<TData, TFactory>> {
-	return Effect.sync(() => makeUnsafe(query, options));
-}
-
 /** The current result. */
 export function getUnsafe<TData, TFactory extends QueryFactory>(
 	self: QueryObserver<TData, TFactory>,
 ): Result<TData> {
 	return implOf(self).current;
-}
-
-/** {@link getUnsafe}, as an Effect. */
-export function get<TData, TFactory extends QueryFactory>(
-	self: QueryObserver<TData, TFactory>,
-): Effect.Effect<Result<TData>> {
-	return Effect.sync(() => getUnsafe(self));
 }
 
 /**
@@ -298,28 +279,6 @@ export function subscribeUnsafe<TData, TFactory extends QueryFactory>(
 		}
 		disconnect(impl);
 	};
-}
-
-/**
- * The current result, then every change listeners are notified of. Counts
- * as a listener while the stream runs, so the query counts as read.
- */
-export function changes<TData, TFactory extends QueryFactory>(
-	self: QueryObserver<TData, TFactory>,
-): Stream.Stream<Result<TData>> {
-	return listen((push) => {
-		let last: Result<TData> | undefined;
-		const emit = () => {
-			const result = getUnsafe(self);
-			if (result !== last) {
-				last = result;
-				push(result);
-			}
-		};
-		const unsubscribe = subscribeUnsafe(self, emit);
-		emit();
-		return unsubscribe;
-	});
 }
 
 /**
@@ -388,8 +347,8 @@ function shouldNotify<TData, TFactory extends QueryFactory>(
 }
 
 /**
- * Subscribe to the current query in a new scope under its entry's, and
- * start polling. Replaces any previous subscription.
+ * Subscribe to the current query and start polling. Replaces any previous
+ * subscription; the query leaving its cache ends it.
  */
 function connect<TData, TFactory extends QueryFactory>(
 	self: Impl<TData, TFactory>,
@@ -404,19 +363,22 @@ function connect<TData, TFactory extends QueryFactory>(
 			return self.options.refetchOnWindowFocus;
 		},
 	};
-	const scope = Scope.forkUnsafe(entryOf(query).scope);
-	// Finalizers run last-in first, so closing the scope unsubscribes before
-	// it interrupts the polling fiber.
-	const polls = Fibers.makeUnsafe<"poll">(scope, entryOf(query).cache.services);
-	Effect.runSync(
-		Effect.acquireRelease(
-			Effect.sync(() =>
-				Query.subscribeUnsafe(query, () => updateResult(self), preferences),
-			),
-			(unsubscribe) => Effect.sync(unsubscribe),
-		).pipe(Scope.provide(scope)),
+	const entry = entryOf(query);
+	const unsubscribe = Query.subscribeUnsafe(
+		query,
+		() => updateResult(self),
+		preferences,
 	);
-	self.subscription = { polls, scope };
+	const subscription: Subscription = {
+		close: () => {
+			entry.onRemove.delete(subscription.close);
+			unsubscribe();
+			subscription.stopPolling();
+		},
+		stopPolling: noop,
+	};
+	entry.onRemove.add(subscription.close);
+	self.subscription = subscription;
 	restartPolling(self);
 }
 
@@ -425,12 +387,13 @@ function disconnect<TData, TFactory extends QueryFactory>(
 ) {
 	const subscription = self.subscription;
 	self.subscription = undefined;
-	if (subscription) {
-		Effect.runFork(Scope.close(subscription.scope, Exit.void));
-	}
+	subscription?.close();
 }
 
-/** Run `poll` for the current `refetchInterval`, or stop polling without one. */
+/**
+ * Refetch the current query every `refetchInterval` ms while the page is
+ * visible, or stop polling without one.
+ */
 function restartPolling<TData, TFactory extends QueryFactory>(
 	self: Impl<TData, TFactory>,
 ) {
@@ -438,25 +401,18 @@ function restartPolling<TData, TFactory extends QueryFactory>(
 	if (!subscription) {
 		return;
 	}
+	subscription.stopPolling();
+	subscription.stopPolling = noop;
 	const interval = self.options.refetchInterval;
-	if (interval !== undefined && Number.isFinite(interval) && interval > 0) {
-		subscription.polls.fork("poll", poll(self.query, interval));
-	} else {
-		subscription.polls.interrupt("poll");
+	if (interval === undefined || !Number.isFinite(interval) || interval <= 0) {
+		return;
 	}
-}
-
-/** Refetch `query` every `interval` ms while the page is visible. */
-function poll<TData, TFactory extends QueryFactory>(
-	query: Query.Query<TData, TFactory>,
-	interval: number,
-): Effect.Effect<never> {
-	return Effect.gen(function* () {
-		const platform = yield* Platform;
-		if (platform.isVisibleUnsafe()) {
-			yield* Effect.forkChild(Query.refetch(query), {
-				startImmediately: true,
-			});
+	const entry = entryOf(self.query);
+	const tick = () => {
+		if (entry.cache.platform.isVisibleUnsafe()) {
+			void entry.commands.refetch();
 		}
-	}).pipe(Effect.delay(interval), Effect.forever);
+		subscription.stopPolling = entry.cache.clock.schedule(tick, interval);
+	};
+	subscription.stopPolling = entry.cache.clock.schedule(tick, interval);
 }

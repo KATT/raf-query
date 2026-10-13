@@ -1,6 +1,6 @@
-import { Effect, Predicate } from "effect";
-
 import type { InfiniteData, InfiniteQueryOptions } from "./options.ts";
+import { type Outcome, succeeded } from "./outcome.ts";
+import { hasProperty } from "./predicate.ts";
 
 export type Direction = "backward" | "forward";
 
@@ -9,8 +9,8 @@ type PagedOptions = InfiniteQueryOptions<unknown, unknown, unknown, unknown>;
 
 export function isInfiniteData(data: unknown): data is Pages {
 	return (
-		Predicate.hasProperty(data, "pages") &&
-		Predicate.hasProperty(data, "pageParams") &&
+		hasProperty(data, "pages") &&
+		hasProperty(data, "pageParams") &&
 		Array.isArray(data.pages) &&
 		Array.isArray(data.pageParams)
 	);
@@ -67,31 +67,34 @@ function addPage(
  * A paged query's request. With a `direction`, adds one page at that end of
  * `current`. Otherwise loads from the first page param again: as many pages
  * as `current` has, or `pages` if that's more, stopping at the last page.
+ * The first page that doesn't succeed ends the request with its outcome.
  */
-export const fetchPages = /*#__PURE__*/ Effect.fnUntraced(function* (
+export async function fetchPages(
 	options: PagedOptions,
 	current: Pages | undefined,
 	request: { readonly direction?: Direction; readonly pages?: number },
-	fetchPage: (
-		pageParam: unknown,
-		direction: Direction,
-	) => Effect.Effect<unknown, unknown>,
-): Effect.fn.Return<Pages, unknown> {
+	fetchPage: (pageParam: unknown, direction: Direction) => Promise<Outcome>,
+): Promise<Outcome<Pages>> {
 	if (request.direction && current) {
 		const pageParam =
 			request.direction === "forward"
 				? nextPageParam(options, current)
 				: previousPageParam(options, current);
 		if (pageParam == null) {
-			return current;
+			return succeeded(current);
 		}
-		const page = yield* fetchPage(pageParam, request.direction);
-		return addPage(
-			current,
-			page,
-			pageParam,
-			request.direction,
-			options.maxPages,
+		const page = await fetchPage(pageParam, request.direction);
+		if (page.kind !== "success") {
+			return page;
+		}
+		return succeeded(
+			addPage(
+				current,
+				page.value,
+				pageParam,
+				request.direction,
+				options.maxPages,
+			),
 		);
 	}
 
@@ -109,8 +112,11 @@ export const fetchPages = /*#__PURE__*/ Effect.fnUntraced(function* (
 			}
 			pageParam = next;
 		}
-		const page = yield* fetchPage(pageParam, "forward");
-		data = addPage(data, page, pageParam, "forward", options.maxPages);
+		const page = await fetchPage(pageParam, "forward");
+		if (page.kind !== "success") {
+			return page;
+		}
+		data = addPage(data, page.value, pageParam, "forward", options.maxPages);
 	}
-	return data;
-});
+	return succeeded(data);
+}
