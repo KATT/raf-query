@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.0](https://github.com/KATT/raf-query/compare/0.3.1...0.4.0) (2026-10-13)
+
+### ⚠ BREAKING CHANGES
+
+- **core:** fetch waits for stale data, as TanStack's fetchQuery does ([#63](https://github.com/KATT/raf-query/issues/63))
+
+### Bug Fixes
+
+- **core:** fetch waits for stale data, as TanStack's fetchQuery does ([#63](https://github.com/KATT/raf-query/issues/63)) ([c9785d5](https://github.com/KATT/raf-query/commit/c9785d5e99c0578c1748de3330823cc0e65f2378))
+
 ## [0.3.1](https://github.com/KATT/raf-query/compare/0.3.0...0.3.1) (2026-10-13)
 
 - teach avoiding dependent queries; frame prefetch vs ensure as loading UX ([#62](https://github.com/KATT/raf-query/issues/62)) ([ec62760](https://github.com/KATT/raf-query/commit/ec627609cbbee9fa4ff0cf568f69964341e27daa))
