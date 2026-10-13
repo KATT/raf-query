@@ -3,7 +3,7 @@ import { Effect, Predicate, Schedule } from "effect";
 import type { QueryBehavior } from "./options.ts";
 
 /** Doubling from 1 s, at most 30 s. */
-const defaultDelays = Schedule.min([
+const defaultDelays = /*#__PURE__*/ Schedule.min([
 	Schedule.exponential("1 second"),
 	Schedule.spaced("30 seconds"),
 ]);
