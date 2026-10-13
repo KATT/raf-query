@@ -118,23 +118,15 @@ declare module "@raf-query/react" {
 
 ## Starting queries
 
-All three verbs live on the query client and accept a factory plus its input.
+All three verbs live on the query client and accept a factory plus its input. They differ in what they return and what they wait for:
 
-| Call                              | Returns                       | Use for                                                                |
-| --------------------------------- | ----------------------------- | ---------------------------------------------------------------------- |
-| `qc.prefetch(factory, input)`     | `QueryHandle`                 | Data the route can render without; it streams in                       |
-| `await qc.ensure(factory, input)` | `Promise<EnsuredQueryHandle>` | Data the route must not render without; `useQuery` returns it directly |
-| `await qc.fetch(factory, input)`  | `Promise<Data>`               | Rendering data in a server component                                   |
+| Call                          | Returns                       | Cache miss            | Stale data                                    | TanStack Query                                 |
+| ----------------------------- | ----------------------------- | --------------------- | --------------------------------------------- | ---------------------------------------------- |
+| `qc.prefetch(factory, input)` | `QueryHandle`                 | Starts the request    | Refetches in the background                   | `prefetchQuery`, not awaited                   |
+| `qc.ensure(factory, input)`   | `Promise<EnsuredQueryHandle>` | Waits for the request | Resolves at once, refetches in the background | `ensureQueryData({ revalidateIfStale: true })` |
+| `qc.fetch(factory, input)`    | `Promise<Data>`               | Waits for the request | Waits for the refetch                         | `fetchQuery`                                   |
 
-They differ in what they wait for:
-
-| Verb       | Cache miss            | Stale data                                    | Fresh data       | TanStack Query                                 |
-| ---------- | --------------------- | --------------------------------------------- | ---------------- | ---------------------------------------------- |
-| `prefetch` | Starts the request    | Refetches in the background                   | Reused           | `prefetchQuery`, not awaited                   |
-| `ensure`   | Waits for the request | Resolves at once, refetches in the background | Resolves at once | `ensureQueryData({ revalidateIfStale: true })` |
-| `fetch`    | Waits for the request | Waits for the refetch                         | Resolves at once | `fetchQuery`                                   |
-
-So `prefetch` never holds anything up, `ensure` holds up only the first visit (returning to a page shows the cached data at once, then fresh data), and `fetch` always returns fresh data, at the cost of a round trip whenever the cache is stale. On the server, data counts as stale only once `invalidate` has marked it (see below).
+Fresh cached data is reused by all three, without a request. So `prefetch` never holds anything up, `ensure` holds up only the first visit (returning to a page shows the cached data at once, then fresh data), and `fetch` always returns fresh data, at the cost of a round trip whenever the cache is stale. On the server, data counts as stale only once `invalidate` has marked it (see below).
 
 ```tsx
 // TanStack Start
@@ -650,8 +642,7 @@ export default async function Page(props: {
 - `HydrationBoundary` sends the request client's entries to the browser cache; pending ones stream as promises through the RSC payload. Render one in each server component that starts queries for client components. Entries already sent in this request are skipped.
 - The browser takes whichever copy is newer, by when it was fetched (`updatedAt`, so server and browser clocks should agree). When it has no data and no request of its own, it resumes the server's pending request. When it has data, or its own request in flight, it waits for the server's instead of fetching again, and takes it if newer. If it keeps its own copy (the server's is older, as in a payload the router replays from its cache on back and forward, or the server's request failed), it refetches it if stale.
 - `QueryProvider` creates one client per server render and one per browser tab. The server render starts no request: a client component reading a query no `HydrationBoundary` sent renders its Suspense fallback on the server, and the query loads in the browser. That boundary renders in the browser through React's error recovery, with the digest Next.js uses for `ssr: false`, so Next.js doesn't report it; other frameworks pass it to `onRecoverableError`. Pass `config` for the client's options; it must be serializable.
-- Server components that only render data can `await qc.fetch(...)` anywhere; the per-request client makes one request per query, whatever its `staleTime`.
-- `fetch` returns data, not a handle. When a server component renders the data and also hands the query to a client component, pass `await qc.ensure(...)`: after the `fetch` it resolves from the cache, and the client component gets the data from `useQuery` without a promise.
+- In a server component, `fetch` and `ensure` wait for the same thing: the per-request client only refetches what `invalidate` marked, so cached data is never stale there, and each query makes one request whatever its `staleTime`. They differ only in what they return. `await qc.fetch(...)` the data the server component renders itself, anywhere in the tree. When it also hands the query to a client component, pass `await qc.ensure(...)`: after the `fetch` it resolves from the cache, and the client component gets the data from `useQuery` without a promise.
 - Factories can call server actions: server components call them directly, and the browser calls them on refetch. Validate their arguments, since anyone can call them. The browser runs a page's server actions one at a time, so refetches wait for each other and for any pending mutation. For parallel requests, have the `queryFn` call a [Route Handler](https://nextjs.org/docs/app/api-reference/file-conventions/route), as [`examples/nextjs`](examples/nextjs) does.
 
 #### Server-only queries
