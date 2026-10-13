@@ -56,6 +56,15 @@ pnpm preview:examples   # build all four, then serve the production builds
 
 Every database call waits `DB_LATENCY_MS` (default 400) ± 50%. Data the server loads for the first render streams in with the HTML. Later loads (scrolling, filters, opening an issue) are requests in the browser's network tab: `GET /_serverFn/<name>` in TanStack Start (the name is a module-path encoding in dev), and `POST` to the page's URL in Next.js, where the server action's input is the request body. Data lives in memory and resets when the server restarts. To add a shadcn component, run `pnpm dlx shadcn@latest add <name>` in `examples/.shared/ui`, then check that it imports `cn` from `@examples/ui/lib/utils` (the CLI can write a bare `"cn"` import and add a `cn` dependency).
 
+### StackBlitz
+
+StackBlitz opens one folder of a GitHub repo, but the apps import `@examples/*` and `@raf-query/*` from the workspace. So the `stackblitz` branch holds a standalone copy of each app, and the READMEs link to `stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/<app>`. [`scripts/stackblitz-examples.ts`](../scripts/stackblitz-examples.ts) writes the copies: the shared packages go in `shared/` as `file:` dependencies, `@raf-query/*` become the version in `packages/*/package.json`, and the scripts swap in what runs in WebContainers (`vite` for `vp`, `next dev --webpack`). [`.github/workflows/stackblitz.yaml`](./workflows/stackblitz.yaml) runs it after each Release run on `main`, so that version is on npm. The workflow installs and builds each copy with npm, then pushes the branch, so a copy that doesn't build isn't pushed. To check the copies locally:
+
+```shell
+node scripts/stackblitz-examples.ts /tmp/stackblitz
+cd /tmp/stackblitz/examples/nextjs && npm install && npm run dev
+```
+
 ## Formatting
 
 [Vite+ fmt](https://viteplus.dev/) (Oxfmt) is used to format code.
