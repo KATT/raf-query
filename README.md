@@ -120,11 +120,21 @@ declare module "@raf-query/react" {
 
 All three verbs live on the query client and accept a factory plus its input.
 
-| Call                              | Returns                       | Blocks? | Use for                                                                |
-| --------------------------------- | ----------------------------- | ------- | ---------------------------------------------------------------------- |
-| `qc.prefetch(factory, input)`     | `QueryHandle`                 | No      | Data the route can render without; it streams in                       |
-| `await qc.ensure(factory, input)` | `Promise<EnsuredQueryHandle>` | Yes     | Data the route must not render without; `useQuery` returns it directly |
-| `await qc.fetch(factory, input)`  | `Promise<Data>`               | Yes     | Rendering data in a server component                                   |
+| Call                              | Returns                       | Use for                                                                |
+| --------------------------------- | ----------------------------- | ---------------------------------------------------------------------- |
+| `qc.prefetch(factory, input)`     | `QueryHandle`                 | Data the route can render without; it streams in                       |
+| `await qc.ensure(factory, input)` | `Promise<EnsuredQueryHandle>` | Data the route must not render without; `useQuery` returns it directly |
+| `await qc.fetch(factory, input)`  | `Promise<Data>`               | Rendering data in a server component                                   |
+
+They differ in what they wait for:
+
+| Verb       | Cache miss            | Stale data                                    | Fresh data       | TanStack Query                                 |
+| ---------- | --------------------- | --------------------------------------------- | ---------------- | ---------------------------------------------- |
+| `prefetch` | Starts the request    | Refetches in the background                   | Reused           | `prefetchQuery`, not awaited                   |
+| `ensure`   | Waits for the request | Resolves at once, refetches in the background | Resolves at once | `ensureQueryData({ revalidateIfStale: true })` |
+| `fetch`    | Waits for the request | Waits for the refetch                         | Resolves at once | `fetchQuery`                                   |
+
+So `prefetch` never holds anything up, `ensure` holds up only the first visit (returning to a page shows the cached data at once, then fresh data), and `fetch` always returns fresh data, at the cost of a round trip whenever the cache is stale. On the server, data counts as stale only once `invalidate` has marked it (see below).
 
 ```tsx
 // TanStack Start
@@ -227,8 +237,8 @@ When the data really can't be reshaped (a third-party API you don't control), th
 
 Behavior:
 
-- Every verb dedupes against the cache. A fresh entry is reused; a stale entry is refetched in the background.
-- `ensure` and `fetch` wait only on a cache miss. With stale cached data they resolve immediately, so the navigation isn't held up, and revalidate in the background: the page renders the cached data and re-renders when the refetch lands.
+- Every verb dedupes against the cache: a request already in flight for the entry is joined, not repeated.
+- A stale `ensure` doesn't hold up the navigation: the page renders the cached data and re-renders when the background refetch lands. A stale `fetch` in a loader would, so loaders use `ensure`.
 - Loaders run on every navigation (TanStack Router reruns them when its own `staleTime` has passed, `0` by default), so returning to a page shows what's cached at once and then fresh data. With `defaultPreload: "intent"`, also set `defaultPreloadStaleTime: 0`: otherwise the router reuses a hover's preload for 30 seconds instead of running the loader on click, and the query cache never hears about the navigation.
 - On the server, cached data is always reused, whatever `staleTime` says. A server client renders once, so a background refetch could only repeat a request whose result is never shown. Entries marked by `invalidate` still refetch.
 - A failed `prefetch` never throws out of the loader. The error surfaces where the data is read, and is reported to the client's `onError`.
@@ -309,7 +319,7 @@ function PostPage() {
 
 When the cache updates — refetch, invalidation, `setData` — the hook returns a new, pre-resolved promise and the component re-renders without suspending. New data is structurally shared with the old: objects and arrays that are deeply equal keep their identity, and a refetch that returns equal data keeps the same promise, so nothing re-renders. Controls are tracked: reading `controls.isFetching` subscribes the component to `isFetching`, and a change to a control it never read doesn't re-render it. When the **first** load fails, the promise rejects and `use()` throws to the nearest error boundary. Resetting that boundary refetches the query.
 
-`useQuery` never refetches on mount: whatever started the query decides. Stale data refetches in the background when a loader or server component starts the query again (`prefetch`, `ensure`, `fetch`, or hydrating the server's copy), when `useWaterfall` mounts, when invalidated, on window focus or reconnect, on `refetch()`, or on `refetchInterval`.
+`useQuery` never refetches on mount: whatever started the query decides. Stale data refetches when a loader or server component starts the query again (`prefetch`, `ensure`, `fetch`, or hydrating the server's copy), when `useWaterfall` mounts, when invalidated, on window focus or reconnect, on `refetch()`, or on `refetchInterval`.
 
 For an app-wide indicator, `useIsFetching()` returns how many queries have a request in flight, background refetches included, and re-renders when that changes. Pass a filter to count only some: `useIsFetching({ queryKey: ["comments"] })`. It's `0` on the server and during hydration, so the indicator never appears in server HTML. Outside React, `qc.isFetching(filter?)` returns the same number.
 
