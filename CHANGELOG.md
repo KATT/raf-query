@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.13](https://github.com/KATT/raf-query/compare/0.1.12...0.1.13) (2026-10-13)
+
+### Bug Fixes
+
+- **deps:** make effect a peer dependency ([#40](https://github.com/KATT/raf-query/issues/40)) ([f172515](https://github.com/KATT/raf-query/commit/f17251515788e2aaf243cce33e5af09bf87db59e))
+
 ## [0.1.12](https://github.com/KATT/raf-query/compare/0.1.11...0.1.12) (2026-10-13)
 
 ### Features
