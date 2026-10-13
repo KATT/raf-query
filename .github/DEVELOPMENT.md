@@ -56,6 +56,17 @@ pnpm preview:examples   # build all four, then serve the production builds
 
 Every database call waits `DB_LATENCY_MS` (default 400) ± 50%. Data the server loads for the first render streams in with the HTML. Later loads (scrolling, filters, opening an issue) are requests in the browser's network tab: `GET /_serverFn/<name>` in TanStack Start (the name is a module-path encoding in dev), and `POST` to the page's URL in Next.js, where the server action's input is the request body. Data lives in memory and resets when the server restarts. To add a shadcn component, run `pnpm dlx shadcn@latest add <name>` in `examples/.shared/ui`, then check that it imports `cn` from `@examples/ui/lib/utils` (the CLI can write a bare `"cn"` import and add a `cn` dependency).
 
+### CodeSandbox
+
+CodeSandbox opens one folder of a GitHub repo, but the apps import `@examples/*` and `@raf-query/*` from the workspace. So the `codesandbox` branch holds a standalone copy of each app, and the READMEs link to `codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/<app>`. [`tooling/codesandbox`](../tooling/codesandbox) writes the copies. Each copy is its own pnpm workspace: the app in `apps/<app>` and `examples/.shared/*` copied as-is into `packages/`, so `@examples/*` stay `workspace:*`. `@raf-query/*` become the version in this repo's `packages/*/package.json`. The copy's `pnpm-workspace.yaml` is this repo's with the copy's packages, so it keeps the Vite+ override, and its root `package.json` has this repo's `packageManager` and runs the app's scripts unchanged. CodeSandbox runs the copies on a Linux VM, so `vp` and Turbopack work as they do locally. Each copy has `.devcontainer/devcontainer.json` (CodeSandbox's Node 24 image) and `.codesandbox/tasks.json`, which runs `pnpm install` and then `pnpm dev` with a preview on the app's port. The apps allow CodeSandbox's preview hosts (`*.csb.app`) in `next.config.ts` and `vite.config.ts`.
+
+[`.github/workflows/codesandbox.yaml`](./workflows/codesandbox.yaml) runs `pnpm --filter @tooling/codesandbox sync` after each Release run on `main`. It waits until npm serves the version just published, then installs and builds each copy. It commits the lockfiles and pushes the branch, so a copy that doesn't build isn't pushed. To check the copies locally:
+
+```shell
+pnpm --filter @tooling/codesandbox generate /tmp/codesandbox
+cd /tmp/codesandbox/examples/nextjs && pnpm install && pnpm dev
+```
+
 ## Formatting
 
 [Vite+ fmt](https://viteplus.dev/) (Oxfmt) is used to format code.
