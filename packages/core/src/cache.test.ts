@@ -295,10 +295,13 @@ describe("QueryCache", () => {
 			const backend = createBackend();
 			const cache = yield* QueryCache.make({ isServer: false });
 			const fiber = yield* Effect.forkChild(
-				Effect.all([
-					cache.ensure(backend.issueQuery, { id: 1 }),
-					cache.fetch(backend.issueQuery, { id: 1 }),
-				]),
+				Effect.all(
+					[
+						cache.ensure(backend.issueQuery, { id: 1 }),
+						cache.fetch(backend.issueQuery, { id: 1 }),
+					],
+					{ concurrency: "unbounded" },
+				),
 			);
 			yield* settle;
 			backend.respondAll();

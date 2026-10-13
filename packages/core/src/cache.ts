@@ -147,7 +147,11 @@ export interface QueryCache {
 	>;
 	/** Cache events from the moment the stream starts. */
 	readonly events: Stream.Stream<Event>;
-	/** Like `ensure`, but succeeds with the data. */
+	/**
+	 * Start a query and succeed with its data. Waits on a cache miss and on
+	 * stale data (on the server, only invalidated data), so the data is fresh.
+	 * Fails if that request fails.
+	 */
 	fetch<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: LoadArgs<TFactory>
@@ -306,14 +310,16 @@ function keyMatcher(filter: Filter): (entry: Entry.Entry) => boolean {
 }
 
 /**
- * Waits for an entry's data on a cache miss. Cached data returns at once,
- * and revalidates in the background (see `Entry.revalidate`).
+ * Waits for an entry's data on a cache miss, and with `fresh` also while it
+ * needs a refetch (see `Entry.needsRefetch`). Otherwise cached data returns at
+ * once, and revalidates in the background.
  */
 function load<TFactory extends QueryFactory>(
 	entry: Entry.Entry,
 	pages: number | undefined,
+	fresh: boolean,
 ): Effect.Effect<DataOf<TFactory>, ErrorOf<TFactory> | Query.CancelledError> {
-	if (!entry.state.hasData) {
+	if (!entry.state.hasData || (fresh && Entry.needsRefetch(entry))) {
 		// SAFETY: as in `typed`.
 		return unsafeCast<
 			Effect.Effect<DataOf<TFactory>, ErrorOf<TFactory> | Query.CancelledError>
@@ -434,14 +440,14 @@ export const make: (
 				dehydrateStream(() => state.entries.values(), subscribeUnsafe, options),
 			ensure: (factory, ...args) =>
 				Effect.flatMap(buildFor(factory, args[0]), (entry) =>
-					load<typeof factory>(entry, args[1]?.pages).pipe(
+					load<typeof factory>(entry, args[1]?.pages, false).pipe(
 						Effect.as({ ...handleOf<typeof factory>(entry), ensured: true }),
 					),
 				),
 			events: listen(subscribeUnsafe),
 			fetch: (factory, ...args) =>
 				Effect.flatMap(buildFor(factory, args[0]), (entry) =>
-					load<typeof factory>(entry, args[1]?.pages),
+					load<typeof factory>(entry, args[1]?.pages, true),
 				),
 			getData: (factory, ...args) =>
 				Effect.sync(() => {

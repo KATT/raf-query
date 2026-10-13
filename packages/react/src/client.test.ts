@@ -138,15 +138,56 @@ describe("ensure and fetch", () => {
 		expect(backend.requests).toHaveLength(0);
 	});
 
-	it("resolve immediately with stale data and revalidate", async () => {
+	it("ensure resolves immediately with stale data and revalidates", async () => {
 		const backend = createBackend();
 		const qc = new QueryClient({ isServer: false });
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "Cached" });
+
+		await qc.ensure(backend.issueQuery, { id: 1 });
+
+		expect(qc.getData(backend.issueQuery, { id: 1 })?.title).toBe("Cached");
+		expect(backend.requests).toHaveLength(1);
+	});
+
+	it("fetch waits for stale data to refetch", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "Cached" });
+
+		const issue = qc.fetch(backend.issueQuery, { id: 1 });
+		const again = qc.fetch(backend.issueQuery, { id: 1 });
+		expect(backend.requests).toHaveLength(1);
+		backend.respondAll();
+
+		expect((await issue).title).toBe("First");
+		expect((await again).title).toBe("First");
+	});
+
+	it("fetch resolves immediately with fresh data", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({
+			defaults: { staleTime: Infinity },
+			isServer: false,
+		});
 		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "Cached" });
 
 		const issue = await qc.fetch(backend.issueQuery, { id: 1 });
 
 		expect(issue.title).toBe("Cached");
+		expect(backend.requests).toHaveLength(0);
+	});
+
+	it("fetch joins a background refetch of stale data", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "Cached" });
+		qc.prefetch(backend.issueQuery, { id: 1 });
+
+		const issue = qc.fetch(backend.issueQuery, { id: 1 });
 		expect(backend.requests).toHaveLength(1);
+		backend.respondAll();
+
+		expect((await issue).title).toBe("First");
 	});
 
 	it("reject when the request fails", async () => {
