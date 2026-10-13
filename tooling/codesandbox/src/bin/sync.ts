@@ -22,7 +22,7 @@ Effect.gen(function* () {
 			Effect.tap(() =>
 				publishedVersions(root).pipe(
 					Effect.flatMap((packages) =>
-						waitForVersions(packages, 30, "20 seconds"),
+						waitForVersions(packages, 120, "5 seconds"),
 					),
 				),
 			),
