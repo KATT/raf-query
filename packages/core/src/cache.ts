@@ -236,7 +236,7 @@ export interface QueryCache {
 	readonly [TypeId]: TypeId;
 }
 
-export const QueryCache = Context.Service<QueryCache>(TypeId);
+export const QueryCache = /*#__PURE__*/ Context.Service<QueryCache>(TypeId);
 
 export function isQueryCache(value: unknown): value is QueryCache {
 	return Predicate.hasProperty(value, TypeId);
@@ -322,7 +322,7 @@ function load<TFactory extends QueryFactory>(
  * Settles every effect, started together. Forks and joins rather than
  * `Effect.all` with `concurrency`, whose machinery every app would bundle.
  */
-const settleAll = Effect.fnUntraced(function* (
+const settleAll = /*#__PURE__*/ Effect.fnUntraced(function* (
 	effects: ReadonlyArray<Effect.Effect<void>>,
 ) {
 	const fibers: Array<Fiber.Fiber<void>> = [];
@@ -337,8 +337,8 @@ const settleAll = Effect.fnUntraced(function* (
 /** Build a cache in the current scope, with the current `Clock` and {@link Platform}. */
 export const make: (
 	config?: Config,
-) => Effect.Effect<QueryCache, never, Scope.Scope> = Effect.fnUntraced(
-	function* (config: Config = {}) {
+) => Effect.Effect<QueryCache, never, Scope.Scope> =
+	/*#__PURE__*/ Effect.fnUntraced(function* (config: Config = {}) {
 		const platform = yield* Platform;
 		const state: Entry.CacheState = {
 			clock: yield* Clock.Clock,
@@ -505,8 +505,7 @@ export const make: (
 		};
 		internals.set(cache, { buildFor, entryFor, state });
 		return cache;
-	},
-);
+	});
 
 /**
  * What the module functions below need beyond the {@link QueryCache}
