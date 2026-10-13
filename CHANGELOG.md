@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.4](https://github.com/KATT/raf-query/compare/0.2.3...0.2.4) (2026-10-13)
+
+### Features
+
+- **examples:** open the examples in CodeSandbox ([#55](https://github.com/KATT/raf-query/issues/55)) ([b94f6c8](https://github.com/KATT/raf-query/commit/b94f6c86ac1b631d6e8e043a19098ae529f3ea7c)), references [#53](https://github.com/KATT/raf-query/issues/53)
+
+## [0.2.3](https://github.com/KATT/raf-query/compare/0.2.2...0.2.3) (2026-10-13)
+
+### Features
+
+- **examples:** shared Hono REST API instead of server functions; no useWaterfall ([#54](https://github.com/KATT/raf-query/issues/54)) ([402399d](https://github.com/KATT/raf-query/commit/402399d31160a47f41d225b052394ee989721f02)), references [#53](https://github.com/KATT/raf-query/issues/53)
+
 ## [0.2.2](https://github.com/KATT/raf-query/compare/0.2.1...0.2.2) (2026-10-13)
 
 - **examples:** remove StackBlitz ([#53](https://github.com/KATT/raf-query/issues/53)) ([f681e30](https://github.com/KATT/raf-query/commit/f681e30475753e6fc98bdf8775b2e517d7565af3)), references [#50](https://github.com/KATT/raf-query/issues/50) [#51](https://github.com/KATT/raf-query/issues/51) [#52](https://github.com/KATT/raf-query/issues/52)
