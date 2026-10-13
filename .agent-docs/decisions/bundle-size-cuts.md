@@ -1,6 +1,6 @@
 # Bundle size cuts (human asked)
 
-- Human: minimise bundle size, keep the Effect integration (subpaths are fine), keep the engine Effect-native. Simplest fixture app 29.26 → 20.38 kB gzip, from src and `dist/`. Numbers and remaining levers: [bundle-size.md](../bundle-size.md).
+- Human: minimise bundle size, keep the Effect integration (subpaths are fine), keep the engine Effect-native. Simplest fixture app 29.26 → 19.24 kB gzip, from src and `dist/`. Numbers and remaining levers: [bundle-size.md](../bundle-size.md).
 - **Rules that keep apps small**:
   - Not-always-used APIs are module functions, not members of a service object: object members never shake. `QueryCache.watch` / `events` / `dehydrate` / `hydrate` / `dehydrateStream` / `hydrateStream` take the cache (`cache.ts`).
   - Top-level calls (`Context.Service`, `Effect.fnUntraced`, `Context.Reference`) carry `/*#__PURE__*/`.
@@ -14,5 +14,5 @@
 - **`@raf-query/react/tanstack-router` has a `browser` export condition** pointing at a client-only module (`tanstack-router-browser.ts`; shared half in `tanstack-router-shared.ts`).
   - Server runtimes are listed first (`workerd`, `worker`, `node`, `deno`, `bun`), since Cloudflare builds also set `browser`. Router-core's `isServer` export orders them the same way.
   - Lost: a runtime `router.isServer` branch, or router-core's build-time `isServer`, in one module. Neither shook: rolldown keeps the server branch's imports until minification, which can't drop calls whose pure annotations were lost.
-- Not taken (API changes, ask first): `Schedule` retries behind a wrapper (~0.8 kB), `QueryClient`'s `layer` behind a separate constructor (~0.4 kB).
+- **Effect-only extras live in `@raf-query/react/effect`** (human asked: cut Effect except in that entrypoint, minimal): `retrySchedule(schedule)` (`core/src/schedule.ts`, also exported by core) is the only caller of `Effect.retry` with a `Schedule`, and `fromLayer(layer)` the only `Layer.buildWithScope`. `QueryClient` takes `services: ServicesBuilder<R>` (`(scope) => Context<R>`). Saves ~1.1 kB in every app that uses neither. Lost: `retry: Schedule` and `layer:` directly on the client.
 - `tooling/bundle-size/src/analyze.ts` lists one fixture app's modules by size (`node src/analyze.ts [export] [module] [--top N]`). Start there after `measure.ts` shows a change.

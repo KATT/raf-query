@@ -27,6 +27,7 @@ Early. Both packages are on npm at `0.0.x`, and the API can still change between
 | `@raf-query/react/rsc`             | `HydrationBoundary` for passing server-component queries to the client |
 | `@raf-query/react/next`            | `QueryProvider` for Next.js App Router                                 |
 | `@raf-query/react/devtools`        | [Devtools](#devtools) panel for inspecting the cache in development    |
+| `@raf-query/react/effect`          | `fromLayer` and `retrySchedule`, for [Effect](#effect) queries         |
 
 ## Principles
 
@@ -520,7 +521,7 @@ raf-query's cache is written in [Effect](https://effect.website): `QueryClient` 
 
 - A `queryFn` can return an `Effect`. Cancelling the request interrupts it.
 - An Effect `queryFn`'s error type is the query's: `qc.effect.fetch(issueQuery, input)` fails with `IssueNotFound | Query.CancelledError`. `ErrorOf<TFactory>` names it; it's `unknown` for promises. A `queryFn` that throws instead of returning is a defect, and isn't retried.
-- `retry` accepts a `Schedule` as well as a count or predicate.
+- `retry: retrySchedule(schedule)` retries on a `Schedule` instead of a count or predicate. Only apps that call it bundle Effect's schedule driver.
 - `qc.effect` has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidate`, `reset`, `remove`, `setData`, `getData` (an `Option`), `isFetching` (a count).
 - Streams and transfer are module functions that take the cache, so apps that don't use them don't bundle them: `QueryCache.watch(cache, factory, input)` is a `Stream` of an entry's state, `QueryCache.events(cache)` a `Stream` of cache events, and `QueryCache.dehydrate(cache, options)` / `QueryCache.hydrate(cache, state, options)` move a snapshot between caches.
 - SSR streaming is Effect too, and the integrations are thin wrappers over it. `QueryCache.dehydrateStream(cache, options)` (scoped) returns the cache's `initial` state and a `Stream` of `updates`: entries that start or settle later, each sent once, batched per microtask. The stream ends when the scope closes. `QueryCache.hydrateStream(cache, stream)` hydrates each state as it arrives. `Stream.toReadableStream` / `Stream.fromReadableStream` carry it over a web stream. The `sent` option (a `Set` of hashes) makes separate `dehydrate` calls of one request skip entries already sent.
@@ -529,14 +530,16 @@ raf-query's cache is written in [Effect](https://effect.website): `QueryClient` 
 - Time comes from the `Clock` and the page from the `Platform` service (focus, visibility, `navigator.onLine`; the default reads the globals). Provide `TestClock` or another `Platform` to test staleness, gc and offline retries without a browser.
 
 ```ts
-import { QueryCache, queryOptions } from "@raf-query/core";
+import { QueryCache, queryOptions, retrySchedule } from "@raf-query/core";
 import { Effect, Schedule, Stream } from "effect";
 
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
 		queryKey: ["issue", input.id],
 		queryFn: () => IssueRepo.get(input.id), // Effect<Issue, IssueNotFound>
-		retry: Schedule.exponential("200 millis").pipe(Schedule.upTo({ times: 3 })),
+		retry: retrySchedule(
+			Schedule.exponential("200 millis").pipe(Schedule.upTo({ times: 3 })),
+		),
 	});
 }
 
@@ -595,10 +598,12 @@ Effect.runFork(
 - A request runs under the latest caller's span, if it had one. `wrapRequest` in the cache's config wraps every request (retries included) to add a span, a timeout or metrics; `wrapRequest: traceRequest` runs each request in a `raf-query.request` span with a `raf_query.hash` attribute. `QueryClient` takes the same option.
 - A `queryFn` that dies is reported with `console.error`; typed failures are the query's error.
 
-`QueryClient` gets its services from a `layer`. It's built into the client's scope with the cache, so it must build synchronously. The client's type is `QueryClient<TServices>`, and its verbs accept only factories whose services the layer provides; any other factory is a type error. `dispose()` interrupts every request and runs the layer's finalizers:
+`QueryClient` gets its services from `services`; `fromLayer(layer)` from `@raf-query/react/effect` builds a layer into the client's scope with the cache, so the layer must build synchronously. The client's type is `QueryClient<TServices>`, and its verbs accept only factories whose services the layer provides; any other factory is a type error. `dispose()` interrupts every request and runs the layer's finalizers:
 
 ```ts
-const queryClient = new QueryClient({ layer: IssueApiLive }); // QueryClient<IssueApi>
+import { fromLayer } from "@raf-query/react/effect";
+
+const queryClient = new QueryClient({ services: fromLayer(IssueApiLive) }); // QueryClient<IssueApi>
 const handle = queryClient.prefetch(issueQuery, { id: 1 });
 
 await queryClient.dispose();
@@ -653,7 +658,7 @@ Both render nothing on the server, since the server's cache isn't the browser's.
 
 | Member                                      | Use                                                                                                                     |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `new QueryClient(config?)`                  | `config.defaults` (query options below), `config.onError`, `config.isServer`, `config.layer` ([services](#services))    |
+| `new QueryClient(config?)`                  | `config.defaults` (query options below), `config.onError`, `config.isServer`, `config.services` ([services](#services)) |
 | `prefetch`, `ensure`, `fetch`               | [Start queries](#starting-queries)                                                                                      |
 | `invalidate`, `setData`, `getData`          | [Write and read the cache](#mutations)                                                                                  |
 | `reset(factory, input)` / `reset(filter)`   | Drop data and errors; read queries suspend and refetch. Resolves when they settle. [Filters](#filters)                  |
@@ -669,15 +674,15 @@ Both render nothing on the server, since the server's cache isn't the browser's.
 
 Query options, accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
 
-| Option                                                | Default                                   |
-| ----------------------------------------------------- | ----------------------------------------- |
-| `staleTime`                                           | `0` ms                                    |
-| `gcTime`                                              | 5 minutes; `Infinity` on the server       |
-| `retry` (count, `boolean`, predicate, `Schedule`)     | `3`; `0` on the server                    |
-| `retryDelay` (ms, or a function of the failure count) | Doubling from 1 s, at most 30 s           |
-| `refetchOnWindowFocus`, `refetchOnReconnect`          | `true` (only read, stale queries refetch) |
-| `structuralSharing` (keep deeply equal parts of data) | `true`                                    |
-| [`meta`](#query-meta)                                 | None                                      |
+| Option                                                 | Default                                   |
+| ------------------------------------------------------ | ----------------------------------------- |
+| `staleTime`                                            | `0` ms                                    |
+| `gcTime`                                               | 5 minutes; `Infinity` on the server       |
+| `retry` (count, `boolean`, predicate, `retrySchedule`) | `3`; `0` on the server                    |
+| `retryDelay` (ms, or a function of the failure count)  | Doubling from 1 s, at most 30 s           |
+| `refetchOnWindowFocus`, `refetchOnReconnect`           | `true` (only read, stale queries refetch) |
+| `structuralSharing` (keep deeply equal parts of data)  | `true`                                    |
+| [`meta`](#query-meta)                                  | None                                      |
 
 `infiniteQueryOptions` also takes `getPreviousPageParam` and `maxPages`.
 

@@ -4,21 +4,22 @@ Reference for when bundle size matters more. Measure with `pnpm bundle-size` (se
 
 ## Current: Effect-native core, trimmed
 
-Core exposes only Effect APIs (`QueryCache`, `Query`, `QueryObserver`, `Platform` namespaces); `@raf-query/react`'s `QueryClient` builds the cache with `QueryCache.make` (and `Layer.buildWithScope` only for a `layer`) and runs each verb with `Effect.runSync` / `runPromise`. `qc.effect` is the Effect-native cache itself. Every app bundles Effect's fiber runtime plus what the engine reaches on every request; streams, transfer, spans, the logger and `Schedule` retries only when used. The cuts and the rules behind them: [decisions/bundle-size-cuts.md](./decisions/bundle-size-cuts.md).
+Core exposes only Effect APIs (`QueryCache`, `Query`, `QueryObserver`, `Platform` namespaces); `@raf-query/react`'s `QueryClient` builds the cache with `QueryCache.make` and runs each verb with `Effect.runSync` / `runPromise`. `qc.effect` is the Effect-native cache itself. Every app bundles Effect's fiber runtime plus what the engine reaches on every request; streams, transfer, spans, the logger, `Schedule` retries (`retrySchedule`) and `Layer` (`fromLayer`, `@raf-query/react/effect`) only when used. The cuts and the rules behind them: [decisions/bundle-size-cuts.md](./decisions/bundle-size-cuts.md).
 
 ## Numbers (gzip, kB; `tooling/bundle-size` fixtures, Start example's bundler)
 
-| App                             | TanStack Query | raf-query now | Effect-native before the cuts | Pre-#23 Effect engine | Pre-#23 Promise engine |
-| ------------------------------- | -------------: | ------------: | ----------------------------: | --------------------: | ---------------------: |
-| Factory + prefetch + `useQuery` |           9.77 |         20.38 |                         29.26 |                 16.75 |                   5.64 |
-| + paged                         |          10.44 |         20.78 |                         29.65 |                 17.15 |                   6.04 |
-| + action that invalidates       |          10.60 |         20.94 |                         29.81 |                 17.32 |                   6.21 |
-| TanStack Router app             |          12.36 |         21.77 |                         31.44 |                 18.50 |                   7.41 |
-| Effect `queryFn` + `Schedule`   |              — |         20.73 |                         29.49 |                 16.93 |                  15.33 |
+| App                                | TanStack Query | raf-query now | Effect-native before the cuts | Pre-#23 Effect engine | Pre-#23 Promise engine |
+| ---------------------------------- | -------------: | ------------: | ----------------------------: | --------------------: | ---------------------: |
+| Factory + prefetch + `useQuery`    |           9.77 |         19.24 |                         29.26 |                 16.75 |                   5.64 |
+| + paged                            |          10.44 |         19.64 |                         29.65 |                 17.15 |                   6.04 |
+| + action that invalidates          |          10.60 |         19.80 |                         29.81 |                 17.32 |                   6.21 |
+| TanStack Router app                |          12.36 |         20.61 |                         31.44 |                 18.50 |                   7.41 |
+| Effect `queryFn` + `retrySchedule` |              — |         20.48 |                         29.49 |                 16.93 |                  15.33 |
+| Effect `queryFn` + `fromLayer`     |              — |         19.70 |                             — |                     — |                      — |
 
-- `dist/` bundles the same as src now; before the cuts it was ~0.4 kB bigger (29.67 for the first app), and 23.25 with the cuts but a `vp pack` build.
-- **Effect's share of raf-query:** ~13.1 kB now; ~21.4 kB before the cuts; ~11.2 kB with the pre-#23 Effect engine plus `/effect` subpath; ~0.2 kB with the Promise engine.
-- **Full `examples/tanstack-start` client JS:** 174.8 kB now, 185.3 kB before. The TanStack-backed copy is 163.1 kB.
+- `dist/` bundles the same as src now; before the cuts it was ~0.4 kB bigger (29.67 for the first app), and 23.25 with the first cuts but a `vp pack` build.
+- **Effect's share of raf-query:** ~12.0 kB now; ~21.4 kB before the cuts; ~11.2 kB with the pre-#23 Effect engine plus `/effect` subpath; ~0.2 kB with the Promise engine.
+- **Full `examples/tanstack-start` client JS:** 173.5 kB now, 185.3 kB before. The TanStack-backed copy is 163.1 kB.
 - **Floor:** Effect's fiber runtime alone (`runPromiseExit(succeed(1))`) is ~7 kB gzip; with fork, gen, sleep, `Deferred` and `Scope` ~11.7 kB. Effect v4 has no lighter `Micro` runtime.
 
 ## Why it's big, and what's shakable
@@ -31,10 +32,8 @@ Effect v4 shakes per export (`sideEffects` lists only a schema file), and app-si
 - **`export * as X` in a rolldown library build** (`vp pack` / tsdown): an `__exportAll` getter object keeps every member. Packages build with `tsc` for that reason.
 - Dynamic access (`X[key]`) and re-exported `export *` keep everything.
 
-## Remaining levers (not taken)
+## What's left
 
-- **`Schedule` retries opt-in** (~0.8 kB gzip): `Effect.retry` with a `Schedule` (`Schedule`, `internal/schedule`, `Pull`) stays because `retry` accepts a `Schedule` directly. Shaking it needs an explicit wrapper (`retry: scheduleRetry(Schedule.spaced(...))` or a subpath), an API change.
-- **`layer` on `QueryClient`** (~0.4 kB): `config.layer ? Layer.buildWithScope(...) : Context.empty()` is a runtime branch. A separate constructor (`QueryClient.withLayer(layer)`) or subpath would shake it.
 - What's left is mostly Effect's runtime floor (`internal/effect`, `core`, `Duration`, `Context`, `Equal`, `Hash`, `Scheduler`) and raf's own engine (`entry.ts`, `cache.ts`, `observer.ts`). Use `tooling/bundle-size/src/analyze.ts` to list modules by size.
 
 ## The Promise-engine experiment
