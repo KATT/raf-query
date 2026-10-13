@@ -39,9 +39,40 @@ console.log(JSON.stringify({
 `,
 );
 
-const run = (imports: ReadonlyArray<string>) =>
+/** Sends a second request while the server is still answering the first. */
+const httpProbe = join(dir, "http-probe.mjs");
+writeFileSync(
+	httpProbe,
+	`
+import { createServer } from "node:http";
+
+const events = [];
+const firstStarted = Promise.withResolvers();
+const server = createServer((request, response) => {
+	const id = request.url.slice(1);
+	events.push("start " + id);
+	if (id === "1") {
+		firstStarted.resolve();
+	}
+	setTimeout(() => {
+		events.push("end " + id);
+		response.end();
+	}, id === "1" ? 100 : 0);
+});
+await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+const get = (id) => fetch("http://127.0.0.1:" + server.address().port + "/" + id).then((response) => response.text());
+const first = get("1");
+await firstStarted.promise;
+await Promise.all([first, get("2")]);
+server.close();
+server.closeAllConnections();
+console.log(JSON.stringify(events));
+`,
+);
+
+const run = (imports: ReadonlyArray<string>, script = probe) =>
 	JSON.parse(
-		execFileSync(process.execPath, [probe], {
+		execFileSync(process.execPath, [script], {
 			cwd: dir,
 			encoding: "utf8",
 			env: {
@@ -71,5 +102,20 @@ describe("webcontainer-async-context", () => {
 			stores: [null, null],
 		};
 		expect(run([preload])).toEqual({ child: result, ...result });
+	});
+
+	it("has HTTP servers take one request at a time in WebContainers only", () => {
+		expect(run([fakeWebContainer, preload], httpProbe)).toEqual([
+			"start 1",
+			"end 1",
+			"start 2",
+			"end 2",
+		]);
+		expect(run([preload], httpProbe)).toEqual([
+			"start 1",
+			"start 2",
+			"end 2",
+			"end 1",
+		]);
 	});
 });
