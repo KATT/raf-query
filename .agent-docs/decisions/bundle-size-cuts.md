@@ -1,6 +1,6 @@
 # Bundle size cuts (human asked)
 
-- Human: minimise bundle size, keep the Effect integration (subpaths are fine), cut Effect except in that entrypoint. The simplest fixture app went from 29.26 to 6.82 kB gzip, from src and `dist/`. Numbers: [bundle-size.md](../bundle-size.md); the engine: [promise-engine.md](./promise-engine.md).
+- Human: minimise bundle size, keep the Effect integration (subpaths are fine), cut Effect except in that entrypoint. The simplest fixture app went from 29.26 to 6.76 kB gzip, from src and `dist/`. Numbers: [bundle-size.md](../bundle-size.md); the engine: [promise-engine.md](./promise-engine.md).
 - **The default entries import no runtime `effect`.** `import type` only, and own helpers where a tiny Effect one would pull its module in (`predicate.ts` instead of `effect/Predicate`). `pnpm bundle-size` shows Effect's share per app; it must stay 0 for the non-Effect fixtures.
 - **Rules that keep the `/effect` side small:**
   - Not-always-used APIs are module functions, not members of a service object, because object members never shake. `QueryCache.watch` / `events` / `dehydrate` / `hydrate` / `dehydrateStream` / `hydrateStream` take the cache (`effect/cache.ts`).

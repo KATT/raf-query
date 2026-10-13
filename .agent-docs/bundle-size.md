@@ -10,14 +10,14 @@ Core runs requests on Promises + `AbortSignal` and has no runtime `effect` impor
 
 | App                                | TanStack Query | raf-query now | Effect-native engine, trimmed | Effect-native before the cuts |
 | ---------------------------------- | -------------: | ------------: | ----------------------------: | ----------------------------: |
-| Factory + prefetch + `useQuery`    |           9.77 |          6.82 |                         19.24 |                         29.26 |
-| + paged                            |          10.44 |          7.22 |                         19.64 |                         29.65 |
-| + action that invalidates          |          10.60 |          7.39 |                         19.80 |                         29.81 |
-| TanStack Router app                |          12.36 |          8.15 |                         20.61 |                         31.44 |
-| Effect `queryFn` + `retrySchedule` |              — |         17.16 |                         20.48 |                         29.49 |
-| Effect `queryFn` + `fromLayer`     |              — |         16.77 |                         19.70 |                             — |
+| Factory + prefetch + `useQuery`    |           9.77 |          6.76 |                         19.24 |                         29.26 |
+| + paged                            |          10.44 |          7.17 |                         19.64 |                         29.65 |
+| + action that invalidates          |          10.60 |          7.34 |                         19.80 |                         29.81 |
+| TanStack Router app                |          12.36 |          8.10 |                         20.61 |                         31.44 |
+| Effect `queryFn` + `retrySchedule` |              — |         17.14 |                         20.48 |                         29.49 |
+| Effect `queryFn` + `fromLayer`     |              — |         16.74 |                         19.70 |                             — |
 
-- `dist/` bundles the same as src for the default apps; the two Effect apps are ~0.1 kB bigger from `dist/` (17.28 / 16.85).
+- `dist/` bundles the same as src for the default apps; the two Effect apps are ~0.1 kB bigger from `dist/` (17.23 / 16.81).
 - **Effect's share of raf-query:** 0 kB in the default apps; ~10 kB in the Effect apps (its fiber runtime plus `Stream` / `Layer` / `Schedule` as used). It was ~12.0 kB in every app with the trimmed Effect-native engine.
 - **Full `examples/tanstack-start` client JS:** 160.0 kB now, 173.5 kB with the trimmed Effect engine, 185.3 kB before the cuts. The TanStack-backed copy is 163.1 kB.
 - **Floor for Effect users:** Effect's fiber runtime alone (`runPromiseExit(succeed(1))`) is ~7 kB gzip; with fork, gen, sleep, `Deferred` and `Scope` ~11.7 kB. Effect v4 has no lighter `Micro` runtime.
@@ -36,6 +36,6 @@ Effect v4 shakes per export (`sideEffects` lists only a schema file), and app-si
 
 - The default apps are raf's own code. Largest modules in `queryApp` (unminified rendered bytes): `entry.ts` 12.0k, `observer.ts` 5.3k, `cache.ts` 5.1k, `use-query.ts` 2.3k, `infinite.ts` 2.3k. `infinite.ts` ships with plain queries because `fetch` branches on `kind` at runtime.
 - Use `tooling/bundle-size/src/analyze.ts` to list modules by size.
-- Measured and not worth it for `queryApp` (6.81 kB):
-  - **Dropping classes:** only `QueryClient`, `CancelledError` and `RedactedError` are left. `QueryClient` as a closure over `cache` (no `this.cache`) saves 233 B minified, ~0.03 kB gzip, and loses `instanceof QueryClient` and the plain `class` type. The error classes need `instanceof`.
+- Measured for `queryApp`:
+  - **Dropping classes:** done anyway, for simplicity (human asked): `createQueryClient` returns closures over `cache` (no `this.cache`, ~0.03 kB gzip), and cancellation rejects with a built-in `AbortError` instead of a `CancelledError` class. Only `RedactedError` is left, because callers need `instanceof`.
   - **Short internal property names:** minifiers keep property names. Renaming the ~20 internal-only `Entry` / cache fields (`inFlight`, `retriesStopped`, `failureCountBefore`, `onRemove`, …) to two characters saves ~970 B minified but only ~0.13 kB gzip, since gzip already dedupes repeats. Public `State` fields (`isFetching`, `hasData`, …) can't be renamed.
