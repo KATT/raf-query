@@ -1,7 +1,7 @@
 /**
  * Standalone copies of the example apps, for StackBlitz to open one folder
- * at a time. Each copy is its own pnpm workspace: the app, plus
- * `examples/.shared/*` copied as-is into `shared/`, so `@examples/*` stay
+ * at a time. Each copy is its own pnpm workspace: the app in `apps/<app>`, and
+ * `examples/.shared/*` copied as-is into `packages/`, so `@examples/*` stay
  * `workspace:*`. Only `@raf-query/*` changes, to the published version.
  */
 import { Effect, FileSystem, Path } from "effect";
@@ -25,7 +25,9 @@ export interface PackageJson {
 	dependencies?: Record<string, string>;
 	devDependencies?: Record<string, string>;
 	name: string;
+	private?: boolean;
 	scripts?: Record<string, string>;
+	type?: string;
 	version: string;
 }
 
@@ -38,19 +40,19 @@ export function isIgnored(file: string, separator: string) {
 /**
  * The app's `package.json` outside the monorepo. `published` maps the
  * `@raf-query/*` packages to their npm version; other `workspace:`
- * dependencies must be in `shared/`.
+ * dependencies must be in `packages/`.
  */
 export function standalonePackageJson(
 	pkg: PackageJson,
 	published: ReadonlyMap<string, string>,
-	shared: ReadonlySet<string>,
+	workspace: ReadonlySet<string>,
 ): PackageJson {
 	const replace = (deps: Record<string, string> | undefined) => {
 		if (deps === undefined) {
 			return undefined;
 		}
 		const entries = Object.entries(deps).map(([name, version]) => {
-			if (!version.startsWith("workspace:") || shared.has(name)) {
+			if (!version.startsWith("workspace:") || workspace.has(name)) {
 				return [name, version];
 			}
 			const replacement = published.get(name);
@@ -84,6 +86,25 @@ export function standalonePackageJson(
 	};
 }
 
+/** The workspace root's `package.json`: runs the app's scripts from the root. */
+export function rootPackageJson(app: string, pkg: PackageJson): PackageJson {
+	const scripts = Object.fromEntries(
+		Object.keys(pkg.scripts ?? {}).map((name) => [
+			name,
+			name === "typecheck"
+				? "pnpm --recursive typecheck"
+				: `pnpm --filter ${pkg.name} ${name}`,
+		]),
+	);
+	return {
+		name: `raf-query-${app}-example`,
+		private: true,
+		scripts,
+		type: "module",
+		version: "0.0.0",
+	};
+}
+
 /**
  * The app's README with a note that it's a generated copy, and `## Run it`
  * replaced with the standalone commands. `undefined` if it has no `## Run it`.
@@ -97,7 +118,7 @@ export function standaloneReadme(app: string, readme: string) {
 	return [
 		title,
 		"",
-		`> A standalone copy of [\`examples/${app}\`](https://github.com/${repo}/tree/main/examples/${app}), generated for StackBlitz on every release: edit the original, not this copy. The shared UI components and fake database are workspace packages in \`shared/\`.`,
+		`> A standalone copy of [\`examples/${app}\`](https://github.com/${repo}/tree/main/examples/${app}), generated for StackBlitz on every release: edit the original, not this copy. The app is in \`apps/${app}\`; the UI components and fake database it shares with the other examples are in \`packages/\`.`,
 		body.trimEnd(),
 		"",
 		"## Run it",
@@ -110,7 +131,7 @@ export function standaloneReadme(app: string, readme: string) {
 	].join("\n");
 }
 
-export const workspaceYaml = "packages:\n  - shared/*\n";
+export const workspaceYaml = "packages:\n  - apps/*\n  - packages/*\n";
 
 export const gitignore = [
 	"node_modules",
@@ -173,8 +194,8 @@ export const publishedVersions = Effect.fn("publishedVersions")(function* (
 });
 
 /**
- * Replaces everything in `out` except `.git` with a copy of each app, in
- * `out/examples/<app>`. Returns the copies' directories.
+ * Replaces everything in `out` except `.git` with a workspace for each app, in
+ * `out/examples/<app>`. Returns the workspaces' directories.
  */
 export const writeCopies = Effect.fn("writeCopies")(function* (
 	root: string,
@@ -203,12 +224,12 @@ export const writeCopies = Effect.fn("writeCopies")(function* (
 	const sharedDirs = yield* fs.readDirectory(
 		path.join(root, "examples", ".shared"),
 	);
-	const shared = new Set<string>();
+	const workspacePackages = new Set<string>();
 	for (const dir of sharedDirs) {
 		const pkg = yield* readJson(
 			path.join(root, "examples", ".shared", dir, "package.json"),
 		);
-		shared.add(pkg.name);
+		workspacePackages.add(pkg.name);
 	}
 
 	yield* fs.makeDirectory(out, { recursive: true });
@@ -221,42 +242,48 @@ export const writeCopies = Effect.fn("writeCopies")(function* (
 	const targets: Array<string> = [];
 	for (const app of apps) {
 		const target = path.join(out, "examples", app);
+		const appDir = path.join(target, "apps", app);
 		targets.push(target);
-		yield* copyTree(path.join(root, "examples", app), target);
+		yield* copyTree(path.join(root, "examples", app), appDir);
 		for (const dir of sharedDirs) {
 			yield* copyTree(
 				path.join(root, "examples", ".shared", dir),
-				path.join(target, "shared", dir),
+				path.join(target, "packages", dir),
 			);
 		}
 
-		const pkg = yield* readJson(path.join(target, "package.json"));
+		const pkg = yield* readJson(path.join(appDir, "package.json"));
 		const standalone = yield* Effect.try({
 			catch: (error) => new Error(`${app}: ${String(error)}`),
-			try: () => standalonePackageJson(pkg, published, shared),
+			try: () => standalonePackageJson(pkg, published, workspacePackages),
 		});
 		yield* fs.writeFileString(
-			path.join(target, "package.json"),
+			path.join(appDir, "package.json"),
 			json(standalone),
 		);
+		yield* fs.writeFileString(
+			path.join(target, "package.json"),
+			json(rootPackageJson(app, standalone)),
+		);
 
-		const readme = yield* fs.readFileString(path.join(target, "README.md"));
+		const readme = yield* fs.readFileString(path.join(appDir, "README.md"));
 		const standaloneReadmeText = standaloneReadme(app, readme);
 		if (standaloneReadmeText === undefined) {
 			return yield* Effect.fail(
 				new Error(`${app}: README.md has no "## Run it" section`),
 			);
 		}
+		yield* fs.remove(path.join(appDir, "README.md"));
 		yield* fs.writeFileString(
 			path.join(target, "README.md"),
 			standaloneReadmeText,
 		);
 
-		const componentsJson = path.join(target, "components.json");
+		const componentsJson = path.join(appDir, "components.json");
 		const components = yield* fs.readFileString(componentsJson);
 		yield* fs.writeFileString(
 			componentsJson,
-			components.replaceAll("../.shared/", "./shared/"),
+			components.replaceAll("../.shared/", "../../packages/"),
 		);
 
 		yield* fs.writeFileString(

@@ -16,10 +16,10 @@ Early. Both packages are on npm at `0.x`, and the API can still change between p
 
 The same issue tracker, built on two frameworks so the integrations can be compared side by side. Each opens in StackBlitz, which runs it in the browser:
 
-| Example                                                     | Framework          | Try it                                                                                                                                                     |
-| ----------------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`examples/tanstack-start`](examples/tanstack-start#readme) | TanStack Start     | [Open in StackBlitz](https://stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/tanstack-start?file=src/queries.ts,src/routes/issues.index.tsx) |
-| [`examples/nextjs`](examples/nextjs#readme)                 | Next.js App Router | [Open in StackBlitz](https://stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/nextjs?file=src/queries.ts,src/app/issues/page.tsx)             |
+| Example                                                     | Framework          | Try it                                                                                                                                                                                             |
+| ----------------------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`examples/tanstack-start`](examples/tanstack-start#readme) | TanStack Start     | [Open in StackBlitz](https://stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/tanstack-start?file=apps/tanstack-start/src/queries.ts,apps/tanstack-start/src/routes/issues.index.tsx) |
+| [`examples/nextjs`](examples/nextjs#readme)                 | Next.js App Router | [Open in StackBlitz](https://stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/nextjs?file=apps/nextjs/src/queries.ts,apps/nextjs/src/app/issues/page.tsx)                             |
 
 ## Packages
 
