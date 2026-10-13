@@ -715,28 +715,6 @@ importers:
         specifier: 1.0.0
         version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
 
-  tooling/stackblitz:
-    dependencies:
-      '@effect/platform-node':
-        specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(redis@6.3.0)
-      effect:
-        specifier: 'catalog:'
-        version: 4.0.1
-    devDependencies:
-      '@effect/vitest':
-        specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
-      '@types/node':
-        specifier: 26.6.4
-        version: 26.6.4
-      typescript:
-        specifier: 7.0.2
-        version: 7.0.2
-      vite-plus:
-        specifier: 1.0.0
-        version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
-
 packages:
 
   '@alloc/quick-lru@5.3.0':
