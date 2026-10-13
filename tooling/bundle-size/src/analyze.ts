@@ -40,7 +40,9 @@ Effect.gen(function* () {
 		[
 			`import { createRoot } from "react-dom/client";`,
 			`import { ${appExport} } from ${JSON.stringify(path.join(packageDir, "fixtures/raf-query", appModule))};`,
-			`createRoot(document.body).render(await ${appExport}());`,
+			appExport === "createAppRouter"
+				? `import { RouterProvider } from "@tanstack/react-router"; import { createElement } from "react"; createRoot(document.body).render(createElement(RouterProvider, { router: createAppRouter() }));`
+				: `createRoot(document.body).render(await ${appExport}());`,
 		].join("\n"),
 	);
 	const result = yield* Effect.promise(() =>
