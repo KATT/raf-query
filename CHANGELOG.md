@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.3.1](https://github.com/KATT/raf-query/compare/0.3.0...0.3.1) (2026-10-13)
+
+- teach avoiding dependent queries; frame prefetch vs ensure as loading UX ([#62](https://github.com/KATT/raf-query/issues/62)) ([ec62760](https://github.com/KATT/raf-query/commit/ec627609cbbee9fa4ff0cf568f69964341e27daa))
+
 ## [0.3.0](https://github.com/KATT/raf-query/compare/0.2.8...0.3.0) (2026-10-13)
 
 ### ⚠ BREAKING CHANGES
