@@ -141,7 +141,7 @@ Effect.gen(function* () {
 				{ find: /^@raf-query\/react$/, replacement: source("react", "index") },
 				{
 					find: /^@raf-query\/react\/tanstack-router$/,
-					replacement: source("react", "tanstack-router"),
+					replacement: source("react", "tanstack-router-browser"),
 				},
 			]
 		: [];

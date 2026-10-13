@@ -1,6 +1,6 @@
 {
 	"name": "@raf-query/react",
-	"version": "0.1.15",
+	"version": "0.2.0",
 	"description": "React bindings for raf-query, a render-as-you-fetch query library",
 	"keywords": [
 		"query",
@@ -37,7 +37,15 @@
 		"./devtools/production": "./src/devtools-production.tsx",
 		"./next": "./src/next.tsx",
 		"./rsc": "./src/rsc.tsx",
-		"./tanstack-router": "./src/tanstack-router.ts"
+		"./tanstack-router": {
+			"workerd": "./src/tanstack-router.ts",
+			"worker": "./src/tanstack-router.ts",
+			"node": "./src/tanstack-router.ts",
+			"deno": "./src/tanstack-router.ts",
+			"bun": "./src/tanstack-router.ts",
+			"browser": "./src/tanstack-router-browser.ts",
+			"default": "./src/tanstack-router.ts"
+		}
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/sync-package-docs.ts",
@@ -87,7 +95,15 @@
 			"./devtools/production": "./dist/devtools-production.js",
 			"./next": "./dist/next.js",
 			"./rsc": "./dist/rsc.js",
-			"./tanstack-router": "./dist/tanstack-router.js"
+			"./tanstack-router": {
+				"workerd": "./dist/tanstack-router.js",
+				"worker": "./dist/tanstack-router.js",
+				"node": "./dist/tanstack-router.js",
+				"deno": "./dist/tanstack-router.js",
+				"bun": "./dist/tanstack-router.js",
+				"browser": "./dist/tanstack-router-browser.js",
+				"default": "./dist/tanstack-router.js"
+			}
 		},
 		"provenance": true
 	},

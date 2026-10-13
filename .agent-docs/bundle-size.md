@@ -26,6 +26,7 @@ Effect v4 shakes per export (`sideEffects` lists only a schema file), and app-si
 
 - **Anything reachable from the always-imported path.** Class properties built in a constructor (`qc.effect`) and engine code that runs on every request can't be shaken, whatever they import.
 - **`export * as X` in a rolldown library build** (`vp pack` / tsdown): an `__exportAll` getter object keeps every member in `dist/`. Packages build with `tsc` for that reason ([decisions/package-build.md](./decisions/package-build.md)); check with `pnpm build && pnpm bundle-size --dist`.
+- **Runtime branches on build-time facts.** `if (router.isServer) setupServer()` keeps the server half's imports; use an export condition instead ([decisions/router-browser-build.md](./decisions/router-browser-build.md)).
 - Dynamic access (`X[key]`) and re-exported `export *` keep everything.
 
 ## The Promise-engine experiment

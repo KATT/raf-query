@@ -1,30 +1,16 @@
-import type {
-	DehydratedState,
-	DehydrateOptions,
-	HydrateOptions,
-} from "@raf-query/core";
-import { type AnyRouter, isRedirect } from "@tanstack/react-router";
-import { Effect, Exit, Predicate, Scope, Stream } from "effect";
+import type { AnyRouter } from "@tanstack/react-router";
+import { Effect, Exit, Scope, Stream } from "effect";
 
-import type { QueryClient } from "./client.ts";
+import {
+	type DehydratedRouterQueries,
+	handleRedirects,
+	type RouterIntegrationOptions,
+	setupClient,
+} from "./tanstack-router-shared.ts";
 
-export interface RouterIntegrationOptions<TRouter extends AnyRouter> {
-	readonly dehydrateOptions?: DehydrateOptions;
-	/** Navigate when a `queryFn` throws `redirect()`. Default `true`. */
-	readonly handleRedirects?: boolean;
-	readonly hydrateOptions?: HydrateOptions;
-	readonly queryClient: QueryClient;
-	readonly router: TRouter;
-}
+export type { RouterIntegrationOptions } from "./tanstack-router-shared.ts";
 
 const noop = () => {};
-
-interface DehydratedRouterQueries {
-	readonly raf: {
-		readonly initial: DehydratedState;
-		readonly stream: ReadableStream<DehydratedState>;
-	};
-}
 
 function setupServer<TRouter extends AnyRouter>(
 	options: RouterIntegrationOptions<TRouter>,
@@ -82,46 +68,6 @@ function setupServer<TRouter extends AnyRouter>(
 	};
 }
 
-function hasRafQueries(value: unknown): value is DehydratedRouterQueries {
-	return Predicate.hasProperty(value, "raf") && Predicate.isObject(value.raf);
-}
-
-function setupClient<TRouter extends AnyRouter>(
-	options: RouterIntegrationOptions<TRouter>,
-) {
-	const router = options.router;
-	const cache = options.queryClient.effect;
-	const hydrateOptions = options.hydrateOptions;
-	const originalHydrate = router.options.hydrate;
-	router.options.hydrate = async (dehydrated: unknown) => {
-		await originalHydrate?.(dehydrated);
-		if (!hasRafQueries(dehydrated)) {
-			return;
-		}
-		const raf = dehydrated.raf;
-		Effect.runSync(cache.hydrate(raf.initial, hydrateOptions));
-		Effect.runFork(
-			cache
-				.hydrateStream(
-					Stream.fromReadableStream({
-						evaluate: () => raf.stream,
-						onError: (error) => error,
-					}),
-					hydrateOptions,
-				)
-				.pipe(
-					// Entries still pending stay pending; surface why.
-					Effect.catchCause((cause) =>
-						Effect.logError(
-							"raf-query: reading the query stream failed",
-							cause,
-						),
-					),
-				),
-		);
-	};
-}
-
 /**
  * Connects a query client to a TanStack Router (and TanStack Start) router:
  *
@@ -136,21 +82,10 @@ function setupClient<TRouter extends AnyRouter>(
 export function setupRouterIntegration<TRouter extends AnyRouter>(
 	options: RouterIntegrationOptions<TRouter>,
 ): void {
-	const router = options.router;
-	if (router.isServer) {
+	if (options.router.isServer) {
 		setupServer(options);
 	} else {
 		setupClient(options);
 	}
-	if (options.handleRedirects ?? true) {
-		options.queryClient.subscribe((event) => {
-			if (event.type === "failed" && isRedirect(event.error)) {
-				const redirect = event.error;
-				// The router's own field for resolving a redirect relative to here.
-				// oxlint-disable-next-line eslint/no-underscore-dangle
-				redirect.options._fromLocation = router.stores.location.get();
-				void router.navigate(router.resolveRedirect(redirect).options);
-			}
-		});
-	}
+	handleRedirects(options);
 }
