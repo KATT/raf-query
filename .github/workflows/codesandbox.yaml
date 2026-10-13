@@ -1,5 +1,8 @@
 jobs:
   sync:
+    # Release also runs, and skips its job, for its own "chore: release"
+    # commit. That run has nothing new to sync.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     name: Sync the codesandbox branch
     permissions:
       contents: write
