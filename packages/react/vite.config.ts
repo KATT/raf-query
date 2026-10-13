@@ -9,6 +9,7 @@ export default defineConfig({
 			"src/next.tsx",
 			"src/rsc.tsx",
 			"src/tanstack-router.ts",
+			"src/tanstack-router-browser.ts",
 		],
 		unbundle: true,
 	},
