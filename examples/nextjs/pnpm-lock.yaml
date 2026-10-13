@@ -182,8 +182,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@raf-query/react':
-        specifier: 0.2.6
-        version: 0.2.6(effect@4.0.3)(next@16.4.0(@types/node@26.6.4)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
+        specifier: 0.2.7
+        version: 0.2.7(effect@4.0.3)(next@16.4.0(@types/node@26.6.4)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
       lucide-react:
         specifier: 1.55.0
         version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
@@ -1262,14 +1262,14 @@ packages:
   '@radix-ui/rect@1.1.3':
     resolution: {integrity: sha512-JtyZR+mqgBibTo8xea3B6ZRmzZiM/YeVBtUkas6zMuXjAlfIFIW2FgqeM9eLyvEaYX66vr6DJMK+4U6LV0KhNw==}
 
-  '@raf-query/core@0.2.6':
-    resolution: {integrity: sha512-MH5jlZABn9En1alxb9mEViRZTOocqAzTJhgJDxi9KTzc91TbvJpn/LVBx0W0jAuC8Cr8AqqCzeJQN1fi+dvQrA==}
+  '@raf-query/core@0.2.7':
+    resolution: {integrity: sha512-NWKxH/A3EW4Dub6QTxXMWsIi8TCv2iTj2EaOgC3Y64o2aNu2AVuQ9MYLsQaBc4lMXLy6uKAu9xETgUQpvwm51Q==}
     engines: {node: '>=22'}
     peerDependencies:
       effect: ^4.0.0
 
-  '@raf-query/react@0.2.6':
-    resolution: {integrity: sha512-Hu9SH6aN+slHUNYUhn+yO25Z2a5MlbdcQ9IERdUCYnn0PUstD0ABgbeEmvivct6+TRAbWEVSD6H1akLubDxlVA==}
+  '@raf-query/react@0.2.7':
+    resolution: {integrity: sha512-iMwqm9WeKuPEnqQ7X9y2ij+VMcrTREjRgfP8XfbR/dFTgxB0nRF7RQTu3em5grWvWJt3uI6erMRohQ6JCtnZag==}
     engines: {node: '>=22'}
     peerDependencies:
       '@tanstack/react-router': ^1.170.0
@@ -2768,13 +2768,13 @@ snapshots:
 
   '@radix-ui/rect@1.1.3': {}
 
-  '@raf-query/core@0.2.6(effect@4.0.3)':
+  '@raf-query/core@0.2.7(effect@4.0.3)':
     dependencies:
       effect: 4.0.3
 
-  '@raf-query/react@0.2.6(effect@4.0.3)(next@16.4.0(@types/node@26.6.4)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)':
+  '@raf-query/react@0.2.7(effect@4.0.3)(next@16.4.0(@types/node@26.6.4)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)':
     dependencies:
-      '@raf-query/core': 0.2.6(effect@4.0.3)
+      '@raf-query/core': 0.2.7(effect@4.0.3)
       effect: 4.0.3
       react: 19.3.0
     optionalDependencies:

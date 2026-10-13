@@ -2,7 +2,7 @@
 
 > A standalone copy of [`examples/nextjs`](https://github.com/KATT/raf-query/tree/main/examples/nextjs), generated for CodeSandbox on every release: edit the original, not this copy. The app is in `apps/nextjs`; the UI components and fake database it shares with the other examples are in `packages/`.
 
-[![Open in CodeSandbox](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/nextjs?file=/apps/nextjs/src/queries.ts)
+[![Open in CodeSandbox](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/nextjs?file=/apps/nextjs/src/app/issues/page.tsx)
 
 A small issue tracker built with [raf-query](https://github.com/KATT/raf-query#readme). [`examples/tanstack-start`](https://github.com/KATT/raf-query/tree/main/examples/tanstack-start) is the same app on TanStack Start, so the two integrations can be compared side by side.
 
@@ -17,7 +17,7 @@ Query factories are in `src/queries.ts`. Their `queryFn`s, and the form actions,
 
 ## Run it
 
-[Open it in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/nextjs?file=/apps/nextjs/src/queries.ts), or locally:
+[Open it in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/nextjs?file=/apps/nextjs/src/app/issues/page.tsx), or locally:
 
 ```shell
 pnpm install
