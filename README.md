@@ -32,12 +32,11 @@ The same issue tracker, built on two frameworks so the integrations can be compa
 
 `@raf-query/react` subpath entries for framework integrations and tooling:
 
-| Entry                              | Use                                                                    |
-| ---------------------------------- | ---------------------------------------------------------------------- |
-| `@raf-query/react/tanstack-router` | Streams the router's query cache to the client during SSR              |
-| `@raf-query/react/rsc`             | `HydrationBoundary` for passing server-component queries to the client |
-| `@raf-query/react/next`            | `QueryProvider` for Next.js App Router                                 |
-| `@raf-query/react/devtools`        | [Devtools](#devtools) panel for inspecting the cache in development    |
+| Entry                              | Use                                                                 |
+| ---------------------------------- | ------------------------------------------------------------------- |
+| `@raf-query/react/tanstack-router` | Streams the router's query cache to the client during SSR           |
+| `@raf-query/react/rsc`             | `QueryProvider` and `HydrationBoundary` for React Server Components |
+| `@raf-query/react/devtools`        | [Devtools](#devtools) panel for inspecting the cache in development |
 
 ## Principles
 
@@ -435,7 +434,7 @@ Like `prefetch` in a loader, `useWaterfall` refetches stale cached data in the b
 
 The name is the warning: each waterfall is an extra round trip after render. First try to get the input from route params so the loader can start it, or have the backend return it with its parent.
 
-During SSR the `queryFn` runs on the server. TanStack Start server functions work there. Next.js rejects server actions called while rendering, so in Next.js start the dependent query in the server component instead:
+In TanStack Start the `queryFn` runs on the server during SSR, and the router streams the result. Under the `/rsc` `QueryProvider` it starts nothing on the server: the reader's Suspense boundary renders its fallback there, and the query loads in the browser. To have it in the HTML, start the dependent query in the server component instead:
 
 ```tsx
 const post = await qc.fetch(postQuery, { slug });
@@ -518,7 +517,7 @@ export function getRouter() {
 
 `setupRouterIntegration` streams queries during SSR, clears the request's cache when the response finishes, and turns `redirect()` thrown from a `queryFn` into a router navigation. `getRouter` runs per request on the server, so each request gets its own client. Options: `dehydrateOptions` (`filter`, `keepErrors`, `serializeData`), `hydrateOptions` (`deserializeData`), and `handleRedirects: false` to handle redirects yourself. By default a server error crosses to the browser as a `RedactedError` naming the query, so its message doesn't leak into the page.
 
-### Next.js App Router
+### React Server Components (Next.js App Router)
 
 ```tsx
 // app/get-query-client.ts
@@ -530,7 +529,7 @@ export const getQueryClient = cache(() => new QueryClient());
 
 ```tsx
 // app/layout.tsx
-import { QueryProvider } from "@raf-query/react/next";
+import { QueryProvider } from "@raf-query/react/rsc";
 
 export default function RootLayout(props: { children: React.ReactNode }) {
 	return (
@@ -570,8 +569,9 @@ export default async function Page(props: {
 ```
 
 - `getQueryClient` is scoped to one request by React's `cache()`.
-- `HydrationBoundary` sends the request client's entries to the browser cache; pending ones stream as promises. Render one in each server component that starts queries for client components. Entries already sent in this request are skipped. The browser takes the server's data when it's newer than its own. Otherwise it keeps its copy and refetches it if stale. That covers a payload the router replays from its cache (back and forward) and a `prefetch` still pending on the server.
-- `QueryProvider` creates the browser client, and streams queries that client components start during SSR (`useWaterfall`) into the HTML. Pass `config` for the client's options; it must be serializable.
+- `HydrationBoundary` sends the request client's entries to the browser cache; pending ones stream as promises through the RSC payload. Render one in each server component that starts queries for client components. Entries already sent in this request are skipped.
+- The browser takes whichever copy is newer, by when it was fetched (`updatedAt`, so server and browser clocks should agree). When it has no data and no request of its own, it resumes the server's pending request. When it has data, or its own request in flight, it waits for the server's instead of fetching again, and takes it if newer. If it keeps its own copy (the server's is older, as in a payload the router replays from its cache on back and forward, or the server's request failed), it refetches it if stale.
+- `QueryProvider` creates one client per server render and one per browser tab. The server render starts no request: a client component reading a query no `HydrationBoundary` sent renders its Suspense fallback on the server, and the query loads in the browser. That boundary renders in the browser through React's error recovery, with the digest Next.js uses for `ssr: false`, so Next.js doesn't report it; other frameworks pass it to `onRecoverableError`. Pass `config` for the client's options; it must be serializable.
 - Server components that only render data can `await qc.fetch(...)` anywhere; the per-request client makes one request per query, whatever its `staleTime`.
 - `fetch` returns data, not a handle. When a server component renders the data and also hands the query to a client component, pass `await qc.ensure(...)`: after the `fetch` it resolves from the cache, and the client component gets the data from `useQuery` without a promise.
 - Factories can call server actions: server components call them directly, and the browser calls them on refetch. Validate their arguments, since anyone can call them. The browser runs a page's server actions one at a time, so refetches wait for each other and for any pending mutation. For parallel requests, have the `queryFn` call a [Route Handler](https://nextjs.org/docs/app/api-reference/file-conventions/route), as [`examples/nextjs`](examples/nextjs) does.
