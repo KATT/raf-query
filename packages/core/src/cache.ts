@@ -256,7 +256,7 @@ export interface QueryCache {
 	): Stream.Stream<Query.State<DataOf<TFactory>>, never, ServicesOf<TFactory>>;
 }
 
-export const QueryCache = Context.Service<QueryCache>(TypeId);
+export const QueryCache = /*#__PURE__*/ Context.Service<QueryCache>(TypeId);
 
 export function isQueryCache(value: unknown): value is QueryCache {
 	return Predicate.hasProperty(value, TypeId);
@@ -306,23 +306,8 @@ function keyMatcher(filter: Filter): (entry: Entry.Entry) => boolean {
 }
 
 /**
- * Background refetch of cached data a verb reuses. A server cache renders
- * once, so a refetch there could only duplicate a request whose result is
- * never shown; it refetches only what `invalidate` marked.
- */
-function revalidate(entry: Entry.Entry) {
-	const state = entry.state;
-	const wanted = entry.cache.isServer
-		? state.isInvalidated
-		: Entry.isStaleUnsafe(entry);
-	if (!state.isFetching && wanted) {
-		Entry.start(entry);
-	}
-}
-
-/**
  * Waits for an entry's data on a cache miss. Cached data returns at once,
- * and revalidates in the background (see `revalidate`).
+ * and revalidates in the background (see `Entry.revalidate`).
  */
 function load<TFactory extends QueryFactory>(
 	entry: Entry.Entry,
@@ -334,7 +319,7 @@ function load<TFactory extends QueryFactory>(
 			Effect.Effect<DataOf<TFactory>, ErrorOf<TFactory> | Query.CancelledError>
 		>(Entry.fetch(entry, { pages }));
 	}
-	revalidate(entry);
+	Entry.revalidate(entry);
 	return Effect.succeed(dataOf<TFactory>(entry));
 }
 
@@ -346,8 +331,8 @@ function settleAll(effects: ReadonlyArray<Effect.Effect<void>>) {
 /** Build a cache in the current scope, with the current `Clock` and {@link Platform}. */
 export const make: (
 	config?: Config,
-) => Effect.Effect<QueryCache, never, Scope.Scope> = Effect.fnUntraced(
-	function* (config: Config = {}) {
+) => Effect.Effect<QueryCache, never, Scope.Scope> =
+	/*#__PURE__*/ Effect.fnUntraced(function* (config: Config = {}) {
 		const platform = yield* Platform;
 		const state: Entry.CacheState = {
 			clock: yield* Clock.Clock,
@@ -486,7 +471,7 @@ export const make: (
 			prefetch: (factory, ...args) =>
 				Effect.map(buildFor(factory, args[0]), (entry) => {
 					if (entry.state.hasData) {
-						revalidate(entry);
+						Entry.revalidate(entry);
 					} else {
 						Entry.start(entry);
 					}
@@ -523,8 +508,7 @@ export const make: (
 				),
 		};
 		return cache;
-	},
-);
+	});
 
 /** A layer that provides a {@link QueryCache} for the layer's lifetime. */
 export const layer = (config?: Config): Layer.Layer<QueryCache> =>
