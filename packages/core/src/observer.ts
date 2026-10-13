@@ -11,18 +11,11 @@
  * fiber; the last listener leaving, a switch to another query, or the query
  * leaving its cache closes it.
  */
-import {
-	Effect,
-	Exit,
-	FiberHandle,
-	Pipeable,
-	Predicate,
-	Scope,
-	type Stream,
-} from "effect";
+import { Effect, Exit, Pipeable, Predicate, Scope, type Stream } from "effect";
 
 import { unsafeCast } from "./cast.ts";
 import { entryOf } from "./entry.ts";
+import * as Fibers from "./fibers.ts";
 import type { QueryKey } from "./key.ts";
 import { listen } from "./listen.ts";
 import type { QueryFactory } from "./options.ts";
@@ -103,7 +96,7 @@ export interface QueryObserver<
 /** Open while the observer has listeners. */
 interface Subscription {
 	/** At most one polling fiber, restarted when `refetchInterval` changes. */
-	readonly polls: FiberHandle.FiberHandle<never, never>;
+	readonly polls: Fibers.Fibers<"poll">;
 	/** Owns the query subscription and `polls`. */
 	readonly scope: Scope.Closeable;
 }
@@ -414,18 +407,14 @@ function connect<TData, TFactory extends QueryFactory>(
 	const scope = Scope.forkUnsafe(entryOf(query).scope);
 	// Finalizers run last-in first, so closing the scope unsubscribes before
 	// it interrupts the polling fiber.
-	const polls = Effect.runSync(
-		FiberHandle.make<never, never>().pipe(
-			Effect.tap(
-				Effect.acquireRelease(
-					Effect.sync(() =>
-						Query.subscribeUnsafe(query, () => updateResult(self), preferences),
-					),
-					(unsubscribe) => Effect.sync(unsubscribe),
-				),
+	const polls = Fibers.makeUnsafe<"poll">(scope, entryOf(query).cache.services);
+	Effect.runSync(
+		Effect.acquireRelease(
+			Effect.sync(() =>
+				Query.subscribeUnsafe(query, () => updateResult(self), preferences),
 			),
-			Scope.provide(scope),
-		),
+			(unsubscribe) => Effect.sync(unsubscribe),
+		).pipe(Scope.provide(scope)),
 	);
 	self.subscription = { polls, scope };
 	restartPolling(self);
@@ -450,12 +439,11 @@ function restartPolling<TData, TFactory extends QueryFactory>(
 		return;
 	}
 	const interval = self.options.refetchInterval;
-	const polls = subscription.polls;
-	Effect.runForkWith(entryOf(self.query).cache.services)(
-		interval !== undefined && Number.isFinite(interval) && interval > 0
-			? FiberHandle.run(polls, poll(self.query, interval))
-			: FiberHandle.clear(polls),
-	);
+	if (interval !== undefined && Number.isFinite(interval) && interval > 0) {
+		subscription.polls.fork("poll", poll(self.query, interval));
+	} else {
+		subscription.polls.interrupt("poll");
+	}
 }
 
 /** Refetch `query` every `interval` ms while the page is visible. */

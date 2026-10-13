@@ -1,7 +1,8 @@
-import type {
-	DehydratedState,
-	DehydrateOptions,
-	HydrateOptions,
+import {
+	type DehydratedState,
+	type DehydrateOptions,
+	type HydrateOptions,
+	QueryCache,
 } from "@raf-query/core";
 import { type AnyRouter, isRedirect } from "@tanstack/react-router";
 import { Effect, Exit, Predicate, Scope, Stream } from "effect";
@@ -62,9 +63,10 @@ function setupServer<TRouter extends AnyRouter>(
 
 		const scope = Scope.makeUnsafe();
 		const stream = Effect.runSync(
-			queryClient.effect
-				.dehydrateStream(options.dehydrateOptions)
-				.pipe(Scope.provide(scope)),
+			QueryCache.dehydrateStream(
+				queryClient.effect,
+				options.dehydrateOptions,
+			).pipe(Scope.provide(scope)),
 		);
 		finish = () => {
 			finish = noop;
@@ -99,25 +101,21 @@ function setupClient<TRouter extends AnyRouter>(
 			return;
 		}
 		const raf = dehydrated.raf;
-		Effect.runSync(cache.hydrate(raf.initial, hydrateOptions));
+		Effect.runSync(QueryCache.hydrate(cache, raf.initial, hydrateOptions));
 		Effect.runFork(
-			cache
-				.hydrateStream(
-					Stream.fromReadableStream({
-						evaluate: () => raf.stream,
-						onError: (error) => error,
-					}),
-					hydrateOptions,
-				)
-				.pipe(
-					// Entries still pending stay pending; surface why.
-					Effect.catchCause((cause) =>
-						Effect.logError(
-							"raf-query: reading the query stream failed",
-							cause,
-						),
-					),
+			QueryCache.hydrateStream(
+				cache,
+				Stream.fromReadableStream({
+					evaluate: () => raf.stream,
+					onError: (error) => error,
+				}),
+				hydrateOptions,
+			).pipe(
+				// Entries still pending stay pending; surface why.
+				Effect.catchCause((cause) =>
+					Effect.logError("raf-query: reading the query stream failed", cause),
 				),
+			),
 		);
 	};
 }

@@ -224,7 +224,7 @@ export function dehydrate(
 	client: QueryClient,
 	options?: DehydrateOptions,
 ): DehydratedState {
-	return Effect.runSync(client.effect.dehydrate(options));
+	return Effect.runSync(QueryCache.dehydrate(client.effect, options));
 }
 
 /**
@@ -236,5 +236,5 @@ export function hydrate(
 	state: DehydratedState,
 	options?: HydrateOptions,
 ): void {
-	Effect.runSync(client.effect.hydrate(state, options));
+	Effect.runSync(QueryCache.hydrate(client.effect, state, options));
 }

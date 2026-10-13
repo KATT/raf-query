@@ -6,7 +6,6 @@ import {
 	Deferred,
 	Effect,
 	Exit,
-	FiberMap,
 	Pipeable,
 	Predicate,
 	Schedule,
@@ -16,6 +15,7 @@ import {
 
 import type { Event as CacheEvent } from "./cache.ts";
 import { unsafeCast } from "./cast.ts";
+import * as Fibers from "./fibers.ts";
 import {
 	type Direction,
 	fetchPages,
@@ -70,15 +70,6 @@ export interface CacheState {
 /** The background work of an entry, one fiber per kind. */
 type Task = "errorShown" | "gc" | "request" | "stale";
 
-interface Tasks {
-	cancel(task: Task): void;
-	fork(
-		task: Task,
-		effect: Effect.Effect<void>,
-		options?: { readonly onlyIfMissing?: boolean },
-	): void;
-}
-
 interface Commands {
 	readonly fetchNextPage: Effect.Effect<void>;
 	readonly fetchPreviousPage: Effect.Effect<void>;
@@ -118,7 +109,7 @@ export interface Entry extends Query {
 	 */
 	signalRead: boolean;
 	state: State<unknown>;
-	readonly tasks: Tasks;
+	readonly tasks: Fibers.Fibers<Task>;
 }
 
 const Proto = {
@@ -144,26 +135,6 @@ export function emit(cache: CacheState, event: CacheEvent) {
 	for (const listener of cache.listeners) {
 		listener(event);
 	}
-}
-
-/** Fibers keyed by task: forking a task interrupts its previous fiber. */
-function makeTasks(cache: CacheState, scope: Scope.Scope): Tasks {
-	const runSync = Effect.runSyncWith(cache.services);
-	const runFork = Effect.runForkWith(cache.services);
-	const fibers = runSync(
-		FiberMap.make<Task, void, never>().pipe(Scope.provide(scope)),
-	);
-	const run = runSync(FiberMap.runtime(fibers)<never>());
-	return {
-		cancel(task) {
-			if (FiberMap.hasUnsafe(fibers, task)) {
-				runFork(FiberMap.remove(fibers, task));
-			}
-		},
-		fork(task, effect, options) {
-			run(task, effect, options);
-		},
-	};
 }
 
 export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
@@ -198,7 +169,7 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 			status: "pending",
 			updatedAt: 0,
 		},
-		tasks: makeTasks(cache, scope),
+		tasks: Fibers.makeUnsafe<Task>(scope, cache.services),
 	});
 	const commands: Commands = {
 		fetchNextPage: Effect.ignore(fetch(entry, { direction: "forward" })),
@@ -276,7 +247,7 @@ export function subscribeUnsafe(
 ): () => void {
 	entry.listeners.set(listener, options);
 	entry.retriesStopped = false;
-	entry.tasks.cancel("gc");
+	entry.tasks.interrupt("gc");
 	scheduleStale(entry);
 	emit(entry.cache, { query: entry, type: "observers" });
 	return () => {
@@ -284,7 +255,7 @@ export function subscribeUnsafe(
 			return;
 		}
 		if (entry.listeners.size === 0) {
-			entry.tasks.cancel("stale");
+			entry.tasks.interrupt("stale");
 			scheduleGc(entry);
 			const inFlight = entry.inFlight;
 			if (inFlight) {
@@ -378,7 +349,7 @@ export function invalidate(entry: Entry): Effect.Effect<void> {
 
 export function reset(entry: Entry): Effect.Effect<void> {
 	return Effect.suspend(() => {
-		entry.tasks.cancel("errorShown");
+		entry.tasks.interrupt("errorShown");
 		entry.errorShown = false;
 		entry.pending ??= pending();
 		set(entry, {
@@ -468,7 +439,7 @@ function begin(
 		const promise = entry.state.promise;
 		return Effect.promise(() => promise);
 	}
-	entry.tasks.cancel("request");
+	entry.tasks.interrupt("request");
 	return Deferred.await(
 		startRequest(
 			entry,
@@ -505,7 +476,7 @@ function startRequest(
 	entry.inFlight = awaiter;
 	entry.retriesStopped = false;
 	entry.signalRead = false;
-	entry.tasks.cancel("gc");
+	entry.tasks.interrupt("gc");
 	if (!entry.state.hasData && entry.state.status === "error") {
 		entry.pending = pending();
 		set(entry, {
@@ -576,7 +547,7 @@ function unobserved(
 		return;
 	}
 	entry.inFlight = undefined;
-	entry.tasks.cancel("request");
+	entry.tasks.interrupt("request");
 	set(entry, {
 		failureCount: entry.failureCountBefore,
 		fetchDirection: undefined,
@@ -755,7 +726,7 @@ function scheduleGc(entry: Entry) {
 	const gcTime =
 		behavior(entry, "gcTime") ?? (entry.cache.isServer ? Infinity : 300_000);
 	if (isObserved(entry) || entry.inFlight || !Number.isFinite(gcTime)) {
-		entry.tasks.cancel("gc");
+		entry.tasks.interrupt("gc");
 		return;
 	}
 	entry.tasks.fork(
@@ -773,7 +744,7 @@ function scheduleStale(entry: Entry) {
 		state.isStale ||
 		!Number.isFinite(staleTime)
 	) {
-		entry.tasks.cancel("stale");
+		entry.tasks.interrupt("stale");
 		return;
 	}
 	const remaining = state.updatedAt + staleTime - now(entry);

@@ -255,12 +255,12 @@ describe("QueryCache meta", () => {
 					{ label: "data" },
 				);
 
-				const state = yield* server.dehydrate();
+				const state = yield* QueryCache.dehydrate(server);
 				expect(state.queries.map((query) => query.meta)).toEqual([
 					{ label: "server" },
 					{ label: "set" },
 				]);
-				yield* browser.hydrate(state);
+				yield* QueryCache.hydrate(browser, state);
 				const [first, second] = yield* browser.all;
 				expect(first && Query.metaUnsafe(first)).toEqual({ label: "server" });
 				expect(second && Query.metaUnsafe(second)).toEqual({
@@ -272,7 +272,7 @@ describe("QueryCache meta", () => {
 					label: "browser",
 				});
 				expect(Query.metaUnsafe(query)).toEqual({ label: "browser" });
-				yield* browser.hydrate(state);
+				yield* QueryCache.hydrate(browser, state);
 				expect(Query.metaUnsafe(query)).toEqual({ label: "browser" });
 			}),
 	);
@@ -282,7 +282,7 @@ describe("QueryCache meta", () => {
 			const cache = yield* QueryCache.make({ isServer: true });
 			yield* cache.setData(issueQuery, { id: 1 }, { id: 1 });
 
-			const state = yield* cache.dehydrate();
+			const state = yield* QueryCache.dehydrate(cache);
 
 			expect(state.queries[0]).not.toHaveProperty("meta");
 		}),
@@ -389,7 +389,7 @@ describe("QueryCache", () => {
 			const backend = createBackend();
 			const cache = yield* QueryCache.make({ isServer: false });
 			const fiber = yield* Effect.forkChild(
-				cache.events.pipe(
+				QueryCache.events(cache).pipe(
 					Stream.map((event) => `${event.type} ${event.query.hash}`),
 					Stream.take(3),
 					Stream.runCollect,
@@ -482,7 +482,7 @@ describe("QueryCache", () => {
 				{ id: 1, title: "A" },
 			);
 			const fiber = yield* forkStarted(
-				cache.watch(backend.issueQuery, { id: 1 }),
+				QueryCache.watch(cache, backend.issueQuery, { id: 1 }),
 				(stream) =>
 					stream.pipe(
 						Stream.map((state) => state.data?.title),
@@ -514,7 +514,7 @@ describe("QueryCache", () => {
 				{ id: 1, title: "A" },
 			);
 			const fiber = yield* forkStarted(
-				cache.watch(backend.issueQuery, { id: 1 }),
+				QueryCache.watch(cache, backend.issueQuery, { id: 1 }),
 				(stream) =>
 					stream.pipe(
 						Stream.map((state) => state.data?.title),
@@ -544,7 +544,7 @@ describe("QueryCache", () => {
 				{ id: 1, title: "A" },
 			);
 			const fiber = yield* forkStarted(
-				cache.watch(backend.issueQuery, { id: 1 }),
+				QueryCache.watch(cache, backend.issueQuery, { id: 1 }),
 				(stream) =>
 					stream.pipe(
 						Stream.filter((state) => state.data?.title === "C"),
@@ -665,7 +665,7 @@ describe("QueryCache", () => {
 			const browser = yield* QueryCache.make({ isServer: false });
 			yield* server.prefetch(backend.issueQuery, { id: 1 });
 
-			yield* browser.hydrate(yield* server.dehydrate());
+			yield* QueryCache.hydrate(browser, yield* QueryCache.dehydrate(server));
 			const fiber = yield* Effect.forkChild(
 				browser.fetch(backend.issueQuery, { id: 1 }),
 				{ startImmediately: true },
@@ -683,7 +683,7 @@ describe("QueryCache", () => {
 			const promise = Promise.reject(new Error("Query failed"));
 			promise.catch(() => {});
 
-			yield* browser.hydrate({
+			yield* QueryCache.hydrate(browser, {
 				queries: [{ key: ["typed-issue", 1], promise, updatedAt: 0 }],
 			});
 			const exit = yield* Effect.exit(browser.fetch(issueQuery, { id: 1 }));
@@ -722,9 +722,9 @@ describe("QueryCache", () => {
 			yield* cache.prefetch(backend.issueQuery, { id: 1 });
 			const sent = new Set<string>();
 
-			const first = yield* cache.dehydrate({ sent });
+			const first = yield* QueryCache.dehydrate(cache, { sent });
 			yield* cache.prefetch(backend.issueQuery, { id: 2 });
-			const second = yield* cache.dehydrate({ sent });
+			const second = yield* QueryCache.dehydrate(cache, { sent });
 
 			expect(first.queries.map((query) => query.key)).toEqual([["issue", 1]]);
 			expect(second.queries.map((query) => query.key)).toEqual([["issue", 2]]);
@@ -739,7 +739,8 @@ describe("QueryCache", () => {
 				const backend = createBackend();
 				const cache = yield* QueryCache.make({ isServer: true });
 				yield* cache.prefetch(backend.issueQuery, { id: 404 });
-				const promise = (yield* cache.dehydrate()).queries[0]?.promise;
+				const promise = (yield* QueryCache.dehydrate(cache)).queries[0]
+					?.promise;
 				backend.respondAll();
 
 				const reason = yield* Effect.promise(async () => {
@@ -773,9 +774,9 @@ describe("QueryCache", () => {
 				);
 				yield* cache.prefetch(backend.issueQuery, { id: 2 });
 				const scope = yield* Scope.make();
-				const stream = yield* cache
-					.dehydrateStream()
-					.pipe(Scope.provide(scope));
+				const stream = yield* QueryCache.dehydrateStream(cache).pipe(
+					Scope.provide(scope),
+				);
 				const fiber = yield* Effect.forkChild(
 					Stream.runCollect(stream.updates),
 					{ startImmediately: true },
@@ -803,7 +804,7 @@ describe("QueryCache", () => {
 			Effect.gen(function* () {
 				const backend = createBackend();
 				const cache = yield* QueryCache.make({ isServer: true });
-				const stream = yield* cache.dehydrateStream();
+				const stream = yield* QueryCache.dehydrateStream(cache);
 				const received: Array<DehydratedState> = [];
 				yield* Effect.forkChild(
 					Stream.runForEach(stream.updates, (state) =>
@@ -833,10 +834,12 @@ describe("QueryCache", () => {
 				{ id: 1, title: "A" },
 			);
 			const scope = yield* Scope.make();
-			const stream = yield* server.dehydrateStream().pipe(Scope.provide(scope));
-			yield* browser.hydrate(stream.initial);
+			const stream = yield* QueryCache.dehydrateStream(server).pipe(
+				Scope.provide(scope),
+			);
+			yield* QueryCache.hydrate(browser, stream.initial);
 			const hydrating = yield* Effect.forkChild(
-				browser.hydrateStream(stream.updates),
+				QueryCache.hydrateStream(browser, stream.updates),
 				{ startImmediately: true },
 			);
 
@@ -1382,7 +1385,7 @@ describe("QueryCache filters", () => {
 	it.effect("a hydrated-only entry has no input yet", () =>
 		Effect.gen(function* () {
 			const cache = yield* QueryCache.make({ isServer: false });
-			yield* cache.hydrate({
+			yield* QueryCache.hydrate(cache, {
 				queries: [{ data: [], key: ["labels", 3], updatedAt: 1 }],
 			});
 

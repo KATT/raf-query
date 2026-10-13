@@ -18,7 +18,6 @@ import {
 	Layer,
 	Option,
 	Predicate,
-	RcRef,
 	type Scope,
 	Stream,
 } from "effect";
@@ -30,7 +29,7 @@ import {
 	type DehydratedState,
 	type DehydratedStream,
 	type DehydrateOptions,
-	dehydrateStream,
+	dehydrateStream as streamEntries,
 	hydrateEntries,
 	type HydrateOptions,
 } from "./hydration.ts";
@@ -120,17 +119,6 @@ export interface QueryCache {
 	readonly all: Effect.Effect<ReadonlyArray<Query.Query>>;
 	/** Drop every entry and interrupt their requests. */
 	readonly clear: Effect.Effect<void>;
-	/** Snapshot the cache for transfer to another cache (server → browser). */
-	dehydrate(options?: DehydrateOptions): Effect.Effect<DehydratedState>;
-	/**
-	 * Snapshot the cache, then stream entries as they start or settle, each
-	 * entry once. Entries that change in the same tick share a batch, which
-	 * is sent a microtask later. `updates` ends when the scope closes, after
-	 * sending what changed before; `hydrateStream` is the receiving end.
-	 */
-	dehydrateStream(
-		options?: DehydrateOptions,
-	): Effect.Effect<DehydratedStream, never, Scope.Scope>;
 	/**
 	 * Start a query and wait for it on a cache miss. Fails if that request
 	 * fails. Stale cached data succeeds immediately and revalidates in the
@@ -145,8 +133,6 @@ export interface QueryCache {
 		ErrorOf<TFactory> | Query.CancelledError,
 		ServicesOf<TFactory>
 	>;
-	/** Cache events from the moment the stream starts. */
-	readonly events: Stream.Stream<Event>;
 	/** Like `ensure`, but succeeds with the data. */
 	fetch<TFactory extends QueryFactory>(
 		factory: TFactory,
@@ -181,19 +167,6 @@ export interface QueryCache {
 		factory: TFactory,
 		...args: InputArgs<TFactory>
 	): Query.Of<TFactory>;
-	/**
-	 * Write dehydrated entries. Existing entries only take newer data; pending
-	 * entries resume the sender's request.
-	 */
-	hydrate(
-		state: DehydratedState,
-		options?: HydrateOptions,
-	): Effect.Effect<void>;
-	/** `hydrate` every state of a stream as it arrives (`dehydrateStream`'s `updates`). */
-	hydrateStream<E, R>(
-		states: Stream.Stream<DehydratedState, E, R>,
-		options?: HydrateOptions,
-	): Effect.Effect<void, E, R>;
 	/**
 	 * Mark queries stale and refetch the ones being read. Succeeds once those
 	 * refetches settle, so an action stays pending until fresh data is on
@@ -249,11 +222,6 @@ export interface QueryCache {
 	/** Listen to cache events synchronously, as they happen. */
 	subscribeUnsafe(listener: (event: Event) => void): () => void;
 	readonly [TypeId]: TypeId;
-	/** A factory call's `Query.changes`. */
-	watch<TFactory extends QueryFactory>(
-		factory: TFactory,
-		...args: InputArgs<TFactory>
-	): Stream.Stream<Query.State<DataOf<TFactory>>, never, ServicesOf<TFactory>>;
 }
 
 export const QueryCache = Context.Service<QueryCache>(TypeId);
@@ -404,20 +372,31 @@ export const make: (
 			);
 		};
 
-		const subscription = yield* RcRef.make({
-			acquire: Effect.acquireRelease(
-				Effect.sync(() =>
-					platform.subscribeUnsafe((event) => {
+		// Mounts share one platform subscription, held while any is open.
+		let mounts = 0;
+		let unsubscribePlatform: (() => void) | undefined;
+		const mount = Effect.acquireRelease(
+			Effect.sync(() => {
+				mounts += 1;
+				if (mounts === 1) {
+					unsubscribePlatform = platform.subscribeUnsafe((event) => {
 						for (const entry of state.entries.values()) {
 							if (Entry.isObserved(entry)) {
 								Entry.onPlatformEvent(entry, event);
 							}
 						}
-					}),
-				),
-				(unsubscribe) => Effect.sync(unsubscribe),
-			),
-		});
+					});
+				}
+			}),
+			() =>
+				Effect.sync(() => {
+					mounts -= 1;
+					if (mounts === 0) {
+						unsubscribePlatform?.();
+						unsubscribePlatform = undefined;
+					}
+				}),
+		);
 
 		const subscribeUnsafe = (listener: (event: Event) => void) => {
 			state.listeners.add(listener);
@@ -443,17 +422,12 @@ export const make: (
 					Entry.remove(entry);
 				}
 			}),
-			dehydrate: (options = {}) =>
-				Effect.sync(() => dehydrateEntries(state.entries.values(), options)),
-			dehydrateStream: (options = {}) =>
-				dehydrateStream(() => state.entries.values(), subscribeUnsafe, options),
 			ensure: (factory, ...args) =>
 				Effect.flatMap(buildFor(factory, args[0]), (entry) =>
 					load<typeof factory>(entry, args[1]?.pages).pipe(
 						Effect.as({ ...handleOf<typeof factory>(entry), ensured: true }),
 					),
 				),
-			events: listen(subscribeUnsafe),
 			fetch: (factory, ...args) =>
 				Effect.flatMap(buildFor(factory, args[0]), (entry) =>
 					load<typeof factory>(entry, args[1]?.pages),
@@ -469,20 +443,12 @@ export const make: (
 			getQuery: (factory, ...args) =>
 				Effect.map(buildFor(factory, args[0]), typed<typeof factory>),
 			getQueryUnsafe,
-			hydrate: (dehydrated, options = {}) =>
-				Effect.sync(() => hydrateEntries(entryFor, dehydrated, options)),
-			hydrateStream: (states, options = {}) =>
-				Stream.runForEach(states, (dehydrated) =>
-					Effect.sync(() => hydrateEntries(entryFor, dehydrated, options)),
-				),
 			invalidate: (...target) =>
 				Effect.suspend(() => settleAll(match(target).map(Entry.invalidate))),
 			isFetching: (filter) => Effect.sync(() => isFetchingUnsafe(filter)),
 			isFetchingUnsafe,
 			isServer: state.isServer,
-			mount: state.isServer
-				? Effect.void
-				: Effect.asVoid(RcRef.get(subscription)),
+			mount: state.isServer ? Effect.void : mount,
 			prefetch: (factory, ...args) =>
 				Effect.map(buildFor(factory, args[0]), (entry) => {
 					if (entry.state.hasData) {
@@ -512,19 +478,105 @@ export const make: (
 				}),
 			subscribeUnsafe,
 			[TypeId]: TypeId,
-			watch: (factory, ...args) =>
-				Stream.unwrap(
-					Effect.map(buildFor(factory, args[0]), (entry) =>
-						// SAFETY: as in `typed`, for every element.
-						unsafeCast<Stream.Stream<Query.State<DataOf<typeof factory>>>>(
-							Entry.changes(entry),
-						),
-					),
-				),
 		};
+		internals.set(cache, { buildFor, entryFor, state });
 		return cache;
 	},
 );
+
+/**
+ * What the module functions below need beyond the {@link QueryCache}
+ * interface. They live outside it so apps that never call them don't bundle
+ * them (an object's members can't be tree-shaken).
+ */
+interface Internals {
+	readonly buildFor: (
+		factory: QueryFactory,
+		input: unknown,
+	) => Effect.Effect<Entry.Entry>;
+	readonly entryFor: (key: QueryKey) => Entry.Entry;
+	readonly state: Entry.CacheState;
+}
+
+const internals = new WeakMap<QueryCache, Internals>();
+
+function internalsOf(cache: QueryCache): Internals {
+	const found = internals.get(cache);
+	if (!found) {
+		throw new Error("raf-query: not a cache built by QueryCache.make");
+	}
+	return found;
+}
+
+/** Cache events from the moment the stream starts. */
+export function events(cache: QueryCache): Stream.Stream<Event> {
+	return listen(cache.subscribeUnsafe);
+}
+
+/** A factory call's `Query.changes`. */
+export function watch<TFactory extends QueryFactory>(
+	cache: QueryCache,
+	factory: TFactory,
+	...args: InputArgs<TFactory>
+): Stream.Stream<Query.State<DataOf<TFactory>>, never, ServicesOf<TFactory>> {
+	return Stream.unwrap(
+		Effect.map(internalsOf(cache).buildFor(factory, args[0]), (entry) =>
+			// SAFETY: as in `typed`, for every element.
+			unsafeCast<Stream.Stream<Query.State<DataOf<TFactory>>>>(
+				Entry.changes(entry),
+			),
+		),
+	);
+}
+
+/** Snapshot the cache for transfer to another cache (server → browser). */
+export function dehydrate(
+	cache: QueryCache,
+	options: DehydrateOptions = {},
+): Effect.Effect<DehydratedState> {
+	return Effect.sync(() =>
+		dehydrateEntries(internalsOf(cache).state.entries.values(), options),
+	);
+}
+
+/**
+ * Snapshot the cache, then stream entries as they start or settle, each
+ * entry once. Entries that change in the same tick share a batch, which is
+ * sent a microtask later. `updates` ends when the scope closes, after
+ * sending what changed before; {@link hydrateStream} is the receiving end.
+ */
+export function dehydrateStream(
+	cache: QueryCache,
+	options: DehydrateOptions = {},
+): Effect.Effect<DehydratedStream, never, Scope.Scope> {
+	const entries = internalsOf(cache).state.entries;
+	return streamEntries(() => entries.values(), cache.subscribeUnsafe, options);
+}
+
+/**
+ * Write dehydrated entries. Existing entries only take newer data; pending
+ * entries resume the sender's request.
+ */
+export function hydrate(
+	cache: QueryCache,
+	state: DehydratedState,
+	options: HydrateOptions = {},
+): Effect.Effect<void> {
+	const entryFor = internalsOf(cache).entryFor;
+	return Effect.sync(() => hydrateEntries(entryFor, state, options));
+}
+
+/** {@link hydrate} every state of a stream as it arrives ({@link dehydrateStream}'s `updates`). */
+export function hydrateStream<E, R>(
+	cache: QueryCache,
+	states: Stream.Stream<DehydratedState, E, R>,
+	options: HydrateOptions = {},
+): Effect.Effect<void, E, R> {
+	const entryFor = internalsOf(cache).entryFor;
+	return Stream.runForEach(states, (state) =>
+		Effect.sync(() => hydrateEntries(entryFor, state, options)),
+	);
+}
 
 /** A layer that provides a {@link QueryCache} for the layer's lifetime. */
 export const layer = (config?: Config): Layer.Layer<QueryCache> =>
