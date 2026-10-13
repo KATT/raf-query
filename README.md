@@ -278,13 +278,15 @@ On the server, `ensure` and `fetch` load the first page. Pass `{ pages: n }` as 
 Filters, sort order, and pagination are search params. The loader turns them into the query's input, so every navigation starts the right query and the component only ever reads the handle it was given:
 
 ```tsx
-type PostsSearch = { sort: "newest" | "oldest"; page: number };
+import { z } from "zod";
+
+const PostsSearch = z.object({
+	sort: z.enum(["newest", "oldest"]).default("newest"),
+	page: z.int().positive().default(1),
+});
 
 export const Route = createFileRoute("/posts")({
-	validateSearch: (search): PostsSearch => ({
-		sort: search.sort === "oldest" ? "oldest" : "newest",
-		page: Number(search.page ?? 1),
-	}),
+	validateSearch: PostsSearch,
 	loaderDeps: (args) => args.search,
 	loader: (args) => ({
 		posts: args.context.queryClient.prefetch(postsQuery, args.deps),
