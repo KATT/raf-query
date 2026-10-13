@@ -5,6 +5,7 @@ export default {
 	allowedDevOrigins: ["*.csb.app"],
 	reactCompiler: true,
 	transpilePackages: [
+		"@examples/api",
 		"@examples/db",
 		"@examples/ui",
 		"@raf-query/core",

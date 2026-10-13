@@ -574,7 +574,7 @@ export default async function Page(props: {
 - `QueryProvider` creates the browser client, and streams queries that client components start during SSR (`useWaterfall`) into the HTML. Pass `config` for the client's options; it must be serializable.
 - Server components that only render data can `await qc.fetch(...)` anywhere; the per-request client makes one request per query, whatever its `staleTime`.
 - `fetch` returns data, not a handle. When a server component renders the data and also hands the query to a client component, pass `await qc.ensure(...)`: after the `fetch` it resolves from the cache, and the client component gets the data from `useQuery` without a promise.
-- Factories can call server actions: server components call them directly, and the browser calls them on refetch. Validate their arguments, since anyone can call them.
+- Factories can call server actions: server components call them directly, and the browser calls them on refetch. Validate their arguments, since anyone can call them. The browser runs a page's server actions one at a time, so refetches wait for each other and for any pending mutation. For parallel requests, have the `queryFn` call a [Route Handler](https://nextjs.org/docs/app/api-reference/file-conventions/route), as [`examples/nextjs`](examples/nextjs) does.
 
 #### Server-only queries
 
