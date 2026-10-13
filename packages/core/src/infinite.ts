@@ -68,7 +68,7 @@ function addPage(
  * `current`. Otherwise loads from the first page param again: as many pages
  * as `current` has, or `pages` if that's more, stopping at the last page.
  */
-export const fetchPages = Effect.fnUntraced(function* (
+export const fetchPages = /*#__PURE__*/ Effect.fnUntraced(function* (
 	options: PagedOptions,
 	current: Pages | undefined,
 	request: { readonly direction?: Direction; readonly pages?: number },
