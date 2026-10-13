@@ -2,7 +2,15 @@ import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Path } from "effect";
 
-import { Builder, CommandError, committer, read, syncBranch } from "./sync.ts";
+import {
+	Builder,
+	CommandError,
+	committer,
+	read,
+	restoreBuildCaches,
+	saveBuildCaches,
+	syncBranch,
+} from "./sync.ts";
 
 /** A source repo with one commit and an empty bare remote. */
 const setup = Effect.gen(function* () {
@@ -196,5 +204,68 @@ describe("syncBranch", () => {
 		}).pipe(
 			Effect.provide(Layer.provideMerge(failsToBuild, NodeServices.layer)),
 		),
+	);
+});
+
+describe("build caches", () => {
+	/** Writes `files` under a new temp directory, and returns it. */
+	const tree = (files: Record<string, string>) =>
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
+			const path = yield* Path.Path;
+			const dir = yield* fs.makeTempDirectoryScoped();
+			for (const [file, contents] of Object.entries(files)) {
+				yield* fs.makeDirectory(path.dirname(path.join(dir, file)), {
+					recursive: true,
+				});
+				yield* fs.writeFileString(path.join(dir, file), contents);
+			}
+			return dir;
+		});
+
+	it.effect(
+		"keeps each app's Next.js cache, and restores it into a new copy",
+		() =>
+			Effect.gen(function* () {
+				const fs = yield* FileSystem.FileSystem;
+				const path = yield* Path.Path;
+				const cache = yield* tree({ "nextjs/stale": "old\n" });
+				const copy = yield* tree({
+					"apps/nextjs/.next/cache/turbopack/db": "compiled\n",
+					"apps/nextjs/.next/server/page.js": "output\n",
+					"apps/tanstack-start/package.json": "{}\n",
+				});
+				yield* saveBuildCaches(cache, copy);
+				assert.deepStrictEqual(
+					(yield* fs.readDirectory(cache, { recursive: true })).toSorted(),
+					["nextjs", "nextjs/turbopack", "nextjs/turbopack/db"],
+				);
+
+				const fresh = yield* tree({
+					"apps/nextjs/package.json": "{}\n",
+					"apps/tanstack-start/package.json": "{}\n",
+				});
+				yield* restoreBuildCaches(cache, fresh);
+				assert.strictEqual(
+					yield* fs.readFileString(
+						path.join(fresh, "apps/nextjs/.next/cache/turbopack/db"),
+					),
+					"compiled\n",
+				);
+				assert.isFalse(
+					yield* fs.exists(path.join(fresh, "apps/tanstack-start/.next")),
+				);
+			}).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+	);
+
+	it.effect("restores nothing from an empty cache", () =>
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
+			const path = yield* Path.Path;
+			const cache = path.join(yield* tree({}), "missing");
+			const copy = yield* tree({ "apps/nextjs/package.json": "{}\n" });
+			yield* restoreBuildCaches(cache, copy);
+			assert.isFalse(yield* fs.exists(path.join(copy, "apps/nextjs/.next")));
+		}).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
 	);
 });
