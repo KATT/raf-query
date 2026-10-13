@@ -5,6 +5,8 @@ import { dehydrate, type QueryClient } from "./client.ts";
 import { Hydrate } from "./hydrate.tsx";
 import { sentHashes } from "./sent.ts";
 
+export { QueryProvider } from "./query-provider.tsx";
+
 /**
  * Server component: sends the request client's entries to the browser cache.
  * Pending entries cross as promises and stream in as they settle. Entries an

@@ -11,18 +11,23 @@ import {
 	createRequestHandler,
 	defaultStreamHandler,
 } from "@tanstack/react-router/ssr/server";
+import { act } from "@testing-library/react";
 import { Predicate } from "effect";
 import { type ReactNode, Suspense, use } from "react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToReadableStream } from "react-dom/server.edge";
 
 import {
 	type DehydratedState,
 	Query,
 	QueryClient,
 	QueryClientProvider,
+	type QueryHandle,
 	queryOptions,
 	useQuery,
 	useWaterfall,
 } from "./index.ts";
+import { HydrationBoundary, QueryProvider } from "./rsc.tsx";
 import type { DehydratedRouterQueries } from "./tanstack-router-shared.ts";
 import { setupRouterIntegration } from "./tanstack-router.ts";
 import { flush } from "./test-utils.ts";
@@ -233,5 +238,128 @@ describe("TanStack Router setupRouterIntegration", () => {
 		);
 		expect(String(failed.error)).toBe('Error: Query ["issue",-1] failed');
 		expect(backend.calls).toEqual([1, 2, -1]);
+	});
+});
+
+describe("RSC QueryProvider", () => {
+	interface ServerError {
+		readonly digest: unknown;
+		readonly message: string;
+	}
+
+	/**
+	 * Server-render `ui` as Next.js's HTML pass does: an error's `digest` is
+	 * sent to the browser.
+	 */
+	async function renderHtml(ui: ReactNode) {
+		const errors: Array<ServerError> = [];
+		const stream = await renderToReadableStream(ui, {
+			onError: (error) => {
+				const digest = Predicate.hasProperty(error, "digest")
+					? String(error.digest)
+					: undefined;
+				errors.push({ digest, message: String(error) });
+				return digest;
+			},
+		});
+		await stream.allReady;
+		return { errors, html: await new Response(stream).text() };
+	}
+
+	function Show(props: {
+		readonly backend: Backend;
+		readonly handle: QueryHandle<Backend["issueQuery"]>;
+	}) {
+		const [issuePromise] = useQuery(props.backend.issueQuery, props.handle);
+		return <p>{use(issuePromise).title}</p>;
+	}
+
+	it("renders what HydrationBoundary sent, pending entries through their promises, and starts nothing", async () => {
+		const backend = createBackend();
+		const rsc = new QueryClient({ isServer: true });
+		rsc.setData(
+			backend.issueQuery,
+			{ id: 2 },
+			{
+				createdAt: new Date(2),
+				title: "Cached",
+			},
+		);
+		const pending = rsc.prefetch(backend.issueQuery, { id: 1 });
+
+		const result = await renderHtml(
+			<QueryProvider config={{ isServer: true }}>
+				<HydrationBoundary client={rsc}>
+					<Suspense fallback={<p>Loading</p>}>
+						<Show backend={backend} handle={pending} />
+					</Suspense>
+					<Show
+						backend={backend}
+						handle={{ input: { id: 2 }, key: ["issue", 2] }}
+					/>
+				</HydrationBoundary>
+			</QueryProvider>,
+		);
+
+		expect(result.errors).toEqual([]);
+		expect(result.html).toContain("Issue 1</p>");
+		expect(result.html).toContain("Cached</p>");
+		expect(backend.calls).toEqual([1]);
+	});
+
+	it("renders a query nothing sent as its fallback on the server, and loads it once in the browser", async () => {
+		const backend = createBackend();
+		/** Starts the query above the boundary that reads it. */
+		function Page() {
+			const handle = useWaterfall(backend.issueQuery, { id: 1 });
+			return (
+				<Suspense fallback={<p>Loading</p>}>
+					<Show backend={backend} handle={handle} />
+				</Suspense>
+			);
+		}
+
+		const server = await renderHtml(
+			<QueryProvider config={{ isServer: true }}>
+				<Page />
+			</QueryProvider>,
+		);
+		expect(server.errors).toEqual([
+			{
+				digest: "BAILOUT_TO_CLIENT_SIDE_RENDERING",
+				message:
+					'Error: Query ["issue",1] loads in the browser: no HydrationBoundary sent it',
+			},
+		]);
+		expect(server.html).toContain("Loading</p>");
+		expect(backend.calls).toEqual([]);
+
+		const container = document.createElement("div");
+		container.innerHTML = server.html;
+		document.body.append(container);
+		const recoverable: Array<unknown> = [];
+		const root = await act(async () =>
+			hydrateRoot(
+				container,
+				<QueryProvider config={{ isServer: false }}>
+					<Page />
+				</QueryProvider>,
+				{ onRecoverableError: (error) => recoverable.push(error) },
+			),
+		);
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 20);
+			});
+		});
+
+		expect(container.textContent).toBe("Issue 1");
+		expect(backend.calls).toEqual([1]);
+		// Next.js reports no recoverable error with this digest.
+		expect(recoverable).toMatchObject([
+			{ digest: "BAILOUT_TO_CLIENT_SIDE_RENDERING" },
+		]);
+		act(() => root.unmount());
+		container.remove();
 	});
 });

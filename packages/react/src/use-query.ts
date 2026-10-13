@@ -16,6 +16,7 @@ import {
 import { Effect } from "effect";
 import { use, useEffect, useState, useSyncExternalStore } from "react";
 
+import { assertSent } from "./browser-requests.ts";
 import { unsafeCast } from "./cast.ts";
 import type { QueryClient } from "./client.ts";
 import { useQueryClient } from "./provider.tsx";
@@ -183,6 +184,7 @@ export function useQuery<TFactory extends QueryFactory>(
 ): UseEnsuredQueryResult<TFactory> | UseQueryResult<TFactory> {
 	const client = useQueryClient();
 	const query = queryFor(client, factory, handle.input);
+	assertSent(client, query);
 	Query.readUnsafe(query);
 
 	const refetchInterval = options.refetchInterval;
