@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.8](https://github.com/KATT/raf-query/compare/0.1.7...0.1.8) (2026-10-13)
+
+### Features
+
+- **examples:** infinite scroll, root dev scripts, readable request names; README and tests cover pagination and infinite scroll ([#37](https://github.com/KATT/raf-query/issues/37)) ([2c3bed6](https://github.com/KATT/raf-query/commit/2c3bed630fd08d0a59686a6f5f14aecba1ff2e1b))
+
 ## [0.1.7](https://github.com/KATT/raf-query/compare/0.1.6...0.1.7) (2026-10-13)
 
 - validate search params with a zod schema in the README ([#36](https://github.com/KATT/raf-query/issues/36)) ([9142236](https://github.com/KATT/raf-query/commit/9142236f611deb0fdf9db5f7e2847bccad89e841))
