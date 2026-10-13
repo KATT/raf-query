@@ -2,8 +2,8 @@ import { Avatar, AvatarFallback } from "@examples/ui/components/avatar";
 import { Card, CardContent } from "@examples/ui/components/card";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
+	type QueryHandle,
 	useQuery,
-	useWaterfall,
 } from "@raf-query/experimental-tanstack-react-query";
 import { use } from "react";
 
@@ -16,10 +16,10 @@ function initials(name: string) {
 		.join("");
 }
 
-/** The issue only says who's assigned, so the user loads after it renders. */
-export function AssigneeCard(props: { readonly userId: string }) {
-	const handle = useWaterfall(userQuery, { id: props.userId });
-	const [userPromise] = useQuery(userQuery, handle);
+export function AssigneeCard(props: {
+	readonly handle: QueryHandle<typeof userQuery>;
+}) {
+	const [userPromise] = useQuery(userQuery, props.handle);
 	const user = use(userPromise);
 
 	return (
