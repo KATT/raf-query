@@ -1,4 +1,4 @@
-import { IssueListSearchParams } from "@examples/db/types";
+import { IssueListInput } from "@examples/db/types";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { HydrationBoundary } from "@raf-query/react/rsc";
 import { Suspense } from "react";
@@ -13,7 +13,7 @@ export default async function IssuesPage(props: {
 		Record<string, string | ReadonlyArray<string>>
 	>;
 }) {
-	const input = IssueListSearchParams.parse(await props.searchParams);
+	const input = IssueListInput.parse(await props.searchParams);
 	const qc = getQueryClient();
 	const counts = qc.prefetch(issueCountsQuery);
 	const issues = qc.prefetch(issueListQuery, input);

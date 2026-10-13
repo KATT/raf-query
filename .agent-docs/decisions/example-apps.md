@@ -9,12 +9,12 @@
 
 App scope, small enough to read in one sitting, covering every README feature:
 
-| Screen / action                                  | Exercises                                                                             |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| Issue list with status filter, sort, page in URL | search params → loader → `prefetch`, `whilePending: "previous"`, `isPrevious` dimming |
-| Issue detail                                     | `ensure` (blocking) + keyed Suspense skeleton when switching issues                   |
-| Comments under an issue                          | paged `useQuery`, streamed `prefetch`, Load more                                      |
-| Assignee card                                    | Start: `useWaterfall`. Next.js: `await qc.fetch` the issue, then `prefetch` the user  |
-| Edit title, add comment                          | form Actions + `useOptimistic` + `await qc.invalidate`                                |
+| Screen / action                               | Exercises                                                                                                    |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Issue list with status filter and sort in URL | search params → loader → paged `prefetch`, infinite scroll, `whilePending: "previous"`, `isPrevious` dimming |
+| Issue detail                                  | `ensure` (blocking) + keyed Suspense skeleton when switching issues                                          |
+| Comments under an issue                       | paged `useQuery`, streamed `prefetch`, infinite scroll                                                       |
+| Assignee card                                 | Start: `useWaterfall`. Next.js: `await qc.fetch` the issue, then `prefetch` the user                         |
+| Edit title, add comment                       | form Actions + `useOptimistic` + `await qc.invalidate`                                                       |
 
 App: **issue tracker** (confirmed). Data: an in-memory fake DB with artificial latency, shared by both apps so their behavior matches. **`queryFn`s call server functions** — `createServerFn` in TanStack Start, server functions in Next.js — not HTTP route handlers.

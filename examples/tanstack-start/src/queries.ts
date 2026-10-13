@@ -1,4 +1,8 @@
-import type { CommentPage, IssueListInput } from "@examples/db/types";
+import type {
+	CommentPage,
+	IssueListInput,
+	IssuePage,
+} from "@examples/db/types";
 import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
 
 import {
@@ -10,8 +14,11 @@ import {
 } from "./server-functions.ts";
 
 export function issueListQuery(input: IssueListInput) {
-	return queryOptions({
-		queryFn: () => listIssues({ data: input }),
+	return infiniteQueryOptions<IssuePage, number>({
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		initialPageParam: 0,
+		queryFn: (context) =>
+			listIssues({ data: { ...input, cursor: context.pageParam } }),
 		queryKey: ["issues", "list", input],
 	});
 }
