@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.2](https://github.com/KATT/raf-query/compare/0.2.1...0.2.2) (2026-10-13)
+
+- **examples:** remove StackBlitz ([#53](https://github.com/KATT/raf-query/issues/53)) ([f681e30](https://github.com/KATT/raf-query/commit/f681e30475753e6fc98bdf8775b2e517d7565af3)), references [#50](https://github.com/KATT/raf-query/issues/50) [#51](https://github.com/KATT/raf-query/issues/51) [#52](https://github.com/KATT/raf-query/issues/52)
+
 ## [0.2.1](https://github.com/KATT/raf-query/compare/0.2.0...0.2.1) (2026-10-13)
 
 ### Bug Fixes
