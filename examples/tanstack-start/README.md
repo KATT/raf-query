@@ -1,6 +1,6 @@
 # raf-query on TanStack Start
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/tanstack-start?file=src/queries.ts,src/routes/issues.index.tsx)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/tanstack-start?file=apps/tanstack-start/src/queries.ts,apps/tanstack-start/src/routes/issues.index.tsx)
 
 A small issue tracker built with [raf-query](https://github.com/KATT/raf-query#readme). [`examples/nextjs`](https://github.com/KATT/raf-query/tree/main/examples/nextjs) is the same app on Next.js App Router, so the two integrations can be compared side by side.
 

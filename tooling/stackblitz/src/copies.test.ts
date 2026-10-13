@@ -5,6 +5,7 @@ import { Effect, FileSystem, Path } from "effect";
 import {
 	apps,
 	isIgnored,
+	rootPackageJson,
 	standalonePackageJson,
 	standaloneReadme,
 	writeCopies,
@@ -80,6 +81,28 @@ describe("standalonePackageJson", () => {
 	});
 });
 
+describe("rootPackageJson", () => {
+	it("runs the app's scripts from the workspace root", () => {
+		expect(
+			rootPackageJson("nextjs", {
+				name: "@examples/nextjs",
+				scripts: { build: "next build", dev: "next dev", typecheck: "tsc" },
+				version: "0.0.0",
+			}),
+		).toEqual({
+			name: "raf-query-nextjs-example",
+			private: true,
+			scripts: {
+				build: "pnpm --filter @examples/nextjs build",
+				dev: "pnpm --filter @examples/nextjs dev",
+				typecheck: "pnpm --recursive typecheck",
+			},
+			type: "module",
+			version: "0.0.0",
+		});
+	});
+});
+
 describe("standaloneReadme", () => {
 	it("notes the copy's origin and replaces the monorepo commands", () => {
 		const readme = standaloneReadme(
@@ -132,16 +155,24 @@ describe("writeCopies", () => {
 					path.join(root, "packages", "react", "package.json"),
 				),
 			);
-			for (const target of targets) {
+			for (const [index, target] of targets.entries()) {
+				const app = apps[index];
 				const read = (file: string) =>
 					fs.readFileString(path.join(target, file));
-				const pkg = JSON.parse(yield* read("package.json"));
+				const exists = (file: string) => fs.exists(path.join(target, file));
+
+				const pkg = JSON.parse(yield* read(`apps/${app}/package.json`));
 				assert.strictEqual(pkg.dependencies["@raf-query/react"], react.version);
 				assert.strictEqual(pkg.dependencies["@examples/ui"], "workspace:*");
 				assert.strictEqual(pkg.dependencies["@examples/db"], "workspace:*");
+				const rootPkg = JSON.parse(yield* read("package.json"));
+				assert.strictEqual(
+					rootPkg.scripts.dev,
+					`pnpm --filter ${pkg.name} dev`,
+				);
 				assert.strictEqual(
 					yield* read("pnpm-workspace.yaml"),
-					"packages:\n  - shared/*\n",
+					"packages:\n  - apps/*\n  - packages/*\n",
 				);
 				assert.strictEqual(
 					JSON.parse(yield* read(".stackblitzrc")).startCommand,
@@ -150,20 +181,23 @@ describe("writeCopies", () => {
 				expect(yield* read("webcontainer-async-context.mjs")).toContain(
 					"process.versions.webcontainer",
 				);
-				expect(yield* read("components.json")).not.toContain(".shared");
 				expect(yield* read("README.md")).toContain("pnpm install\npnpm dev\n");
-				assert.isFalse(yield* fs.exists(path.join(target, "node_modules")));
+				assert.isFalse(yield* exists(`apps/${app}/README.md`));
+				expect(yield* read(`apps/${app}/components.json`)).toContain(
+					'"../../packages/ui/src/styles/globals.css"',
+				);
+				assert.isFalse(yield* exists(`apps/${app}/node_modules`));
 
 				for (const dir of ["db", "ui"]) {
 					const file = path.join(dir, "package.json");
 					assert.strictEqual(
-						yield* read(path.join("shared", file)),
+						yield* read(path.join("packages", file)),
 						yield* fs.readFileString(
 							path.join(root, "examples", ".shared", file),
 						),
 					);
 					assert.isFalse(
-						yield* fs.exists(path.join(target, "shared", dir, "node_modules")),
+						yield* exists(path.join("packages", dir, "node_modules")),
 					);
 				}
 			}
