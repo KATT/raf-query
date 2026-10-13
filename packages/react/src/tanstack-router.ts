@@ -5,7 +5,7 @@ import {
 	QueryCache,
 } from "@raf-query/core";
 import { type AnyRouter, isRedirect } from "@tanstack/react-router";
-import { Effect, Exit, Predicate, Scope, Stream } from "effect";
+import { Cause, Effect, Exit, Predicate, Scope, Stream } from "effect";
 
 import type { QueryClient } from "./client.ts";
 
@@ -111,9 +111,16 @@ function setupClient<TRouter extends AnyRouter>(
 				}),
 				hydrateOptions,
 			).pipe(
-				// Entries still pending stay pending; surface why.
+				// Entries still pending stay pending; surface why. On the console:
+				// `Effect.logError` would put Effect's logger in the app.
 				Effect.catchCause((cause) =>
-					Effect.logError("raf-query: reading the query stream failed", cause),
+					Effect.sync(() => {
+						// oxlint-disable-next-line eslint/no-console -- see above
+						console.error(
+							"raf-query: reading the query stream failed",
+							Cause.squash(cause),
+						);
+					}),
 				),
 			),
 		);

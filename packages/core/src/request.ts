@@ -54,8 +54,8 @@ export function requestServices(
 /**
  * A request as it runs, with `services`, which hold what its `queryFn`
  * Effect needs (entries erase that type with the data's). Typed failures
- * become the query's error; defects are logged too, since nothing else
- * reports them.
+ * become the query's error. Defects do too, and are reported on the
+ * console: `Effect.logError` would put Effect's logger in every app.
  */
 export function runRequest<A, E>(
 	request: Effect.Effect<A, E>,
@@ -63,7 +63,10 @@ export function runRequest<A, E>(
 ): Effect.Effect<A, E> {
 	return request.pipe(
 		Effect.tapDefect((defect) =>
-			Effect.logError("raf-query: queryFn died", defect),
+			Effect.sync(() => {
+				// oxlint-disable-next-line eslint/no-console -- a defect is a bug; React reports errors the same way
+				console.error("raf-query: queryFn died", defect);
+			}),
 		),
 		Effect.provideContext(services),
 	);

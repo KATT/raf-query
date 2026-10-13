@@ -120,6 +120,17 @@ const Proto = {
 
 const defaultSubscribeOptions: SubscribeOptions = {};
 
+/**
+ * `Effect.ignore`, which every app would otherwise pay for: its `log` option
+ * keeps Effect's logger in the bundle. Defects still propagate.
+ */
+function ignoreFailure<A, E>(effect: Effect.Effect<A, E>): Effect.Effect<void> {
+	return Effect.matchEffect(effect, {
+		onFailure: () => Effect.void,
+		onSuccess: () => Effect.void,
+	});
+}
+
 export function isQuery(value: unknown): value is Query {
 	return Predicate.hasProperty(value, TypeId);
 }
@@ -173,9 +184,9 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 		tasks: Fibers.makeUnsafe<Task>(scope, cache.services),
 	});
 	const commands: Commands = {
-		fetchNextPage: Effect.ignore(fetch(entry, { direction: "forward" })),
-		fetchPreviousPage: Effect.ignore(fetch(entry, { direction: "backward" })),
-		refetch: Effect.ignore(fetch(entry)),
+		fetchNextPage: ignoreFailure(fetch(entry, { direction: "forward" })),
+		fetchPreviousPage: ignoreFailure(fetch(entry, { direction: "backward" })),
+		refetch: ignoreFailure(fetch(entry)),
 	};
 	Object.assign(entry, { commands });
 	scheduleGc(entry);
@@ -344,7 +355,7 @@ export function invalidate(entry: Entry): Effect.Effect<void> {
 		if (!isObserved(entry) || !entry.options) {
 			return Effect.void;
 		}
-		return Effect.ignore(begin(entry, { restart: true }));
+		return ignoreFailure(begin(entry, { restart: true }));
 	});
 }
 
@@ -368,7 +379,7 @@ export function reset(entry: Entry): Effect.Effect<void> {
 		if (!entry.options || (!isObserved(entry) && !entry.inFlight)) {
 			return Effect.void;
 		}
-		return Effect.ignore(begin(entry, { restart: true }));
+		return ignoreFailure(begin(entry, { restart: true }));
 	});
 }
 
