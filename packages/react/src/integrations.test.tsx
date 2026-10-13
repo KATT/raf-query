@@ -9,11 +9,11 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import { type ReactNode, Suspense, use } from "react";
 
 import {
-	QueryClient,
 	QueryClientProvider,
 	type QueryHandle,
 	queryOptions,
 	useQuery,
+	createQueryClient,
 } from "./index.ts";
 import { Hydrate } from "./hydrate.tsx";
 import { QueryProvider } from "./next.tsx";
@@ -68,8 +68,8 @@ function routerFor(isServer: boolean) {
 describe("HydrationBoundary", () => {
 	it("hands server entries to the browser cache, pending ones as promises", async () => {
 		const backend = createBackend();
-		const server = new QueryClient({ isServer: true });
-		const browser = new QueryClient({ isServer: false });
+		const server = createQueryClient({ isServer: true });
+		const browser = createQueryClient({ isServer: false });
 		server.setData(backend.issueQuery, { id: 1 }, "Cached");
 		const pending = server.prefetch(backend.issueQuery, { id: 2 });
 		function Issue(props: {
@@ -100,8 +100,8 @@ describe("HydrationBoundary", () => {
 
 	it("skips entries an earlier boundary of the request sent", async () => {
 		const backend = createBackend();
-		const server = new QueryClient({ isServer: true });
-		const browser = new QueryClient({ isServer: false });
+		const server = createQueryClient({ isServer: true });
+		const browser = createQueryClient({ isServer: false });
 		server.setData(backend.issueQuery, { id: 1 }, "First");
 		function Issue() {
 			const [issuePromise] = useQuery(backend.issueQuery, {
@@ -132,7 +132,7 @@ describe("HydrationBoundary", () => {
 
 	it("writes new entries during render, newer data for shown ones after commit", async () => {
 		const backend = createBackend();
-		const browser = new QueryClient({ isServer: false });
+		const browser = createQueryClient({ isServer: false });
 		browser.setData(backend.issueQuery, { id: 1 }, "Old");
 		const rendered: Array<string> = [];
 		function Issue(props: { readonly id: number }) {
@@ -174,8 +174,8 @@ describe("HydrationBoundary", () => {
 describe("setupRouterIntegration", () => {
 	it("sends the cache with the router state, then streams later entries", async () => {
 		const backend = createBackend();
-		const server = new QueryClient({ isServer: true });
-		const browser = new QueryClient({ isServer: false });
+		const server = createQueryClient({ isServer: true });
+		const browser = createQueryClient({ isServer: false });
 		const serverRouter = routerFor(true);
 		const renderFinished: Array<() => void> = [];
 		Object.assign(serverRouter, {
@@ -208,7 +208,7 @@ describe("setupRouterIntegration", () => {
 	});
 
 	it("navigates when a queryFn throws redirect()", async () => {
-		const browser = new QueryClient({ isServer: false });
+		const browser = createQueryClient({ isServer: false });
 		const router = routerFor(false);
 		const navigate = vi.spyOn(router, "navigate").mockResolvedValue();
 		setupRouterIntegration({ queryClient: browser, router });

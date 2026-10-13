@@ -28,50 +28,21 @@ export interface QueryClientConfig<TServices = never> extends Omit<
 }
 
 /**
- * The query cache, with methods. Create one per request on the server and
- * one per browser tab. Its verbs take factories whose `queryFn` needs at
- * most `TServices`, the services of `config.services`.
+ * The query cache, with methods; make one with {@link createQueryClient}.
+ * Its verbs take factories whose `queryFn` needs at most `TServices`, the
+ * services of `config.services`.
  */
-export class QueryClient<TServices = never> {
+export interface QueryClient<TServices = never> {
 	/** The cache behind this client, for `QueryCache` functions and `QueryCache.fromCache` in `/effect`. */
 	readonly cache: QueryCache.QueryCache;
-	readonly isServer: boolean;
-
-	constructor(config: QueryClientConfig<TServices> = {}) {
-		this.cache = QueryCache.make(config);
-		this.isServer = this.cache.isServer;
-		const onError = config.onError;
-		if (onError) {
-			QueryCache.subscribe(this.cache, (event) => {
-				if (event.type === "failed") {
-					onError(event.error, event.query);
-				}
-			});
-		}
-	}
+	/** Drop every entry and abort in-flight requests. */
+	clear(): void;
 
 	/**
-	 * The cache entry for a factory call, created if missing. Doesn't fetch.
-	 * For bindings; apps use the verbs.
+	 * Close the client: abort every request and timer, and release its
+	 * services. Resolves once their finalizers have run.
 	 */
-	getQuery<TFactory extends QueryFactory<TServices>>(
-		factory: TFactory,
-		...args: InputArgs<TFactory>
-	): Query.Of<TFactory> {
-		return QueryCache.getQuery(this.cache, factory, ...args);
-	}
-
-	/**
-	 * Start a query without waiting and return its handle. Fresh data is
-	 * reused; stale data refetches in the background (in the browser only).
-	 * Errors surface where the data is read, never here.
-	 */
-	prefetch<TFactory extends QueryFactory<TServices>>(
-		factory: TFactory,
-		...args: InputArgs<TFactory>
-	): QueryHandle<TFactory> {
-		return QueryCache.prefetch(this.cache, factory, ...args);
-	}
+	dispose(): Promise<void>;
 
 	/**
 	 * Start a query and wait for it on a cache miss. Rejects if that request
@@ -82,57 +53,16 @@ export class QueryClient<TServices = never> {
 	ensure<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
 		...args: QueryCache.LoadArgs<TFactory>
-	): Promise<EnsuredQueryHandle<TFactory>> {
-		return QueryCache.ensure(this.cache, factory, ...args);
-	}
+	): Promise<EnsuredQueryHandle<TFactory>>;
 
 	/** Like `ensure`, but resolves to the data. */
 	fetch<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
 		...args: QueryCache.LoadArgs<TFactory>
-	): Promise<DataOf<TFactory>> {
-		return QueryCache.fetch(this.cache, factory, ...args);
-	}
+	): Promise<DataOf<TFactory>>;
 
-	/**
-	 * Mark queries stale and refetch the ones being read. Resolves once those
-	 * refetches settle, so an action stays pending until fresh data is on
-	 * screen. Takes a factory and its input, or a {@link QueryCache.Filter}.
-	 */
-	invalidate<TFactory extends QueryFactory<TServices>>(
-		...target: QueryCache.Target<TFactory>
-	): Promise<void> {
-		return QueryCache.invalidate(this.cache, ...target);
-	}
-
-	/**
-	 * Drop queries' data and errors, as if they were never fetched. Read ones
-	 * suspend and refetch; resolves once those refetches settle.
-	 */
-	reset<TFactory extends QueryFactory<TServices>>(
-		...target: QueryCache.Target<TFactory>
-	): Promise<void> {
-		return QueryCache.reset(this.cache, ...target);
-	}
-
-	/**
-	 * Remove queries from the cache and abort their requests. Readers keep the
-	 * removed entry until they render again.
-	 */
-	remove<TFactory extends QueryFactory<TServices>>(
-		...target: QueryCache.Target<TFactory>
-	): void {
-		QueryCache.remove(this.cache, ...target);
-	}
-
-	/** Write data for a factory call. Readers re-render without suspending. */
-	setData<TFactory extends QueryFactory<TServices>>(
-		factory: TFactory,
-		input: InputOf<TFactory>,
-		updater: QueryCache.Updater<DataOf<TFactory>>,
-	): void {
-		QueryCache.setData(this.cache, factory, input, updater);
-	}
+	/** Every entry, for devtools and integrations. */
+	getAll(): ReadonlyArray<Query.Query>;
 
 	/**
 	 * Cached data for a factory call, or `undefined` if there is none. Data can
@@ -142,48 +72,115 @@ export class QueryClient<TServices = never> {
 	getData<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
-	): DataOf<TFactory> | undefined {
-		return QueryCache.getData(this.cache, factory, ...args);
-	}
+	): DataOf<TFactory> | undefined;
 
-	/** Every entry, for devtools and integrations. */
-	getAll(): ReadonlyArray<Query.Query> {
-		return QueryCache.all(this.cache);
-	}
+	/**
+	 * The cache entry for a factory call, created if missing. Doesn't fetch.
+	 * For bindings; apps use the verbs.
+	 */
+	getQuery<TFactory extends QueryFactory<TServices>>(
+		factory: TFactory,
+		...args: InputArgs<TFactory>
+	): Query.Of<TFactory>;
+
+	/**
+	 * Mark queries stale and refetch the ones being read. Resolves once those
+	 * refetches settle, so an action stays pending until fresh data is on
+	 * screen. Takes a factory and its input, or a {@link QueryCache.Filter}.
+	 */
+	invalidate<TFactory extends QueryFactory<TServices>>(
+		...target: QueryCache.Target<TFactory>
+	): Promise<void>;
 
 	/**
 	 * How many entries have a request in flight: all of them, or those
 	 * matching `filter`. For global loading indicators.
 	 */
-	isFetching(filter?: QueryCache.Filter): number {
-		return QueryCache.isFetching(this.cache, filter);
-	}
+	isFetching(filter?: QueryCache.Filter): number;
 
-	/** Listen to entries being added, updated, and removed. */
-	subscribe(listener: (event: QueryCache.Event) => void): () => void {
-		return QueryCache.subscribe(this.cache, listener);
-	}
-
-	/** Drop every entry and abort in-flight requests. */
-	clear(): void {
-		QueryCache.clear(this.cache);
-	}
+	readonly isServer: boolean;
 
 	/**
 	 * Start refetching read, stale queries on window focus and reconnect.
 	 * Returns the matching unmount. Providers call this; mounts are counted.
 	 */
-	mount(): () => void {
-		return QueryCache.mount(this.cache);
-	}
+	mount(): () => void;
 
 	/**
-	 * Close the client: abort every request and timer, and release its
-	 * services. Resolves once their finalizers have run.
+	 * Start a query without waiting and return its handle. Fresh data is
+	 * reused; stale data refetches in the background (in the browser only).
+	 * Errors surface where the data is read, never here.
 	 */
-	dispose(): Promise<void> {
-		return QueryCache.dispose(this.cache);
+	prefetch<TFactory extends QueryFactory<TServices>>(
+		factory: TFactory,
+		...args: InputArgs<TFactory>
+	): QueryHandle<TFactory>;
+
+	/**
+	 * Remove queries from the cache and abort their requests. Readers keep the
+	 * removed entry until they render again.
+	 */
+	remove<TFactory extends QueryFactory<TServices>>(
+		...target: QueryCache.Target<TFactory>
+	): void;
+
+	/**
+	 * Drop queries' data and errors, as if they were never fetched. Read ones
+	 * suspend and refetch; resolves once those refetches settle.
+	 */
+	reset<TFactory extends QueryFactory<TServices>>(
+		...target: QueryCache.Target<TFactory>
+	): Promise<void>;
+
+	/** Write data for a factory call. Readers re-render without suspending. */
+	setData<TFactory extends QueryFactory<TServices>>(
+		factory: TFactory,
+		input: InputOf<TFactory>,
+		updater: QueryCache.Updater<DataOf<TFactory>>,
+	): void;
+
+	/** Listen to entries being added, updated, and removed. */
+	subscribe(listener: (event: QueryCache.Event) => void): () => void;
+}
+
+/**
+ * Make a query client. Create one per request on the server and one per
+ * browser tab.
+ */
+export function createQueryClient<TServices = never>(
+	config: QueryClientConfig<TServices> = {},
+): QueryClient<TServices> {
+	const cache = QueryCache.make(config);
+	const onError = config.onError;
+	if (onError) {
+		QueryCache.subscribe(cache, (event) => {
+			if (event.type === "failed") {
+				onError(event.error, event.query);
+			}
+		});
 	}
+	return {
+		cache,
+		clear: () => QueryCache.clear(cache),
+		dispose: () => QueryCache.dispose(cache),
+		ensure: (factory, ...args) => QueryCache.ensure(cache, factory, ...args),
+		fetch: (factory, ...args) => QueryCache.fetch(cache, factory, ...args),
+		getAll: () => QueryCache.all(cache),
+		getData: (factory, ...args) => QueryCache.getData(cache, factory, ...args),
+		getQuery: (factory, ...args) =>
+			QueryCache.getQuery(cache, factory, ...args),
+		invalidate: (...target) => QueryCache.invalidate(cache, ...target),
+		isFetching: (filter) => QueryCache.isFetching(cache, filter),
+		isServer: cache.isServer,
+		mount: () => QueryCache.mount(cache),
+		prefetch: (factory, ...args) =>
+			QueryCache.prefetch(cache, factory, ...args),
+		remove: (...target) => QueryCache.remove(cache, ...target),
+		reset: (...target) => QueryCache.reset(cache, ...target),
+		setData: (factory, input, updater) =>
+			QueryCache.setData(cache, factory, input, updater),
+		subscribe: (listener) => QueryCache.subscribe(cache, listener),
+	};
 }
 
 /** Snapshot the cache for transfer to another client (server → browser). */

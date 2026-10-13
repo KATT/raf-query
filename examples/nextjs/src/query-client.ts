@@ -1,4 +1,4 @@
-import { QueryClient, type QueryClientConfig } from "@raf-query/react";
+import { type QueryClientConfig, createQueryClient } from "@raf-query/react";
 import { cache } from "react";
 
 export const queryClientConfig = {
@@ -6,4 +6,4 @@ export const queryClientConfig = {
 } as const satisfies QueryClientConfig;
 
 /** The server components' query client, one per request. */
-export const getQueryClient = cache(() => new QueryClient(queryClientConfig));
+export const getQueryClient = cache(() => createQueryClient(queryClientConfig));

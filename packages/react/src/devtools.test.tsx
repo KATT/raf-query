@@ -13,12 +13,12 @@ import { renderToString } from "react-dom/server";
 import { preview } from "./devtools-panel.tsx";
 import { QueryDevtools, QueryDevtoolsPanel } from "./devtools.tsx";
 import {
-	QueryClient,
 	QueryClientProvider,
 	type QueryHandle,
 	queryOptions,
 	useQuery,
 	Query,
+	createQueryClient,
 } from "./index.ts";
 
 function createBackend() {
@@ -77,7 +77,7 @@ function escape(text: string) {
 
 function setup() {
 	const backend = createBackend();
-	const client = new QueryClient({ isServer: false });
+	const client = createQueryClient({ isServer: false });
 	function Issue(props: {
 		readonly handle: QueryHandle<typeof backend.issueQuery>;
 	}) {
@@ -164,7 +164,7 @@ describe("QueryDevtoolsPanel", () => {
 
 	it("shows the selected entry's meta", async () => {
 		useCleanup();
-		const client = new QueryClient({ isServer: false });
+		const client = createQueryClient({ isServer: false });
 		function metaQuery() {
 			return queryOptions({
 				meta: { errorMessage: "Couldn't load issues" },
@@ -300,7 +300,7 @@ describe("QueryDevtoolsPanel", () => {
 	});
 
 	it("renders nothing on the server", () => {
-		const client = new QueryClient({ isServer: true });
+		const client = createQueryClient({ isServer: true });
 		expect(renderToString(<QueryDevtoolsPanel client={client} />)).toBe("");
 		expect(renderToString(<QueryDevtools client={client} />)).toBe("");
 	});
@@ -309,7 +309,7 @@ describe("QueryDevtoolsPanel", () => {
 describe("QueryDevtools", () => {
 	it("opens from the toggle button, closes, and remembers", async () => {
 		useCleanup();
-		const client = new QueryClient({ isServer: false });
+		const client = createQueryClient({ isServer: false });
 		const view = await mount(<QueryDevtools client={client} />);
 
 		expect(screen.queryByRole("complementary")).toBeNull();
@@ -336,7 +336,7 @@ describe("QueryDevtools", () => {
 
 	it("starts open with initialIsOpen, docked where asked", async () => {
 		useCleanup();
-		const client = new QueryClient({ isServer: false });
+		const client = createQueryClient({ isServer: false });
 		await mount(
 			<QueryDevtools client={client} initialIsOpen position="right" />,
 		);
@@ -348,7 +348,7 @@ describe("QueryDevtools", () => {
 
 	it("resizes by dragging its edge, and remembers the size", async () => {
 		useCleanup();
-		const client = new QueryClient({ isServer: false });
+		const client = createQueryClient({ isServer: false });
 		await mount(<QueryDevtools client={client} initialIsOpen />);
 		const handle = screen.getByRole("separator", {
 			name: "Resize raf-query devtools",
@@ -380,7 +380,7 @@ describe("production builds", () => {
 			cleanup();
 		});
 		const entry = await import("./devtools.tsx");
-		const client = new QueryClient({ isServer: false });
+		const client = createQueryClient({ isServer: false });
 
 		const view = await mount(
 			<entry.QueryDevtools client={client} initialIsOpen />,

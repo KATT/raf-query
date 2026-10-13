@@ -86,7 +86,7 @@ export function issuesQuery() {
 	});
 }
 
-const queryClient = new QueryClient({
+const queryClient = createQueryClient({
 	onError: (error, query) => {
 		toast.error(
 			Query.metaUnsafe(query)?.errorMessage ?? "Something went wrong",
@@ -436,7 +436,7 @@ import { QueryClient, QueryClientProvider } from "@raf-query/react";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 
 export function getRouter() {
-	const queryClient = new QueryClient();
+	const queryClient = createQueryClient();
 	const router = createRouter({
 		routeTree,
 		context: { queryClient },
@@ -460,7 +460,7 @@ export function getRouter() {
 import { cache } from "react";
 import { QueryClient } from "@raf-query/react";
 
-export const getQueryClient = cache(() => new QueryClient());
+export const getQueryClient = cache(() => createQueryClient());
 ```
 
 ```tsx
@@ -601,7 +601,7 @@ Effect.runFork(
 ```ts
 import { fromLayer } from "@raf-query/react/effect";
 
-const queryClient = new QueryClient({ services: fromLayer(IssueApiLive) }); // QueryClient<IssueApi>
+const queryClient = createQueryClient({ services: fromLayer(IssueApiLive) }); // QueryClient<IssueApi>
 const handle = queryClient.prefetch(issueQuery, { id: 1 });
 
 await queryClient.dispose();
@@ -656,7 +656,7 @@ Both render nothing on the server, since the server's cache isn't the browser's.
 
 | Member                                      | Use                                                                                                                     |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `new QueryClient(config?)`                  | `config.defaults` (query options below), `config.onError`, `config.isServer`, `config.services` ([services](#services)) |
+| `createQueryClient(config?)`                | `config.defaults` (query options below), `config.onError`, `config.isServer`, `config.services` ([services](#services)) |
 | `prefetch`, `ensure`, `fetch`               | [Start queries](#starting-queries)                                                                                      |
 | `invalidate`, `setData`, `getData`          | [Write and read the cache](#mutations)                                                                                  |
 | `reset(factory, input)` / `reset(filter)`   | Drop data and errors; read queries suspend and refetch. Resolves when they settle. [Filters](#filters)                  |
@@ -690,23 +690,23 @@ When the last reader of a query unsubscribes during a background refetch, a `que
 
 `@raf-query/core`:
 
-| Export                                                       | Use                                                                                     |
-| ------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| `QueryCache`                                                 | The cache as a data type: `make(config)`, and every verb as a function taking it first  |
-| `Query`                                                      | Cache entries: `Query.fetch`, `Query.refetch`, `Query.getUnsafe`, `Query.metaUnsafe`, … |
-| `Platform`, `Clock`                                          | The page the cache watches and its timers: `config.platform` / `config.clock` in tests  |
-| `queryOptions(options)`                                      | Typed options for a query factory                                                       |
-| `infiniteQueryOptions(options)`                              | Typed options for a paged query factory                                                 |
-| `hashKey(key)`, `matchesKey(key, prefix)`                    | Key helpers                                                                             |
-| `QueryObserver`                                              | One reader's view of a query, with tracked results; for bindings                        |
-| `Query.CancelledError`                                       | Failure of a request whose entry was removed or cleared before it settled               |
-| `RedactedError`                                              | What a streamed pending query rejects with when its server request failed               |
-| `QueryHandle<TFactory>`                                      | Handle type for props                                                                   |
-| `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                                   |
-| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`                             |
-| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                                 |
-| `ServicesOf<TFactory>`                                       | The services a factory's `queryFn` Effect needs; `never` for promises                   |
-| `Register`, `QueryMeta`                                      | Augment `Register` with `queryMeta` to type [`meta`](#query-meta)                       |
+| Export                                                       | Use                                                                                                                 |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `QueryCache`                                                 | The cache as a data type: `make(config)`, and every verb as a function taking it first                              |
+| `Query`                                                      | Cache entries: `Query.fetch`, `Query.refetch`, `Query.getUnsafe`, `Query.metaUnsafe`, …                             |
+| `Platform`, `Clock`                                          | The page the cache watches and its timers: `config.platform` / `config.clock` in tests                              |
+| `queryOptions(options)`                                      | Typed options for a query factory                                                                                   |
+| `infiniteQueryOptions(options)`                              | Typed options for a paged query factory                                                                             |
+| `hashKey(key)`, `matchesKey(key, prefix)`                    | Key helpers                                                                                                         |
+| `QueryObserver`                                              | One reader's view of a query, with tracked results; for bindings                                                    |
+| `AbortError` (a `DOMException`)                              | What a request rejects with when its entry is removed or cleared first; `/effect` fails with `Query.CancelledError` |
+| `RedactedError`                                              | What a streamed pending query rejects with when its server request failed                                           |
+| `QueryHandle<TFactory>`                                      | Handle type for props                                                                                               |
+| `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                                                               |
+| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`                                                         |
+| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                                                             |
+| `ServicesOf<TFactory>`                                       | The services a factory's `queryFn` Effect needs; `never` for promises                                               |
+| `Register`, `QueryMeta`                                      | Augment `Register` with `queryMeta` to type [`meta`](#query-meta)                                                   |
 
 `@raf-query/react` (plus all of the above):
 

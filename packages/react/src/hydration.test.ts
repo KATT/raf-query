@@ -4,16 +4,16 @@ import {
 	dehydrate,
 	type DehydratedState,
 	hydrate,
-	QueryClient,
 	queryOptions,
 	Query,
+	createQueryClient,
 } from "./index.ts";
 import { createBackend } from "./test-utils.ts";
 
 describe("dehydrate", () => {
 	it("sends settled data and in-flight requests, nothing else", async () => {
 		const backend = createBackend();
-		const server = new QueryClient({ isServer: true });
+		const server = createQueryClient({ isServer: true });
 		server.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
 		server.prefetch(backend.issueQuery, { id: 2 });
 		server.getQuery(backend.issueQuery, { id: 3 });
@@ -30,7 +30,7 @@ describe("dehydrate", () => {
 
 	it("redacts errors of pending queries unless keepErrors", async () => {
 		const backend = createBackend();
-		const server = new QueryClient({ isServer: true });
+		const server = createQueryClient({ isServer: true });
 		server.prefetch(backend.issueQuery, { id: 404 });
 
 		const redacted = dehydrate(server).queries[0]?.promise;
@@ -48,8 +48,8 @@ describe("hydrate", () => {
 		function noneQuery() {
 			return queryOptions({ queryFn, queryKey: ["none"], staleTime: Infinity });
 		}
-		const server = new QueryClient({ isServer: true });
-		const browser = new QueryClient({ isServer: false });
+		const server = createQueryClient({ isServer: true });
+		const browser = createQueryClient({ isServer: false });
 		await server.fetch(noneQuery);
 
 		// oxlint-disable-next-line unicorn/prefer-structured-clone -- structuredClone keeps `data: undefined`; JSON drops it, which is the case under test
@@ -68,8 +68,8 @@ describe("hydrate", () => {
 
 	it("writes data without fetching", async () => {
 		const backend = createBackend();
-		const server = new QueryClient({ isServer: true });
-		const browser = new QueryClient({ isServer: false });
+		const server = createQueryClient({ isServer: true });
+		const browser = createQueryClient({ isServer: false });
 		server.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
 
 		hydrate(browser, dehydrate(server));
@@ -81,8 +81,8 @@ describe("hydrate", () => {
 
 	it("resumes the server's request instead of starting one", async () => {
 		const backend = createBackend();
-		const server = new QueryClient({ isServer: true });
-		const browser = new QueryClient({ isServer: false });
+		const server = createQueryClient({ isServer: true });
+		const browser = createQueryClient({ isServer: false });
 		server.prefetch(backend.issueQuery, { id: 1 });
 
 		hydrate(browser, dehydrate(server));
@@ -97,7 +97,7 @@ describe("hydrate", () => {
 
 	it("only replaces older data", async () => {
 		const backend = createBackend();
-		const browser = new QueryClient({ isServer: false });
+		const browser = createQueryClient({ isServer: false });
 		browser.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "New" });
 		const updatedAt = Query.getUnsafe(
 			browser.getQuery(backend.issueQuery, { id: 1 }),
@@ -119,8 +119,8 @@ describe("hydrate", () => {
 	});
 
 	it("round-trips data through serializeData and deserializeData", async () => {
-		const server = new QueryClient({ isServer: true });
-		const browser = new QueryClient({ isServer: false });
+		const server = createQueryClient({ isServer: true });
+		const browser = createQueryClient({ isServer: false });
 		function dateQuery() {
 			return queryOptions({
 				queryFn: () => new Date(0),

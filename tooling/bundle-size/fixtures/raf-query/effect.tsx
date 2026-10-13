@@ -1,9 +1,9 @@
 import {
-	QueryClient,
 	QueryClientProvider,
 	type QueryHandle,
 	queryOptions,
 	useQuery,
+	createQueryClient,
 } from "@raf-query/react";
 import { fromContext, fromLayer, retrySchedule } from "@raf-query/react/effect";
 import { Context, Data, Effect, Layer, Schedule } from "effect";
@@ -38,7 +38,7 @@ function IssueTitle(props: {
 
 /** `queryApp` with an Effect `queryFn` and `Schedule` retries. */
 export function effectApp() {
-	const queryClient = new QueryClient({
+	const queryClient = createQueryClient({
 		services: fromContext(Context.empty()),
 	});
 	const issue = queryClient.prefetch(effectIssueQuery, { id: 1 });
@@ -80,7 +80,7 @@ function ServiceIssueTitle(props: {
 
 /** `queryApp` with a `queryFn` that needs a service from a layer. */
 export function layerApp() {
-	const queryClient = new QueryClient({ services: fromLayer(IssueApiLive) });
+	const queryClient = createQueryClient({ services: fromLayer(IssueApiLive) });
 	const issue = queryClient.prefetch(serviceIssueQuery, { id: 1 });
 	return (
 		<QueryClientProvider client={queryClient}>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 
-import { infiniteQueryOptions, QueryClient, Query } from "./index.ts";
+import { infiniteQueryOptions, Query, createQueryClient } from "./index.ts";
 
 interface Page {
 	readonly items: ReadonlyArray<number>;
@@ -30,18 +30,18 @@ function itemsOf(data: { readonly pages: ReadonlyArray<Page> } | undefined) {
 
 describe("paged queries", () => {
 	it("load the first page, or `pages` pages up front", async () => {
-		const qc = new QueryClient({ isServer: true });
+		const qc = createQueryClient({ isServer: true });
 
 		const one = await qc.fetch(numbersQuery, {});
 		expect(one.pageParams).toEqual([4]);
 
-		const fresh = new QueryClient({ isServer: true });
+		const fresh = createQueryClient({ isServer: true });
 		const three = await fresh.fetch(numbersQuery, {}, { pages: 3 });
 		expect(itemsOf(three)).toEqual([4, 5, 6, 7, 8, 9]);
 	});
 
 	it("stop loading up front at the last page", async () => {
-		const qc = new QueryClient({ isServer: true });
+		const qc = createQueryClient({ isServer: true });
 
 		const data = await qc.fetch(numbersQuery, {}, { pages: 10 });
 
@@ -49,7 +49,7 @@ describe("paged queries", () => {
 	});
 
 	it("page forward and backward until the ends", async () => {
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, {});
 		await Query.fetch(query);
 
@@ -70,7 +70,7 @@ describe("paged queries", () => {
 	});
 
 	it("set fetchDirection while a page loads", async () => {
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, {});
 		await Query.fetch(query);
 
@@ -81,7 +81,7 @@ describe("paged queries", () => {
 	});
 
 	it("queue a page request behind the one in flight", async () => {
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, {});
 
 		const first = Query.fetch(query);
@@ -93,7 +93,7 @@ describe("paged queries", () => {
 	});
 
 	it("drop pages at the far end past maxPages", async () => {
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, { maxPages: 2 });
 		await Query.fetch(query);
 
@@ -106,7 +106,7 @@ describe("paged queries", () => {
 	});
 
 	it("refetch every loaded page from the first param", async () => {
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, {});
 		await Query.fetch(query);
 		await Query.fetchNextPage(query);

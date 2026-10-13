@@ -15,6 +15,7 @@ import {
 	useQuery,
 	type UseQueryOptions,
 	useWaterfall,
+	createQueryClient,
 } from "./index.ts";
 import { fromLayer } from "./effect.ts";
 
@@ -140,7 +141,7 @@ class Boundary extends Component<
 
 function setup() {
 	const backend = createBackend();
-	const client = new QueryClient({ isServer: false });
+	const client = createQueryClient({ isServer: false });
 	function IssueTitle(props: {
 		readonly handle: QueryHandle<typeof backend.issueQuery>;
 		readonly options?: UseQueryOptions;
@@ -274,7 +275,7 @@ describe("useQuery", () => {
 	});
 
 	it("exposes paging controls for paged factories", async () => {
-		const client = new QueryClient({ isServer: false });
+		const client = createQueryClient({ isServer: false });
 		function numbersQuery() {
 			return infiniteQueryOptions({
 				getNextPageParam: (lastPage: number) =>
@@ -367,7 +368,7 @@ describe("useQuery", () => {
 	});
 
 	it("doesn't re-render for retries of a background refetch", async () => {
-		const client = new QueryClient({ isServer: false });
+		const client = createQueryClient({ isServer: false });
 		let attempt = 0;
 		function flakyQuery() {
 			return queryOptions({
@@ -408,7 +409,7 @@ describe("useQuery", () => {
 
 	describe("a background refetch that reads its signal", () => {
 		function slowNote() {
-			const client = new QueryClient({ isServer: false });
+			const client = createQueryClient({ isServer: false });
 			const signals: Array<AbortSignal> = [];
 			function noteQuery() {
 				return queryOptions({
@@ -553,7 +554,7 @@ describe("useQuery", () => {
 	});
 
 	it("starts a request with the client's layer services during render", async () => {
-		const client = new QueryClient({
+		const client = createQueryClient({
 			isServer: false,
 			services: fromLayer(Layer.succeed(Greeting, "Hello")),
 		});
