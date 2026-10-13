@@ -36,3 +36,6 @@ Effect v4 shakes per export (`sideEffects` lists only a schema file), and app-si
 
 - The default apps are raf's own code. Largest modules in `queryApp` (unminified rendered bytes): `entry.ts` 12.0k, `observer.ts` 5.3k, `cache.ts` 5.1k, `use-query.ts` 2.3k, `infinite.ts` 2.3k. `infinite.ts` ships with plain queries because `fetch` branches on `kind` at runtime.
 - Use `tooling/bundle-size/src/analyze.ts` to list modules by size.
+- Measured and not worth it for `queryApp` (6.81 kB):
+  - **Dropping classes:** only `QueryClient`, `CancelledError` and `RedactedError` are left. `QueryClient` as a closure over `cache` (no `this.cache`) saves 233 B minified, ~0.03 kB gzip, and loses `instanceof QueryClient` and the plain `class` type. The error classes need `instanceof`.
+  - **Short internal property names:** minifiers keep property names. Renaming the ~20 internal-only `Entry` / cache fields (`inFlight`, `retriesStopped`, `failureCountBefore`, `onRemove`, …) to two characters saves ~970 B minified but only ~0.13 kB gzip, since gzip already dedupes repeats. Public `State` fields (`isFetching`, `hasData`, …) can't be renamed.
