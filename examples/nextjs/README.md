@@ -7,7 +7,7 @@ A small issue tracker built with [raf-query](https://github.com/KATT/raf-query#r
 | Screen / action                               | Shows                                                                                                  | Files                                                                |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
 | Issue list: status filter and sort in the URL | Server component `prefetch`es from `searchParams`, infinite scroll, `whilePending: "previous"` dimming | `src/app/issues/page.tsx`, `src/components/issue-list.tsx`           |
-| Issue detail                                  | `await qc.fetch` the issue, then `prefetch` its assignee                                               | `src/app/issues/[issueId]/page.tsx`, `src/components/issue-page.tsx` |
+| Issue detail                                  | `prefetch` the assignee by issue id beside the issue, so neither waits on the other                    | `src/app/issues/[issueId]/page.tsx`, `src/components/issue-page.tsx` |
 | Comments                                      | Paged query with infinite scroll, streamed through `HydrationBoundary`                                 | `src/components/comments.tsx`                                        |
 | Edit title, add comment                       | Form actions, `useOptimistic`, `await qc.invalidate`                                                   | `src/components/edit-title.tsx`, `src/components/comments.tsx`       |
 

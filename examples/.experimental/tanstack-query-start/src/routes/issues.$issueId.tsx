@@ -2,7 +2,6 @@ import { Button } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
 import {
 	ensure,
-	ensureData,
 	prefetch,
 	useQuery,
 } from "@raf-query/experimental-tanstack-react-query";
@@ -14,20 +13,15 @@ import { Comments, CommentsSkeleton } from "~/components/comments.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
 import { StatusBadge } from "~/components/status-badge.tsx";
 import { AssigneeCard, AssigneeCardSkeleton } from "~/components/user.tsx";
-import { commentsQuery, issueQuery, userQuery } from "~/queries.ts";
+import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 
 export const Route = createFileRoute("/issues/$issueId")({
 	loader: async (args) => {
 		const qc = args.context.queryClient;
 		const id = Number(args.params.issueId);
-		const comments = prefetch(qc, commentsQuery, { issueId: id });
-		const issue = await ensureData(qc, issueQuery, { id });
-		// The assignee is known only once the issue loads. Starting it here
-		// keeps it in the loader, instead of the card asking after render.
-		const assignee = prefetch(qc, userQuery, { id: issue.assigneeId });
 		return {
-			assignee,
-			comments,
+			assignee: prefetch(qc, assigneeQuery, { issueId: id }),
+			comments: prefetch(qc, commentsQuery, { issueId: id }),
 			issue: await ensure(qc, issueQuery, { id }),
 		};
 	},
