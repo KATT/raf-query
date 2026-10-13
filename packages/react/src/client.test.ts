@@ -8,7 +8,8 @@ import {
 } from "@effect/vitest";
 import { Context, Effect, Layer, Schedule } from "effect";
 
-import { Query, QueryClient, queryOptions } from "./index.ts";
+import { Query, QueryClient, queryOptions, retrySchedule } from "./index.ts";
+import { fromLayer } from "./effect.ts";
 import { createBackend, flush } from "./test-utils.ts";
 
 function useFakeTimers(options?: Parameters<typeof vi.useFakeTimers>[0]) {
@@ -760,7 +761,7 @@ describe("retry", () => {
 				queryOptions({
 					queryFn: bySchedule,
 					queryKey: ["schedule"],
-					retry: Schedule.recurs(4),
+					retry: retrySchedule(Schedule.recurs(4)),
 				}),
 			),
 		).rejects.toThrow("down");
@@ -844,7 +845,7 @@ describe("retry", () => {
 				queryOptions({
 					queryFn,
 					queryKey: ["offline"],
-					retry: Schedule.recurs(3),
+					retry: retrySchedule(Schedule.recurs(3)),
 				}),
 			);
 
@@ -1075,7 +1076,10 @@ function apiLayer(released: Array<string>) {
 
 describe("layer", () => {
 	it("provides services to queryFn Effects", async () => {
-		const qc = new QueryClient({ isServer: false, layer: apiLayer([]) });
+		const qc = new QueryClient({
+			isServer: false,
+			services: fromLayer(apiLayer([])),
+		});
 
 		expect(await qc.fetch(userQuery, { id: 1 })).toBe("#1");
 		const query = qc.getQuery(userQuery, { id: 2 });
@@ -1083,7 +1087,10 @@ describe("layer", () => {
 	});
 
 	it("rejects with a queryFn Effect's typed failure", async () => {
-		const qc = new QueryClient({ isServer: false, layer: apiLayer([]) });
+		const qc = new QueryClient({
+			isServer: false,
+			services: fromLayer(apiLayer([])),
+		});
 
 		await expect(qc.ensure(userQuery, { id: 0 })).rejects.toBeInstanceOf(
 			NotFound,
@@ -1093,7 +1100,10 @@ describe("layer", () => {
 	it("dispose runs the layer's finalizers and interrupts requests", async () => {
 		const backend = createBackend();
 		const released: Array<string> = [];
-		const qc = new QueryClient({ isServer: false, layer: apiLayer(released) });
+		const qc = new QueryClient({
+			isServer: false,
+			services: fromLayer(apiLayer(released)),
+		});
 		await qc.fetch(userQuery, { id: 1 });
 		qc.prefetch(backend.issueQuery, { id: 1 });
 

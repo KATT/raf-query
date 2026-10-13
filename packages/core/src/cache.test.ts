@@ -27,6 +27,7 @@ import {
 	queryOptions,
 	RedactedError,
 	type RetryPolicy,
+	retrySchedule,
 	traceRequest,
 } from "./index.ts";
 import { createBackend, fakePlatform, flush } from "./test-utils.ts";
@@ -1153,7 +1154,7 @@ describe("when the last reader leaves mid-request", () => {
 	it.effect.each([
 		["a count", 3],
 		["a predicate", () => true],
-		["a schedule", Schedule.recurs(3)],
+		["a schedule", retrySchedule(Schedule.recurs(3))],
 	] as const)(
 		"lets a queryFn that ignores its signal finish, without retries (%s)",
 		([_name, retry]) =>

@@ -34,6 +34,7 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./devtools": "./src/devtools.tsx",
+		"./effect": "./src/effect.ts",
 		"./devtools/production": "./src/devtools-production.tsx",
 		"./next": "./src/next.tsx",
 		"./rsc": "./src/rsc.tsx",
@@ -91,6 +92,7 @@
 		"exports": {
 			".": "./dist/index.js",
 			"./devtools": "./dist/devtools.js",
+			"./effect": "./dist/effect.js",
 			"./devtools/production": "./dist/devtools-production.js",
 			"./next": "./dist/next.js",
 			"./rsc": "./dist/rsc.js",

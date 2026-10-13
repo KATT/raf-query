@@ -8,7 +8,6 @@ import {
 	Exit,
 	Pipeable,
 	Predicate,
-	Schedule,
 	Scope,
 	type Stream,
 } from "effect";
@@ -37,7 +36,7 @@ import type {
 import { type Platform, type PlatformEvent, whenOnline } from "./platform.ts";
 import type { FetchRequest, Query, State, SubscribeOptions } from "./query.ts";
 import { fromQueryFn, requestServices, runRequest } from "./request.ts";
-import { retryPlan } from "./retry.ts";
+import { isRetrySchedule, retryPlan } from "./retry.ts";
 import { replaceEqualDeep } from "./share.ts";
 import { fulfilled, type Pending, pending, type Thenable } from "./thenable.ts";
 
@@ -716,7 +715,7 @@ function attempt(
 						),
 					),
 		);
-	if (!Schedule.isSchedule(plan)) {
+	if (!isRetrySchedule(plan)) {
 		const after = (
 			failureCount: number,
 			failure: unknown,
@@ -745,10 +744,7 @@ function attempt(
 				}),
 			),
 		);
-		return Effect.retry(gated, {
-			schedule: plan,
-			while: () => !entry.retriesStopped,
-		});
+		return plan.retry(gated, () => entry.retriesStopped);
 	});
 }
 

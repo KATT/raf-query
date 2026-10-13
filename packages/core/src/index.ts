@@ -39,5 +39,7 @@ export {
 	type RetryPolicy,
 	type ServicesOf,
 } from "./options.ts";
+export type { RetrySchedule } from "./retry.ts";
+export { retrySchedule } from "./schedule.ts";
 export type { Thenable } from "./thenable.ts";
 export { traceRequest } from "./tracing.ts";

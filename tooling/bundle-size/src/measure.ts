@@ -71,6 +71,11 @@ const scenarios: ReadonlyArray<Scenario> = [
 		libraries: ["raf-query"],
 		name: "Effect `queryFn` + `Schedule` retry",
 	},
+	{
+		app: { export: "layerApp", module: "effect.tsx" },
+		libraries: ["raf-query"],
+		name: "Effect `queryFn` + services from a `Layer`",
+	},
 ];
 
 const exampleApps = [
@@ -139,6 +144,10 @@ Effect.gen(function* () {
 		? [
 				{ find: /^@raf-query\/core$/, replacement: source("core", "index") },
 				{ find: /^@raf-query\/react$/, replacement: source("react", "index") },
+				{
+					find: /^@raf-query\/react\/effect$/,
+					replacement: source("react", "effect"),
+				},
 				{
 					find: /^@raf-query\/react\/tanstack-router$/,
 					replacement: source("react", "tanstack-router-browser"),

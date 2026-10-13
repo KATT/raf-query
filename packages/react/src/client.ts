@@ -11,31 +11,36 @@ import {
 	type QueryFactory,
 	type QueryHandle,
 } from "@raf-query/core";
-import { Context, Effect, Exit, Layer, Option, Scope } from "effect";
+import { Context, Effect, Exit, Option, Scope } from "effect";
 
 import { unsafeCast } from "./cast.ts";
 
 export interface QueryClientConfig<TServices = never>
 	extends QueryCache.Config {
-	/**
-	 * Services for queries whose `queryFn` returns an Effect. Built with the
-	 * client, so it must build synchronously; `dispose()` runs its
-	 * finalizers.
-	 */
-	readonly layer?: Layer.Layer<TServices>;
 	/** Called with every failed request, including failed prefetches. */
 	onError?(error: unknown, query: Query.Query): void;
+	/**
+	 * Services for queries whose `queryFn` returns an Effect, built in the
+	 * client's scope when it's created; `dispose()` closes that scope. Use
+	 * `fromLayer(layer)` from `@raf-query/react/effect`.
+	 */
+	readonly services?: ServicesBuilder<TServices>;
 }
+
+/** Builds a client's services in the client's scope. */
+export type ServicesBuilder<TServices> = (
+	scope: Scope.Scope,
+) => Context.Context<TServices>;
 
 /**
  * A verb's Effect, run by a client. Its requirement is the factory's
- * `ServicesOf`, which the client's verbs only accept when its `layer`
- * provides them.
+ * `ServicesOf`, which the client's verbs only accept when its `services`
+ * provide them.
  */
 function provided<A, E, R>(
 	effect: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E> {
-	// SAFETY: the cache was built over the client's `layer`, so every request
+	// SAFETY: the cache was built over the client's `services`, so every request
 	// already runs with those services, and the verbs take only factories of
 	// `QueryFactory<TServices>`.
 	return unsafeCast<Effect.Effect<A, E>>(effect);
@@ -45,21 +50,21 @@ function provided<A, E, R>(
  * The query cache, with Promise methods. Create one per request on the
  * server and one per browser tab. `effect` is the same cache's Effect API.
  * Its verbs take factories whose `queryFn` needs at most `TServices`, the
- * services of `config.layer`.
+ * services of `config.services`.
  */
 export class QueryClient<TServices = never> {
 	/** The Effect-native cache behind this client. */
 	readonly effect: QueryCache.QueryCache;
 	readonly isServer: boolean;
 	/**
-	 * Owns the cache's fibers, mounts and the layer's services; lives until
+	 * Owns the cache's fibers, mounts and the client's services; lives until
 	 * `dispose()`.
 	 */
 	readonly #scope = Scope.makeUnsafe();
 
 	constructor(config: QueryClientConfig<TServices> = {}) {
-		const services = config.layer
-			? Effect.runSync(Layer.buildWithScope(config.layer, this.#scope))
+		const services = config.services
+			? config.services(this.#scope)
 			: Context.empty();
 		this.effect = Effect.runSync(
 			QueryCache.make(config).pipe(
@@ -212,8 +217,8 @@ export class QueryClient<TServices = never> {
 	}
 
 	/**
-	 * Close the client: interrupt every request and timer, and release the
-	 * layer's services. Resolves once the layer's finalizers have run.
+	 * Close the client: interrupt every request and timer, and release its
+	 * services. Resolves once their finalizers have run.
 	 */
 	dispose(): Promise<void> {
 		return Effect.runPromise(Scope.close(this.#scope, Exit.void));

@@ -15,6 +15,7 @@ import {
 	queryOptions,
 	type ServicesOf,
 } from "./index.ts";
+import { fromLayer } from "./effect.ts";
 
 describe("allKeyed", () => {
 	it("awaits a record of promises, keeping keys", async () => {
@@ -135,7 +136,10 @@ describe("types", () => {
 	});
 
 	it("take only factories whose services the client's layer provides", () => {
-		const qc = new QueryClient({ isServer: true, layer: apiLayer });
+		const qc = new QueryClient({
+			isServer: true,
+			services: fromLayer(apiLayer),
+		});
 		const plain = new QueryClient({ isServer: true });
 		expectTypeOf(qc).toEqualTypeOf<QueryClient<Api>>();
 		const typeOnly = () => {
@@ -154,7 +158,10 @@ describe("types", () => {
 	});
 
 	it("accept a client of any services where any client goes", () => {
-		const qc = new QueryClient({ isServer: true, layer: apiLayer });
+		const qc = new QueryClient({
+			isServer: true,
+			services: fromLayer(apiLayer),
+		});
 		expectTypeOf(qc).toExtend<
 			ComponentProps<typeof QueryClientProvider>["client"]
 		>();

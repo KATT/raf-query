@@ -16,6 +16,7 @@ import {
 	type UseQueryOptions,
 	useWaterfall,
 } from "./index.ts";
+import { fromLayer } from "./effect.ts";
 
 interface Issue {
 	readonly assigneeId: number;
@@ -554,7 +555,7 @@ describe("useQuery", () => {
 	it("starts a request with the client's layer services during render", async () => {
 		const client = new QueryClient({
 			isServer: false,
-			layer: Layer.succeed(Greeting, "Hello"),
+			services: fromLayer(Layer.succeed(Greeting, "Hello")),
 		});
 		function Greet(props: {
 			readonly handle: QueryHandle<typeof greetingQuery>;

@@ -1,14 +1,28 @@
-import { Predicate, Schedule } from "effect";
+import { type Effect, Predicate } from "effect";
 
 import type { QueryBehavior } from "./options.ts";
 
+export const RetryScheduleTypeId = "~@raf-query/core/RetrySchedule";
+
 /**
- * A query's retry options, resolved: a `Schedule` passed as `retry`, or a
- * count / predicate with its delays. Counts and predicates don't build a
- * `Schedule`, so apps that never pass one don't bundle the `Schedule`
- * combinators.
+ * Retries driven by an Effect `Schedule`, made by `retrySchedule`. Kept
+ * behind that function so apps that never use a `Schedule` don't bundle
+ * Effect's schedule driver.
  */
-export type RetryPlan = Attempts | Schedule.Schedule<unknown>;
+export interface RetrySchedule {
+	/** Retry `attempt` on the schedule while `isStopped()` is false. */
+	readonly retry: <A, E>(
+		attempt: Effect.Effect<A, E>,
+		isStopped: () => boolean,
+	) => Effect.Effect<A, E>;
+	readonly [RetryScheduleTypeId]: typeof RetryScheduleTypeId;
+}
+
+export const isRetrySchedule = (u: unknown): u is RetrySchedule =>
+	Predicate.hasProperty(u, RetryScheduleTypeId);
+
+/** A query's retry options, resolved. */
+export type RetryPlan = Attempts | RetrySchedule;
 
 export interface Attempts {
 	/** Wait before retry number `failureCount` (1 after the first failure). */
@@ -26,7 +40,7 @@ export function retryPlan(
 	isServer: boolean,
 ): RetryPlan | undefined {
 	const retry = behavior.retry ?? (isServer ? 0 : 3);
-	if (Schedule.isSchedule(retry)) {
+	if (isRetrySchedule(retry)) {
 		return retry;
 	}
 	if (retry === false || retry === 0) {
