@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.14](https://github.com/KATT/raf-query/compare/0.1.13...0.1.14) (2026-10-13)
+
+### Performance Improvements
+
+- **core:** mark top-level Effect constructors pure ([#46](https://github.com/KATT/raf-query/issues/46)) ([9fb7f76](https://github.com/KATT/raf-query/commit/9fb7f76fb3dad5e5fa4566de011727ce46ac3bbc))
+
 ## [0.1.13](https://github.com/KATT/raf-query/compare/0.1.12...0.1.13) (2026-10-13)
 
 ### Bug Fixes
