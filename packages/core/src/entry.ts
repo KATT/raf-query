@@ -350,19 +350,20 @@ export function start(entry: Entry) {
 }
 
 /**
- * Background refetch of cached data that was asked for again. A server cache
- * renders once, so a refetch there could only duplicate a request whose
+ * Whether cached data that was asked for again should be refetched. A server
+ * cache renders once, so a refetch there could only duplicate a request whose
  * result is never shown; it refetches only what `invalidate` marked.
  */
+export function needsRefetch(entry: Entry) {
+	return entry.cache.isServer
+		? entry.state.isInvalidated
+		: isStaleUnsafe(entry);
+}
+
+/** Background refetch of cached data that was asked for again. */
 export function revalidate(entry: Entry) {
 	const state = entry.state;
-	if (!state.hasData || state.isFetching) {
-		return;
-	}
-	const wanted = entry.cache.isServer
-		? state.isInvalidated
-		: isStaleUnsafe(entry);
-	if (wanted) {
+	if (state.hasData && !state.isFetching && needsRefetch(entry)) {
 		start(entry);
 	}
 }
