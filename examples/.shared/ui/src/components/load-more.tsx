@@ -1,28 +1,29 @@
 import { Button } from "@examples/ui/components/button";
 
 /**
- * Infinite scroll: a "Load more" button that also presses itself when it
- * scrolls into view. It watches again after each load, so it keeps loading
- * while it stays visible.
+ * Infinite scroll: a "Load more" button that presses itself when it comes
+ * within `rootMargin` of the viewport. Unmount it while the page loads (and
+ * show skeletons in its place); it watches again when it remounts, so it keeps
+ * loading while it stays in reach.
  */
-export function LoadMore(props: {
-	readonly loading: boolean;
-	readonly onLoad: () => void;
-}) {
+export function LoadMore(props: { readonly onLoad: () => void }) {
 	return (
 		<Button
-			disabled={props.loading}
+			className="w-full"
 			onClick={props.onLoad}
 			ref={(button) => {
-				if (button === null || props.loading) {
+				if (button === null) {
 					return;
 				}
-				const observer = new IntersectionObserver((entries) => {
-					if (entries.some((entry) => entry.isIntersecting)) {
-						observer.disconnect();
-						props.onLoad();
-					}
-				});
+				const observer = new IntersectionObserver(
+					(entries) => {
+						if (entries.some((entry) => entry.isIntersecting)) {
+							observer.disconnect();
+							props.onLoad();
+						}
+					},
+					{ rootMargin: "0px 0px 300px 0px" },
+				);
 				observer.observe(button);
 				return () => {
 					observer.disconnect();
@@ -30,7 +31,7 @@ export function LoadMore(props: {
 			}}
 			variant="outline"
 		>
-			{props.loading ? "Loading…" : "Load more"}
+			Load more
 		</Button>
 	);
 }

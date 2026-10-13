@@ -5,11 +5,14 @@ import { Button } from "@examples/ui/components/button";
 import { LoadMore } from "@examples/ui/components/load-more";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { Textarea } from "@examples/ui/components/textarea";
+import { cn } from "@examples/ui/lib/utils";
 import { type QueryHandle, useQuery, useQueryClient } from "@raf-query/react";
 import { use, useOptimistic } from "react";
 
 import { commentsQuery } from "~/queries.ts";
 import { addComment } from "~/actions.ts";
+
+const commentClassName = "rounded-lg border p-3";
 
 const timeFormat = new Intl.DateTimeFormat("en", {
 	day: "numeric",
@@ -33,7 +36,11 @@ export function Comments(props: {
 				? current
 				: [comment, ...current],
 	);
-	const total = pages.pages.at(-1)?.total ?? 0;
+	const lastPage = pages.pages.at(-1);
+	const total = lastPage?.total ?? 0;
+	const firstPage = new Set(
+		pages.pages[0]?.comments.map((comment) => comment.id),
+	);
 
 	return (
 		<section className="grid gap-4">
@@ -63,7 +70,13 @@ export function Comments(props: {
 			</form>
 			<ol className="grid gap-3">
 				{shown.map((comment) => (
-					<li className="rounded-lg border p-3" key={comment.id}>
+					<li
+						className={cn(
+							commentClassName,
+							!firstPage.has(comment.id) && "animate-in duration-500 fade-in",
+						)}
+						key={comment.id}
+					>
 						<div className="mb-1 flex gap-2 text-xs text-muted-foreground">
 							<span className="font-medium text-foreground">
 								{comment.author.name}
@@ -75,10 +88,17 @@ export function Comments(props: {
 						<p className="text-sm">{comment.body}</p>
 					</li>
 				))}
+				{comments.isFetchingNextPage ? (
+					<CommentSkeletons
+						count={Math.min(
+							lastPage?.comments.length ?? 0,
+							total - loaded.length,
+						)}
+					/>
+				) : null}
 			</ol>
-			{comments.hasNextPage ? (
+			{comments.hasNextPage && !comments.isFetchingNextPage ? (
 				<LoadMore
-					loading={comments.isFetchingNextPage}
 					onLoad={() => {
 						void comments.fetchNextPage();
 					}}
@@ -86,6 +106,15 @@ export function Comments(props: {
 			) : null}
 		</section>
 	);
+}
+
+function CommentSkeletons(props: { readonly count: number }) {
+	return Array.from({ length: props.count }, (_, index) => (
+		<li className={commentClassName} key={index}>
+			<Skeleton className="mb-1 h-4 w-32" />
+			<Skeleton className="h-5 w-full" />
+		</li>
+	));
 }
 
 export function CommentsSkeleton() {

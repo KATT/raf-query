@@ -18,6 +18,10 @@ const dateFormat = new Intl.DateTimeFormat("en", {
 	month: "short",
 });
 
+// Rows and their skeletons share one fixed height, so a loaded page takes
+// exactly the space its skeletons held and nothing below it moves.
+const rowClassName = "flex h-12 items-center gap-3 px-4";
+
 export function IssueList(props: {
 	readonly handle: QueryHandle<typeof issueListQuery>;
 }) {
@@ -25,48 +29,65 @@ export function IssueList(props: {
 		whilePending: "previous",
 	});
 	const pages = use(pagesPromise);
-	const issues = pages.pages.flatMap((page) => page.issues);
-	const total = pages.pages.at(-1)?.total ?? 0;
+	const lastPage = pages.pages.at(-1);
+	const total = lastPage?.total ?? 0;
+	const shown = pages.pages.reduce((sum, page) => sum + page.issues.length, 0);
 
 	return (
 		<div
-			aria-busy={list.isPrevious}
+			aria-busy={list.isPrevious || list.isFetchingNextPage}
 			className={cn(
 				"grid gap-4 transition-opacity",
 				list.isPrevious && "opacity-50",
 			)}
 		>
 			<Card className="gap-0 divide-y py-0">
-				{issues.length === 0 ? (
+				{shown === 0 ? (
 					<p className="p-6 text-sm text-muted-foreground">No issues.</p>
 				) : null}
-				{issues.map((issue) => (
-					<Link
-						className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50"
-						href={`/issues/${issue.id}`}
-						key={issue.id}
+				{pages.pages.map((page, index) => (
+					<div
+						className={cn(
+							"divide-y",
+							index > 0 && "animate-in duration-500 fade-in",
+						)}
+						key={pages.pageParams[index]}
 					>
-						<span className="w-10 text-sm text-muted-foreground">
-							#{issue.id}
-						</span>
-						<span className="flex-1 truncate font-medium">{issue.title}</span>
-						<span className="flex items-center gap-1 text-xs text-muted-foreground">
-							<MessageSquare className="size-3" />
-							{issue.commentCount}
-						</span>
-						<span className="w-14 text-right text-xs text-muted-foreground">
-							{dateFormat.format(new Date(issue.createdAt))}
-						</span>
-						<StatusBadge status={issue.status} />
-					</Link>
+						{page.issues.map((issue) => (
+							<Link
+								className={cn(rowClassName, "hover:bg-muted/50")}
+								href={`/issues/${issue.id}`}
+								key={issue.id}
+							>
+								<span className="w-10 text-sm text-muted-foreground">
+									#{issue.id}
+								</span>
+								<span className="flex-1 truncate font-medium">
+									{issue.title}
+								</span>
+								<span className="flex items-center gap-1 text-xs text-muted-foreground">
+									<MessageSquare className="size-3" />
+									{issue.commentCount}
+								</span>
+								<span className="w-14 text-right text-xs text-muted-foreground">
+									{dateFormat.format(new Date(issue.createdAt))}
+								</span>
+								<StatusBadge status={issue.status} />
+							</Link>
+						))}
+					</div>
 				))}
+				{list.isFetchingNextPage ? (
+					<IssueRowSkeletons
+						count={Math.min(lastPage?.issues.length ?? 0, total - shown)}
+					/>
+				) : null}
 			</Card>
 			<p className="text-sm text-muted-foreground">
-				Showing {issues.length} of {total} issues
+				Showing {shown} of {total} issues
 			</p>
-			{list.hasNextPage ? (
+			{list.hasNextPage && !list.isFetchingNextPage ? (
 				<LoadMore
-					loading={list.isFetchingNextPage}
 					onLoad={() => {
 						void list.fetchNextPage();
 					}}
@@ -76,14 +97,22 @@ export function IssueList(props: {
 	);
 }
 
-export function IssueListSkeleton() {
+function IssueRowSkeletons(props: { readonly count: number }) {
 	return (
-		<Card className="gap-0 divide-y py-0">
-			{Array.from({ length: 8 }, (_, index) => (
-				<div className="px-4 py-3" key={index}>
+		<div className="divide-y">
+			{Array.from({ length: props.count }, (_, index) => (
+				<div className={rowClassName} key={index}>
 					<Skeleton className="h-5 w-full" />
 				</div>
 			))}
+		</div>
+	);
+}
+
+export function IssueListSkeleton() {
+	return (
+		<Card className="gap-0 py-0">
+			<IssueRowSkeletons count={10} />
 		</Card>
 	);
 }
