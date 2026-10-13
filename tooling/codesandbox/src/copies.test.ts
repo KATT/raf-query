@@ -275,7 +275,9 @@ describe("writeCopies", () => {
 				);
 				assert.isFalse(yield* exists(`apps/${app}/node_modules`));
 
-				for (const dir of ["db", "ui"]) {
+				for (const dir of yield* fs.readDirectory(
+					path.join(root, "examples", ".shared"),
+				)) {
 					const file = path.join(dir, "package.json");
 					assert.strictEqual(
 						yield* read(path.join("packages", file)),
