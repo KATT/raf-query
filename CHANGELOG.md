@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.0](https://github.com/KATT/raf-query/compare/0.2.8...0.3.0) (2026-10-13)
+
+### ⚠ BREAKING CHANGES
+
+- RSC apps hydrate only through HydrationBoundary; QueryProvider moves to /rsc ([#61](https://github.com/KATT/raf-query/issues/61))
+
+### Features
+
+- RSC apps hydrate only through HydrationBoundary; QueryProvider moves to /rsc ([#61](https://github.com/KATT/raf-query/issues/61)) ([772de79](https://github.com/KATT/raf-query/commit/772de796adfdf267a9184fd75624ff30ae53f4fc)), references [#59](https://github.com/KATT/raf-query/issues/59) [#59](https://github.com/KATT/raf-query/issues/59) [#59](https://github.com/KATT/raf-query/issues/59) [#59](https://github.com/KATT/raf-query/issues/59)
+
 ## [0.2.8](https://github.com/KATT/raf-query/compare/0.2.7...0.2.8) (2026-10-13)
 
 - **codesandbox:** speed up the branch sync ([#60](https://github.com/KATT/raf-query/issues/60)) ([9099cb2](https://github.com/KATT/raf-query/commit/9099cb2ce937104d5feb8c7033233e701f412a28))
