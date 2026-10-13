@@ -28,6 +28,8 @@ The same issue tracker, built on two frameworks so the integrations can be compa
 | `@raf-query/core`  | Framework-agnostic and Effect-only: `QueryCache`, `queryOptions` / `infiniteQueryOptions`, handles, dehydrate / hydrate                     |
 | `@raf-query/react` | `QueryClient` (the cache with Promise methods), hooks, provider, `allKeyed`. Re-exports `@raf-query/core`, so apps import only this package |
 
+`effect` (`^4.0.0`) is a peer dependency of both, so an app that uses Effect shares one copy with raf-query. npm, pnpm and Bun install it automatically; with Yarn, add it yourself (`yarn add effect`).
+
 `@raf-query/react` subpath entries for framework integrations and tooling:
 
 | Entry                              | Use                                                                    |
