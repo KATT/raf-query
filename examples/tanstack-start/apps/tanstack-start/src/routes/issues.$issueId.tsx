@@ -9,20 +9,15 @@ import { Comments, CommentsSkeleton } from "~/components/comments.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
 import { StatusBadge } from "~/components/status-badge.tsx";
 import { AssigneeCard, AssigneeCardSkeleton } from "~/components/user.tsx";
-import { commentsQuery, issueQuery, userQuery } from "~/queries.ts";
+import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 
 export const Route = createFileRoute("/issues/$issueId")({
 	loader: async (args) => {
 		const qc = args.context.queryClient;
 		const id = Number(args.params.issueId);
-		const comments = qc.prefetch(commentsQuery, { issueId: id });
-		const issue = await qc.fetch(issueQuery, { id });
-		// The assignee is known only once the issue loads. Starting it here
-		// keeps it in the loader, instead of the card asking after render.
-		const assignee = qc.prefetch(userQuery, { id: issue.assigneeId });
 		return {
-			assignee,
-			comments,
+			assignee: qc.prefetch(assigneeQuery, { issueId: id }),
+			comments: qc.prefetch(commentsQuery, { issueId: id }),
 			issue: await qc.ensure(issueQuery, { id }),
 		};
 	},

@@ -6,7 +6,7 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { use } from "react";
 
-import { userQuery } from "~/queries.ts";
+import { assigneeQuery } from "~/queries.ts";
 
 function initials(name: string) {
 	return name
@@ -16,10 +16,13 @@ function initials(name: string) {
 }
 
 export function AssigneeCard(props: {
-	readonly handle: QueryHandle<typeof userQuery>;
+	readonly handle: QueryHandle<typeof assigneeQuery>;
 }) {
-	const [userPromise] = useQuery(userQuery, props.handle);
+	const [userPromise] = useQuery(assigneeQuery, props.handle);
 	const user = use(userPromise);
+	if (!user) {
+		return null;
+	}
 
 	return (
 		<Card className="py-4">

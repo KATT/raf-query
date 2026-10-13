@@ -60,9 +60,12 @@ export async function getIssue(id: number): Promise<Issue | null> {
 	return store().issues.find((issue) => issue.id === id) ?? null;
 }
 
-export async function getUser(id: string): Promise<User | null> {
+/** The issue's assignee in one round trip, like a join; `null` if no issue. */
+export async function getIssueAssignee(issueId: number): Promise<User | null> {
 	await latency();
-	return store().users.find((user) => user.id === id) ?? null;
+	const data = store();
+	const issue = data.issues.find((candidate) => candidate.id === issueId);
+	return data.users.find((user) => user.id === issue?.assigneeId) ?? null;
 }
 
 export async function countIssues(): Promise<IssueCounts> {

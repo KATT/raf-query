@@ -56,18 +56,16 @@ export function commentsQuery(input: { issueId: number }) {
 	});
 }
 
-export function userQuery(input: { id: string }) {
+export function assigneeQuery(input: { issueId: number }) {
 	return queryOptions({
-		queryFn: async () => {
-			const user = await parseFound(
-				api.users[":id"].$get({ param: { id: input.id } }),
-			);
-			if (!user) {
-				notFound();
-			}
-			return user;
-		},
-		queryKey: ["users", input.id],
-		staleTime: 60_000,
+		// `null` for a missing issue: the issue query already 404s the page, and
+		// this one starts beside it, so throwing here would fail a second time.
+		queryFn: () =>
+			parseFound(
+				api.issues[":id"].assignee.$get({
+					param: { id: String(input.issueId) },
+				}),
+			),
+		queryKey: ["issues", "assignee", input.issueId],
 	});
 }
