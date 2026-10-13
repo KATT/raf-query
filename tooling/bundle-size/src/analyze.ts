@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 /**
  * Bundle one raf-query fixture app and list the modules that end up in it,
- * largest first (bytes as rendered into the chunk, before minification). Use
- * it to find
- * what to cut after `measure.ts` shows a size change.
+ * largest first (bytes as rendered into the chunk, before minification).
+ * Use it to find what to cut after `measure.ts` shows a size change.
  *
  * Usage: node src/analyze.ts [export] [module] [--top N]
  *   export  fixture export to render (default `queryApp`)
