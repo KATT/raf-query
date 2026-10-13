@@ -1,13 +1,19 @@
 import { describe, expect, it } from "@effect/vitest";
 
-import { QueryCache, QueryClient, queryOptions } from "./index.ts";
+import { QueryCache as EffectQueryCache } from "./effect.ts";
+import { QueryCache, queryOptions, createQueryClient } from "./index.ts";
 
 describe("@raf-query/react", () => {
 	it("re-exports @raf-query/core", () => {
 		expect(queryOptions).toBeTypeOf("function");
 	});
 
-	it("runs QueryClient on an Effect QueryCache", () => {
-		expect(QueryCache.isQueryCache(new QueryClient().effect)).toBe(true);
+	it("runs QueryClient on a QueryCache that /effect can view", () => {
+		const qc = createQueryClient();
+
+		expect(QueryCache.isQueryCache(qc.cache)).toBe(true);
+		expect(
+			EffectQueryCache.isQueryCache(EffectQueryCache.fromCache(qc.cache)),
+		).toBe(true);
 	});
 });

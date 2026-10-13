@@ -1,21 +1,6 @@
-import {
-	Cause,
-	type Clock,
-	type Context,
-	Data,
-	Deferred,
-	Effect,
-	Exit,
-	FiberMap,
-	Pipeable,
-	Predicate,
-	Schedule,
-	Scope,
-	type Stream,
-} from "effect";
-
 import type { Event as CacheEvent } from "./cache.ts";
 import { unsafeCast } from "./cast.ts";
+import { type Clock, sleep } from "./clock.ts";
 import {
 	type Direction,
 	fetchPages,
@@ -24,72 +9,58 @@ import {
 	previousPageParam,
 } from "./infinite.ts";
 import type { QueryKey } from "./key.ts";
-import { listen } from "./listen.ts";
 import { scheduleNotify } from "./notify.ts";
 import type {
 	AnyQueryOptions,
 	QueryBehavior,
 	QueryFactory,
-	QueryFnResult,
 	QueryHandle,
 	QueryMeta,
 } from "./options.ts";
+import { cancelled, died, type Outcome, succeeded } from "./outcome.ts";
 import { type Platform, type PlatformEvent, whenOnline } from "./platform.ts";
+import { hasProperty } from "./predicate.ts";
 import type { FetchRequest, Query, State, SubscribeOptions } from "./query.ts";
-import { fromQueryFn, requestServices, runRequest } from "./request.ts";
-import { retrySchedule } from "./retry.ts";
+import { callQueryFn, type EffectServices } from "./request.ts";
+import { startRetries } from "./retry.ts";
 import { replaceEqualDeep } from "./share.ts";
 import { fulfilled, type Pending, pending, type Thenable } from "./thenable.ts";
 
 export const TypeId = "~@raf-query/core/Query";
 
-/**
- * The failure of a request that was interrupted rather than settled: its
- * entry was removed or cleared, or an Effect `queryFn` was interrupted.
- */
-export class CancelledError extends Data.TaggedError("CancelledError") {
-	override readonly message = "The query was cancelled";
-}
-
-/**
- * The state a cache shares with its entries. Entries are created
- * synchronously (a render reads one), so they fork their fibers with the
- * services and into the scope the cache was made with.
- */
+/** The state a cache shares with its entries. */
 export interface CacheState {
-	readonly clock: Clock.Clock;
+	readonly clock: Clock;
+	/** Set by `dispose`: entries are gone, and new requests are cancelled. */
+	closed: boolean;
 	readonly defaults: QueryBehavior;
 	readonly entries: Map<string, Entry>;
 	readonly isServer: boolean;
 	readonly listeners: Set<(event: CacheEvent) => void>;
 	readonly platform: Platform;
-	readonly scope: Scope.Scope;
-	readonly services: Context.Context<never>;
+	/** Runs Effect `queryFn`s; `QueryCache.fromCache` adds one if missing. */
+	services: EffectServices | undefined;
 }
 
-/** The background work of an entry, one fiber per kind. */
-type Task = "errorShown" | "gc" | "request" | "stale";
-
-interface Tasks {
-	cancel(task: Task): void;
-	fork(
-		task: Task,
-		effect: Effect.Effect<void>,
-		options?: { readonly onlyIfMissing?: boolean },
-	): void;
-}
+/** An entry's timers, at most one of each. */
+type Timer = "errorShown" | "gc" | "stale";
 
 interface Commands {
-	readonly fetchNextPage: Effect.Effect<void>;
-	readonly fetchPreviousPage: Effect.Effect<void>;
-	readonly refetch: Effect.Effect<void>;
+	fetchNextPage(): Promise<void>;
+	fetchPreviousPage(): Promise<void>;
+	refetch(): Promise<void>;
 }
 
 /** A cache entry: a {@link Query} and the state behind it. */
 export interface Entry extends Query {
 	readonly cache: CacheState;
-	/** One Effect per command, so readers can compare them by identity. */
+	/** One function per command, so readers can compare them by identity. */
 	readonly commands: Commands;
+	/**
+	 * What its Effect requests run with: the latest verb caller's services
+	 * over the cache's ({@link provide}); `undefined` for the cache's own.
+	 */
+	context: unknown;
 	/** A failed first load was shown; the next read retries it. */
 	errorShown: boolean;
 	/** `failureCount` before the request in flight, restored if it's cancelled. */
@@ -97,39 +68,41 @@ export interface Entry extends Query {
 	handle: QueryHandle;
 	/** `meta` sent with dehydrated state, for an entry no factory call has reached. */
 	hydratedMeta: QueryMeta | undefined;
-	/** Awaited by every caller of the request in flight; outlives restarts. */
-	inFlight: Deferred.Deferred<unknown, unknown> | undefined;
+	/** Settles every caller of the request in flight; outlives restarts. */
+	inFlight: PromiseWithResolvers<Outcome> | undefined;
 	readonly listeners: Map<() => void, SubscribeOptions>;
+	/** Called once when the entry leaves its cache. */
+	readonly onRemove: Set<() => void>;
 	options: AnyQueryOptions | undefined;
 	/** The first load's promise, until it settles. */
 	pending: Pending<unknown> | undefined;
+	removed: boolean;
+	/**
+	 * Aborts the request running now. A restart aborts it and starts another
+	 * for the same `inFlight`; only the latest one's outcome is kept.
+	 */
+	request: AbortController | undefined;
 	/** The last reader left during the request in flight: it retries no more. */
 	retriesStopped: boolean;
-	/** Open while the entry is cached; owns its fibers. */
-	readonly scope: Scope.Closeable;
-	/**
-	 * What its requests run with: the cache's services, under those of the
-	 * latest verb that called for this entry ({@link provide}).
-	 */
-	services: Context.Context<never>;
 	/**
 	 * The request in flight read its `signal`, or returned an Effect, so
-	 * interrupting it cancels its work (TanStack's `abortSignalConsumed`).
+	 * aborting it cancels its work (TanStack's `abortSignalConsumed`).
 	 */
 	signalRead: boolean;
 	state: State<unknown>;
-	readonly tasks: Tasks;
+	readonly timers: Map<Timer, () => void>;
 }
 
 const Proto = {
-	...Pipeable.Prototype,
 	[TypeId]: { _A: (value: never) => value, _E: (value: never) => value },
 };
 
 const defaultSubscribeOptions: SubscribeOptions = {};
 
+const noop = () => {};
+
 export function isQuery(value: unknown): value is Query {
-	return Predicate.hasProperty(value, TypeId);
+	return hasProperty(value, TypeId);
 }
 
 export function entryOf<TData, TFactory extends QueryFactory, TError>(
@@ -146,31 +119,11 @@ export function emit(cache: CacheState, event: CacheEvent) {
 	}
 }
 
-/** Fibers keyed by task: forking a task interrupts its previous fiber. */
-function makeTasks(cache: CacheState, scope: Scope.Scope): Tasks {
-	const runSync = Effect.runSyncWith(cache.services);
-	const runFork = Effect.runForkWith(cache.services);
-	const fibers = runSync(
-		FiberMap.make<Task, void, never>().pipe(Scope.provide(scope)),
-	);
-	const run = runSync(FiberMap.runtime(fibers)<never>());
-	return {
-		cancel(task) {
-			if (FiberMap.hasUnsafe(fibers, task)) {
-				runFork(FiberMap.remove(fibers, task));
-			}
-		},
-		fork(task, effect, options) {
-			run(task, effect, options);
-		},
-	};
-}
-
 export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
-	const scope = Scope.forkUnsafe(cache.scope);
 	const first = pending<unknown>();
 	const entry: Entry = Object.assign(Object.create(Proto), {
 		cache,
+		context: undefined,
 		errorShown: false,
 		failureCountBefore: 0,
 		handle: { input: undefined, key },
@@ -179,11 +132,12 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 		inFlight: undefined,
 		key,
 		listeners: new Map(),
+		onRemove: new Set(),
 		options: undefined,
 		pending: first,
+		removed: false,
+		request: undefined,
 		retriesStopped: false,
-		scope,
-		services: cache.services,
 		signalRead: false,
 		state: {
 			data: undefined,
@@ -198,12 +152,12 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 			status: "pending",
 			updatedAt: 0,
 		},
-		tasks: makeTasks(cache, scope),
+		timers: new Map(),
 	});
 	const commands: Commands = {
-		fetchNextPage: Effect.ignore(fetch(entry, { direction: "forward" })),
-		fetchPreviousPage: Effect.ignore(fetch(entry, { direction: "backward" })),
-		refetch: Effect.ignore(fetch(entry)),
+		fetchNextPage: () => fetch(entry, { direction: "forward" }).then(noop),
+		fetchPreviousPage: () => fetch(entry, { direction: "backward" }).then(noop),
+		refetch: () => fetch(entry).then(noop),
 	};
 	Object.assign(entry, { commands });
 	scheduleGc(entry);
@@ -213,7 +167,7 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 // Reads
 
 export function now(entry: Entry) {
-	return entry.cache.clock.currentTimeMillisUnsafe();
+	return entry.cache.clock.now();
 }
 
 /** Readers are subscribed; `invalidate` and focus refetch only what is read. */
@@ -276,7 +230,7 @@ export function subscribeUnsafe(
 ): () => void {
 	entry.listeners.set(listener, options);
 	entry.retriesStopped = false;
-	entry.tasks.cancel("gc");
+	cancelTimer(entry, "gc");
 	scheduleStale(entry);
 	emit(entry.cache, { query: entry, type: "observers" });
 	return () => {
@@ -284,7 +238,7 @@ export function subscribeUnsafe(
 			return;
 		}
 		if (entry.listeners.size === 0) {
-			entry.tasks.cancel("stale");
+			cancelTimer(entry, "stale");
 			scheduleGc(entry);
 			const inFlight = entry.inFlight;
 			if (inFlight) {
@@ -298,22 +252,11 @@ export function subscribeUnsafe(
 	};
 }
 
-export function changes(entry: Entry): Stream.Stream<State<unknown>> {
-	return listen((push) => {
-		push(entry.state);
-		return subscribeUnsafe(entry, () => push(entry.state));
-	});
-}
-
 // Requests
 
-/**
- * Run this entry's requests with the services of `caller`, a verb's fiber
- * context, over the cache's: every request from now on, including ones a
- * render, a refetch or `invalidate` starts.
- */
-export function provide(entry: Entry, caller: Context.Context<never>) {
-	entry.services = requestServices(entry.cache.services, caller);
+/** Run this entry's Effect requests with `context` from now on. */
+export function provide(entry: Entry, context: unknown) {
+	entry.context = context;
 }
 
 /** Attach the options and input of the latest factory call. */
@@ -367,55 +310,48 @@ export function revalidate(entry: Entry) {
 	}
 }
 
-export function fetch(
+/** Start a request, or join the one in flight, and wait for its outcome. */
+export async function fetch(
 	entry: Entry,
 	request: FetchRequest = {},
-): Effect.Effect<unknown, unknown> {
-	return Effect.suspend(() => {
-		const inFlight = entry.inFlight;
-		if (inFlight && request.direction && !request.restart) {
-			// A page joins the list the in-flight request returns.
-			return Deferred.await(inFlight).pipe(
-				Effect.exit,
-				Effect.andThen(fetch(entry, request)),
-			);
-		}
-		return begin(entry, request);
-	});
+): Promise<Outcome> {
+	const inFlight = entry.inFlight;
+	if (inFlight && request.direction && !request.restart) {
+		// A page joins the list the in-flight request returns.
+		await inFlight.promise;
+		return fetch(entry, request);
+	}
+	return begin(entry, request);
 }
 
-export function invalidate(entry: Entry): Effect.Effect<void> {
-	return Effect.suspend(() => {
-		set(entry, { isInvalidated: true });
-		if (!isObserved(entry) || !entry.options) {
-			return Effect.void;
-		}
-		return Effect.ignore(begin(entry, { restart: true }));
-	});
+export function invalidate(entry: Entry): Promise<void> {
+	set(entry, { isInvalidated: true });
+	if (!isObserved(entry) || !entry.options) {
+		return Promise.resolve();
+	}
+	return begin(entry, { restart: true }).then(noop);
 }
 
-export function reset(entry: Entry): Effect.Effect<void> {
-	return Effect.suspend(() => {
-		entry.tasks.cancel("errorShown");
-		entry.errorShown = false;
-		entry.pending ??= pending();
-		set(entry, {
-			data: undefined,
-			error: null,
-			failureCount: 0,
-			hasData: false,
-			isInvalidated: false,
-			promise: entry.pending.promise,
-			status: "pending",
-			updatedAt: 0,
-		});
-		// An in-flight request restarts too, or its response would restore the
-		// data that was just dropped.
-		if (!entry.options || (!isObserved(entry) && !entry.inFlight)) {
-			return Effect.void;
-		}
-		return Effect.ignore(begin(entry, { restart: true }));
+export function reset(entry: Entry): Promise<void> {
+	cancelTimer(entry, "errorShown");
+	entry.errorShown = false;
+	entry.pending ??= pending();
+	set(entry, {
+		data: undefined,
+		error: null,
+		failureCount: 0,
+		hasData: false,
+		isInvalidated: false,
+		promise: entry.pending.promise,
+		status: "pending",
+		updatedAt: 0,
 	});
+	// An in-flight request restarts too, or its response would restore the
+	// data that was just dropped.
+	if (!entry.options || (!isObserved(entry) && !entry.inFlight)) {
+		return Promise.resolve();
+	}
+	return begin(entry, { restart: true }).then(noop);
 }
 
 /** Write data directly, as if a request had returned it. */
@@ -432,7 +368,7 @@ export function resume(entry: Entry, promise: PromiseLike<unknown>) {
 	// a defect.
 	startRequest(
 		entry,
-		Effect.promise(() => Promise.resolve(promise)),
+		() => Promise.resolve(promise).then(succeeded, died),
 		undefined,
 	);
 }
@@ -450,53 +386,54 @@ export function onPlatformEvent(entry: Entry, event: PlatformEvent) {
 	}
 }
 
-/** Take `entry` out of its cache: interrupt its fibers and fail its awaiters. */
+/** Take `entry` out of its cache: abort its request and cancel its awaiters. */
 export function remove(entry: Entry) {
 	const cache = entry.cache;
 	if (cache.entries.get(entry.hash) !== entry) {
 		return;
 	}
 	cache.entries.delete(entry.hash);
+	entry.removed = true;
+	for (const cancel of entry.timers.values()) {
+		cancel();
+	}
+	entry.timers.clear();
+	entry.request?.abort();
+	entry.request = undefined;
 	const inFlight = entry.inFlight;
 	entry.inFlight = undefined;
-	Effect.runForkWith(cache.services)(Scope.close(entry.scope, Exit.void));
-	if (inFlight) {
-		Deferred.doneUnsafe(inFlight, Exit.fail(new CancelledError()));
+	inFlight?.resolve(cancelled());
+	for (const finalizer of entry.onRemove) {
+		finalizer();
 	}
+	entry.onRemove.clear();
 	emit(cache, { query: entry, type: "removed" });
 }
 
+function isClosed(entry: Entry) {
+	return entry.removed || entry.cache.closed;
+}
+
 /**
- * Start a request now, or join the one in flight. The returned Effect
- * waits for its result.
+ * Start a request now, or join the one in flight; resolves with its
+ * outcome.
  */
-function begin(
-	entry: Entry,
-	request: FetchRequest,
-): Effect.Effect<unknown, unknown> {
-	if (Predicate.isTagged(entry.scope.state, "Closed")) {
-		return Effect.fail(new CancelledError());
+function begin(entry: Entry, request: FetchRequest): Promise<Outcome> {
+	if (isClosed(entry)) {
+		return Promise.resolve(cancelled());
 	}
 	const options = entry.options;
 	const inFlight = entry.inFlight;
 	if (inFlight && !(request.restart && options)) {
-		return Deferred.await(inFlight);
+		return inFlight.promise;
 	}
 	if (!options) {
-		const promise = entry.state.promise;
-		return Effect.promise(() => promise);
+		return Promise.resolve(entry.state.promise).then(succeeded, died);
 	}
-	entry.tasks.cancel("request");
-	return Deferred.await(
-		startRequest(
-			entry,
-			runRequest(
-				requestEffect(entry, options, request),
-				entry.hash,
-				entry.services,
-			),
-			request.direction,
-		),
+	return startRequest(
+		entry,
+		(signal) => requestFor(entry, options, request, signal),
+		request.direction,
 	);
 }
 
@@ -510,20 +447,26 @@ function set(entry: Entry, patch: Partial<State<unknown>>) {
 	scheduleStale(entry);
 }
 
-/** Run `request` as the entry's request fiber, settling into its awaiter. */
+/**
+ * Run `run` as the entry's request, replacing any running one, and settle
+ * the entry's awaiters with its outcome.
+ */
 function startRequest(
 	entry: Entry,
-	request: Effect.Effect<unknown, unknown>,
+	run: (signal: AbortSignal) => Promise<Outcome>,
 	direction: Direction | undefined,
-): Deferred.Deferred<unknown, unknown> {
+): Promise<Outcome> {
 	if (!entry.inFlight) {
 		entry.failureCountBefore = entry.state.failureCount;
 	}
-	const awaiter = entry.inFlight ?? Deferred.makeUnsafe<unknown, unknown>();
-	entry.inFlight = awaiter;
+	const inFlight = entry.inFlight ?? Promise.withResolvers<Outcome>();
+	entry.inFlight = inFlight;
+	entry.request?.abort();
+	const controller = new AbortController();
+	entry.request = controller;
 	entry.retriesStopped = false;
 	entry.signalRead = false;
-	entry.tasks.cancel("gc");
+	cancelTimer(entry, "gc");
 	if (!entry.state.hasData && entry.state.status === "error") {
 		entry.pending = pending();
 		set(entry, {
@@ -541,66 +484,58 @@ function startRequest(
 			isFetching: true,
 		});
 	}
-	entry.tasks.fork(
-		"request",
-		Effect.exit(request).pipe(
-			Effect.flatMap((exit) => Effect.sync(() => settle(entry, awaiter, exit))),
-		),
-	);
-	return awaiter;
+	void run(controller.signal).then((outcome) => {
+		if (entry.request === controller) {
+			settle(entry, outcome);
+		}
+	});
+	return inFlight.promise;
 }
 
-function settle(
-	entry: Entry,
-	awaiter: Deferred.Deferred<unknown, unknown>,
-	exit: Exit.Exit<unknown, unknown>,
-) {
-	if (entry.inFlight !== awaiter) {
-		return;
-	}
+function settle(entry: Entry, outcome: Outcome) {
+	const inFlight = entry.inFlight;
 	entry.inFlight = undefined;
-	if (Exit.isSuccess(exit)) {
-		const data = succeed(entry, exit.value, now(entry));
-		Deferred.doneUnsafe(awaiter, Exit.succeed(data));
-	} else if (Cause.hasInterruptsOnly(exit.cause)) {
+	entry.request = undefined;
+	if (outcome.kind === "success") {
+		const data = succeed(entry, outcome.value, now(entry));
+		inFlight?.resolve(succeeded(data));
+	} else if (outcome.kind === "cancelled") {
 		set(entry, { fetchDirection: undefined, isFetching: false });
-		Deferred.doneUnsafe(awaiter, Exit.fail(new CancelledError()));
+		inFlight?.resolve(outcome);
 	} else {
-		fail(entry, Cause.squash(exit.cause));
-		Deferred.doneUnsafe(awaiter, exit);
+		fail(entry, outcome.kind === "failure" ? outcome.error : outcome.defect);
+		inFlight?.resolve(outcome);
 	}
 	scheduleGc(entry);
 }
 
 /**
- * The last reader left while `awaiter`'s request was in flight. A refetch
- * whose work an interrupt cancels (`signalRead`) is interrupted, and the
- * entry goes back to its state before the request; its awaiters get the
- * cached data. Any other request finishes, so its result is cached, but
- * runs no more retries.
+ * The last reader left while `inFlight`'s request was running. A refetch
+ * whose work aborting cancels (`signalRead`) is aborted, and the entry goes
+ * back to its state before the request; its awaiters get the cached data.
+ * Any other request finishes, so its result is cached, but runs no more
+ * retries.
  */
-function unobserved(
-	entry: Entry,
-	awaiter: Deferred.Deferred<unknown, unknown>,
-) {
-	if (isObserved(entry) || entry.inFlight !== awaiter) {
+function unobserved(entry: Entry, inFlight: PromiseWithResolvers<Outcome>) {
+	if (isObserved(entry) || entry.inFlight !== inFlight) {
 		return;
 	}
 	// A render suspended on a first load isn't subscribed. It waits on
-	// `entry.pending`, which an interrupted request leaves pending until a
-	// later read, so a first load always finishes.
+	// `entry.pending`, which an aborted request leaves pending until a later
+	// read, so a first load always finishes.
 	if (!entry.signalRead || !entry.state.hasData) {
 		entry.retriesStopped = true;
 		return;
 	}
 	entry.inFlight = undefined;
-	entry.tasks.cancel("request");
+	entry.request?.abort();
+	entry.request = undefined;
 	set(entry, {
 		failureCount: entry.failureCountBefore,
 		fetchDirection: undefined,
 		isFetching: false,
 	});
-	Deferred.doneUnsafe(awaiter, Exit.succeed(entry.state.data));
+	inFlight.resolve(succeeded(entry.state.data));
 	scheduleGc(entry);
 }
 
@@ -650,31 +585,34 @@ function fail(entry: Entry, error: unknown) {
  * A failed first load rejects its promise, so the reader throws to an error
  * boundary. Every read in that same task (React retries a throwing render
  * once, StrictMode renders twice) gets the rejection too; a read in a later
- * task — the boundary was reset — starts a new request.
+ * task — the boundary was reset — starts a new request. A real macrotask,
+ * not the cache's clock: it marks a task boundary, not a delay.
  */
 function markErrorShown(entry: Entry) {
-	entry.tasks.fork(
-		"errorShown",
-		Effect.yieldNow.pipe(
-			Effect.andThen(
-				Effect.sync(() => {
-					entry.errorShown = true;
-				}),
-			),
-		),
-		{ onlyIfMissing: true },
-	);
+	if (entry.timers.has("errorShown") || isClosed(entry)) {
+		return;
+	}
+	const timer = setTimeout(() => {
+		entry.timers.delete("errorShown");
+		entry.errorShown = true;
+	}, 0);
+	entry.timers.set("errorShown", () => clearTimeout(timer));
 }
 
-function requestEffect(
+function requestFor(
 	entry: Entry,
 	options: AnyQueryOptions,
 	request: FetchRequest,
-): Effect.Effect<unknown, unknown> {
+	signal: AbortSignal,
+): Promise<Outcome> {
 	const meta = metaOf(entry);
 	const queryKey = options.queryKey;
+	const readSignal = () => {
+		entry.signalRead = true;
+		return signal;
+	};
 	if (options.kind === "query") {
-		return attempt(entry, (readSignal) =>
+		return attempt(entry, signal, () =>
 			options.queryFn({
 				meta,
 				queryKey,
@@ -688,7 +626,7 @@ function requestEffect(
 		? entry.state.data
 		: undefined;
 	return fetchPages(options, current, request, (pageParam, direction) =>
-		attempt(entry, (readSignal) =>
+		attempt(entry, signal, () =>
 			options.queryFn({
 				direction,
 				meta,
@@ -703,83 +641,85 @@ function requestEffect(
 }
 
 /**
- * One `queryFn` call, retried per the query's policy. Every failure counts.
- * `call` reads the signal through `readSignal`, which marks the entry's
- * `signalRead`. Its services are erased with its data type; `runRequest`
- * provides them.
+ * One `queryFn` call, retried per the query's policy until it succeeds,
+ * dies, or the policy, the readers leaving or `signal` stop it. Every
+ * failure counts. Retries wait while the browser is offline; the first
+ * attempt doesn't.
  */
-function attempt(
+async function attempt(
 	entry: Entry,
-	call: (readSignal: () => AbortSignal) => QueryFnResult<unknown>,
-): Effect.Effect<unknown, unknown> {
-	const once = fromQueryFn<unknown, unknown, never>((signal) => {
-		const result = call(() => {
-			entry.signalRead = true;
-			return signal;
-		});
-		// Interrupting an Effect cancels it, whether it reads the signal or not.
-		if (Effect.isEffect(result)) {
-			entry.signalRead = true;
-		}
-		return result;
-	}).pipe(
-		Effect.tapError(() =>
-			Effect.sync(() =>
-				set(entry, { failureCount: entry.state.failureCount + 1 }),
-			),
-		),
-	);
-	const schedule = retrySchedule(
+	signal: AbortSignal,
+	call: () => unknown,
+): Promise<Outcome> {
+	const cache = entry.cache;
+	const services = {
+		context: entry.context ?? cache.services?.context,
+		services: cache.services,
+	};
+	const onEffect = () => {
+		entry.signalRead = true;
+	};
+	const next = startRetries(
 		{
 			retry: behavior(entry, "retry"),
 			retryDelay: behavior(entry, "retryDelay"),
 		},
-		entry.cache.isServer,
+		cache.isServer,
+		() => cache.clock.now(),
 	);
-	if (!schedule) {
-		return once;
+	for (let failureCount = 1; ; failureCount++) {
+		const outcome = await callQueryFn(call, signal, services, onEffect);
+		if (signal.aborted || outcome.kind !== "failure") {
+			return outcome;
+		}
+		set(entry, { failureCount: entry.state.failureCount + 1 });
+		const delay = entry.retriesStopped
+			? undefined
+			: next?.(failureCount, outcome.error);
+		if (delay === undefined || !(await waitToRetry(entry, delay, signal))) {
+			return outcome;
+		}
 	}
-	// Retries wait while the browser is offline; the first attempt doesn't.
-	const online = entry.cache.isServer ? Effect.void : whenOnline;
-	return Effect.suspend(() => {
-		let retrying = false;
-		let lastError: unknown;
-		// Readers can leave while a retry waits out its delay or the network.
-		const unlessStopped = <A>(next: Effect.Effect<A, unknown>) =>
-			Effect.suspend(() =>
-				entry.retriesStopped ? Effect.fail(lastError) : next,
-			);
-		const gated = Effect.suspend(() => {
-			if (!retrying) {
-				retrying = true;
-				return once;
-			}
-			return unlessStopped(Effect.andThen(online, unlessStopped(once)));
-		}).pipe(
-			Effect.tapError((error) =>
-				Effect.sync(() => {
-					lastError = error;
-				}),
-			),
-		);
-		return Effect.retry(
-			gated,
-			Schedule.while(schedule, () => !entry.retriesStopped),
-		);
-	});
+}
+
+/** Wait out a retry's delay, then the network. `false`: don't retry. */
+async function waitToRetry(entry: Entry, delay: number, signal: AbortSignal) {
+	const cache = entry.cache;
+	await sleep(cache.clock, delay, signal);
+	if (signal.aborted || entry.retriesStopped) {
+		return false;
+	}
+	if (!cache.isServer) {
+		await whenOnline(cache.platform, signal);
+	}
+	return !signal.aborted && !entry.retriesStopped;
+}
+
+function cancelTimer(entry: Entry, timer: Timer) {
+	entry.timers.get(timer)?.();
+	entry.timers.delete(timer);
+}
+
+function startTimer(entry: Entry, timer: Timer, ms: number, run: () => void) {
+	cancelTimer(entry, timer);
+	if (isClosed(entry)) {
+		return;
+	}
+	const cancel = entry.cache.clock.schedule(() => {
+		entry.timers.delete(timer);
+		run();
+	}, ms);
+	entry.timers.set(timer, cancel);
 }
 
 function scheduleGc(entry: Entry) {
 	const gcTime =
 		behavior(entry, "gcTime") ?? (entry.cache.isServer ? Infinity : 300_000);
 	if (isObserved(entry) || entry.inFlight || !Number.isFinite(gcTime)) {
-		entry.tasks.cancel("gc");
+		cancelTimer(entry, "gc");
 		return;
 	}
-	entry.tasks.fork(
-		"gc",
-		Effect.sleep(gcTime).pipe(Effect.andThen(Effect.sync(() => remove(entry)))),
-	);
+	startTimer(entry, "gc", gcTime, () => remove(entry));
 }
 
 function scheduleStale(entry: Entry) {
@@ -791,14 +731,9 @@ function scheduleStale(entry: Entry) {
 		state.isStale ||
 		!Number.isFinite(staleTime)
 	) {
-		entry.tasks.cancel("stale");
+		cancelTimer(entry, "stale");
 		return;
 	}
 	const remaining = state.updatedAt + staleTime - now(entry);
-	entry.tasks.fork(
-		"stale",
-		Effect.sleep(Math.max(remaining, 0) + 1).pipe(
-			Effect.andThen(Effect.sync(() => set(entry, {}))),
-		),
-	);
+	startTimer(entry, "stale", Math.max(remaining, 0) + 1, () => set(entry, {}));
 }

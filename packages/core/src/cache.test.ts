@@ -16,18 +16,17 @@ import {
 } from "effect";
 import { TestClock } from "effect/testing";
 
+import { Platform, Query, QueryCache, retrySchedule } from "./effect.ts";
 import {
 	type DehydratedState,
 	dehydrateQuery,
 	infiniteQueryOptions,
-	Platform,
-	Query,
-	QueryCache,
 	type QueryMeta,
 	queryOptions,
 	RedactedError,
 	type RetryPolicy,
 } from "./index.ts";
+import * as CoreCache from "./cache.ts";
 import { createBackend, fakePlatform, flush } from "./test-utils.ts";
 
 const settle = Effect.promise(flush);
@@ -71,8 +70,11 @@ function greetingQuery(input: { name: string }) {
 				if (input.name === "") {
 					return yield* Effect.fail(new NotFound({ id: 0 }));
 				}
-				const span = yield* Effect.orDie(Effect.currentSpan);
-				return { span: span.name, text: `${greeting}, ${input.name}` };
+				const span = yield* Effect.option(Effect.currentSpan);
+				return {
+					span: Option.getOrUndefined(span)?.name,
+					text: `${greeting}, ${input.name}`,
+				};
 			}),
 		queryKey: ["greeting", input.name],
 		retry: false,
@@ -92,10 +94,7 @@ describe("QueryCache services", () => {
 
 			const greeting = yield* Effect.promise(() => Query.readUnsafe(query));
 
-			expect(greeting).toEqual({
-				span: "raf-query.request",
-				text: "Hello, Ada",
-			});
+			expect(greeting).toEqual({ span: undefined, text: "Hello, Ada" });
 		}),
 	);
 
@@ -125,6 +124,8 @@ describe("QueryCache services", () => {
 				Option.some("Hi, Ada"),
 			);
 			expect(layered.text).toBe("Hey, Bob");
+			// A request adds no span of its own.
+			expect(layered.span).toBeUndefined();
 		}),
 	);
 
@@ -255,12 +256,12 @@ describe("QueryCache meta", () => {
 					{ label: "data" },
 				);
 
-				const state = yield* server.dehydrate();
+				const state = yield* QueryCache.dehydrate(server);
 				expect(state.queries.map((query) => query.meta)).toEqual([
 					{ label: "server" },
 					{ label: "set" },
 				]);
-				yield* browser.hydrate(state);
+				yield* QueryCache.hydrate(browser, state);
 				const [first, second] = yield* browser.all;
 				expect(first && Query.metaUnsafe(first)).toEqual({ label: "server" });
 				expect(second && Query.metaUnsafe(second)).toEqual({
@@ -272,7 +273,7 @@ describe("QueryCache meta", () => {
 					label: "browser",
 				});
 				expect(Query.metaUnsafe(query)).toEqual({ label: "browser" });
-				yield* browser.hydrate(state);
+				yield* QueryCache.hydrate(browser, state);
 				expect(Query.metaUnsafe(query)).toEqual({ label: "browser" });
 			}),
 	);
@@ -282,7 +283,7 @@ describe("QueryCache meta", () => {
 			const cache = yield* QueryCache.make({ isServer: true });
 			yield* cache.setData(issueQuery, { id: 1 }, { id: 1 });
 
-			const state = yield* cache.dehydrate();
+			const state = yield* QueryCache.dehydrate(cache);
 
 			expect(state.queries[0]).not.toHaveProperty("meta");
 		}),
@@ -389,7 +390,7 @@ describe("QueryCache", () => {
 			const backend = createBackend();
 			const cache = yield* QueryCache.make({ isServer: false });
 			const fiber = yield* Effect.forkChild(
-				cache.events.pipe(
+				QueryCache.events(cache).pipe(
 					Stream.map((event) => `${event.type} ${event.query.hash}`),
 					Stream.take(3),
 					Stream.runCollect,
@@ -482,7 +483,7 @@ describe("QueryCache", () => {
 				{ id: 1, title: "A" },
 			);
 			const fiber = yield* forkStarted(
-				cache.watch(backend.issueQuery, { id: 1 }),
+				QueryCache.watch(cache, backend.issueQuery, { id: 1 }),
 				(stream) =>
 					stream.pipe(
 						Stream.map((state) => state.data?.title),
@@ -514,7 +515,7 @@ describe("QueryCache", () => {
 				{ id: 1, title: "A" },
 			);
 			const fiber = yield* forkStarted(
-				cache.watch(backend.issueQuery, { id: 1 }),
+				QueryCache.watch(cache, backend.issueQuery, { id: 1 }),
 				(stream) =>
 					stream.pipe(
 						Stream.map((state) => state.data?.title),
@@ -544,7 +545,7 @@ describe("QueryCache", () => {
 				{ id: 1, title: "A" },
 			);
 			const fiber = yield* forkStarted(
-				cache.watch(backend.issueQuery, { id: 1 }),
+				QueryCache.watch(cache, backend.issueQuery, { id: 1 }),
 				(stream) =>
 					stream.pipe(
 						Stream.filter((state) => state.data?.title === "C"),
@@ -665,7 +666,7 @@ describe("QueryCache", () => {
 			const browser = yield* QueryCache.make({ isServer: false });
 			yield* server.prefetch(backend.issueQuery, { id: 1 });
 
-			yield* browser.hydrate(yield* server.dehydrate());
+			yield* QueryCache.hydrate(browser, yield* QueryCache.dehydrate(server));
 			const fiber = yield* Effect.forkChild(
 				browser.fetch(backend.issueQuery, { id: 1 }),
 				{ startImmediately: true },
@@ -683,7 +684,7 @@ describe("QueryCache", () => {
 			const promise = Promise.reject(new Error("Query failed"));
 			promise.catch(() => {});
 
-			yield* browser.hydrate({
+			yield* QueryCache.hydrate(browser, {
 				queries: [{ key: ["typed-issue", 1], promise, updatedAt: 0 }],
 			});
 			const exit = yield* Effect.exit(browser.fetch(issueQuery, { id: 1 }));
@@ -703,10 +704,10 @@ describe("QueryCache", () => {
 			);
 			yield* cache.prefetch(backend.issueQuery, { id: 2 });
 
-			const settled = yield* dehydrateQuery(
+			const settled = dehydrateQuery(
 				yield* cache.getQuery(backend.issueQuery, { id: 1 }),
 			);
-			const pending = yield* dehydrateQuery(
+			const pending = dehydrateQuery(
 				yield* cache.getQuery(backend.issueQuery, { id: 2 }),
 			);
 
@@ -722,9 +723,9 @@ describe("QueryCache", () => {
 			yield* cache.prefetch(backend.issueQuery, { id: 1 });
 			const sent = new Set<string>();
 
-			const first = yield* cache.dehydrate({ sent });
+			const first = yield* QueryCache.dehydrate(cache, { sent });
 			yield* cache.prefetch(backend.issueQuery, { id: 2 });
-			const second = yield* cache.dehydrate({ sent });
+			const second = yield* QueryCache.dehydrate(cache, { sent });
 
 			expect(first.queries.map((query) => query.key)).toEqual([["issue", 1]]);
 			expect(second.queries.map((query) => query.key)).toEqual([["issue", 2]]);
@@ -739,7 +740,8 @@ describe("QueryCache", () => {
 				const backend = createBackend();
 				const cache = yield* QueryCache.make({ isServer: true });
 				yield* cache.prefetch(backend.issueQuery, { id: 404 });
-				const promise = (yield* cache.dehydrate()).queries[0]?.promise;
+				const promise = (yield* QueryCache.dehydrate(cache)).queries[0]
+					?.promise;
 				backend.respondAll();
 
 				const reason = yield* Effect.promise(async () => {
@@ -773,9 +775,9 @@ describe("QueryCache", () => {
 				);
 				yield* cache.prefetch(backend.issueQuery, { id: 2 });
 				const scope = yield* Scope.make();
-				const stream = yield* cache
-					.dehydrateStream()
-					.pipe(Scope.provide(scope));
+				const stream = yield* QueryCache.dehydrateStream(cache).pipe(
+					Scope.provide(scope),
+				);
 				const fiber = yield* Effect.forkChild(
 					Stream.runCollect(stream.updates),
 					{ startImmediately: true },
@@ -797,28 +799,28 @@ describe("QueryCache", () => {
 			}),
 	);
 
-	it.effect(
-		"dehydrateStream hands a batch to its reader in the microtask",
-		() =>
-			Effect.gen(function* () {
-				const backend = createBackend();
-				const cache = yield* QueryCache.make({ isServer: true });
-				const stream = yield* cache.dehydrateStream();
-				const received: Array<DehydratedState> = [];
-				yield* Effect.forkChild(
-					Stream.runForEach(stream.updates, (state) =>
-						Effect.sync(() => received.push(state)),
-					),
-					{ startImmediately: true },
-				);
+	it("dehydrateStream hands a batch to its reader within microtasks", async () => {
+		const backend = createBackend();
+		const cache = CoreCache.make({ isServer: true });
+		const stream = CoreCache.dehydrateStream(cache);
+		const received: Array<DehydratedState> = [];
+		void stream.updates
+			.getReader()
+			.read()
+			.then((next) => {
+				if (next.value) {
+					received.push(next.value);
+				}
+			});
 
-				yield* cache.prefetch(backend.issueQuery, { id: 1 });
-				expect(received).toHaveLength(0);
-				yield* Effect.promise(() => Promise.resolve());
+		CoreCache.prefetch(cache, backend.issueQuery, { id: 1 });
+		expect(received).toHaveLength(0);
+		for (let tick = 0; tick < 3; tick++) {
+			await Promise.resolve();
+		}
 
-				expect(received).toHaveLength(1);
-			}),
-	);
+		expect(received).toHaveLength(1);
+	});
 
 	it.effect("hydrateStream resumes requests the server started later", () =>
 		Effect.gen(function* () {
@@ -833,10 +835,12 @@ describe("QueryCache", () => {
 				{ id: 1, title: "A" },
 			);
 			const scope = yield* Scope.make();
-			const stream = yield* server.dehydrateStream().pipe(Scope.provide(scope));
-			yield* browser.hydrate(stream.initial);
+			const stream = yield* QueryCache.dehydrateStream(server).pipe(
+				Scope.provide(scope),
+			);
+			yield* QueryCache.hydrate(browser, stream.initial);
 			const hydrating = yield* Effect.forkChild(
-				browser.hydrateStream(stream.updates),
+				QueryCache.hydrateStream(browser, stream.updates),
 				{ startImmediately: true },
 			);
 
@@ -1144,7 +1148,7 @@ describe("when the last reader leaves mid-request", () => {
 	it.effect.each([
 		["a count", 3],
 		["a predicate", () => true],
-		["a schedule", Schedule.recurs(3)],
+		["a schedule", retrySchedule(Schedule.recurs(3))],
 	] as const)(
 		"lets a queryFn that ignores its signal finish, without retries (%s)",
 		([_name, retry]) =>
@@ -1382,7 +1386,7 @@ describe("QueryCache filters", () => {
 	it.effect("a hydrated-only entry has no input yet", () =>
 		Effect.gen(function* () {
 			const cache = yield* QueryCache.make({ isServer: false });
-			yield* cache.hydrate({
+			yield* QueryCache.hydrate(cache, {
 				queries: [{ data: [], key: ["labels", 3], updatedAt: 1 }],
 			});
 

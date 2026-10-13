@@ -8,7 +8,13 @@ import {
 } from "@effect/vitest";
 import { Context, Effect, Layer, Schedule } from "effect";
 
-import { Query, QueryClient, queryOptions } from "./index.ts";
+import { fromContext, fromLayer, retrySchedule } from "./effect.ts";
+import {
+	Query,
+	QueryClient,
+	queryOptions,
+	createQueryClient,
+} from "./index.ts";
 import { createBackend, flush } from "./test-utils.ts";
 
 function useFakeTimers(options?: Parameters<typeof vi.useFakeTimers>[0]) {
@@ -21,7 +27,7 @@ function useFakeTimers(options?: Parameters<typeof vi.useFakeTimers>[0]) {
 describe("prefetch", () => {
 	it("returns a handle and starts one request per key", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 
 		const handle = qc.prefetch(backend.issueQuery, { id: 1 });
 		qc.prefetch(backend.issueQuery, { id: 1 });
@@ -35,7 +41,7 @@ describe("prefetch", () => {
 
 	it("reuses fresh data and refetches stale data in the background", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({
+		const qc = createQueryClient({
 			defaults: { staleTime: 1000 },
 			isServer: false,
 		});
@@ -59,7 +65,7 @@ describe("prefetch", () => {
 	it("never throws, and reports failures to onError", async () => {
 		const backend = createBackend();
 		const onError = vi.fn();
-		const qc = new QueryClient({ isServer: false, onError });
+		const qc = createQueryClient({ isServer: false, onError });
 
 		qc.prefetch(backend.issueQuery, { id: 404 });
 		backend.respondAll();
@@ -77,7 +83,7 @@ describe("prefetch", () => {
 describe("meta", () => {
 	it("is on the query onError gets", async () => {
 		const onError = vi.fn();
-		const qc = new QueryClient({ isServer: false, onError });
+		const qc = createQueryClient({ isServer: false, onError });
 		function failingQuery() {
 			return queryOptions({
 				meta: { errorMessage: "Couldn't load issues" },
@@ -98,7 +104,7 @@ describe("meta", () => {
 
 	it("comes from defaults for queries that set none", async () => {
 		const onError = vi.fn();
-		const qc = new QueryClient({
+		const qc = createQueryClient({
 			defaults: { meta: { errorMessage: "Something went wrong" } },
 			isServer: false,
 			onError,
@@ -123,7 +129,7 @@ describe("meta", () => {
 describe("ensure and fetch", () => {
 	it("wait on a cache miss", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 
 		const handle = qc.ensure(backend.issueQuery, { id: 1 });
 		const data = qc.fetch(backend.issueQuery, { id: 1 });
@@ -140,7 +146,7 @@ describe("ensure and fetch", () => {
 
 	it("resolve immediately with stale data and revalidate", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "Cached" });
 
 		const issue = await qc.fetch(backend.issueQuery, { id: 1 });
@@ -151,7 +157,7 @@ describe("ensure and fetch", () => {
 
 	it("reject when the request fails", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 
 		const handle = qc.ensure(backend.issueQuery, { id: 404 });
 		backend.respondAll();
@@ -160,7 +166,7 @@ describe("ensure and fetch", () => {
 	});
 
 	it("accept factories without input", async () => {
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		function countQuery() {
 			return queryOptions({ queryFn: () => 42, queryKey: ["count"] });
 		}
@@ -184,7 +190,7 @@ describe("undefined data", () => {
 
 	it("is data like any other value", async () => {
 		const queryFn = vi.fn(() => Promise.resolve(undefined));
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		function noneQuery() {
 			return queryOptions({ queryFn, queryKey: ["none"], staleTime: Infinity });
 		}
@@ -205,7 +211,7 @@ describe("undefined data", () => {
 	});
 
 	it("can be written with setData, and hasData tells it from no data", async () => {
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		expect(qc.getData(maybeQuery)).toBeUndefined();
 		expect(Query.getUnsafe(qc.getQuery(maybeQuery)).hasData).toBe(false);
 
@@ -227,7 +233,7 @@ describe("undefined data", () => {
 describe("on the server", () => {
 	it("verbs reuse cached data instead of revalidating it", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: true });
+		const qc = createQueryClient({ isServer: true });
 
 		const data = qc.fetch(backend.issueQuery, { id: 1 });
 		backend.respondAll();
@@ -249,7 +255,7 @@ describe("on the server", () => {
 
 	it("invalidate refetches read entries", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: true });
+		const qc = createQueryClient({ isServer: true });
 		const data = qc.fetch(backend.issueQuery, { id: 1 });
 		backend.respondAll();
 		await data;
@@ -266,7 +272,7 @@ describe("on the server", () => {
 
 	it("verbs refetch unread entries invalidate marked", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: true });
+		const qc = createQueryClient({ isServer: true });
 		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
 
 		await qc.invalidate(backend.issueQuery, { id: 1 });
@@ -280,7 +286,7 @@ describe("on the server", () => {
 describe("read", () => {
 	it("returns a thenable React can read synchronously once data exists", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
 
 		const first = Query.readUnsafe(query);
@@ -297,7 +303,7 @@ describe("read", () => {
 
 	it("creates a new fulfilled promise per data version", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
 		const before = Query.readUnsafe(query);
@@ -316,7 +322,7 @@ describe("read", () => {
 
 	it("retries a failed first load once its error has been shown", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		backend.issues.delete(1);
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
 
@@ -352,12 +358,12 @@ describe("structural sharing", () => {
 	}
 
 	it("keeps the data and promise when a refetch returns equal data", async () => {
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const query = qc.getQuery(listQuery());
-		await Effect.runPromise(Query.fetch(query));
+		await Query.fetch(query);
 		const before = Query.getUnsafe(query);
 
-		await Effect.runPromise(Query.refetch(query));
+		await Query.refetch(query);
 
 		const after = Query.getUnsafe(query);
 		expect(after.data).toBe(before.data);
@@ -366,7 +372,7 @@ describe("structural sharing", () => {
 	});
 
 	it("reuses unchanged parts of new data", async () => {
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const factory = listQuery();
 		const data = await qc.fetch(factory);
 		const promise = Query.getUnsafe(qc.getQuery(factory)).promise;
@@ -385,12 +391,12 @@ describe("structural sharing", () => {
 	});
 
 	it("is skipped with structuralSharing: false", async () => {
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const query = qc.getQuery(listQuery({ structuralSharing: false }));
-		await Effect.runPromise(Query.fetch(query));
+		await Query.fetch(query);
 		const before = Query.getUnsafe(query);
 
-		await Effect.runPromise(Query.refetch(query));
+		await Query.refetch(query);
 
 		expect(Query.getUnsafe(query).data).not.toBe(before.data);
 		expect(Query.getUnsafe(query).promise).not.toBe(before.promise);
@@ -400,7 +406,7 @@ describe("structural sharing", () => {
 describe("subscriptions", () => {
 	it("notify once per microtask batch", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
 		const listener = vi.fn();
 		Query.subscribeUnsafe(query, listener);
@@ -415,7 +421,7 @@ describe("subscriptions", () => {
 
 	it("emit cache events", () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const events: Array<string> = [];
 		qc.subscribe((event) => events.push(`${event.type} ${event.query.hash}`));
 
@@ -431,12 +437,12 @@ describe("subscriptions", () => {
 
 	it("mark a read entry stale when its staleTime passes", async () => {
 		useFakeTimers();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const query = qc.getQuery(() =>
 			queryOptions({ queryFn: () => 1, queryKey: ["n"], staleTime: 100 }),
 		);
 		Query.subscribeUnsafe(query, () => {});
-		await Effect.runPromise(Query.fetch(query));
+		await Query.fetch(query);
 		expect(Query.getUnsafe(query).isStale).toBe(false);
 
 		await vi.advanceTimersByTimeAsync(101);
@@ -448,7 +454,7 @@ describe("subscriptions", () => {
 describe("invalidate", () => {
 	it("refetches read entries and resolves when they settle", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
 		Query.subscribeUnsafe(query, () => {});
 		Query.readUnsafe(query);
@@ -474,7 +480,7 @@ describe("invalidate", () => {
 
 	it("only marks unread entries stale", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({
+		const qc = createQueryClient({
 			defaults: { staleTime: Infinity },
 			isServer: false,
 		});
@@ -488,7 +494,7 @@ describe("invalidate", () => {
 	});
 
 	it("matches entries by key prefix, including partial object segments", async () => {
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		function listQuery(input: { page: number; status: string }) {
 			return queryOptions({
 				queryFn: () => [],
@@ -514,7 +520,7 @@ describe("invalidate", () => {
 
 	it("narrows a filter with predicate, and matches everything with {}", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		function labelsQuery() {
 			return queryOptions({ queryFn: () => [], queryKey: ["labels"] });
 		}
@@ -539,7 +545,7 @@ describe("invalidate", () => {
 
 	it("restarts an in-flight request and aborts the old one", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
 		Query.subscribeUnsafe(query, () => {});
 		const first = Query.readUnsafe(query);
@@ -557,7 +563,7 @@ describe("invalidate", () => {
 describe("observers", () => {
 	it("are counted, and changes emit an observers event", () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
 		const events: Array<string> = [];
 		qc.subscribe((event) => events.push(event.type));
@@ -582,7 +588,7 @@ describe("observers", () => {
 describe("reset", () => {
 	it("drops data and refetches read entries behind a pending promise", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
 		Query.subscribeUnsafe(query, () => {});
 		Query.readUnsafe(query);
@@ -607,7 +613,7 @@ describe("reset", () => {
 
 	it("leaves unread entries empty until they are read", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
 
 		await qc.reset({ queryKey: ["issue"] });
@@ -621,11 +627,9 @@ describe("reset", () => {
 
 	it("restarts an in-flight request so its old response can't restore data", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
-		void Effect.runPromise(
-			Query.refetch(qc.getQuery(backend.issueQuery, { id: 1 })),
-		);
+		void Query.refetch(qc.getQuery(backend.issueQuery, { id: 1 }));
 		const [oldRequest] = backend.requests;
 
 		const reset = qc.reset(backend.issueQuery, { id: 1 });
@@ -643,7 +647,7 @@ describe("reset", () => {
 describe("remove", () => {
 	it("drops matching entries and aborts their requests", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const events: Array<string> = [];
 		qc.subscribe((event) => events.push(`${event.type} ${event.query.hash}`));
 		const pending = qc.fetch(backend.issueQuery, { id: 1 });
@@ -662,16 +666,16 @@ describe("remove", () => {
 
 	it("leaves removed entries cancelled instead of fetching", async () => {
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
 		const removed = qc.getQuery(backend.issueQuery, { id: 1 });
 
 		qc.remove(backend.issueQuery, { id: 1 });
 
-		await expect(
-			Effect.runPromise(Query.fetch(removed, { restart: true })),
-		).rejects.toBeInstanceOf(Query.CancelledError);
-		await Effect.runPromise(Query.refetch(removed));
+		await expect(Query.fetch(removed, { restart: true })).rejects.toMatchObject(
+			{ name: "AbortError" },
+		);
+		await Query.refetch(removed);
 		expect(backend.requests).toHaveLength(0);
 	});
 });
@@ -679,12 +683,12 @@ describe("remove", () => {
 describe("retry", () => {
 	it("retries the configured number of times", async () => {
 		const queryFn = vi.fn(() => Promise.reject(new Error("down")));
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const query = qc.getQuery(() =>
 			queryOptions({ queryFn, queryKey: ["flaky"], retry: 2, retryDelay: 0 }),
 		);
 
-		await expect(Effect.runPromise(Query.fetch(query))).rejects.toThrow("down");
+		await expect(Query.fetch(query)).rejects.toThrow("down");
 
 		expect(queryFn).toHaveBeenCalledTimes(3);
 		expect(Query.getUnsafe(query).failureCount).toBe(3);
@@ -693,7 +697,7 @@ describe("retry", () => {
 	it("backs off exponentially by default", async () => {
 		useFakeTimers();
 		let calls = 0;
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const result = qc.fetch(() =>
 			queryOptions({
 				queryFn: () => {
@@ -716,7 +720,7 @@ describe("retry", () => {
 		useFakeTimers();
 		const retryDelay = vi.fn((failureCount: number) => failureCount * 100);
 		let calls = 0;
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const result = qc.fetch(() =>
 			queryOptions({
 				queryFn: () => {
@@ -741,7 +745,7 @@ describe("retry", () => {
 	});
 
 	it("accepts a predicate and an Effect schedule", async () => {
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const byPredicate = vi.fn(() => Promise.reject(new Error("down")));
 		const bySchedule = vi.fn(() => Promise.reject(new Error("down")));
 
@@ -760,7 +764,7 @@ describe("retry", () => {
 				queryOptions({
 					queryFn: bySchedule,
 					queryKey: ["schedule"],
-					retry: Schedule.recurs(4),
+					retry: retrySchedule(Schedule.recurs(4)),
 				}),
 			),
 		).rejects.toThrow("down");
@@ -796,11 +800,11 @@ describe("retry", () => {
 			useFakeTimers();
 			const browser = goOffline();
 			const queryFn = failingOnce();
-			const qc = new QueryClient({ isServer: false });
+			const qc = createQueryClient({ isServer: false });
 			const query = qc.getQuery(() =>
 				queryOptions({ queryFn, queryKey: ["offline"] }),
 			);
-			const result = Effect.runPromise(Query.fetch(query));
+			const result = Query.fetch(query);
 
 			await vi.advanceTimersByTimeAsync(60_000);
 			expect(queryFn).toHaveBeenCalledOnce();
@@ -821,7 +825,7 @@ describe("retry", () => {
 			useFakeTimers();
 			const browser = goOffline();
 			const queryFn = failingOnce();
-			const qc = new QueryClient({ isServer: false });
+			const qc = createQueryClient({ isServer: false });
 			const result = qc.fetch(() =>
 				queryOptions({ queryFn, queryKey: ["offline"], retryDelay: 1000 }),
 			);
@@ -839,12 +843,12 @@ describe("retry", () => {
 			useFakeTimers();
 			const browser = goOffline();
 			const queryFn = failingOnce();
-			const qc = new QueryClient({ isServer: false });
+			const qc = createQueryClient({ isServer: false });
 			const result = qc.fetch(() =>
 				queryOptions({
 					queryFn,
 					queryKey: ["offline"],
-					retry: Schedule.recurs(3),
+					retry: retrySchedule(Schedule.recurs(3)),
 				}),
 			);
 
@@ -861,7 +865,7 @@ describe("retry", () => {
 			const browser = goOffline();
 			const removeListener = vi.spyOn(browser.target, "removeEventListener");
 			const queryFn = vi.fn(() => Promise.reject(new Error("down")));
-			const qc = new QueryClient({ isServer: false });
+			const qc = createQueryClient({ isServer: false });
 			const factory = () => queryOptions({ queryFn, queryKey: ["offline"] });
 			const result = qc.fetch(factory);
 			await vi.advanceTimersByTimeAsync(60_000);
@@ -882,7 +886,7 @@ describe("retry", () => {
 			const browser = goOffline();
 			browser.goOnline();
 			const queryFn = vi.fn(() => Promise.reject(new Error("down")));
-			const qc = new QueryClient({ isServer: false });
+			const qc = createQueryClient({ isServer: false });
 
 			await expect(
 				qc.fetch(() =>
@@ -895,7 +899,7 @@ describe("retry", () => {
 		it("doesn't wait on the server", async () => {
 			goOffline();
 			const queryFn = vi.fn(() => Promise.reject(new Error("down")));
-			const qc = new QueryClient({ isServer: true });
+			const qc = createQueryClient({ isServer: true });
 
 			await expect(
 				qc.fetch(() =>
@@ -913,7 +917,7 @@ describe("retry", () => {
 
 	it("is off on the server", async () => {
 		const queryFn = vi.fn(() => Promise.reject(new Error("down")));
-		const qc = new QueryClient({ isServer: true });
+		const qc = createQueryClient({ isServer: true });
 
 		await expect(
 			qc.fetch(() => queryOptions({ queryFn, queryKey: ["server"] })),
@@ -923,9 +927,28 @@ describe("retry", () => {
 });
 
 describe("Effect queryFn", () => {
+	it("fails without services to run the effect", async () => {
+		const qc = createQueryClient({ isServer: false });
+		const error = vi.spyOn(console, "error").mockImplementation(() => {});
+		function effectQuery() {
+			return queryOptions({
+				queryFn: () => Effect.succeed("never"),
+				queryKey: ["no-services"],
+			});
+		}
+
+		await expect(qc.fetch(effectQuery)).rejects.toThrow(
+			"the cache has no services to run it",
+		);
+		expect(error).toHaveBeenCalledOnce();
+	});
+
 	it("runs the effect and interrupts it on abort", async () => {
 		let interrupted = false;
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({
+			isServer: false,
+			services: fromContext(Context.empty()),
+		});
 		function slowQuery() {
 			return queryOptions({
 				queryFn: () =>
@@ -962,7 +985,7 @@ describe("garbage collection", () => {
 	it("removes unread entries after gcTime", async () => {
 		useFakeTimers();
 		const backend = createBackend();
-		const qc = new QueryClient({ defaults: { gcTime: 50 }, isServer: false });
+		const qc = createQueryClient({ defaults: { gcTime: 50 }, isServer: false });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
 		const unsubscribe = Query.subscribeUnsafe(query, () => {});
 		Query.readUnsafe(query);
@@ -978,7 +1001,7 @@ describe("garbage collection", () => {
 
 	it("keeps everything on the server", async () => {
 		useFakeTimers();
-		const qc = new QueryClient({ isServer: true });
+		const qc = createQueryClient({ isServer: true });
 		await qc.fetch(() => queryOptions({ queryFn: () => 1, queryKey: ["n"] }));
 
 		await vi.advanceTimersByTimeAsync(10 * 60_000);
@@ -993,7 +1016,7 @@ describe("window events", () => {
 		vi.stubGlobal("window", target);
 		vi.stubGlobal("document", { visibilityState: "visible" });
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const unmount = qc.mount();
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
 		Query.subscribeUnsafe(query, () => {});
@@ -1024,7 +1047,7 @@ describe("window events", () => {
 		vi.stubGlobal("window", target);
 		vi.stubGlobal("document", { visibilityState: "visible" });
 		const backend = createBackend();
-		const qc = new QueryClient({ isServer: false });
+		const qc = createQueryClient({ isServer: false });
 		const unmount = qc.mount();
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
 		Query.subscribeUnsafe(query, () => {}, { refetchOnWindowFocus: false });
@@ -1075,7 +1098,10 @@ function apiLayer(released: Array<string>) {
 
 describe("layer", () => {
 	it("provides services to queryFn Effects", async () => {
-		const qc = new QueryClient({ isServer: false, layer: apiLayer([]) });
+		const qc = createQueryClient({
+			isServer: false,
+			services: fromLayer(apiLayer([])),
+		});
 
 		expect(await qc.fetch(userQuery, { id: 1 })).toBe("#1");
 		const query = qc.getQuery(userQuery, { id: 2 });
@@ -1083,7 +1109,10 @@ describe("layer", () => {
 	});
 
 	it("rejects with a queryFn Effect's typed failure", async () => {
-		const qc = new QueryClient({ isServer: false, layer: apiLayer([]) });
+		const qc = createQueryClient({
+			isServer: false,
+			services: fromLayer(apiLayer([])),
+		});
 
 		await expect(qc.ensure(userQuery, { id: 0 })).rejects.toBeInstanceOf(
 			NotFound,
@@ -1093,7 +1122,10 @@ describe("layer", () => {
 	it("dispose runs the layer's finalizers and interrupts requests", async () => {
 		const backend = createBackend();
 		const released: Array<string> = [];
-		const qc = new QueryClient({ isServer: false, layer: apiLayer(released) });
+		const qc = createQueryClient({
+			isServer: false,
+			services: fromLayer(apiLayer(released)),
+		});
 		await qc.fetch(userQuery, { id: 1 });
 		qc.prefetch(backend.issueQuery, { id: 1 });
 

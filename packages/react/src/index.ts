@@ -1,9 +1,10 @@
 export * from "@raf-query/core";
 export { allKeyed, type Settled } from "./all-keyed.ts";
 export {
+	createQueryClient,
 	dehydrate,
 	hydrate,
-	QueryClient,
+	type QueryClient,
 	type QueryClientConfig,
 } from "./client.ts";
 export { QueryClientProvider, useQueryClient } from "./provider.tsx";

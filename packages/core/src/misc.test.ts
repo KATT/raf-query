@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "@effect/vitest";
 import { Data, Effect, type Option } from "effect";
 
+import { Query } from "./effect.ts";
 import {
 	type DataOf,
 	type ErrorOf,
@@ -8,7 +9,6 @@ import {
 	type InfiniteData,
 	infiniteQueryOptions,
 	matchesKey,
-	Query,
 	type QueryFunctionContext,
 	type QueryHandle,
 	type QueryMeta,

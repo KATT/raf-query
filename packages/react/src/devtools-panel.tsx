@@ -1,7 +1,7 @@
 "use client";
 
 import { Query } from "@raf-query/core";
-import { Effect, Predicate } from "effect";
+import { Predicate } from "effect";
 import {
 	type CSSProperties,
 	type PointerEvent as ReactPointerEvent,
@@ -485,17 +485,17 @@ function QueryDetails(props: {
 					color={statusColors.fetching}
 					disabled={options === undefined || state.isFetching}
 					label="Refetch"
-					onClick={() => void Effect.runPromise(Query.refetch(query))}
+					onClick={() => void Query.refetch(query)}
 				/>
 				<ActionButton
 					color={statusColors.stale}
 					label="Invalidate"
-					onClick={() => void Effect.runPromise(Query.invalidate(query))}
+					onClick={() => void Query.invalidate(query)}
 				/>
 				<ActionButton
 					color={statusColors.inactive}
 					label="Reset"
-					onClick={() => void Effect.runPromise(Query.reset(query))}
+					onClick={() => void Query.reset(query)}
 				/>
 				<ActionButton
 					color={statusColors.error}

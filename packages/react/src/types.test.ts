@@ -14,7 +14,9 @@ import {
 	type QueryHandle,
 	queryOptions,
 	type ServicesOf,
+	createQueryClient,
 } from "./index.ts";
+import { fromLayer } from "./effect.ts";
 
 describe("allKeyed", () => {
 	it("awaits a record of promises, keeping keys", async () => {
@@ -90,7 +92,7 @@ const apiLayer = Layer.succeed(Api, { user: (id) => Effect.succeed(`#${id}`) });
 
 describe("types", () => {
 	it("flow from the factory to every Promise verb", () => {
-		const qc = new QueryClient({ isServer: true });
+		const qc = createQueryClient({ isServer: true });
 
 		expectTypeOf(qc.prefetch(postQuery, { slug: "a" })).toEqualTypeOf<
 			QueryHandle<typeof postQuery>
@@ -109,7 +111,7 @@ describe("types", () => {
 	});
 
 	it("reject wrong inputs and paging options on plain factories", () => {
-		const qc = new QueryClient({ isServer: true });
+		const qc = createQueryClient({ isServer: true });
 		const typeOnly = () => {
 			// @ts-expect-error the input is required
 			qc.prefetch(postQuery);
@@ -135,8 +137,11 @@ describe("types", () => {
 	});
 
 	it("take only factories whose services the client's layer provides", () => {
-		const qc = new QueryClient({ isServer: true, layer: apiLayer });
-		const plain = new QueryClient({ isServer: true });
+		const qc = createQueryClient({
+			isServer: true,
+			services: fromLayer(apiLayer),
+		});
+		const plain = createQueryClient({ isServer: true });
 		expectTypeOf(qc).toEqualTypeOf<QueryClient<Api>>();
 		const typeOnly = () => {
 			void qc.fetch(userQuery, { id: 1 });
@@ -154,7 +159,10 @@ describe("types", () => {
 	});
 
 	it("accept a client of any services where any client goes", () => {
-		const qc = new QueryClient({ isServer: true, layer: apiLayer });
+		const qc = createQueryClient({
+			isServer: true,
+			services: fromLayer(apiLayer),
+		});
 		expectTypeOf(qc).toExtend<
 			ComponentProps<typeof QueryClientProvider>["client"]
 		>();

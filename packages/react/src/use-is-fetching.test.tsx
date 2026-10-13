@@ -6,15 +6,15 @@ import { renderToString } from "react-dom/server";
 
 import {
 	type QueryCache,
-	QueryClient,
 	QueryClientProvider,
 	queryOptions,
 	useIsFetching,
 	useWaterfall,
+	createQueryClient,
 } from "./index.ts";
 
 function setup() {
-	const client = new QueryClient({ isServer: false });
+	const client = createQueryClient({ isServer: false });
 	const open: Array<() => void> = [];
 	function later<T>(value: T) {
 		return new Promise<T>((resolve) => {

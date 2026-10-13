@@ -13,7 +13,6 @@ import {
 	type Thenable,
 	Query,
 } from "@raf-query/core";
-import { Effect } from "effect";
 import { use, useEffect, useState, useSyncExternalStore } from "react";
 
 import { unsafeCast } from "./cast.ts";
@@ -83,44 +82,6 @@ export function queryFor<TFactory extends QueryFactory>(
 	// oxlint-disable-next-line typescript/consistent-type-assertions
 	const args = [input] as InputArgs<TFactory>;
 	return client.getQuery(factory, ...args);
-}
-
-const commands = new WeakMap<Effect.Effect<void>, () => Promise<void>>();
-
-/** One stable Promise function per command Effect, so identities track the query's. */
-function commandFor(effect: Effect.Effect<void>): () => Promise<void> {
-	let command = commands.get(effect);
-	if (!command) {
-		command = () => Effect.runPromise(effect);
-		commands.set(effect, command);
-	}
-	return command;
-}
-
-type Command = "fetchNextPage" | "fetchPreviousPage" | "refetch";
-
-type PromiseCommands = Omit<QueryObserver.Result, Command> &
-	Record<Command, () => Promise<void>>;
-
-/** `tracked`, with the observer's command Effects as Promise functions. */
-function withPromiseCommands(tracked: QueryObserver.Result): PromiseCommands {
-	// SAFETY: the trap below replaces exactly the `Command` properties with
-	// Promise functions and forwards every other read.
-	return unsafeCast<PromiseCommands>(
-		new Proxy(tracked, {
-			get: (target, name, receiver) => {
-				if (
-					name === "fetchNextPage" ||
-					name === "fetchPreviousPage" ||
-					name === "refetch"
-				) {
-					return commandFor(target[name]);
-				}
-				// oxlint-disable-next-line anti-slop/no-reflect-get -- a Proxy trap forwarding to its target
-				return Reflect.get(target, name, receiver);
-			},
-		}),
-	);
 }
 
 /** An observer, with the stable callbacks `useSyncExternalStore` needs. */
@@ -216,9 +177,7 @@ export function useQuery<TFactory extends QueryFactory>(
 	// The promise is returned as the tuple's first element, where reads can't
 	// be seen, so it always counts as read.
 	QueryObserver.trackProp(observer, "promise");
-	const controls = withPromiseCommands(
-		QueryObserver.trackResult(observer, result),
-	);
+	const controls = QueryObserver.trackResult(observer, result);
 	if (handle.ensured === true) {
 		// SAFETY: as below; `use` unwraps the promise to its data.
 		return unsafeCast<UseEnsuredQueryResult<TFactory>>([

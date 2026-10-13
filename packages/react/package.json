@@ -34,6 +34,7 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./devtools": "./src/devtools.tsx",
+		"./effect": "./src/effect.ts",
 		"./devtools/production": "./src/devtools-production.tsx",
 		"./next": "./src/next.tsx",
 		"./rsc": "./src/rsc.tsx",
@@ -49,7 +50,7 @@
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/sync-package-docs.ts",
-		"build": "vp pack",
+		"build": "rm -rf dist && tsc -p tsconfig.build.json",
 		"test": "vp test",
 		"typecheck": "tsc",
 		"publish:npm": "pnpm pack --out package.tgz && npm publish package.tgz --access public && rm package.tgz"
@@ -90,19 +91,20 @@
 	"publishConfig": {
 		"access": "public",
 		"exports": {
-			".": "./dist/index.mjs",
-			"./devtools": "./dist/devtools.mjs",
-			"./devtools/production": "./dist/devtools-production.mjs",
-			"./next": "./dist/next.mjs",
-			"./rsc": "./dist/rsc.mjs",
+			".": "./dist/index.js",
+			"./devtools": "./dist/devtools.js",
+			"./effect": "./dist/effect.js",
+			"./devtools/production": "./dist/devtools-production.js",
+			"./next": "./dist/next.js",
+			"./rsc": "./dist/rsc.js",
 			"./tanstack-router": {
-				"workerd": "./dist/tanstack-router.mjs",
-				"worker": "./dist/tanstack-router.mjs",
-				"node": "./dist/tanstack-router.mjs",
-				"deno": "./dist/tanstack-router.mjs",
-				"bun": "./dist/tanstack-router.mjs",
-				"browser": "./dist/tanstack-router-browser.mjs",
-				"default": "./dist/tanstack-router.mjs"
+				"workerd": "./dist/tanstack-router.js",
+				"worker": "./dist/tanstack-router.js",
+				"node": "./dist/tanstack-router.js",
+				"deno": "./dist/tanstack-router.js",
+				"bun": "./dist/tanstack-router.js",
+				"browser": "./dist/tanstack-router-browser.js",
+				"default": "./dist/tanstack-router.js"
 			}
 		},
 		"provenance": true

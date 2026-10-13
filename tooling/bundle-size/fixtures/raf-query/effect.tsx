@@ -1,11 +1,12 @@
 import {
-	QueryClient,
 	QueryClientProvider,
 	type QueryHandle,
 	queryOptions,
 	useQuery,
+	createQueryClient,
 } from "@raf-query/react";
-import { Data, Effect, Schedule } from "effect";
+import { fromContext, fromLayer, retrySchedule } from "@raf-query/react/effect";
+import { Context, Data, Effect, Layer, Schedule } from "effect";
 import { Suspense, use } from "react";
 
 import { getIssue } from "../shared/api.ts";
@@ -22,7 +23,9 @@ export function effectIssueQuery(input: { readonly id: number }) {
 				try: () => getIssue(input.id),
 			}),
 		queryKey: ["issues", input.id],
-		retry: Schedule.exponential("200 millis").pipe(Schedule.upTo({ times: 3 })),
+		retry: retrySchedule(
+			Schedule.exponential("200 millis").pipe(Schedule.upTo({ times: 3 })),
+		),
 	});
 }
 
@@ -35,12 +38,54 @@ function IssueTitle(props: {
 
 /** `queryApp` with an Effect `queryFn` and `Schedule` retries. */
 export function effectApp() {
-	const queryClient = new QueryClient();
+	const queryClient = createQueryClient({
+		services: fromContext(Context.empty()),
+	});
 	const issue = queryClient.prefetch(effectIssueQuery, { id: 1 });
 	return (
 		<QueryClientProvider client={queryClient}>
 			<Suspense fallback="Loading">
 				<IssueTitle handle={issue} />
+			</Suspense>
+		</QueryClientProvider>
+	);
+}
+
+class IssueApi extends Context.Service<
+	IssueApi,
+	{ readonly get: (id: number) => Effect.Effect<{ readonly title: string }> }
+>()("fixtures/IssueApi") {}
+
+const IssueApiLive = Layer.succeed(IssueApi, {
+	get: (id) => Effect.promise(() => getIssue(id)),
+});
+
+export function serviceIssueQuery(input: { readonly id: number }) {
+	return queryOptions({
+		queryFn: () =>
+			Effect.gen(function* () {
+				const api = yield* IssueApi;
+				return yield* api.get(input.id);
+			}),
+		queryKey: ["issues", input.id],
+	});
+}
+
+function ServiceIssueTitle(props: {
+	readonly handle: QueryHandle<typeof serviceIssueQuery>;
+}) {
+	const [issuePromise] = useQuery(serviceIssueQuery, props.handle);
+	return <h1>{use(issuePromise).title}</h1>;
+}
+
+/** `queryApp` with a `queryFn` that needs a service from a layer. */
+export function layerApp() {
+	const queryClient = createQueryClient({ services: fromLayer(IssueApiLive) });
+	const issue = queryClient.prefetch(serviceIssueQuery, { id: 1 });
+	return (
+		<QueryClientProvider client={queryClient}>
+			<Suspense fallback="Loading">
+				<ServiceIssueTitle handle={issue} />
 			</Suspense>
 		</QueryClientProvider>
 	);

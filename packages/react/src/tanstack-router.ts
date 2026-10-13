@@ -1,5 +1,5 @@
+import { QueryCache } from "@raf-query/core";
 import type { AnyRouter } from "@tanstack/react-router";
-import { Effect, Exit, Scope, Stream } from "effect";
 
 import {
 	type DehydratedRouterQueries,
@@ -46,15 +46,13 @@ function setupServer<TRouter extends AnyRouter>(
 			return undefined;
 		}
 
-		const scope = Scope.makeUnsafe();
-		const stream = Effect.runSync(
-			queryClient.effect
-				.dehydrateStream(options.dehydrateOptions)
-				.pipe(Scope.provide(scope)),
+		const stream = QueryCache.dehydrateStream(
+			queryClient.cache,
+			options.dehydrateOptions,
 		);
 		finish = () => {
 			finish = noop;
-			Effect.runSync(Scope.close(scope, Exit.void));
+			stream.close();
 		};
 		router.serverSsr?.onRenderFinished(() => finish());
 
@@ -62,7 +60,7 @@ function setupServer<TRouter extends AnyRouter>(
 			...dehydrated,
 			raf: {
 				initial: stream.initial,
-				stream: Stream.toReadableStream(stream.updates),
+				stream: stream.updates,
 			},
 		};
 	};

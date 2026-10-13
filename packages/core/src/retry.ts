@@ -1,55 +1,62 @@
-import { Effect, Predicate, Schedule } from "effect";
-
 import type { QueryBehavior } from "./options.ts";
+import { hasProperty, isNumber } from "./predicate.ts";
 
-/** Doubling from 1 s, at most 30 s. */
-const defaultDelays = /*#__PURE__*/ Schedule.min([
-	Schedule.exponential("1 second"),
-	Schedule.spaced("30 seconds"),
-]);
-
-function delays(
-	retryDelay: QueryBehavior["retryDelay"],
-): Schedule.Schedule<unknown> {
-	if (retryDelay === undefined) {
-		return defaultDelays;
-	}
-	if (Predicate.isNumber(retryDelay)) {
-		return Schedule.spaced(retryDelay);
-	}
-	return Schedule.forever.pipe(
-		Schedule.modifyDelay((step) =>
-			Effect.succeed(retryDelay(step.attempt, step.input)),
-		),
-	);
-}
+export const RetryStrategyTypeId = "~@raf-query/core/RetryStrategy";
 
 /**
- * A query's retry options as one `Schedule`, or `undefined` when it doesn't
- * retry. `retryDelay` sets the delays; a count or predicate in `retry` stops
- * the schedule, given the attempt number (1 after the first failure) and the
- * error.
+ * Decides, after each failure of one request, whether to retry and after how
+ * long: the delay in ms, or `undefined` to stop. `failureCount` is 1 after
+ * the first failure.
  */
-export function retrySchedule(
+export type RetryStep = (
+	failureCount: number,
+	error: unknown,
+) => number | undefined;
+
+/**
+ * A stateful retry policy, such as `retrySchedule(schedule)` from
+ * `@raf-query/core/effect`: `start` is called once per request, and its step
+ * with every failure of that request.
+ */
+export interface RetryStrategy {
+	readonly [RetryStrategyTypeId]: typeof RetryStrategyTypeId;
+	start(now: () => number): RetryStep;
+}
+
+export function isRetryStrategy(value: unknown): value is RetryStrategy {
+	return hasProperty(value, RetryStrategyTypeId);
+}
+
+/** Doubling from 1 s, at most 30 s. */
+const defaultDelay = (failureCount: number) =>
+	Math.min(1000 * 2 ** (failureCount - 1), 30_000);
+
+/** The step for one request's retries, or `undefined` when it doesn't retry. */
+export function startRetries(
 	behavior: Pick<QueryBehavior, "retry" | "retryDelay">,
 	isServer: boolean,
-): Schedule.Schedule<unknown, unknown> | undefined {
+	now: () => number,
+): RetryStep | undefined {
 	const retry = behavior.retry ?? (isServer ? 0 : 3);
-	if (Schedule.isSchedule(retry)) {
-		return retry;
+	if (isRetryStrategy(retry)) {
+		return retry.start(now);
 	}
 	if (retry === false || retry === 0) {
 		return undefined;
 	}
-	const schedule = delays(behavior.retryDelay);
-	if (retry === true) {
-		return schedule;
-	}
-	return schedule.pipe(
-		Schedule.while((step) =>
-			Predicate.isNumber(retry)
-				? step.attempt <= retry
-				: retry(step.attempt, step.input),
-		),
-	);
+	const retryDelay = behavior.retryDelay;
+	const delay =
+		retryDelay === undefined
+			? defaultDelay
+			: isNumber(retryDelay)
+				? () => retryDelay
+				: retryDelay;
+	const shouldRetry =
+		retry === true
+			? () => true
+			: isNumber(retry)
+				? (failureCount: number) => failureCount <= retry
+				: retry;
+	return (failureCount, error) =>
+		shouldRetry(failureCount, error) ? delay(failureCount, error) : undefined;
 }

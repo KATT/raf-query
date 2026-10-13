@@ -1,6 +1,6 @@
 import { Effect, Scope } from "effect";
 
-import * as QueryCache from "./cache.ts";
+import * as QueryCache from "./effect/cache.ts";
 import { queryOptions } from "./options.ts";
 import type { Platform, PlatformEvent } from "./platform.ts";
 

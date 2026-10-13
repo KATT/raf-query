@@ -9,6 +9,7 @@ import {
 	hydrate,
 	QueryClient,
 	type QueryClientConfig,
+	createQueryClient,
 } from "./client.ts";
 import { QueryClientProvider } from "./provider.tsx";
 import { sentHashes } from "./sent.ts";
@@ -84,7 +85,7 @@ export function QueryProvider(props: {
 }) {
 	const config = props.config;
 	const [client] = useState(() => {
-		const created = new QueryClient(config);
+		const created = createQueryClient(config);
 		if (!created.isServer) {
 			receiveStream(created);
 		}

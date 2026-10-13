@@ -31,11 +31,12 @@
 	"type": "module",
 	"sideEffects": false,
 	"exports": {
-		".": "./src/index.ts"
+		".": "./src/index.ts",
+		"./effect": "./src/effect.ts"
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/sync-package-docs.ts",
-		"build": "vp pack",
+		"build": "rm -rf dist && tsc -p tsconfig.build.json",
 		"test": "vp test",
 		"typecheck": "tsc",
 		"publish:npm": "pnpm pack --out package.tgz && npm publish package.tgz --access public && rm package.tgz"
@@ -54,7 +55,8 @@
 	"publishConfig": {
 		"access": "public",
 		"exports": {
-			".": "./dist/index.mjs"
+			".": "./dist/index.js",
+			"./effect": "./dist/effect.js"
 		},
 		"provenance": true
 	},

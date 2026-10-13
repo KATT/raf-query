@@ -1,4 +1,4 @@
-import { Predicate } from "effect";
+import { isObject } from "./predicate.ts";
 
 /**
  * A query's cache key. Must be JSON-serializable (plain objects, arrays and
@@ -9,7 +9,7 @@ export type QueryKey = ReadonlyArray<unknown>;
 export function isPlainRecord(
 	value: unknown,
 ): value is { readonly [key: string]: unknown } {
-	if (!Predicate.isObject(value) || Array.isArray(value)) {
+	if (!isObject(value) || Array.isArray(value)) {
 		return false;
 	}
 	const prototype = Object.getPrototypeOf(value);

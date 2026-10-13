@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@raf-query/react";
+import { QueryClientProvider, createQueryClient } from "@raf-query/react";
 import { QueryDevtools } from "@raf-query/react/devtools";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import { createRouter } from "@tanstack/react-router";
@@ -6,7 +6,7 @@ import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen.ts";
 
 export function getRouter() {
-	const queryClient = new QueryClient({ defaults: { staleTime: 5000 } });
+	const queryClient = createQueryClient({ defaults: { staleTime: 5000 } });
 	const router = createRouter({
 		context: { queryClient },
 		defaultPreload: "intent",

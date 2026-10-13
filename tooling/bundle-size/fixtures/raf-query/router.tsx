@@ -1,4 +1,9 @@
-import { QueryClient, QueryClientProvider, useQuery } from "@raf-query/react";
+import {
+	QueryClient,
+	QueryClientProvider,
+	useQuery,
+	createQueryClient,
+} from "@raf-query/react";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import {
 	createRootRouteWithContext,
@@ -44,7 +49,7 @@ function IssuePage() {
 
 /** The Start example's setup: loaders start queries, the integration streams them. */
 export function createAppRouter() {
-	const queryClient = new QueryClient({ defaults: { staleTime: 5000 } });
+	const queryClient = createQueryClient({ defaults: { staleTime: 5000 } });
 	const router = createRouter({
 		context: { queryClient },
 		defaultPreload: "intent",

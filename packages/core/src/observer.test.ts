@@ -1,7 +1,7 @@
 import { describe, expect, it, onTestFinished, vi } from "@effect/vitest";
 import { Effect, Fiber, Stream } from "effect";
 
-import { Query, QueryObserver } from "./index.ts";
+import { Query, QueryObserver } from "./effect.ts";
 import { createBackend, flush, makeCacheUnsafe } from "./test-utils.ts";
 
 async function setup() {

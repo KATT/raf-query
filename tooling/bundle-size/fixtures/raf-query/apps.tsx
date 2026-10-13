@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@raf-query/react";
+import { QueryClientProvider, createQueryClient } from "@raf-query/react";
 import { Suspense } from "react";
 
 import { Comments } from "./comments.tsx";
@@ -7,7 +7,7 @@ import { commentsQuery, issueQuery } from "./queries.ts";
 
 /** A factory, a loader-style `prefetch`, and a `useQuery` reader. */
 export function queryApp() {
-	const queryClient = new QueryClient();
+	const queryClient = createQueryClient();
 	const issue = queryClient.prefetch(issueQuery, { id: 1 });
 	return (
 		<QueryClientProvider client={queryClient}>
@@ -20,7 +20,7 @@ export function queryApp() {
 
 /** Plus a paged query with "Load more". */
 export function pagedApp() {
-	const queryClient = new QueryClient();
+	const queryClient = createQueryClient();
 	const issue = queryClient.prefetch(issueQuery, { id: 1 });
 	const comments = queryClient.prefetch(commentsQuery, { issueId: 1 });
 	return (
@@ -35,7 +35,7 @@ export function pagedApp() {
 
 /** Plus a form action that writes and invalidates. */
 export async function actionsApp() {
-	const queryClient = new QueryClient();
+	const queryClient = createQueryClient();
 	const issue = await queryClient.fetch(issueQuery, { id: 1 });
 	const comments = queryClient.prefetch(commentsQuery, { issueId: 1 });
 	return (

@@ -15,7 +15,9 @@ import {
 	useQuery,
 	type UseQueryOptions,
 	useWaterfall,
+	createQueryClient,
 } from "./index.ts";
+import { fromLayer } from "./effect.ts";
 
 interface Issue {
 	readonly assigneeId: number;
@@ -139,7 +141,7 @@ class Boundary extends Component<
 
 function setup() {
 	const backend = createBackend();
-	const client = new QueryClient({ isServer: false });
+	const client = createQueryClient({ isServer: false });
 	function IssueTitle(props: {
 		readonly handle: QueryHandle<typeof backend.issueQuery>;
 		readonly options?: UseQueryOptions;
@@ -273,7 +275,7 @@ describe("useQuery", () => {
 	});
 
 	it("exposes paging controls for paged factories", async () => {
-		const client = new QueryClient({ isServer: false });
+		const client = createQueryClient({ isServer: false });
 		function numbersQuery() {
 			return infiniteQueryOptions({
 				getNextPageParam: (lastPage: number) =>
@@ -366,7 +368,7 @@ describe("useQuery", () => {
 	});
 
 	it("doesn't re-render for retries of a background refetch", async () => {
-		const client = new QueryClient({ isServer: false });
+		const client = createQueryClient({ isServer: false });
 		let attempt = 0;
 		function flakyQuery() {
 			return queryOptions({
@@ -407,7 +409,7 @@ describe("useQuery", () => {
 
 	describe("a background refetch that reads its signal", () => {
 		function slowNote() {
-			const client = new QueryClient({ isServer: false });
+			const client = createQueryClient({ isServer: false });
 			const signals: Array<AbortSignal> = [];
 			function noteQuery() {
 				return queryOptions({
@@ -552,9 +554,9 @@ describe("useQuery", () => {
 	});
 
 	it("starts a request with the client's layer services during render", async () => {
-		const client = new QueryClient({
+		const client = createQueryClient({
 			isServer: false,
-			layer: Layer.succeed(Greeting, "Hello"),
+			services: fromLayer(Layer.succeed(Greeting, "Hello")),
 		});
 		function Greet(props: {
 			readonly handle: QueryHandle<typeof greetingQuery>;
@@ -762,7 +764,7 @@ describe("lists", () => {
 
 	it("paginate with the page in the input, keeping the previous page while the next loads", async () => {
 		const backend = createListBackend();
-		const client = new QueryClient({ isServer: false });
+		const client = createQueryClient({ isServer: false });
 		function Page(props: {
 			readonly handle: QueryHandle<typeof backend.pageQuery>;
 		}) {
@@ -809,7 +811,7 @@ describe("lists", () => {
 	it("load the next page by infinite scroll, and start over on a new filter", async () => {
 		const backend = createListBackend();
 		const viewport = stubViewport();
-		const client = new QueryClient({ isServer: false });
+		const client = createQueryClient({ isServer: false });
 		function Feed(props: {
 			readonly handle: QueryHandle<typeof backend.feedQuery>;
 		}) {
