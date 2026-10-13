@@ -273,6 +273,56 @@ Paging controls: `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `hasPr
 
 On the server, `ensure` and `fetch` load the first page. Pass `{ pages: n }` as a third argument to load more up front; the option is only accepted for paged factories.
 
+### Infinite scroll
+
+Infinite scroll is the same paged query with an automatic "Load more". A ref callback watches the button and presses it when it nears the viewport. Unmount the button while a page loads: it watches again when it remounts, so it keeps loading while it stays in reach. Its place is taken by skeletons the size of the incoming page, so the loaded rows replace them without moving anything below.
+
+```tsx
+function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
+	const [pagesPromise, comments] = useQuery(commentsQuery, props.handle);
+	const data = use(pagesPromise);
+
+	return (
+		<>
+			{data.pages
+				.flatMap((page) => page.items)
+				.map((comment) => (
+					<Comment key={comment.id} {...comment} />
+				))}
+			{comments.isFetchingNextPage ? <CommentSkeletons /> : null}
+			{comments.hasNextPage && !comments.isFetchingNextPage ? (
+				<button
+					onClick={() => comments.fetchNextPage()}
+					ref={(button) => {
+						if (button === null) return;
+						const observer = new IntersectionObserver(
+							(entries) => {
+								if (entries.some((entry) => entry.isIntersecting)) {
+									observer.disconnect();
+									comments.fetchNextPage();
+								}
+							},
+							{ rootMargin: "0px 0px 300px 0px" },
+						);
+						observer.observe(button);
+						return () => observer.disconnect();
+					}}
+				>
+					Load more
+				</button>
+			) : null}
+		</>
+	);
+}
+```
+
+Pagination and infinite scroll differ in where the page lives:
+
+- **Pagination**: the page is a search param and part of the input, so each page is its own query and the URL links to it ([below](#when-the-url-changes)).
+- **Infinite scroll**: filters and sort are search params, and pages are loaded into one paged query per input. Changing a filter starts a new list from its first page.
+
+The [examples](examples/) load their issue list and comments by infinite scroll.
+
 ### When the URL changes
 
 Filters, sort order, and pagination are search params. The loader turns them into the query's input, so every navigation starts the right query and the component only ever reads the handle it was given:
