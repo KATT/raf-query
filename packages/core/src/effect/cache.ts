@@ -45,7 +45,12 @@ import type {
 import type * as Query from "../query.ts";
 import { listen } from "./listen.ts";
 import { Platform } from "./platform.ts";
-import { awaitOutcome, fromContext, provideCaller } from "./services.ts";
+import {
+	awaitOutcome,
+	type CancelledError,
+	fromContext,
+	provideCaller,
+} from "./services.ts";
 
 export type { Event, Filter, LoadArgs, Target, Updater } from "../cache.ts";
 
@@ -85,7 +90,7 @@ export interface QueryCache {
 		...args: Core.LoadArgs<TFactory>
 	): Effect.Effect<
 		EnsuredQueryHandle<TFactory>,
-		ErrorOf<TFactory> | Query.CancelledError,
+		ErrorOf<TFactory> | CancelledError,
 		ServicesOf<TFactory>
 	>;
 	/** Like `ensure`, but succeeds with the data. */
@@ -94,7 +99,7 @@ export interface QueryCache {
 		...args: Core.LoadArgs<TFactory>
 	): Effect.Effect<
 		DataOf<TFactory>,
-		ErrorOf<TFactory> | Query.CancelledError,
+		ErrorOf<TFactory> | CancelledError,
 		ServicesOf<TFactory>
 	>;
 	/**
@@ -217,10 +222,9 @@ function load<TFactory extends QueryFactory>(
 	entry: Entry.Entry,
 	pages: number | undefined,
 ) {
-	return awaitOutcome<
-		DataOf<TFactory>,
-		ErrorOf<TFactory> | Query.CancelledError
-	>(() => Core.load(entry, pages));
+	return awaitOutcome<DataOf<TFactory>, ErrorOf<TFactory>>(() =>
+		Core.load(entry, pages),
+	);
 }
 
 /**

@@ -5,18 +5,10 @@
  * and each API turns it into a rejection or an `Exit`.
  */
 export type Outcome<A = unknown> =
+	| { readonly kind: "cancelled" }
 	| { readonly defect: unknown; readonly kind: "defect" }
 	| { readonly error: unknown; readonly kind: "failure" }
 	| { readonly kind: "success"; readonly value: A };
-
-/**
- * The failure of a request that was cancelled rather than settled: its
- * entry was removed or cleared, or an Effect `queryFn` was interrupted.
- */
-export class CancelledError extends Error {
-	readonly _tag = "CancelledError";
-	override readonly message = "The query was cancelled";
-}
 
 export function succeeded<A>(value: A): Outcome<A> {
 	return { kind: "success", value };
@@ -30,15 +22,18 @@ export function died(defect: unknown): Outcome<never> {
 	return { defect, kind: "defect" };
 }
 
+/**
+ * A request that was cancelled rather than settled: its entry was removed or
+ * cleared, or an Effect `queryFn` was interrupted.
+ */
 export function cancelled(): Outcome<never> {
-	return failed(new CancelledError());
+	return { kind: "cancelled" };
 }
 
-export function isCancelled(outcome: Outcome): boolean {
-	return outcome.kind === "failure" && outcome.error instanceof CancelledError;
-}
-
-/** The value, or a rejection with the error or defect. */
+/**
+ * The value, or a rejection with the error or defect. A cancelled request
+ * rejects with an `AbortError`, as an aborted `fetch` does.
+ */
 export function unwrap<A>(outcome: Outcome<A>): A {
 	switch (outcome.kind) {
 		case "success":
@@ -47,6 +42,8 @@ export function unwrap<A>(outcome: Outcome<A>): A {
 			throw outcome.error;
 		case "defect":
 			throw outcome.defect;
+		case "cancelled":
+			throw new DOMException("The query was cancelled", "AbortError");
 	}
 }
 

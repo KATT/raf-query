@@ -19,7 +19,7 @@ import type {
 	QueryHandle,
 	QueryMeta,
 } from "./options.ts";
-import { CancelledError as Cancelled, unwrap } from "./outcome.ts";
+import { unwrap } from "./outcome.ts";
 import type { Thenable } from "./thenable.ts";
 
 export const TypeId: typeof internal.TypeId = internal.TypeId;
@@ -93,10 +93,6 @@ export interface FetchRequest {
 	readonly restart?: boolean;
 }
 
-export const CancelledError: typeof Cancelled = Cancelled;
-
-export type CancelledError = Cancelled;
-
 export const isQuery: (value: unknown) => value is Query = internal.isQuery;
 
 function typedState<TData>(state: State<unknown>): State<TData> {
@@ -108,7 +104,8 @@ function typedState<TData>(state: State<unknown>): State<TData> {
 
 /**
  * Start a request, or join the one in flight. Rejects with the request's
- * error, or a {@link CancelledError} if the entry leaves the cache first.
+ * error, or an `AbortError` `DOMException` if the entry leaves the cache
+ * first.
  */
 export async function fetch<TData, TFactory extends QueryFactory, TError>(
 	self: Query<TData, TFactory, TError>,

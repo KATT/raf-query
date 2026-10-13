@@ -1,15 +1,24 @@
-import { Cause, Context, Effect, Exit, Layer, Scope } from "effect";
+import { Cause, Context, Data, Effect, Exit, Layer, Scope } from "effect";
 
 import { unsafeCast } from "../cast.ts";
 import * as Entry from "../entry.ts";
 import {
-	CancelledError,
+	cancelled,
 	died,
 	failed,
 	type Outcome,
 	succeeded,
 } from "../outcome.ts";
 import type { EffectServices } from "../request.ts";
+
+/**
+ * The failure of a request that was cancelled rather than settled: its
+ * entry was removed or cleared, or an Effect `queryFn` was interrupted. The
+ * Promise API rejects with an `AbortError` instead.
+ */
+export class CancelledError extends Data.TaggedError("CancelledError") {
+	override readonly message = "The query was cancelled";
+}
 
 /** An Effect's exit as an engine outcome. Interrupts are cancellations. */
 export function outcomeOf<A, E>(exit: Exit.Exit<A, E>): Outcome<A> {
@@ -18,7 +27,7 @@ export function outcomeOf<A, E>(exit: Exit.Exit<A, E>): Outcome<A> {
 	}
 	const cause = exit.cause;
 	if (Cause.hasInterruptsOnly(cause)) {
-		return failed(new CancelledError());
+		return cancelled();
 	}
 	return Cause.hasFails(cause)
 		? failed(Cause.squash(cause))
@@ -31,19 +40,24 @@ export function outcomeOf<A, E>(exit: Exit.Exit<A, E>): Outcome<A> {
  */
 export function awaitOutcome<A, E>(
 	request: () => Promise<Outcome>,
-): Effect.Effect<A, E> {
-	return Effect.flatMap(Effect.promise(request), (outcome) => {
-		switch (outcome.kind) {
-			case "success":
-				// SAFETY: the caller names the data type of the entry it waits on.
-				return Effect.succeed(unsafeCast<A>(outcome.value));
-			case "failure":
-				// SAFETY: as above, for the entry's error type.
-				return Effect.fail(unsafeCast<E>(outcome.error));
-			case "defect":
-				return Effect.die(outcome.defect);
-		}
-	});
+): Effect.Effect<A, E | CancelledError> {
+	return Effect.flatMap(
+		Effect.promise(request),
+		(outcome): Effect.Effect<A, E | CancelledError> => {
+			switch (outcome.kind) {
+				case "success":
+					// SAFETY: the caller names the data type of the entry it waits on.
+					return Effect.succeed(unsafeCast<A>(outcome.value));
+				case "failure":
+					// SAFETY: as above, for the entry's error type.
+					return Effect.fail(unsafeCast<E>(outcome.error));
+				case "defect":
+					return Effect.die(outcome.defect);
+				case "cancelled":
+					return Effect.fail(new CancelledError());
+			}
+		},
+	);
 }
 
 function contextOf(context: unknown): Context.Context<never> {
@@ -80,7 +94,7 @@ export function fromContext<TServices>(
 
 /**
  * Services from a layer, built now in their own scope:
- * `new QueryClient({ services: fromLayer(IssueApiLive) })`. The layer must
+ * `createQueryClient({ services: fromLayer(IssueApiLive) })`. The layer must
  * build synchronously; disposing the cache runs its finalizers.
  */
 export function fromLayer<TServices>(

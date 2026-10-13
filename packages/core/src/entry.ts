@@ -17,13 +17,7 @@ import type {
 	QueryHandle,
 	QueryMeta,
 } from "./options.ts";
-import {
-	cancelled,
-	died,
-	isCancelled,
-	type Outcome,
-	succeeded,
-} from "./outcome.ts";
+import { cancelled, died, type Outcome, succeeded } from "./outcome.ts";
 import { type Platform, type PlatformEvent, whenOnline } from "./platform.ts";
 import { hasProperty } from "./predicate.ts";
 import type { FetchRequest, Query, State, SubscribeOptions } from "./query.ts";
@@ -487,7 +481,7 @@ function settle(entry: Entry, outcome: Outcome) {
 	if (outcome.kind === "success") {
 		const data = succeed(entry, outcome.value, now(entry));
 		inFlight?.resolve(succeeded(data));
-	} else if (isCancelled(outcome)) {
+	} else if (outcome.kind === "cancelled") {
 		set(entry, { fetchDirection: undefined, isFetching: false });
 		inFlight?.resolve(outcome);
 	} else {
@@ -657,7 +651,7 @@ async function attempt(
 	);
 	for (let failureCount = 1; ; failureCount++) {
 		const outcome = await callQueryFn(call, signal, services, onEffect);
-		if (signal.aborted || outcome.kind !== "failure" || isCancelled(outcome)) {
+		if (signal.aborted || outcome.kind !== "failure") {
 			return outcome;
 		}
 		set(entry, { failureCount: entry.state.failureCount + 1 });

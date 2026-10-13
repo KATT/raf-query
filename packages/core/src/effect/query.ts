@@ -9,10 +9,14 @@ import * as internal from "../entry.ts";
 import type { QueryFactory, ServicesOf } from "../options.ts";
 import * as Core from "../query.ts";
 import { listen } from "./listen.ts";
-import { awaitOutcome, provideCaller } from "./services.ts";
+import {
+	awaitOutcome,
+	type CancelledError,
+	provideCaller,
+} from "./services.ts";
 
+export { CancelledError } from "./services.ts";
 export {
-	CancelledError,
 	type FetchRequest,
 	getUnsafe,
 	hasNextPageUnsafe,
@@ -47,11 +51,11 @@ export const fetch: {
 		request?: Core.FetchRequest,
 	): <TData, TFactory extends QueryFactory, TError>(
 		self: Query<TData, TFactory, TError>,
-	) => Effect.Effect<TData, TError | Core.CancelledError, ServicesOf<TFactory>>;
+	) => Effect.Effect<TData, TError | CancelledError, ServicesOf<TFactory>>;
 	<TData, TFactory extends QueryFactory, TError>(
 		self: Query<TData, TFactory, TError>,
 		request?: Core.FetchRequest,
-	): Effect.Effect<TData, TError | Core.CancelledError, ServicesOf<TFactory>>;
+	): Effect.Effect<TData, TError | CancelledError, ServicesOf<TFactory>>;
 } = dual(
 	(args) => Core.isQuery(args[0]),
 	<TData, TFactory extends QueryFactory, TError>(
@@ -61,9 +65,7 @@ export const fetch: {
 		Effect.contextWith((caller: Context.Context<never>) => {
 			const entry = internal.entryOf(self);
 			provideCaller(entry, caller);
-			return awaitOutcome<TData, TError | Core.CancelledError>(() =>
-				internal.fetch(entry, request),
-			);
+			return awaitOutcome<TData, TError>(() => internal.fetch(entry, request));
 		}),
 );
 
