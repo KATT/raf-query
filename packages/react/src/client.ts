@@ -11,7 +11,7 @@ import {
 	type QueryFactory,
 	type QueryHandle,
 } from "@raf-query/core";
-import { Context, Effect, Exit, Layer, Option, Scope } from "effect";
+import { Context, Effect, Exit, Layer, Option, Predicate, Scope } from "effect";
 
 import { unsafeCast } from "./cast.ts";
 
@@ -39,6 +39,19 @@ function provided<A, E, R>(
 	// already runs with those services, and the verbs take only factories of
 	// `QueryFactory<TServices>`.
 	return unsafeCast<Effect.Effect<A, E>>(effect);
+}
+
+/**
+ * Run a verb that waits on a request. A cancelled request rejects with an
+ * `AbortError`, as an aborted `fetch` does, not with the Effect API's
+ * `Query.CancelledError`.
+ */
+function runLoad<A, E>(effect: Effect.Effect<A, E>): Promise<A> {
+	return Effect.runPromise(effect).catch((error: unknown) => {
+		throw Predicate.isTagged(error, "CancelledError")
+			? new DOMException("The query was cancelled", "AbortError")
+			: error;
+	});
 }
 
 /**
@@ -110,7 +123,7 @@ export class QueryClient<TServices = never> {
 		factory: TFactory,
 		...args: QueryCache.LoadArgs<TFactory>
 	): Promise<EnsuredQueryHandle<TFactory>> {
-		return Effect.runPromise(provided(this.effect.ensure(factory, ...args)));
+		return runLoad(provided(this.effect.ensure(factory, ...args)));
 	}
 
 	/** Like `ensure`, but resolves to the data. */
@@ -118,7 +131,7 @@ export class QueryClient<TServices = never> {
 		factory: TFactory,
 		...args: QueryCache.LoadArgs<TFactory>
 	): Promise<DataOf<TFactory>> {
-		return Effect.runPromise(provided(this.effect.fetch(factory, ...args)));
+		return runLoad(provided(this.effect.fetch(factory, ...args)));
 	}
 
 	/**
