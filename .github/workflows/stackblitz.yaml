@@ -1,0 +1,55 @@
+jobs:
+  sync:
+    name: Sync the stackblitz branch
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: ./.github/actions/prepare
+      - name: Check out the stackblitz branch
+        run: |
+          if git fetch --depth 1 origin stackblitz; then
+            git worktree add --detach "$RUNNER_TEMP/stackblitz" FETCH_HEAD
+          else
+            git worktree add --orphan -b stackblitz "$RUNNER_TEMP/stackblitz"
+          fi
+      - run: node scripts/stackblitz-examples.ts "$RUNNER_TEMP/stackblitz"
+      # Each copy installs on its own from npm, as StackBlitz does. The lockfile
+      # it writes is committed; a copy that doesn't build isn't pushed.
+      - name: Install and build each example
+        run: |
+          for app in "$RUNNER_TEMP"/stackblitz/examples/*/; do
+            (cd "$app" && npm install --no-audit --no-fund && npm run build)
+          done
+      - name: Push
+        run: |
+          sha=$(git rev-parse --short HEAD)
+          cd "$RUNNER_TEMP/stackblitz"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes."
+            exit 0
+          fi
+          git commit -m "chore: sync examples from main ($sha)"
+          git push origin HEAD:refs/heads/stackblitz
+
+name: StackBlitz
+
+# After Release, so the `@raf-query/*` version in `packages/*/package.json` is
+# on npm.
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - Release
+    types:
+      - completed
+concurrency:
+  group: ${{ github.workflow }}

@@ -10,7 +10,16 @@ The cache is written in [Effect](https://effect.website), but using raf-query do
 
 ## Status
 
-Early. Both packages are on npm at `0.0.x`, and the API can still change between patch releases. [`examples/`](examples/) has the same issue tracker built on TanStack Start and on Next.js App Router.
+Early. Both packages are on npm at `0.x`, and the API can still change between patch releases.
+
+## Examples
+
+The same issue tracker, built on two frameworks so the integrations can be compared side by side. Each opens in StackBlitz, which runs it in the browser:
+
+| Example                                                     | Framework          | Try it                                                                                                                                                     |
+| ----------------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`examples/tanstack-start`](examples/tanstack-start#readme) | TanStack Start     | [Open in StackBlitz](https://stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/tanstack-start?file=src/queries.ts,src/routes/issues.index.tsx) |
+| [`examples/nextjs`](examples/nextjs#readme)                 | Next.js App Router | [Open in StackBlitz](https://stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/nextjs?file=src/queries.ts,src/app/issues/page.tsx)             |
 
 ## Packages
 
