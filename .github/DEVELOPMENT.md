@@ -58,11 +58,13 @@ Every database call waits `DB_LATENCY_MS` (default 400) ± 50%. Data the server 
 
 ### StackBlitz
 
-StackBlitz opens one folder of a GitHub repo, but the apps import `@examples/*` and `@raf-query/*` from the workspace. So the `stackblitz` branch holds a standalone copy of each app, and the READMEs link to `stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/<app>`. [`scripts/stackblitz-examples.ts`](../scripts/stackblitz-examples.ts) writes the copies: the shared packages go in `shared/` as `file:` dependencies, `@raf-query/*` become the version in `packages/*/package.json`, and the scripts swap in what runs in WebContainers (`vite` for `vp`, `next dev --webpack`). [`.github/workflows/stackblitz.yaml`](./workflows/stackblitz.yaml) runs it after each Release run on `main`, so that version is on npm. The workflow installs and builds each copy with npm, then pushes the branch, so a copy that doesn't build isn't pushed. To check the copies locally:
+StackBlitz opens one folder of a GitHub repo, but the apps import `@examples/*` and `@raf-query/*` from the workspace. So the `stackblitz` branch holds a standalone copy of each app, and the READMEs link to `stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/<app>`. [`tooling/stackblitz`](../tooling/stackblitz) writes the copies. Each copy is its own pnpm workspace: `examples/.shared/*` is copied as-is into `shared/`, so `@examples/*` stay `workspace:*`, and `@raf-query/*` become the version in `packages/*/package.json`. The scripts swap in what runs in WebContainers (`vite` for `vp`, `next dev --webpack`), and `.stackblitzrc` preloads `webcontainer-async-context.mjs`, which patches `AsyncLocalStorage` around a WebContainers bug.
+
+[`.github/workflows/stackblitz.yaml`](./workflows/stackblitz.yaml) runs `pnpm --filter @tooling/stackblitz sync` after each Release run on `main`. It waits until npm serves the version just published, then installs and builds each copy with StackBlitz's pnpm (8.15.6). It commits the lockfiles and pushes the branch, so a copy that doesn't build isn't pushed. To check the copies locally:
 
 ```shell
-node scripts/stackblitz-examples.ts /tmp/stackblitz
-cd /tmp/stackblitz/examples/nextjs && npm install && npm run dev
+pnpm --filter @tooling/stackblitz generate /tmp/stackblitz
+cd /tmp/stackblitz/examples/nextjs && npx pnpm@8.15.6 install && npx pnpm@8.15.6 dev
 ```
 
 ## Formatting
