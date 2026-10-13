@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.4](https://github.com/KATT/raf-query/compare/0.2.3...0.2.4) (2026-10-13)
+
+### Features
+
+- **examples:** open the examples in CodeSandbox ([#55](https://github.com/KATT/raf-query/issues/55)) ([b94f6c8](https://github.com/KATT/raf-query/commit/b94f6c86ac1b631d6e8e043a19098ae529f3ea7c)), references [#53](https://github.com/KATT/raf-query/issues/53)
+
 ## [0.2.3](https://github.com/KATT/raf-query/compare/0.2.2...0.2.3) (2026-10-13)
 
 ### Features
