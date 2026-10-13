@@ -42,17 +42,30 @@ pnpm build
 | `examples/.shared/ui`                          | shadcn/ui components and the Tailwind theme (`@examples/ui`)           |
 | `examples/.shared/db`                          | In-memory fake database with latency (`@examples/db`), and its schemas |
 
-They import the libraries' source, so there is nothing to build first:
+They import the libraries' source, so there is nothing to build first. Run them from the root; `pnpm` installs first when `node_modules` is out of date (`verifyDepsBeforeRun` in `pnpm-workspace.yaml`):
 
 ```shell
-pnpm --filter @examples/tanstack-start dev
-pnpm --filter @examples/nextjs dev
-pnpm --filter @examples/experimental-tanstack-query-start dev
-pnpm --filter @examples/experimental-tanstack-query-nextjs dev
-pnpm build:examples   # production builds of every app, as CI runs them
+pnpm dev                # TanStack Start and Next.js, in parallel
+pnpm dev:start          # TanStack Start only
+pnpm dev:next           # Next.js only
+pnpm dev:experimental   # both apps on TanStack Query
+pnpm dev:all            # all four
+pnpm build:examples     # production builds of every app, as CI runs them
+pnpm preview:examples   # build all four, then serve the production builds
 ```
 
-Every database call waits `DB_LATENCY_MS` (default 400) ± 50%. Data lives in memory and resets when the server restarts. To add a shadcn component, run `pnpm dlx shadcn@latest add <name>` in `examples/.shared/ui`, then check that it imports `cn` from `@examples/ui/lib/utils` (the CLI can write a bare `"cn"` import and add a `cn` dependency).
+Every database call waits `DB_LATENCY_MS` (default 400) ± 50%. Data the server loads for the first render streams in with the HTML. Later loads (scrolling, filters, opening an issue) are requests in the browser's network tab: `GET /_serverFn/<name>` in TanStack Start (the name is a module-path encoding in dev), and `POST` to the page's URL in Next.js, where the server action's input is the request body. Data lives in memory and resets when the server restarts. To add a shadcn component, run `pnpm dlx shadcn@latest add <name>` in `examples/.shared/ui`, then check that it imports `cn` from `@examples/ui/lib/utils` (the CLI can write a bare `"cn"` import and add a `cn` dependency).
+
+### StackBlitz
+
+StackBlitz opens one folder of a GitHub repo, but the apps import `@examples/*` and `@raf-query/*` from the workspace. So the `stackblitz` branch holds a standalone copy of each app, and the READMEs link to `stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/<app>`. [`tooling/stackblitz`](../tooling/stackblitz) writes the copies. Each copy is its own pnpm workspace, laid out like a typical one: the app in `apps/<app>` and `examples/.shared/*` copied as-is into `packages/`, so `@examples/*` stay `workspace:*`. `@raf-query/*` become the version in this repo's `packages/*/package.json`, and the root `package.json` runs the app's scripts. The scripts swap in what runs in WebContainers (`vite` for `vp`, `next dev --webpack`), and `.stackblitzrc` preloads `webcontainer-async-context.mjs`, which patches `AsyncLocalStorage` around a WebContainers bug.
+
+[`.github/workflows/stackblitz.yaml`](./workflows/stackblitz.yaml) runs `pnpm --filter @tooling/stackblitz sync` after each Release run on `main`. It waits until npm serves the version just published, then installs and builds each copy with StackBlitz's pnpm (8.15.6). It commits the lockfiles and pushes the branch, so a copy that doesn't build isn't pushed. To check the copies locally:
+
+```shell
+pnpm --filter @tooling/stackblitz generate /tmp/stackblitz
+cd /tmp/stackblitz/examples/nextjs && npx pnpm@8.15.6 install && npx pnpm@8.15.6 dev
+```
 
 ## Formatting
 

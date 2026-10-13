@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Bundle one raf-query fixture app and list the modules that end up in it,
- * largest first (minified bytes as rendered into the chunk). Use it to find
- * what to cut after `measure.ts` shows a size change.
+ * largest first (bytes as rendered into the chunk, before minification).
+ * Use it to find what to cut after `measure.ts` shows a size change.
  *
  * Usage: node src/analyze.ts [export] [module] [--top N]
  *   export  fixture export to render (default `queryApp`)
@@ -85,7 +85,7 @@ Effect.gen(function* () {
 		.toSorted((a, b) => b.bytes - a.bytes);
 	const total = modules.reduce((sum, module) => sum + module.bytes, 0);
 	yield* Console.log(
-		`${appExport}: ${(gzip / 1024).toFixed(2)} kB gzip, ${total} bytes minified; by module:\n`,
+		`${appExport}: ${(gzip / 1024).toFixed(2)} kB gzip, ${total} bytes before minification; by module:\n`,
 	);
 	for (const module of modules.slice(0, top)) {
 		yield* Console.log(`${String(module.bytes).padStart(7)}  ${module.id}`);

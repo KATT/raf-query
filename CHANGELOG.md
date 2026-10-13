@@ -1,5 +1,57 @@
 # Changelog
 
+## [0.1.16](https://github.com/KATT/raf-query/compare/0.1.15...0.1.16) (2026-10-13)
+
+### Bug Fixes
+
+- stale data always refreshes when switching pages ([#49](https://github.com/KATT/raf-query/issues/49)) ([68652cd](https://github.com/KATT/raf-query/commit/68652cdf6ea06ef86d277329098ee294dba98f21))
+
+## [0.1.15](https://github.com/KATT/raf-query/compare/0.1.14...0.1.15) (2026-10-13)
+
+- **tooling:** list a fixture app's modules by size ([#45](https://github.com/KATT/raf-query/issues/45)) ([0e1f899](https://github.com/KATT/raf-query/commit/0e1f899f2fecc1368f9be71a2c78e3efd2f3783b))
+
+## [0.1.14](https://github.com/KATT/raf-query/compare/0.1.13...0.1.14) (2026-10-13)
+
+### Performance Improvements
+
+- **core:** mark top-level Effect constructors pure ([#46](https://github.com/KATT/raf-query/issues/46)) ([9fb7f76](https://github.com/KATT/raf-query/commit/9fb7f76fb3dad5e5fa4566de011727ce46ac3bbc))
+
+## [0.1.13](https://github.com/KATT/raf-query/compare/0.1.12...0.1.13) (2026-10-13)
+
+### Bug Fixes
+
+- **deps:** make effect a peer dependency ([#40](https://github.com/KATT/raf-query/issues/40)) ([f172515](https://github.com/KATT/raf-query/commit/f17251515788e2aaf243cce33e5af09bf87db59e))
+
+## [0.1.12](https://github.com/KATT/raf-query/compare/0.1.11...0.1.12) (2026-10-13)
+
+### Features
+
+- **tooling:** lay out StackBlitz copies as apps/ and packages/ ([#42](https://github.com/KATT/raf-query/issues/42)) ([b171751](https://github.com/KATT/raf-query/commit/b1717514bf75a38043a4fe028ca95b0edc8f4ad6))
+
+## [0.1.11](https://github.com/KATT/raf-query/compare/0.1.10...0.1.11) (2026-10-13)
+
+### Features
+
+- **tooling:** StackBlitz copies as pnpm workspaces, synced by an Effect program ([#41](https://github.com/KATT/raf-query/issues/41)) ([bb48c5d](https://github.com/KATT/raf-query/commit/bb48c5d3f7332bad6c56cc6cb6c3cd27fde6163a)), references [#38](https://github.com/KATT/raf-query/issues/38) [webcontainer-core#1169](https://github.com/webcontainer-core/issues/1169) [TanStack/router#7480](https://github.com/TanStack/router/issues/7480)
+
+## [0.1.10](https://github.com/KATT/raf-query/compare/0.1.9...0.1.10) (2026-10-13)
+
+- **stackblitz:** wait for the released version on npm ([#39](https://github.com/KATT/raf-query/issues/39)) ([18d5f86](https://github.com/KATT/raf-query/commit/18d5f8659c61c1571bc104a6142e5d1d714df325))
+
+## [0.1.9](https://github.com/KATT/raf-query/compare/0.1.8...0.1.9) (2026-10-13)
+
+- **examples:** open the examples in StackBlitz ([#38](https://github.com/KATT/raf-query/issues/38)) ([b4e1b64](https://github.com/KATT/raf-query/commit/b4e1b644057cf2acb96ca077d0a79e2757fec305))
+
+## [0.1.8](https://github.com/KATT/raf-query/compare/0.1.7...0.1.8) (2026-10-13)
+
+### Features
+
+- **examples:** infinite scroll, root dev scripts, readable request names; README and tests cover pagination and infinite scroll ([#37](https://github.com/KATT/raf-query/issues/37)) ([2c3bed6](https://github.com/KATT/raf-query/commit/2c3bed630fd08d0a59686a6f5f14aecba1ff2e1b))
+
+## [0.1.7](https://github.com/KATT/raf-query/compare/0.1.6...0.1.7) (2026-10-13)
+
+- validate search params with a zod schema in the README ([#36](https://github.com/KATT/raf-query/issues/36)) ([9142236](https://github.com/KATT/raf-query/commit/9142236f611deb0fdf9db5f7e2847bccad89e841))
+
 ## [0.1.6](https://github.com/KATT/raf-query/compare/0.1.5...0.1.6) (2026-10-12)
 
 - one file per decision, and alternatives in the PR template ([#34](https://github.com/KATT/raf-query/issues/34)) ([e60d30b](https://github.com/KATT/raf-query/commit/e60d30bc99452eec7178fa2a6c7598987fe5254c)), references [#24](https://github.com/KATT/raf-query/issues/24) [#25](https://github.com/KATT/raf-query/issues/25) [#26](https://github.com/KATT/raf-query/issues/26) [#27](https://github.com/KATT/raf-query/issues/27) [#28](https://github.com/KATT/raf-query/issues/28) [#33](https://github.com/KATT/raf-query/issues/33) [#26](https://github.com/KATT/raf-query/issues/26) [#N](https://github.com/KATT/raf-query/issues/N) [#26](https://github.com/KATT/raf-query/issues/26) [#16](https://github.com/KATT/raf-query/issues/16) [#23](https://github.com/KATT/raf-query/issues/23) [#31](https://github.com/KATT/raf-query/issues/31) [#19](https://github.com/KATT/raf-query/issues/19) [#28](https://github.com/KATT/raf-query/issues/28) [#33](https://github.com/KATT/raf-query/issues/33)

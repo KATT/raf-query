@@ -292,6 +292,24 @@ export function start(entry: Entry) {
 	begin(entry, {});
 }
 
+/**
+ * Background refetch of cached data that was asked for again. A server cache
+ * renders once, so a refetch there could only duplicate a request whose
+ * result is never shown; it refetches only what `invalidate` marked.
+ */
+export function revalidate(entry: Entry) {
+	const state = entry.state;
+	if (!state.hasData || state.isFetching) {
+		return;
+	}
+	const wanted = entry.cache.isServer
+		? state.isInvalidated
+		: isStaleUnsafe(entry);
+	if (wanted) {
+		start(entry);
+	}
+}
+
 /** Start a request, or join the one in flight, and wait for its outcome. */
 export async function fetch(
 	entry: Entry,

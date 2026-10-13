@@ -33,7 +33,7 @@ export function StatusFilter(props: {
 							current.status === status && "bg-muted font-medium",
 						)}
 						key={status}
-						search={{ ...current, page: 1, status }}
+						search={{ ...current, status }}
 						to="/issues"
 					>
 						{statusLabel(status)}
@@ -52,7 +52,7 @@ export function StatusFilter(props: {
 							current.sort === sort && "bg-muted font-medium",
 						)}
 						key={sort}
-						search={{ ...current, page: 1, sort }}
+						search={{ ...current, sort }}
 						to="/issues"
 					>
 						{sort}

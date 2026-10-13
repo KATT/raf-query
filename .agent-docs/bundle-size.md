@@ -10,11 +10,11 @@ Core runs requests on Promises + `AbortSignal` and has no runtime `effect` impor
 
 | App                                | TanStack Query | raf-query now | Effect-native engine, trimmed | Effect-native before the cuts |
 | ---------------------------------- | -------------: | ------------: | ----------------------------: | ----------------------------: |
-| Factory + prefetch + `useQuery`    |           9.77 |          6.76 |                         19.24 |                         29.26 |
+| Factory + prefetch + `useQuery`    |           9.77 |          6.77 |                         19.24 |                         29.26 |
 | + paged                            |          10.44 |          7.17 |                         19.64 |                         29.65 |
 | + action that invalidates          |          10.60 |          7.34 |                         19.80 |                         29.81 |
 | TanStack Router app                |          12.36 |          8.10 |                         20.61 |                         31.44 |
-| Effect `queryFn` + `retrySchedule` |              — |         17.14 |                         20.48 |                         29.49 |
+| Effect `queryFn` + `retrySchedule` |              — |         17.15 |                         20.48 |                         29.49 |
 | Effect `queryFn` + `fromLayer`     |              — |         16.74 |                         19.70 |                             — |
 
 - `dist/` bundles the same as src for the default apps; the two Effect apps are ~0.1 kB bigger from `dist/` (17.23 / 16.81).

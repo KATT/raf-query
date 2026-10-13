@@ -257,23 +257,8 @@ function match<TFactory extends QueryFactory>(
 }
 
 /**
- * Background refetch of cached data a verb reuses. A server cache renders
- * once, so a refetch there could only duplicate a request whose result is
- * never shown; it refetches only what `invalidate` marked.
- */
-function revalidate(entry: Entry.Entry) {
-	const state = entry.state;
-	const wanted = entry.cache.isServer
-		? state.isInvalidated
-		: Entry.isStaleUnsafe(entry);
-	if (!state.isFetching && wanted) {
-		Entry.start(entry);
-	}
-}
-
-/**
  * Waits for an entry's data on a cache miss. Cached data returns at once,
- * and revalidates in the background (see `revalidate`).
+ * and revalidates in the background (see `Entry.revalidate`).
  */
 export function load(
 	entry: Entry.Entry,
@@ -282,14 +267,14 @@ export function load(
 	if (!entry.state.hasData) {
 		return Entry.fetch(entry, { pages });
 	}
-	revalidate(entry);
+	Entry.revalidate(entry);
 	return Promise.resolve(succeeded(entry.state.data));
 }
 
 /** Start an entry's request without waiting, unless fresh data is cached. */
 export function startPrefetch(entry: Entry.Entry): void {
 	if (entry.state.hasData) {
-		revalidate(entry);
+		Entry.revalidate(entry);
 	} else {
 		Entry.start(entry);
 	}

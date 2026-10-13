@@ -10,7 +10,16 @@ The cache's mechanics (dedupe, staleness, retries, infinite paging, SSR hydratio
 
 ## Status
 
-Early. Both packages are on npm at `0.0.x`, and the API can still change between patch releases. [`examples/`](examples/) has the same issue tracker built on TanStack Start and on Next.js App Router.
+Early. Both packages are on npm at `0.x`, and the API can still change between patch releases.
+
+## Examples
+
+The same issue tracker, built on two frameworks so the integrations can be compared side by side. Each opens in StackBlitz, which runs it in the browser:
+
+| Example                                                     | Framework          | Try it                                                                                                                                                                                             |
+| ----------------------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`examples/tanstack-start`](examples/tanstack-start#readme) | TanStack Start     | [Open in StackBlitz](https://stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/tanstack-start?file=apps/tanstack-start/src/queries.ts,apps/tanstack-start/src/routes/issues.index.tsx) |
+| [`examples/nextjs`](examples/nextjs#readme)                 | Next.js App Router | [Open in StackBlitz](https://stackblitz.com/github/KATT/raf-query/tree/stackblitz/examples/nextjs?file=apps/nextjs/src/queries.ts,apps/nextjs/src/app/issues/page.tsx)                             |
 
 ## Packages
 
@@ -18,6 +27,8 @@ Early. Both packages are on npm at `0.0.x`, and the API can still change between
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@raf-query/core`  | Framework-agnostic: `QueryCache`, `queryOptions` / `infiniteQueryOptions`, handles, dehydrate / hydrate. `@raf-query/core/effect` is its [Effect](#effect) API |
 | `@raf-query/react` | `QueryClient` (the cache with Promise methods), hooks, provider, `allKeyed`. Re-exports `@raf-query/core`, so apps import only this package                    |
+
+`effect` (`^4.0.0`) is a peer dependency of both, so an app that uses Effect shares one copy with raf-query. npm, pnpm and Bun install it automatically; with Yarn, add it yourself (`yarn add effect`).
 
 `@raf-query/react` subpath entries for framework integrations and tooling:
 
@@ -151,7 +162,8 @@ return { org: qc.prefetch(orgQuery, { orgId: user.orgId }) };
 Behavior:
 
 - Every verb dedupes against the cache. A fresh entry is reused; a stale entry is refetched in the background.
-- `ensure` and `fetch` wait only on a cache miss. With stale cached data they resolve immediately and revalidate in the background.
+- `ensure` and `fetch` wait only on a cache miss. With stale cached data they resolve immediately, so the navigation isn't held up, and revalidate in the background: the page renders the cached data and re-renders when the refetch lands.
+- Loaders run on every navigation (TanStack Router reruns them when its own `staleTime` has passed, `0` by default), so returning to a page shows what's cached at once and then fresh data. With `defaultPreload: "intent"`, also set `defaultPreloadStaleTime: 0`: otherwise the router reuses a hover's preload for 30 seconds instead of running the loader on click, and the query cache never hears about the navigation.
 - On the server, cached data is always reused, whatever `staleTime` says. A server client renders once, so a background refetch could only repeat a request whose result is never shown. Entries marked by `invalidate` still refetch.
 - A failed `prefetch` never throws out of the loader. The error surfaces where the data is read, and is reported to the client's `onError`.
 - A failed `ensure` or `fetch` rejects, so it reaches the route's error boundary.
@@ -231,7 +243,7 @@ function PostPage() {
 
 When the cache updates — refetch, invalidation, `setData` — the hook returns a new, pre-resolved promise and the component re-renders without suspending. New data is structurally shared with the old: objects and arrays that are deeply equal keep their identity, and a refetch that returns equal data keeps the same promise, so nothing re-renders. Controls are tracked: reading `controls.isFetching` subscribes the component to `isFetching`, and a change to a control it never read doesn't re-render it. When the **first** load fails, the promise rejects and `use()` throws to the nearest error boundary. Resetting that boundary refetches the query.
 
-Queries do not refetch on mount. They refetch when a loader starts them again, when invalidated, on window focus or reconnect while stale, on `refetch()`, or on `refetchInterval`.
+`useQuery` never refetches on mount: whatever started the query decides. Stale data refetches in the background when a loader or server component starts the query again (`prefetch`, `ensure`, `fetch`, or hydrating the server's copy), when `useWaterfall` mounts, when invalidated, on window focus or reconnect, on `refetch()`, or on `refetchInterval`.
 
 For an app-wide indicator, `useIsFetching()` returns how many queries have a request in flight, background refetches included, and re-renders when that changes. Pass a filter to count only some: `useIsFetching({ queryKey: ["comments"] })`. It's `0` on the server and during hydration, so the indicator never appears in server HTML. Outside React, `qc.isFetching(filter?)` returns the same number.
 
@@ -274,18 +286,70 @@ Paging controls: `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `hasPr
 
 On the server, `ensure` and `fetch` load the first page. Pass `{ pages: n }` as a third argument to load more up front; the option is only accepted for paged factories.
 
+### Infinite scroll
+
+Infinite scroll is the same paged query with an automatic "Load more". A ref callback watches the button and presses it when it nears the viewport. Unmount the button while a page loads: it watches again when it remounts, so it keeps loading while it stays in reach. Its place is taken by skeletons the size of the incoming page, so the loaded rows replace them without moving anything below.
+
+```tsx
+function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
+	const [pagesPromise, comments] = useQuery(commentsQuery, props.handle);
+	const data = use(pagesPromise);
+
+	return (
+		<>
+			{data.pages
+				.flatMap((page) => page.items)
+				.map((comment) => (
+					<Comment key={comment.id} {...comment} />
+				))}
+			{comments.isFetchingNextPage ? <CommentSkeletons /> : null}
+			{comments.hasNextPage && !comments.isFetchingNextPage ? (
+				<button
+					onClick={() => comments.fetchNextPage()}
+					ref={(button) => {
+						if (button === null) return;
+						const observer = new IntersectionObserver(
+							(entries) => {
+								if (entries.some((entry) => entry.isIntersecting)) {
+									observer.disconnect();
+									comments.fetchNextPage();
+								}
+							},
+							{ rootMargin: "0px 0px 300px 0px" },
+						);
+						observer.observe(button);
+						return () => observer.disconnect();
+					}}
+				>
+					Load more
+				</button>
+			) : null}
+		</>
+	);
+}
+```
+
+Pagination and infinite scroll differ in where the page lives:
+
+- **Pagination**: the page is a search param and part of the input, so each page is its own query and the URL links to it ([below](#when-the-url-changes)).
+- **Infinite scroll**: filters and sort are search params, and pages are loaded into one paged query per input. Changing a filter starts a new list from its first page.
+
+The [examples](examples/) load their issue list and comments by infinite scroll.
+
 ### When the URL changes
 
 Filters, sort order, and pagination are search params. The loader turns them into the query's input, so every navigation starts the right query and the component only ever reads the handle it was given:
 
 ```tsx
-type PostsSearch = { sort: "newest" | "oldest"; page: number };
+import { z } from "zod";
+
+const PostsSearch = z.object({
+	sort: z.enum(["newest", "oldest"]).default("newest"),
+	page: z.int().positive().default(1),
+});
 
 export const Route = createFileRoute("/posts")({
-	validateSearch: (search): PostsSearch => ({
-		sort: search.sort === "oldest" ? "oldest" : "newest",
-		page: Number(search.page ?? 1),
-	}),
+	validateSearch: PostsSearch,
 	loaderDeps: (args) => args.search,
 	loader: (args) => ({
 		posts: args.context.queryClient.prefetch(postsQuery, args.deps),
@@ -367,6 +431,8 @@ function PostAuthor(props: { post: Post }) {
 	return <AuthorCard author={use(authorPromise)} />;
 }
 ```
+
+Like `prefetch` in a loader, `useWaterfall` refetches stale cached data in the background, once each time the component mounts or its input changes. Re-renders don't refetch.
 
 The name is the warning: each waterfall is an extra round trip after render. First try to get the input from route params so the loader can start it, or have the backend return it with its parent.
 
@@ -505,7 +571,7 @@ export default async function Page(props: {
 ```
 
 - `getQueryClient` is scoped to one request by React's `cache()`.
-- `HydrationBoundary` sends the request client's entries to the browser cache; pending ones stream as promises. Render one in each server component that starts queries for client components. Entries already sent in this request are skipped.
+- `HydrationBoundary` sends the request client's entries to the browser cache; pending ones stream as promises. Render one in each server component that starts queries for client components. Entries already sent in this request are skipped. The browser takes the server's data when it's newer than its own. Otherwise it keeps its copy and refetches it if stale. That covers a payload the router replays from its cache (back and forward) and a `prefetch` still pending on the server.
 - `QueryProvider` creates the browser client, and streams queries that client components start during SSR (`useWaterfall`) into the HTML. Pass `config` for the client's options; it must be serializable.
 - Server components that only render data can `await qc.fetch(...)` anywhere; the per-request client makes one request per query, whatever its `staleTime`.
 - `fetch` returns data, not a handle. When a server component renders the data and also hands the query to a client component, pass `await qc.ensure(...)`: after the `fetch` it resolves from the cache, and the client component gets the data from `useQuery` without a promise.

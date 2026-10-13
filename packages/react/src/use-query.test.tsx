@@ -1,4 +1,4 @@
-import { describe, expect, expectTypeOf, it } from "@effect/vitest";
+import { describe, expect, expectTypeOf, it, vi } from "@effect/vitest";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { Context, Effect, Layer } from "effect";
 import { Component, type ReactNode, StrictMode, Suspense, use } from "react";
@@ -605,6 +605,286 @@ describe("useWaterfall", () => {
 
 		expect(screen.getByText("Assignee: Grace")).toBeDefined();
 		expect(test.backend.calls()).toBe(2);
+		cleanup();
+	});
+
+	it("doesn't refetch the first load it suspended on, in StrictMode", async () => {
+		const test = setup();
+		function Assignee() {
+			const user = useWaterfall(test.backend.userQuery, { id: 10 });
+			const [userPromise] = useQuery(test.backend.userQuery, user);
+			return <p>{`Assignee: ${use(userPromise)}`}</p>;
+		}
+
+		await mount(
+			<StrictMode>
+				{test.view(
+					<Suspense fallback={<p>Loading</p>}>
+						<Assignee />
+					</Suspense>,
+				)}
+			</StrictMode>,
+		);
+		await test.backend.respond();
+
+		expect(screen.getByText("Assignee: Ada")).toBeDefined();
+		expect(test.backend.calls()).toBe(1);
+		cleanup();
+	});
+
+	it("refetches stale cached data once per mount, not per render", async () => {
+		const test = setup();
+		test.client.setData(test.backend.userQuery, { id: 20 }, "Old Grace");
+		function Assignee(props: { readonly id: number; readonly label: string }) {
+			const user = useWaterfall(test.backend.userQuery, { id: props.id });
+			const [userPromise] = useQuery(test.backend.userQuery, user);
+			return <p>{`${props.label}: ${use(userPromise)}`}</p>;
+		}
+
+		const view = await mount(test.view(<Assignee id={20} label="Assignee" />));
+		expect(screen.getByText("Assignee: Old Grace")).toBeDefined();
+		expect(test.backend.calls()).toBe(1);
+		await test.backend.respond();
+		expect(screen.getByText("Assignee: Grace")).toBeDefined();
+
+		await view.rerender(test.view(<Assignee id={20} label="Owner" />));
+		expect(screen.getByText("Owner: Grace")).toBeDefined();
+		expect(test.backend.calls()).toBe(1);
+
+		cleanup();
+		await mount(test.view(<Assignee id={20} label="Assignee" />));
+		expect(test.backend.calls()).toBe(2);
+		cleanup();
+	});
+});
+
+describe("lists", () => {
+	interface ItemPage {
+		readonly items: ReadonlyArray<number>;
+		readonly next: number | null;
+	}
+
+	/** 25 items, 10 per page; `odd` keeps the odd ones. */
+	function createListBackend() {
+		const open: Array<() => void> = [];
+		const requests: Array<string> = [];
+		function select(filter: "all" | "odd") {
+			return Array.from({ length: 25 }, (_, index) => index + 1).filter(
+				(item) => filter === "all" || item % 2 === 1,
+			);
+		}
+		function later<T>(request: string, produce: () => T) {
+			requests.push(request);
+			return new Promise<T>((resolve) => {
+				open.push(() => {
+					resolve(produce());
+				});
+			});
+		}
+		/** Pagination: the page is part of the input, one query per page. */
+		function pageQuery(input: { filter: "all" | "odd"; page: number }) {
+			return queryOptions({
+				queryFn: () =>
+					later(`${input.filter} page ${input.page}`, () =>
+						select(input.filter).slice((input.page - 1) * 10, input.page * 10),
+					),
+				queryKey: ["items", input.filter, input.page],
+			});
+		}
+		/** Infinite scroll: one paged query per filter. */
+		function feedQuery(input: { filter: "all" | "odd" }) {
+			return infiniteQueryOptions<ItemPage, number>({
+				getNextPageParam: (lastPage) => lastPage.next,
+				initialPageParam: 0,
+				queryFn: (context) =>
+					later(`${input.filter} from ${context.pageParam}`, () => {
+						const all = select(input.filter);
+						const end = context.pageParam + 10;
+						return {
+							items: all.slice(context.pageParam, end),
+							next: end < all.length ? end : null,
+						};
+					}),
+				queryKey: ["feed", input.filter],
+			});
+		}
+		return {
+			feedQuery,
+			pageQuery,
+			requests,
+			respond: () =>
+				act(async () => {
+					for (const settle of open.splice(0)) {
+						settle();
+					}
+					await new Promise((resolve) => {
+						setTimeout(resolve, 10);
+					});
+				}),
+		};
+	}
+
+	/**
+	 * Stands in for `IntersectionObserver`. Like the real one, a new observer
+	 * reports right away when its target is already in view.
+	 */
+	function stubViewport() {
+		let atEnd = false;
+		type Report = (entries: ReadonlyArray<{ isIntersecting: boolean }>) => void;
+		const observers = new Map<object, Report>();
+		class FakeIntersectionObserver {
+			readonly #report: Report;
+			constructor(report: Report) {
+				this.#report = report;
+			}
+			observe() {
+				observers.set(this, this.#report);
+				if (atEnd) {
+					queueMicrotask(() => {
+						observers.get(this)?.([{ isIntersecting: true }]);
+					});
+				}
+			}
+			disconnect() {
+				observers.delete(this);
+			}
+		}
+		vi.stubGlobal("IntersectionObserver", FakeIntersectionObserver);
+		return {
+			scrollToEnd: () =>
+				act(async () => {
+					atEnd = true;
+					for (const report of observers.values()) {
+						report([{ isIntersecting: true }]);
+					}
+					await Promise.resolve();
+				}),
+		};
+	}
+
+	it("paginate with the page in the input, keeping the previous page while the next loads", async () => {
+		const backend = createListBackend();
+		const client = createQueryClient({ isServer: false });
+		function Page(props: {
+			readonly handle: QueryHandle<typeof backend.pageQuery>;
+		}) {
+			const [itemsPromise, page] = useQuery(backend.pageQuery, props.handle, {
+				whilePending: "previous",
+			});
+			return (
+				<p data-previous={page.isPrevious}>{use(itemsPromise).join(",")}</p>
+			);
+		}
+		function view(page: number) {
+			const handle = client.prefetch(backend.pageQuery, {
+				filter: "all",
+				page,
+			});
+			return (
+				<QueryClientProvider client={client}>
+					<Suspense fallback={<p>Loading</p>}>
+						<Page handle={handle} />
+					</Suspense>
+				</QueryClientProvider>
+			);
+		}
+		const result = await mount(view(1));
+		await backend.respond();
+		expect(screen.getByText("1,2,3,4,5,6,7,8,9,10")).toBeDefined();
+
+		await result.rerender(view(2));
+		const previous = screen.getByText("1,2,3,4,5,6,7,8,9,10");
+		expect(previous.dataset["previous"]).toBe("true");
+		await backend.respond();
+		expect(screen.getByText("11,12,13,14,15,16,17,18,19,20")).toBeDefined();
+
+		await result.rerender(view(1));
+		expect(screen.getByText("1,2,3,4,5,6,7,8,9,10")).toBeDefined();
+		expect(backend.requests).toEqual([
+			"all page 1",
+			"all page 2",
+			"all page 1",
+		]);
+		cleanup();
+	});
+
+	it("load the next page by infinite scroll, and start over on a new filter", async () => {
+		const backend = createListBackend();
+		const viewport = stubViewport();
+		const client = createQueryClient({ isServer: false });
+		function Feed(props: {
+			readonly handle: QueryHandle<typeof backend.feedQuery>;
+		}) {
+			const [pagesPromise, feed] = useQuery(backend.feedQuery, props.handle, {
+				whilePending: "previous",
+			});
+			const data = use(pagesPromise);
+			return (
+				<div data-previous={feed.isPrevious} data-testid="feed">
+					<p>{data.pages.flatMap((page) => page.items).join(",")}</p>
+					{feed.isFetchingNextPage ? <p>Loading more</p> : null}
+					{feed.hasNextPage && !feed.isFetchingNextPage ? (
+						<button
+							onClick={() => {
+								void feed.fetchNextPage();
+							}}
+							ref={(button) => {
+								if (button === null) {
+									return;
+								}
+								const observer = new IntersectionObserver((entries) => {
+									if (entries.some((entry) => entry.isIntersecting)) {
+										observer.disconnect();
+										void feed.fetchNextPage();
+									}
+								});
+								observer.observe(button);
+								return () => {
+									observer.disconnect();
+								};
+							}}
+							type="button"
+						>
+							Load more
+						</button>
+					) : null}
+				</div>
+			);
+		}
+		function view(filter: "all" | "odd") {
+			const handle = client.prefetch(backend.feedQuery, { filter });
+			return (
+				<QueryClientProvider client={client}>
+					<Suspense fallback={<p>Loading</p>}>
+						<Feed handle={handle} />
+					</Suspense>
+				</QueryClientProvider>
+			);
+		}
+		const result = await mount(view("all"));
+		await backend.respond();
+		expect(screen.getByText("1,2,3,4,5,6,7,8,9,10")).toBeDefined();
+		expect(backend.requests).toEqual(["all from 0"]);
+
+		await viewport.scrollToEnd();
+		expect(screen.getByText("Loading more")).toBeDefined();
+		expect(screen.queryByText("Load more")).toBeNull();
+		await backend.respond();
+		// The button is back and still in view, so the last page loads too.
+		await backend.respond();
+		expect(screen.getByText(/^1,2,3,.*,24,25$/)).toBeDefined();
+		expect(screen.queryByText("Load more")).toBeNull();
+		expect(backend.requests).toEqual([
+			"all from 0",
+			"all from 10",
+			"all from 20",
+		]);
+
+		await result.rerender(view("odd"));
+		expect(screen.getByTestId("feed").dataset["previous"]).toBe("true");
+		await backend.respond();
+		expect(screen.getByText("1,3,5,7,9,11,13,15,17,19")).toBeDefined();
+		expect(screen.getByTestId("feed").dataset["previous"]).toBe("false");
 		cleanup();
 	});
 });

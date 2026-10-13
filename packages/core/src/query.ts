@@ -184,6 +184,17 @@ export function readUnsafe<TData, TFactory extends QueryFactory, TError>(
 	);
 }
 
+/**
+ * Refetch cached data in the background if it's stale, as `prefetch` does
+ * (on a server cache, only if invalidated). Does nothing without data or
+ * while a request is in flight.
+ */
+export function revalidateUnsafe<TData, TFactory extends QueryFactory, TError>(
+	self: Query<TData, TFactory, TError>,
+): void {
+	internal.revalidate(internal.entryOf(self));
+}
+
 /** Listen for state changes. Subscribed entries count as read. */
 export function subscribeUnsafe<TData, TFactory extends QueryFactory, TError>(
 	self: Query<TData, TFactory, TError>,

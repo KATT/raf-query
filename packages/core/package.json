@@ -1,6 +1,6 @@
 {
 	"name": "@raf-query/core",
-	"version": "0.1.6",
+	"version": "0.1.16",
 	"description": "Framework-agnostic core of raf-query, a render-as-you-fetch query library",
 	"keywords": [
 		"query",
@@ -41,13 +41,14 @@
 		"typecheck": "tsc",
 		"publish:npm": "pnpm pack --out package.tgz && npm publish package.tgz --access public && rm package.tgz"
 	},
-	"dependencies": {
-		"effect": "catalog:"
+	"peerDependencies": {
+		"effect": "^4.0.0"
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:",
 		"@types/node": "26.6.4",
 		"@vitest/coverage-v8": "5.0.1",
+		"effect": "catalog:",
 		"typescript": "7.0.2",
 		"vite-plus": "1.0.0"
 	},

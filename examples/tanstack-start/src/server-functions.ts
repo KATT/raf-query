@@ -11,7 +11,7 @@ import {
 	AddCommentInput,
 	CommentsInput,
 	IssueId,
-	IssueListInput,
+	IssuePageInput,
 	UpdateTitleInput,
 	UserId,
 } from "@examples/db/types";
@@ -19,7 +19,7 @@ import { notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 
 export const listIssues = createServerFn()
-	.validator(IssueListInput)
+	.validator(IssuePageInput)
 	.handler((context) => listIssuesInDb(context.data));
 
 export const getIssue = createServerFn()
