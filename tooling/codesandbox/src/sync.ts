@@ -61,9 +61,60 @@ export const run = (
 ) => spawn(cwd, command, args, "inherit").pipe(Effect.asVoid);
 
 /**
+ * Each app's Next.js build cache in the copy at `dir`, paired with where it's
+ * kept in `cache`: `[kept, inCopy]`. Turbopack keeps compiled modules there,
+ * so a build that starts from the last one's skips most of the compile.
+ */
+const buildCaches = Effect.fn("buildCaches")(function* (
+	cache: string,
+	dir: string,
+) {
+	const fs = yield* FileSystem.FileSystem;
+	const path = yield* Path.Path;
+	const apps = yield* fs.readDirectory(path.join(dir, "apps"));
+	return apps.map(
+		(app) =>
+			[
+				path.join(cache, app),
+				path.join(dir, "apps", app, ".next", "cache"),
+			] as const,
+	);
+});
+
+/** Copies the build caches `saveBuildCaches` kept in `cache` into the copy at `dir`. */
+export const restoreBuildCaches = Effect.fn("restoreBuildCaches")(function* (
+	cache: string,
+	dir: string,
+) {
+	const fs = yield* FileSystem.FileSystem;
+	const path = yield* Path.Path;
+	for (const [kept, inCopy] of yield* buildCaches(cache, dir)) {
+		if (yield* fs.exists(kept)) {
+			yield* fs.makeDirectory(path.dirname(inCopy), { recursive: true });
+			yield* fs.copy(kept, inCopy, { preserveTimestamps: true });
+		}
+	}
+});
+
+/** Keeps the copy at `dir`'s build caches in `cache`, replacing older ones. */
+export const saveBuildCaches = Effect.fn("saveBuildCaches")(function* (
+	cache: string,
+	dir: string,
+) {
+	const fs = yield* FileSystem.FileSystem;
+	for (const [kept, inCopy] of yield* buildCaches(cache, dir)) {
+		if (yield* fs.exists(inCopy)) {
+			yield* fs.remove(kept, { force: true, recursive: true });
+			yield* fs.copy(inCopy, kept, { preserveTimestamps: true });
+		}
+	}
+});
+
+/**
  * Installs and builds a copy, so a copy that doesn't build isn't pushed. The
  * copies' `packageManager` is this repo's, so the lockfile is written by the
- * pnpm CodeSandbox installs with.
+ * pnpm CodeSandbox installs with. With a `cache` directory, each build starts
+ * from the last one's build caches.
  */
 export class Builder extends Context.Service<
 	Builder,
@@ -73,28 +124,38 @@ export class Builder extends Context.Service<
 		) => Effect.Effect<void, CommandError | PlatformError.PlatformError>;
 	}
 >()("@tooling/codesandbox/Builder") {
-	static readonly layer = Layer.effect(
-		Builder,
-		Effect.gen(function* () {
-			const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-			const pnpm = (dir: string, args: ReadonlyArray<string>) =>
-				run(dir, "pnpm", args).pipe(
-					Effect.provideService(
-						ChildProcessSpawner.ChildProcessSpawner,
-						spawner,
-					),
-				);
-			return Builder.of({
-				build: Effect.fn("build")(function* (dir) {
-					yield* Console.log(`Building ${dir}`);
-					// `CI` makes pnpm default to a frozen lockfile; the copies are
-					// regenerated without one.
-					yield* pnpm(dir, ["install", "--no-frozen-lockfile"]);
-					yield* pnpm(dir, ["run", "build"]);
-				}),
-			});
-		}),
-	);
+	static readonly layer = (cache: string | undefined) =>
+		Layer.effect(
+			Builder,
+			Effect.gen(function* () {
+				const services = yield* Effect.context<
+					| ChildProcessSpawner.ChildProcessSpawner
+					| FileSystem.FileSystem
+					| Path.Path
+				>();
+				const pnpm = (dir: string, args: ReadonlyArray<string>) =>
+					run(dir, "pnpm", args).pipe(Effect.provideContext(services));
+				return Builder.of({
+					build: Effect.fn("build")(function* (dir) {
+						yield* Console.log(`Building ${dir}`);
+						// `CI` makes pnpm default to a frozen lockfile; the copies are
+						// regenerated without one.
+						yield* pnpm(dir, ["install", "--no-frozen-lockfile"]);
+						if (cache !== undefined) {
+							yield* restoreBuildCaches(cache, dir).pipe(
+								Effect.provideContext(services),
+							);
+						}
+						yield* pnpm(dir, ["run", "build"]);
+						if (cache !== undefined) {
+							yield* saveBuildCaches(cache, dir).pipe(
+								Effect.provideContext(services),
+							);
+						}
+					}),
+				});
+			}),
+		);
 }
 
 export const committer = {

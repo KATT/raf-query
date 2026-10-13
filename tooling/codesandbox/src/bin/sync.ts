@@ -2,9 +2,11 @@
 /**
  * Regenerates the `codesandbox` branch from this checkout and pushes it to
  * `origin`. `.github/workflows/codesandbox.yaml` runs it after Release, once
- * the version in `packages/*` is published.
+ * the version in `packages/*` is published. With a `build-cache` directory,
+ * the copies' builds start from the last sync's build caches, and leave theirs
+ * there.
  *
- * Usage: pnpm --filter @tooling/codesandbox sync
+ * Usage: pnpm --filter @tooling/codesandbox sync [build-cache]
  */
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
 import { Effect, Layer, Path } from "effect";
@@ -13,6 +15,8 @@ import { FetchHttpClient } from "effect/http";
 import { branch, publishedVersions, writeCopies } from "../copies.ts";
 import { NpmRegistry, waitForVersions } from "../registry.ts";
 import { Builder, syncBranch } from "../sync.ts";
+
+const [cache] = process.argv.slice(2);
 
 Effect.gen(function* () {
 	const path = yield* Path.Path;
@@ -30,7 +34,7 @@ Effect.gen(function* () {
 	);
 }).pipe(
 	Effect.provide(
-		Layer.mergeAll(Builder.layer, NpmRegistry.layer).pipe(
+		Layer.mergeAll(Builder.layer(cache), NpmRegistry.layer).pipe(
 			Layer.provideMerge(
 				Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer),
 			),

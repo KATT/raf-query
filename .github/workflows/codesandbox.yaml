@@ -14,9 +14,16 @@ jobs:
         with:
           ref: main
       - uses: ./.github/actions/prepare
+      # The copies' build caches, saved under a new key every run and restored
+      # from the latest one.
+      - uses: actions/cache@v4
+        with:
+          key: codesandbox-build-${{ github.run_id }}
+          path: ${{ runner.temp }}/codesandbox-build-cache
+          restore-keys: codesandbox-build-
       # Regenerates the copies, waits until npm serves the version Release just
       # published, installs and builds each copy, and pushes if anything changed.
-      - run: pnpm --filter @tooling/codesandbox sync
+      - run: pnpm --filter @tooling/codesandbox sync "$RUNNER_TEMP/codesandbox-build-cache"
 
 name: CodeSandbox
 
