@@ -41,7 +41,7 @@
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/sync-package-docs.ts",
-		"build": "vp pack",
+		"build": "rm -rf dist && tsc -p tsconfig.build.json",
 		"test": "vp test",
 		"typecheck": "tsc",
 		"publish:npm": "pnpm pack --out package.tgz && npm publish package.tgz --access public && rm package.tgz"
@@ -82,12 +82,12 @@
 	"publishConfig": {
 		"access": "public",
 		"exports": {
-			".": "./dist/index.mjs",
-			"./devtools": "./dist/devtools.mjs",
-			"./devtools/production": "./dist/devtools-production.mjs",
-			"./next": "./dist/next.mjs",
-			"./rsc": "./dist/rsc.mjs",
-			"./tanstack-router": "./dist/tanstack-router.mjs"
+			".": "./dist/index.js",
+			"./devtools": "./dist/devtools.js",
+			"./devtools/production": "./dist/devtools-production.js",
+			"./next": "./dist/next.js",
+			"./rsc": "./dist/rsc.js",
+			"./tanstack-router": "./dist/tanstack-router.js"
 		},
 		"provenance": true
 	},

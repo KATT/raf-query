@@ -133,7 +133,7 @@ Effect.gen(function* () {
 			root,
 			"packages",
 			pkg,
-			dist ? `dist/${module}.mjs` : `src/${module}.ts`,
+			dist ? `dist/${module}.js` : `src/${module}.ts`,
 		);
 	const alias = dist
 		? [

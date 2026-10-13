@@ -25,7 +25,7 @@ Core exposes only Effect APIs (`QueryCache`, `Query`, `QueryObserver`, `Platform
 Effect v4 shakes per export (`sideEffects` lists only a schema file), and app-side `import { X }` / `import * as X` with static access both shake with Rolldown. What defeats it:
 
 - **Anything reachable from the always-imported path.** Class properties built in a constructor (`qc.effect`) and engine code that runs on every request can't be shaken, whatever they import.
-- **`export * as X` in a library build.** Rolldown/tsdown compile it to an `__exportAll` getter object, which keeps every member in `dist/`. Core's `export * as QueryCache` / `Query` / `QueryObserver` / `Platform` are of this shape; apps importing the main entry may keep members they don't use. Check with `pnpm bundle-size --dist` after `pnpm build`.
+- **`export * as X` in a rolldown library build** (`vp pack` / tsdown): an `__exportAll` getter object keeps every member in `dist/`. Packages build with `tsc` for that reason ([decisions/package-build.md](./decisions/package-build.md)); check with `pnpm build && pnpm bundle-size --dist`.
 - Dynamic access (`X[key]`) and re-exported `export *` keep everything.
 
 ## The Promise-engine experiment
