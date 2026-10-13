@@ -47,7 +47,7 @@ const globalPlatform: Platform = {
 	},
 };
 
-export const Platform = Context.Reference<Platform>(
+export const Platform = /*#__PURE__*/ Context.Reference<Platform>(
 	"@raf-query/core/Platform",
 	{
 		defaultValue: () => globalPlatform,
@@ -58,17 +58,19 @@ export const Platform = Context.Reference<Platform>(
  * Succeeds now if the platform is online, else on its next `"online"` event.
  * Interrupting it unsubscribes.
  */
-export const whenOnline: Effect.Effect<void> = Effect.gen(function* () {
-	const platform = yield* Platform;
-	if (platform.isOnlineUnsafe()) {
-		return;
-	}
-	yield* Effect.callback<void>((resume) => {
-		const unsubscribe = platform.subscribeUnsafe((event) => {
-			if (event === "online") {
-				resume(Effect.void);
-			}
+export const whenOnline: Effect.Effect<void> = /*#__PURE__*/ Effect.gen(
+	function* () {
+		const platform = yield* Platform;
+		if (platform.isOnlineUnsafe()) {
+			return;
+		}
+		yield* Effect.callback<void>((resume) => {
+			const unsubscribe = platform.subscribeUnsafe((event) => {
+				if (event === "online") {
+					resume(Effect.void);
+				}
+			});
+			return Effect.sync(unsubscribe);
 		});
-		return Effect.sync(unsubscribe);
-	});
-});
+	},
+);
