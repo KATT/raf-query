@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.7](https://github.com/KATT/raf-query/compare/0.1.6...0.1.7) (2026-10-13)
+
+- validate search params with a zod schema in the README ([#36](https://github.com/KATT/raf-query/issues/36)) ([9142236](https://github.com/KATT/raf-query/commit/9142236f611deb0fdf9db5f7e2847bccad89e841))
+
 ## [0.1.6](https://github.com/KATT/raf-query/compare/0.1.5...0.1.6) (2026-10-12)
 
 - one file per decision, and alternatives in the PR template ([#34](https://github.com/KATT/raf-query/issues/34)) ([e60d30b](https://github.com/KATT/raf-query/commit/e60d30bc99452eec7178fa2a6c7598987fe5254c)), references [#24](https://github.com/KATT/raf-query/issues/24) [#25](https://github.com/KATT/raf-query/issues/25) [#26](https://github.com/KATT/raf-query/issues/26) [#27](https://github.com/KATT/raf-query/issues/27) [#28](https://github.com/KATT/raf-query/issues/28) [#33](https://github.com/KATT/raf-query/issues/33) [#26](https://github.com/KATT/raf-query/issues/26) [#N](https://github.com/KATT/raf-query/issues/N) [#26](https://github.com/KATT/raf-query/issues/26) [#16](https://github.com/KATT/raf-query/issues/16) [#23](https://github.com/KATT/raf-query/issues/23) [#31](https://github.com/KATT/raf-query/issues/31) [#19](https://github.com/KATT/raf-query/issues/19) [#28](https://github.com/KATT/raf-query/issues/28) [#33](https://github.com/KATT/raf-query/issues/33)
