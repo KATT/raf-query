@@ -8,16 +8,17 @@ Core exposes only Effect APIs (`QueryCache`, `Query`, `QueryObserver`, `Platform
 
 ## Numbers (gzip, kB; `tooling/bundle-size` fixtures, Start example's bundler)
 
-| App                             | TanStack Query | raf-query `main` (Effect-native) | Pre-#23 Effect engine | Pre-#23 Promise engine |
-| ------------------------------- | -------------: | -------------------------------: | --------------------: | ---------------------: |
-| Factory + prefetch + `useQuery` |           9.77 |                            29.26 |                 16.75 |                   5.64 |
-| + paged                         |          10.44 |                            29.65 |                 17.15 |                   6.04 |
-| + action that invalidates       |          10.60 |                            29.81 |                 17.32 |                   6.21 |
-| TanStack Router app             |          12.36 |                            31.44 |                 18.50 |                   7.41 |
-| Effect `queryFn` + `Schedule`   |              — |                            29.49 |                 16.93 |                  15.33 |
+| App                             | TanStack Query | raf-query now (Effect-native) | Pre-#23 Effect engine | Pre-#23 Promise engine |
+| ------------------------------- | -------------: | ----------------------------: | --------------------: | ---------------------: |
+| Factory + prefetch + `useQuery` |           9.77 |                         29.31 |                 16.75 |                   5.64 |
+| + paged                         |          10.44 |                         29.68 |                 17.15 |                   6.04 |
+| + action that invalidates       |          10.60 |                         29.84 |                 17.32 |                   6.21 |
+| TanStack Router app             |          12.36 |                         30.46 |                 18.50 |                   7.41 |
+| Effect `queryFn` + `Schedule`   |              — |                         29.54 |                 16.93 |                  15.33 |
 
-- **Effect's share of raf-query:** ~21.4 kB on `main`; ~11.2 kB with the pre-#23 Effect engine plus `/effect` subpath; ~0.2 kB with the Promise engine.
-- **Full `examples/tanstack-start` client JS:** 185.3 kB on `main`. The TanStack-backed copy is 163.1 kB.
+- **Effect's share of raf-query:** ~21.4 kB now; ~11.2 kB with the pre-#23 Effect engine plus `/effect` subpath; ~0.2 kB with the Promise engine.
+- **`dist/`** bundles the same as src (it was ~0.4 kB bigger with `vp pack`). The router app is ~1 kB smaller with the browser build of the integration.
+- **Full `examples/tanstack-start` client JS:** 184.2 kB. The TanStack-backed copy is 163.1 kB.
 - **Floor:** Effect's fiber runtime alone (`runPromiseExit(succeed(1))`) is ~7 kB gzip. Effect v4 has no lighter `Micro` runtime.
 
 ## Why it's big, and what's shakable
@@ -25,7 +26,9 @@ Core exposes only Effect APIs (`QueryCache`, `Query`, `QueryObserver`, `Platform
 Effect v4 shakes per export (`sideEffects` lists only a schema file), and app-side `import { X }` / `import * as X` with static access both shake with Rolldown. What defeats it:
 
 - **Anything reachable from the always-imported path.** Class properties built in a constructor (`qc.effect`) and engine code that runs on every request can't be shaken, whatever they import.
-- **`export * as X` in a library build.** Rolldown/tsdown compile it to an `__exportAll` getter object, which keeps every member in `dist/`. Core's `export * as QueryCache` / `Query` / `QueryObserver` / `Platform` are of this shape; apps importing the main entry may keep members they don't use. Check with `pnpm bundle-size --dist` after `pnpm build`.
+- **`export * as X` in a rolldown library build** (`vp pack` / tsdown): an `__exportAll` getter object keeps every member in `dist/`. Packages build with `tsc` for that reason ([decisions/package-build.md](./decisions/package-build.md)); check with `pnpm build && pnpm bundle-size --dist`.
+- **Runtime branches on build-time facts.** `if (router.isServer) setupServer()` keeps the server half's imports. `@raf-query/react/tanstack-router` uses a `browser` export condition instead.
+- **Top-level calls without `/*#__PURE__*/`** (`Context.Service(...)`, `Effect.fnUntraced(...)`, `Context.Reference(...)`): unused ones stay. Core marks them.
 - Dynamic access (`X[key]`) and re-exported `export *` keep everything.
 
 ## The Promise-engine experiment
