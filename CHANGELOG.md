@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.6](https://github.com/KATT/raf-query/compare/0.2.5...0.2.6) (2026-10-13)
+
+### Features
+
+- **examples:** load the assignee by issue id, beside the issue ([#57](https://github.com/KATT/raf-query/issues/57)) ([f4da131](https://github.com/KATT/raf-query/commit/f4da131f3a14e807141506aa4d64134298f0bdfa)), references [#54](https://github.com/KATT/raf-query/issues/54)
+
 ## [0.2.5](https://github.com/KATT/raf-query/compare/0.2.4...0.2.5) (2026-10-13)
 
 - **tooling:** check every shared package is copied ([#56](https://github.com/KATT/raf-query/issues/56)) ([37d2d38](https://github.com/KATT/raf-query/commit/37d2d38b2a89babcea629bc4b9a88d8042cffb18)), references [#54](https://github.com/KATT/raf-query/issues/54)
