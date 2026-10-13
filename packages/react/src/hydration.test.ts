@@ -118,6 +118,75 @@ describe("hydrate", () => {
 		expect(browser.getData(backend.issueQuery, { id: 2 })?.title).toBe("Newer");
 	});
 
+	describe("data the browser keeps", () => {
+		function setup(staleTime: number) {
+			const backend = createBackend();
+			const browser = new QueryClient({
+				defaults: { staleTime },
+				isServer: false,
+			});
+			browser.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "Kept" });
+			const updatedAt = Query.getUnsafe(
+				browser.getQuery(backend.issueQuery, { id: 1 }),
+			).updatedAt;
+			return { backend, browser, updatedAt };
+		}
+
+		it("revalidates when stale and the server's copy is no newer", async () => {
+			const test = setup(0);
+
+			hydrate(test.browser, {
+				queries: [
+					{
+						data: { id: 1, title: "Replayed" },
+						key: ["issue", 1],
+						updatedAt: test.updatedAt,
+					},
+				],
+			});
+
+			expect(test.backend.requests.map((request) => request.id)).toEqual([1]);
+			test.backend.respondAll();
+			await vi.waitFor(() =>
+				expect(
+					test.browser.getData(test.backend.issueQuery, { id: 1 })?.title,
+				).toBe("First"),
+			);
+		});
+
+		it("revalidates when stale and the server's request is pending", () => {
+			const test = setup(0);
+
+			hydrate(test.browser, {
+				queries: [
+					{ key: ["issue", 1], promise: new Promise(() => {}), updatedAt: 0 },
+				],
+			});
+
+			expect(test.backend.requests.map((request) => request.id)).toEqual([1]);
+		});
+
+		it("is reused while fresh", () => {
+			const test = setup(60_000);
+
+			hydrate(test.browser, {
+				queries: [
+					{
+						data: { id: 1, title: "Replayed" },
+						key: ["issue", 1],
+						updatedAt: test.updatedAt,
+					},
+					{ key: ["issue", 1], promise: new Promise(() => {}), updatedAt: 0 },
+				],
+			});
+
+			expect(test.backend.requests).toHaveLength(0);
+			expect(
+				test.browser.getData(test.backend.issueQuery, { id: 1 })?.title,
+			).toBe("Kept");
+		});
+	});
+
 	it("round-trips data through serializeData and deserializeData", async () => {
 		const server = new QueryClient({ isServer: true });
 		const browser = new QueryClient({ isServer: false });
