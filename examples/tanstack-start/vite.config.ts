@@ -22,4 +22,8 @@ export default defineConfig({
 	resolve: {
 		tsconfigPaths: true,
 	},
+	server: {
+		// CodeSandbox serves the dev server at `<id>-<port>.csb.app`.
+		allowedHosts: [".csb.app"],
+	},
 });
