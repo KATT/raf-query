@@ -124,7 +124,7 @@ All three verbs live on the query client and accept a factory plus its input.
 | --------------------------------- | ----------------------------- | ------- | ---------------------------------------------------------------------- |
 | `qc.prefetch(factory, input)`     | `QueryHandle`                 | No      | Data the route can render without; it streams in                       |
 | `await qc.ensure(factory, input)` | `Promise<EnsuredQueryHandle>` | Yes     | Data the route must not render without; `useQuery` returns it directly |
-| `await qc.fetch(factory, input)`  | `Promise<Data>`               | Yes     | Rendering in a server component, or building another input             |
+| `await qc.fetch(factory, input)`  | `Promise<Data>`               | Yes     | Rendering data in a server component                                   |
 
 ```tsx
 // TanStack Start
@@ -139,6 +139,13 @@ export const Route = createFileRoute("/posts/$slug")({
 });
 ```
 
+`prefetch` and `ensure` start the request at the same moment, so neither is faster. They differ in what the user sees while it's in flight:
+
+- **`prefetch`: granular skeletons.** The navigation commits right away. Each part of the page that reads a query still loading suspends to its nearest Suspense boundary and fills in when its data streams in.
+- **`ensure`: a blocked navigation.** The previous page stays on screen until the data is in. In TanStack Router, a route with a `pendingComponent` shows it once `pendingMs` (1 second by default) has passed, which makes a full-page skeleton.
+
+Choose per query. `ensure` what the page can't lay out without, where a skeleton would only flash or shift (the post itself), and `prefetch` the rest (comments, sidebars, counts). Start every query before awaiting any of them, as the `prefetch` before the `await` above does, so a blocking query never delays the others.
+
 Await independent blocking queries together with `allKeyed`, which ships with raf-query. It's a ponyfill of the TC39 `Promise.allKeyed` proposal: a record of promises in, a promise of the same record out, rejecting on the first failure.
 
 ```ts
@@ -150,12 +157,73 @@ return await allKeyed({
 });
 ```
 
-Dependent inputs use `fetch`:
+### Avoid dependent queries
+
+A query whose input comes from another query's result can't start until that one has finished. That's a waterfall: one extra round trip per level, on every navigation. Fix it where the data is shaped, so every query a route needs starts from what the URL already holds:
+
+- **Put the input in the route.** If the page is about an organization, its id belongs in the path (`/orgs/$orgId`), not in a lookup on the current user.
+- **Have the backend resolve it.** The server already knows the session and the relations, so an endpoint can return the child with its parent, or be keyed by what the client has (`GET /me/org` instead of `GET /me` then `GET /orgs/:id`).
+
+<details>
+<summary>Example: the current user's organization</summary>
+
+A settings page needs the user and their organization, and the organization's id is a field of the user:
 
 ```ts
-const user = await qc.fetch(currentUserQuery);
-return { org: qc.prefetch(orgQuery, { orgId: user.orgId }) };
+export const Route = createFileRoute("/settings")({
+	loader: async (args) => {
+		const qc = args.context.queryClient;
+		const user = await qc.fetch(currentUserQuery);
+		return {
+			user: qc.prefetch(currentUserQuery),
+			org: qc.prefetch(orgQuery, { orgId: user.orgId }),
+		};
+	},
+});
 ```
+
+With a 150 ms round trip, the organization can't arrive before 300 ms, and the navigation is blocked for the first 150 even though nothing on the page needed the user that early. Each query keyed by the organization (members, billing) would add another 150.
+
+Fix it in the backend: the server can find the session's organization itself, so give it an endpoint and a query with no input.
+
+```ts
+export function currentOrgQuery() {
+	return queryOptions({
+		queryKey: ["org", "current"],
+		queryFn: () => getCurrentOrg(),
+	});
+}
+
+export const Route = createFileRoute("/settings")({
+	loader: (args) => {
+		const qc = args.context.queryClient;
+		return {
+			user: qc.prefetch(currentUserQuery),
+			org: qc.prefetch(currentOrgQuery),
+		};
+	},
+});
+```
+
+Or fix it in the routes: links into the page come from places that already know the organization (the org switcher, a list of orgs), so they can put its id in the URL.
+
+```ts
+export const Route = createFileRoute("/orgs/$orgId/settings")({
+	loader: (args) => {
+		const qc = args.context.queryClient;
+		return {
+			user: qc.prefetch(currentUserQuery),
+			org: qc.prefetch(orgQuery, { orgId: args.params.orgId }),
+		};
+	},
+});
+```
+
+Either way, both requests start together, and the page is ready after one round trip instead of two. Nothing waits, so each query can be a `prefetch` or an `ensure` purely for the loading experience you want.
+
+</details>
+
+When the data really can't be reshaped (a third-party API you don't control), the loader can `await qc.fetch(...)` the parent and build the input from its data, or a component can start the child with [`useWaterfall`](#render-time-inputs-usewaterfall). Both pay the extra round trip; the loader blocks the navigation on it, the component lets the rest of the page render first.
 
 Behavior:
 
