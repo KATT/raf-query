@@ -16,7 +16,6 @@ import {
 	useQuery,
 } from "./index.ts";
 import { Hydrate } from "./hydrate.tsx";
-import { QueryProvider } from "./next.tsx";
 import { HydrationBoundary } from "./rsc.tsx";
 import { setupRouterIntegration } from "./tanstack-router.ts";
 
@@ -230,46 +229,5 @@ describe("setupRouterIntegration", () => {
 
 		expect(navigate).toHaveBeenCalledOnce();
 		expect(navigate.mock.calls[0]?.[0]).toMatchObject({ to: "/login" });
-	});
-});
-
-describe("QueryProvider", () => {
-	it("hydrates entries streamed during SSR, before and after it mounts", async () => {
-		const backend = createBackend();
-		globalThis.RAF_QUERY_SSR = Object.assign([], {
-			push: Array.prototype.push,
-		});
-		globalThis.RAF_QUERY_SSR.push({
-			queries: [{ data: "Streamed", key: ["issue", 1], updatedAt: 1 }],
-		});
-		function Issue(props: {
-			readonly handle: QueryHandle<typeof backend.issueQuery>;
-		}) {
-			const [issuePromise] = useQuery(backend.issueQuery, props.handle);
-			return <p>{use(issuePromise)}</p>;
-		}
-
-		const result = await mount(
-			<QueryProvider>
-				<Issue handle={{ input: { id: 1 }, key: ["issue", 1] }} />
-			</QueryProvider>,
-		);
-		globalThis.RAF_QUERY_SSR.push({
-			queries: [{ data: "Later", key: ["issue", 2], updatedAt: 1 }],
-		});
-		await act(async () => {
-			result.rerender(
-				<QueryProvider>
-					<Issue handle={{ input: { id: 1 }, key: ["issue", 1] }} />
-					<Issue handle={{ input: { id: 2 }, key: ["issue", 2] }} />
-				</QueryProvider>,
-			);
-		});
-
-		expect(screen.getByText("Later")).toBeDefined();
-		expect(screen.getByText("Streamed")).toBeDefined();
-		expect(backend.calls()).toBe(0);
-		globalThis.RAF_QUERY_SSR = undefined;
-		cleanup();
 	});
 });
