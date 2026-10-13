@@ -605,6 +605,55 @@ describe("useWaterfall", () => {
 		expect(test.backend.calls()).toBe(2);
 		cleanup();
 	});
+
+	it("doesn't refetch the first load it suspended on, in StrictMode", async () => {
+		const test = setup();
+		function Assignee() {
+			const user = useWaterfall(test.backend.userQuery, { id: 10 });
+			const [userPromise] = useQuery(test.backend.userQuery, user);
+			return <p>{`Assignee: ${use(userPromise)}`}</p>;
+		}
+
+		await mount(
+			<StrictMode>
+				{test.view(
+					<Suspense fallback={<p>Loading</p>}>
+						<Assignee />
+					</Suspense>,
+				)}
+			</StrictMode>,
+		);
+		await test.backend.respond();
+
+		expect(screen.getByText("Assignee: Ada")).toBeDefined();
+		expect(test.backend.calls()).toBe(1);
+		cleanup();
+	});
+
+	it("refetches stale cached data once per mount, not per render", async () => {
+		const test = setup();
+		test.client.setData(test.backend.userQuery, { id: 20 }, "Old Grace");
+		function Assignee(props: { readonly id: number; readonly label: string }) {
+			const user = useWaterfall(test.backend.userQuery, { id: props.id });
+			const [userPromise] = useQuery(test.backend.userQuery, user);
+			return <p>{`${props.label}: ${use(userPromise)}`}</p>;
+		}
+
+		const view = await mount(test.view(<Assignee id={20} label="Assignee" />));
+		expect(screen.getByText("Assignee: Old Grace")).toBeDefined();
+		expect(test.backend.calls()).toBe(1);
+		await test.backend.respond();
+		expect(screen.getByText("Assignee: Grace")).toBeDefined();
+
+		await view.rerender(test.view(<Assignee id={20} label="Owner" />));
+		expect(screen.getByText("Owner: Grace")).toBeDefined();
+		expect(test.backend.calls()).toBe(1);
+
+		cleanup();
+		await mount(test.view(<Assignee id={20} label="Assignee" />));
+		expect(test.backend.calls()).toBe(2);
+		cleanup();
+	});
 });
 
 describe("lists", () => {
