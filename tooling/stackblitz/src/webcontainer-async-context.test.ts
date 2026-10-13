@@ -64,10 +64,10 @@ describe("webcontainer-async-context", () => {
 		});
 	});
 
-	it("does nothing elsewhere", () => {
+	it("leaves AsyncLocalStorage alone elsewhere, and still reaches child processes", () => {
 		const result = {
 			global: false,
-			preloads: [`--import=${preload}`],
+			preloads: [`--import=file://${preload}`],
 			stores: [null, null],
 		};
 		expect(run([preload])).toEqual({ child: result, ...result });

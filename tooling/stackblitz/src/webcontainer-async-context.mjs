@@ -4,8 +4,8 @@
  * request's context in one, so their server code fails after its first
  * `await`. This preload, loaded through `NODE_OPTIONS` in `.stackblitzrc`,
  * makes `getStore()` fall back to the store last entered on that instance,
- * which is right while requests don't overlap. Outside WebContainers it does
- * nothing.
+ * which is right while requests don't overlap. Outside WebContainers it
+ * leaves AsyncLocalStorage alone.
  */
 import asyncHooks from "node:async_hooks";
 import module from "node:module";
@@ -41,15 +41,15 @@ if (process.versions.webcontainer !== undefined) {
 	});
 	globalThis.AsyncLocalStorage = AsyncLocalStorage;
 	module.syncBuiltinESMExports();
-
-	// Child processes (the dev server's workers, package scripts) may start
-	// in another directory, so they get this file by absolute URL.
-	const self = `--import=${import.meta.url}`;
-	const options = (process.env.NODE_OPTIONS ?? "")
-		.split(" ")
-		.filter(
-			(option) =>
-				option !== "" && !option.endsWith("/webcontainer-async-context.mjs"),
-		);
-	process.env.NODE_OPTIONS = [...options, self].join(" ");
 }
+
+// Package scripts run in the package's directory, where `.stackblitzrc`'s
+// relative path doesn't resolve, so child processes get this file by URL.
+const self = `--import=${import.meta.url}`;
+const options = (process.env.NODE_OPTIONS ?? "")
+	.split(" ")
+	.filter(
+		(option) =>
+			option !== "" && !option.endsWith("/webcontainer-async-context.mjs"),
+	);
+process.env.NODE_OPTIONS = [...options, self].join(" ");
