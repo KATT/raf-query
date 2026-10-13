@@ -4,7 +4,7 @@
  * `examples/.shared/*` copied as-is into `packages/`, so `@examples/*` stay
  * `workspace:*`. Only `@raf-query/*` changes, to the published version.
  */
-import { Effect, FileSystem, Path } from "effect";
+import { Effect, FileSystem, Path, type PlatformError } from "effect";
 
 export const repo = "KATT/raf-query";
 export const branch = "stackblitz";
@@ -204,21 +204,28 @@ export const writeCopies = Effect.fn("writeCopies")(function* (
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path;
 
-	const copyTree = Effect.fn("copyTree")(function* (from: string, to: string) {
-		for (const entry of yield* fs.readDirectory(from, { recursive: true })) {
-			if (isIgnored(entry, path.sep)) {
-				continue;
+	// Walks one level at a time so ignored directories (`node_modules` holds
+	// tens of thousands of files) are never read.
+	const copyTree: (
+		from: string,
+		to: string,
+	) => Effect.Effect<void, PlatformError.PlatformError> = Effect.fn("copyTree")(
+		function* (from: string, to: string) {
+			for (const entry of yield* fs.readDirectory(from)) {
+				if (isIgnored(entry, path.sep)) {
+					continue;
+				}
+				const source = path.join(from, entry);
+				const info = yield* fs.stat(source);
+				if (info.type === "Directory") {
+					yield* copyTree(source, path.join(to, entry));
+				} else if (info.type === "File") {
+					yield* fs.makeDirectory(to, { recursive: true });
+					yield* fs.copyFile(source, path.join(to, entry));
+				}
 			}
-			const info = yield* fs.stat(path.join(from, entry));
-			if (info.type !== "File") {
-				continue;
-			}
-			yield* fs.makeDirectory(path.dirname(path.join(to, entry)), {
-				recursive: true,
-			});
-			yield* fs.copyFile(path.join(from, entry), path.join(to, entry));
-		}
-	});
+		},
+	);
 
 	const published = yield* publishedVersions(root);
 	const sharedDirs = yield* fs.readDirectory(
