@@ -10,15 +10,6 @@ import { type ReactNode, useEffect, useState } from "react";
 
 import { hydrate, type QueryClient } from "./client.ts";
 import { useQueryClient } from "./provider.tsx";
-import { sentHashes } from "./sent.ts";
-
-/** In the SSR pass, entries from the RSC payload needn't be streamed again. */
-function markSent(client: QueryClient, state: DehydratedState) {
-	const sent = sentHashes(client);
-	for (const query of state.queries) {
-		sent.add(hashKey(query.key));
-	}
-}
 
 /**
  * Entries the client has no data for, which children need during this
@@ -65,7 +56,6 @@ export function Hydrate(props: {
 	// other components aren't updated mid-render.
 	if (hydrated?.state !== state) {
 		const parts = split(client, state);
-		markSent(client, state);
 		hydrate(client, parts.now, options);
 		setHydrated({ deferred: parts.deferred, state });
 	}

@@ -1,7 +1,7 @@
 import "./globals.css";
 
 import { QueryDevtools } from "@raf-query/react/devtools";
-import { QueryProvider } from "@raf-query/react/next";
+import { QueryProvider } from "@raf-query/react/rsc";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";

@@ -423,17 +423,29 @@ export function setData(entry: Entry, data: unknown, updatedAt = now(entry)) {
 	succeed(entry, data, updatedAt);
 }
 
-/** Adopt a request started elsewhere (the server's, during hydration). */
-export function resume(entry: Entry, promise: PromiseLike<unknown>) {
+/**
+ * Adopt a request started elsewhere (the server's, during hydration). Its
+ * data counts as fetched when the sender got it, not when it arrived.
+ */
+export function resume(
+	entry: Entry,
+	promise: PromiseLike<{ readonly data?: unknown; readonly updatedAt: number }>,
+) {
 	if (entry.state.hasData || entry.inFlight) {
 		return;
 	}
+	let updatedAt: number | undefined;
 	// The sender's error type doesn't survive the trip, so a rejection is
 	// a defect.
 	startRequest(
 		entry,
-		Effect.promise(() => Promise.resolve(promise)),
+		Effect.promise(async () => {
+			const result = await promise;
+			updatedAt = result.updatedAt;
+			return result.data;
+		}),
 		undefined,
+		() => updatedAt,
 	);
 }
 
@@ -515,6 +527,7 @@ function startRequest(
 	entry: Entry,
 	request: Effect.Effect<unknown, unknown>,
 	direction: Direction | undefined,
+	updatedAt?: () => number | undefined,
 ): Deferred.Deferred<unknown, unknown> {
 	if (!entry.inFlight) {
 		entry.failureCountBefore = entry.state.failureCount;
@@ -544,7 +557,11 @@ function startRequest(
 	entry.tasks.fork(
 		"request",
 		Effect.exit(request).pipe(
-			Effect.flatMap((exit) => Effect.sync(() => settle(entry, awaiter, exit))),
+			Effect.flatMap((exit) =>
+				Effect.sync(() =>
+					settle(entry, awaiter, exit, updatedAt?.() ?? now(entry)),
+				),
+			),
 		),
 	);
 	return awaiter;
@@ -554,13 +571,14 @@ function settle(
 	entry: Entry,
 	awaiter: Deferred.Deferred<unknown, unknown>,
 	exit: Exit.Exit<unknown, unknown>,
+	updatedAt: number,
 ) {
 	if (entry.inFlight !== awaiter) {
 		return;
 	}
 	entry.inFlight = undefined;
 	if (Exit.isSuccess(exit)) {
-		const data = succeed(entry, exit.value, now(entry));
+		const data = succeed(entry, exit.value, updatedAt);
 		Deferred.doneUnsafe(awaiter, Exit.succeed(data));
 	} else if (Cause.hasInterruptsOnly(exit.cause)) {
 		set(entry, { fetchDirection: undefined, isFetching: false });
@@ -614,13 +632,16 @@ function succeed(entry: Entry, next: unknown, updatedAt: number) {
 	entry.pending = undefined;
 	firstLoad?.resolve(data);
 	const unchanged = previous.hasData && data === previous.data;
+	// Data written while this entry's own request runs (hydration, `setData`)
+	// leaves that request in flight.
+	const isFetching = entry.inFlight !== undefined;
 	set(entry, {
 		data,
 		error: null,
 		failureCount: 0,
-		fetchDirection: undefined,
+		fetchDirection: isFetching ? previous.fetchDirection : undefined,
 		hasData: true,
-		isFetching: false,
+		isFetching,
 		isInvalidated: false,
 		promise:
 			firstLoad?.promise ?? (unchanged ? previous.promise : fulfilled(data)),

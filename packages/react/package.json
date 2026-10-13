@@ -35,7 +35,6 @@
 		".": "./src/index.ts",
 		"./devtools": "./src/devtools.tsx",
 		"./devtools/production": "./src/devtools-production.tsx",
-		"./next": "./src/next.tsx",
 		"./rsc": "./src/rsc.tsx",
 		"./tanstack-router": {
 			"workerd": "./src/tanstack-router.ts",
@@ -60,14 +59,10 @@
 	"peerDependencies": {
 		"@tanstack/react-router": "^1.170.0",
 		"effect": "^4.0.0",
-		"next": "^16.0.0",
 		"react": "^19.2.0"
 	},
 	"peerDependenciesMeta": {
 		"@tanstack/react-router": {
-			"optional": true
-		},
-		"next": {
 			"optional": true
 		}
 	},
@@ -81,7 +76,6 @@
 		"@vitest/coverage-v8": "5.0.1",
 		"effect": "catalog:",
 		"happy-dom": "21.0.1",
-		"next": "16.4.0",
 		"react": "19.3.0",
 		"react-dom": "19.3.0",
 		"typescript": "7.0.2",
@@ -93,7 +87,6 @@
 			".": "./dist/index.mjs",
 			"./devtools": "./dist/devtools.mjs",
 			"./devtools/production": "./dist/devtools-production.mjs",
-			"./next": "./dist/next.mjs",
 			"./rsc": "./dist/rsc.mjs",
 			"./tanstack-router": {
 				"workerd": "./dist/tanstack-router.mjs",

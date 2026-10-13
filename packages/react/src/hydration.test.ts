@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "@effect/vitest";
 
 import {
 	dehydrate,
+	type DehydratedResult,
 	type DehydratedState,
 	hydrate,
 	QueryClient,
@@ -95,6 +96,63 @@ describe("hydrate", () => {
 		expect(Query.getUnsafe(query).status).toBe("success");
 	});
 
+	it("counts resumed data as fetched when the server got it", async () => {
+		const backend = createBackend();
+		const browser = new QueryClient({
+			defaults: { staleTime: 60_000 },
+			isServer: false,
+		});
+		const fetchedAt = Date.now() - 120_000;
+
+		hydrate(browser, {
+			queries: [
+				{
+					key: ["issue", 1],
+					promise: Promise.resolve({
+						data: { id: 1, title: "Server" },
+						updatedAt: fetchedAt,
+					}),
+					updatedAt: 0,
+				},
+			],
+		});
+		const query = browser.getQuery(backend.issueQuery, { id: 1 });
+		expect(await Query.readUnsafe(query)).toEqual({ id: 1, title: "Server" });
+
+		expect(Query.getUnsafe(query)).toMatchObject({
+			isStale: true,
+			updatedAt: fetchedAt,
+		});
+		expect(backend.requests).toHaveLength(0);
+	});
+
+	it("keeps a request of its own in flight, and the newer result wins", async () => {
+		const backend = createBackend();
+		const browser = new QueryClient({ isServer: false });
+		const query = browser.getQuery(backend.issueQuery, { id: 1 });
+		const first = Query.readUnsafe(query);
+		const server = Promise.withResolvers<DehydratedResult>();
+
+		hydrate(browser, {
+			queries: [{ key: ["issue", 1], promise: server.promise, updatedAt: 0 }],
+		});
+		server.resolve({ data: { id: 1, title: "Server" }, updatedAt: Date.now() });
+
+		expect(await first).toEqual({ id: 1, title: "Server" });
+		expect(Query.getUnsafe(query).isFetching).toBe(true);
+		expect(backend.requests).toHaveLength(1);
+		await new Promise((resolve) => {
+			setTimeout(resolve, 2);
+		});
+		backend.respondAll();
+		await vi.waitFor(() =>
+			expect(Query.getUnsafe(query)).toMatchObject({
+				data: { id: 1, title: "First" },
+				isFetching: false,
+			}),
+		);
+	});
+
 	it("only replaces older data", async () => {
 		const backend = createBackend();
 		const browser = new QueryClient({ isServer: false });
@@ -154,16 +212,58 @@ describe("hydrate", () => {
 			);
 		});
 
-		it("revalidates when stale and the server's request is pending", () => {
-			const test = setup(0);
-
+		function hydratePending(test: ReturnType<typeof setup>) {
+			const server = Promise.withResolvers<DehydratedResult>();
 			hydrate(test.browser, {
-				queries: [
-					{ key: ["issue", 1], promise: new Promise(() => {}), updatedAt: 0 },
-				],
+				queries: [{ key: ["issue", 1], promise: server.promise, updatedAt: 0 }],
+			});
+			return server;
+		}
+
+		it("waits for the server's pending request instead of fetching, and takes its newer data", async () => {
+			const test = setup(0);
+			const server = hydratePending(test);
+			expect(test.backend.requests).toHaveLength(0);
+
+			server.resolve({
+				data: { id: 1, title: "Server" },
+				updatedAt: test.updatedAt + 1,
 			});
 
-			expect(test.backend.requests.map((request) => request.id)).toEqual([1]);
+			await vi.waitFor(() =>
+				expect(
+					test.browser.getData(test.backend.issueQuery, { id: 1 })?.title,
+				).toBe("Server"),
+			);
+			expect(test.backend.requests).toHaveLength(0);
+		});
+
+		it("revalidates when stale and the server's pending request is no newer", async () => {
+			const test = setup(0);
+			const server = hydratePending(test);
+
+			server.resolve({
+				data: { id: 1, title: "Replayed" },
+				updatedAt: test.updatedAt,
+			});
+
+			await vi.waitFor(() =>
+				expect(test.backend.requests.map((request) => request.id)).toEqual([1]),
+			);
+			expect(
+				test.browser.getData(test.backend.issueQuery, { id: 1 })?.title,
+			).toBe("Kept");
+		});
+
+		it("revalidates when stale and the server's pending request failed", async () => {
+			const test = setup(0);
+			const server = hydratePending(test);
+
+			server.reject(new Error('Query ["issue",1] failed'));
+
+			await vi.waitFor(() =>
+				expect(test.backend.requests.map((request) => request.id)).toEqual([1]),
+			);
 		});
 
 		it("is reused while fresh", () => {

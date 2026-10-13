@@ -4,7 +4,7 @@ Spec lives in root `README.md`. Picks, and what lost:
 
 - **Read API: `[promise, controls] = useQuery(factory, handle)` + `use()`.** Lost: suspense-direct `{ data } = useQuery(...)` (hides `use()`, can't pass promises down; could be sugar later), registry-based `useQuery(handle)` (every definition in the root bundle, global name uniqueness).
 - **Definitions: TanStack-style factories `(input?) => queryOptions({ queryKey, queryFn })`.** Lost: `defineQuery({ name, fn })` with derived keys. Consequence: invalidation is by `(factory, input)` or key-prefix filter, not by definition alone.
-- **Hydration: cache-level stream, handles are `{ key, input }` only.** Lost: handle-carried promises. Consequence: handles never carry data, so `qc.fetch()` exists for RSC rendering / dependent loader inputs, and every framework needs an integration (`/tanstack-router`, `/rsc`, `/next`).
+- **Hydration: cache-level stream, handles are `{ key, input }` only.** Lost: handle-carried promises. Consequence: handles never carry data, so `qc.fetch()` exists for RSC rendering / dependent loader inputs, and every framework needs an integration (`/tanstack-router`, `/rsc`).
 - **Engine: own core**, copying mechanisms from TanStack — not a wrapper around `@tanstack/query-core`. See [implementation-notes.md](../implementation-notes.md).
 - **Paged vs plain is decided only by the factory** (`infiniteQueryOptions` vs `queryOptions`). One `useQuery`, one set of verbs; no `useInfiniteQuery` / `prefetchInfinite` / etc. Paging controls and the `{ pages: n }` server option exist only on paged factories' types.
 - **Verbs:** `prefetch` (sync → handle), `ensure` (→ `Promise<handle>`), `fetch` (→ `Promise<data>`). `useWaterfall` is the only render-time starter.

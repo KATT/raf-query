@@ -6,6 +6,13 @@ import type { QueryKey } from "./key.ts";
 import type { QueryFactory, QueryMeta } from "./options.ts";
 import * as Query from "./query.ts";
 
+/** What a dehydrated pending query's promise resolves to. */
+export interface DehydratedResult {
+	readonly data?: unknown;
+	/** When the sender got `data` (ms since epoch). */
+	readonly updatedAt: number;
+}
+
 /**
  * One cache entry in transit. Settled entries carry `data`; entries still
  * loading their first data carry the request's `promise`, so the receiving
@@ -16,7 +23,7 @@ export interface DehydratedQuery {
 	readonly key: QueryKey;
 	/** The query's `meta`, for receivers that haven't called its factory. */
 	readonly meta?: QueryMeta;
-	readonly promise?: Promise<unknown>;
+	readonly promise?: Promise<DehydratedResult>;
 	/** When `data` was fetched; `0` while pending. */
 	readonly updatedAt: number;
 }
@@ -98,9 +105,17 @@ export function dehydrateUnsafe<TData, TFactory extends QueryFactory, TError>(
 	if (state.hasData) {
 		return { ...sent, data: serialize(state.data), updatedAt: state.updatedAt };
 	}
-	const promise = state.promise.then(serialize, (error: unknown) => {
-		throw options.keepErrors ? error : new RedactedError({ hash: query.hash });
-	});
+	const promise = state.promise.then(
+		(data): DehydratedResult => ({
+			data: serialize(data),
+			updatedAt: Query.getUnsafe(query).updatedAt,
+		}),
+		(error: unknown) => {
+			throw options.keepErrors
+				? error
+				: new RedactedError({ hash: query.hash });
+		},
+	);
 	promise.catch(noop);
 	return { ...sent, promise, updatedAt: 0 };
 }
@@ -187,11 +202,25 @@ export const dehydrateStream: (
 	});
 
 /**
+ * Take the sender's data if it's newer than the entry's. An entry that keeps
+ * its own (the sender's is older, as in a router's cached payload) was asked
+ * for again, so it revalidates if stale, as `prefetch` would.
+ */
+function takeNewer(entry: Entry.Entry, data: unknown, updatedAt: number) {
+	const current = entry.state;
+	if (!current.hasData || current.updatedAt < updatedAt) {
+		Entry.setData(entry, data, updatedAt);
+	} else {
+		Entry.revalidate(entry);
+	}
+}
+
+/**
  * Write dehydrated entries into a cache. Existing entries only take newer
- * data; pending entries resume the sender's request. An entry that keeps its
- * own data (the sender's is older, as in a router's cached payload, or still
- * pending) was asked for again, so it revalidates if stale, as `prefetch`
- * would.
+ * data. A pending entry the cache has nothing for resumes the sender's
+ * request. One that has data, or a request of its own, waits for the
+ * sender's instead of fetching again, and then takes whichever is newer;
+ * if the sender's failed, it revalidates.
  */
 export function hydrateEntries(
 	entryFor: (key: QueryKey) => Entry.Entry,
@@ -204,16 +233,24 @@ export function hydrateEntries(
 		if (!entry.options && query.meta !== undefined) {
 			entry.hydratedMeta = query.meta;
 		}
-		const current = entry.state;
 		if (query.updatedAt > 0) {
-			if (!current.hasData || current.updatedAt < query.updatedAt) {
-				Entry.setData(entry, deserialize(query.data), query.updatedAt);
-			} else {
-				Entry.revalidate(entry);
-			}
-		} else if (query.promise && !current.hasData) {
+			takeNewer(entry, deserialize(query.data), query.updatedAt);
+		} else if (query.promise) {
 			// Flight-decoded promises are thenables, not always real promises.
-			Entry.resume(entry, Promise.resolve(query.promise).then(deserialize));
+			const result = Promise.resolve(query.promise).then(
+				(sent): DehydratedResult => ({
+					data: deserialize(sent.data),
+					updatedAt: sent.updatedAt,
+				}),
+			);
+			if (!entry.state.hasData && !entry.inFlight) {
+				Entry.resume(entry, result);
+			} else {
+				result.then(
+					(sent) => takeNewer(entry, sent.data, sent.updatedAt),
+					() => Entry.revalidate(entry),
+				);
+			}
 		} else {
 			Entry.revalidate(entry);
 		}
