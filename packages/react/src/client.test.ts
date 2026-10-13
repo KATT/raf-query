@@ -651,7 +651,7 @@ describe("remove", () => {
 
 		qc.remove(backend.issueQuery, { id: 1 });
 
-		await expect(pending).rejects.toBeInstanceOf(Query.CancelledError);
+		await expect(pending).rejects.toMatchObject({ name: "AbortError" });
 		expect(backend.requests[0]?.signal.aborted).toBe(true);
 		expect(qc.getAll().map((query) => query.hash)).toEqual(['["issue",2]']);
 		expect(events).toContain('removed ["issue",1]');
@@ -868,7 +868,7 @@ describe("retry", () => {
 
 			qc.remove(factory);
 
-			await expect(result).rejects.toBeInstanceOf(Query.CancelledError);
+			await expect(result).rejects.toMatchObject({ name: "AbortError" });
 			expect(removeListener).toHaveBeenCalledWith(
 				"online",
 				expect.any(Function),
@@ -952,7 +952,7 @@ describe("Effect queryFn", () => {
 		await flush();
 		qc.clear();
 
-		await expect(slow).rejects.toBeInstanceOf(Query.CancelledError);
+		await expect(slow).rejects.toMatchObject({ name: "AbortError" });
 		await flush();
 		expect(interrupted).toBe(true);
 	});
