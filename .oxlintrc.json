@@ -430,7 +430,7 @@
 		{
 			// Code built on Effect. Opt-in, because these rules would push Effect
 			// idioms into code that doesn't use it.
-			"files": ["packages/*/src/**", "scripts/**"],
+			"files": ["packages/*/src/**", "scripts/**", "tooling/stackblitz/src/**"],
 			"rules": {
 				"anti-slop-effect/no-manual-effect-error-tag": "error",
 				"anti-slop-effect/no-manual-tag-comparison": "error",
