@@ -256,7 +256,7 @@ export interface QueryCache {
 	): Stream.Stream<Query.State<DataOf<TFactory>>, never, ServicesOf<TFactory>>;
 }
 
-export const QueryCache = Context.Service<QueryCache>(TypeId);
+export const QueryCache = /*#__PURE__*/ Context.Service<QueryCache>(TypeId);
 
 export function isQueryCache(value: unknown): value is QueryCache {
 	return Predicate.hasProperty(value, TypeId);
@@ -346,8 +346,8 @@ function settleAll(effects: ReadonlyArray<Effect.Effect<void>>) {
 /** Build a cache in the current scope, with the current `Clock` and {@link Platform}. */
 export const make: (
 	config?: Config,
-) => Effect.Effect<QueryCache, never, Scope.Scope> = Effect.fnUntraced(
-	function* (config: Config = {}) {
+) => Effect.Effect<QueryCache, never, Scope.Scope> =
+	/*#__PURE__*/ Effect.fnUntraced(function* (config: Config = {}) {
 		const platform = yield* Platform;
 		const state: Entry.CacheState = {
 			clock: yield* Clock.Clock,
@@ -523,8 +523,7 @@ export const make: (
 				),
 		};
 		return cache;
-	},
-);
+	});
 
 /** A layer that provides a {@link QueryCache} for the layer's lifetime. */
 export const layer = (config?: Config): Layer.Layer<QueryCache> =>
