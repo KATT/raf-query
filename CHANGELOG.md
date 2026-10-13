@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.10](https://github.com/KATT/raf-query/compare/0.1.9...0.1.10) (2026-10-13)
+
+- **stackblitz:** wait for the released version on npm ([#39](https://github.com/KATT/raf-query/issues/39)) ([18d5f86](https://github.com/KATT/raf-query/commit/18d5f8659c61c1571bc104a6142e5d1d714df325))
+
 ## [0.1.9](https://github.com/KATT/raf-query/compare/0.1.8...0.1.9) (2026-10-13)
 
 - **examples:** open the examples in StackBlitz ([#38](https://github.com/KATT/raf-query/issues/38)) ([b4e1b64](https://github.com/KATT/raf-query/commit/b4e1b644057cf2acb96ca077d0a79e2757fec305))
