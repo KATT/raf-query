@@ -1,5 +1,7 @@
 # raf-query on TanStack Start
 
+[![Open in CodeSandbox](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/tanstack-start?file=/apps/tanstack-start/src/queries.ts)
+
 A small issue tracker built with [raf-query](https://github.com/KATT/raf-query#readme). [`examples/nextjs`](https://github.com/KATT/raf-query/tree/main/examples/nextjs) is the same app on Next.js App Router, so the two integrations can be compared side by side.
 
 | Screen / action                               | Shows                                                                                       | Files                                                          |

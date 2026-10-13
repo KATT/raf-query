@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 export default {
+	// CodeSandbox serves the dev server at `<id>-<port>.csb.app`.
+	allowedDevOrigins: ["*.csb.app"],
 	reactCompiler: true,
 	transpilePackages: [
 		"@examples/api",
