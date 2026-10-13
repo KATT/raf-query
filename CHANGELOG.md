@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.11](https://github.com/KATT/raf-query/compare/0.1.10...0.1.11) (2026-10-13)
+
+### Features
+
+- **tooling:** StackBlitz copies as pnpm workspaces, synced by an Effect program ([#41](https://github.com/KATT/raf-query/issues/41)) ([bb48c5d](https://github.com/KATT/raf-query/commit/bb48c5d3f7332bad6c56cc6cb6c3cd27fde6163a)), references [#38](https://github.com/KATT/raf-query/issues/38) [webcontainer-core#1169](https://github.com/webcontainer-core/issues/1169) [TanStack/router#7480](https://github.com/TanStack/router/issues/7480)
+
 ## [0.1.10](https://github.com/KATT/raf-query/compare/0.1.9...0.1.10) (2026-10-13)
 
 - **stackblitz:** wait for the released version on npm ([#39](https://github.com/KATT/raf-query/issues/39)) ([18d5f86](https://github.com/KATT/raf-query/commit/18d5f8659c61c1571bc104a6142e5d1d714df325))
