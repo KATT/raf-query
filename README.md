@@ -16,10 +16,10 @@ Early. Both packages are on npm at `0.x`, and the API can still change between p
 
 The same issue tracker, built on two frameworks so the integrations can be compared side by side. Each opens in CodeSandbox, which runs it on a cloud VM:
 
-| Example                                                     | Framework          | Try it                                                                                                                                                         |
-| ----------------------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`examples/tanstack-start`](examples/tanstack-start#readme) | TanStack Start     | [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/tanstack-start?file=/apps/tanstack-start/src/queries.ts) |
-| [`examples/nextjs`](examples/nextjs#readme)                 | Next.js App Router | [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/nextjs?file=/apps/nextjs/src/queries.ts)                 |
+| Example                                                     | Framework          | Try it                                                                                                                                                                      |
+| ----------------------------------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`examples/tanstack-start`](examples/tanstack-start#readme) | TanStack Start     | [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/tanstack-start?file=/apps/tanstack-start/src/routes/issues.index.tsx) |
+| [`examples/nextjs`](examples/nextjs#readme)                 | Next.js App Router | [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/nextjs?file=/apps/nextjs/src/app/issues/page.tsx)                     |
 
 ## Packages
 
