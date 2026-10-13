@@ -9,7 +9,7 @@ A small issue tracker built with [raf-query](https://github.com/KATT/raf-query#r
 | Comments                                      | Paged query with infinite scroll, streamed through `HydrationBoundary`                                 | `src/components/comments.tsx`                                        |
 | Edit title, add comment                       | Form actions, `useOptimistic`, `await qc.invalidate`                                                   | `src/components/edit-title.tsx`, `src/components/comments.tsx`       |
 
-Query factories are in `src/queries.ts`, and their `queryFn`s call the server actions in `src/actions.ts`. The data comes from an in-memory fake database that waits `DB_LATENCY_MS` (default 400) ± 50% per call and resets when the server restarts.
+Query factories are in `src/queries.ts`. Their `queryFn`s, and the form actions, call a REST API through its typed [Hono](https://hono.dev) client. The API lives in [`examples/.shared/api`](https://github.com/KATT/raf-query/tree/main/examples/.shared/api), shared with the TanStack Start app, and `src/app/api/[...path]/route.ts` serves it. Its inputs and responses are typed by the fake database's schemas and functions. Server components call the API in process; the browser calls it over HTTP, in parallel. The data comes from an in-memory fake database that waits `DB_LATENCY_MS` (default 400) ± 50% per call and resets when the server restarts.
 
 ## Run it
 

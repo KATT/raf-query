@@ -1,10 +1,9 @@
+import { api, parseResponse } from "@examples/api/client";
 import type { Issue } from "@examples/db/types";
 import { Button } from "@examples/ui/components/button";
 import { Input } from "@examples/ui/components/input";
 import { useQueryClient } from "@raf-query/react";
 import { useActionState, useOptimistic } from "react";
-
-import { updateIssueTitle } from "~/server-functions.ts";
 
 /** The issue's title, editable in place. Shows the new title while it saves. */
 export function EditTitle(props: { readonly issue: Issue }) {
@@ -16,7 +15,12 @@ export function EditTitle(props: { readonly issue: Issue }) {
 			const next = String(formData.get("title") ?? "");
 			setOptimisticTitle(next);
 			try {
-				await updateIssueTitle({ data: { id: issue.id, title: next } });
+				await parseResponse(
+					api.issues[":id"].$patch({
+						json: { title: next },
+						param: { id: String(issue.id) },
+					}),
+				);
 			} catch (error) {
 				return error instanceof Error ? error.message : String(error);
 			}

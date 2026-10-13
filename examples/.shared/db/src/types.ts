@@ -11,6 +11,9 @@ export type IssueSort = z.infer<typeof IssueSort>;
 const Id = z.int().positive();
 const Text = z.string().trim().min(1);
 
+/** Index of a page's first item. */
+export const Cursor = z.int().nonnegative();
+
 /**
  * What the issue list shows. Lives in the URL's search params; missing keys
  * get defaults. Pages are loaded by scrolling, so they stay out of the URL.
@@ -21,19 +24,14 @@ export const IssueListInput = z.object({
 });
 export type IssueListInput = z.infer<typeof IssueListInput>;
 
-export const IssuePageInput = IssueListInput.extend({
-	cursor: z.int().nonnegative(),
-});
+export const IssuePageInput = IssueListInput.extend({ cursor: Cursor });
 export type IssuePageInput = z.infer<typeof IssuePageInput>;
 
 export const IssueId = Id;
 
 export const UserId = z.string();
 
-export const CommentsInput = z.object({
-	cursor: z.int().nonnegative(),
-	issueId: Id,
-});
+export const CommentsInput = z.object({ cursor: Cursor, issueId: Id });
 export type CommentsInput = z.infer<typeof CommentsInput>;
 
 export const UpdateTitleInput = z.object({ id: Id, title: Text });
