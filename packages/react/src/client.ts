@@ -2,80 +2,47 @@ import {
 	type DataOf,
 	type DehydratedState,
 	type DehydrateOptions,
+	type EffectServices,
 	type EnsuredQueryHandle,
 	type HydrateOptions,
 	type InputArgs,
 	type InputOf,
-	Query,
+	type Query,
 	QueryCache,
 	type QueryFactory,
 	type QueryHandle,
 } from "@raf-query/core";
-import { Context, Effect, Exit, Option, Scope } from "effect";
 
-import { unsafeCast } from "./cast.ts";
-
-export interface QueryClientConfig<TServices = never>
-	extends QueryCache.Config {
+export interface QueryClientConfig<TServices = never> extends Omit<
+	QueryCache.Config,
+	"services"
+> {
 	/** Called with every failed request, including failed prefetches. */
 	onError?(error: unknown, query: Query.Query): void;
 	/**
-	 * Services for queries whose `queryFn` returns an Effect, built in the
-	 * client's scope when it's created; `dispose()` closes that scope. Use
-	 * `fromLayer(layer)` from `@raf-query/react/effect`.
+	 * Services for queries whose `queryFn` returns an Effect; `dispose()`
+	 * releases them. Use `fromLayer(layer)` or `fromContext(context)` from
+	 * `@raf-query/react/effect`.
 	 */
-	readonly services?: ServicesBuilder<TServices>;
-}
-
-/** Builds a client's services in the client's scope. */
-export type ServicesBuilder<TServices> = (
-	scope: Scope.Scope,
-) => Context.Context<TServices>;
-
-/**
- * A verb's Effect, run by a client. Its requirement is the factory's
- * `ServicesOf`, which the client's verbs only accept when its `services`
- * provide them.
- */
-function provided<A, E, R>(
-	effect: Effect.Effect<A, E, R>,
-): Effect.Effect<A, E> {
-	// SAFETY: the cache was built over the client's `services`, so every request
-	// already runs with those services, and the verbs take only factories of
-	// `QueryFactory<TServices>`.
-	return unsafeCast<Effect.Effect<A, E>>(effect);
+	readonly services?: EffectServices<TServices>;
 }
 
 /**
- * The query cache, with Promise methods. Create one per request on the
- * server and one per browser tab. `effect` is the same cache's Effect API.
- * Its verbs take factories whose `queryFn` needs at most `TServices`, the
- * services of `config.services`.
+ * The query cache, with methods. Create one per request on the server and
+ * one per browser tab. Its verbs take factories whose `queryFn` needs at
+ * most `TServices`, the services of `config.services`.
  */
 export class QueryClient<TServices = never> {
-	/** The Effect-native cache behind this client. */
-	readonly effect: QueryCache.QueryCache;
+	/** The cache behind this client, for `QueryCache` functions and `QueryCache.fromCache` in `/effect`. */
+	readonly cache: QueryCache.QueryCache;
 	readonly isServer: boolean;
-	/**
-	 * Owns the cache's fibers, mounts and the client's services; lives until
-	 * `dispose()`.
-	 */
-	readonly #scope = Scope.makeUnsafe();
 
 	constructor(config: QueryClientConfig<TServices> = {}) {
-		const services = config.services
-			? config.services(this.#scope)
-			: Context.empty();
-		this.effect = Effect.runSync(
-			QueryCache.make(config).pipe(
-				Scope.provide(this.#scope),
-				Effect.provideContext(services),
-			),
-		);
-		this.isServer = this.effect.isServer;
+		this.cache = QueryCache.make(config);
+		this.isServer = this.cache.isServer;
 		const onError = config.onError;
 		if (onError) {
-			this.effect.subscribeUnsafe((event) => {
+			QueryCache.subscribe(this.cache, (event) => {
 				if (event.type === "failed") {
 					onError(event.error, event.query);
 				}
@@ -91,7 +58,7 @@ export class QueryClient<TServices = never> {
 		factory: TFactory,
 		...args: InputArgs<TFactory>
 	): Query.Of<TFactory> {
-		return this.effect.getQueryUnsafe(factory, ...args);
+		return QueryCache.getQuery(this.cache, factory, ...args);
 	}
 
 	/**
@@ -103,7 +70,7 @@ export class QueryClient<TServices = never> {
 		factory: TFactory,
 		...args: InputArgs<TFactory>
 	): QueryHandle<TFactory> {
-		return Effect.runSync(provided(this.effect.prefetch(factory, ...args)));
+		return QueryCache.prefetch(this.cache, factory, ...args);
 	}
 
 	/**
@@ -116,7 +83,7 @@ export class QueryClient<TServices = never> {
 		factory: TFactory,
 		...args: QueryCache.LoadArgs<TFactory>
 	): Promise<EnsuredQueryHandle<TFactory>> {
-		return Effect.runPromise(provided(this.effect.ensure(factory, ...args)));
+		return QueryCache.ensure(this.cache, factory, ...args);
 	}
 
 	/** Like `ensure`, but resolves to the data. */
@@ -124,7 +91,7 @@ export class QueryClient<TServices = never> {
 		factory: TFactory,
 		...args: QueryCache.LoadArgs<TFactory>
 	): Promise<DataOf<TFactory>> {
-		return Effect.runPromise(provided(this.effect.fetch(factory, ...args)));
+		return QueryCache.fetch(this.cache, factory, ...args);
 	}
 
 	/**
@@ -135,7 +102,7 @@ export class QueryClient<TServices = never> {
 	invalidate<TFactory extends QueryFactory<TServices>>(
 		...target: QueryCache.Target<TFactory>
 	): Promise<void> {
-		return Effect.runPromise(this.effect.invalidate(...target));
+		return QueryCache.invalidate(this.cache, ...target);
 	}
 
 	/**
@@ -145,7 +112,7 @@ export class QueryClient<TServices = never> {
 	reset<TFactory extends QueryFactory<TServices>>(
 		...target: QueryCache.Target<TFactory>
 	): Promise<void> {
-		return Effect.runPromise(this.effect.reset(...target));
+		return QueryCache.reset(this.cache, ...target);
 	}
 
 	/**
@@ -155,7 +122,7 @@ export class QueryClient<TServices = never> {
 	remove<TFactory extends QueryFactory<TServices>>(
 		...target: QueryCache.Target<TFactory>
 	): void {
-		Effect.runSync(this.effect.remove(...target));
+		QueryCache.remove(this.cache, ...target);
 	}
 
 	/** Write data for a factory call. Readers re-render without suspending. */
@@ -164,7 +131,7 @@ export class QueryClient<TServices = never> {
 		input: InputOf<TFactory>,
 		updater: QueryCache.Updater<DataOf<TFactory>>,
 	): void {
-		Effect.runSync(this.effect.setData(factory, input, updater));
+		QueryCache.setData(this.cache, factory, input, updater);
 	}
 
 	/**
@@ -176,14 +143,12 @@ export class QueryClient<TServices = never> {
 		factory: TFactory,
 		...args: InputArgs<TFactory>
 	): DataOf<TFactory> | undefined {
-		return Option.getOrUndefined(
-			Effect.runSync(this.effect.getData(factory, ...args)),
-		);
+		return QueryCache.getData(this.cache, factory, ...args);
 	}
 
 	/** Every entry, for devtools and integrations. */
 	getAll(): ReadonlyArray<Query.Query> {
-		return Effect.runSync(this.effect.all);
+		return QueryCache.all(this.cache);
 	}
 
 	/**
@@ -191,17 +156,17 @@ export class QueryClient<TServices = never> {
 	 * matching `filter`. For global loading indicators.
 	 */
 	isFetching(filter?: QueryCache.Filter): number {
-		return this.effect.isFetchingUnsafe(filter);
+		return QueryCache.isFetching(this.cache, filter);
 	}
 
 	/** Listen to entries being added, updated, and removed. */
 	subscribe(listener: (event: QueryCache.Event) => void): () => void {
-		return this.effect.subscribeUnsafe(listener);
+		return QueryCache.subscribe(this.cache, listener);
 	}
 
 	/** Drop every entry and abort in-flight requests. */
 	clear(): void {
-		Effect.runSync(this.effect.clear);
+		QueryCache.clear(this.cache);
 	}
 
 	/**
@@ -209,19 +174,15 @@ export class QueryClient<TServices = never> {
 	 * Returns the matching unmount. Providers call this; mounts are counted.
 	 */
 	mount(): () => void {
-		const scope = Scope.forkUnsafe(this.#scope);
-		Effect.runSync(this.effect.mount.pipe(Scope.provide(scope)));
-		return () => {
-			Effect.runSync(Scope.close(scope, Exit.void));
-		};
+		return QueryCache.mount(this.cache);
 	}
 
 	/**
-	 * Close the client: interrupt every request and timer, and release its
+	 * Close the client: abort every request and timer, and release its
 	 * services. Resolves once their finalizers have run.
 	 */
 	dispose(): Promise<void> {
-		return Effect.runPromise(Scope.close(this.#scope, Exit.void));
+		return QueryCache.dispose(this.cache);
 	}
 }
 
@@ -230,7 +191,7 @@ export function dehydrate(
 	client: QueryClient,
 	options?: DehydrateOptions,
 ): DehydratedState {
-	return Effect.runSync(QueryCache.dehydrate(client.effect, options));
+	return QueryCache.dehydrate(client.cache, options);
 }
 
 /**
@@ -242,5 +203,5 @@ export function hydrate(
 	state: DehydratedState,
 	options?: HydrateOptions,
 ): void {
-	Effect.runSync(QueryCache.hydrate(client.effect, state, options));
+	QueryCache.hydrate(client.cache, state, options);
 }

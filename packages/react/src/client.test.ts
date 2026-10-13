@@ -8,8 +8,8 @@ import {
 } from "@effect/vitest";
 import { Context, Effect, Layer, Schedule } from "effect";
 
-import { Query, QueryClient, queryOptions, retrySchedule } from "./index.ts";
-import { fromLayer } from "./effect.ts";
+import { fromContext, fromLayer, retrySchedule } from "./effect.ts";
+import { Query, QueryClient, queryOptions } from "./index.ts";
 import { createBackend, flush } from "./test-utils.ts";
 
 function useFakeTimers(options?: Parameters<typeof vi.useFakeTimers>[0]) {
@@ -355,10 +355,10 @@ describe("structural sharing", () => {
 	it("keeps the data and promise when a refetch returns equal data", async () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(listQuery());
-		await Effect.runPromise(Query.fetch(query));
+		await Query.fetch(query);
 		const before = Query.getUnsafe(query);
 
-		await Effect.runPromise(Query.refetch(query));
+		await Query.refetch(query);
 
 		const after = Query.getUnsafe(query);
 		expect(after.data).toBe(before.data);
@@ -388,10 +388,10 @@ describe("structural sharing", () => {
 	it("is skipped with structuralSharing: false", async () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(listQuery({ structuralSharing: false }));
-		await Effect.runPromise(Query.fetch(query));
+		await Query.fetch(query);
 		const before = Query.getUnsafe(query);
 
-		await Effect.runPromise(Query.refetch(query));
+		await Query.refetch(query);
 
 		expect(Query.getUnsafe(query).data).not.toBe(before.data);
 		expect(Query.getUnsafe(query).promise).not.toBe(before.promise);
@@ -437,7 +437,7 @@ describe("subscriptions", () => {
 			queryOptions({ queryFn: () => 1, queryKey: ["n"], staleTime: 100 }),
 		);
 		Query.subscribeUnsafe(query, () => {});
-		await Effect.runPromise(Query.fetch(query));
+		await Query.fetch(query);
 		expect(Query.getUnsafe(query).isStale).toBe(false);
 
 		await vi.advanceTimersByTimeAsync(101);
@@ -624,9 +624,7 @@ describe("reset", () => {
 		const backend = createBackend();
 		const qc = new QueryClient({ isServer: false });
 		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
-		void Effect.runPromise(
-			Query.refetch(qc.getQuery(backend.issueQuery, { id: 1 })),
-		);
+		void Query.refetch(qc.getQuery(backend.issueQuery, { id: 1 }));
 		const [oldRequest] = backend.requests;
 
 		const reset = qc.reset(backend.issueQuery, { id: 1 });
@@ -670,9 +668,9 @@ describe("remove", () => {
 		qc.remove(backend.issueQuery, { id: 1 });
 
 		await expect(
-			Effect.runPromise(Query.fetch(removed, { restart: true })),
+			Query.fetch(removed, { restart: true }),
 		).rejects.toBeInstanceOf(Query.CancelledError);
-		await Effect.runPromise(Query.refetch(removed));
+		await Query.refetch(removed);
 		expect(backend.requests).toHaveLength(0);
 	});
 });
@@ -685,7 +683,7 @@ describe("retry", () => {
 			queryOptions({ queryFn, queryKey: ["flaky"], retry: 2, retryDelay: 0 }),
 		);
 
-		await expect(Effect.runPromise(Query.fetch(query))).rejects.toThrow("down");
+		await expect(Query.fetch(query)).rejects.toThrow("down");
 
 		expect(queryFn).toHaveBeenCalledTimes(3);
 		expect(Query.getUnsafe(query).failureCount).toBe(3);
@@ -801,7 +799,7 @@ describe("retry", () => {
 			const query = qc.getQuery(() =>
 				queryOptions({ queryFn, queryKey: ["offline"] }),
 			);
-			const result = Effect.runPromise(Query.fetch(query));
+			const result = Query.fetch(query);
 
 			await vi.advanceTimersByTimeAsync(60_000);
 			expect(queryFn).toHaveBeenCalledOnce();
@@ -924,9 +922,28 @@ describe("retry", () => {
 });
 
 describe("Effect queryFn", () => {
+	it("fails without services to run the effect", async () => {
+		const qc = new QueryClient({ isServer: false });
+		const error = vi.spyOn(console, "error").mockImplementation(() => {});
+		function effectQuery() {
+			return queryOptions({
+				queryFn: () => Effect.succeed("never"),
+				queryKey: ["no-services"],
+			});
+		}
+
+		await expect(qc.fetch(effectQuery)).rejects.toThrow(
+			"the cache has no services to run it",
+		);
+		expect(error).toHaveBeenCalledOnce();
+	});
+
 	it("runs the effect and interrupts it on abort", async () => {
 		let interrupted = false;
-		const qc = new QueryClient({ isServer: false });
+		const qc = new QueryClient({
+			isServer: false,
+			services: fromContext(Context.empty()),
+		});
 		function slowQuery() {
 			return queryOptions({
 				queryFn: () =>

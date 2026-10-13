@@ -5,7 +5,6 @@ export {
 	hydrate,
 	QueryClient,
 	type QueryClientConfig,
-	type ServicesBuilder,
 } from "./client.ts";
 export { QueryClientProvider, useQueryClient } from "./provider.tsx";
 export { useIsFetching } from "./use-is-fetching.ts";

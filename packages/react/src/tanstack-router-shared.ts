@@ -4,7 +4,6 @@ import type {
 	HydrateOptions,
 } from "@raf-query/core";
 import { type AnyRouter, isRedirect } from "@tanstack/react-router";
-import { Predicate } from "effect";
 
 import { hydrate, type QueryClient } from "./client.ts";
 
@@ -25,14 +24,16 @@ export interface DehydratedRouterQueries {
 }
 
 function hasRafQueries(value: unknown): value is DehydratedRouterQueries {
-	return Predicate.hasProperty(value, "raf") && Predicate.isObject(value.raf);
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"raf" in value &&
+		typeof value.raf === "object" &&
+		value.raf !== null
+	);
 }
 
-/**
- * Hydrate each state as the server's stream delivers it. Reads the stream
- * directly: `Stream.fromReadableStream` + `QueryCache.hydrateStream` would
- * put Effect's `Stream` and `Queue` in the browser bundle.
- */
+/** Hydrate each state as the server's stream delivers it. */
 async function hydrateEach(
 	client: QueryClient,
 	stream: ReadableStream<DehydratedState>,
@@ -63,9 +64,8 @@ export function setupClient<TRouter extends AnyRouter>(
 		const raf = dehydrated.raf;
 		hydrate(client, raf.initial, hydrateOptions);
 		hydrateEach(client, raf.stream, hydrateOptions).catch((error: unknown) => {
-			// Entries still pending stay pending; surface why. On the console:
-			// `Effect.logError` would put Effect's logger in the app.
-			// oxlint-disable-next-line eslint/no-console -- see above
+			// Entries still pending stay pending; surface why.
+			// oxlint-disable-next-line eslint/no-console -- nothing else would report it
 			console.error("raf-query: reading the query stream failed", error);
 		});
 	};

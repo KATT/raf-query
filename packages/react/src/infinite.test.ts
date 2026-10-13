@@ -1,5 +1,4 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
 
 import { infiniteQueryOptions, QueryClient, Query } from "./index.ts";
 
@@ -52,30 +51,30 @@ describe("paged queries", () => {
 	it("page forward and backward until the ends", async () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, {});
-		await Effect.runPromise(Query.fetch(query));
+		await Query.fetch(query);
 
-		await Effect.runPromise(Query.fetchNextPage(query));
+		await Query.fetchNextPage(query);
 		expect(itemsOf(Query.getUnsafe(query).data)).toEqual([4, 5, 6, 7]);
-		await Effect.runPromise(Query.fetchPreviousPage(query));
-		await Effect.runPromise(Query.fetchPreviousPage(query));
+		await Query.fetchPreviousPage(query);
+		await Query.fetchPreviousPage(query);
 		expect(itemsOf(Query.getUnsafe(query).data)).toEqual([
 			0, 1, 2, 3, 4, 5, 6, 7,
 		]);
 
 		expect(Query.hasPreviousPageUnsafe(query)).toBe(false);
 		expect(Query.hasNextPageUnsafe(query)).toBe(true);
-		await Effect.runPromise(Query.fetchNextPage(query));
+		await Query.fetchNextPage(query);
 		expect(Query.hasNextPageUnsafe(query)).toBe(false);
-		await Effect.runPromise(Query.fetchNextPage(query));
+		await Query.fetchNextPage(query);
 		expect(Query.getUnsafe(query).data?.pages).toHaveLength(5);
 	});
 
 	it("set fetchDirection while a page loads", async () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, {});
-		await Effect.runPromise(Query.fetch(query));
+		await Query.fetch(query);
 
-		const next = Effect.runPromise(Query.fetchNextPage(query));
+		const next = Query.fetchNextPage(query);
 		expect(Query.getUnsafe(query).fetchDirection).toBe("forward");
 		await next;
 		expect(Query.getUnsafe(query).fetchDirection).toBeUndefined();
@@ -85,8 +84,8 @@ describe("paged queries", () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, {});
 
-		const first = Effect.runPromise(Query.fetch(query));
-		const next = Effect.runPromise(Query.fetchNextPage(query));
+		const first = Query.fetch(query);
+		const next = Query.fetchNextPage(query);
 		await first;
 		await next;
 
@@ -96,24 +95,24 @@ describe("paged queries", () => {
 	it("drop pages at the far end past maxPages", async () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, { maxPages: 2 });
-		await Effect.runPromise(Query.fetch(query));
+		await Query.fetch(query);
 
-		await Effect.runPromise(Query.fetchNextPage(query));
-		await Effect.runPromise(Query.fetchNextPage(query));
+		await Query.fetchNextPage(query);
+		await Query.fetchNextPage(query);
 		expect(Query.getUnsafe(query).data?.pageParams).toEqual([6, 8]);
 
-		await Effect.runPromise(Query.fetchPreviousPage(query));
+		await Query.fetchPreviousPage(query);
 		expect(Query.getUnsafe(query).data?.pageParams).toEqual([4, 6]);
 	});
 
 	it("refetch every loaded page from the first param", async () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, {});
-		await Effect.runPromise(Query.fetch(query));
-		await Effect.runPromise(Query.fetchNextPage(query));
-		await Effect.runPromise(Query.fetchPreviousPage(query));
+		await Query.fetch(query);
+		await Query.fetchNextPage(query);
+		await Query.fetchPreviousPage(query);
 
-		await Effect.runPromise(Query.refetch(query));
+		await Query.refetch(query);
 
 		expect(Query.getUnsafe(query).data?.pageParams).toEqual([2, 4, 6]);
 	});

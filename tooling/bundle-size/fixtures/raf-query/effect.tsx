@@ -5,7 +5,7 @@ import {
 	queryOptions,
 	useQuery,
 } from "@raf-query/react";
-import { fromLayer, retrySchedule } from "@raf-query/react/effect";
+import { fromContext, fromLayer, retrySchedule } from "@raf-query/react/effect";
 import { Context, Data, Effect, Layer, Schedule } from "effect";
 import { Suspense, use } from "react";
 
@@ -38,7 +38,9 @@ function IssueTitle(props: {
 
 /** `queryApp` with an Effect `queryFn` and `Schedule` retries. */
 export function effectApp() {
-	const queryClient = new QueryClient();
+	const queryClient = new QueryClient({
+		services: fromContext(Context.empty()),
+	});
 	const issue = queryClient.prefetch(effectIssueQuery, { id: 1 });
 	return (
 		<QueryClientProvider client={queryClient}>
