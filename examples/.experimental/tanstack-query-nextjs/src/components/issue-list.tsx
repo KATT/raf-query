@@ -44,6 +44,9 @@ export function IssueList(props: {
 				list.isPrevious && "opacity-50",
 			)}
 		>
+			<p className="text-sm text-muted-foreground">
+				Showing {shown} of {total} issues
+			</p>
 			<Card className="gap-0 divide-y py-0">
 				{shown === 0 ? (
 					<p className="p-6 text-sm text-muted-foreground">No issues.</p>
@@ -86,9 +89,6 @@ export function IssueList(props: {
 					/>
 				) : null}
 			</Card>
-			<p className="text-sm text-muted-foreground">
-				Showing {shown} of {total} issues
-			</p>
 			{list.hasNextPage && !list.isFetchingNextPage ? (
 				<LoadMore
 					onLoad={() => {
@@ -105,7 +105,9 @@ function IssueRowSkeletons(props: { readonly count: number }) {
 		<div className="divide-y">
 			{Array.from({ length: props.count }, (_, index) => (
 				<div className={rowClassName} key={index}>
-					<Skeleton className="h-5 w-full" />
+					<Skeleton className="h-4 w-10" />
+					<Skeleton className="h-4 flex-1" />
+					<Skeleton className="h-5 w-20 rounded-full" />
 				</div>
 			))}
 		</div>
