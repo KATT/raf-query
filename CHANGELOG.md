@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0](https://github.com/KATT/raf-query/compare/0.1.16...0.2.0) (2026-10-13)
+
+### ⚠ BREAKING CHANGES
+
+- **react:** qc.fetch / qc.ensure reject with an AbortError when cancelled ([#47](https://github.com/KATT/raf-query/issues/47))
+
+### Bug Fixes
+
+- **react:** qc.fetch / qc.ensure reject with an AbortError when cancelled ([#47](https://github.com/KATT/raf-query/issues/47)) ([53aa90b](https://github.com/KATT/raf-query/commit/53aa90b4b6068cff3998b189d3d563f338a3e564))
+
+### Performance Improvements
+
+- **react:** browser build of the TanStack Router integration ([#48](https://github.com/KATT/raf-query/issues/48)) ([75e78cf](https://github.com/KATT/raf-query/commit/75e78cf968c069188a2688ad3298fb4bee2e3b8c))
+
 ## [0.1.16](https://github.com/KATT/raf-query/compare/0.1.15...0.1.16) (2026-10-13)
 
 ### Bug Fixes
