@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.6](https://github.com/KATT/raf-query/compare/0.1.5...0.1.6) (2026-10-12)
+
+- one file per decision, and alternatives in the PR template ([#34](https://github.com/KATT/raf-query/issues/34)) ([e60d30b](https://github.com/KATT/raf-query/commit/e60d30bc99452eec7178fa2a6c7598987fe5254c)), references [#24](https://github.com/KATT/raf-query/issues/24) [#25](https://github.com/KATT/raf-query/issues/25) [#26](https://github.com/KATT/raf-query/issues/26) [#27](https://github.com/KATT/raf-query/issues/27) [#28](https://github.com/KATT/raf-query/issues/28) [#33](https://github.com/KATT/raf-query/issues/33) [#26](https://github.com/KATT/raf-query/issues/26) [#N](https://github.com/KATT/raf-query/issues/N) [#26](https://github.com/KATT/raf-query/issues/26) [#16](https://github.com/KATT/raf-query/issues/16) [#23](https://github.com/KATT/raf-query/issues/23) [#31](https://github.com/KATT/raf-query/issues/31) [#19](https://github.com/KATT/raf-query/issues/19) [#28](https://github.com/KATT/raf-query/issues/28) [#33](https://github.com/KATT/raf-query/issues/33)
+
+## [0.1.5](https://github.com/KATT/raf-query/compare/0.1.4...0.1.5) (2026-10-12)
+
+- measure bundle size against TanStack Query ([#33](https://github.com/KATT/raf-query/issues/33)) ([51606b3](https://github.com/KATT/raf-query/commit/51606b3be47a9a078fc4a81355fd952861f51d81)), references [pre-#23](https://github.com/pre-/issues/23) [#23](https://github.com/KATT/raf-query/issues/23) [Pre-#23](https://github.com/Pre-/issues/23)
+
 ## [0.1.4](https://github.com/KATT/raf-query/compare/0.1.3...0.1.4) (2026-10-12)
 
 ### Features

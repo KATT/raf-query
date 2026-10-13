@@ -1,10 +1,10 @@
 # Bundle size
 
-Reference for when bundle size matters more. Measure with `pnpm bundle-size` (see `decisions.md`, "Bundle size").
+Reference for when bundle size matters more. Measure with `pnpm bundle-size` (see [decisions/bundle-size-measurement.md](./decisions/bundle-size-measurement.md)).
 
 ## Current: Effect-native core, trimmed
 
-Core exposes only Effect APIs (`QueryCache`, `Query`, `QueryObserver`, `Platform` namespaces); `@raf-query/react`'s `QueryClient` builds the cache with `QueryCache.make` (and `Layer.buildWithScope` only for a `layer`) and runs each verb with `Effect.runSync` / `runPromise`. `qc.effect` is the Effect-native cache itself. Every app bundles Effect's fiber runtime plus what the engine reaches on every request; streams, transfer, spans, the logger and `Schedule` retries only when used. The cuts and the rules behind them: `decisions.md`, "Bundle size cuts".
+Core exposes only Effect APIs (`QueryCache`, `Query`, `QueryObserver`, `Platform` namespaces); `@raf-query/react`'s `QueryClient` builds the cache with `QueryCache.make` (and `Layer.buildWithScope` only for a `layer`) and runs each verb with `Effect.runSync` / `runPromise`. `qc.effect` is the Effect-native cache itself. Every app bundles Effect's fiber runtime plus what the engine reaches on every request; streams, transfer, spans, the logger and `Schedule` retries only when used. The cuts and the rules behind them: [decisions/bundle-size-cuts.md](./decisions/bundle-size-cuts.md).
 
 ## Numbers (gzip, kB; `tooling/bundle-size` fixtures, Start example's bundler)
 
