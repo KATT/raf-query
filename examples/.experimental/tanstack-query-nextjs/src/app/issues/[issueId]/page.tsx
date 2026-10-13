@@ -25,8 +25,8 @@ export default async function Page(props: {
 	const qc = getQueryClient();
 	const comments = prefetch(qc, commentsQuery, { issueId: id });
 	const issue = await ensureData(qc, issueQuery, { id });
-	// Client components can't call server actions during SSR, so the
-	// assignee, known only once the issue loads, starts here.
+	// The assignee is known only once the issue loads. Starting it here keeps
+	// it on the server, instead of a client component asking after render.
 	const assignee = prefetch(qc, userQuery, { id: issue.assigneeId });
 
 	return (

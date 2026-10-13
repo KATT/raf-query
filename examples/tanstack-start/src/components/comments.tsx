@@ -1,3 +1,4 @@
+import { api, parseResponse } from "@examples/api/client";
 import { type Comment, currentUser } from "@examples/db/types";
 import { Button } from "@examples/ui/components/button";
 import { LoadMore } from "@examples/ui/components/load-more";
@@ -8,7 +9,6 @@ import { type QueryHandle, useQuery, useQueryClient } from "@raf-query/react";
 import { use, useOptimistic } from "react";
 
 import { commentsQuery } from "~/queries.ts";
-import { addComment } from "~/server-functions.ts";
 
 const commentClassName = "rounded-lg border p-3";
 
@@ -56,7 +56,12 @@ export function Comments(props: {
 						id,
 						issueId,
 					});
-					await addComment({ data: { body, id, issueId } });
+					await parseResponse(
+						api.issues[":id"].comments.$post({
+							json: { body, id },
+							param: { id: String(issueId) },
+						}),
+					);
 					await queryClient.invalidate({ queryKey: ["issues"] });
 				}}
 				className="grid gap-2"

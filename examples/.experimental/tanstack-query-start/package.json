@@ -11,6 +11,7 @@
 		"typecheck": "tsc"
 	},
 	"dependencies": {
+		"@examples/api": "workspace:*",
 		"@examples/db": "workspace:*",
 		"@examples/ui": "workspace:*",
 		"@raf-query/experimental-tanstack-react-query": "workspace:*",
