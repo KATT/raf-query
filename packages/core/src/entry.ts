@@ -708,12 +708,12 @@ function attempt(
 	if (!Schedule.isSchedule(plan)) {
 		const after = (
 			failureCount: number,
-			error: unknown,
+			failure: unknown,
 		): Effect.Effect<unknown, unknown> =>
-			entry.retriesStopped || !plan.shouldRetry(failureCount, error)
-				? Effect.fail(error)
-				: Effect.sleep(plan.delay(failureCount, error)).pipe(
-						Effect.andThen(retryOnce(error)),
+			entry.retriesStopped || !plan.shouldRetry(failureCount, failure)
+				? Effect.fail(failure)
+				: Effect.sleep(plan.delay(failureCount, failure)).pipe(
+						Effect.andThen(retryOnce(failure)),
 						Effect.catch((error) => after(failureCount + 1, error)),
 					);
 		return Effect.catch(once, (error) => after(1, error));
@@ -734,10 +734,10 @@ function attempt(
 				}),
 			),
 		);
-		return Effect.retry(
-			gated,
-			Schedule.while(plan, () => !entry.retriesStopped),
-		);
+		return Effect.retry(gated, {
+			schedule: plan,
+			while: () => !entry.retriesStopped,
+		});
 	});
 }
 

@@ -15,6 +15,7 @@ import {
 	Clock,
 	Context,
 	Effect,
+	Fiber,
 	Layer,
 	Option,
 	Predicate,
@@ -317,10 +318,21 @@ function load<TFactory extends QueryFactory>(
 	return Effect.succeed(dataOf<TFactory>(entry));
 }
 
-/** Settles every effect, started together. */
-function settleAll(effects: ReadonlyArray<Effect.Effect<void>>) {
-	return Effect.all(effects, { concurrency: "unbounded", discard: true });
-}
+/**
+ * Settles every effect, started together. Forks and joins rather than
+ * `Effect.all` with `concurrency`, whose machinery every app would bundle.
+ */
+const settleAll = Effect.fnUntraced(function* (
+	effects: ReadonlyArray<Effect.Effect<void>>,
+) {
+	const fibers: Array<Fiber.Fiber<void>> = [];
+	for (const effect of effects) {
+		fibers.push(yield* Effect.forkChild(effect, { startImmediately: true }));
+	}
+	for (const fiber of fibers) {
+		yield* Fiber.join(fiber);
+	}
+});
 
 /** Build a cache in the current scope, with the current `Clock` and {@link Platform}. */
 export const make: (
