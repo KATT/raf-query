@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.9](https://github.com/KATT/raf-query/compare/0.1.8...0.1.9) (2026-10-13)
+
+- **examples:** open the examples in StackBlitz ([#38](https://github.com/KATT/raf-query/issues/38)) ([b4e1b64](https://github.com/KATT/raf-query/commit/b4e1b644057cf2acb96ca077d0a79e2757fec305))
+
 ## [0.1.8](https://github.com/KATT/raf-query/compare/0.1.7...0.1.8) (2026-10-13)
 
 ### Features
