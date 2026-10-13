@@ -1,0 +1,16 @@
+{
+	"engines": {
+		"node": ">=24"
+	},
+	"name": "raf-query-tanstack-start-example",
+	"packageManager": "pnpm@12.9.1",
+	"private": true,
+	"scripts": {
+		"build": "pnpm --filter @examples/tanstack-start build",
+		"dev": "pnpm --filter @examples/tanstack-start dev",
+		"start": "pnpm --filter @examples/tanstack-start start",
+		"typecheck": "pnpm --recursive typecheck"
+	},
+	"type": "module",
+	"version": "0.0.0"
+}

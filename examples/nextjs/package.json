@@ -1,0 +1,16 @@
+{
+	"engines": {
+		"node": ">=24"
+	},
+	"name": "raf-query-nextjs-example",
+	"packageManager": "pnpm@12.9.1",
+	"private": true,
+	"scripts": {
+		"build": "pnpm --filter @examples/nextjs build",
+		"dev": "pnpm --filter @examples/nextjs dev",
+		"start": "pnpm --filter @examples/nextjs start",
+		"typecheck": "pnpm --recursive typecheck"
+	},
+	"type": "module",
+	"version": "0.0.0"
+}
