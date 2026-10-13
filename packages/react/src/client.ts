@@ -126,7 +126,11 @@ export class QueryClient<TServices = never> {
 		return runLoad(provided(this.effect.ensure(factory, ...args)));
 	}
 
-	/** Like `ensure`, but resolves to the data. */
+	/**
+	 * Start a query and resolve to its data. Waits on a cache miss and on
+	 * stale data (on the server, only invalidated data), so the data is fresh.
+	 * Rejects if that request fails.
+	 */
 	fetch<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
 		...args: QueryCache.LoadArgs<TFactory>
