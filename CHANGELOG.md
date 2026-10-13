@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.16](https://github.com/KATT/raf-query/compare/0.1.15...0.1.16) (2026-10-13)
+
+### Bug Fixes
+
+- stale data always refreshes when switching pages ([#49](https://github.com/KATT/raf-query/issues/49)) ([68652cd](https://github.com/KATT/raf-query/commit/68652cdf6ea06ef86d277329098ee294dba98f21))
+
 ## [0.1.15](https://github.com/KATT/raf-query/compare/0.1.14...0.1.15) (2026-10-13)
 
 - **tooling:** list a fixture app's modules by size ([#45](https://github.com/KATT/raf-query/issues/45)) ([0e1f899](https://github.com/KATT/raf-query/commit/0e1f899f2fecc1368f9be71a2c78e3efd2f3783b))
