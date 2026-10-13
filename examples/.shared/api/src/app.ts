@@ -2,7 +2,7 @@ import {
 	addComment,
 	countIssues,
 	getIssue,
-	getUser,
+	getIssueAssignee,
 	listComments,
 	listIssues,
 	updateIssue,
@@ -13,7 +13,6 @@ import {
 	IssueId,
 	IssueListInput,
 	UpdateTitleInput,
-	UserId,
 } from "@examples/db/types";
 import { sValidator } from "@hono/standard-validator";
 import { Hono } from "hono";
@@ -74,14 +73,12 @@ const routes = new Hono()
 				201,
 			),
 	)
-	.get(
-		"/users/:id",
-		sValidator("param", z.object({ id: UserId })),
-		async (c) => {
-			const user = await getUser(c.req.valid("param").id);
-			return user ? c.json(user) : c.json({ error: "User not found" }, 404);
-		},
-	);
+	// Nested under the issue, so a page can ask for the assignee with the id
+	// from its URL, beside the issue, instead of after it.
+	.get("/issues/:id/assignee", sValidator("param", IssueParam), async (c) => {
+		const user = await getIssueAssignee(c.req.valid("param").id);
+		return user ? c.json(user) : c.json({ error: "Issue not found" }, 404);
+	});
 
 /** The routes' types, for `hc`: paths are relative to `/api`. */
 export type Api = typeof routes;

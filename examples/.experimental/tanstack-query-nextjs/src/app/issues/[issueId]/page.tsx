@@ -1,14 +1,11 @@
 import { IssueId } from "@examples/db/types";
-import {
-	ensureData,
-	prefetch,
-} from "@raf-query/experimental-tanstack-react-query";
+import { ensure, prefetch } from "@raf-query/experimental-tanstack-react-query";
 import { HydrationBoundary } from "@raf-query/experimental-tanstack-react-query/rsc";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { IssuePage } from "~/components/issue-page.tsx";
-import { commentsQuery, issueQuery, userQuery } from "~/queries.ts";
+import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 import { getQueryClient } from "~/query-client.ts";
 
 const IssueIdParam = z.coerce.number<string>().pipe(IssueId);
@@ -23,18 +20,15 @@ export default async function Page(props: {
 	}
 	const id = parsed.data;
 	const qc = getQueryClient();
+	const assignee = prefetch(qc, assigneeQuery, { issueId: id });
 	const comments = prefetch(qc, commentsQuery, { issueId: id });
-	const issue = await ensureData(qc, issueQuery, { id });
-	// The assignee is known only once the issue loads. Starting it here keeps
-	// it on the server, instead of a client component asking after render.
-	const assignee = prefetch(qc, userQuery, { id: issue.assigneeId });
 
 	return (
 		<HydrationBoundary client={qc}>
 			<IssuePage
 				assignee={assignee}
 				comments={comments}
-				issue={prefetch(qc, issueQuery, { id })}
+				issue={await ensure(qc, issueQuery, { id })}
 			/>
 		</HydrationBoundary>
 	);

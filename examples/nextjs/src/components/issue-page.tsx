@@ -11,7 +11,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { commentsQuery, issueQuery, userQuery } from "~/queries.ts";
+import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 
 import { Comments, CommentsSkeleton } from "./comments.tsx";
 import { EditTitle } from "./edit-title.tsx";
@@ -19,7 +19,7 @@ import { StatusBadge } from "./status-badge.tsx";
 import { AssigneeCard, AssigneeCardSkeleton } from "./user.tsx";
 
 export function IssuePage(props: {
-	readonly assignee: QueryHandle<typeof userQuery>;
+	readonly assignee: QueryHandle<typeof assigneeQuery>;
 	readonly comments: QueryHandle<typeof commentsQuery>;
 	readonly issue: EnsuredQueryHandle<typeof issueQuery>;
 }) {

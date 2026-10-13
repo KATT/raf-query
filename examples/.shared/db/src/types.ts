@@ -29,8 +29,6 @@ export type IssuePageInput = z.infer<typeof IssuePageInput>;
 
 export const IssueId = Id;
 
-export const UserId = z.string();
-
 export const CommentsInput = z.object({ cursor: Cursor, issueId: Id });
 export type CommentsInput = z.infer<typeof CommentsInput>;
 
