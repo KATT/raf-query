@@ -27,7 +27,12 @@ export function getRouter() {
 			</QueryClientProvider>
 		),
 	});
-	setupRouterIntegration({ queryClient, router });
+	setupRouterIntegration({
+		// Failures keep their type across SSR, so `IssueNotFound` matches in the browser.
+		dehydrateOptions: { keepErrors: true },
+		queryClient,
+		router,
+	});
 	return router;
 }
 

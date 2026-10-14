@@ -110,11 +110,11 @@ export type UseQueryResult<
 > =
 	ThrowsOnError<TFactory, TThrow> extends true
 		? readonly [
-				promise: Thenable<DataOf<TFactory>>,
+				promise: Promise<DataOf<TFactory>>,
 				controls: UseQueryControls<TFactory>,
 			]
 		: readonly [
-				promise: Thenable<Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>>,
+				promise: Promise<Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>>,
 				controls: UseQueryControls<TFactory>,
 			];
 

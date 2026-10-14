@@ -56,9 +56,11 @@ export function Settings(props: { readonly latency: number | undefined }) {
 		latency !== undefined || settings.prefetch !== DEFAULT_PREFETCH;
 
 	return (
-		<div className="flex items-center gap-4 text-sm">
+		<div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
 			<label className="flex items-center gap-2">
-				<span className="text-muted-foreground">Prefetch links</span>
+				<span className="text-muted-foreground whitespace-nowrap">
+					Prefetch links
+				</span>
 				<NativeSelect
 					onChange={(event) => {
 						const next = parsePrefetch(event.target.value);

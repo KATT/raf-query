@@ -20,7 +20,7 @@ Every feature in these docs appears somewhere in the app:
 | Screen or action                                        | Shows                                                                                                        |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Issue list with status filter and sort                  | Search params → loader → paged `prefetch`, infinite scroll, `whilePending: "previous"`, `isPrevious` dimming |
-| Issue detail                                            | `ensure` (blocking) and a keyed Suspense skeleton when moving between issues                                 |
+| Issue detail                                            | `prefetch`, so the page opens onto skeletons for the title, body, and status                                 |
 | Comments under an issue                                 | A paged query, streamed `prefetch`, infinite scroll                                                          |
 | Assignee card                                           | The loader or server component prefetches the assignee by issue id, next to the issue, so nothing waits      |
 | Inline-edit title and body; change status from the list | Form Actions / transitions, `useOptimistic` and `await qc.invalidate(...)`                                   |

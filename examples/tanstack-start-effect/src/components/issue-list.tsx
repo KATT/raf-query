@@ -56,31 +56,39 @@ export function IssueList(props: {
 						key={pages.pageParams[index]}
 					>
 						{page.issues.map((issue) => (
-							<div
+							<Link
 								className={cn(rowClassName, "group hover:bg-muted/50")}
 								key={issue.id}
+								params={{ issueId: String(issue.id) }}
+								to="/issues/$issueId"
 							>
-								<Link
-									className="flex min-w-0 flex-1 items-center gap-3"
-									params={{ issueId: String(issue.id) }}
-									to="/issues/$issueId"
-								>
-									<span className="w-10 shrink-0 text-sm text-muted-foreground">
-										#{issue.id}
-									</span>
-									<span className="flex-1 truncate font-medium">
-										{issue.title}
-									</span>
-								</Link>
-								<span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+								<span className="w-10 shrink-0 text-sm text-muted-foreground">
+									#{issue.id}
+								</span>
+								{/* `w-0`: the full title must not set the row's minimum width on phones. */}
+								<span className="w-0 flex-1 truncate font-medium">
+									{issue.title}
+								</span>
+								<span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground max-sm:hidden">
 									<MessageSquare className="size-3" />
 									{issue.commentCount}
 								</span>
-								<span className="w-14 shrink-0 text-right text-xs text-muted-foreground">
+								<span className="w-14 shrink-0 text-right text-xs text-muted-foreground max-sm:hidden">
 									{dateFormat.format(new Date(issue.createdAt))}
 								</span>
-								<StatusSelect issueId={issue.id} status={issue.status} />
-							</div>
+								{/* The menu sits in the row link. Cancel the click so it doesn't navigate. */}
+								<span
+									className="shrink-0"
+									onAuxClick={(event) => {
+										event.preventDefault();
+									}}
+									onClick={(event) => {
+										event.preventDefault();
+									}}
+								>
+									<StatusSelect issueId={issue.id} status={issue.status} />
+								</span>
+							</Link>
 						))}
 					</div>
 				))}

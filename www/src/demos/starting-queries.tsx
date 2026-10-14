@@ -3,7 +3,6 @@ import {
 	allKeyed,
 	type QueryClient,
 	queryOptions,
-	type Thenable,
 	useQuery,
 } from "@raf-query/react";
 import {
@@ -231,7 +230,7 @@ const prefetchList = createRoute({
 const prefetchTree = prefetchRoot.addChildren([prefetchList, prefetchPost]);
 
 function PromisedList(props: {
-	readonly posts: Thenable<ReadonlyArray<PostSummary>>;
+	readonly posts: Promise<ReadonlyArray<PostSummary>>;
 }) {
 	return <PostList posts={use(props.posts)} />;
 }
@@ -246,7 +245,7 @@ function PrefetchedList(): ReactNode {
 	);
 }
 
-function PromisedPost(props: { readonly post: Thenable<Post | undefined> }) {
+function PromisedPost(props: { readonly post: Promise<Post | undefined> }) {
 	return <PostBody post={use(props.post)} />;
 }
 

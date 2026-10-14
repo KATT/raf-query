@@ -49,7 +49,7 @@ function RootDocument(props: { readonly children: ReactNode }) {
 			</head>
 			<body className="min-h-screen antialiased">
 				<header className="border-b">
-					<nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3">
+					<nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
 						<Link
 							className="flex items-center gap-2.5 font-semibold"
 							key={prefetch}
@@ -76,7 +76,10 @@ function RootDocument(props: { readonly children: ReactNode }) {
 					</nav>
 				</header>
 				{/* Remounts the page, so every `Link` picks up a new prefetch setting. */}
-				<main className="mx-auto max-w-5xl px-6 py-8" key={prefetch}>
+				<main
+					className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8"
+					key={prefetch}
+				>
 					{props.children}
 				</main>
 				<Toaster closeButton position="bottom-right" richColors />
