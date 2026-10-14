@@ -63,7 +63,7 @@ return <PushSwitch state={use(pushPromise)} />;
 
 The browser hydrates the same pending state, then renders the result. A reader that calls `use()` on the promise instead needs a Suspense boundary: on the server the promise rejects with `Query.BrowserOnlyError`, so React sends the fallback and renders the boundary in the browser. React reports that boundary to `onRecoverableError` while hydrating.
 
-`ensure` and `fetch` can't wait for it on the server, so they fail with `Query.BrowserOnlyError`. Use `prefetch` in loaders that also run on the server.
+`ensure` and `fetch` can't wait for it on the server, so they fail with `Query.BrowserOnlyError`. Use `prefetch` in loaders that also run on the server. `invalidate`, `reset`, `refetch` and the paging controls do nothing there.
 
 ## When the browser already has data
 

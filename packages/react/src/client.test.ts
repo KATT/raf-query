@@ -344,6 +344,7 @@ describe("ssr: false", () => {
 		const query = qc.getQuery(capability.query);
 		const promise = Query.readUnsafe(query);
 		await qc.invalidate(capability.query);
+		await Effect.runPromise(Query.refetch(query));
 		await expect(qc.ensure(capability.query)).rejects.toBeInstanceOf(
 			Query.BrowserOnlyError,
 		);

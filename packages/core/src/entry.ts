@@ -212,10 +212,14 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 		},
 		tasks: makeTasks(cache, scope),
 	});
+	const command = (request?: FetchRequest) =>
+		Effect.suspend(() =>
+			isBrowserOnly(entry) ? Effect.void : Effect.ignore(fetch(entry, request)),
+		);
 	const commands: Commands = {
-		fetchNextPage: Effect.ignore(fetch(entry, { direction: "forward" })),
-		fetchPreviousPage: Effect.ignore(fetch(entry, { direction: "backward" })),
-		refetch: Effect.ignore(fetch(entry)),
+		fetchNextPage: command({ direction: "forward" }),
+		fetchPreviousPage: command({ direction: "backward" }),
+		refetch: command(),
 	};
 	Object.assign(entry, { commands });
 	scheduleGc(entry);
