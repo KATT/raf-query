@@ -17,13 +17,15 @@ export function usePost(
 	// #region signature
 	{
 		const [promise, controls] = useQuery(factory, handle, options);
+		// #endregion
 		void promise;
 		void controls;
 	}
 	{
+		// #region signature
 		const [data, controls] = useQuery(factory, ensuredHandle, options);
+		// #endregion
 		void data;
 		void controls;
 	}
-	// #endregion
 }
