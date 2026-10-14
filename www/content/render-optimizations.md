@@ -49,13 +49,9 @@ The controls object returned by `useQuery` tracks which fields a component reads
 ```tsx twoslash
 import { Suspense } from "react";
 import { type EnsuredQueryHandle, useQuery } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 import type { ReactNode } from "react";
-declare const Route: {
-	useLoaderData(): {
-		post: EnsuredQueryHandle<typeof postQuery>;
-	};
-};
+import { Route } from "~/routes/posts.$slug.tsx";
 declare function PostBody(props: { readonly post: unknown }): ReactNode;
 declare function PostSkeleton(): ReactNode;
 // ---cut---
@@ -95,7 +91,7 @@ A parent can read a prefetched handle and hand the promise to a child, so only t
 ```tsx twoslash
 import { Suspense, type ReactNode } from "react";
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 declare const loaderData: { post: QueryHandle<typeof postQuery> };
 declare function PostBody(props: {
 	readonly post: Promise<unknown>;
@@ -119,7 +115,7 @@ There's no `select` option. Derive in render: the data only changes when it actu
 
 ```tsx twoslash
 import { use } from "react";
-import type { Todo } from "./_twoslash.ts";
+import type { Todo } from "~/api.ts";
 declare const todosPromise: Promise<ReadonlyArray<Todo>>;
 // ---cut---
 const todos = use(todosPromise);

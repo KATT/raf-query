@@ -12,11 +12,9 @@ Components that read queries need a `QueryClient` and handles. In tests, create 
 Create a new client for every test, so no cached data leaks between them. Turn retries off, or a failing request takes seconds to fail:
 
 ```tsx twoslash
+import { afterEach, beforeEach } from "@effect/vitest";
+import { act, render } from "@testing-library/react";
 import type { ReactNode } from "react";
-declare function beforeEach(fn: () => void): void;
-declare function afterEach(fn: () => Promise<void>): void;
-declare function act<T>(fn: () => T | Promise<T>): Promise<T>;
-declare function render(ui: ReactNode): unknown;
 // ---cut---
 import { QueryClient, QueryClientProvider } from "@raf-query/react";
 
@@ -48,24 +46,13 @@ Render inside an awaited, async `act`. A tree that suspends inside a sync `act`,
 A component takes a handle as a prop, so a test can start the query itself, the same way a loader would:
 
 ```tsx twoslash
-import {
-	type QueryClient,
-	type QueryHandle,
-	QueryClientProvider,
-} from "@raf-query/react";
+import { expect, test } from "@effect/vitest";
+import type { QueryClient, QueryHandle } from "@raf-query/react";
+import { screen } from "@testing-library/react";
 import { Suspense, type ReactNode } from "react";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 declare let queryClient: QueryClient;
-declare function act<T>(fn: () => T | Promise<T>): Promise<T>;
-declare function render(ui: ReactNode): unknown;
 declare function renderWithClient(ui: ReactNode): Promise<unknown>;
-declare function test(name: string, fn: () => Promise<void>): void;
-declare function expect(value: unknown): {
-	toHaveTextContent(text: string): void;
-};
-declare const screen: {
-	findByRole(role: string): Promise<{ toHaveTextContent?: unknown } & object>;
-};
 declare function Post(props: {
 	handle: QueryHandle<typeof postQuery>;
 }): ReactNode;
@@ -79,7 +66,7 @@ test("shows the post", async () => {
 		</Suspense>,
 	);
 
-	expect(await screen.findByRole("heading")).toHaveTextContent("Hello");
+	expect((await screen.findByRole("heading")).textContent).toBe("Hello");
 });
 ```
 
@@ -91,7 +78,7 @@ To render with known data and no request at all, write it with `setData` before 
 
 ```ts twoslash
 import { QueryClient } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 const queryClient = new QueryClient();
 // ---cut---
 queryClient.setData(
@@ -128,28 +115,17 @@ server.use(
 
 ## Testing loaders
 
-A loader is a function of its context. Call it with a client, and check what it started:
+A loader is a function of its context. Export it from the route file, call it with a client, and check what it started:
 
 ```ts twoslash
+import { expect, test } from "@effect/vitest";
 import { QueryClient } from "@raf-query/react";
-import { commentsQuery, postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
+import { postLoader } from "~/routes/posts.$slug.tsx";
 const queryClient = new QueryClient();
-declare function test(name: string, fn: () => Promise<void>): void;
-declare function expect(value: unknown): {
-	toBeDefined(): void;
-	toBe(expected: unknown): void;
-};
-declare const Route: {
-	options: {
-		loader(args: {
-			context: { queryClient: QueryClient };
-			params: { slug: string };
-		}): Promise<unknown> | unknown;
-	};
-};
 // ---cut---
 test("the post loader starts both queries", async () => {
-	await Route.options.loader({
+	await postLoader({
 		context: { queryClient },
 		params: { slug: "hello" },
 	});
@@ -195,14 +171,9 @@ With a fake clock, a test of `staleTime` or `gcTime` runs in milliseconds. [`@ef
 ```ts twoslash
 import { Platform, QueryCache } from "@raf-query/react";
 import { Effect, Layer, Option } from "effect";
-import { todosQuery } from "./_twoslash.ts";
-declare const TestClock: {
-	adjust(duration: string): Effect.Effect<void>;
-};
-declare const it: {
-	effect(name: string, fn: () => Effect.Effect<void, unknown, never>): void;
-};
-declare function expect(value: unknown): { toBe(expected: unknown): void };
+import { expect, it } from "@effect/vitest";
+import { TestClock } from "effect/testing";
+import { todosQuery } from "~/queries.ts";
 const listeners = new Set<(event: "focus" | "online") => void>();
 const FakePlatform = Layer.succeed(Platform.Platform, {
 	isOnlineUnsafe: () => true,

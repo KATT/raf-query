@@ -14,7 +14,7 @@ import {
 	type UseQueryOptions,
 	useQuery,
 } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 declare const factory: typeof postQuery;
 declare const handle: QueryHandle<typeof postQuery>;
 declare const ensuredHandle: EnsuredQueryHandle<typeof postQuery>;
@@ -33,20 +33,14 @@ declare const options: UseQueryOptions | undefined;
 A handle from `ensure` had its data loaded before the route rendered, so `useQuery` returns the data itself.
 
 ```tsx twoslash
-import type { EnsuredQueryHandle, QueryHandle } from "@raf-query/react";
-import { useQuery } from "@raf-query/react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
 import { Suspense, startTransition } from "react";
-import { commentsQuery, postQuery } from "./_twoslash.ts";
+import { commentsQuery, postQuery } from "~/queries.ts";
+import { Route } from "~/routes/posts.$slug.tsx";
 declare function CommentsSkeleton(): React.ReactNode;
 declare function Comments(props: {
 	handle: QueryHandle<typeof commentsQuery>;
 }): React.ReactNode;
-declare const Route: {
-	useLoaderData(): {
-		comments: QueryHandle<typeof commentsQuery>;
-		post: EnsuredQueryHandle<typeof postQuery>;
-	};
-};
 // ---cut---
 function PostPage() {
 	const loaderData = Route.useLoaderData();
@@ -105,7 +99,8 @@ A component can call the hook with a prefetched handle and hand the promise to a
 import type { QueryHandle } from "@raf-query/react";
 import { useQuery } from "@raf-query/react";
 import { Suspense, use, type ReactNode } from "react";
-import { type Post, postQuery } from "./_twoslash.ts";
+import type { Post } from "~/api.ts";
+import { postQuery } from "~/queries.ts";
 declare function Spinner(): ReactNode;
 declare const loaderData: { post: QueryHandle<typeof postQuery> };
 function Parent() {

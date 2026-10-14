@@ -37,9 +37,15 @@ export interface Org {
 	readonly name: string;
 }
 
+export class HttpError extends Error {
+	constructor(readonly status: number) {
+		super(`HTTP ${status}`);
+	}
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
 	const response = await fetch(url, init);
-	if (!response.ok) throw new Error(`HTTP ${response.status}`);
+	if (!response.ok) throw new HttpError(response.status);
 	return (await response.json()) as T;
 }
 
@@ -50,6 +56,12 @@ export function getPost(slug: string) {
 export function listComments(input: { cursor: number; slug: string }) {
 	return request<CommentPage>(
 		`/api/posts/${input.slug}/comments?cursor=${input.cursor}`,
+	);
+}
+
+export function listPosts(input: { page: number; sort: "newest" | "oldest" }) {
+	return request<ReadonlyArray<Post>>(
+		`/api/posts?page=${input.page}&sort=${input.sort}`,
 	);
 }
 

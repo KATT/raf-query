@@ -28,7 +28,7 @@ For one query, in its factory:
 
 ```ts twoslash
 import { queryOptions } from "@raf-query/react";
-import { getSettings } from "./_twoslash.ts";
+import { getSettings } from "~/api.ts";
 // ---cut---
 export function settingsQuery() {
 	return queryOptions({
@@ -43,7 +43,7 @@ Or for one reader, in `useQuery`'s options. The query refetches on focus if any 
 
 ```ts twoslash
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { settingsQuery } from "./_twoslash.ts";
+import { settingsQuery } from "~/queries.ts";
 declare const loaderData: { settings: QueryHandle<typeof settingsQuery> };
 // ---cut---
 const [settings] = useQuery(settingsQuery, loaderData.settings, {

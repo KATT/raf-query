@@ -9,6 +9,7 @@ import {
 	getSettings,
 	getTodo,
 	listComments,
+	listPosts,
 	listTodos,
 	searchPosts,
 } from "./api.ts";
@@ -18,6 +19,13 @@ export function postQuery(input: { slug: string }) {
 		queryKey: ["post", input.slug],
 		queryFn: () => getPost(input.slug),
 		staleTime: 30_000,
+	});
+}
+
+export function postsQuery(input: { page: number; sort: "newest" | "oldest" }) {
+	return queryOptions({
+		queryKey: ["posts", input],
+		queryFn: () => listPosts(input),
 	});
 }
 
