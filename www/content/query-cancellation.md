@@ -7,24 +7,7 @@ order: 18
 
 Every `queryFn` receives an `AbortSignal`. Pass it to `fetch` (or any API that takes a signal), and raf-query can abort the request when its result is no longer needed:
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-// ---cut---
-export function searchQuery(input: { q: string }) {
-	return queryOptions({
-		queryKey: ["search", input.q],
-		queryFn: async (context) => {
-			const response = await fetch(
-				`/api/search?q=${encodeURIComponent(input.q)}`,
-				{
-					signal: context.signal,
-				},
-			);
-			return response.json();
-		},
-	});
-}
-```
+<<< ./query-cancellation/src/queries.ts#search-query
 
 A `queryFn` that ignores the signal still works. Its request just runs to the end, and the result is cached.
 
@@ -60,38 +43,8 @@ An Effect `queryFn` doesn't need the signal: aborting the request interrupts the
 
 Clients that accept a signal work the same way:
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-declare const axios: {
-	get(url: string, options: { signal: AbortSignal }): Promise<unknown>;
-};
-declare const input: { id: number };
-// ---cut---
-queryOptions({
-	queryKey: ["todos", input.id],
-	queryFn: (context) =>
-		axios.get(`/api/todos/${input.id}`, { signal: context.signal }),
-});
-```
+<<< ./query-cancellation/src/queries.ts#axios
 
 For clients that take a cancel function instead, call it from an `abort` listener:
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-declare const client: {
-	get(url: string): {
-		cancel(): void;
-		promise: Promise<unknown>;
-	};
-};
-declare const input: { id: number };
-// ---cut---
-queryOptions({
-	queryKey: ["todos", input.id],
-	queryFn: (context) => {
-		const request = client.get(`/todos/${input.id}`);
-		context.signal.addEventListener("abort", () => request.cancel());
-		return request.promise;
-	},
-});
-```
+<<< ./query-cancellation/src/queries.ts#cancel-callback
