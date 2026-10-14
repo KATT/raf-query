@@ -1,4 +1,4 @@
-<img alt="raf-query logo" height="64" src="https://raf-query.katt.dev/favicon.svg" width="64" />
+<img alt="raf-query logo" height="64" src="www/public/favicon.svg" width="64" />
 
 # raf-query
 
