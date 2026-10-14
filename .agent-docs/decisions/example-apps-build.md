@@ -1,7 +1,7 @@
 # How the examples are built (agent)
 
 - **`examples/.shared/db`** (`@examples/db`) is the fake DB; **`@examples/db/types`** is its client-safe half (Zod schemas, interfaces, `currentUser`). Client code imports only `/types`; the root entry reads `process.env` and the store on `globalThis`, which must stay out of client bundles.
-- **No Effect in the example apps or `@examples/db`** (human, 2026-10-12): they show raf-query to people who don't use Effect. When they need a schema library, use **Zod**. Effect stays in the libraries.
+- **No Effect in the example apps or `@examples/db`** (human, 2026-10-12): they show raf-query to people who don't use Effect. When they need a schema library, use **Zod**. Effect stays in the libraries. The one exception is `examples/tanstack-start-effect` (human asked, 2026-10-14), the same app written for Effect users; see [effect-example.md](./effect-example.md).
 - Inputs are **Zod schemas** in `/types`. The API's validators and Start's `validateSearch` take the schema directly (Zod implements Standard Schema). Next pages parse `searchParams` with `IssueListInput` (every field is a string enum).
 - The issue page (Next server component, Start loader) `prefetch`es the assignee by issue id beside the issue (`GET /api/issues/:id/assignee`), so nothing waits on the issue first. Comments embed their `author` (backend returns it with the parent) in both apps, so there's no per-comment lookup.
 - Comments list newest first, with the form on top: a new comment must land on the loaded first page, or it vanishes when the optimistic entry settles.

@@ -447,7 +447,8 @@
 			"files": [
 				"packages/*/src/**",
 				"scripts/**",
-				"tooling/codesandbox/src/**"
+				"tooling/codesandbox/src/**",
+				"examples/tanstack-start-effect/src/**"
 			],
 			"rules": {
 				"anti-slop-effect/no-manual-effect-error-tag": "error",
@@ -485,6 +486,21 @@
 			"rules": {
 				"workspace/infer-callback-params": "error",
 				"workspace/inline-jsx-callback": "error"
+			}
+		},
+		{
+			// Effect example: `Effect.fn` parameters come from the generator (no
+			// contextual type), and `Context.Service.use` is not a React hook —
+			// rules-of-hooks matches any call whose property is named `use`.
+			"files": [
+				"examples/tanstack-start-effect/src/**/*.{ts,tsx}",
+				"www/content/_effect.ts"
+			],
+			"rules": {
+				"react-hooks/rules-of-hooks": "off",
+				"react/no-unstable-nested-components": "off",
+				"react/rules-of-hooks": "off",
+				"workspace/infer-callback-params": "off"
 			}
 		},
 		{

@@ -25,6 +25,13 @@ export interface QueryClientConfig<TServices = never>
 	readonly layer?: Layer.Layer<TServices>;
 	/** Called with every failed request, including failed prefetches. */
 	onError?(error: unknown, query: Query.Query): void;
+	/**
+	 * When `false`, `useQuery` for an Effect `queryFn` (a typed `ErrorOf`)
+	 * returns a `Result` in the first tuple slot instead of a promise that
+	 * rejects. Defaults to `false` when `layer` is set, `true` otherwise.
+	 * Promise `queryFn`s always throw; this flag does not apply to them.
+	 */
+	readonly throwOnError?: boolean;
 }
 
 /**
@@ -76,6 +83,16 @@ export class QueryClient<TServices = never> {
 	readonly effect: QueryCache.QueryCache;
 	readonly isServer: boolean;
 	/**
+	 * Default for Effect `useQuery` reads. See
+	 * {@link QueryClientConfig.throwOnError}.
+	 */
+	readonly throwOnError: boolean;
+	/**
+	 * The cache and the layer's services. Typed `never` so clients of any
+	 * `TServices` stay assignable to each other; `runPromise` restores it.
+	 */
+	readonly #context: Context.Context<never>;
+	/**
 	 * Owns the cache's fibers, mounts and the layer's services; lives until
 	 * `dispose()`.
 	 */
@@ -85,12 +102,14 @@ export class QueryClient<TServices = never> {
 		const cache = QueryCache.layer(config);
 		const services = Effect.runSync(
 			Layer.buildWithScope(
-				config.layer ? Layer.provide(cache, config.layer) : cache,
+				config.layer ? Layer.provideMerge(cache, config.layer) : cache,
 				this.#scope,
 			),
 		);
+		this.#context = services;
 		this.effect = Context.get(services, QueryCache.QueryCache);
 		this.isServer = this.effect.isServer;
+		this.throwOnError = config.throwOnError ?? config.layer === undefined;
 		const onError = config.onError;
 		if (onError) {
 			this.effect.subscribeUnsafe((event) => {
@@ -266,6 +285,21 @@ export class QueryClient<TServices = never> {
 		return () => {
 			Effect.runSync(Scope.close(scope, Exit.void));
 		};
+	}
+
+	/**
+	 * Run an Effect with the cache (`QueryCache`) and the services of
+	 * `config.layer`, as `Effect.runPromise` does: it rejects with the
+	 * Effect's failure, or its defect. For an app's loaders and actions.
+	 */
+	runPromise<A, E>(
+		effect: Effect.Effect<A, E, QueryCache.QueryCache | TServices>,
+	): Promise<A> {
+		return Effect.runPromiseWith(this.#context)(
+			// SAFETY: `#context` holds the cache and the layer's services, the
+			// requirement of every Effect this method's signature accepts.
+			effect as Effect.Effect<A, E>,
+		);
 	}
 
 	/**

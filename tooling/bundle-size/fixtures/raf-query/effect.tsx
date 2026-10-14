@@ -29,7 +29,9 @@ export function effectIssueQuery(input: { readonly id: number }) {
 function IssueTitle(props: {
 	readonly handle: QueryHandle<typeof effectIssueQuery>;
 }) {
-	const [issuePromise] = useQuery(effectIssueQuery, props.handle);
+	const [issuePromise] = useQuery(effectIssueQuery, props.handle, {
+		throwOnError: true,
+	});
 	return <h1>{use(issuePromise).title}</h1>;
 }
 
