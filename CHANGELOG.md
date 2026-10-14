@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.10](https://github.com/KATT/raf-query/compare/0.7.9...0.7.10) (2026-10-14)
+
+### Bug Fixes
+
+- **examples:** fit the example apps on a phone screen ([#116](https://github.com/KATT/raf-query/issues/116)) ([1580e00](https://github.com/KATT/raf-query/commit/1580e00f79f4e47e82ddba64e0d22723b9ffb4ba)), references [#112](https://github.com/KATT/raf-query/issues/112)
+- **examples:** open issue pages with prefetch skeletons ([#106](https://github.com/KATT/raf-query/issues/106)) ([db6b5bc](https://github.com/KATT/raf-query/commit/db6b5bcd162dd34073d36c74eaf7618f5012dc31))
+- **examples:** remount the issue page when next or previous changes the id ([#112](https://github.com/KATT/raf-query/issues/112)) ([e4b709b](https://github.com/KATT/raf-query/commit/e4b709b455e4e7bbd85746afe46ecca269a728ee))
+- **react:** type useQuery's promise as Promise ([#118](https://github.com/KATT/raf-query/issues/118)) ([f1b4efe](https://github.com/KATT/raf-query/commit/f1b4efefc7624719b00f0c6e308dd7a72c18c132))
+
 ## [0.7.9](https://github.com/KATT/raf-query/compare/0.7.8...0.7.9) (2026-10-14)
 
 - add a Links table to the pull request template ([#108](https://github.com/KATT/raf-query/issues/108)) ([91247e4](https://github.com/KATT/raf-query/commit/91247e47d4d1b4a0b6e5eb2068602629c3fbce9e))
