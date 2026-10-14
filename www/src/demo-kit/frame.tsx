@@ -14,7 +14,7 @@ import {
 } from "@examples/ui/components/tabs";
 import { cn } from "@examples/ui/lib/utils";
 import { QueryClient, QueryClientProvider } from "@raf-query/react";
-import { QueryDevtoolsPanel } from "@raf-query/react/devtools/production";
+import { QueryDevtoolsPanel } from "@raf-query/react/devtools";
 import { Expand, FlaskConical, RotateCcw } from "lucide-react";
 import { Activity, type ReactNode, Suspense, useId, useState } from "react";
 

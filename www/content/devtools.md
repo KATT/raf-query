@@ -1,24 +1,28 @@
 ---
 title: Devtools
-description: Inspect the browser's query cache as it changes, refetch, invalidate, reset or remove entries, and ship the panel in production.
+description: Inspect the browser's query cache as it changes, refetch, invalidate, reset or remove entries, and keep the panel out of production bundles.
 section: Reference
 order: 1
 ---
 
-`@raf-query/react/devtools` shows the browser's query cache as it changes. Render `QueryDevtools` anywhere under the provider:
+`@raf-query/react/devtools` shows the browser's query cache as it changes. Render `QueryDevtools` anywhere under the provider, and only mount it in development so bundlers drop the panel from production builds.
+
+On Vite and TanStack Start, use `import.meta.env.DEV`:
 
 ```tsx
 import { QueryDevtools } from "@raf-query/react/devtools";
 
 <QueryClientProvider client={queryClient}>
 	{props.children}
-	<QueryDevtools />
+	{import.meta.env.DEV ? <QueryDevtools /> : null}
 </QueryClientProvider>;
 ```
 
+On Next.js, use `process.env.NODE_ENV !== "production"` instead — see [Next.js](./nextjs.md). Either check is replaced at build time, so the production branch is empty and the panel's code is tree-shaken. Omit the element (or the whole import) whenever you don't want the panel — there is no separate production entry.
+
 In Next.js, put it inside `QueryProvider` in the root layout. It's a client component, so a server component layout can render it.
 
-Every demo on this site has a **Devtools** tab in its expanded view, showing the demo's own cache.
+Every demo on this site has a **Devtools** tab in its expanded view, showing the demo's own cache. The [example apps](./examples.md) always render `<QueryDevtools />`, so the panel is available in the deployed demos as well as in local `dev`.
 
 ## The panel
 
@@ -63,18 +67,4 @@ import { QueryDevtoolsPanel } from "@raf-query/react/devtools";
 <QueryDevtoolsPanel style={{ height: 400 }} theme="dark" />;
 ```
 
-## Production builds
-
-Both components render nothing on the server, since the server's cache isn't the browser's. They also render nothing when `process.env.NODE_ENV` is `"production"`, and bundlers drop the panel's code from production builds.
-
-To ship the panel in production, for example lazily behind a flag, import from `@raf-query/react/devtools/production`:
-
-```tsx
-const QueryDevtoolsProduction = lazy(() =>
-	import("@raf-query/react/devtools/production").then((module) => ({
-		default: module.QueryDevtools,
-	})),
-);
-```
-
-The demos on this site do exactly that, so the panel works in the deployed docs.
+Both components render nothing on the server, since the server's cache isn't the browser's.

@@ -25,7 +25,9 @@ export function getRouter() {
 		Wrap: (props) => (
 			<QueryClientProvider client={queryClient}>
 				{props.children}
-				<QueryDevtools buttonPosition="bottom-left" />
+				{import.meta.env.DEV ? (
+					<QueryDevtools buttonPosition="bottom-left" />
+				) : null}
 			</QueryClientProvider>
 		),
 	});

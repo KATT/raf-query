@@ -36,7 +36,7 @@ export default function RootLayout(props: { children: React.ReactNode }) {
 			<body>
 				<QueryProvider config={queryClientConfig}>
 					{props.children}
-					<QueryDevtools />
+					{process.env.NODE_ENV !== "production" ? <QueryDevtools /> : null}
 				</QueryProvider>
 			</body>
 		</html>
@@ -45,6 +45,8 @@ export default function RootLayout(props: { children: React.ReactNode }) {
 ```
 
 `QueryProvider` creates one client per server render and one per browser tab. Its `config` must be serializable, since it crosses from the server component layout to the client.
+
+Mount DevTools only when `process.env.NODE_ENV !== "production"` so Next.js drops the panel from production builds. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
 
 ## Pages
 
