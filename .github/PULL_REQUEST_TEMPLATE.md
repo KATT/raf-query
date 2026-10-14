@@ -17,6 +17,36 @@ What changes, as bullet points.
 If the public API changes, show it in code blocks: before and after, or a short usage example.
 -->
 
+## Links
+
+<!--
+Where a reviewer can see this change: the docs page, and the example route that shows it.
+
+- Deep-link this PR's Vercel preview. Exact page or route, plus an anchor when one heading is the point. Not the site root, and not the production site.
+- Copy the base URL from the Vercel bot's comment after that project is Ready (the Preview column). Do not guess the hostname: the team suffix and the branch slug are not guessable, and a guess 404s.
+  - Docs (`www`) is project `raf-query`. Pages live at `/docs/<slug>`.
+  - The Next.js example is `raf-query-nextjs`. Routes look like `/issues` and `/issues/1`.
+  - The TanStack Start example is `raf-query-tanstack-start`, with the same routes.
+  - The Effect example is `raf-query-tanstack-start-effect` (`examples/tanstack-start-effect`), same routes.
+- A cell can hold several links, separated by ` · `.
+- While a deploy is not Ready, leave "pending", then replace it.
+- Delete a row this change does not touch. If none apply, replace the table with "None".
+
+Example, once the bot has posted the previews:
+
+- Docs: [Pending UI](https://<raf-query preview>/docs/tanstack-start#pending-ui)
+- Next.js: [Issue list](https://<raf-query-nextjs preview>/issues)
+- TanStack Start: [Issue detail](https://<raf-query-tanstack-start preview>/issues/1)
+- TanStack Start (Effect): [Assignee](https://<raf-query-tanstack-start-effect preview>/issues/3)
+-->
+
+| Where                   | Preview |
+| ----------------------- | ------- |
+| Docs                    | pending |
+| Next.js                 | pending |
+| TanStack Start          | pending |
+| TanStack Start (Effect) | pending |
+
 ## Alternatives considered
 
 <!--
