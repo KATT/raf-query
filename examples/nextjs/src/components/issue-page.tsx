@@ -27,17 +27,14 @@ export function IssuePage(props: {
 	return (
 		<div className="grid gap-6">
 			<IssueNav id={id} />
-			<div className="grid gap-8 md:grid-cols-[1fr_240px]">
-				<article className="grid content-start gap-6">
+			{/* On phones the properties sit between the body and the comments. */}
+			<div className="grid gap-x-8 gap-y-6 md:grid-cols-[1fr_240px]">
+				<article className="grid content-start gap-6 md:col-start-1">
 					<Suspense fallback={<IssueBodySkeleton id={id} />}>
 						<IssueBody handle={props.issue} />
 					</Suspense>
-					<Separator />
-					<Suspense fallback={<CommentsSkeleton />}>
-						<Comments handle={props.comments} />
-					</Suspense>
 				</article>
-				<aside className="grid content-start gap-4">
+				<aside className="grid content-start gap-4 md:col-start-2 md:row-span-2 md:row-start-1">
 					<section className="grid gap-3 rounded-lg border p-3">
 						<h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
 							Properties
@@ -53,6 +50,12 @@ export function IssuePage(props: {
 						<AssigneeCard handle={props.assignee} />
 					</Suspense>
 				</aside>
+				<div className="grid gap-6 md:col-start-1">
+					<Separator />
+					<Suspense fallback={<CommentsSkeleton />}>
+						<Comments handle={props.comments} />
+					</Suspense>
+				</div>
 			</div>
 		</div>
 	);
