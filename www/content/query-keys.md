@@ -16,7 +16,10 @@ The simplest key is an array of constants. It suits:
 - generic list or index resources
 - non-hierarchical resources
 
-```ts
+```ts twoslash
+import { queryOptions } from "@raf-query/react";
+import { getSpecial, listTodos } from "./_twoslash.ts";
+// ---cut---
 // A list of todos
 queryOptions({ queryKey: ["todos"], queryFn: listTodos });
 
@@ -31,7 +34,11 @@ When a query needs more information to describe its data, add it to the array: a
 - hierarchical or nested resources, usually identified by an id
 - queries with parameters, usually passed as an object
 
-```ts
+```ts twoslash
+import { queryOptions } from "@raf-query/react";
+import { getTodo } from "./_twoslash.ts";
+declare function queryFn(): Promise<unknown>;
+// ---cut---
 // An individual todo
 queryOptions({ queryKey: ["todo", 5], queryFn: () => getTodo(5) });
 
@@ -46,7 +53,10 @@ queryOptions({ queryKey: ["todos", { status: "done" }], queryFn });
 
 Object keys are sorted before hashing, and `undefined` fields are dropped, so all of these name the same entry:
 
-```ts
+```ts twoslash
+declare const status: string;
+declare const page: number;
+// ---cut---
 ["todos", { status, page }];
 ["todos", { page, status }];
 ["todos", { page, status, other: undefined }];
@@ -54,7 +64,10 @@ Object keys are sorted before hashing, and `undefined` fields are dropped, so al
 
 Array order does matter. These are three different entries:
 
-```ts
+```ts twoslash
+declare const status: string;
+declare const page: number;
+// ---cut---
 ["todos", status, page];
 ["todos", page, status];
 ["todos", undefined, page, status];
@@ -66,7 +79,10 @@ Array order does matter. These are three different entries:
 
 A query's key must change whenever its data would. In raf-query that's natural: a factory's single argument is its **input**, and the key is built from it.
 
-```ts
+```ts twoslash
+import { queryOptions } from "@raf-query/react";
+import { listTodos } from "./_twoslash.ts";
+// ---cut---
 export function todosQuery(input: { status: "open" | "done"; page: number }) {
 	return queryOptions({
 		queryKey: ["todos", "list", input],
@@ -81,7 +97,10 @@ Each distinct input gets its own entry, cached independently. Because the input 
 
 Filters match keys by **prefix**, and object segments match partially. Ordering a key from general to specific lets one call reach a whole group:
 
-```ts
+```ts twoslash
+import { QueryClient } from "@raf-query/react";
+const qc = new QueryClient();
+// ---cut---
 ["issues", "list", { projectId: 3, status: "open" }];
 ["issues", "detail", 42];
 ["issues", "comments", 42];
