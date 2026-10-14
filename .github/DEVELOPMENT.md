@@ -118,8 +118,9 @@ Pushing to `main` runs [`.github/workflows/release.yaml`](./workflows/release.ya
 
 1. Computes the next version from conventional commits since the latest tag and updates `CHANGELOG.md`.
 2. Writes the version into `packages/core/package.json` and `packages/react/package.json`.
-3. Builds, then publishes `@raf-query/core` and `@raf-query/react` (each `pnpm pack` + `npm publish`, using npm trusted publishing over OIDC — no `NPM_TOKEN`). `pnpm pack` rewrites `workspace:*` and `catalog:` to real versions.
-4. Only after publishing: commits `chore: release vX.Y.Z`, tags, pushes, and creates a GitHub Release. A failed publish leaves nothing pushed.
+3. Checks `main` hasn't moved since the run checked it out; if it has, it stops and leaves the release to the run for the newer commit (otherwise it would publish a version whose push gets rejected).
+4. Builds, then publishes `@raf-query/core` and `@raf-query/react` (each `pnpm pack` + `npm publish`, using npm trusted publishing over OIDC — no `NPM_TOKEN`). `pnpm pack` rewrites `workspace:*` and `catalog:` to real versions.
+5. Only after publishing: commits `chore: release vX.Y.Z`, tags, pushes, and creates a GitHub Release. A failed publish leaves nothing pushed.
 
 Do not set `NODE_AUTH_TOKEN` / `NPM_TOKEN` in the release job — a placeholder token disables OIDC.
 
