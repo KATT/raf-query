@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.1](https://github.com/KATT/raf-query/compare/0.5.0...0.5.1) (2026-10-14)
+
+### Features
+
+- raf-query logo, brand colors, and a system / light / dark switcher ([#68](https://github.com/KATT/raf-query/issues/68)) ([9ae09c6](https://github.com/KATT/raf-query/commit/9ae09c63b4f60f4109a8fa6389b8b4f7adfd2ab8))
+
 ## [0.5.0](https://github.com/KATT/raf-query/compare/0.4.5...0.5.0) (2026-10-14)
 
 ### ⚠ BREAKING CHANGES
