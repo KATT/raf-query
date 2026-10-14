@@ -11,25 +11,7 @@ Unlike TanStack Query, `undefined` is a valid result: a `queryFn` typed `Promise
 
 All of these are valid:
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-import { fetchAllTodos, fetchTodoById } from "./_twoslash.ts";
-declare const id: number;
-// ---cut---
-queryOptions({ queryKey: ["todos"], queryFn: fetchAllTodos });
-queryOptions({ queryKey: ["todos", id], queryFn: () => fetchTodoById(id) });
-queryOptions({
-	queryKey: ["todos", id],
-	queryFn: async () => {
-		const data = await fetchTodoById(id);
-		return data;
-	},
-});
-queryOptions({
-	queryKey: ["todos", id],
-	queryFn: (context) => fetchTodoById(context.queryKey[1] as number),
-});
-```
+<<< ./query-functions/src/samples.ts#valid
 
 In practice the `queryFn` lives in a [factory](./query-factories.md) and closes over the factory's input, which is easier to type than reading it back from the key.
 
@@ -37,26 +19,7 @@ In practice the `queryFn` lives in a [factory](./query-factories.md) and closes 
 
 For raf-query to know a query failed, the query function **must throw** or return a **rejected promise**. The error is kept on the query: the first load's error rejects the promise `useQuery` returns, so `use()` throws it to the nearest error boundary, and a later background error shows up in `controls.error` while the old data stays readable.
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-declare const id: number;
-declare const somethingGoesWrong: boolean;
-declare const somethingElseGoesWrong: boolean;
-declare const data: unknown;
-// ---cut---
-queryOptions({
-	queryKey: ["todos", id],
-	queryFn: async () => {
-		if (somethingGoesWrong) {
-			throw new Error("Oh no!");
-		}
-		if (somethingElseGoesWrong) {
-			return Promise.reject(new Error("Oh no!"));
-		}
-		return data;
-	},
-});
-```
+<<< ./query-functions/src/samples.ts#errors
 
 Failed requests are [retried](./retries.md) three times before they count as failed.
 
@@ -64,21 +27,7 @@ Failed requests are [retried](./retries.md) three times before they count as fai
 
 Many clients, such as axios, throw for unsuccessful HTTP responses. `fetch` doesn't, so throw yourself:
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-declare const id: number;
-// ---cut---
-queryOptions({
-	queryKey: ["todos", id],
-	queryFn: async (context) => {
-		const response = await fetch(`/todos/${id}`, { signal: context.signal });
-		if (!response.ok) {
-			throw new Error(`Request failed: ${response.status}`);
-		}
-		return response.json();
-	},
-});
-```
+<<< ./query-functions/src/samples.ts#fetch
 
 A not-found is often better as a value than an error: return `null` and let the page decide, or throw your router's `notFound()` from the `queryFn` so the route renders its not-found component.
 
