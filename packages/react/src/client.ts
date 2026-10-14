@@ -78,6 +78,11 @@ export class QueryClient<TServices = never> {
 	readonly effect: QueryCache.QueryCache;
 	readonly isServer: boolean;
 	/**
+	 * The cache and the layer's services. Typed `never` so clients of any
+	 * `TServices` stay assignable to each other; `runPromise` restores it.
+	 */
+	readonly #context: Context.Context<never>;
+	/**
 	 * Owns the cache's fibers, mounts and the layer's services; lives until
 	 * `dispose()`.
 	 */
@@ -87,10 +92,11 @@ export class QueryClient<TServices = never> {
 		const cache = QueryCache.layer(config);
 		const services = Effect.runSync(
 			Layer.buildWithScope(
-				config.layer ? Layer.provide(cache, config.layer) : cache,
+				config.layer ? Layer.provideMerge(cache, config.layer) : cache,
 				this.#scope,
 			),
 		);
+		this.#context = services;
 		this.effect = Context.get(services, QueryCache.QueryCache);
 		this.isServer = this.effect.isServer;
 		const onError = config.onError;
@@ -268,6 +274,21 @@ export class QueryClient<TServices = never> {
 		return () => {
 			Effect.runSync(Scope.close(scope, Exit.void));
 		};
+	}
+
+	/**
+	 * Run an Effect with the cache (`QueryCache`) and the services of
+	 * `config.layer`, as `Effect.runPromise` does: it rejects with the
+	 * Effect's failure, or its defect. For an app's loaders and actions.
+	 */
+	runPromise<A, E>(
+		effect: Effect.Effect<A, E, QueryCache.QueryCache | TServices>,
+	): Promise<A> {
+		// SAFETY: `#context` holds the cache and the layer's services, the
+		// requirement of every Effect this method's signature accepts.
+		return Effect.runPromiseWith(this.#context)(
+			unsafeCast<Effect.Effect<A, E>>(effect),
+		);
 	}
 
 	/**
