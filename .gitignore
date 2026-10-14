@@ -8,7 +8,6 @@
 **/.DS_Store
 
 # Generated into the publishable package on prepack / release
-/packages/*/README.md
 /packages/*/LICENSE.md
 /packages/*/CHANGELOG.md
 /packages/*/*.tgz

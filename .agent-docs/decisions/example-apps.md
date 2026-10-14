@@ -7,7 +7,7 @@
 - Each app's `components.json` sets `ui` → `@examples/ui/components` and `utils` → `@examples/ui/lib/utils`, and `tailwind.css` → the shared `globals.css`.
 - Set `rsc: true` in `examples/.shared/ui/components.json` so interactive components get `"use client"`; Next server components import from the shared package, and TanStack Start ignores the directive.
 
-App scope, small enough to read in one sitting, covering every README feature:
+App scope, small enough to read in one sitting, covering every documented feature:
 
 | Screen / action                               | Exercises                                                                                                    |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |

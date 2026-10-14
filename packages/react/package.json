@@ -19,7 +19,7 @@
 		"url": "git+https://github.com/KATT/raf-query.git",
 		"directory": "packages/react"
 	},
-	"homepage": "https://github.com/KATT/raf-query#readme",
+	"homepage": "https://raf-query.katt.dev",
 	"bugs": {
 		"url": "https://github.com/KATT/raf-query/issues"
 	},
