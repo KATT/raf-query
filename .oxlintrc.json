@@ -452,7 +452,8 @@
 			"files": [
 				"packages/*/src/**",
 				"scripts/**",
-				"tooling/codesandbox/src/**"
+				"tooling/codesandbox/src/**",
+				"examples/tanstack-start-effect/src/**"
 			],
 			"rules": {
 				"anti-slop-effect/no-manual-effect-error-tag": "error",
@@ -490,6 +491,14 @@
 			"rules": {
 				"workspace/infer-callback-params": "error",
 				"workspace/inline-jsx-callback": "error"
+			}
+		},
+		{
+			// `Effect.fn` takes its parameters' types from the generator, which
+			// has no contextual type to infer them from.
+			"files": ["examples/tanstack-start-effect/src/**/*.{ts,tsx}"],
+			"rules": {
+				"workspace/infer-callback-params": "off"
 			}
 		},
 		{
