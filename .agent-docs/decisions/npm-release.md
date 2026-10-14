@@ -1,6 +1,7 @@
 # npm release path
 
 - release-it + GitHub Actions: push to `main` → `.github/workflows/release.yaml`, run from the repo root (`.release-it.json`). Setup steps live in `.github/DEVELOPMENT.md`.
+- Only publishes when `packages/*` changed since the latest tag (`git.commitsPath` + workflow gate; shell glob, so not `.experimental`). See [release-requires-package-commits.md](./release-requires-package-commits.md).
 - `npm: false` in release-it: the **latest git tag is the version source**; an `after:bump` hook writes the version into every `packages/*/package.json` (not `packages/.experimental/*`).
 - **Publish before git**: `before:git:release` builds and publishes core then react, so a failed publish pushes no commit or tag. (The first release attempt pushed `chore: release v0.0.1` + tag `0.0.1` and then failed at `npm publish` — that's why; the tag was deleted.)
 - 0.0.1 was published by hand to bootstrap trusted publishing, then tagged at that commit (GitHub Release created by hand) so CI found nothing to release. npm added a `0.0.0-stage` stub version to each package on creation; it's npm-managed and left alone.
