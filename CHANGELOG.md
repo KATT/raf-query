@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.6.5](https://github.com/KATT/raf-query/compare/0.6.4...0.6.5) (2026-10-14)
+
+- run the starting queries demo on TanStack Router, with Reload per variant and Vitest tests (1/2) ([#79](https://github.com/KATT/raf-query/issues/79)) ([ae8b1eb](https://github.com/KATT/raf-query/commit/ae8b1eb4907238d5a228554ae5d5702a1078132d)), references [#73](https://github.com/KATT/raf-query/issues/73) [#84](https://github.com/KATT/raf-query/issues/84)
+
 ## [0.6.4](https://github.com/KATT/raf-query/compare/0.6.3...0.6.4) (2026-10-14)
 
 ### Bug Fixes
