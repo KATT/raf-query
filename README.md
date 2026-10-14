@@ -1,3 +1,5 @@
+<img alt="raf-query logo" height="64" src="www/public/favicon.svg" width="64" />
+
 # raf-query
 
 Render-as-you-fetch data fetching for React.

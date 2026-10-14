@@ -67,30 +67,33 @@ interface Palette {
 
 const palettes = {
 	dark: {
-		accent: "#38bdf8",
+		accent: "#978bff",
 		background: "#0f172a",
-		boolean: "#c084fc",
+		boolean: "#f472b6",
 		border: "#334155",
 		muted: "#94a3b8",
 		number: "#fbbf24",
 		raised: "#1e293b",
-		selected: "#1e3a5f",
+		selected: "#2b2653",
 		string: "#4ade80",
 		text: "#e2e8f0",
 	},
 	light: {
-		accent: "#0369a1",
+		accent: "#6c48ea",
 		background: "#ffffff",
-		boolean: "#7e22ce",
+		boolean: "#be185d",
 		border: "#cbd5e1",
 		muted: "#64748b",
 		number: "#b45309",
 		raised: "#f1f5f9",
-		selected: "#dbeafe",
+		selected: "#e9e8ff",
 		string: "#15803d",
 		text: "#0f172a",
 	},
 } satisfies Record<"dark" | "light", Palette>;
+
+/** The logo's gradient: blue through violet to coral. */
+const brandGradient = "linear-gradient(135deg, #3b8eea, #7b5cff, #ff4d6d)";
 
 const statusColors = {
 	error: "#dc2626",
@@ -890,7 +893,7 @@ function DockedDevtools(props: QueryDevtoolsProps) {
 				<span
 					aria-hidden
 					style={{
-						background: palette.accent,
+						background: brandGradient,
 						borderRadius: 999,
 						height: 8,
 						width: 8,
