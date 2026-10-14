@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.9](https://github.com/KATT/raf-query/compare/0.7.8...0.7.9) (2026-10-14)
+
+- add a Links table to the pull request template ([#108](https://github.com/KATT/raf-query/issues/108)) ([91247e4](https://github.com/KATT/raf-query/commit/91247e47d4d1b4a0b6e5eb2068602629c3fbce9e))
+
+### Features
+
+- QueryClient.runPromise, typed Effect errors, and the Effect RPC example ([#103](https://github.com/KATT/raf-query/issues/103)) ([98bd182](https://github.com/KATT/raf-query/commit/98bd1821081313feb1846531feac0dfbe7215d31)), references [#96](https://github.com/KATT/raf-query/issues/96) [#97](https://github.com/KATT/raf-query/issues/97)
+
 ## [0.7.8](https://github.com/KATT/raf-query/compare/0.7.7...0.7.8) (2026-10-14)
 
 - inline type assertions next to their SAFETY comments ([#104](https://github.com/KATT/raf-query/issues/104)) ([53fdbdb](https://github.com/KATT/raf-query/commit/53fdbdbfdcb146799b145faadb579bbb45e19139))
