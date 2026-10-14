@@ -283,6 +283,17 @@ export type QueryFactory<TServices = unknown> = FactorySignature<
 		: FactoryResult & ServicesField<TServices>
 >["call"];
 
+/** A {@link QueryFactory} returning `infiniteQueryOptions(...)`. */
+export type PagedQueryFactory<TServices = unknown> = FactorySignature<
+	unknown extends TServices
+		? PagedFactoryResult
+		: PagedFactoryResult & ServicesField<TServices>
+>["call"];
+
+interface PagedFactoryResult extends FactoryResult {
+	readonly kind: "infinite";
+}
+
 /**
  * A method, so its `input` is checked bivariantly: a factory of any input
  * type is assignable. A verb's factory parameter is contextually typed by
@@ -348,14 +359,15 @@ export type PageOf<TFactory extends QueryFactory> =
 		? TTypes["page"]
 		: never;
 
-/** `ensure` / `fetch` options. Only paged factories accept `pages`. */
-export type LoadOptions<TFactory extends QueryFactory> =
-	IsPaged<TFactory> extends true
-		? {
-				/** Load this many pages up front (default 1). */
-				readonly pages?: number;
-			}
-		: never;
+/**
+ * `ensure` / `fetch` options, for {@link PagedQueryFactory paged factories}
+ * only. Not generic: an options type that depends on the factory's type stops
+ * a generic factory maker called inline from inferring.
+ */
+export interface LoadOptions {
+	/** Load this many pages up front (default 1). */
+	readonly pages?: number;
+}
 
 declare const factoryType: unique symbol;
 

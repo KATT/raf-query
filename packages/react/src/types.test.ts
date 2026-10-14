@@ -228,8 +228,24 @@ describe("types", () => {
 			expectTypeOf(
 				useQuery(endpointPagesQuery(listPosts), pages)[1],
 			).toHaveProperty("fetchNextPage");
+			expectTypeOf(
+				qc.ensure(endpointPagesQuery(listPosts), { tag: "a" }, { pages: 2 }),
+			).resolves.toHaveProperty("input");
+			expectTypeOf(
+				qc.fetch(endpointPagesQuery(listPosts), { tag: "a" }, { pages: 2 }),
+			).resolves.toEqualTypeOf<
+				InfiniteData<{ page: { items: Array<string> }; pageParam: number }>
+			>();
 			// @ts-expect-error the input is the endpoint's args
 			void qc.ensure(endpointQuery(getPost), { tag: "a" });
+			// @ts-expect-error the input is the endpoint's args
+			void qc.ensure(
+				endpointPagesQuery(listPosts),
+				{ slug: "a" },
+				{ pages: 2 },
+			);
+			// @ts-expect-error `pages` is only for paged factories
+			void qc.ensure(endpointQuery(getPost), { slug: "a" }, { pages: 2 });
 			// @ts-expect-error the client has no layer
 			void qc.fetch(apiQuery<{ id: number }>("user"), { id: 1 });
 		}

@@ -155,8 +155,6 @@ const [data] = useQuery(endpointQuery(api.posts.get), post);
 
 Each call returns a new function, but entries are found by `queryKey`, so every call for the same endpoint and args reaches the same entry. Put everything the key depends on in it.
 
-With `{ pages }`, TypeScript can't infer an inline maker call's type arguments. Bind the factory first (`const list = endpointPagesQuery(api.posts.list)`), or pass them explicitly.
-
 ## Server-only factories
 
 A factory whose `queryFn` imports server-only code (a database client) can't be imported by a client component, so it can't be read with `useQuery` in the browser. Render its data in a server component, or call the database through a server function or an API route so the browser can refetch it. See [React Server Components](./nextjs.md#server-only-queries).

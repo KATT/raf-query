@@ -6,6 +6,8 @@ import {
 	type HydrateOptions,
 	type InputArgs,
 	type InputOf,
+	type LoadOptions,
+	type PagedQueryFactory,
 	Query,
 	QueryCache,
 	type QueryFactory,
@@ -52,6 +54,17 @@ function runLoad<A, E>(effect: Effect.Effect<A, E>): Promise<A> {
 			? new DOMException("The query was cancelled", "AbortError")
 			: error;
 	});
+}
+
+/** `ensure` / `fetch` arguments, forwarded to the cache's same verb. */
+function loadArgs<TFactory extends QueryFactory>(
+	input: InputOf<TFactory> | undefined,
+	options: LoadOptions | undefined,
+): InputArgs<TFactory> {
+	// SAFETY: the client's overloads checked `input` against the factory and
+	// allowed `options` for paged factories only, as the cache's overloads do;
+	// the cache reads both positions.
+	return unsafeCast<InputArgs<TFactory>>([input, options]);
 }
 
 /**
@@ -121,9 +134,24 @@ export class QueryClient<TServices = never> {
 	 */
 	ensure<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
-		...args: QueryCache.LoadArgs<TFactory>
+		...args: InputArgs<TFactory>
+	): Promise<EnsuredQueryHandle<TFactory>>;
+	/** {@link ensure}, loading `options.pages` pages of a paged query. */
+	ensure<TFactory extends PagedQueryFactory<TServices>>(
+		factory: TFactory,
+		input: InputOf<TFactory>,
+		options: LoadOptions,
+	): Promise<EnsuredQueryHandle<TFactory>>;
+	ensure<TFactory extends QueryFactory<TServices>>(
+		factory: TFactory,
+		input?: InputOf<TFactory>,
+		options?: LoadOptions,
 	): Promise<EnsuredQueryHandle<TFactory>> {
-		return runLoad(provided(this.effect.ensure(factory, ...args)));
+		return runLoad(
+			provided(
+				this.effect.ensure(factory, ...loadArgs<TFactory>(input, options)),
+			),
+		);
 	}
 
 	/**
@@ -133,9 +161,24 @@ export class QueryClient<TServices = never> {
 	 */
 	fetch<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
-		...args: QueryCache.LoadArgs<TFactory>
+		...args: InputArgs<TFactory>
+	): Promise<DataOf<TFactory>>;
+	/** {@link fetch}, loading `options.pages` pages of a paged query. */
+	fetch<TFactory extends PagedQueryFactory<TServices>>(
+		factory: TFactory,
+		input: InputOf<TFactory>,
+		options: LoadOptions,
+	): Promise<DataOf<TFactory>>;
+	fetch<TFactory extends QueryFactory<TServices>>(
+		factory: TFactory,
+		input?: InputOf<TFactory>,
+		options?: LoadOptions,
 	): Promise<DataOf<TFactory>> {
-		return runLoad(provided(this.effect.fetch(factory, ...args)));
+		return runLoad(
+			provided(
+				this.effect.fetch(factory, ...loadArgs<TFactory>(input, options)),
+			),
+		);
 	}
 
 	/**
