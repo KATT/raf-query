@@ -11,24 +11,7 @@ A query's first load suspends, so Suspense fallbacks cover it. Later requests (r
 
 `isFetching` on the reader's controls is `true` while any request for the query is in flight, first loads included:
 
-```tsx twoslash
-import { type EnsuredQueryHandle, useQuery } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
-declare function Spinner(props: { readonly label: string }): React.ReactNode;
-// ---cut---
-function Post(props: { handle: EnsuredQueryHandle<typeof postQuery> }) {
-	const [post, postState] = useQuery(postQuery, props.handle);
-	return (
-		<article aria-busy={postState.isFetching}>
-			<h1>
-				{post.title}
-				{postState.isFetching ? <Spinner label="Refreshing" /> : null}
-			</h1>
-			<p>{post.body}</p>
-		</article>
-	);
-}
-```
+<<< ./background-fetching-indicators/src/routes/posts.$slug.tsx#post
 
 Controls are tracked: only components that read `isFetching` re-render when it changes. A parent that just passes the promise down stays put during background refetches.
 
@@ -36,23 +19,11 @@ Controls are tracked: only components that read `isFetching` re-render when it c
 
 `useIsFetching()` returns how many queries have a request in flight, and re-renders when the number changes. Render it once in the root layout for a global indicator:
 
-```tsx twoslash
-import { useIsFetching } from "@raf-query/react";
-declare function ProgressBar(): React.ReactNode;
-// ---cut---
-function GlobalProgress() {
-	const fetching = useIsFetching();
-	return fetching > 0 ? <ProgressBar /> : null;
-}
-```
+<<< ./background-fetching-indicators/src/routes/__root.tsx#global-progress
 
 Pass a filter to count only some queries:
 
-```ts twoslash
-import { useIsFetching } from "@raf-query/react";
-// ---cut---
-const savingComments = useIsFetching({ queryKey: ["comments"] });
-```
+<<< ./background-fetching-indicators/src/routes/posts.$slug.tsx#filter
 
 It's always `0` on the server and during hydration, so the indicator never appears in server HTML. Outside React, `qc.isFetching(filter?)` returns the same number.
 
