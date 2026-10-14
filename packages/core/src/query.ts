@@ -94,6 +94,11 @@ export const CancelledError: typeof internal.CancelledError =
 
 export type CancelledError = internal.CancelledError;
 
+export const BrowserOnlyError: typeof internal.BrowserOnlyError =
+	internal.BrowserOnlyError;
+
+export type BrowserOnlyError = internal.BrowserOnlyError;
+
 export const isQuery: (value: unknown) => value is Query = internal.isQuery;
 
 function typed<TFactory extends QueryFactory>(

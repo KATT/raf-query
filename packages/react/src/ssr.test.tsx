@@ -363,3 +363,75 @@ describe("RSC QueryProvider", () => {
 		container.remove();
 	});
 });
+
+describe("ssr: false", () => {
+	it("renders pending on the server, then runs once in the browser", async () => {
+		const calls: Array<string> = [];
+		function permissionQuery() {
+			return queryOptions({
+				queryFn: async () => {
+					calls.push("permission");
+					return "granted";
+				},
+				queryKey: ["permission"],
+				ssr: false,
+				staleTime: Infinity,
+			});
+		}
+		function Permission() {
+			const handle = useWaterfall(permissionQuery);
+			const [promise, state] = useQuery(permissionQuery, handle);
+			return <p>{state.isPending ? "Detecting" : use(promise)}</p>;
+		}
+		function SuspendedPermission() {
+			const handle = useWaterfall(permissionQuery);
+			const [promise] = useQuery(permissionQuery, handle);
+			return <p>{use(promise)}</p>;
+		}
+		function Page(props: { readonly client: QueryClient }) {
+			return (
+				<QueryClientProvider client={props.client}>
+					<Permission />
+					<Suspense fallback={<p>Waiting</p>}>
+						<SuspendedPermission />
+					</Suspense>
+				</QueryClientProvider>
+			);
+		}
+
+		const errors: Array<unknown> = [];
+		const stream = await renderToReadableStream(
+			<Page client={new QueryClient({ isServer: true })} />,
+			{ onError: (error) => void errors.push(error) },
+		);
+		await stream.allReady;
+		const html = await new Response(stream).text();
+		expect(html).toContain("<p>Detecting</p>");
+		expect(html).toContain("<p>Waiting</p>");
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toBeInstanceOf(Query.BrowserOnlyError);
+		expect(calls).toEqual([]);
+
+		const container = document.createElement("div");
+		container.innerHTML = html;
+		document.body.append(container);
+		const recoverable: Array<unknown> = [];
+		const root = await act(async () =>
+			hydrateRoot(
+				container,
+				<Page client={new QueryClient({ isServer: false })} />,
+				{
+					onRecoverableError: (error) => recoverable.push(error),
+				},
+			),
+		);
+		await act(flush);
+
+		expect(container.textContent).toBe("grantedgranted");
+		expect(calls).toEqual(["permission"]);
+		// The Suspense boundary the server gave up on; nothing else mismatched.
+		expect(recoverable).toHaveLength(1);
+		act(() => root.unmount());
+		container.remove();
+	});
+});
