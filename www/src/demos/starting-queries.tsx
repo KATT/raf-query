@@ -205,41 +205,53 @@ function Page(props: { readonly data: PageData }) {
 	);
 }
 
-const modes: ReadonlyArray<{ readonly label: string; readonly value: Mode }> = [
-	{ label: "prefetch the post", value: "prefetch" },
-	{ label: "ensure the post", value: "ensure" },
+const modes: ReadonlyArray<{
+	readonly description: string;
+	readonly value: Mode;
+}> = [
+	{
+		description: "Opens the post at once, with skeletons.",
+		value: "prefetch",
+	},
+	{
+		description: "Stays on the list until the post loads.",
+		value: "ensure",
+	},
 ];
 
 function StartingQueries() {
 	const [mode, setMode] = useState<Mode>("prefetch");
+	const selected = modes.find((option) => option.value === mode);
 	return (
 		<div className="grid gap-3">
-			<fieldset className="flex flex-wrap items-center gap-2 text-sm">
-				<legend className="sr-only">Loader</legend>
-				<span className="text-muted-foreground">The loader should</span>
-				{modes.map((option) => (
-					<label
-						className={cn(
-							"cursor-pointer rounded-md border px-2.5 py-1 font-mono text-xs",
-							mode === option.value && "border-foreground bg-accent",
-						)}
-						key={option.value}
-					>
-						<input
-							checked={mode === option.value}
-							className="sr-only"
-							name="mode"
-							onChange={() => {
-								setMode(option.value);
-							}}
-							type="radio"
-						/>
-						{option.label}
-					</label>
-				))}
-				<span className="text-muted-foreground">
-					and prefetch its comments.
-				</span>
+			<fieldset className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+				<legend className="sr-only">Load the post with</legend>
+				<div className="inline-flex rounded-md border p-0.5">
+					{modes.map((option) => (
+						<label
+							className={cn(
+								"cursor-pointer rounded px-2.5 py-0.5 font-mono text-xs text-muted-foreground has-focus-visible:ring-2 has-focus-visible:ring-ring",
+								mode === option.value &&
+									"bg-accent font-medium text-foreground",
+							)}
+							key={option.value}
+						>
+							<input
+								checked={mode === option.value}
+								className="sr-only"
+								name="mode"
+								onChange={() => {
+									setMode(option.value);
+								}}
+								type="radio"
+							/>
+							{option.value}
+						</label>
+					))}
+				</div>
+				<p aria-live="polite" className="text-sm text-muted-foreground">
+					{selected?.description}
+				</p>
 			</fieldset>
 			<DemoBrowser
 				fallback={<PostSkeleton />}
@@ -254,7 +266,7 @@ function StartingQueries() {
 
 export default defineDemo({
 	Component: StartingQueries,
-	hint: "Open a post with each loader. Prefetch commits at once and shows skeletons; ensure keeps the list on screen until the post is in. Both requests start together either way.",
+	hint: "Open a post with each. The requests start at the same moment either way; only what you see while they load differs. Comments are always prefetched.",
 	server,
 	title: "prefetch vs ensure",
 });
