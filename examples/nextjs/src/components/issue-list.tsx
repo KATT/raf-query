@@ -11,7 +11,7 @@ import { use } from "react";
 
 import { issueListQuery } from "~/queries.ts";
 
-import { StatusBadge } from "./status-badge.tsx";
+import { StatusSelect } from "./status-select.tsx";
 
 const dateFormat = new Intl.DateTimeFormat("en", {
 	day: "numeric",
@@ -57,26 +57,30 @@ export function IssueList(props: {
 						key={pages.pageParams[index]}
 					>
 						{page.issues.map((issue) => (
-							<AppLink
-								className={cn(rowClassName, "hover:bg-muted/50")}
-								href={`/issues/${issue.id}`}
+							<div
+								className={cn(rowClassName, "group hover:bg-muted/50")}
 								key={issue.id}
 							>
-								<span className="w-10 text-sm text-muted-foreground">
-									#{issue.id}
-								</span>
-								<span className="flex-1 truncate font-medium">
-									{issue.title}
-								</span>
-								<span className="flex items-center gap-1 text-xs text-muted-foreground">
+								<AppLink
+									className="flex min-w-0 flex-1 items-center gap-3"
+									href={`/issues/${issue.id}`}
+								>
+									<span className="w-10 shrink-0 text-sm text-muted-foreground">
+										#{issue.id}
+									</span>
+									<span className="flex-1 truncate font-medium">
+										{issue.title}
+									</span>
+								</AppLink>
+								<span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
 									<MessageSquare className="size-3" />
 									{issue.commentCount}
 								</span>
-								<span className="w-14 text-right text-xs text-muted-foreground">
+								<span className="w-14 shrink-0 text-right text-xs text-muted-foreground">
 									{dateFormat.format(new Date(issue.createdAt))}
 								</span>
-								<StatusBadge status={issue.status} />
-							</AppLink>
+								<StatusSelect issueId={issue.id} status={issue.status} />
+							</div>
 						))}
 					</div>
 				))}
