@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.7.5](https://github.com/KATT/raf-query/compare/0.7.4...0.7.5) (2026-10-14)
+
+- steer useIsFetching toward router pending and per-query isFetching ([#80](https://github.com/KATT/raf-query/issues/80)) ([c848b16](https://github.com/KATT/raf-query/commit/c848b162d31b1b16c8231d6f19be2420c12f5801))
+
 ## [0.7.4](https://github.com/KATT/raf-query/compare/0.7.3...0.7.4) (2026-10-14)
 
 - **agents:** verify with tests and preview links, and stack PRs for big work ([#93](https://github.com/KATT/raf-query/issues/93)) ([fbe282c](https://github.com/KATT/raf-query/commit/fbe282cc046abfa493afbfd147614dbeba878508))
