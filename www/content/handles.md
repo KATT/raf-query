@@ -7,25 +7,8 @@ order: 6
 
 A handle is the only thing that crosses the loader → component or server → client boundary:
 
-```ts twoslash
-import type {
-	EnsuredQueryHandle,
-	InputOf,
-	QueryHandle,
-	QueryKey,
-} from "@raf-query/react";
-import { postQuery } from "~/queries.ts";
-// ---cut---
-type Handle = QueryHandle<typeof postQuery>;
-//   ^?
-// { key: QueryKey; input: { slug: string }; ensured: false }
-
-type Ensured = EnsuredQueryHandle<typeof postQuery>;
-//   ^?
-// { key: QueryKey; input: { slug: string }; ensured: true }
-
-type PostInput = InputOf<typeof postQuery>; // { slug: string }
-type PostKey = QueryKey; // readonly unknown[]
+```sample
+tanstack-start/src/docs/handles.ts#intro
 ```
 
 ## Why handles hold no data
@@ -38,28 +21,14 @@ That also keeps the cache the single source of truth. A component reading a hand
 
 The loader's return value lists exactly which queries a route started, and its types show which ones the route waited for. `useQuery` returns **the data** for an `EnsuredQueryHandle` and **a promise** for a `QueryHandle`:
 
-```tsx twoslash
-import { useQuery } from "@raf-query/react";
-import { commentsQuery, postQuery } from "~/queries.ts";
-import { Route } from "~/routes/posts.$slug.tsx";
-// ---cut---
-const loaderData = Route.useLoaderData();
-const [post] = useQuery(postQuery, loaderData.post); // ensured
-//     ^?
-const [commentsPromise] = useQuery(commentsQuery, loaderData.comments); // prefetched
-//     ^?
+```sample
+tanstack-start/src/docs/handles.tsx#typed-by-what-the-loader-did
 ```
 
 The two handle types aren't assignable to each other, so type a prop with the one its loader returns:
 
-```tsx twoslash
-import { commentsQuery } from "~/queries.ts";
-// ---cut---
-import type { EnsuredQueryHandle, QueryHandle } from "@raf-query/react";
-
-function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
-	// ...
-}
+```sample
+tanstack-start/src/docs/handles.handle-props.tsx#handle-props
 ```
 
 If you switch a query from `prefetch` to `ensure`, TypeScript points at every component that should stop unwrapping a promise.

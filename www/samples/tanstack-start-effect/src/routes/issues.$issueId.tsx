@@ -20,9 +20,11 @@ const loadIssue = Effect.fn("loadIssue")(
 	Effect.catchTag("IssueNotFound", () => Effect.fail(notFound())),
 );
 
+// #region services
 export const Route = createFileRoute("/issues/$issueId")({
 	loader: (args) =>
 		args.context.queryClient.runPromise(loadIssue(Number(args.params.issueId))),
+	//            ^?
 	component: IssuePage,
 	errorComponent: (props) => (
 		<div role="alert">
@@ -48,6 +50,7 @@ function IssuePage() {
 		</article>
 	);
 }
+// #endregion services
 
 function Assignee(props: { handle: QueryHandle<typeof assigneeQuery> }) {
 	const [assigneePromise, controls] = useQuery(assigneeQuery, props.handle);

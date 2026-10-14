@@ -45,26 +45,8 @@ nextjs/src/components/comments.tsx#component
 
 While a link navigation is loading the next RSC payload, show pending state with Next.js — not [`useIsFetching`](./background-fetching-indicators.md#useisfetching). Render [`useLinkStatus`](https://nextjs.org/docs/app/api-reference/functions/use-link-status) as a child of the `Link` it tracks:
 
-```tsx twoslash
-import type { ReactNode } from "react";
-declare function Link(props: {
-	readonly children?: ReactNode;
-	readonly href: string;
-}): ReactNode;
-declare function useLinkStatus(): { readonly pending: boolean };
-declare function Spinner(): ReactNode;
-// ---cut---
-("use client");
-
-function PendingHint() {
-	const { pending } = useLinkStatus();
-	return pending ? <Spinner /> : null;
-}
-
-<Link href="/issues">
-	Issues
-	<PendingHint />
-</Link>;
+```sample
+nextjs/src/docs/nextjs.tsx#pending-ui
 ```
 
 Per-query background refetches after the page has rendered use `controls.isFetching`. See [Background fetching indicators](./background-fetching-indicators.md).

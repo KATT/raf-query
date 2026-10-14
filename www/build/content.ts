@@ -35,8 +35,6 @@ export const acceptsMarkdown = /\btext\/markdown\b/;
 const Frontmatter = Schema.Struct({
 	description: Schema.String,
 	order: Schema.Number,
-	/** The sample app the page's inline `twoslash` blocks compile in. */
-	sampleApp: Schema.optional(Schema.String),
 	section: Schema.String,
 	title: Schema.String,
 });
@@ -48,7 +46,7 @@ const decodeFrontmatter = Schema.decodeUnknownEffect(Frontmatter);
 interface Source {
 	readonly file: string;
 	readonly frontmatter: Frontmatter;
-	/** With `<<<` includes expanded into `twoslash` blocks. */
+	/** With `sample` fences expanded into `twoslash` blocks. */
 	readonly markdown: string;
 	readonly slug: string;
 	/** The files the page includes. */
@@ -175,10 +173,7 @@ export function docsContent(options: ContentOptions): Plugin {
 	const renderDoc = Effect.fn("renderDoc")(function* (source: Source) {
 		const fs = yield* FileSystem.FileSystem;
 		const path = yield* Path.Path;
-		const result = yield* renderMarkdown(source.markdown, {
-			defaultApp: source.frontmatter.sampleApp,
-			samplesDir,
-		}).pipe(
+		const result = yield* renderMarkdown(source.markdown, { samplesDir }).pipe(
 			Effect.mapError(
 				(error) =>
 					new ContentError({

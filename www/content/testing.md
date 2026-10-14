@@ -45,29 +45,8 @@ Render inside an awaited, async `act`. A tree that suspends inside a sync `act`,
 
 A component takes a handle as a prop, so a test can start the query itself, the same way a loader would:
 
-```tsx twoslash
-import { expect, test } from "@effect/vitest";
-import type { QueryClient, QueryHandle } from "@raf-query/react";
-import { screen } from "@testing-library/react";
-import { Suspense, type ReactNode } from "react";
-import { postQuery } from "~/queries.ts";
-declare let queryClient: QueryClient;
-declare function renderWithClient(ui: ReactNode): Promise<unknown>;
-declare function Post(props: {
-	handle: QueryHandle<typeof postQuery>;
-}): ReactNode;
-// ---cut---
-test("shows the post", async () => {
-	const handle = queryClient.prefetch(postQuery, { slug: "hello" });
-
-	await renderWithClient(
-		<Suspense fallback="Loading…">
-			<Post handle={handle} />
-		</Suspense>,
-	);
-
-	expect((await screen.findByRole("heading")).textContent).toBe("Hello");
-});
+```sample
+tanstack-start/src/docs/testing.tsx#testing-a-component
 ```
 
 For an `EnsuredQueryHandle`, `await queryClient.ensure(...)` instead.
@@ -76,17 +55,8 @@ For an `EnsuredQueryHandle`, `await queryClient.ensure(...)` instead.
 
 To render with known data and no request at all, write it with `setData` before rendering:
 
-```ts twoslash
-import { QueryClient } from "@raf-query/react";
-import { postQuery } from "~/queries.ts";
-const queryClient = new QueryClient();
-// ---cut---
-queryClient.setData(
-	postQuery,
-	{ slug: "hello" },
-	{ slug: "hello", title: "Hello", body: "", authorId: "" },
-);
-const handle = await queryClient.ensure(postQuery, { slug: "hello" });
+```sample
+tanstack-start/src/docs/testing.ts#seeding-the-cache
 ```
 
 Data written with `setData` is fresh, so `ensure` resolves at once without calling the `queryFn`.
@@ -95,58 +65,16 @@ Data written with `setData` is fresh, so `ensure` resolves at once without calli
 
 The `queryFn` is your code, so mock what it calls. With `fetch`, [MSW](https://mswjs.io) intercepts requests without changing application code:
 
-```ts twoslash
-declare const server: {
-	use(...handlers: ReadonlyArray<unknown>): void;
-};
-declare const http: {
-	get(path: string, resolver: () => unknown): unknown;
-};
-declare const HttpResponse: {
-	json(body: unknown): unknown;
-};
-// ---cut---
-server.use(
-	http.get("/api/posts/:slug", () =>
-		HttpResponse.json({ slug: "hello", title: "Hello" }),
-	),
-);
+```sample
+tanstack-start/src/docs/testing.ts#mocking-the-network
 ```
 
 ## Testing loaders
 
 A loader is a function of its context. Export it from the route file, call it with a client, and check what it started:
 
-```ts twoslash
-// @filename: tanstack-start/src/routes/posts.$slug.tsx
-import type { QueryClient } from "@raf-query/react";
-import { createFileRoute } from "@tanstack/react-router";
-import { commentsQuery, postQuery } from "~/queries.ts";
-export async function postLoader(args: {
-	context: { queryClient: QueryClient };
-	params: { slug: string };
-}) {
-	const qc = args.context.queryClient;
-	const comments = qc.prefetch(commentsQuery, { slug: args.params.slug });
-	const post = await qc.ensure(postQuery, { slug: args.params.slug });
-	return { comments, post };
-}
-export const Route = createFileRoute("/posts/$slug")({ loader: postLoader });
-// @filename: tanstack-start/src/routes/posts.$slug.test.ts
-import { expect, test } from "@effect/vitest";
-import { QueryClient } from "@raf-query/react";
-import { postQuery } from "~/queries.ts";
-import { postLoader } from "./posts.$slug.tsx";
-const queryClient = new QueryClient();
-// ---cut---
-test("the post loader starts both queries", async () => {
-	await postLoader({
-		context: { queryClient },
-		params: { slug: "hello" },
-	});
-	expect(queryClient.getData(postQuery, { slug: "hello" })).toBeDefined();
-	expect(queryClient.isFetching({ queryKey: ["comments"] })).toBe(1);
-});
+```sample
+tanstack-start/src/docs/testing.loader-test.ts#testing-loaders
 ```
 
 ## Time, focus and the network
@@ -183,31 +111,8 @@ const queryClient = new QueryClient({ layer: FakePlatform });
 
 With a fake clock, a test of `staleTime` or `gcTime` runs in milliseconds. [`@effect/vitest`](https://effect.website/docs/testing/vitest/)'s `it.effect` provides `TestClock`:
 
-```ts twoslash
-import { Platform, QueryCache } from "@raf-query/react";
-import { Effect, Layer, Option } from "effect";
-import { expect, it } from "@effect/vitest";
-import { TestClock } from "effect/testing";
-import { todosQuery } from "~/queries.ts";
-const listeners = new Set<(event: "focus" | "online") => void>();
-const FakePlatform = Layer.succeed(Platform.Platform, {
-	isOnlineUnsafe: () => true,
-	isServer: false,
-	isVisibleUnsafe: () => true,
-	subscribeUnsafe(listener) {
-		listeners.add(listener);
-		return () => listeners.delete(listener);
-	},
-});
-// ---cut---
-it.effect("garbage-collects unread entries", () =>
-	Effect.gen(function* () {
-		const cache = yield* QueryCache.QueryCache;
-		yield* cache.fetch(todosQuery);
-		yield* TestClock.adjust("5 minutes");
-		expect(Option.isNone(yield* cache.getData(todosQuery))).toBe(true);
-	}).pipe(Effect.provide(QueryCache.layer()), Effect.provide(FakePlatform)),
-);
+```sample
+tanstack-start/src/docs/testing.ts#time-focus-and-the-network
 ```
 
 In a plain Vitest test without Effect, `vi.useFakeTimers()` also works: the default clock reads `Date.now()` and schedules with `setTimeout`.

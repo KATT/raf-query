@@ -3,7 +3,6 @@ title: Using Effect
 description: The cache is written in Effect. Return Effects from queryFns for typed errors, services and interruption, run loaders and actions as Effects, and read the same queries from React.
 section: Effect
 order: 1
-sampleApp: tanstack-start-effect
 ---
 
 raf-query's cache is written in [Effect](https://effect.website). Using raf-query doesn't take any Effect: `queryFn`s return promises, and `QueryClient`, the hooks and the integrations speak promises. Apps that do use Effect get the same cache as Effects, with typed errors and [services](./effect-services.md).
@@ -88,47 +87,16 @@ What an Effect `queryFn` adds over a promise:
 - **Interruption.** Cancelling the request interrupts the fiber, so its finalizers run. No `AbortSignal` needed.
 - **Schedules.** `retry` accepts a `Schedule` as well as a count or predicate:
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-import { Effect, Schedule } from "effect";
-import { IssueApi } from "~/issues.ts";
-// ---cut---
-export function issueQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: ["issue", input.id],
-		queryFn: () => IssueApi.use((api) => api.get(input.id)),
-		retry: Schedule.exponential("200 millis").pipe(Schedule.upTo({ times: 3 })),
-	});
-}
+```sample
+tanstack-start-effect/src/docs/effect.ts#effect-queryfns
 ```
 
 ## The cache as an Effect service
 
 `QueryClient` is a Promise wrapper around a `QueryCache` service. `queryClient.runPromise` hands it to loaders and actions, as above, and `qc.effect` is the same service as a value. Effect code outside React builds its own with `QueryCache.make(config)` (scoped: closing the scope interrupts every request and timer) or `QueryCache.layer(config)`:
 
-```ts twoslash
-import { Effect } from "effect";
-import { IssueApiLive } from "~/issues.ts";
-import { issueQuery } from "~/queries.ts";
-// ---cut---
-import { QueryCache } from "@raf-query/core";
-import { Stream } from "effect";
-
-const program = Effect.gen(function* () {
-	const cache = yield* QueryCache.QueryCache;
-	const issue = yield* cache.fetch(issueQuery, { id: 1 });
-	yield* cache.watch(issueQuery, { id: 1 }).pipe(
-		Stream.map((state) => state.data?.title),
-		Stream.runForEach((title) => Effect.log(title)),
-	);
-});
-
-Effect.runFork(
-	program.pipe(
-		Effect.provide(QueryCache.layer()),
-		Effect.provide(IssueApiLive),
-	),
-);
+```sample
+tanstack-start-effect/src/docs/effect.the-cache-as-an-effect-service.ts#the-cache-as-an-effect-service
 ```
 
 The cache has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidate`, `reset`, `remove`, `setData`, `getData` (an `Option`), `isFetching` (a count), `dehydrate` and `hydrate`. `watch` is a `Stream` of an entry's state, and `events` a `Stream` of cache events.
@@ -139,19 +107,8 @@ The cache has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidat
 
 Entries are a data type with module functions, like Effect's own modules:
 
-```ts twoslash
-import { Effect } from "effect";
-import { issueQuery } from "~/queries.ts";
-// ---cut---
-import { Query, QueryCache } from "@raf-query/core";
-
-const program = Effect.gen(function* () {
-	const cache = yield* QueryCache.QueryCache;
-	const query = yield* cache.getQuery(issueQuery, { id: 1 });
-	yield* Query.fetch(query);
-	yield* Query.invalidate(query);
-	return Query.getUnsafe(query); // synchronous read
-});
+```sample
+tanstack-start-effect/src/docs/effect.entries-and-observers.ts#entries-and-observers
 ```
 
 `Query.changes(query)` streams the entry's state, and `Query.subscribeUnsafe(query, listener)` is the synchronous version.

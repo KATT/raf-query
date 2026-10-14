@@ -7,62 +7,16 @@ order: 7
 
 Components read queries with `useQuery`, passing the factory and the handle the loader returned:
 
-```ts twoslash
-import {
-	type EnsuredQueryHandle,
-	type QueryHandle,
-	type UseQueryOptions,
-	useQuery,
-} from "@raf-query/react";
-import { postQuery } from "~/queries.ts";
-declare const factory: typeof postQuery;
-declare const handle: QueryHandle<typeof postQuery>;
-declare const ensuredHandle: EnsuredQueryHandle<typeof postQuery>;
-declare const options: UseQueryOptions | undefined;
-// ---cut---
-{
-	const [promise, controls] = useQuery(factory, handle, options);
-}
-{
-	const [data, controls] = useQuery(factory, ensuredHandle, options);
-}
+```sample
+tanstack-start/src/docs/reading-queries.ts#intro
 ```
 
 `promise` is a stable `Promise<Data>` owned by the cache. Unwrap it with `use()`. When the cache already has data, the promise is pre-resolved and `use()` returns synchronously without suspending.
 
 A handle from `ensure` had its data loaded before the route rendered, so `useQuery` returns the data itself.
 
-```tsx twoslash
-import { type QueryHandle, useQuery } from "@raf-query/react";
-import { Suspense, startTransition } from "react";
-import { commentsQuery, postQuery } from "~/queries.ts";
-import { Route } from "~/routes/posts.$slug.tsx";
-declare function CommentsSkeleton(): React.ReactNode;
-declare function Comments(props: {
-	handle: QueryHandle<typeof commentsQuery>;
-}): React.ReactNode;
-// ---cut---
-function PostPage() {
-	const loaderData = Route.useLoaderData();
-	// `post` came from `qc.ensure`, `comments` from `qc.prefetch`.
-	const [post, postState] = useQuery(postQuery, loaderData.post);
-
-	return (
-		<article>
-			<h1>{post.title}</h1>
-			<button
-				disabled={postState.isFetching}
-				onClick={() => startTransition(() => postState.refetch())}
-			>
-				Refresh
-			</button>
-			<p>{post.body}</p>
-			<Suspense fallback={<CommentsSkeleton />}>
-				<Comments handle={loaderData.comments} />
-			</Suspense>
-		</article>
-	);
-}
+```sample
+tanstack-start/src/docs/reading-queries.tsx#post-page
 ```
 
 `options` takes [`whilePending`](./url-state-and-pagination.md) and per-read refetch settings (`refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`). There is no option to change the input: the handle decides what is read.
@@ -97,46 +51,16 @@ Effect `queryFn`s can return a typed `Result` in the first tuple slot instead of
 
 A component can call the hook with a prefetched handle and hand the promise to a child, so only the child suspends:
 
-```tsx twoslash
-import type { QueryHandle } from "@raf-query/react";
-import { useQuery } from "@raf-query/react";
-import { Suspense, use, type ReactNode } from "react";
-import type { Post } from "~/api.ts";
-import { postQuery } from "~/queries.ts";
-declare function Spinner(): ReactNode;
-declare const loaderData: { post: QueryHandle<typeof postQuery> };
-function Parent() {
-	// ---cut---
-	const [postPromise] = useQuery(postQuery, loaderData.post); // from `qc.prefetch`
-	return (
-		<Suspense fallback={<Spinner />}>
-			<PostBody post={postPromise} />
-		</Suspense>
-	);
-	// ---cut-after---
-}
-
-function PostBody(props: { post: Promise<Post> }) {
-	const post = use(props.post);
-	return <p>{post.body}</p>;
-}
+```sample
+tanstack-start/src/docs/reading-queries.passing-promises-down.tsx#passing-promises-down
 ```
 
 A component re-renders when the promise changes, and when a control it reads changes. Controls it never reads, like `isFetching` here, don't re-render it, so a parent that only passes the promise down stays put during background refetches.
 
 Because `use()` can be called conditionally, a component can also decide **whether** to read:
 
-```tsx twoslash
-import { use } from "react";
-declare function DetailsTable(props: { details: Details }): React.ReactNode;
-interface Details {
-	readonly body: string;
-}
-// ---cut---
-function Details(props: { open: boolean; details: Promise<Details> }) {
-	if (!props.open) return null;
-	return <DetailsTable details={use(props.details)} />;
-}
+```sample
+tanstack-start/src/docs/reading-queries.tsx#details
 ```
 
 ## No refetch on mount

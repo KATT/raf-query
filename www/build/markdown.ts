@@ -328,39 +328,39 @@ function twoslasherFor(root: string, tsLibDirectory: string) {
 
 const blockFilename = /^\/\/ @filename: (.+)$/gm;
 
-/** The app of the blocks that name no file, unless the page sets `sampleApp`. */
-const defaultApp = "tanstack-start";
+/** The app whose `node_modules` inline blocks import from. */
+const inlineApp = "tanstack-start";
+
+/** An import of a file rather than a package. */
+const fileImport = /\bfrom\s+["'](?:~\/|\.{1,2}\/)/;
 
 /**
  * Fences with `twoslash` in their meta are compiled, so hovering a name shows
  * its type, `// ^?` pins a type under the line, and `// @errors: 2345` shows
  * an expected error. A compile error the block doesn't expect fails the
- * build. Each block compiles in the project of a sample app
- * (`samples/<app>/`): the one holding its `// @filename`s, which are paths
- * from the samples dir, like `expandSnippets` names an included block's.
- * Blocks written inline name no file and are a file of the page's app
- * (`tanstack-start`, or the frontmatter's `sampleApp`), so a hidden setup
- * above `// ---cut---` imports `~/queries.ts`. An inline block that defines a
- * route starts with `// @filename: <app>/src/routes/<route>.tsx`, so it
- * compiles as that file and the route tree registers its loader.
+ * build.
+ *
+ * A `sample` fence's block (`expandSnippets`) is a file of a sample app
+ * (`samples/<app>/`), named by its `// @filename`, a path from the samples
+ * dir. It compiles in that app's project, with every file of the app, so it
+ * sees what `tsc` sees: the route tree, the router context, the app's
+ * `Register`.
+ *
+ * A block written inline stands alone: it imports packages only, and
+ * compiles with `tanstack-start`'s compiler options and `node_modules` but
+ * none of its files. A block that needs the app is a sample.
  */
 const twoslashTransformer = Effect.fn("twoslashTransformer")(function* (
 	markdown: string,
-	options: RenderOptions,
+	samplesDir: string,
 ) {
 	const path = yield* Path.Path;
-	const { samplesDir } = options;
 	const apps = yield* sampleApps(samplesDir);
 	const appOfFile = (filename: string) =>
 		appOf(path, path.join(samplesDir, filename), apps);
-	const fallback = path.join(samplesDir, options.defaultApp ?? defaultApp);
-	if (!apps.includes(fallback)) {
-		return yield* new ContentError({
-			message: `sampleApp "${options.defaultApp}" isn't a sample app`,
-		});
-	}
+	const inline = path.join(samplesDir, inlineApp);
 	const used = new Set([
-		fallback,
+		inline,
 		...Array.from(markdown.matchAll(blockFilename), (match) =>
 			appOfFile(match[1] ?? ""),
 		).filter((app) => app !== undefined),
@@ -378,7 +378,19 @@ const twoslashTransformer = Effect.fn("twoslashTransformer")(function* (
 	);
 	const twoslasher: TwoslashShikiFunction = (code, lang, twoslashOptions) => {
 		const filename = new RegExp(blockFilename.source, "m").exec(code)?.[1];
-		const app = filename === undefined ? fallback : appOfFile(filename);
+		if (filename === undefined) {
+			if (fileImport.test(code)) {
+				throw new Error(
+					"An inline twoslash block imports a file. A block that needs the app's files is a `sample` fence of a file in samples/.",
+				);
+			}
+			const project = projects.get(inline);
+			return twoslasherFor(inline, tsLibDirectory)(code, lang, {
+				...twoslashOptions,
+				...(project && { compilerOptions: project.compilerOptions }),
+			});
+		}
+		const app = appOfFile(filename);
 		const project = app && projects.get(app);
 		if (!app || !project) {
 			throw new Error(`"// @filename: ${filename}" isn't in a sample app`);
@@ -403,8 +415,6 @@ const twoslashTransformer = Effect.fn("twoslashTransformer")(function* (
 });
 
 export interface RenderOptions {
-	/** The sample app of the blocks that name no file. */
-	readonly defaultApp?: string | undefined;
 	/** The dir of the sample apps the code blocks compile in. */
 	readonly samplesDir: string;
 }
@@ -430,7 +440,7 @@ export const renderMarkdown = Effect.fn("renderMarkdown")(function* (
 			defaultColor: false,
 			themes: { dark: "github-dark", light: "github-light" },
 			transformers: [
-				yield* twoslashTransformer(markdown, options),
+				yield* twoslashTransformer(markdown, options.samplesDir),
 				codeMeta,
 				{
 					name: "raf-query-docs:type-queries",

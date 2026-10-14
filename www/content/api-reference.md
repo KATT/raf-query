@@ -7,11 +7,8 @@ order: 2
 
 ## QueryClient
 
-```ts twoslash
-import { QueryClient, type QueryClientConfig } from "@raf-query/react";
-declare const config: QueryClientConfig | undefined;
-// ---cut---
-const queryClient = new QueryClient(config);
+```sample
+tanstack-start/src/docs/api-reference.ts#queryclient
 ```
 
 | Member                                              | Use                                                                                                                                                                               |
@@ -58,21 +55,8 @@ Accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
 
 ## useQuery
 
-```ts twoslash
-import {
-	type EnsuredQueryHandle,
-	type QueryHandle,
-	useQuery,
-	type UseQueryOptions,
-} from "@raf-query/react";
-import { postQuery } from "~/queries.ts";
-declare const factory: typeof postQuery;
-declare const handle: QueryHandle<typeof postQuery>;
-declare const ensuredHandle: EnsuredQueryHandle<typeof postQuery>;
-declare const options: UseQueryOptions | undefined;
-// ---cut---
-const [promise, controls] = useQuery(factory, handle, options);
-const [data, ensuredControls] = useQuery(factory, ensuredHandle, options);
+```sample
+tanstack-start/src/docs/api-reference.ts#usequery
 ```
 
 Options: `whilePending` (`"suspend"` or `"previous"`), `refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`.

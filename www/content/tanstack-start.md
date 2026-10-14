@@ -75,17 +75,8 @@ While a loader's `ensure` is still running, the previous page stays on screen. S
 - **`pendingComponent` and `pendingMs`** show a full-page skeleton after the delay (1 second by default) for routes whose loader `ensure`s slow data.
 - **`useRouterState({ select: (state) => state.isLoading })`** drives a progress bar or spinner in the layout for any pending navigation:
 
-```tsx twoslash
-import type { ReactNode } from "react";
-declare function useRouterState<T>(options: {
-	readonly select: (state: { readonly isLoading: boolean }) => T;
-}): T;
-declare function ProgressBar(): ReactNode;
-// ---cut---
-function NavigationProgress() {
-	const isLoading = useRouterState({ select: (state) => state.isLoading });
-	return isLoading ? <ProgressBar /> : null;
-}
+```sample
+tanstack-start/src/docs/tanstack-start.tsx#pending-ui
 ```
 
 Per-query background refetches after the page has rendered use `controls.isFetching`. See [Background fetching indicators](./background-fetching-indicators.md).

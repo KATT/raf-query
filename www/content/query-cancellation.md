@@ -60,38 +60,12 @@ An Effect `queryFn` doesn't need the signal: aborting the request interrupts the
 
 Clients that accept a signal work the same way:
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-declare const axios: {
-	get(url: string, options: { signal: AbortSignal }): Promise<unknown>;
-};
-declare const input: { id: number };
-// ---cut---
-queryOptions({
-	queryKey: ["todos", input.id],
-	queryFn: (context) =>
-		axios.get(`/api/todos/${input.id}`, { signal: context.signal }),
-});
+```sample
+tanstack-start/src/docs/query-cancellation.ts#using-axios-or-other-clients
 ```
 
 For clients that take a cancel function instead, call it from an `abort` listener:
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-declare const client: {
-	get(url: string): {
-		cancel(): void;
-		promise: Promise<unknown>;
-	};
-};
-declare const input: { id: number };
-// ---cut---
-queryOptions({
-	queryKey: ["todos", input.id],
-	queryFn: (context) => {
-		const request = client.get(`/todos/${input.id}`);
-		context.signal.addEventListener("abort", () => request.cancel());
-		return request.promise;
-	},
-});
+```sample
+tanstack-start/src/docs/query-cancellation.ts#abort-listener
 ```

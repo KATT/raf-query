@@ -24,18 +24,8 @@ When the whole response is deeply equal to the cached data, the old data is kept
 
 Structural sharing only looks inside plain objects and arrays. Class instances, `Map`s and `Date`s are compared by identity. Turn it off for very large responses where the comparison costs more than it saves:
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-declare const input: { region: string };
-declare function getRegionShapes(input: {
-	readonly region: string;
-}): Promise<unknown>;
-// ---cut---
-queryOptions({
-	queryKey: ["geojson", input.region],
-	queryFn: () => getRegionShapes(input),
-	structuralSharing: false,
-});
+```sample
+tanstack-start/src/docs/render-optimizations.ts#structural-sharing
 ```
 
 ## Stable promises
@@ -46,40 +36,8 @@ queryOptions({
 
 The controls object returned by `useQuery` tracks which fields a component reads. Reading `controls.isFetching` subscribes the component to `isFetching`; a component that never reads it isn't re-rendered when a background refetch starts and ends.
 
-```tsx twoslash
-import { Suspense } from "react";
-import { type EnsuredQueryHandle, useQuery } from "@raf-query/react";
-import { postQuery } from "~/queries.ts";
-import type { ReactNode } from "react";
-import { Route } from "~/routes/posts.$slug.tsx";
-declare function PostBody(props: { readonly post: unknown }): ReactNode;
-declare function PostSkeleton(): ReactNode;
-// ---cut---
-function PostPage() {
-	const loaderData = Route.useLoaderData();
-	// Reads only the promise: doesn't re-render while refetching.
-	const [postPromise] = useQuery(postQuery, loaderData.post);
-	return (
-		<>
-			<RefreshButton handle={loaderData.post} />
-			<Suspense fallback={<PostSkeleton />}>
-				<PostBody post={postPromise} />
-			</Suspense>
-		</>
-	);
-}
-
-function RefreshButton(props: {
-	handle: EnsuredQueryHandle<typeof postQuery>;
-}) {
-	// Reads isFetching: re-renders when a request starts and ends.
-	const [, post] = useQuery(postQuery, props.handle);
-	return (
-		<button disabled={post.isFetching} onClick={() => post.refetch()}>
-			Refresh
-		</button>
-	);
-}
+```sample
+tanstack-start/src/docs/render-optimizations.tsx#tracked-controls
 ```
 
 Both components read the same query; each pays only for what it reads. Destructure only what you use. Spreading the controls (`{ ...controls }`) reads every field and subscribes to all of them.
@@ -88,38 +46,16 @@ Both components read the same query; each pays only for what it reads. Destructu
 
 A parent can read a prefetched handle and hand the promise to a child, so only the child suspends. The parent re-renders when the promise changes, which is exactly when the child needs new props:
 
-```tsx twoslash
-import { Suspense, type ReactNode } from "react";
-import { type QueryHandle, useQuery } from "@raf-query/react";
-import { postQuery } from "~/queries.ts";
-declare const loaderData: { post: QueryHandle<typeof postQuery> };
-declare function PostBody(props: {
-	readonly post: Promise<unknown>;
-}): ReactNode;
-declare function Spinner(): ReactNode;
-function Parent() {
-	// ---cut---
-	const [postPromise] = useQuery(postQuery, loaderData.post);
-	return (
-		<Suspense fallback={<Spinner />}>
-			<PostBody post={postPromise} />
-		</Suspense>
-	);
-	// ---cut-after---
-}
+```sample
+tanstack-start/src/docs/render-optimizations.passing-promises-down.tsx#passing-promises-down
 ```
 
 ## Deriving data
 
 There's no `select` option. Derive in render: the data only changes when it actually changed, so with React Compiler (or `useMemo`) the derivation reruns only then:
 
-```tsx twoslash
-import { use } from "react";
-import type { Todo } from "~/api.ts";
-declare const todosPromise: Promise<ReadonlyArray<Todo>>;
-// ---cut---
-const todos = use(todosPromise);
-const done = todos.filter((todo) => todo.done);
+```sample
+tanstack-start/src/docs/render-optimizations.tsx#deriving-data
 ```
 
 To share a derivation, put it in a function next to the factory, and call it wherever the data is read.

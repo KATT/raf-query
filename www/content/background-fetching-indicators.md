@@ -11,23 +11,8 @@ A query's first load suspends, so Suspense fallbacks cover it. Later requests (r
 
 `isFetching` on the reader's controls is `true` while any request for the query is in flight, first loads included:
 
-```tsx twoslash
-import { type EnsuredQueryHandle, useQuery } from "@raf-query/react";
-import { postQuery } from "~/queries.ts";
-declare function Spinner(props: { readonly label: string }): React.ReactNode;
-// ---cut---
-function Post(props: { handle: EnsuredQueryHandle<typeof postQuery> }) {
-	const [post, postState] = useQuery(postQuery, props.handle);
-	return (
-		<article aria-busy={postState.isFetching}>
-			<h1>
-				{post.title}
-				{postState.isFetching ? <Spinner label="Refreshing" /> : null}
-			</h1>
-			<p>{post.body}</p>
-		</article>
-	);
-}
+```sample
+tanstack-start/src/docs/background-fetching-indicators.tsx#one-query-isfetching
 ```
 
 Controls are tracked: only components that read `isFetching` re-render when it changes. A parent that just passes the promise down stays put during background refetches.
@@ -45,14 +30,8 @@ A navigation is not a background fetch: it's a transition. Use the router's pend
 
 You probably don't need this. Prefer the router's pending UI for navigations ([TanStack Start](./tanstack-start.md#pending-ui), [Next.js](./nextjs.md#pending-ui)) and per-query `isFetching` for background refetches. The hook stays for TanStack Query compatibility when you want one count of every in-flight request across the app:
 
-```tsx twoslash
-import { useIsFetching } from "@raf-query/react";
-declare function ProgressBar(): React.ReactNode;
-// ---cut---
-function GlobalProgress() {
-	const fetching = useIsFetching();
-	return fetching > 0 ? <ProgressBar /> : null;
-}
+```sample
+tanstack-start/src/docs/background-fetching-indicators.tsx#useisfetching
 ```
 
 Pass a filter to count only some queries:
