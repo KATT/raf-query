@@ -182,8 +182,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@raf-query/react':
-        specifier: 0.7.3
-        version: 0.7.3(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(effect@4.0.4)(react@19.3.0)
+        specifier: 0.7.4
+        version: 0.7.4(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(effect@4.0.4)(react@19.3.0)
       '@tanstack/react-router':
         specifier: 1.170.42
         version: 1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -1428,14 +1428,14 @@ packages:
   '@radix-ui/rect@1.1.3':
     resolution: {integrity: sha512-JtyZR+mqgBibTo8xea3B6ZRmzZiM/YeVBtUkas6zMuXjAlfIFIW2FgqeM9eLyvEaYX66vr6DJMK+4U6LV0KhNw==}
 
-  '@raf-query/core@0.7.3':
-    resolution: {integrity: sha512-o+nihQOWuEI1UzAfss+LdOOlChFMHdQyLyWLS9q7+eVSIuT7DC1iwmHPvP+BKuJNrtPCmoxqMDTToOqOMoIPRA==}
+  '@raf-query/core@0.7.4':
+    resolution: {integrity: sha512-CBp+0AhjaFGDD2hovHBS4oYaYqagx60zARszhZDJAXQ3aW5Oej78PEXL86bKgHDLDt3nhCx9d8BFUnhavt5MWw==}
     engines: {node: '>=22'}
     peerDependencies:
       effect: ^4.0.0
 
-  '@raf-query/react@0.7.3':
-    resolution: {integrity: sha512-DN6Yt+qfnU9mQdhLD3QLEBBMcRfQm7Z9pbN5jKgN0U7ozh2KfoOy/+Asar8orQOSV0WhoV4S5alXc88T8L0t9w==}
+  '@raf-query/react@0.7.4':
+    resolution: {integrity: sha512-iXmqJiGO1QfAy310r9lYpn8MgtPJBNHtY+vMTIGmXCJGMGWZQ94SOboETK8OKWRsGk6MfI1+VFDJ6Y0Gb6NrsQ==}
     engines: {node: '>=22'}
     peerDependencies:
       '@tanstack/react-router': ^1.170.0
@@ -4173,13 +4173,13 @@ snapshots:
 
   '@radix-ui/rect@1.1.3': {}
 
-  '@raf-query/core@0.7.3(effect@4.0.4)':
+  '@raf-query/core@0.7.4(effect@4.0.4)':
     dependencies:
       effect: 4.0.4
 
-  '@raf-query/react@0.7.3(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(effect@4.0.4)(react@19.3.0)':
+  '@raf-query/react@0.7.4(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(effect@4.0.4)(react@19.3.0)':
     dependencies:
-      '@raf-query/core': 0.7.3(effect@4.0.4)
+      '@raf-query/core': 0.7.4(effect@4.0.4)
       effect: 4.0.4
       react: 19.3.0
     optionalDependencies:
