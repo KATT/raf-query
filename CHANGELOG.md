@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.5.2](https://github.com/KATT/raf-query/compare/0.5.1...0.5.2) (2026-10-14)
+
+- fix demo header on mobile, explain prefetch vs ensure more concisely ([#71](https://github.com/KATT/raf-query/issues/71)) ([3909b22](https://github.com/KATT/raf-query/commit/3909b224296921aa36424c2f942b28aa8f0b3e7e))
+
 ## [0.5.1](https://github.com/KATT/raf-query/compare/0.5.0...0.5.1) (2026-10-14)
 
 ### Features
