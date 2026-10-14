@@ -2,13 +2,12 @@
 export const PREFETCH_COOKIE = "link-prefetch";
 
 export const prefetchOptions = [
-	{ label: "Default", value: "auto" },
+	{ label: "Off", value: "off" },
 	{ label: "In viewport", value: "viewport" },
 	{ label: "On intent", value: "intent" },
-	{ label: "Off", value: "off" },
 ] as const;
 export type Prefetch = (typeof prefetchOptions)[number]["value"];
-export const DEFAULT_PREFETCH: Prefetch = "auto";
+export const DEFAULT_PREFETCH: Prefetch = "off";
 
 export function parsePrefetch(value: string | undefined): Prefetch {
 	return (
