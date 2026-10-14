@@ -31,7 +31,10 @@ const latencies = [
 
 interface Session {
 	readonly client: QueryClient;
+	/** Remounts the variant when it changes: Reset. */
 	readonly id: number;
+	/** Restarts since Reset: reloads, which keep the variant mounted. */
+	readonly restarts: number;
 }
 
 let sessionCount = 0;
@@ -40,11 +43,16 @@ let sessionCount = 0;
 // send the demo's first requests twice.
 const liveSessions = new WeakMap<DemoVariant, Session>();
 
-function createSession(demo: DemoDefinition, variant: DemoVariant): Session {
+function createSession(
+	demo: DemoDefinition,
+	variant: DemoVariant,
+	restarted?: Session,
+): Session {
 	sessionCount++;
 	const session = {
 		client: demo.createClient?.() ?? new QueryClient(),
-		id: sessionCount,
+		id: restarted?.id ?? sessionCount,
+		restarts: restarted ? restarted.restarts + 1 : 0,
 	};
 	liveSessions.set(variant, session);
 	return session;
