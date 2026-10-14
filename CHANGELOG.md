@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.7.7](https://github.com/KATT/raf-query/compare/0.7.6...0.7.7) (2026-10-14)
+
+- **examples:** placeholder for the Effect example's Vercel project ([#100](https://github.com/KATT/raf-query/issues/100)) ([0142c6e](https://github.com/KATT/raf-query/commit/0142c6ef9448631c6239fff4a4ddf16db02b35de))
+
 ## [0.7.6](https://github.com/KATT/raf-query/compare/0.7.5...0.7.6) (2026-10-14)
 
 - **agents:** open PRs ready for review unless experimental ([#99](https://github.com/KATT/raf-query/issues/99)) ([e141269](https://github.com/KATT/raf-query/commit/e141269cf290b56dcb452bb0aa63a3b490657142))
