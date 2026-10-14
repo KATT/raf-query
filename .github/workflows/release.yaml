@@ -18,12 +18,14 @@ jobs:
           fetch-depth: 0
           ref: main
       - id: check
-        # Paths must match git.commitsPath in .release-it.json.
+        # Glob must match git.commitsPath in .release-it.json. Unquoted so the
+        # shell expands it (same as release-it); that skips packages/.experimental
+        # the way ./packages/* filters do elsewhere.
         run: |
           latest=$(git describe --tags --abbrev=0)
-          count=$(git rev-list "${latest}..HEAD" --count -- packages/core packages/react)
+          count=$(git rev-list "${latest}..HEAD" --count -- packages/*)
           if [ "$count" -eq 0 ]; then
-            echo "No commits touching packages/core or packages/react since ${latest}; skipping."
+            echo "No commits touching packages/* since ${latest}; skipping."
             echo "should_release=false" >> "$GITHUB_OUTPUT"
           else
             echo "should_release=true" >> "$GITHUB_OUTPUT"
