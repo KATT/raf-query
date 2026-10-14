@@ -105,7 +105,7 @@ commentsOptions;
 // ^?
 ```
 
-The options' types take a bag of named types rather than a list of type arguments. `error` and `services` are only for [Effect](./effect.md) `queryFn`s, and default to `unknown` and `never`:
+The options' types take a bag of named types rather than a list of type arguments. A promise or plain `queryFn` leaves `error` out of that bag (`ErrorOf` is `unknown`) and leaves `services` out when it needs none. An [Effect](./effect.md) `queryFn` adds the error it infers, and `services` when it needs any:
 
 ```ts twoslash
 import {

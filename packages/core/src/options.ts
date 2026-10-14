@@ -4,8 +4,9 @@ import type { QueryKey } from "./key.ts";
 
 /**
  * The types of a plain query: what its `queryFn` resolves to, and for an
- * Effect `queryFn`, its error and the services it needs. `error` defaults to
- * `unknown` (promises reject with anything), `services` to `never`.
+ * Effect `queryFn`, its error and the services it needs. Leave `error` out
+ * and it is `unknown` (promises reject with anything); leave `services` out
+ * and it is `never`.
  *
  * ```ts
  * type PostOptions = QueryOptions<{ data: Post }>;
@@ -37,6 +38,35 @@ type ErrorIn<TTypes> = TTypes extends { readonly error: infer TError }
 type ServicesIn<TTypes> = TTypes extends { readonly services: infer TServices }
 	? TServices
 	: never;
+
+/**
+ * The bag `queryOptions` returns. `error` is left out when the `queryFn`
+ * doesn't name one (`unknown`: a promise or a plain value). `services` is
+ * left out when the `queryFn` needs none (`never`). An Effect's error,
+ * including `never` when it can't fail, stays.
+ */
+type QueryTypesOf<TData, TError, TServices> = unknown extends TError
+	? [TServices] extends [never]
+		? { data: TData }
+		: { data: TData; services: TServices }
+	: [TServices] extends [never]
+		? { data: TData; error: TError }
+		: { data: TData; error: TError; services: TServices };
+
+/** As {@link QueryTypesOf}, for a paged query. */
+type InfiniteQueryTypesOf<TPage, TPageParam, TError, TServices> =
+	unknown extends TError
+		? [TServices] extends [never]
+			? { page: TPage; pageParam: TPageParam }
+			: { page: TPage; pageParam: TPageParam; services: TServices }
+		: [TServices] extends [never]
+			? { page: TPage; pageParam: TPageParam; error: TError }
+			: {
+					page: TPage;
+					pageParam: TPageParam;
+					error: TError;
+					services: TServices;
+				};
 
 /**
  * What a `queryFn` may return: a value, a promise, or an `Effect`. An
@@ -229,7 +259,9 @@ export type AnyQueryOptions =
  * ```
  *
  * A `queryFn` Effect may need services; they're inferred, and every verb
- * that can start the query requires them.
+ * that can start the query requires them. Its error is part of the returned
+ * type. A promise or a plain value has no error to infer, so the type leaves
+ * `error` out (`ErrorOf` is `unknown`).
  *
  * The type parameters are only there for TypeScript to infer the types bag
  * from `queryFn`; it can't infer a bag's members.
@@ -239,13 +271,21 @@ export function queryOptions<TData, TError = unknown, TServices = never>(
 		QueryOptions<{ data: TData; error: TError; services: TServices }>,
 		"kind"
 	>,
-): QueryOptions<{ data: TData; error: TError; services: TServices }> {
-	return { ...options, kind: "query" };
+): QueryOptions<QueryTypesOf<TData, TError, TServices>> {
+	// SAFETY: `QueryTypesOf` only drops `error` when it is `unknown` and
+	// `services` when it is `never`, which is what `ErrorIn` / `ServicesIn`
+	// fill in for a bag that lacks them. The `queryFn` and the services
+	// phantom are the same type either way.
+	return {
+		...options,
+		kind: "query",
+	} as QueryOptions<QueryTypesOf<TData, TError, TServices>>;
 }
 
 /**
  * Typed options for a paged query factory. The page type is inferred from
- * `queryFn`, as in {@link queryOptions}.
+ * `queryFn`, as in {@link queryOptions}. So is an Effect `queryFn`'s error;
+ * a promise or a plain value leaves `error` out.
  */
 export function infiniteQueryOptions<
 	TPage,
@@ -262,13 +302,17 @@ export function infiniteQueryOptions<
 		}>,
 		"kind"
 	>,
-): InfiniteQueryOptions<{
-	error: TError;
-	page: TPage;
-	pageParam: TPageParam;
-	services: TServices;
-}> {
-	return { ...options, kind: "infinite" };
+): InfiniteQueryOptions<
+	InfiniteQueryTypesOf<TPage, TPageParam, TError, TServices>
+> {
+	// SAFETY: as in `queryOptions`. Dropping a default `error` / `services`
+	// doesn't change `queryFn` or the services phantom.
+	return {
+		...options,
+		kind: "infinite",
+	} as InfiniteQueryOptions<
+		InfiniteQueryTypesOf<TPage, TPageParam, TError, TServices>
+	>;
 }
 
 interface FactoryResult {
