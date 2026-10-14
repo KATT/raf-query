@@ -30,9 +30,14 @@ const none = () => 0;
 
 /**
  * How many queries have a request in flight: all of them, or those matching
- * `filter`. Re-renders when the count changes, for global loading
- * indicators. It's `0` on the server and while hydrating, so the server's
- * HTML and the browser's first render agree:
+ * `filter`. Re-renders when the count changes. It's `0` on the server and
+ * while hydrating, so the server's HTML and the browser's first render agree.
+ *
+ * You probably don't need this. Prefer the router's pending UI for
+ * navigations (`useRouterState` / `pendingComponent` in TanStack Router,
+ * `useLinkStatus` in Next.js) and per-query `controls.isFetching` for
+ * background refetches. Kept for TanStack Query compatibility when you want
+ * one global count of every in-flight request:
  *
  * ```tsx
  * const fetching = useIsFetching();
