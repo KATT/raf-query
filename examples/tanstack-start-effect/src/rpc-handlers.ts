@@ -32,38 +32,44 @@ const IssueHandlers = IssueRpcs.toLayer({
 		Effect.promise(() => addComment(payload, options(request))),
 	CountIssues: (_payload, request) =>
 		Effect.promise(() => countIssues(options(request))),
-	GetIssue: (payload, request) =>
-		Effect.promise(() => getIssue(payload.id, options(request))).pipe(
-			Effect.flatMap((issue) =>
-				issue
-					? Effect.succeed(issue)
-					: Effect.fail(new IssueNotFound({ id: payload.id })),
-			),
-		),
-	GetIssueAssignee: (payload, request) =>
-		Effect.promise(() =>
-			getIssueAssignee(payload.issueId, options(request)),
-		).pipe(
-			Effect.flatMap((user) =>
-				user
-					? Effect.succeed(user)
-					: Effect.fail(new IssueNotFound({ id: payload.issueId })),
-			),
-		),
+	GetIssue: Effect.fn("IssueRpcs.GetIssue")(function* (payload, request) {
+		const issue = yield* Effect.promise(() =>
+			getIssue(payload.id, options(request)),
+		);
+		if (issue === null) {
+			return yield* new IssueNotFound({ id: payload.id });
+		}
+		return issue;
+	}),
+	GetIssueAssignee: Effect.fn("IssueRpcs.GetIssueAssignee")(
+		function* (payload, request) {
+			const user = yield* Effect.promise(() =>
+				getIssueAssignee(payload.issueId, options(request)),
+			);
+			if (user === null) {
+				return yield* new IssueNotFound({ id: payload.issueId });
+			}
+			return user;
+		},
+	),
 	ListComments: (payload, request) =>
 		Effect.promise(() => listComments(payload, options(request))),
 	ListIssues: (payload, request) =>
 		Effect.promise(() => listIssues(payload, options(request))),
 	SetStatus: (payload, request) =>
 		Effect.promise(() => updateIssue(payload, options(request))),
-	UpdateBody: (payload, request) =>
-		payload.body.trim() === ""
-			? Effect.fail(new EmptyBody())
-			: Effect.promise(() => updateIssue(payload, options(request))),
-	UpdateTitle: (payload, request) =>
-		payload.title.trim() === ""
-			? Effect.fail(new EmptyTitle())
-			: Effect.promise(() => updateIssue(payload, options(request))),
+	UpdateBody: Effect.fn("IssueRpcs.UpdateBody")(function* (payload, request) {
+		if (payload.body.trim() === "") {
+			return yield* new EmptyBody();
+		}
+		return yield* Effect.promise(() => updateIssue(payload, options(request)));
+	}),
+	UpdateTitle: Effect.fn("IssueRpcs.UpdateTitle")(function* (payload, request) {
+		if (payload.title.trim() === "") {
+			return yield* new EmptyTitle();
+		}
+		return yield* Effect.promise(() => updateIssue(payload, options(request)));
+	}),
 });
 
 const RpcRoute = RpcServer.layerHttp({
