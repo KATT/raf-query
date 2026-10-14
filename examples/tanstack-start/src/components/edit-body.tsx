@@ -1,5 +1,6 @@
 import { api, parseResponse } from "~/api.ts";
 import type { Issue } from "@examples/db/types";
+import { warnMockDbWrite } from "@examples/ui/lib/mock-db-toast";
 import { cn } from "@examples/ui/lib/utils";
 import { useQueryClient } from "@raf-query/react";
 import { useActionState, useOptimistic } from "react";
@@ -21,6 +22,7 @@ export function EditBody(props: { readonly issue: Issue }) {
 			if (next === "") {
 				return "Description can't be empty";
 			}
+			warnMockDbWrite();
 			setOptimisticBody(next);
 			try {
 				await parseResponse(
