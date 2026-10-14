@@ -9,7 +9,23 @@ order: 1
 
 On Vite and TanStack Start, use `import.meta.env.DEV`:
 
-<<< ./devtools/src/app.tsx#vite-app
+```tsx twoslash
+/// <reference types="vite/client" />
+import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@raf-query/react";
+import { QueryDevtools } from "@raf-query/react/devtools";
+declare const props: { children: ReactNode };
+declare const queryClient: QueryClient;
+// ---cut---
+function App() {
+	return (
+		<QueryClientProvider client={queryClient}>
+			{props.children}
+			{import.meta.env.DEV ? <QueryDevtools /> : null}
+		</QueryClientProvider>
+	);
+}
+```
 
 On Next.js, use `process.env.NODE_ENV !== "production"` instead — see [Next.js](./nextjs.md). Either check is replaced at build time, so the production branch is empty and the panel's code is tree-shaken. Omit the element (or the whole import) whenever you don't want the panel — there is no separate production entry.
 
@@ -54,6 +70,12 @@ All optional:
 
 `QueryDevtoolsPanel` is the panel alone, to place in your own layout. It takes `client`, `theme`, `style`, and `onClose`, which adds a close button.
 
-<<< ./devtools/src/panel.tsx#devtools-panel
+```tsx twoslash
+import { QueryDevtoolsPanel } from "@raf-query/react/devtools";
+// ---cut---
+function Panel() {
+	return <QueryDevtoolsPanel style={{ height: 400 }} theme="dark" />;
+}
+```
 
 Both components render nothing on the server, since the server's cache isn't the browser's.

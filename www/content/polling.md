@@ -7,7 +7,17 @@ order: 16
 
 `refetchInterval` refetches a query every so many milliseconds while a component is reading it. It's an option of the read, not of the query, because it's the screen that knows it needs live data:
 
-<<< ./polling/fixed-interval/src/components/build-status.tsx#build-status
+```tsx twoslash
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { buildQuery } from "~/queries.ts";
+// ---cut---
+function BuildStatus(props: { handle: QueryHandle<typeof buildQuery> }) {
+	const [buildPromise, build] = useQuery(buildQuery, props.handle, {
+		refetchInterval: 2000,
+	});
+	// ...
+}
+```
 
 - Polling starts when the component mounts and stops when it unmounts.
 - Each reader polls on its own timer. Requests are deduped, so a poll that lands while another request for the query is in flight joins it instead of starting a second one.
@@ -24,7 +34,16 @@ polling
 
 The interval is a plain value read on every render, so you can change it with state. Pass `undefined` to stop polling, for instance once the data says there's nothing left to wait for:
 
-<<< ./polling/until-done/src/components/build-status.tsx#interval
+```tsx twoslash
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { buildQuery } from "~/queries.ts";
+declare const props: { handle: QueryHandle<typeof buildQuery> };
+declare const buildState: "pending" | "running" | "done" | "failed";
+// ---cut---
+const [buildPromise, build] = useQuery(buildQuery, props.handle, {
+	refetchInterval: buildState === "running" ? 1000 : undefined,
+});
+```
 
 ## Polling and staleTime
 
