@@ -54,7 +54,7 @@ pnpm build:examples     # production builds of every app, as CI runs them
 pnpm preview:examples   # build all four, then serve the production builds
 ```
 
-Every database call waits `DB_LATENCY_MS` (default 400) ± 50%. Data the server loads for the first render streams in with the HTML. Later loads (scrolling, filters, opening an issue) are requests to the shared REST API (`examples/.shared/api`) in the browser's network tab, such as `GET /api/issues?status=open&cursor=10`, and mutations are `PATCH` / `POST` to it. Both apps serve the same API under `/api`. Data lives in memory and resets when the server restarts. To add a shadcn component, run `pnpm dlx shadcn@latest add <name>` in `examples/.shared/ui`, then check that it imports `cn` from `@examples/ui/lib/utils` (the CLI can write a bare `"cn"` import and add a `cn` dependency).
+Every database call waits the latency picked in the app's top bar, or `DB_LATENCY_MS` (default 400), ± 50%. The top bar also sets how links prefetch. Data the server loads for the first render streams in with the HTML. Later loads (scrolling, filters, opening an issue) are requests to the shared REST API (`examples/.shared/api`) in the browser's network tab, such as `GET /api/issues?status=open&cursor=10`, and mutations are `PATCH` / `POST` to it. Both apps serve the same API under `/api`. Data lives in memory and resets when the server restarts. To add a shadcn component, run `pnpm dlx shadcn@latest add <name>` in `examples/.shared/ui`, then check that it imports `cn` from `@examples/ui/lib/utils` (the CLI can write a bare `"cn"` import and add a `cn` dependency).
 
 ### CodeSandbox
 
