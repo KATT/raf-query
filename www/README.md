@@ -23,39 +23,57 @@ order: 16 # position in the section
 
 - Link other pages as `./slug.md` or `./slug.md#heading`. The build fails on a link to a page or heading that doesn't exist.
 - `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]` and friends render as callouts.
-- A code fence can take a title: ` ```ts title="src/queries.ts" `.
+- A code fence can take a title: ` ```sh title="Terminal" `.
 
 ### Types in code blocks
 
-Every `ts` / `tsx` fence uses [Twoslash](https://twoslash.netlify.app): hovering a name shows its type, as in an editor.
+Every `ts` / `tsx` block is compiled with [Twoslash](https://twoslash.netlify.app): hovering a name shows its type, as in an editor, and a compile error the block doesn't expect fails the build, so the samples stay correct as the API changes. A block is one of two kinds.
+
+**A `sample` fence** shows part of a file of a sample app. Its one line is the file's path from `samples/` and a region:
 
 ````md
-```tsx twoslash
-import { type EnsuredQueryHandle, useQuery } from "@raf-query/react";
-import { postQuery } from "~/queries.ts";
-declare const handle: EnsuredQueryHandle<typeof postQuery>;
-// ---cut---
-const [post] = useQuery(postQuery, handle);
-//     ^?
+```sample
+tanstack-start/src/docs/window-focus-refetching.per-query.ts#per-query
 ```
 ````
 
-- Code above `// ---cut---` compiles but isn't shown. Import what the block needs there: real libraries, and files of the TanStack Start sample app the blocks are written against (`~/api.ts`, `~/queries.ts`, `~/routes/posts.$slug.tsx`). Declare anything else the block leans on, like a component it renders (`declare function Spinner(): ReactNode`).
-- A block that defines a route starts with `// @filename: tanstack-start/src/routes/posts.$slug.tsx` (a path from `samples/`), so it compiles as that route file and `Route.useLoaderData()` has its loader's types.
-- `// ^?` pins the type of the name above it under the line.
-- `// @errors: 2345` shows an expected compiler error. Any error a block doesn't expect fails the build, so the samples stay correct as the API changes.
-- In a page's markdown for agents, the hidden setup and markers are removed, and each `// ^?` becomes a comment with its type.
-- Twoslash needs TypeScript's JavaScript API, which TypeScript 7 doesn't have, so it runs on `typescript6` (TypeScript 6).
+```ts
+// samples/tanstack-start/src/docs/window-focus-refetching.per-query.ts
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { settingsQuery } from "~/queries.ts";
 
-The sample apps are workspace packages in `samples/`: `tanstack-start` (`@samples/tanstack-start`) for every inline block and the pages built on TanStack Start, `tanstack-start-effect` (`@samples/tanstack-start-effect`) for the Effect pages, and `nextjs` (`@samples/nextjs`) for the Next.js page. A page's inline blocks compile in `tanstack-start` unless its frontmatter names another app, like `sampleApp: tanstack-start-effect`. Each declares the dependencies its blocks import, and `pnpm typecheck` runs its `tsc`. The build regenerates their route trees.
+declare const loaderData: { settings: QueryHandle<typeof settingsQuery> };
 
-Pages that walk through an app's files (the quick start, TanStack Start, Next.js) include them from a sample app:
-
-```md
-<<< ../samples/tanstack-start/src/routes/todos.tsx#loader
+// #region per-query
+const [settings] = useQuery(settingsQuery, loaderData.settings, {
+	refetchOnWindowFocus: false,
+});
+// #endregion
 ```
 
-That shows the `// #region loader` … `// #endregion` part of the file, compiled with the rest of it in its app. Without `#loader` it shows the whole file.
+- The page shows the lines between `// #region per-query` and `// #endregion`, dedented. A region can come in several parts, which show together (a `"use client"` part at the top of the file, then the component), and regions can nest. Without `#name`, the page shows the whole file.
+- The whole file compiles in its app, with every other file of the app, so it sees what `tsc` sees: the route tree, the router context, the app's `Register`. `Route.useLoaderData()` in a route file has its loader's types.
+- A block that is a file of the app, like a route the page walks through, is that file: `tanstack-start/src/routes/posts.$slug.tsx#route`. Its title is its path in the app (`src/routes/posts.$slug.tsx`). `title="…"` on the fence sets another one, `title=""` none.
+- The rest of a page's blocks are in `src/docs/<page>.ts` or `.tsx`, a region per block, named after its section. Blocks whose setup can't share a file (two `Route`s, a different `declare` of the same name) go in `src/docs/<page>.<region>.ts`. These files get no title.
+- `// ^?` under a line pins the type of the name above it. A `// ^?` outside the region isn't shown.
+- `// @ts-expect-error -- 2345: why` above a line shows the block's expected error 2345 on it, in place of the comment.
+
+**A `twoslash` fence** is written inline, for a block that stands on its own: it imports packages, never a file (`~/…`, `./…`), and the build fails if it does. It compiles with `tanstack-start`'s compiler options and `node_modules` but none of the app's files. A block that needs a route, a query of the app or a stub is a `sample`.
+
+````md
+```ts twoslash
+import { useIsFetching } from "@raf-query/react";
+// ---cut---
+const savingComments = useIsFetching({ queryKey: ["comments"] });
+```
+````
+
+- Code above `// ---cut---` compiles but isn't shown.
+- `// ^?` and `// @errors: 2345` work as in Twoslash.
+
+In both kinds, the page's markdown for agents drops the hidden code and markers, and each `// ^?` becomes a comment with its type. Twoslash needs TypeScript's JavaScript API, which TypeScript 7 doesn't have, so it runs on `typescript6` (TypeScript 6).
+
+The sample apps are workspace packages in `samples/`: `tanstack-start` (`@samples/tanstack-start`) for the pages built on TanStack Start, `tanstack-start-effect` (`@samples/tanstack-start-effect`) for the Effect pages, and `nextjs` (`@samples/nextjs`) for the Next.js page. Each declares the dependencies its files import, `pnpm typecheck` runs its `tsc`, and `pnpm lint` lints it (`src/docs/` files are page fragments, so some app rules are off there). The build regenerates their route trees.
 
 ## Demos
 
