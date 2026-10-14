@@ -2,6 +2,8 @@ import {
 	LATENCY_COOKIE,
 	LATENCY_HEADER,
 	parseLatency,
+	parseStaleTime,
+	STALE_TIME_COOKIE,
 } from "@examples/db/types";
 import type { AnyRouter } from "@tanstack/react-router";
 import { createIsomorphicFn } from "@tanstack/react-start";
@@ -53,6 +55,11 @@ export function readPrefetch() {
 /** The chosen latency, or `undefined` for the server's default. */
 export function readLatency() {
 	return parseLatency(readCookies()[LATENCY_COOKIE]);
+}
+
+/** The chosen stale time, or `undefined` for the app's default. */
+export function readStaleTime() {
+	return parseStaleTime(readCookies()[STALE_TIME_COOKIE]);
 }
 
 /**
