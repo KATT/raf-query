@@ -10,8 +10,9 @@
 - Don't record video demos or screen recordings. They are slow and cost a lot of tokens. Instead, the PR description deep-links the Vercel previews of the pages the change affects (exact page or route, with an anchor when it helps — not just the site root).
 - **Never invent or guess a preview hostname.** Copy the base URL from the Vercel bot's PR comment after that project's deployment is Ready (`Preview` column). Projects: `www` → `raf-query`, `examples/nextjs` → `raf-query-nextjs`, `examples/tanstack-start` → `raf-query-tanstack-start`. Hostnames include a team suffix (today `-trpc.vercel.app`) and long branch names can be truncated — guessing `-katt`, production, or a hand-built slug will 404. If the deploy isn't Ready yet, omit the links (or say "pending") and add them in a follow-up edit once the bot posts Ready URLs.
 
-## Big changes
+## Commits and pull requests
 
+- Open PRs ready for review, not as drafts. Use a draft only for experiments and prototypes that aren't meant to merge as they are.
 - Commit early and often: one commit per step that works, not one at the end.
 - Split a big body of work into stacked PRs instead of finishing it all first. Open each PR as soon as its piece stands on its own, with the previous PR's branch as its base, so review starts while you build the next piece. Say in each PR description where it sits in the stack and link the other PRs.
 - PRs merge with a squash, so when one lower in the stack merges, rebase the next branch onto `main` and point its PR's base at `main`.
