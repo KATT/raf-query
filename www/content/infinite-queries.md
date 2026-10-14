@@ -7,20 +7,7 @@ order: 10
 
 Lists that load more data onto what's already shown, such as "load more" buttons and infinite scroll, are a common UI pattern. A paged factory returns `infiniteQueryOptions(...)`; everything else uses the same `useQuery` and the same verbs as any query.
 
-```ts twoslash title="src/queries.ts"
-import { infiniteQueryOptions } from "@raf-query/react";
-import { listComments } from "./_twoslash.ts";
-// ---cut---
-export function commentsQuery(input: { slug: string }) {
-	return infiniteQueryOptions({
-		queryKey: ["comments", input.slug],
-		queryFn: (context) =>
-			listComments({ slug: input.slug, cursor: context.pageParam }),
-		initialPageParam: 0,
-		getNextPageParam: (lastPage) => lastPage.nextCursor,
-	});
-}
-```
+<<< ./infinite-queries/src/queries.ts#comments-query [src/queries.ts]
 
 - `initialPageParam` is the first page's param.
 - `getNextPageParam(lastPage, pages, lastPageParam, pageParams)` returns the next page's param, or `null` / `undefined` when there are no more pages.
@@ -30,34 +17,7 @@ export function commentsQuery(input: { slug: string }) {
 
 With a paged factory, `useQuery` returns the same tuple. The promise resolves to `{ pages, pageParams }`, and the controls add paging:
 
-```tsx twoslash
-import { type QueryHandle, useQuery } from "@raf-query/react";
-import { use } from "react";
-import { commentsQuery, type PostComment } from "./_twoslash.ts";
-declare function Comment(props: PostComment): React.ReactNode;
-// ---cut---
-function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
-	const [pagesPromise, comments] = useQuery(commentsQuery, props.handle);
-	const data = use(pagesPromise);
-	//    ^?
-
-	return (
-		<>
-			{data.pages
-				.flatMap((page) => page.items)
-				.map((comment) => (
-					<Comment key={comment.id} {...comment} />
-				))}
-			<button
-				disabled={!comments.hasNextPage || comments.isFetchingNextPage}
-				onClick={() => comments.fetchNextPage()}
-			>
-				Load more
-			</button>
-		</>
-	);
-}
-```
+<<< ./infinite-queries/src/components/comments.tsx#reading-pages
 
 | Control                                        | Meaning                                      |
 | ---------------------------------------------- | -------------------------------------------- |
@@ -71,40 +31,7 @@ They exist only on the type for paged factories.
 
 Infinite scroll is the same paged query with an automatic "Load more". A ref callback watches the button and presses it when it nears the viewport. Unmount the button while a page loads: it watches again when it remounts, so it keeps loading while it stays in reach. Its place is taken by skeletons the size of the incoming page, so the loaded rows replace them without moving anything below.
 
-```tsx twoslash
-import { type QueryHandle, useQuery } from "@raf-query/react";
-import { commentsQuery } from "./_twoslash.ts";
-declare function CommentSkeletons(): React.ReactNode;
-declare const props: { handle: QueryHandle<typeof commentsQuery> };
-const [, comments] = useQuery(commentsQuery, props.handle);
-// ---cut---
-{
-	comments.isFetchingNextPage ? <CommentSkeletons /> : null;
-}
-{
-	comments.hasNextPage && !comments.isFetchingNextPage ? (
-		<button
-			onClick={() => comments.fetchNextPage()}
-			ref={(button) => {
-				if (button === null) return;
-				const observer = new IntersectionObserver(
-					(entries) => {
-						if (entries.some((entry) => entry.isIntersecting)) {
-							observer.disconnect();
-							comments.fetchNextPage();
-						}
-					},
-					{ rootMargin: "0px 0px 300px 0px" },
-				);
-				observer.observe(button);
-				return () => observer.disconnect();
-			}}
-		>
-			Load more
-		</button>
-	) : null;
-}
-```
+<<< ./infinite-queries/src/components/infinite-scroll.tsx#infinite-scroll
 
 Scroll the feed below. Switch the filter to see a new list start from its first page, and switch back to find the old one still cached, with every page you loaded.
 
@@ -116,14 +43,7 @@ infinite-scroll
 
 On the server, `ensure` and `fetch` load the first page. Pass `{ pages: n }` as a third argument to load more:
 
-```ts twoslash
-import { QueryClient } from "@raf-query/react";
-import { commentsQuery } from "./_twoslash.ts";
-const qc = new QueryClient();
-declare const slug: string;
-// ---cut---
-const comments = await qc.ensure(commentsQuery, { slug }, { pages: 2 });
-```
+<<< ./infinite-queries/src/ensure-pages.ts#ensure-pages
 
 The option is only accepted for paged factories.
 
@@ -141,28 +61,7 @@ A refetch is different: it replaces every page with what it read, as a plain que
 
 Add `getPreviousPageParam` to load pages before the first one, for a chat log that starts in the middle:
 
-```ts twoslash
-import { infiniteQueryOptions } from "@raf-query/react";
-interface MessagePage {
-	readonly items: ReadonlyArray<{ readonly id: string; readonly body: string }>;
-	readonly nextCursor: string | null;
-	readonly previousCursor: string | null;
-}
-declare function listMessages(input: {
-	readonly channel: string;
-	readonly cursor: string;
-}): Promise<MessagePage>;
-declare const input: { channel: string; around: string };
-// ---cut---
-infiniteQueryOptions({
-	queryKey: ["messages", input.channel],
-	queryFn: (context) =>
-		listMessages({ channel: input.channel, cursor: context.pageParam }),
-	initialPageParam: input.around,
-	getNextPageParam: (lastPage) => lastPage.nextCursor,
-	getPreviousPageParam: (firstPage) => firstPage.previousCursor,
-});
-```
+<<< ./infinite-queries/src/queries.ts#bidirectional-messages
 
 `context.direction` tells the `queryFn` which end it's loading.
 
