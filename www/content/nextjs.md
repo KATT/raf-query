@@ -87,10 +87,11 @@ export default async function Page(props: {
 ```
 
 ```tsx twoslash title="src/components/comments.tsx"
+"use client";
+// ---cut-start---
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { commentsQuery } from "./_twoslash.ts";
-// ---cut---
-("use client");
+// ---cut-end---
 
 export function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	const [commentsPromise] = useQuery(commentsQuery, props.handle);
