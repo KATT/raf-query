@@ -22,7 +22,7 @@ A factory with two parameters doesn't type-check where it's used:
 ```ts twoslash
 // @errors: 2345
 import { QueryClient, queryOptions } from "@raf-query/react";
-import { getPost } from "./_twoslash.ts";
+import { getPost } from "./query-factories/src/api.ts";
 const qc = new QueryClient();
 // ---cut---
 function postPageQuery(slug: string, page: number) {
