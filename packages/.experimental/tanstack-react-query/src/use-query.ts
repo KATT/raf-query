@@ -133,7 +133,6 @@ function createReader(
 	const infinite = paged
 		? new InfiniteQueryObserver(
 				client,
-				// oxlint-disable-next-line typescript/consistent-type-assertions
 				options as ConstructorParameters<
 					typeof InfiniteQueryObserver<
 						unknown,
@@ -148,8 +147,7 @@ function createReader(
 	// SAFETY: an infinite observer is a query observer whose data is
 	// `InfiniteData`; readers only pass that data through as `unknown`.
 	const observer = infinite
-		? // oxlint-disable-next-line typescript/consistent-type-assertions
-			(infinite as QueryObserver<unknown, DefaultError, unknown, unknown>)
+		? (infinite as QueryObserver<unknown, DefaultError, unknown, unknown>)
 		: new QueryObserver<unknown, DefaultError, unknown, unknown>(
 				client,
 				options,
@@ -187,7 +185,6 @@ function observerOptions(
 ): Defaulted {
 	// SAFETY: factory options are TanStack observer options plus `kind`
 	// (see `queryOptions` / `infiniteQueryOptions`).
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	const base = options as ObserverOptions;
 	const next: ObserverOptions = { ...base, refetchOnMount: false };
 	if (read.refetchInterval !== undefined) {
@@ -317,6 +314,5 @@ export function useQuery<TFactory extends QueryFactory>(
 	// SAFETY: `shown.promise` is this factory's entry's promise (or an earlier
 	// input's entry of the same factory), and `controls` has every field of
 	// both control shapes.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return [shown.promise, controls] as UseQueryResult<TFactory>;
 }

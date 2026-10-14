@@ -80,7 +80,6 @@ export function queryFor<TFactory extends QueryFactory>(
 ): Query.Query<TFactory> {
 	// SAFETY: `input` is a handle's input, and handles are typed to the
 	// factory they were created through (`QueryHandle<TFactory>`).
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	const args = [input] as InputArgs<TFactory>;
 	return client.getQuery(factory, ...args);
 }
@@ -119,7 +118,6 @@ function withPromiseCommands(tracked: QueryObserver.Result): PromiseCommands {
 	});
 	// SAFETY: the trap above replaces exactly the `Command` properties with
 	// Promise functions and forwards every other read.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return proxied as unknown as PromiseCommands;
 }
 
@@ -223,12 +221,10 @@ export function useQuery<TFactory extends QueryFactory>(
 	if (handle.ensured === true) {
 		const data = use(result.promise);
 		// SAFETY: as below; `use` unwraps the promise to its data.
-		// oxlint-disable-next-line typescript/consistent-type-assertions
 		return [data, controls] as UseEnsuredQueryResult<TFactory>;
 	}
 	// SAFETY: the result's promise is this factory's entry's promise (or an
 	// earlier input's entry of the same factory), and the result has every
 	// field of both control shapes.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return [result.promise, controls] as UseQueryResult<TFactory>;
 }

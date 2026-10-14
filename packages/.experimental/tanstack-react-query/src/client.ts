@@ -38,16 +38,12 @@ function start(
 		// SAFETY: `kind: "infinite"` is only stamped by `infiniteQueryOptions`,
 		// whose options are TanStack infinite query options.
 		return client.infiniteQuery(
-			// oxlint-disable-next-line typescript/consistent-type-assertions
 			execute as unknown as InfiniteQueryExecuteOptions,
 		);
 	}
 	// SAFETY: `kind: "query"` is only stamped by `queryOptions`, whose options
 	// are TanStack query options.
-	return client.query(
-		// oxlint-disable-next-line typescript/consistent-type-assertions
-		{ ...options, retry } as QueryExecuteOptions,
-	);
+	return client.query({ ...options, retry } as QueryExecuteOptions);
 }
 
 /**
@@ -105,7 +101,6 @@ export async function ensureData<TFactory extends QueryFactory>(
 ): Promise<DataOf<TFactory>> {
 	const options = optionsFor(client, factory, args[0]);
 	// SAFETY: the entry under this factory's key holds this factory's data.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return (await load(client, options, args[1]?.pages)) as DataOf<TFactory>;
 }
 
@@ -142,6 +137,5 @@ export function getData<TFactory extends QueryFactory>(
 ): DataOf<TFactory> | undefined {
 	const options = optionsFor(client, factory, args[0]);
 	// SAFETY: the entry under this factory's key holds this factory's data.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return client.getQueryData(options.queryKey) as DataOf<TFactory> | undefined;
 }

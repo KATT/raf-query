@@ -148,7 +148,6 @@ export function entryOf<TFactory extends QueryFactory>(
 ): Entry {
 	// SAFETY: `make` below creates every value that carries `TypeId`, and the
 	// public `Query` type is how those entries leave this module.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return query as unknown as Entry;
 }
 

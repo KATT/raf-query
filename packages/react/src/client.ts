@@ -38,7 +38,6 @@ function provided<A, E, R>(
 	// SAFETY: the cache was built over the client's `layer`, so every request
 	// already runs with those services, and the verbs take only factories of
 	// `QueryFactory<TServices>`.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return effect as Effect.Effect<A, E>;
 }
 
@@ -63,7 +62,6 @@ function loadArgs<TFactory extends QueryFactory>(
 	// SAFETY: the client's overloads checked `input` against the factory and
 	// allowed `options` for paged factories only, as the cache's overloads do;
 	// the cache reads both positions.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return [input, options] as unknown as InputArgs<TFactory>;
 }
 

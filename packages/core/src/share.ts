@@ -40,6 +40,5 @@ function share(previous: unknown, next: unknown, depth: number): unknown {
 export function replaceEqualDeep<T>(previous: unknown, next: T): T {
 	// SAFETY: `share` returns `next`, or `previous` / a copy only where they
 	// are deeply equal to `next`, so the result has `next`'s shape.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return share(previous, next, 0) as T;
 }

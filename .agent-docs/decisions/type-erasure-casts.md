@@ -1,3 +1,3 @@
 # Casts in the type-erased cache (human)
 
-- `.oxlintrc.json` turns off `anti-slop/no-unknown-parameters`, `no-unknown-returns`, `no-unsafe-dictionary-type` for `packages/*/src/**`: the cache is type-erased on purpose and factory generics restore types at the public boundary. Each remaining cast is inline, with a `SAFETY:` comment and an oxlint disable for `typescript/consistent-type-assertions`. When the types don't overlap, the cast is `value as unknown as T` (`anti-slop/no-chained-type-assertions` is off).
+- `.oxlintrc.json` turns off `anti-slop/no-unknown-parameters`, `no-unknown-returns`, `no-unsafe-dictionary-type` for `packages/*/src/**`: the cache is type-erased on purpose and factory generics restore types at the public boundary. Each remaining cast is inline, with a `SAFETY:` comment (`anti-slop/require-safety-comment-for-type-assertion`). When the types don't overlap, the cast is `value as unknown as T` (`anti-slop/no-chained-type-assertions` is off).

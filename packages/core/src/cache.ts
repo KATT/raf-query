@@ -289,7 +289,6 @@ function typed<TFactory extends QueryFactory>(
 	// SAFETY: an entry's hash comes from its factory's `queryKey`, and only
 	// that factory's `queryFn` (or data written through the same factory)
 	// fills it, so its data and errors have the factory's types.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return entry as unknown as Query.Query<TFactory>;
 }
 
@@ -298,7 +297,6 @@ function handleOf<TFactory extends QueryFactory>(
 ): QueryHandle<TFactory> {
 	// SAFETY: `entry.handle.input` is the input of the latest call through
 	// this factory, which `InputArgs<TFactory>` type-checked.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return entry.handle as unknown as QueryHandle<TFactory>;
 }
 
@@ -307,7 +305,6 @@ function dataOf<TFactory extends QueryFactory>(
 ): DataOf<TFactory> {
 	// SAFETY: only called when `hasData` is set, so `data` came from this
 	// factory's queryFn or Entry.setData, even when its type includes `undefined`.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return entry.state.data as DataOf<TFactory>;
 }
 
@@ -335,7 +332,6 @@ function load<TFactory extends QueryFactory>(
 ): Effect.Effect<DataOf<TFactory>, ErrorOf<TFactory> | Query.CancelledError> {
 	if (!entry.state.hasData || (fresh && Entry.needsRefetch(entry))) {
 		// SAFETY: as in `typed`.
-		// oxlint-disable-next-line typescript/consistent-type-assertions
 		return Entry.fetch(entry, { pages }) as Effect.Effect<
 			DataOf<TFactory>,
 			ErrorOf<TFactory> | Query.CancelledError
@@ -397,7 +393,6 @@ export const make: (
 		const match = <TFactory extends QueryFactory>(target: Target<TFactory>) => {
 			// SAFETY: a target is a factory and its input, or a lone filter;
 			// `InputArgs` only narrows the input's type.
-			// oxlint-disable-next-line typescript/consistent-type-assertions
 			const [first, input] = target as readonly [
 				QueryFactory | Filter,
 				unknown?,
@@ -536,7 +531,6 @@ export const make: (
 						buildFor(factory, args[0]),
 						(entry) =>
 							// SAFETY: as in `typed`, for every element.
-							// oxlint-disable-next-line typescript/consistent-type-assertions
 							Entry.changes(entry) as Stream.Stream<
 								Query.State<DataOf<typeof factory>>
 							>,

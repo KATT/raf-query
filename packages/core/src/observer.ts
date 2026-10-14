@@ -151,7 +151,6 @@ function implOf<TFactory extends QueryFactory>(
 ): Impl<TFactory> {
 	// SAFETY: `makeUnsafe` creates every value that carries `TypeId`, and the
 	// public `QueryObserver` type is how they leave this module.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return self as Impl<TFactory>;
 }
 

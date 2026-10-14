@@ -137,7 +137,6 @@ export function queryOptions<TData>(
 ): QueryOptions<{ data: TData }> {
 	// SAFETY: the data tag on `queryKey` is type-only (TanStack's own
 	// `queryOptions` is the identity function); `queryFn` produces `TData`.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return { ...options, kind: "query" } as QueryOptions<{ data: TData }>;
 }
 
@@ -150,7 +149,6 @@ export function infiniteQueryOptions<TPage, TPageParam>(
 ): InfiniteQueryOptions<{ page: TPage; pageParam: TPageParam }> {
 	// SAFETY: as in `queryOptions`; the paged `queryFn` and page params make
 	// the entry's data `InfiniteData<TPage, TPageParam>`.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return { ...options, kind: "infinite" } as InfiniteQueryOptions<{
 		page: TPage;
 		pageParam: TPageParam;
@@ -222,7 +220,6 @@ export function handleOf<TFactory extends QueryFactory>(
 ): QueryHandle<TFactory> {
 	// SAFETY: `input` is what the caller passed for this factory, which
 	// `InputArgs<TFactory>` type-checked.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return { input, key: options.queryKey } as QueryHandle<TFactory>;
 }
 
@@ -268,7 +265,6 @@ export function optionsFor(
 	// SAFETY: every caller passes the factory's own input (typed through
 	// `InputArgs<TFactory>`); `QueryFactory` erases it to `never` only so that
 	// any one-argument factory is assignable.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	const call = factory as (input: unknown) => AnyQueryOptions;
 	const options = call(input);
 	if (process.env.NODE_ENV !== "production") {
