@@ -7,7 +7,48 @@ order: 2
 
 A `queryFn`'s Effect can require services. They're part of the factory's type, `ServicesOf<TFactory>`, and every verb that can start the query requires them:
 
-<<< ./effect-services/src/services-overview.ts
+```ts twoslash
+import { QueryCache, queryOptions } from "@raf-query/core";
+import { Context, Effect, Layer } from "effect";
+
+declare class IssueNotFound {
+	readonly _tag: "IssueNotFound";
+}
+declare interface Issue {
+	readonly id: number;
+	readonly title: string;
+}
+declare const IssueRepo: {
+	get(id: number): Effect.Effect<Issue, IssueNotFound>;
+};
+// ---cut---
+class IssueApi extends Context.Service<
+	IssueApi,
+	{ readonly get: (id: number) => Effect.Effect<Issue, IssueNotFound> }
+>()("app/IssueApi") {}
+
+const IssueApiLive = Layer.succeed(IssueApi, { get: IssueRepo.get });
+
+export function issueQuery(input: { id: number }) {
+	return queryOptions({
+		queryKey: ["issue", input.id],
+		queryFn: () =>
+			Effect.gen(function* () {
+				const api = yield* IssueApi;
+				return yield* api.get(input.id);
+			}),
+	});
+}
+
+// Effect<Issue, IssueNotFound | Query.CancelledError, QueryCache | IssueApi>
+const issue = QueryCache.QueryCache.use((cache) =>
+	cache.fetch(issueQuery, { id: 1 }),
+);
+
+Effect.runFork(
+	issue.pipe(Effect.provide(QueryCache.layer()), Effect.provide(IssueApiLive)),
+);
+```
 
 ## Which services a request runs with
 
@@ -24,7 +65,39 @@ Each request runs in a `raf-query.request` span with a `raf_query.hash` attribut
 
 `QueryClient` gets its services from a `layer`. It's built into the client's scope along with the cache, so it must build synchronously:
 
-<<< ./effect-services/src/query-client-layer.ts#query-client
+```ts twoslash
+import { QueryClient, queryOptions } from "@raf-query/react";
+import { Context, Effect, Layer } from "effect";
+declare class IssueNotFound {
+	readonly _tag: "IssueNotFound";
+}
+declare interface Issue {
+	readonly id: number;
+}
+declare const IssueRepo: {
+	get(id: number): Effect.Effect<Issue, IssueNotFound>;
+};
+class IssueApi extends Context.Service<
+	IssueApi,
+	{ readonly get: (id: number) => Effect.Effect<Issue, IssueNotFound> }
+>()("app/IssueApi") {}
+const IssueApiLive = Layer.succeed(IssueApi, { get: IssueRepo.get });
+function issueQuery(input: { id: number }) {
+	return queryOptions({
+		queryKey: ["issue", input.id],
+		queryFn: () =>
+			Effect.gen(function* () {
+				const api = yield* IssueApi;
+				return yield* api.get(input.id);
+			}),
+	});
+}
+// ---cut---
+const queryClient = new QueryClient({ layer: IssueApiLive }); // QueryClient<IssueApi>
+const handle = queryClient.prefetch(issueQuery, { id: 1 });
+
+await queryClient.dispose();
+```
 
 The client's type is `QueryClient<TServices>`, and its verbs accept only factories whose services the layer provides. Any other factory is a type error. `dispose()` interrupts every request and runs the layer's finalizers.
 
@@ -34,4 +107,20 @@ The client's type is `QueryClient<TServices>`, and its verbs accept only factori
 
 In TanStack Start, type the router context with the client's services, so loaders keep the check:
 
-<<< ./effect-services/src/router-context.ts#context
+```ts twoslash
+import type { QueryClient } from "@raf-query/react";
+import { Context, Effect } from "effect";
+declare class IssueNotFound {
+	readonly _tag: "IssueNotFound";
+}
+declare interface Issue {
+	readonly id: number;
+}
+class IssueApi extends Context.Service<
+	IssueApi,
+	{ readonly get: (id: number) => Effect.Effect<Issue, IssueNotFound> }
+>()("app/IssueApi") {}
+declare function createRootRouteWithContext<TContext>(): () => unknown;
+// ---cut---
+createRootRouteWithContext<{ queryClient: QueryClient<IssueApi> }>();
+```
