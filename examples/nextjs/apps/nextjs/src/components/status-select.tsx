@@ -8,6 +8,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@examples/ui/components/dropdown-menu";
+import { warnMockDbWrite } from "@examples/ui/lib/mock-db-toast";
 import { cn } from "@examples/ui/lib/utils";
 import { useQueryClient } from "@raf-query/react";
 import { Check } from "lucide-react";
@@ -31,6 +32,7 @@ export function StatusSelect(props: {
 			return;
 		}
 		startTransition(async () => {
+			warnMockDbWrite();
 			setOptimisticStatus(next);
 			await parseResponse(
 				api.issues[":id"].$patch({

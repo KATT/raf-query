@@ -1,6 +1,7 @@
 import "./globals.css";
 
 import { Logo } from "@examples/ui/components/logo";
+import { Toaster } from "@examples/ui/components/sonner";
 import { logoUrl } from "@examples/ui/lib/logo";
 import { LATENCY_COOKIE, parseLatency } from "@examples/db/types";
 import { QueryDevtools } from "@raf-query/react/devtools";
@@ -54,6 +55,7 @@ export default async function RootLayout(props: {
 							<QueryDevtools />
 						</QueryProvider>
 					</main>
+					<Toaster closeButton position="bottom-right" richColors />
 				</SettingsProvider>
 			</body>
 		</html>

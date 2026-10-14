@@ -182,8 +182,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@raf-query/react':
-        specifier: 0.7.1
-        version: 0.7.1(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(effect@4.0.4)(react@19.3.0)
+        specifier: 0.7.3
+        version: 0.7.3(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(effect@4.0.4)(react@19.3.0)
       '@tanstack/react-router':
         specifier: 1.170.42
         version: 1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -289,6 +289,9 @@ importers:
       radix-ui:
         specifier: 1.8.0
         version: 1.8.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      sonner:
+        specifier: 2.0.8
+        version: 2.0.8(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       tailwind-merge:
         specifier: 3.7.0
         version: 3.7.0
@@ -1425,14 +1428,14 @@ packages:
   '@radix-ui/rect@1.1.3':
     resolution: {integrity: sha512-JtyZR+mqgBibTo8xea3B6ZRmzZiM/YeVBtUkas6zMuXjAlfIFIW2FgqeM9eLyvEaYX66vr6DJMK+4U6LV0KhNw==}
 
-  '@raf-query/core@0.7.1':
-    resolution: {integrity: sha512-R+UfngciuT9bwWajjPg6A6F3tdB2oyyuxffUhuNfJ+/EFHnQEZbQ4+mHbpduPrsWz5Vew5bT6XCE4RC6F78rBw==}
+  '@raf-query/core@0.7.3':
+    resolution: {integrity: sha512-o+nihQOWuEI1UzAfss+LdOOlChFMHdQyLyWLS9q7+eVSIuT7DC1iwmHPvP+BKuJNrtPCmoxqMDTToOqOMoIPRA==}
     engines: {node: '>=22'}
     peerDependencies:
       effect: ^4.0.0
 
-  '@raf-query/react@0.7.1':
-    resolution: {integrity: sha512-Wy5p3K8FduIrdQu7DAy3K/XRSQB/Tk+FlV6Ltc2vu+0UvBPX1hC/ktOzo4oTl6lcNWgvPoyEaVnATkLbii5TfA==}
+  '@raf-query/react@0.7.3':
+    resolution: {integrity: sha512-DN6Yt+qfnU9mQdhLD3QLEBBMcRfQm7Z9pbN5jKgN0U7ozh2KfoOy/+Asar8orQOSV0WhoV4S5alXc88T8L0t9w==}
     engines: {node: '>=22'}
     peerDependencies:
       '@tanstack/react-router': ^1.170.0
@@ -2853,6 +2856,16 @@ packages:
     resolution: {integrity: sha512-2wcC/oGxHis/BoHkkPwldgiPSYcpZK3JU28WoMVv55yHJgcZ8rlXvuG9iZggz+sU1d4bRgIGASwyWqjxu3FM0g==}
     engines: {node: '>=18'}
 
+  sonner@2.0.8:
+    resolution: {integrity: sha512-UM/ByIoFra8yzV75n1o0Puu0bw5U/9UNnDacrJNspekBewIfsQ3D6ez1nvlWpt7aTsO6rujQtifBpycwIivqlg==}
+    peerDependencies:
+      '@types/react': ^18.0.0 || ^19.0.0
+      react: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
+      react-dom: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+
   source-map-js@1.2.2:
     resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
     engines: {node: '>=0.10.0'}
@@ -4160,13 +4173,13 @@ snapshots:
 
   '@radix-ui/rect@1.1.3': {}
 
-  '@raf-query/core@0.7.1(effect@4.0.4)':
+  '@raf-query/core@0.7.3(effect@4.0.4)':
     dependencies:
       effect: 4.0.4
 
-  '@raf-query/react@0.7.1(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(effect@4.0.4)(react@19.3.0)':
+  '@raf-query/react@0.7.3(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(effect@4.0.4)(react@19.3.0)':
     dependencies:
-      '@raf-query/core': 0.7.1(effect@4.0.4)
+      '@raf-query/core': 0.7.3(effect@4.0.4)
       effect: 4.0.4
       react: 19.3.0
     optionalDependencies:
@@ -5346,6 +5359,13 @@ snapshots:
       '@polka/url': 1.0.0-next.29
       mrmime: 2.0.1
       totalist: 3.0.1
+
+  sonner@2.0.8(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+    dependencies:
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+    optionalDependencies:
+      '@types/react': 19.3.0
 
   source-map-js@1.2.2: {}
 
