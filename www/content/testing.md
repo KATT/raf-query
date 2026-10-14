@@ -11,7 +11,31 @@ Components that read queries need a `QueryClient` and handles. In tests, create 
 
 Create a new client for every test, so no cached data leaks between them. Turn retries off, or a failing request takes seconds to fail:
 
-<<< ./testing/src/render-with-client.tsx#client
+```tsx twoslash
+import { afterEach, beforeEach } from "@effect/vitest";
+import { act, render } from "@testing-library/react";
+import type { ReactNode } from "react";
+// ---cut---
+import { QueryClient, QueryClientProvider } from "@raf-query/react";
+
+let queryClient: QueryClient;
+
+beforeEach(() => {
+	queryClient = new QueryClient({ defaults: { retry: false } });
+});
+
+afterEach(async () => {
+	await queryClient.dispose();
+});
+
+function renderWithClient(ui: ReactNode) {
+	return act(async () =>
+		render(
+			<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+		),
+	);
+}
+```
 
 `dispose()` interrupts in-flight requests and timers, so nothing runs after the test ends.
 
@@ -21,7 +45,30 @@ Render inside an awaited, async `act`. A tree that suspends inside a sync `act`,
 
 A component takes a handle as a prop, so a test can start the query itself, the same way a loader would:
 
-<<< ./testing/src/component-test.tsx#component
+```tsx twoslash
+import { expect, test } from "@effect/vitest";
+import type { QueryClient, QueryHandle } from "@raf-query/react";
+import { screen } from "@testing-library/react";
+import { Suspense, type ReactNode } from "react";
+import { postQuery } from "~/queries.ts";
+declare let queryClient: QueryClient;
+declare function renderWithClient(ui: ReactNode): Promise<unknown>;
+declare function Post(props: {
+	handle: QueryHandle<typeof postQuery>;
+}): ReactNode;
+// ---cut---
+test("shows the post", async () => {
+	const handle = queryClient.prefetch(postQuery, { slug: "hello" });
+
+	await renderWithClient(
+		<Suspense fallback="Loading…">
+			<Post handle={handle} />
+		</Suspense>,
+	);
+
+	expect((await screen.findByRole("heading")).textContent).toBe("Hello");
+});
+```
 
 For an `EnsuredQueryHandle`, `await queryClient.ensure(...)` instead.
 
@@ -29,7 +76,18 @@ For an `EnsuredQueryHandle`, `await queryClient.ensure(...)` instead.
 
 To render with known data and no request at all, write it with `setData` before rendering:
 
-<<< ./testing/src/seed-cache.ts#seed
+```ts twoslash
+import { QueryClient } from "@raf-query/react";
+import { postQuery } from "~/queries.ts";
+const queryClient = new QueryClient();
+// ---cut---
+queryClient.setData(
+	postQuery,
+	{ slug: "hello" },
+	{ slug: "hello", title: "Hello", body: "", authorId: "" },
+);
+const handle = await queryClient.ensure(postQuery, { slug: "hello" });
+```
 
 Data written with `setData` is fresh, so `ensure` resolves at once without calling the `queryFn`.
 
@@ -37,13 +95,44 @@ Data written with `setData` is fresh, so `ensure` resolves at once without calli
 
 The `queryFn` is your code, so mock what it calls. With `fetch`, [MSW](https://mswjs.io) intercepts requests without changing application code:
 
-<<< ./testing/src/msw-example.ts#msw
+```ts twoslash
+declare const server: {
+	use(...handlers: ReadonlyArray<unknown>): void;
+};
+declare const http: {
+	get(path: string, resolver: () => unknown): unknown;
+};
+declare const HttpResponse: {
+	json(body: unknown): unknown;
+};
+// ---cut---
+server.use(
+	http.get("/api/posts/:slug", () =>
+		HttpResponse.json({ slug: "hello", title: "Hello" }),
+	),
+);
+```
 
 ## Testing loaders
 
-A loader is a function of its context. Call it with a client, and check what it started:
+A loader is a function of its context. Export it from the route file, call it with a client, and check what it started:
 
-<<< ./testing/src/loader-test.ts#loader
+```ts twoslash
+import { expect, test } from "@effect/vitest";
+import { QueryClient } from "@raf-query/react";
+import { postQuery } from "~/queries.ts";
+import { postLoader } from "~/routes/posts.$slug.tsx";
+const queryClient = new QueryClient();
+// ---cut---
+test("the post loader starts both queries", async () => {
+	await postLoader({
+		context: { queryClient },
+		params: { slug: "hello" },
+	});
+	expect(queryClient.getData(postQuery, { slug: "hello" })).toBeDefined();
+	expect(queryClient.isFetching({ queryKey: ["comments"] })).toBe(1);
+});
+```
 
 ## Time, focus and the network
 
@@ -52,11 +141,59 @@ Staleness, garbage collection, retries and polling depend on time; focus refetch
 - **Time** comes from Effect's `Clock`. Use `TestClock` to move time forward instantly.
 - **The page** comes from the `Platform` service: whether it's visible, whether it's online, and its focus and reconnect events.
 
-<<< ./testing/src/fake-platform.ts#platform
+```ts twoslash
+import { Platform, QueryClient } from "@raf-query/react";
+import { Layer } from "effect";
+// ---cut---
+const listeners = new Set<(event: "focus" | "online") => void>();
+let visible = true;
+
+const FakePlatform = Layer.succeed(Platform.Platform, {
+	isOnlineUnsafe: () => true,
+	isServer: false,
+	isVisibleUnsafe: () => visible,
+	subscribeUnsafe(listener) {
+		listeners.add(listener);
+		return () => listeners.delete(listener);
+	},
+});
+
+function focus() {
+	visible = true;
+	for (const listener of listeners) listener("focus");
+}
+
+const queryClient = new QueryClient({ layer: FakePlatform });
+```
 
 With a fake clock, a test of `staleTime` or `gcTime` runs in milliseconds. [`@effect/vitest`](https://effect.website/docs/testing/vitest/)'s `it.effect` provides `TestClock`:
 
-<<< ./testing/src/gc-test.ts#gc
+```ts twoslash
+import { Platform, QueryCache } from "@raf-query/react";
+import { Effect, Layer, Option } from "effect";
+import { expect, it } from "@effect/vitest";
+import { TestClock } from "effect/testing";
+import { todosQuery } from "~/queries.ts";
+const listeners = new Set<(event: "focus" | "online") => void>();
+const FakePlatform = Layer.succeed(Platform.Platform, {
+	isOnlineUnsafe: () => true,
+	isServer: false,
+	isVisibleUnsafe: () => true,
+	subscribeUnsafe(listener) {
+		listeners.add(listener);
+		return () => listeners.delete(listener);
+	},
+});
+// ---cut---
+it.effect("garbage-collects unread entries", () =>
+	Effect.gen(function* () {
+		const cache = yield* QueryCache.QueryCache;
+		yield* cache.fetch(todosQuery);
+		yield* TestClock.adjust("5 minutes");
+		expect(Option.isNone(yield* cache.getData(todosQuery))).toBe(true);
+	}).pipe(Effect.provide(QueryCache.layer()), Effect.provide(FakePlatform)),
+);
+```
 
 In a plain Vitest test without Effect, `vi.useFakeTimers()` also works: the default clock reads `Date.now()` and schedules with `setTimeout`.
 
@@ -64,4 +201,8 @@ In a plain Vitest test without Effect, `vi.useFakeTimers()` also works: the defa
 
 A client created where `window` isn't defined behaves as a server client: no retries, no garbage collection, cached data never stale. To test browser behavior in Node without a DOM environment, pass `isServer: false`:
 
-<<< ./testing/src/is-server.ts#is-server
+```ts twoslash
+import { QueryClient } from "@raf-query/react";
+// ---cut---
+const queryClient = new QueryClient({ isServer: false });
+```

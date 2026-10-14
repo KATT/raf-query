@@ -7,7 +7,18 @@ order: 13
 
 Waiting for data to go stale on its own doesn't work after a write: the user just changed something and expects to see it. `invalidate` marks queries stale and refetches the ones that are being read:
 
-<<< ./query-invalidation/src/invalidation.ts#invalidate-basics
+```ts twoslash
+import { QueryClient } from "@raf-query/react";
+import { postQuery } from "~/queries.ts";
+const qc = new QueryClient();
+declare const slug: string;
+// ---cut---
+// One query
+await qc.invalidate(postQuery, { slug });
+
+// Every query whose key starts with ["posts"]
+await qc.invalidate({ queryKey: ["posts"] });
+```
 
 When a query is invalidated:
 
@@ -27,11 +38,27 @@ invalidation
 
 `invalidate`, `reset` and `remove` take either a factory and its input, or a filter:
 
-<<< ./query-invalidation/src/filters.ts#filter-interface
+```ts twoslash
+import type { QueryKey } from "@raf-query/react";
+import { Query as QueryModule } from "@raf-query/react";
+type Query = QueryModule.Query;
+// ---cut---
+interface Filter {
+	queryKey?: QueryKey; // key prefix; every key matches without it
+	exact?: boolean; // match `queryKey` exactly instead of as a prefix
+	predicate?: (query: Query) => boolean; // runs after key matching
+}
+```
 
 Given these keys:
 
-<<< ./query-invalidation/src/filters.ts#example-keys
+```ts twoslash
+["todos"];
+["todos", { status: "done" }];
+["todos", { status: "done", page: 2 }];
+["todos", 5];
+["users"];
+```
 
 | Filter                                        | Matches               |
 | --------------------------------------------- | --------------------- |
@@ -47,7 +74,22 @@ Object segments match **partially**: `{ status: "done" }` matches any object seg
 
 `predicate` receives each `Query` that passed the key match. Read its `key` and `handle.input`, or its state with the `Query` functions:
 
-<<< ./query-invalidation/src/predicates.ts#predicate-invalidate
+```ts twoslash
+import { Query, QueryClient } from "@raf-query/react";
+const qc = new QueryClient();
+// ---cut---
+// Every todo list on page 2 or later
+await qc.invalidate({
+	predicate: (query) =>
+		query.key[0] === "todos" &&
+		typeof (query.handle.input as { page?: unknown } | undefined)?.page ===
+			"number" &&
+		(query.handle.input as { page: number }).page >= 2,
+});
+
+// Everything not being read
+qc.remove({ predicate: (query) => Query.observerCountUnsafe(query) === 0 });
+```
 
 `handle.input` is the input of the latest factory call for that entry. An entry that was only hydrated, and not yet read or started on this client, has `undefined` input, so match on `key` to include those.
 
@@ -65,7 +107,24 @@ Object segments match **partially**: `{ status: "done" }` matches any object seg
 
 The common pattern is to invalidate at the end of an action, so it covers whatever the write affected:
 
-<<< ./query-invalidation/src/components/invalidate-form.tsx#invalidate-form
+```tsx twoslash
+import { useQueryClient } from "@raf-query/react";
+declare function addTodo(text: string): Promise<void>;
+function Example() {
+	const qc = useQueryClient();
+	return (
+		// ---cut---
+		<form
+			action={async (formData) => {
+				await addTodo(String(formData.get("text")));
+				await qc.invalidate({ queryKey: ["todos"] });
+			}}
+		>
+			{/* ... */}
+		</form>
+	);
+}
+```
 
 Prefer invalidating a little too much over too little. Only queries being read refetch, so a broad prefix costs a request per list on screen, not per list ever loaded.
 

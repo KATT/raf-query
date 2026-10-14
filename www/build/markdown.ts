@@ -309,21 +309,6 @@ const loadProject = Effect.fn("loadProject")(function* (app: string) {
 	} satisfies Project;
 });
 
-const inlineCompilerOptions: ts.CompilerOptions = {
-	allowImportingTsExtensions: true,
-	jsx: ts.JsxEmit.ReactJSX,
-	lib: ["lib.es2024.d.ts", "lib.dom.d.ts", "lib.dom.iterable.d.ts"],
-	module: ts.ModuleKind.ESNext,
-	moduleResolution: ts.ModuleResolutionKind.Bundler,
-	noEmit: true,
-	// Next.js samples import `~/query-client.ts`; stubs live next to the pages.
-	paths: { "~/*": ["./*"] },
-	skipLibCheck: true,
-	strict: true,
-	target: ts.ScriptTarget.ES2024,
-	types: [],
-};
-
 /** A twoslasher per project root; each keeps a TypeScript environment per set of compiler options. */
 const twoslashers = new Map<string, TwoslashShikiFunction>();
 
@@ -348,9 +333,12 @@ const blockFilename = /^\/\/ @filename: (.+)$/m;
  * its type, `// ^?` pins a type under the line, and `// @errors: 2345` shows
  * an expected error. A compile error the block doesn't expect fails the
  * build. A block included from an example app (its first `// @filename`,
- * from the content dir, is in one) compiles in that app's project; other
- * blocks resolve imports from the content dir, where a hidden setup above
- * `// ---cut---` can import from `content/_twoslash.ts`.
+ * from the content dir, is in one) compiles in that app's project. Other
+ * blocks are written inline, against the shared app (`content/_shared`):
+ * they compile in the content dir with its compiler options and files, so a
+ * hidden setup above `// ---cut---` imports `~/queries.ts`. A block that
+ * defines a route starts with `// @filename: _shared/src/routes/<route>.tsx`,
+ * so it compiles as that file and the route tree registers its loader.
  */
 const twoslashTransformer = Effect.fn("twoslashTransformer")(function* (
 	markdown: string,
@@ -360,12 +348,14 @@ const twoslashTransformer = Effect.fn("twoslashTransformer")(function* (
 	const apps = yield* exampleApps(contentDir);
 	const appOfBlock = (filename: string) =>
 		appOf(path, path.join(contentDir, filename), apps);
-	const used = new Set(
-		Array.from(
+	const sharedApp = path.join(contentDir, "_shared");
+	const used = new Set([
+		sharedApp,
+		...Array.from(
 			markdown.matchAll(new RegExp(blockFilename.source, "gm")),
 			(match) => appOfBlock(match[1] ?? ""),
 		).filter((app) => app !== undefined),
-	);
+	]);
 	const projects = new Map(
 		yield* Effect.forEach(
 			used,
@@ -374,6 +364,19 @@ const twoslashTransformer = Effect.fn("twoslashTransformer")(function* (
 			{ concurrency: "unbounded" },
 		),
 	);
+	const shared = projects.get(sharedApp);
+	if (!shared) {
+		return yield* new ContentError({ message: `${sharedApp}: missing` });
+	}
+	const inline = {
+		compilerOptions: shared.compilerOptions,
+		extraFiles: Object.fromEntries(
+			Object.entries(shared.extraFiles).map(([file, contents]) => [
+				`${path.basename(sharedApp)}/${file}`,
+				contents,
+			]),
+		),
+	} satisfies Project;
 	const tsLibDirectory = path.dirname(
 		yield* path.fromFileUrl(new URL(import.meta.resolve("typescript6"))),
 	);
@@ -384,7 +387,7 @@ const twoslashTransformer = Effect.fn("twoslashTransformer")(function* (
 		if (!filename?.[1] || !app || !project) {
 			return twoslasherFor(contentDir, tsLibDirectory)(code, lang, {
 				...options,
-				compilerOptions: inlineCompilerOptions,
+				...inline,
 			});
 		}
 		const inApp = path
