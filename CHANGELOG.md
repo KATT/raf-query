@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.11](https://github.com/KATT/raf-query/compare/0.7.10...0.7.11) (2026-10-14)
+
+### Features
+
+- **examples:** add a stale time setting ([#119](https://github.com/KATT/raf-query/issues/119)) ([02467ef](https://github.com/KATT/raf-query/commit/02467ef4cf700d2ca1a57647c2fbc5cad2bf7abc))
+
+### Bug Fixes
+
+- **core:** leave error out of query types when it isn't inferred ([#120](https://github.com/KATT/raf-query/issues/120)) ([d2098e8](https://github.com/KATT/raf-query/commit/d2098e84dea31c8e0d136f7850177e37f56d4678)), references [#69](https://github.com/KATT/raf-query/issues/69) [#69](https://github.com/KATT/raf-query/issues/69)
+
 ## [0.7.10](https://github.com/KATT/raf-query/compare/0.7.9...0.7.10) (2026-10-14)
 
 ### Bug Fixes
