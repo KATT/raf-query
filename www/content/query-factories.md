@@ -88,15 +88,38 @@ Options set in the factory override the client's `config.defaults`:
 
 ## Type inference
 
-TypeScript infers the data type from `queryFn`. For paged queries it infers the page type from `queryFn` too, which means `queryFn` must come before `getNextPageParam` in the object literal. If your lint setup sorts keys, pass the types instead:
+TypeScript infers the data type from `queryFn`. For paged queries it infers the page type from `queryFn` too, which means `queryFn` must come before `getNextPageParam` in the object literal. If your lint setup sorts keys, annotate the page instead:
 
-```ts
-infiniteQueryOptions<CommentPage, number>({
-	getNextPageParam: (lastPage) => lastPage.nextCursor,
+```ts twoslash
+import { infiniteQueryOptions } from "@raf-query/react";
+import { type CommentPage, listComments } from "./_twoslash.ts";
+// ---cut---
+const commentsOptions = infiniteQueryOptions({
+	getNextPageParam: (lastPage: CommentPage) => lastPage.nextCursor,
 	initialPageParam: 0,
-	queryFn: (context) => listComments({ cursor: context.pageParam }),
-	queryKey: ["comments"],
+	queryFn: (context) =>
+		listComments({ cursor: context.pageParam, slug: "hello-world" }),
+	queryKey: ["comments", "hello-world"],
 });
+commentsOptions;
+// ^?
+```
+
+The options' types take a bag of named types rather than a list of type arguments. `error` and `services` are only for [Effect](./effect.md) `queryFn`s, and default to `unknown` and `never`:
+
+```ts twoslash
+import {
+	type CommentPage,
+	commentsQuery,
+	type Post,
+	postQuery,
+} from "./_twoslash.ts";
+// ---cut---
+import type { InfiniteQueryOptions, QueryOptions } from "@raf-query/react";
+
+const post: QueryOptions<{ data: Post }> = postQuery({ slug: "hello-world" });
+const comments: InfiniteQueryOptions<{ page: CommentPage; pageParam: number }> =
+	commentsQuery({ slug: "hello-world" });
 ```
 
 To name a factory's types elsewhere:

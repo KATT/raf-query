@@ -76,7 +76,7 @@ export function commentsQuery(input: { slug: string }) {
 
 Factories must take at most one argument; the type rejects two or more. The single argument is the query's **input** and must be serializable, because it is what a handle carries.
 
-A `queryFn` returns a value, a promise, or an [Effect](#effect). It receives `queryKey`, the query's [`meta`](#query-meta) and an abort `signal`; paged ones also get `pageParam` and `direction`. TypeScript infers the page type from `queryFn`, so if `getNextPageParam` comes first in the object literal (sorted keys), pass the types instead: `infiniteQueryOptions<CommentPage, number>({ ... })`.
+A `queryFn` returns a value, a promise, or an [Effect](#effect). It receives `queryKey`, the query's [`meta`](#query-meta) and an abort `signal`; paged ones also get `pageParam` and `direction`. TypeScript infers the page type from `queryFn`, so if `getNextPageParam` comes first in the object literal (sorted keys), annotate its page instead: `getNextPageParam: (lastPage: CommentPage) => lastPage.nextCursor`.
 
 The factory is the only place a query is declared paged. Every other API — `prefetch`, `ensure`, `fetch`, `useQuery`, `useWaterfall`, `invalidate`, `setData` — takes either kind and infers the rest from the factory's type.
 
@@ -834,6 +834,7 @@ When the last reader of a query unsubscribes during a background refetch, a `que
 | `QueryHandle<TFactory>`                                      | Handle type for props                                                                                                                                                                      |
 | `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                                                                                                                                      |
 | `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`                                                                                                                                |
+| `QueryOptions`, `InfiniteQueryOptions`, `InfiniteData`       | Typed by a bag: `QueryOptions<{ data: Post }>`. Effect `queryFn`s add `error` and `services` to it                                                                                         |
 | `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                                                                                                                                    |
 | `ServicesOf<TFactory>`                                       | The services a factory's `queryFn` Effect needs; `never` for promises                                                                                                                      |
 | `Register`, `QueryMeta`                                      | Augment `Register` with `queryMeta` to type [`meta`](#query-meta)                                                                                                                          |

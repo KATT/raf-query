@@ -45,13 +45,11 @@ const server = createFakeServer(() => ({
 }));
 
 function messagesQuery(input: { readonly filter: Filter }) {
-	return infiniteQueryOptions<MessagePage, number>({
-		getNextPageParam: (lastPage) => lastPage.nextCursor,
-		initialPageParam: 0,
+	return infiniteQueryOptions({
 		queryFn: (context) =>
 			server.respond(
 				`GET /messages?filter=${input.filter}&cursor=${context.pageParam}`,
-				(db) => {
+				(db): MessagePage => {
 					const matching = db.messages.filter(
 						(message) => input.filter === "all" || message.body.endsWith("?"),
 					);
@@ -63,6 +61,9 @@ function messagesQuery(input: { readonly filter: Filter }) {
 				},
 				{ signal: context.signal },
 			),
+		// After `queryFn`: TypeScript infers the page type from it.
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		initialPageParam: 0,
 		queryKey: ["messages", input],
 		staleTime: 30_000,
 	});
