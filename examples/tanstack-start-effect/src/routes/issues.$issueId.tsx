@@ -10,7 +10,7 @@ import { Comments, CommentsSkeleton } from "~/components/comments.tsx";
 import { EditBody } from "~/components/edit-body.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
-import { AssigneeCard } from "~/components/user.tsx";
+import { AssigneeCard, AssigneeCardSkeleton } from "~/components/user.tsx";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 
 export const Route = createFileRoute("/issues/$issueId")({
@@ -33,7 +33,8 @@ export const Route = createFileRoute("/issues/$issueId")({
 
 function IssuePage() {
 	const data = Route.useLoaderData();
-	const [issue] = useQuery(issueQuery, data.issue);
+	// Loader already catchTag'd IssueNotFound; throw remaining failures.
+	const [issue] = useQuery(issueQuery, data.issue, { throwOnError: true });
 
 	return (
 		<div className="grid gap-6">
@@ -96,7 +97,9 @@ function IssuePage() {
 							/>
 						</div>
 					</section>
-					<AssigneeCard handle={data.assignee} />
+					<Suspense fallback={<AssigneeCardSkeleton />}>
+						<AssigneeCard handle={data.assignee} />
+					</Suspense>
 				</aside>
 			</div>
 		</div>

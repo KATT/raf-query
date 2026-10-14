@@ -14,26 +14,26 @@ declare const config: QueryClientConfig | undefined;
 const queryClient = new QueryClient(config);
 ```
 
-| Member                                              | Use                                                                                                                             |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `new QueryClient(config?)`                          | `config.defaults` (query options below), `config.onError`, `config.isServer`, `config.layer` ([services](./effect-services.md)) |
-| `prefetch(factory, input)`                          | Start a query; returns a `QueryHandle`. [Starting queries](./starting-queries.md)                                               |
-| `ensure(factory, input, options?)`                  | Wait for data on a cache miss; returns `Promise<EnsuredQueryHandle>`                                                            |
-| `fetch(factory, input, options?)`                   | Wait for fresh data; returns `Promise<Data>`                                                                                    |
-| `invalidate(factory, input)` / `invalidate(filter)` | Mark stale and refetch read queries. [Query invalidation](./query-invalidation.md)                                              |
-| `setData(factory, input, updater)`                  | Write data. [Mutations](./mutations.md)                                                                                         |
-| `getData(factory, input)`                           | Cached data, or `undefined`. [Query functions](./query-functions.md)                                                            |
-| `reset(factory, input)` / `reset(filter)`           | Drop data and errors; read queries suspend and refetch. Resolves when they settle                                               |
-| `remove(factory, input)` / `remove(filter)`         | Remove entries and abort their requests                                                                                         |
-| `effect`                                            | The [Effect](./effect.md) `QueryCache` behind the client                                                                        |
-| `runPromise(effect)`                                | Run an Effect with `QueryCache` and the layer's services, for loaders and actions. [Typed errors](./effect-errors.md)           |
-| `subscribe(listener)`                               | Cache events: `added`, `updated`, `observers` (a reader subscribed or left), `removed`, and `failed` (with the `error`)         |
-| `isFetching(filter?)`                               | How many entries have a request in flight, optionally only those matching `{ queryKey, exact? }`                                |
-| `getAll()`, `getQuery(factory, input?)`             | Cache entries, for devtools and integrations                                                                                    |
-| `clear()`                                           | Drop every entry and abort in-flight requests                                                                                   |
-| `mount()`                                           | Start window-focus and reconnect refetching. The providers call it                                                              |
-| `isServer`                                          | Detected from `window`. Server clients don't retry, never gc, skip stale timers, and never revalidate cached data               |
-| `dispose()`                                         | Interrupt every request and release the layer's services. Resolves when its finalizers have run                                 |
+| Member                                              | Use                                                                                                                                                                               |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `new QueryClient(config?)`                          | `config.defaults`, `config.onError`, `config.isServer`, `config.layer`, `config.throwOnError` (Effect reads; default `false` with a `layer`) ([typed errors](./effect-errors.md)) |
+| `prefetch(factory, input)`                          | Start a query; returns a `QueryHandle`. [Starting queries](./starting-queries.md)                                                                                                 |
+| `ensure(factory, input, options?)`                  | Wait for data on a cache miss; returns `Promise<EnsuredQueryHandle>`                                                                                                              |
+| `fetch(factory, input, options?)`                   | Wait for fresh data; returns `Promise<Data>`                                                                                                                                      |
+| `invalidate(factory, input)` / `invalidate(filter)` | Mark stale and refetch read queries. [Query invalidation](./query-invalidation.md)                                                                                                |
+| `setData(factory, input, updater)`                  | Write data. [Mutations](./mutations.md)                                                                                                                                           |
+| `getData(factory, input)`                           | Cached data, or `undefined`. [Query functions](./query-functions.md)                                                                                                              |
+| `reset(factory, input)` / `reset(filter)`           | Drop data and errors; read queries suspend and refetch. Resolves when they settle                                                                                                 |
+| `remove(factory, input)` / `remove(filter)`         | Remove entries and abort their requests                                                                                                                                           |
+| `effect`                                            | The [Effect](./effect.md) `QueryCache` behind the client                                                                                                                          |
+| `runPromise(effect)`                                | Run an Effect with `QueryCache` and the layer's services, for loaders and actions. [Typed errors](./effect-errors.md)                                                             |
+| `subscribe(listener)`                               | Cache events: `added`, `updated`, `observers` (a reader subscribed or left), `removed`, and `failed` (with the `error`)                                                           |
+| `isFetching(filter?)`                               | How many entries have a request in flight, optionally only those matching `{ queryKey, exact? }`                                                                                  |
+| `getAll()`, `getQuery(factory, input?)`             | Cache entries, for devtools and integrations                                                                                                                                      |
+| `clear()`                                           | Drop every entry and abort in-flight requests                                                                                                                                     |
+| `mount()`                                           | Start window-focus and reconnect refetching. The providers call it                                                                                                                |
+| `isServer`                                          | Detected from `window`. Server clients don't retry, never gc, skip stale timers, and never revalidate cached data                                                                 |
+| `dispose()`                                         | Interrupt every request and release the layer's services. Resolves when its finalizers have run                                                                                   |
 
 `ensure` and `fetch` take `{ pages: n }` as a third argument for paged factories, to load more than the first page.
 
@@ -101,16 +101,16 @@ Paged factories add `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `ha
 
 Everything from `@raf-query/core`, plus:
 
-| Export                                         | Use                                                                                                                                                           |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `QueryClient`                                  | The cache with Promise methods ([above](#queryclient))                                                                                                        |
-| `allKeyed(record)`                             | Await a record of promises, keeping keys                                                                                                                      |
-| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations                                                                                                             |
-| `QueryClientProvider`                          | Provides a client to the tree                                                                                                                                 |
-| `useQueryClient()`                             | Read the client                                                                                                                                               |
-| `useQuery(factory, handle, options?)`          | `[Thenable<Data>, controls]`; for paged factories `Data` is `{ pages, pageParams }` and controls include paging                                               |
-| `useWaterfall(factory, input)`                 | Start a query during render and return its handle. [Request waterfalls](./request-waterfalls.md#render-time-inputs-usewaterfall)                              |
-| `useIsFetching(filter?)`                       | Global in-flight count (compatibility). Prefer router pending + per-query `isFetching`. [Background fetching indicators](./background-fetching-indicators.md) |
+| Export                                         | Use                                                                                                                                                                                                |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `QueryClient`                                  | The cache with Promise methods ([above](#queryclient))                                                                                                                                             |
+| `allKeyed(record)`                             | Await a record of promises, keeping keys                                                                                                                                                           |
+| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations                                                                                                                                                  |
+| `QueryClientProvider`                          | Provides a client to the tree                                                                                                                                                                      |
+| `useQueryClient()`                             | Read the client                                                                                                                                                                                    |
+| `useQuery(factory, handle, options?)`          | `[Thenable<Data>, controls]`; Effect `queryFn`s with `throwOnError: false` (default when the client has a `layer`) yield `Result<Data, ErrorOf>` instead. Paged: `Data` is `{ pages, pageParams }` |
+| `useWaterfall(factory, input)`                 | Start a query during render and return its handle. [Request waterfalls](./request-waterfalls.md#render-time-inputs-usewaterfall)                                                                   |
+| `useIsFetching(filter?)`                       | Global in-flight count (compatibility). Prefer router pending + per-query `isFetching`. [Background fetching indicators](./background-fetching-indicators.md)                                      |
 
 Subpath entries:
 

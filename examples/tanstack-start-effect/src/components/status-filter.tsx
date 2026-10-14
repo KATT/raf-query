@@ -12,7 +12,9 @@ export function StatusFilter(props: {
 	readonly counts: QueryHandle<typeof issueCountsQuery>;
 	readonly current: IssueListInput;
 }) {
-	const [countsPromise] = useQuery(issueCountsQuery, props.counts);
+	const [countsPromise] = useQuery(issueCountsQuery, props.counts, {
+		throwOnError: true,
+	});
 	const counts = use(countsPromise);
 	const current = props.current;
 

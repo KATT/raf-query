@@ -27,6 +27,13 @@ export interface QueryClientConfig<TServices = never>
 	readonly layer?: Layer.Layer<TServices>;
 	/** Called with every failed request, including failed prefetches. */
 	onError?(error: unknown, query: Query.Query): void;
+	/**
+	 * When `false`, `useQuery` for an Effect `queryFn` (a typed `ErrorOf`)
+	 * returns a `Result` in the first tuple slot instead of a promise that
+	 * rejects. Defaults to `false` when `layer` is set, `true` otherwise.
+	 * Promise `queryFn`s always throw; this flag does not apply to them.
+	 */
+	readonly throwOnError?: boolean;
 }
 
 /**
@@ -78,6 +85,11 @@ export class QueryClient<TServices = never> {
 	readonly effect: QueryCache.QueryCache;
 	readonly isServer: boolean;
 	/**
+	 * Default for Effect `useQuery` reads. See
+	 * {@link QueryClientConfig.throwOnError}.
+	 */
+	readonly throwOnError: boolean;
+	/**
 	 * The cache and the layer's services. Typed `never` so clients of any
 	 * `TServices` stay assignable to each other; `runPromise` restores it.
 	 */
@@ -99,6 +111,7 @@ export class QueryClient<TServices = never> {
 		this.#context = services;
 		this.effect = Context.get(services, QueryCache.QueryCache);
 		this.isServer = this.effect.isServer;
+		this.throwOnError = config.throwOnError ?? config.layer === undefined;
 		const onError = config.onError;
 		if (onError) {
 			this.effect.subscribeUnsafe((event) => {
