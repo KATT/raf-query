@@ -222,7 +222,7 @@ export function docsContent(options: ContentOptions): Plugin {
 				(fence, lang, before, after, code) => {
 					const queries = types[blockIndex] ?? [];
 					blockIndex++;
-					return `\`\`\`${lang}${`${before}${after}`.trimEnd()}\n${removeTwoslashNotations(withTypes(code, queries))}\`\`\``;
+					return `\`\`\`${lang}${`${before.trimEnd()}${after}`.trimEnd()}\n${removeTwoslashNotations(withTypes(code, queries))}\`\`\``;
 				},
 			)
 			.replaceAll(
