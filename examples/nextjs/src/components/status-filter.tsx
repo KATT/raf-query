@@ -12,7 +12,7 @@ import { use } from "react";
 
 import { issueCountsQuery } from "~/queries.ts";
 
-import { statusLabel } from "./status-badge.tsx";
+import { StatusDot, statusLabel } from "./status-badge.tsx";
 
 export function StatusFilter(props: {
 	readonly counts: QueryHandle<typeof issueCountsQuery>;
@@ -28,8 +28,9 @@ export function StatusFilter(props: {
 				{(["all", ...issueStatuses] as const).map((status) => (
 					<Link
 						className={cn(
-							"flex justify-between rounded-md px-3 py-1.5 text-sm hover:bg-muted",
-							current.status === status && "bg-muted font-medium",
+							"flex items-center gap-2 rounded-md px-3 py-1.5 text-sm hover:bg-muted",
+							current.status === status &&
+								"bg-accent font-medium text-accent-foreground hover:bg-accent",
 						)}
 						href={{
 							pathname: "/issues",
@@ -37,8 +38,11 @@ export function StatusFilter(props: {
 						}}
 						key={status}
 					>
+						<StatusDot status={status} />
 						{statusLabel(status)}
-						<span className="text-muted-foreground">{counts[status]}</span>
+						<span className="ml-auto text-muted-foreground">
+							{counts[status]}
+						</span>
 					</Link>
 				))}
 			</nav>
@@ -50,7 +54,8 @@ export function StatusFilter(props: {
 					<Link
 						className={cn(
 							"rounded-md px-3 py-1.5 text-sm capitalize hover:bg-muted",
-							current.sort === sort && "bg-muted font-medium",
+							current.sort === sort &&
+								"bg-accent font-medium text-accent-foreground hover:bg-accent",
 						)}
 						href={{ pathname: "/issues", query: { ...current, sort } }}
 						key={sort}

@@ -17,6 +17,11 @@ const badgeVariants = cva(
 					"border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
 				ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
 				link: "text-primary underline-offset-4 [a&]:hover:underline",
+				blue: "border-brand-blue/25 bg-brand-blue/12 text-brand-blue-ink",
+				violet:
+					"border-brand-violet/25 bg-brand-violet/12 text-brand-violet-ink",
+				coral: "border-brand-coral/25 bg-brand-coral/12 text-brand-coral-ink",
+				amber: "border-brand-amber/35 bg-brand-amber/18 text-brand-amber-ink",
 			},
 		},
 		defaultVariants: {
