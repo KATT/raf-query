@@ -29,11 +29,11 @@ export function IssuePage(props: {
 			<IssueNav id={id} />
 			<div className="grid gap-8 md:grid-cols-[1fr_240px]">
 				<article className="grid content-start gap-6">
-					<Suspense fallback={<IssueBodySkeleton id={id} />}>
+					<Suspense fallback={<IssueBodySkeleton id={id} />} key={id}>
 						<IssueBody handle={props.issue} />
 					</Suspense>
 					<Separator />
-					<Suspense fallback={<CommentsSkeleton />}>
+					<Suspense fallback={<CommentsSkeleton />} key={id}>
 						<Comments handle={props.comments} />
 					</Suspense>
 				</article>
@@ -44,12 +44,12 @@ export function IssuePage(props: {
 						</h2>
 						<div className="flex items-center justify-between gap-3">
 							<span className="text-sm text-muted-foreground">Status</span>
-							<Suspense fallback={<StatusSkeleton />}>
+							<Suspense fallback={<StatusSkeleton />} key={id}>
 								<IssueStatus handle={props.issue} />
 							</Suspense>
 						</div>
 					</section>
-					<Suspense fallback={<AssigneeCardSkeleton />}>
+					<Suspense fallback={<AssigneeCardSkeleton />} key={id}>
 						<AssigneeCard handle={props.assignee} />
 					</Suspense>
 				</aside>
