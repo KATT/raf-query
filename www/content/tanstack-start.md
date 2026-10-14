@@ -140,7 +140,28 @@ Importing `@raf-query/react/tanstack-router` registers handles as serializable, 
 
 - **`defaultPreload: "intent"`** runs a route's loader when the user hovers or focuses a link, so the queries start before the click.
 - **`defaultPreloadStaleTime: 0`** makes the router run the loader again on click. Otherwise it reuses a hover's preload for 30 seconds, and the query cache never hears about the navigation. The query cache dedupes, so running the loader again is free when the data is fresh.
-- **`pendingComponent` and `pendingMs`** show a full-page skeleton for routes whose loader `ensure`s slow data.
+
+### Pending UI
+
+While a loader's `ensure` is still running, the previous page stays on screen. Show that a navigation is in progress with the router — not [`useIsFetching`](./background-fetching-indicators.md#useisfetching):
+
+- **`pendingComponent` and `pendingMs`** show a full-page skeleton after the delay (1 second by default) for routes whose loader `ensure`s slow data.
+- **`useRouterState({ select: (state) => state.isLoading })`** drives a progress bar or spinner in the layout for any pending navigation:
+
+```tsx twoslash
+import type { ReactNode } from "react";
+declare function useRouterState<T>(options: {
+	readonly select: (state: { readonly isLoading: boolean }) => T;
+}): T;
+declare function ProgressBar(): ReactNode;
+// ---cut---
+function NavigationProgress() {
+	const isLoading = useRouterState({ select: (state) => state.isLoading });
+	return isLoading ? <ProgressBar /> : null;
+}
+```
+
+Per-query background refetches after the page has rendered use `controls.isFetching`. See [Background fetching indicators](./background-fetching-indicators.md).
 
 ### Search params
 
