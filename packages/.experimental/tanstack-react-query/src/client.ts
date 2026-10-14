@@ -35,15 +35,17 @@ function start(
 		(environmentManager.isServer() ? 0 : 3);
 	if (options.kind === "infinite") {
 		const execute = { ...options, pages, retry };
-		// SAFETY: `kind: "infinite"` is only stamped by `infiniteQueryOptions`,
-		// whose options are TanStack infinite query options.
 		return client.infiniteQuery(
+			// SAFETY: `kind: "infinite"` is only stamped by `infiniteQueryOptions`,
+			// whose options are TanStack infinite query options.
 			execute as unknown as InfiniteQueryExecuteOptions,
 		);
 	}
-	// SAFETY: `kind: "query"` is only stamped by `queryOptions`, whose options
-	// are TanStack query options.
-	return client.query({ ...options, retry } as QueryExecuteOptions);
+	return client.query(
+		// SAFETY: `kind: "query"` is only stamped by `queryOptions`, whose options
+		// are TanStack query options.
+		{ ...options, retry } as QueryExecuteOptions,
+	);
 }
 
 /**

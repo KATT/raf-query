@@ -128,11 +128,11 @@ function createReader(
 	options: Defaulted,
 	paged: boolean,
 ): Reader {
-	// SAFETY: `paged` is true only for `infiniteQueryOptions(...)` factories,
-	// whose options carry `initialPageParam` and `getNextPageParam`.
 	const infinite = paged
 		? new InfiniteQueryObserver(
 				client,
+				// SAFETY: `paged` is true only for `infiniteQueryOptions(...)` factories,
+				// whose options carry `initialPageParam` and `getNextPageParam`.
 				options as ConstructorParameters<
 					typeof InfiniteQueryObserver<
 						unknown,
@@ -144,10 +144,10 @@ function createReader(
 				>[1],
 			)
 		: undefined;
-	// SAFETY: an infinite observer is a query observer whose data is
-	// `InfiniteData`; readers only pass that data through as `unknown`.
 	const observer = infinite
-		? (infinite as QueryObserver<unknown, DefaultError, unknown, unknown>)
+		? // SAFETY: an infinite observer is a query observer whose data is
+			// `InfiniteData`; readers only pass that data through as `unknown`.
+			(infinite as QueryObserver<unknown, DefaultError, unknown, unknown>)
 		: new QueryObserver<unknown, DefaultError, unknown, unknown>(
 				client,
 				options,

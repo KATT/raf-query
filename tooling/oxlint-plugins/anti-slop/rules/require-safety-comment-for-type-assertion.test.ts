@@ -21,6 +21,9 @@ tester.run(
 			"// SAFETY: The parser established the UserId invariant.\nconst id = value as UserId;",
 			"function parse(): UserId {\n// SAFETY: Validation above established the UserId invariant.\nreturn value as UserId;\n}",
 			"const id = /* SAFETY: Validation established the invariant. */ value as UserId;",
+			"declare const options: Options;\ndeclare const paged: boolean;\nconst infinite = paged\n? new Observer(\n// SAFETY: paged factories carry page params.\noptions as InfiniteOptions,\n)\n: undefined;",
+			"declare const infinite: InfiniteObserver | QueryObserver;\nconst observer = infinite\n? // SAFETY: an infinite observer is a query observer.\n(infinite as QueryObserver)\n: infinite;",
+			"// SAFETY: the chain is one cast.\nreturn value as unknown as UserId;",
 		],
 		invalid: [
 			{ code: "const id = value as UserId;", errors: [error] },
@@ -31,6 +34,14 @@ tester.run(
 			},
 			{
 				code: "// This cast seems fine.\nconst id = value as UserId;",
+				errors: [error],
+			},
+			{
+				code: "// SAFETY: paged factories carry page params.\ndeclare const options: Options;\ndeclare const paged: boolean;\nconst infinite = paged ? new Observer(options as InfiniteOptions) : undefined;",
+				errors: [error],
+			},
+			{
+				code: "// SAFETY: an infinite observer is a query observer.\ndeclare const infinite: InfiniteObserver | QueryObserver;\nconst observer = infinite ? (infinite as QueryObserver) : infinite;",
 				errors: [error],
 			},
 		],
