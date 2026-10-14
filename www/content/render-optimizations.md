@@ -11,7 +11,12 @@ raf-query re-renders a component only when something it uses has changed. Three 
 
 When a query refetches, the new data is compared with the old. Objects and arrays that are deeply equal keep their old identity:
 
-<<< ./render-optimizations/src/structural-sharing.ts#illustration
+```ts twoslash
+// ---cut---
+// Before: { id: 1, author: { name: "Ada" }, tags: ["a"] }
+// After:  { id: 1, author: { name: "Ada" }, tags: ["a", "b"] }
+// `after.author === before.author`: unchanged parts keep their identity.
+```
 
 This lets `memo` components and React Compiler skip re-rendering children whose props didn't change, and keeps effects from re-running on refetches that changed nothing.
 
@@ -19,7 +24,19 @@ When the whole response is deeply equal to the cached data, the old data is kept
 
 Structural sharing only looks inside plain objects and arrays. Class instances, `Map`s and `Date`s are compared by identity. Turn it off for very large responses where the comparison costs more than it saves:
 
-<<< ./render-optimizations/src/structural-sharing-option.ts#no-sharing
+```ts twoslash
+import { queryOptions } from "@raf-query/react";
+declare const input: { region: string };
+declare function getRegionShapes(input: {
+	readonly region: string;
+}): Promise<unknown>;
+// ---cut---
+queryOptions({
+	queryKey: ["geojson", input.region],
+	queryFn: () => getRegionShapes(input),
+	structuralSharing: false,
+});
+```
 
 ## Stable promises
 
@@ -29,7 +46,45 @@ Structural sharing only looks inside plain objects and arrays. Class instances, 
 
 The controls object returned by `useQuery` tracks which fields a component reads. Reading `controls.isFetching` subscribes the component to `isFetching`; a component that never reads it isn't re-rendered when a background refetch starts and ends.
 
-<<< ./render-optimizations/src/routes/posts.$slug.tsx#tracked
+```tsx twoslash
+import { Suspense } from "react";
+import { type EnsuredQueryHandle, useQuery } from "@raf-query/react";
+import { postQuery } from "./_twoslash.ts";
+import type { ReactNode } from "react";
+declare const Route: {
+	useLoaderData(): {
+		post: EnsuredQueryHandle<typeof postQuery>;
+	};
+};
+declare function PostBody(props: { readonly post: unknown }): ReactNode;
+declare function PostSkeleton(): ReactNode;
+// ---cut---
+function PostPage() {
+	const loaderData = Route.useLoaderData();
+	// Reads only the promise: doesn't re-render while refetching.
+	const [postPromise] = useQuery(postQuery, loaderData.post);
+	return (
+		<>
+			<RefreshButton handle={loaderData.post} />
+			<Suspense fallback={<PostSkeleton />}>
+				<PostBody post={postPromise} />
+			</Suspense>
+		</>
+	);
+}
+
+function RefreshButton(props: {
+	handle: EnsuredQueryHandle<typeof postQuery>;
+}) {
+	// Reads isFetching: re-renders when a request starts and ends.
+	const [, post] = useQuery(postQuery, props.handle);
+	return (
+		<button disabled={post.isFetching} onClick={() => post.refetch()}>
+			Refresh
+		</button>
+	);
+}
+```
 
 Both components read the same query; each pays only for what it reads. Destructure only what you use. Spreading the controls (`{ ...controls }`) reads every field and subscribes to all of them.
 
@@ -37,12 +92,38 @@ Both components read the same query; each pays only for what it reads. Destructu
 
 A parent can read a prefetched handle and hand the promise to a child, so only the child suspends. The parent re-renders when the promise changes, which is exactly when the child needs new props:
 
-<<< ./render-optimizations/src/passing-promises.tsx#parent
+```tsx twoslash
+import { Suspense, type ReactNode } from "react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { postQuery } from "./_twoslash.ts";
+declare const loaderData: { post: QueryHandle<typeof postQuery> };
+declare function PostBody(props: {
+	readonly post: Promise<unknown>;
+}): ReactNode;
+declare function Spinner(): ReactNode;
+function Parent() {
+	// ---cut---
+	const [postPromise] = useQuery(postQuery, loaderData.post);
+	return (
+		<Suspense fallback={<Spinner />}>
+			<PostBody post={postPromise} />
+		</Suspense>
+	);
+	// ---cut-after---
+}
+```
 
 ## Deriving data
 
 There's no `select` option. Derive in render: the data only changes when it actually changed, so with React Compiler (or `useMemo`) the derivation reruns only then:
 
-<<< ./render-optimizations/src/deriving.tsx#derive
+```tsx twoslash
+import { use } from "react";
+import type { Todo } from "./_twoslash.ts";
+declare const todosPromise: Promise<ReadonlyArray<Todo>>;
+// ---cut---
+const todos = use(todosPromise);
+const done = todos.filter((todo) => todo.done);
+```
 
 To share a derivation, put it in a function next to the factory, and call it wherever the data is read.

@@ -7,7 +7,29 @@ order: 4
 
 A query is a **factory**: a function of zero or one argument that returns `queryOptions(...)` or `infiniteQueryOptions(...)`. The loader and the component call the same factory, so data types flow end to end.
 
-<<< ./query-factories/src/queries.ts [src/queries.ts]
+```ts twoslash title="src/queries.ts"
+import { getPost, listComments } from "~/api.ts";
+// ---cut---
+import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
+
+export function postQuery(input: { slug: string }) {
+	return queryOptions({
+		queryKey: ["post", input.slug],
+		queryFn: () => getPost(input.slug),
+		staleTime: 30_000,
+	});
+}
+
+export function commentsQuery(input: { slug: string }) {
+	return infiniteQueryOptions({
+		queryKey: ["comments", input.slug],
+		queryFn: (context) =>
+			listComments({ slug: input.slug, cursor: context.pageParam }),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+	});
+}
+```
 
 ## One input, serializable
 
@@ -15,14 +37,24 @@ Factories take **at most one argument**; the type rejects two or more. That argu
 
 Use an object even for one field (`{ slug }`, `{ id }`): it reads well at call sites and leaves room to grow.
 
-<<< ./query-factories/src/prefetch.ts#prefetch
+```ts twoslash
+import { QueryClient, queryOptions } from "@raf-query/react";
+import { postQuery } from "~/queries.ts";
+const qc = new QueryClient();
+function issuesQuery() {
+	return queryOptions({ queryKey: ["issues"], queryFn: async () => [] });
+}
+// ---cut---
+qc.prefetch(postQuery, { slug: "hello-world" });
+qc.prefetch(issuesQuery); // a factory without input
+```
 
 A factory with two parameters doesn't type-check where it's used:
 
 ```ts twoslash
 // @errors: 2345
 import { QueryClient, queryOptions } from "@raf-query/react";
-import { getPost } from "./query-factories/src/api.ts";
+import { getPost } from "~/api.ts";
 const qc = new QueryClient();
 // ---cut---
 function postPageQuery(slug: string, page: number) {
@@ -58,21 +90,80 @@ Options set in the factory override the client's `config.defaults`:
 
 TypeScript infers the data type from `queryFn`. For paged queries it infers the page type from `queryFn` too, which means `queryFn` must come before `getNextPageParam` in the object literal. If your lint setup sorts keys, annotate the page instead:
 
-<<< ./query-factories/src/inference.ts#inference
+```ts twoslash
+import { infiniteQueryOptions } from "@raf-query/react";
+import { type CommentPage, listComments } from "~/api.ts";
+// ---cut---
+const commentsOptions = infiniteQueryOptions({
+	getNextPageParam: (lastPage: CommentPage) => lastPage.nextCursor,
+	initialPageParam: 0,
+	queryFn: (context) =>
+		listComments({ cursor: context.pageParam, slug: "hello-world" }),
+	queryKey: ["comments", "hello-world"],
+});
+commentsOptions;
+// ^?
+```
 
 The options' types take a bag of named types rather than a list of type arguments. `error` and `services` are only for [Effect](./effect.md) `queryFn`s, and default to `unknown` and `never`:
 
-<<< ./query-factories/src/option-types.ts#options
+```ts twoslash
+import type { CommentPage, Post } from "~/api.ts";
+import { commentsQuery, postQuery } from "~/queries.ts";
+// ---cut---
+import type { InfiniteQueryOptions, QueryOptions } from "@raf-query/react";
+
+const post: QueryOptions<{ data: Post }> = postQuery({ slug: "hello-world" });
+const comments: InfiniteQueryOptions<{ page: CommentPage; pageParam: number }> =
+	commentsQuery({ slug: "hello-world" });
+```
 
 To name a factory's types elsewhere:
 
-<<< ./query-factories/src/type-helpers.ts#types
+```ts twoslash
+import { postQuery } from "~/queries.ts";
+// ---cut---
+import type { DataOf, InputOf, QueryHandle } from "@raf-query/react";
+
+type PostData = DataOf<typeof postQuery>; // what queryFn resolves to
+//   ^?
+type PostInput = InputOf<typeof postQuery>;
+//   ^?
+type PostHandle = QueryHandle<typeof postQuery>; // for props
+```
 
 ## Factory makers
 
 A library can wrap a typed API in a function that returns a factory, generic over the endpoint. Call it inline, wherever a factory goes; the types flow from the endpoint:
 
-<<< ./query-factories/src/factory-makers.ts#makers
+```ts twoslash
+import { QueryClient, queryOptions, useQuery } from "@raf-query/react";
+interface Endpoint<TArgs, TData> {
+	readonly name: string;
+}
+declare function call<TArgs, TData>(
+	endpoint: Endpoint<TArgs, TData>,
+	args: TArgs,
+): Promise<TData>;
+declare const api: {
+	posts: {
+		get: Endpoint<{ slug: string }, { title: string }>;
+	};
+};
+declare const slug: string;
+const qc = new QueryClient();
+// ---cut---
+function endpointQuery<TArgs, TData>(endpoint: Endpoint<TArgs, TData>) {
+	return (args: TArgs) =>
+		queryOptions({
+			queryKey: [endpoint.name, args],
+			queryFn: (): Promise<TData> => call(endpoint, args),
+		});
+}
+
+const post = await qc.ensure(endpointQuery(api.posts.get), { slug });
+const [data] = useQuery(endpointQuery(api.posts.get), post);
+```
 
 Each call returns a new function, but entries are found by `queryKey`, so every call for the same endpoint and args reaches the same entry. Put everything the key depends on in it.
 
