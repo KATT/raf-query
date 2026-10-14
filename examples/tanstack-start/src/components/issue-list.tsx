@@ -64,14 +64,15 @@ export function IssueList(props: {
 								<span className="w-10 shrink-0 text-sm text-muted-foreground">
 									#{issue.id}
 								</span>
-								<span className="flex-1 truncate font-medium">
+								{/* `w-0`: the full title must not set the row's minimum width on phones. */}
+								<span className="w-0 flex-1 truncate font-medium">
 									{issue.title}
 								</span>
-								<span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+								<span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground max-sm:hidden">
 									<MessageSquare className="size-3" />
 									{issue.commentCount}
 								</span>
-								<span className="w-14 shrink-0 text-right text-xs text-muted-foreground">
+								<span className="w-14 shrink-0 text-right text-xs text-muted-foreground max-sm:hidden">
 									{dateFormat.format(new Date(issue.createdAt))}
 								</span>
 								{/* The menu sits in the row link. Cancel the click so it doesn't navigate. */}

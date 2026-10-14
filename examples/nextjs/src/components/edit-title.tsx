@@ -45,10 +45,11 @@ export function EditTitle(props: { readonly issue: Issue }) {
 	return (
 		<form action={save} className="grid gap-1">
 			<div className="flex items-baseline gap-2">
+				{/* `w-0`: the input's own width must not set the page's minimum width on phones. */}
 				<input
 					aria-label="Title"
 					className={cn(
-						"min-w-0 flex-1 rounded-md bg-transparent px-1.5 py-0.5 text-2xl font-semibold tracking-tight outline-none",
+						"w-0 flex-1 rounded-md bg-transparent px-1.5 py-0.5 text-2xl font-semibold tracking-tight outline-none",
 						"-mx-1.5 transition-[box-shadow,background-color]",
 						"hover:bg-muted/60 focus:bg-muted/60 focus-visible:ring-[3px] focus-visible:ring-ring/50",
 						isSaving && "opacity-70",
