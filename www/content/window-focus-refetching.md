@@ -13,43 +13,15 @@ Only queries that are being read refetch, and only stale ones: data within its `
 
 For every query, in the client's defaults:
 
-```ts twoslash
-import { QueryClient } from "@raf-query/react";
-// ---cut---
-const queryClient = new QueryClient({
-	defaults: {
-		refetchOnReconnect: false,
-		refetchOnWindowFocus: false,
-	},
-});
-```
+<<< ./window-focus-refetching/src/client-defaults.ts#defaults
 
 For one query, in its factory:
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-import { getSettings } from "./_twoslash.ts";
-// ---cut---
-export function settingsQuery() {
-	return queryOptions({
-		queryKey: ["settings"],
-		queryFn: () => getSettings(),
-		refetchOnWindowFocus: false,
-	});
-}
-```
+<<< ./window-focus-refetching/src/factory-option.ts#factory
 
 Or for one reader, in `useQuery`'s options. The query refetches on focus if any reader wants it to:
 
-```ts twoslash
-import { type QueryHandle, useQuery } from "@raf-query/react";
-import { settingsQuery } from "./_twoslash.ts";
-declare const loaderData: { settings: QueryHandle<typeof settingsQuery> };
-// ---cut---
-const [settings] = useQuery(settingsQuery, loaderData.settings, {
-	refetchOnWindowFocus: false,
-});
-```
+<<< ./window-focus-refetching/src/use-query-option.ts#use-query
 
 A long `staleTime` is often the better fix: the data then refetches on focus only once it's actually old.
 
@@ -63,36 +35,7 @@ To test it by hand, switch tabs and come back. The [polling](./polling.md) demo 
 
 The cache learns about focus and network changes from a `Platform` service. Its default reads `window`, `document` and `navigator`. Provide your own for environments without them (React Native, an embedded webview) or to control focus in tests:
 
-```ts twoslash
-import { Platform, QueryClient } from "@raf-query/react";
-import { Layer } from "effect";
-declare const AppState: {
-	readonly currentState: string;
-	addEventListener(event: "change", listener: (state: string) => void): void;
-};
-// ---cut---
-const listeners = new Set<(event: "focus" | "online") => void>();
-
-const AppPlatform = Layer.succeed(Platform.Platform, {
-	isOnlineUnsafe: () => true,
-	isServer: false,
-	isVisibleUnsafe: () => AppState.currentState === "active",
-	subscribeUnsafe(listener) {
-		listeners.add(listener);
-		return () => {
-			listeners.delete(listener);
-		};
-	},
-});
-
-AppState.addEventListener("change", (state) => {
-	if (state === "active") {
-		for (const listener of listeners) listener("focus");
-	}
-});
-
-const queryClient = new QueryClient({ layer: AppPlatform });
-```
+<<< ./window-focus-refetching/src/app-platform.ts#platform
 
 The cache is built on top of the client's `layer`, so the platform it provides replaces the default.
 
