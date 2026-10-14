@@ -13,48 +13,13 @@ order: 20
 
 A common use is a per-query message for one global error handler:
 
-```ts twoslash
-declare function listIssues(): Promise<unknown>;
-declare const toast: { error(message: string): void };
-declare module "@raf-query/react" {
-	interface Register {
-		queryMeta: { errorMessage?: string };
-	}
-}
-// ---cut---
-import { Query, QueryClient, queryOptions } from "@raf-query/react";
-
-export function issuesQuery() {
-	return queryOptions({
-		queryKey: ["issues"],
-		queryFn: () => listIssues(),
-		meta: { errorMessage: "Couldn't load issues" },
-	});
-}
-
-const queryClient = new QueryClient({
-	onError: (error, query) => {
-		toast.error(
-			Query.metaUnsafe(query)?.errorMessage ?? "Something went wrong",
-		);
-	},
-});
-```
+<<< ./query-meta/src/error-toast.ts#setup
 
 ## Typing meta
 
 `meta` is `Record<string, unknown>` by default. Type it for the whole app by augmenting `Register` in the package you import from (`@raf-query/react` re-exports it from `@raf-query/core`, so either works):
 
-```ts twoslash
-import type { Register } from "@raf-query/react";
-type _Keep = Register;
-// ---cut---
-declare module "@raf-query/react" {
-	interface Register {
-		queryMeta: { errorMessage?: string };
-	}
-}
-```
+<<< ./query-meta/src/register.ts#register
 
 Every `meta` is then checked against that type, and `Query.metaUnsafe` returns it.
 
@@ -62,26 +27,13 @@ Every `meta` is then checked against that type, and `Query.metaUnsafe` returns i
 
 `config.defaults` takes `meta` too, for queries that set none. A query's own `meta` replaces the default as a whole; the two aren't merged.
 
-```ts twoslash
-import { QueryClient } from "@raf-query/react";
-// ---cut---
-const queryClient = new QueryClient({
-	defaults: { meta: { errorMessage: "Something went wrong" } },
-});
-```
+<<< ./query-meta/src/defaults.ts#defaults
 
 ## Selecting queries by meta
 
 Filters receive the `Query`, so `meta` can select queries to invalidate:
 
-```ts twoslash
-import { Query, QueryClient } from "@raf-query/react";
-const qc = new QueryClient();
-// ---cut---
-await qc.invalidate({
-	predicate: (query) => Query.metaUnsafe(query)?.scope === "billing",
-});
-```
+<<< ./query-meta/src/invalidate-billing.ts#invalidate
 
 ## Serialization
 
