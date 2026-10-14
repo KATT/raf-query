@@ -15,6 +15,8 @@ export interface JsonObject {
 
 export interface PageSeo {
 	readonly description: string;
+	/** The page as markdown, for agents: `/docs/<slug>.md`. */
+	readonly markdownPath: string;
 	/** Path from the site root, starting with `/`. */
 	readonly path: string;
 	/** Schema.org JSON-LD objects for the page. */
@@ -36,7 +38,15 @@ export function pageHead(page: PageSeo) {
 	const url = absoluteUrl(page.path);
 	const image = absoluteUrl("/og.png");
 	return {
-		links: [{ href: url, rel: "canonical" }],
+		links: [
+			{ href: url, rel: "canonical" },
+			{
+				href: page.markdownPath,
+				rel: "alternate",
+				title: "Markdown",
+				type: "text/markdown",
+			},
+		],
 		meta: [
 			{ title },
 			{ content: page.description, name: "description" },

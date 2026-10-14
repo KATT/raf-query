@@ -12,7 +12,13 @@ const demosDir = new URL("src/demos", import.meta.url).pathname;
 
 export default defineConfig({
 	plugins: [
-		docsContent({ contentDir, demosDir, sections, siteUrl: site.url }),
+		docsContent({
+			contentDir,
+			demosDir,
+			demosUrl: `${site.github}/blob/main/docs/src/demos`,
+			sections,
+			siteUrl: site.url,
+		}),
 		tailwindcss(),
 		tanstackStart({
 			pages: [

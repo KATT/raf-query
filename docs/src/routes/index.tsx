@@ -31,6 +31,7 @@ export const Route = createFileRoute("/")({
 	head: () =>
 		pageHead({
 			description: site.description,
+			markdownPath: "/llms.txt",
 			path: "/",
 			structuredData: [
 				{

@@ -3,6 +3,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Pencil } from "lucide-react";
 
 import { DocBody } from "~/components/doc-body.tsx";
+import { PageActions } from "~/components/page-actions.tsx";
 import { TableOfContents } from "~/components/toc.tsx";
 import { docQuery, findDoc, neighbours } from "~/content/docs.ts";
 import { demoQuery } from "~/demos/registry.ts";
@@ -34,6 +35,7 @@ export const Route = createFileRoute("/docs/$slug")({
 		const path = `/docs/${meta.slug}`;
 		return pageHead({
 			description: meta.description,
+			markdownPath: `${path}.md`,
 			path,
 			structuredData: [
 				{
@@ -90,6 +92,7 @@ function DocPage() {
 					<p className="text-lg text-pretty text-muted-foreground">
 						{doc.description}
 					</p>
+					<PageActions key={doc.slug} slug={doc.slug} />
 				</header>
 				<DocBody demos={data.demos} segments={doc.segments} />
 				<footer className="mt-12 grid gap-6 border-t pt-6">

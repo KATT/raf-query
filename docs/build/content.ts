@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { Schema } from "effect";
-import type { Plugin } from "vite";
+import type { Connect, Plugin } from "vite";
 import { parse as parseYaml } from "yaml";
 
 import type { Doc, DocMeta, DocSection } from "../src/content/types.ts";
@@ -14,11 +14,16 @@ export interface ContentOptions {
 	readonly contentDir: string;
 	/** Directory with one `<id>.tsx` per demo. */
 	readonly demosDir: string;
+	/** Where `demosDir` is browsable, for the markdown pages' demo links. */
+	readonly demosUrl: string;
 	/** Sidebar sections, in order. Every page's `section` must be one of them. */
 	readonly sections: ReadonlyArray<string>;
-	/** Absolute site URL, for `llms.txt`. */
+	/** Absolute site URL, for `llms.txt` and the markdown pages. */
 	readonly siteUrl: string;
 }
+
+/** The `Accept` header agents send to get markdown instead of HTML. */
+export const acceptsMarkdown = /\btext\/markdown\b/;
 
 const Frontmatter = Schema.Struct({
 	description: Schema.String,
@@ -165,11 +170,46 @@ export function docsContent(options: ContentOptions): Plugin {
 		}));
 	}
 
+	const intro = [
+		"# raf-query",
+		"",
+		"> Render-as-you-fetch data fetching for React: queries start in route loaders and React Server Components, travel to components as serializable handles, and are read with `use()` under Suspense.",
+		"",
+	];
+
+	/**
+	 * A page as agents read it: links point at the other pages' markdown, and
+	 * each demo, which only runs in a browser, becomes a link to the page and
+	 * to the demo's code.
+	 */
+	function pageMarkdown(source: Source) {
+		const url = `${options.siteUrl}/docs/${source.slug}`;
+		const body = source.markdown
+			.replaceAll(
+				/\]\((?:\.\/)?([\w-]+)\.md(#[\w-]+)?\)/g,
+				(link, slug, hash) =>
+					`](${options.siteUrl}/docs/${slug}.md${hash ?? ""})`,
+			)
+			.replaceAll(
+				/^```demo\n([\w-]+)\n```$/gm,
+				(block, id) =>
+					`> [!NOTE]\n> The [web version of this page](${url}) has an interactive demo here. Its code: [${id}.tsx](${options.demosUrl}/${id}.tsx).`,
+			);
+		return [
+			`# ${source.frontmatter.title}`,
+			"",
+			`> ${source.frontmatter.description}`,
+			"",
+			body.trim(),
+			"",
+		].join("\n");
+	}
+
+	/** `llms.txt` (https://llmstxt.org): what the library is, and every page. */
 	function llmsTxt(sections: ReadonlyArray<DocSection>) {
 		const lines = [
-			"# raf-query",
-			"",
-			"> Render-as-you-fetch data fetching for React: queries start in route loaders and React Server Components, travel to components as serializable handles, and are read with `use()` under Suspense.",
+			...intro,
+			"Every page is also markdown: add `.md` to its URL, or request it with `Accept: text/markdown`.",
 			"",
 		];
 		for (const section of sections) {
@@ -181,26 +221,99 @@ export function docsContent(options: ContentOptions): Plugin {
 			}
 			lines.push("");
 		}
+		lines.push(
+			"## Optional",
+			"",
+			`- [Full documentation](${options.siteUrl}/llms-full.txt): every page above in one file`,
+			"",
+		);
 		return lines.join("\n");
 	}
 
+	/**
+	 * Files for agents, by URL path: `llms.txt`, `llms-full.txt`, each page's
+	 * markdown at `/docs/<slug>.md`, `/index.md` (the home page's markdown,
+	 * the same as `llms.txt`) and `/404.md`.
+	 */
+	async function agentFiles() {
+		const sections = await manifest();
+		const sources = new Map(
+			readSources(contentDir).map((source) => [source.slug, source]),
+		);
+		const pages = sections
+			.flatMap((section) => section.docs)
+			.flatMap((doc) => {
+				const source = sources.get(doc.slug);
+				return source ? [source] : [];
+			});
+		const files = new Map<string, string>();
+		files.set("/llms.txt", llmsTxt(sections));
+		files.set("/index.md", llmsTxt(sections));
+		files.set(
+			"/404.md",
+			`# Not found\n\nThere is no page at this URL. [llms.txt](${options.siteUrl}/llms.txt) lists every page.\n`,
+		);
+		files.set(
+			"/llms-full.txt",
+			[
+				...intro,
+				...pages.map(
+					(source) =>
+						`---\n\nSource: ${options.siteUrl}/docs/${source.slug}\n\n${pageMarkdown(source)}`,
+				),
+			].join("\n"),
+		);
+		for (const source of pages) {
+			files.set(`/docs/${source.slug}.md`, pageMarkdown(source));
+		}
+		return files;
+	}
+
+	/**
+	 * The dev and preview servers answer like the deployed site
+	 * (`build/vercel-output.ts`): agent files at their paths, and a page's
+	 * markdown at the page's own URL for `Accept: text/markdown`.
+	 */
+	function serveAgentFiles(server: { readonly middlewares: Connect.Server }) {
+		server.middlewares.use((request, response, next) => {
+			const { pathname } = new URL(request.url ?? "/", "http://localhost");
+			const wantsMarkdown = acceptsMarkdown.test(request.headers.accept ?? "");
+			const filePath =
+				wantsMarkdown && /^\/(?:docs\/[\w-]+)?$/.test(pathname)
+					? `${pathname === "/" ? "/index" : pathname}.md`
+					: pathname;
+			if (!/\.(?:md|txt)$/.test(filePath) || filePath === "/robots.txt") {
+				next();
+				return;
+			}
+			agentFiles().then((files) => {
+				const file = files.get(filePath) ?? files.get("/404.md");
+				if (file === undefined || (!wantsMarkdown && !files.has(filePath))) {
+					next();
+					return;
+				}
+				response.statusCode = files.has(filePath) ? 200 : 404;
+				response.setHeader(
+					"Content-Type",
+					filePath.endsWith(".md")
+						? "text/markdown; charset=utf-8"
+						: "text/plain; charset=utf-8",
+				);
+				response.setHeader("Vary", "Accept");
+				response.end(file);
+			}, next);
+		});
+	}
+
 	return {
+		configurePreviewServer: serveAgentFiles,
+		configureServer: serveAgentFiles,
 		async generateBundle() {
 			if (this.environment.name !== "client") {
 				return;
 			}
-			const sections = await manifest();
-			this.emitFile({
-				fileName: "llms.txt",
-				source: llmsTxt(sections),
-				type: "asset",
-			});
-			for (const source of readSources(contentDir)) {
-				this.emitFile({
-					fileName: `docs/${source.slug}.md`,
-					source: `# ${source.frontmatter.title}\n\n${source.markdown}`,
-					type: "asset",
-				});
+			for (const [urlPath, source] of await agentFiles()) {
+				this.emitFile({ fileName: urlPath.slice(1), source, type: "asset" });
 			}
 		},
 		hotUpdate(context) {
