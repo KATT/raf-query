@@ -66,32 +66,8 @@ Each request runs in a `raf-query.request` span with a `raf_query.hash` attribut
 `QueryClient` gets its services from a `layer`. It's built into the client's scope along with the cache, so it must build synchronously:
 
 ```ts twoslash
-import { QueryClient, queryOptions } from "@raf-query/react";
-import { Context, Effect, Layer } from "effect";
-declare class IssueNotFound {
-	readonly _tag: "IssueNotFound";
-}
-declare interface Issue {
-	readonly id: number;
-}
-declare const IssueRepo: {
-	get(id: number): Effect.Effect<Issue, IssueNotFound>;
-};
-class IssueApi extends Context.Service<
-	IssueApi,
-	{ readonly get: (id: number) => Effect.Effect<Issue, IssueNotFound> }
->()("app/IssueApi") {}
-const IssueApiLive = Layer.succeed(IssueApi, { get: IssueRepo.get });
-function issueQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: ["issue", input.id],
-		queryFn: () =>
-			Effect.gen(function* () {
-				const api = yield* IssueApi;
-				return yield* api.get(input.id);
-			}),
-	});
-}
+import { QueryClient } from "@raf-query/react";
+import { IssueApiLive, issueQuery } from "./_effect.ts";
 // ---cut---
 const queryClient = new QueryClient({ layer: IssueApiLive }); // QueryClient<IssueApi>
 const handle = queryClient.prefetch(issueQuery, { id: 1 });
@@ -105,21 +81,8 @@ The client's type is `QueryClient<TServices>`, and its verbs accept only factori
 
 ```ts twoslash
 import { QueryCache, QueryClient } from "@raf-query/react";
-import { Context, Effect, Layer } from "effect";
-declare interface Issue {
-	readonly id: number;
-	readonly title: string;
-}
-class IssueApi extends Context.Service<
-	IssueApi,
-	{
-		readonly rename: (input: {
-			readonly id: number;
-			readonly title: string;
-		}) => Effect.Effect<Issue>;
-	}
->()("app/IssueApi") {}
-declare const IssueApiLive: Layer.Layer<IssueApi>;
+import { Effect } from "effect";
+import { IssueApi, IssueApiLive } from "./_effect.ts";
 const queryClient = new QueryClient({ layer: IssueApiLive });
 // ---cut---
 await queryClient.runPromise(
@@ -136,24 +99,80 @@ Like `Effect.runPromise`, it rejects with the Effect's failure or defect. An Eff
 
 ### In React
 
-`QueryClientProvider` takes a client with any services. A hook can't know which ones, so `useQueryClient()` returns a `QueryClient<unknown>`, whose verbs accept any factory, and `useQuery` reads any factory. A request then fails with a defect if the client's layer lacks a service it needs.
+`QueryClientProvider` takes a client with any services. A hook can't know which ones, so `useQueryClient()` returns a `QueryClient<unknown>`, whose verbs accept any factory and any Effect. A request then fails with a defect if the client's layer lacks a service it needs.
 
-In TanStack Start, type the router context with the client's services, so loaders keep the check:
+Components rarely need the services anyway. `useQuery` reads what a loader started, and the cache runs every request with the layer's services: the loader's, a render's, a refetch, an invalidation. So keep the check where Effects start: type the router context with the client's services, and loaders and actions get the typed client from it.
 
-```ts twoslash
+```tsx twoslash title="src/routes/__root.tsx"
 import type { QueryClient } from "@raf-query/react";
-import { Context, Effect } from "effect";
-declare class IssueNotFound {
-	readonly _tag: "IssueNotFound";
-}
-declare interface Issue {
-	readonly id: number;
-}
-class IssueApi extends Context.Service<
-	IssueApi,
-	{ readonly get: (id: number) => Effect.Effect<Issue, IssueNotFound> }
->()("app/IssueApi") {}
-declare function createRootRouteWithContext<TContext>(): () => unknown;
+import { createRootRouteWithContext } from "./_twoslash.ts";
+import type { IssueApi } from "./_effect.ts";
 // ---cut---
-createRootRouteWithContext<{ queryClient: QueryClient<IssueApi> }>();
+export const Route = createRootRouteWithContext<{
+	queryClient: QueryClient<IssueApi>;
+}>()({});
 ```
+
+Loaders start queries through the typed client, so a factory that needs a service the layer doesn't provide is a type error there. Components read the handles with `useQuery`, which needs no services:
+
+```tsx twoslash title="src/routes/issues.$issueId.tsx"
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { Suspense, use } from "react";
+import { createFileRoute, issueQuery } from "./_effect.ts";
+// ---cut---
+export const Route = createFileRoute("/issues/$issueId")({
+	loader: (args) => {
+		const qc = args.context.queryClient;
+		//    ^?
+		return {
+			issue: qc.prefetch(issueQuery, { id: Number(args.params.issueId) }),
+		};
+	},
+	component: IssuePage,
+});
+
+function IssuePage() {
+	const loaderData = Route.useLoaderData();
+	return (
+		<Suspense fallback={<p>Loading…</p>}>
+			<IssueTitle handle={loaderData.issue} />
+		</Suspense>
+	);
+}
+
+function IssueTitle(props: { handle: QueryHandle<typeof issueQuery> }) {
+	const [issuePromise] = useQuery(issueQuery, props.handle);
+	return <h1>{use(issuePromise).title}</h1>;
+}
+```
+
+A component that starts an Effect itself, like a form action, gets the client from the route's context too, so `runPromise` keeps the check:
+
+```tsx twoslash title="src/components/rename-form.tsx"
+import { Effect } from "effect";
+import { type Issue, IssueApi, IssueRoute } from "./_effect.ts";
+const Route = IssueRoute;
+// ---cut---
+export function RenameForm(props: { issue: Issue }) {
+	const queryClient = Route.useRouteContext().queryClient; // not useQueryClient()
+	return (
+		<form
+			action={(formData) =>
+				queryClient.runPromise(
+					Effect.gen(function* () {
+						const api = yield* IssueApi;
+						yield* api.rename({
+							id: props.issue.id,
+							title: String(formData.get("title")),
+						});
+					}).pipe(Effect.ignore),
+				)
+			}
+		>
+			<input defaultValue={props.issue.title} name="title" />
+		</form>
+	);
+}
+```
+
+[Using Effect](./effect.md#the-whole-picture) has the whole app: service, queries, client, loader, components and action.
