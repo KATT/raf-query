@@ -67,6 +67,19 @@ pnpm --filter @tooling/codesandbox generate /tmp/codesandbox
 cd /tmp/codesandbox/examples/nextjs && pnpm install && pnpm dev
 ```
 
+### Deploying
+
+Each app is its own Vercel project in the `trpc` team, with the app's directory as the root directory and its `vercel.json` setting the install and build commands. Pushes to `main` deploy to production, and pull requests get preview deployments. A project skips the build when nothing it uses changed (`ignoreCommand`).
+
+| App                                            | URL                                                             |
+| ---------------------------------------------- | --------------------------------------------------------------- |
+| `examples/tanstack-start`                      | <https://tanstack-start.raf-query.katt.dev>                     |
+| `examples/nextjs`                              | <https://nextjs.raf-query.katt.dev>                             |
+| `examples/.experimental/tanstack-query-start`  | <https://experimental-tanstack-query-start.raf-query.katt.dev>  |
+| `examples/.experimental/tanstack-query-nextjs` | <https://experimental-tanstack-query-nextjs.raf-query.katt.dev> |
+
+The Start apps build with Nitro's `nitro()` Vite plugin, which writes Vercel Build Output on Vercel and a Node server in `.output/` elsewhere. Each deployment's database lives in the memory of the function instance that serves it, so edits reset whenever an instance starts, and two instances can show different data.
+
 ## Docs site
 
 `www/` is the documentation site at <https://raf-query.katt.dev>: a TanStack Start app, prerendered to static HTML, that renders the markdown in `www/content` and loads each page through raf-query. Pages embed live demos from `www/src/demos`. See [`www/README.md`](../www/README.md) for writing pages and demos, and deploying.

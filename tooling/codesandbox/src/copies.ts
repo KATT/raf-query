@@ -26,6 +26,7 @@ const ignored = new Set([
 	"dist",
 	"next-env.d.ts",
 	"node_modules",
+	"vercel.json",
 ]);
 
 export interface PackageJson {
