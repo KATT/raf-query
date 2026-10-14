@@ -47,3 +47,16 @@ Levers that keep the Effect engine:
 - Replace `export * as` namespaces in the main entry with named exports.
 
 Each lever can only get down to the ~7 kB runtime floor plus what the engine itself uses.
+
+## Standalone verbs (measured, not adopted)
+
+Idea: `ensure(qc, factory, input)` etc. as imports instead of `QueryClient` methods. The client's methods are one-line wrappers; the code lives in `QueryCache.make`'s object literal, so every app keeps every verb (`watch` / `events` / `dehydrateStream` / `hydrateStream` pull in `Stream`, `Queue`, `Channel`). Upper bound, measured by deleting the verbs each fixture doesn't call from both `make` and `QueryClient` (gzip, kB):
+
+| App                             | `dist/` today | Namespaces fixed | + standalone verbs |
+| ------------------------------- | ------------: | ---------------: | -----------------: |
+| Factory + prefetch + `useQuery` |         30.22 |            29.73 |              27.04 |
+| TanStack Router app             |         31.37 |            30.88 |              28.73 |
+
+- "Namespaces fixed" is `dist/index.mjs` hand-edited to `export * as Query from "./query.mjs"` (Effect's own `dist/` shape) with the `__exportAll` objects dropped; it matches the `src/` build. Rolldown 1.2 has no option to emit that.
+- Standalone verbs with the namespaces left alone save only 0.7–1.2 kB on `dist/`: `Query.changes` / `QueryObserver.changes` keep `Stream` alive through the getter objects.
+- Effect's share drops ~1.4 kB of the ~2.2–2.7 kB; the rest is raf-query's own verb code.
