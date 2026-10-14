@@ -2,10 +2,38 @@ concurrency:
   group: ${{ github.workflow }}
 
 jobs:
-  release:
+  # Skip install/build when nothing publishable changed. Keep the workflow
+  # running on every main push (not paths:) so a docs-only commit can still
+  # release if an earlier package-changing run stopped because main moved.
+  gate:
     # release-it pushes "chore: release vX.Y.Z", which would re-trigger this
     # workflow and fail with "no commits since the latest tag".
     if: "${{ !startsWith(github.event.head_commit.message, 'chore: release') }}"
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+      - id: check
+        # Glob must match git.commitsPath in .release-it.json. Unquoted so the
+        # shell expands it (same as release-it); that skips packages/.experimental
+        # the way ./packages/* filters do elsewhere.
+        run: |
+          latest=$(git describe --tags --abbrev=0)
+          count=$(git rev-list "${latest}..HEAD" --count -- packages/*)
+          if [ "$count" -eq 0 ]; then
+            echo "No commits touching packages/* since ${latest}; skipping."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  release:
+    needs: gate
+    if: needs.gate.outputs.should_release == 'true'
     permissions:
       contents: write
       id-token: write
@@ -43,7 +71,7 @@ jobs:
             exit 0
           fi
           if grep -Fq "There are no commits since the latest tag" /tmp/release-it.log; then
-            echo "No releasable commits since the latest tag; skipping."
+            echo "No releasable package commits since the latest tag; skipping."
             exit 0
           fi
           if grep -Fq "main moved during this release" /tmp/release-it.log; then

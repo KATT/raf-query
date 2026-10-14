@@ -1,6 +1,7 @@
 {
 	"git": {
 		"commitMessage": "chore: release v${version}",
+		"commitsPath": "packages/*",
 		"pushArgs": ["--follow-tags", "--atomic"],
 		"requireCommits": true
 	},
