@@ -13,29 +13,7 @@ raf-query has no `useMutation`. React already has the pieces a mutation needs:
 
 The cache's part is what happens after the write: [invalidating](./query-invalidation.md) the queries it affected, or writing the response straight into the cache with `setData`.
 
-```tsx twoslash
-import { useOptimistic } from "react";
-import { useQueryClient } from "@raf-query/react";
-import { type Post, postQuery, updatePost } from "./_twoslash.ts";
-// ---cut---
-function EditTitle(props: { post: Post }) {
-	const qc = useQueryClient();
-	const [title, setOptimisticTitle] = useOptimistic(props.post.title);
-
-	return (
-		<form
-			action={async (formData) => {
-				const next = String(formData.get("title"));
-				setOptimisticTitle(next);
-				await updatePost({ slug: props.post.slug, title: next });
-				await qc.invalidate(postQuery, { slug: props.post.slug });
-			}}
-		>
-			<input name="title" defaultValue={title} />
-		</form>
-	);
-}
-```
+<<< ./mutations/src/components/edit-title.tsx#edit-title
 
 `updatePost` is a plain async function: a TanStack Start server function, a Next.js server action, or a `fetch` call.
 
@@ -53,65 +31,13 @@ optimistic-updates
 
 The demo's form:
 
-```tsx twoslash
-import { useActionState, useOptimistic } from "react";
-import { useQueryClient } from "@raf-query/react";
-import { todosQuery } from "./_twoslash.ts";
-type Todo = { id: number; pending?: boolean; text: string };
-declare function addTodo(text: string): Promise<void>;
-// ---cut---
-function AddTodo(props: { todos: Todo[] }) {
-	const qc = useQueryClient();
-	const [todos, addOptimistic] = useOptimistic(
-		props.todos,
-		(current, text: string) => [...current, { id: -1, pending: true, text }],
-	);
-	const [error, formAction] = useActionState(
-		async (_previous: string | null, formData: FormData) => {
-			const text = String(formData.get("text"));
-			addOptimistic(text);
-			try {
-				await addTodo(text);
-			} catch (error) {
-				return error instanceof Error ? error.message : "Something went wrong";
-			}
-			await qc.invalidate(todosQuery);
-			return null;
-		},
-		null,
-	);
-	// ...
-}
-```
+<<< ./mutations/src/components/add-todo.tsx#add-todo
 
 ### Optimistic updates in the cache
 
 `useOptimistic` covers the component that ran the action. When other parts of the page show the same data (a count in the sidebar, the same item in another list), update the cache instead, so every reader sees it:
 
-```ts twoslash
-import { QueryClient } from "@raf-query/react";
-import { todosQuery } from "./_twoslash.ts";
-declare function toggleTodoApi(id: number): Promise<void>;
-const qc = new QueryClient();
-const api = { toggleTodo: toggleTodoApi };
-// ---cut---
-async function toggleTodo(id: number) {
-	const previous = qc.getData(todosQuery);
-	qc.setData(todosQuery, undefined, (todos) =>
-		(todos ?? []).map((todo) =>
-			todo.id === id ? { ...todo, done: !todo.done } : todo,
-		),
-	);
-	try {
-		await api.toggleTodo(id);
-	} catch (error) {
-		qc.setData(todosQuery, undefined, previous ?? []);
-		throw error;
-	} finally {
-		await qc.invalidate(todosQuery);
-	}
-}
-```
+<<< ./mutations/src/toggle-todo.ts#optimistic-cache
 
 This is more code, and you're responsible for the rollback. Reach for it only when `useOptimistic` can't reach the readers that need the update.
 
@@ -119,16 +45,7 @@ This is more code, and you're responsible for the rollback. Reach for it only wh
 
 When the server responds with the updated object, write it into the cache instead of refetching:
 
-```ts twoslash
-import { QueryClient } from "@raf-query/react";
-import { postQuery, updatePost } from "./_twoslash.ts";
-const qc = new QueryClient();
-declare const slug: string;
-declare const title: string;
-// ---cut---
-const updated = await updatePost({ slug, title });
-qc.setData(postQuery, { slug }, updated);
-```
+<<< ./mutations/src/set-data-from-response.ts#set-data-from-response
 
 `setData` takes a value or an updater, `(previous) => next`. Readers re-render with the new data at once, without suspending. The entry is created if it doesn't exist yet, and data written with `setData` counts as just fetched, so it's fresh for `staleTime`.
 
@@ -142,34 +59,7 @@ Wrap the action in `useActionState` and return the caught error, as the demo doe
 
 Inside a form, `useFormStatus()` gives a submit button the form's pending state. Outside one, `useTransition` returns `isPending` for the actions you start with its `startTransition`:
 
-```tsx twoslash
-import { useTransition } from "react";
-import { QueryClient } from "@raf-query/react";
-import { queryOptions } from "@raf-query/react";
-const qc = new QueryClient();
-declare function deletePost(slug: string): Promise<void>;
-declare const props: { slug: string };
-function postsQuery() {
-	return queryOptions({
-		queryKey: ["posts"],
-		queryFn: async () => [] as Array<{ slug: string }>,
-	});
-}
-// ---cut---
-const [isPending, startTransition] = useTransition();
-
-<button
-	disabled={isPending}
-	onClick={() => {
-		startTransition(async () => {
-			await deletePost(props.slug);
-			await qc.invalidate(postsQuery);
-		});
-	}}
->
-	Delete
-</button>;
-```
+<<< ./mutations/src/components/delete-post-button.tsx#pending-delete
 
 ## Mutations that navigate
 
