@@ -4,6 +4,7 @@ import { Button } from "@examples/ui/components/button";
 import { LoadMore } from "@examples/ui/components/load-more";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { Textarea } from "@examples/ui/components/textarea";
+import { warnMockDbWrite } from "@examples/ui/lib/mock-db-toast";
 import { cn } from "@examples/ui/lib/utils";
 import { type QueryHandle, useQuery, useQueryClient } from "@raf-query/react";
 import { Loader2 } from "lucide-react";
@@ -60,6 +61,7 @@ export function Comments(props: {
 						return;
 					}
 					const id = crypto.randomUUID();
+					warnMockDbWrite();
 					formRef.current?.reset();
 					addOptimistic({
 						author: currentUser,
