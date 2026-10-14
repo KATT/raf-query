@@ -1,6 +1,5 @@
-"use client";
-
 // #region component
+"use client";
 // #endregion
 
 import { type QueryHandle, useQuery } from "@raf-query/react";
