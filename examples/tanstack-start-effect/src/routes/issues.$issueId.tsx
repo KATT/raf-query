@@ -10,7 +10,7 @@ import { Comments, CommentsSkeleton } from "~/components/comments.tsx";
 import { EditBody } from "~/components/edit-body.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
-import { AssigneeCard, AssigneeCardSkeleton } from "~/components/user.tsx";
+import { AssigneeCard } from "~/components/user.tsx";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 
 export const Route = createFileRoute("/issues/$issueId")({
@@ -96,9 +96,7 @@ function IssuePage() {
 							/>
 						</div>
 					</section>
-					<Suspense fallback={<AssigneeCardSkeleton />}>
-						<AssigneeCard handle={data.assignee} />
-					</Suspense>
+					<AssigneeCard handle={data.assignee} />
 				</aside>
 			</div>
 		</div>

@@ -61,32 +61,26 @@ export declare const IssueApiLive: Layer.Layer<IssueApi>;
 
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
-		queryFn: () =>
-			Effect.gen(function* () {
-				const api = yield* IssueApi;
-				return yield* api.get(input.id);
-			}),
+		queryFn: () => IssueApi.use((api) => api.get(input.id)),
 		queryKey: ["issue", input.id],
 	});
 }
 
 export function assigneeQuery(input: { issueId: number }) {
 	return queryOptions({
-		queryFn: () =>
-			Effect.gen(function* () {
-				const api = yield* IssueApi;
-				return yield* api.assignee(input.issueId);
-			}).pipe(Effect.catchTag("IssueNotFound", () => Effect.succeed(null))),
+		queryFn: () => IssueApi.use((api) => api.assignee(input.issueId)),
 		queryKey: ["issue", input.issueId, "assignee"],
+		retry: (failures, error) =>
+			failures <= 3 && !Schema.is(Unauthorized)(error),
 	});
 }
 
 export const rename = Effect.fn("rename")(
 	function* (input: { readonly id: number; readonly title: string }) {
-		const api = yield* IssueApi;
-		const cache = yield* QueryCache.QueryCache;
-		yield* api.rename(input);
-		yield* cache.invalidate({ queryKey: ["issue", input.id] });
+		yield* IssueApi.use((api) => api.rename(input));
+		yield* QueryCache.QueryCache.use((cache) =>
+			cache.invalidate({ queryKey: ["issue", input.id] }),
+		);
 		return null;
 	},
 	Effect.catchTags({

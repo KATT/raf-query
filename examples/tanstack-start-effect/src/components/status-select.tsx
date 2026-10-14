@@ -25,10 +25,10 @@ const setStatus = Effect.fn("setStatus")(function* (input: {
 	readonly id: number;
 	readonly status: IssueStatus;
 }) {
-	const issues = yield* Issues;
-	const cache = yield* QueryCache.QueryCache;
-	yield* issues.SetStatus(input);
-	yield* cache.invalidate({ queryKey: ["issues"] });
+	yield* Issues.use((issues) => issues.SetStatus(input));
+	yield* QueryCache.QueryCache.use((cache) =>
+		cache.invalidate({ queryKey: ["issues"] }),
+	);
 });
 
 /** Status badge that opens a menu and saves the choice optimistically. */

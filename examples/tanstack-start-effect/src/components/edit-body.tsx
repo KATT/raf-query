@@ -11,10 +11,10 @@ import type { Issue } from "~/rpc.ts";
 /** Saves the body, then waits for the refetched issue. `null` when it saved. */
 const saveBody = Effect.fn("saveBody")(
 	function* (input: { readonly body: string; readonly id: number }) {
-		const issues = yield* Issues;
-		const cache = yield* QueryCache.QueryCache;
-		yield* issues.UpdateBody(input);
-		yield* cache.invalidate({ queryKey: ["issues"] });
+		yield* Issues.use((issues) => issues.UpdateBody(input));
+		yield* QueryCache.QueryCache.use((cache) =>
+			cache.invalidate({ queryKey: ["issues"] }),
+		);
 		return null;
 	},
 	Effect.catchTags({

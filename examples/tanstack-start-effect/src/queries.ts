@@ -4,7 +4,7 @@ import {
 	queryOptions,
 	type ServicesOf,
 } from "@raf-query/react";
-import { Effect, Schema } from "effect";
+import { Schema } from "effect";
 
 import { Issues } from "~/issues.ts";
 import { type IssueListInput, IssueNotFound } from "~/rpc.ts";
@@ -12,13 +12,12 @@ import { type IssueListInput, IssueNotFound } from "~/rpc.ts";
 export function issueListQuery(input: IssueListInput) {
 	return infiniteQueryOptions({
 		queryFn: (context) =>
-			Effect.gen(function* () {
-				const issues = yield* Issues;
-				return yield* issues.ListIssues({
+			Issues.use((issues) =>
+				issues.ListIssues({
 					...input,
 					cursor: context.pageParam,
-				});
-			}),
+				}),
+			),
 		// After `queryFn`: TypeScript infers the page type from the first one.
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
 		initialPageParam: 0,
@@ -28,11 +27,7 @@ export function issueListQuery(input: IssueListInput) {
 
 export function issueCountsQuery() {
 	return queryOptions({
-		queryFn: () =>
-			Effect.gen(function* () {
-				const issues = yield* Issues;
-				return yield* issues.CountIssues();
-			}),
+		queryFn: () => Issues.use((issues) => issues.CountIssues()),
 		queryKey: ["issues", "counts"],
 	});
 }
@@ -43,11 +38,7 @@ export function issueCountsQuery() {
  */
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
-		queryFn: () =>
-			Effect.gen(function* () {
-				const issues = yield* Issues;
-				return yield* issues.GetIssue(input);
-			}),
+		queryFn: () => Issues.use((issues) => issues.GetIssue(input)),
 		queryKey: ["issues", "detail", input.id],
 		// A missing issue won't turn up on a retry.
 		retry: (failures, error) =>
@@ -61,13 +52,12 @@ export type IssueQueryServices = ServicesOf<typeof issueQuery>;
 export function commentsQuery(input: { issueId: number }) {
 	return infiniteQueryOptions({
 		queryFn: (context) =>
-			Effect.gen(function* () {
-				const issues = yield* Issues;
-				return yield* issues.ListComments({
+			Issues.use((issues) =>
+				issues.ListComments({
 					...input,
 					cursor: context.pageParam,
-				});
-			}),
+				}),
+			),
 		// After `queryFn`, as above.
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
 		initialPageParam: 0,
@@ -75,18 +65,13 @@ export function commentsQuery(input: { issueId: number }) {
 	});
 }
 
-/**
- * `IssueNotFound` is caught into `null`, so it is out of
- * {@link AssigneeQueryError}; a missing assignee renders as unassigned.
- */
+/** Fails with {@link AssigneeQueryError}; React narrows with `Schema.is`. */
 export function assigneeQuery(input: { issueId: number }) {
 	return queryOptions({
-		queryFn: () =>
-			Effect.gen(function* () {
-				const issues = yield* Issues;
-				return yield* issues.GetIssueAssignee(input);
-			}).pipe(Effect.catchTag("IssueNotFound", () => Effect.succeed(null))),
+		queryFn: () => Issues.use((issues) => issues.GetIssueAssignee(input)),
 		queryKey: ["issues", "assignee", input.issueId],
+		retry: (failures, error) =>
+			failures <= 3 && !Schema.is(IssueNotFound)(error),
 	});
 }
 

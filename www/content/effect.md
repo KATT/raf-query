@@ -55,33 +55,23 @@ export class IssueApi extends Context.Service<
 
 ### Queries
 
-A `queryFn` returns an Effect that `yield*`s the service. The factory's type carries the service and the errors — `ErrorOf` and `ServicesOf` name them, and every cache verb fails or requires them:
+A `queryFn` returns an Effect that uses the service. The factory's type carries the service and the errors — `ErrorOf` and `ServicesOf` name them, and every cache verb fails or requires them:
 
 ```ts twoslash title="src/queries.ts"
 import { type ErrorOf, queryOptions, type ServicesOf } from "@raf-query/react";
-import { Effect } from "effect";
 import { IssueApi } from "./_effect.ts";
 // ---cut---
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
 		queryKey: ["issue", input.id],
-		queryFn: () =>
-			Effect.gen(function* () {
-				const api = yield* IssueApi;
-				return yield* api.get(input.id);
-			}),
+		queryFn: () => IssueApi.use((api) => api.get(input.id)),
 	});
 }
 
-/** No assignee is `null`, not an error. */
 export function assigneeQuery(input: { issueId: number }) {
 	return queryOptions({
 		queryKey: ["issue", input.issueId, "assignee"],
-		queryFn: () =>
-			Effect.gen(function* () {
-				const api = yield* IssueApi;
-				return yield* api.assignee(input.issueId);
-			}).pipe(Effect.catchTag("IssueNotFound", () => Effect.succeed(null))),
+		queryFn: () => IssueApi.use((api) => api.assignee(input.issueId)),
 	});
 }
 
@@ -147,13 +137,14 @@ Loaders use the same Promise verbs as a non-Effect app. Prefetch is sync; `ensur
 
 ```tsx twoslash title="src/routes/issues.$issueId.tsx"
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { notFound } from "@tanstack/react-router";
-import { Effect } from "effect";
+import { CatchBoundary, notFound } from "@tanstack/react-router";
+import { Effect, Schema } from "effect";
 import { Suspense, use, type ReactNode } from "react";
 import {
 	assigneeQuery,
 	createFileRoute,
 	type Issue,
+	IssueNotFound,
 	issueQuery,
 } from "./_effect.ts";
 declare function RenameForm(props: { readonly issue: Issue }): ReactNode;
@@ -188,10 +179,30 @@ function IssuePage() {
 		<article>
 			<h1>{issue.title}</h1>
 			<RenameForm issue={issue} />
-			<Suspense fallback={<p>Loading assignee…</p>}>
-				<Assignee handle={loaderData.assignee} />
-			</Suspense>
+			<AssigneeSection handle={loaderData.assignee} />
 		</article>
+	);
+}
+
+function AssigneeSection(props: { handle: QueryHandle<typeof assigneeQuery> }) {
+	return (
+		<CatchBoundary
+			getResetKey={() => props.handle.input.issueId}
+			errorComponent={(boundary) =>
+				Schema.is(IssueNotFound)(boundary.error) ? (
+					<p>Unassigned</p>
+				) : (
+					<div role="alert">
+						<p>Couldn't load the assignee.</p>
+						<button onClick={boundary.reset}>Try again</button>
+					</div>
+				)
+			}
+		>
+			<Suspense fallback={<p>Loading assignee…</p>}>
+				<Assignee handle={props.handle} />
+			</Suspense>
+		</CatchBoundary>
 	);
 }
 
@@ -199,7 +210,7 @@ function Assignee(props: { handle: QueryHandle<typeof assigneeQuery> }) {
 	const [assigneePromise] = useQuery(assigneeQuery, props.handle);
 	const assignee = use(assigneePromise);
 	//    ^?
-	return <p>{assignee === null ? "Unassigned" : assignee.name}</p>;
+	return <p>{assignee.name}</p>;
 }
 ```
 
@@ -230,10 +241,10 @@ const Route = IssueRoute;
 // ---cut---
 const rename = Effect.fn("rename")(
 	function* (input: { readonly id: number; readonly title: string }) {
-		const api = yield* IssueApi;
-		const cache = yield* QueryCache.QueryCache;
-		yield* api.rename(input);
-		yield* cache.invalidate({ queryKey: ["issue", input.id] });
+		yield* IssueApi.use((api) => api.rename(input));
+		yield* QueryCache.QueryCache.use((cache) =>
+			cache.invalidate({ queryKey: ["issue", input.id] }),
+		);
 		return null;
 	},
 	Effect.catchTags({

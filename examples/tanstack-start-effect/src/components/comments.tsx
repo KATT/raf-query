@@ -25,10 +25,10 @@ const addComment = Effect.fn("addComment")(function* (input: {
 	readonly id: string;
 	readonly issueId: number;
 }) {
-	const issues = yield* Issues;
-	const cache = yield* QueryCache.QueryCache;
-	yield* issues.AddComment(input);
-	yield* cache.invalidate({ queryKey: ["issues"] });
+	yield* Issues.use((issues) => issues.AddComment(input));
+	yield* QueryCache.QueryCache.use((cache) =>
+		cache.invalidate({ queryKey: ["issues"] }),
+	);
 });
 
 const commentClassName = "rounded-lg border p-3";
