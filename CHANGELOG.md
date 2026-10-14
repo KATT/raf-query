@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.0](https://github.com/KATT/raf-query/compare/0.6.6...0.7.0) (2026-10-14)
+
+### ⚠ BREAKING CHANGES
+
+- **react:** tree-shake QueryDevtools at the call site ([#85](https://github.com/KATT/raf-query/issues/85))
+
+### Features
+
+- **react:** tree-shake QueryDevtools at the call site ([#85](https://github.com/KATT/raf-query/issues/85)) ([b270fa3](https://github.com/KATT/raf-query/commit/b270fa3c86513bc7414aad7c8567a64258d14f7a))
+
 ## [0.6.6](https://github.com/KATT/raf-query/compare/0.6.5...0.6.6) (2026-10-14)
 
 - build on Vercel when the last deployed commit is gone (1/2) ([#88](https://github.com/KATT/raf-query/issues/88)) ([33737ca](https://github.com/KATT/raf-query/commit/33737ca7ead288c35f3d60d063bcee69d07b0491)), references [#80](https://github.com/KATT/raf-query/issues/80) [#84](https://github.com/KATT/raf-query/issues/84) [#85](https://github.com/KATT/raf-query/issues/85) [#84](https://github.com/KATT/raf-query/issues/84)
