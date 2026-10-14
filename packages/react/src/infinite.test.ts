@@ -29,6 +29,36 @@ function itemsOf(data: { readonly pages: ReadonlyArray<Page> } | undefined) {
 	return data?.pages.flatMap((page) => page.items);
 }
 
+/** {@link numbersQuery}, whose pages load only once the test releases them. */
+function heldNumbers() {
+	const held = new Map<number, PromiseWithResolvers<void>>();
+	function query() {
+		return infiniteQueryOptions({
+			getNextPageParam: (lastPage: Page) => lastPage.next,
+			getPreviousPageParam: (firstPage: Page) => firstPage.previous,
+			initialPageParam: 4,
+			queryFn: async (context): Promise<Page> => {
+				await held.get(context.pageParam)?.promise;
+				return {
+					items: [context.pageParam, context.pageParam + 1],
+					next: context.pageParam + 2 < 10 ? context.pageParam + 2 : null,
+					previous: context.pageParam > 0 ? context.pageParam - 2 : null,
+				};
+			},
+			queryKey: ["held-numbers"],
+		});
+	}
+	return {
+		/** Hold the page at `pageParam`; returns its release. */
+		hold(pageParam: number) {
+			const gate = Promise.withResolvers<void>();
+			held.set(pageParam, gate);
+			return () => gate.resolve();
+		},
+		query,
+	};
+}
+
 describe("paged queries", () => {
 	it("load the first page, or `pages` pages up front", async () => {
 		const qc = new QueryClient({ isServer: true });
@@ -116,5 +146,57 @@ describe("paged queries", () => {
 		await Effect.runPromise(Query.refetch(query));
 
 		expect(Query.getUnsafe(query).data?.pageParams).toEqual([2, 4, 6]);
+	});
+
+	it("add a page to data written while it loaded", async () => {
+		const numbers = heldNumbers();
+		const qc = new QueryClient({ isServer: false });
+		await qc.fetch(numbers.query);
+		const edited = (previous: Page | undefined): Page => ({
+			items: [40, 50],
+			next: previous?.next ?? null,
+			previous: previous?.previous ?? null,
+		});
+
+		const releaseNext = numbers.hold(6);
+		const next = qc.getQuery(numbers.query);
+		const nextPage = Effect.runPromise(Query.fetchNextPage(next));
+		qc.setData(numbers.query, undefined, (data) => ({
+			pageParams: data?.pageParams ?? [],
+			pages: (data?.pages ?? []).with(0, edited(data?.pages[0])),
+		}));
+		releaseNext();
+		await nextPage;
+		expect(itemsOf(qc.getData(numbers.query))).toEqual([40, 50, 6, 7]);
+
+		const releasePrevious = numbers.hold(2);
+		const previousPage = Effect.runPromise(Query.fetchPreviousPage(next));
+		qc.setData(numbers.query, undefined, (data) => ({
+			pageParams: data?.pageParams ?? [],
+			pages: (data?.pages ?? []).with(1, edited(data?.pages[1])),
+		}));
+		releasePrevious();
+		await previousPage;
+		expect(itemsOf(qc.getData(numbers.query))).toEqual([2, 3, 40, 50, 40, 50]);
+	});
+
+	it("drop a loaded page when data written meanwhile ends elsewhere", async () => {
+		const numbers = heldNumbers();
+		const qc = new QueryClient({ isServer: false });
+		await qc.fetch(numbers.query, undefined, { pages: 2 });
+
+		const release = numbers.hold(8);
+		const nextPage = Effect.runPromise(
+			Query.fetchNextPage(qc.getQuery(numbers.query)),
+		);
+		qc.setData(numbers.query, undefined, (data) => ({
+			pageParams: data?.pageParams.slice(0, 1) ?? [],
+			pages: data?.pages.slice(0, 1) ?? [],
+		}));
+		release();
+		await nextPage;
+
+		expect(qc.getData(numbers.query)?.pageParams).toEqual([4]);
+		expect(Query.getUnsafe(qc.getQuery(numbers.query)).isFetching).toBe(false);
 	});
 });
