@@ -8,7 +8,7 @@ import {
 } from "@effect/vitest";
 import { Context, Effect, Layer, Schedule } from "effect";
 
-import { Query, QueryClient, queryOptions } from "./index.ts";
+import { dehydrate, Query, QueryClient, queryOptions } from "./index.ts";
 import { createBackend, flush } from "./test-utils.ts";
 
 function useFakeTimers(options?: Parameters<typeof vi.useFakeTimers>[0]) {
@@ -315,6 +315,56 @@ describe("on the server", () => {
 
 		qc.prefetch(backend.issueQuery, { id: 1 });
 		expect(backend.requests).toHaveLength(1);
+	});
+});
+
+describe("ssr: false", () => {
+	function capabilityQuery(input: { id: number }) {
+		const calls: Array<number> = [];
+		return {
+			calls,
+			query: () =>
+				queryOptions({
+					queryFn: () => {
+						calls.push(input.id);
+						return "granted";
+					},
+					queryKey: ["capability", input.id],
+					ssr: false,
+				}),
+		};
+	}
+
+	it("never runs or sends the query on the server", async () => {
+		const capability = capabilityQuery({ id: 1 });
+		const qc = new QueryClient({ isServer: true });
+
+		const handle = qc.prefetch(capability.query);
+		expect(handle).toEqual({ input: undefined, key: ["capability", 1] });
+		const query = qc.getQuery(capability.query);
+		const promise = Query.readUnsafe(query);
+		await qc.invalidate(capability.query);
+		await Effect.runPromise(Query.refetch(query));
+		await expect(qc.ensure(capability.query)).rejects.toBeInstanceOf(
+			Query.BrowserOnlyError,
+		);
+		await expect(qc.fetch(capability.query)).rejects.toThrow(
+			'Query ["capability",1] runs in the browser only (ssr: false)',
+		);
+
+		expect(capability.calls).toEqual([]);
+		const state = Query.getUnsafe(query);
+		expect(state).toMatchObject({ hasData: false, isFetching: false });
+		expect(promise.status).toBe("rejected");
+		expect(dehydrate(qc, { filter: () => true }).queries).toEqual([]);
+	});
+
+	it("runs the query in the browser", async () => {
+		const capability = capabilityQuery({ id: 1 });
+		const qc = new QueryClient({ isServer: false });
+
+		await expect(qc.fetch(capability.query)).resolves.toBe("granted");
+		expect(capability.calls).toEqual([1]);
 	});
 });
 

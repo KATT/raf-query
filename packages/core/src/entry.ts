@@ -52,6 +52,18 @@ export class CancelledError extends Data.TaggedError("CancelledError") {
 }
 
 /**
+ * Why a query with `ssr: false` has no data on the server: its promise
+ * there rejects with this, and `ensure` / `fetch` die with it.
+ */
+export class BrowserOnlyError extends Data.TaggedError("BrowserOnlyError")<{
+	readonly hash: string;
+}> {
+	override get message() {
+		return `Query ${this.hash} runs in the browser only (ssr: false)`;
+	}
+}
+
+/**
  * The state a cache shares with its entries. Entries are created
  * synchronously (a render reads one), so they fork their fibers with the
  * services and into the scope the cache was made with.
@@ -200,10 +212,14 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 		},
 		tasks: makeTasks(cache, scope),
 	});
+	const command = (request?: FetchRequest) =>
+		Effect.suspend(() =>
+			isBrowserOnly(entry) ? Effect.void : Effect.ignore(fetch(entry, request)),
+		);
 	const commands: Commands = {
-		fetchNextPage: Effect.ignore(fetch(entry, { direction: "forward" })),
-		fetchPreviousPage: Effect.ignore(fetch(entry, { direction: "backward" })),
-		refetch: Effect.ignore(fetch(entry)),
+		fetchNextPage: command({ direction: "forward" }),
+		fetchPreviousPage: command({ direction: "backward" }),
+		refetch: command(),
 	};
 	Object.assign(entry, { commands });
 	scheduleGc(entry);
@@ -226,6 +242,11 @@ function behavior<TName extends keyof QueryBehavior>(
 	name: TName,
 ): QueryBehavior[TName] {
 	return entry.options?.[name] ?? entry.cache.defaults[name];
+}
+
+/** A server cache's entry for an `ssr: false` query: it never runs here. */
+export function isBrowserOnly(entry: Entry) {
+	return entry.cache.isServer && behavior(entry, "ssr") === false;
 }
 
 /** Until a factory call attaches options, `meta` comes from hydration. */
@@ -388,7 +409,7 @@ export function fetch(
 export function invalidate(entry: Entry): Effect.Effect<void> {
 	return Effect.suspend(() => {
 		set(entry, { isInvalidated: true });
-		if (!isObserved(entry) || !entry.options) {
+		if (!isObserved(entry) || !entry.options || isBrowserOnly(entry)) {
 			return Effect.void;
 		}
 		return Effect.ignore(begin(entry, { restart: true }));
@@ -412,7 +433,11 @@ export function reset(entry: Entry): Effect.Effect<void> {
 		});
 		// An in-flight request restarts too, or its response would restore the
 		// data that was just dropped.
-		if (!entry.options || (!isObserved(entry) && !entry.inFlight)) {
+		if (
+			!entry.options ||
+			isBrowserOnly(entry) ||
+			(!isObserved(entry) && !entry.inFlight)
+		) {
 			return Effect.void;
 		}
 		return Effect.ignore(begin(entry, { restart: true }));
@@ -489,6 +514,13 @@ function begin(
 ): Effect.Effect<unknown, unknown> {
 	if (Predicate.isTagged(entry.scope.state, "Closed")) {
 		return Effect.fail(new CancelledError());
+	}
+	if (isBrowserOnly(entry)) {
+		const error = new BrowserOnlyError({ hash: entry.hash });
+		const firstLoad = entry.pending;
+		entry.pending = undefined;
+		firstLoad?.reject(error);
+		return Effect.die(error);
 	}
 	const options = entry.options;
 	const inFlight = entry.inFlight;

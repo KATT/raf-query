@@ -39,17 +39,18 @@ const queryClient = new QueryClient(config?);
 
 Accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
 
-| Option                                                | Default                                           |
-| ----------------------------------------------------- | ------------------------------------------------- |
-| `queryKey`                                            | Required. [Query keys](./query-keys.md)           |
-| `queryFn`                                             | Required. [Query functions](./query-functions.md) |
-| `staleTime`                                           | `0` ms                                            |
-| `gcTime`                                              | 5 minutes; `Infinity` on the server               |
-| `retry` (count, `boolean`, predicate, `Schedule`)     | `3`; `0` on the server                            |
-| `retryDelay` (ms, or a function of the failure count) | Doubling from 1 s, at most 30 s                   |
-| `refetchOnWindowFocus`, `refetchOnReconnect`          | `true` (only read, stale queries refetch)         |
-| `structuralSharing` (keep deeply equal parts of data) | `true`                                            |
-| [`meta`](./query-meta.md)                             | None                                              |
+| Option                                                                                   | Default                                           |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `queryKey`                                                                               | Required. [Query keys](./query-keys.md)           |
+| `queryFn`                                                                                | Required. [Query functions](./query-functions.md) |
+| `staleTime`                                                                              | `0` ms                                            |
+| `gcTime`                                                                                 | 5 minutes; `Infinity` on the server               |
+| `retry` (count, `boolean`, predicate, `Schedule`)                                        | `3`; `0` on the server                            |
+| `retryDelay` (ms, or a function of the failure count)                                    | Doubling from 1 s, at most 30 s                   |
+| `refetchOnWindowFocus`, `refetchOnReconnect`                                             | `true` (only read, stale queries refetch)         |
+| `structuralSharing` (keep deeply equal parts of data)                                    | `true`                                            |
+| `ssr` (`false`: [only the browser runs it](./ssr-and-hydration.md#browser-only-queries)) | `true`                                            |
+| [`meta`](./query-meta.md)                                                                | None                                              |
 
 `infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam` and `maxPages`. [Infinite queries](./infinite-queries.md)
 
@@ -104,22 +105,23 @@ Subpath entries:
 
 Framework-agnostic and Effect-only:
 
-| Export                                                       | Use                                                                                                                       |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `QueryCache`                                                 | The cache service (`qc.effect`): `make`, `layer`, and the verbs as Effects                                                |
-| `Query`                                                      | Cache entries: `Query.fetch`, `Query.changes`, `Query.getUnsafe`, `Query.metaUnsafe`, …                                   |
-| `QueryObserver`                                              | One reader's view of a query, with tracked results; for bindings                                                          |
-| `Platform`                                                   | The page the cache watches (focus, network); swap it in tests                                                             |
-| `queryOptions(options)`                                      | Typed options for a query factory                                                                                         |
-| `infiniteQueryOptions(options)`                              | Typed options for a paged query factory                                                                                   |
-| `hashKey(key)`, `matchesKey(key, prefix)`                    | Key helpers                                                                                                               |
-| `canDehydrate(query)`                                        | The default dehydrate filter: entries with data or a request in flight                                                    |
-| `Query.CancelledError`                                       | Failure of an Effect request whose entry was removed before it settled. Promise verbs reject with an `AbortError` instead |
-| `RedactedError`                                              | What a streamed pending query rejects with when its server request failed                                                 |
-| `QueryHandle<TFactory>`                                      | Handle type for props                                                                                                     |
-| `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                                                                     |
-| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`                                                               |
-| `QueryOptions`, `InfiniteQueryOptions`, `InfiniteData`       | Typed by a bag: `QueryOptions<{ data: Post }>`. Effect `queryFn`s add `error` and `services` to it                        |
-| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                                                                   |
-| `ServicesOf<TFactory>`                                       | The services a factory's `queryFn` Effect needs; `never` for promises                                                     |
-| `Register`, `QueryMeta`                                      | Augment `Register` with `queryMeta` to type [`meta`](./query-meta.md)                                                     |
+| Export                                                       | Use                                                                                                                         |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `QueryCache`                                                 | The cache service (`qc.effect`): `make`, `layer`, and the verbs as Effects                                                  |
+| `Query`                                                      | Cache entries: `Query.fetch`, `Query.changes`, `Query.getUnsafe`, `Query.metaUnsafe`, …                                     |
+| `QueryObserver`                                              | One reader's view of a query, with tracked results; for bindings                                                            |
+| `Platform`                                                   | The page the cache watches (focus, network); swap it in tests                                                               |
+| `queryOptions(options)`                                      | Typed options for a query factory                                                                                           |
+| `infiniteQueryOptions(options)`                              | Typed options for a paged query factory                                                                                     |
+| `hashKey(key)`, `matchesKey(key, prefix)`                    | Key helpers                                                                                                                 |
+| `canDehydrate(query)`                                        | The default dehydrate filter: entries with data or a request in flight                                                      |
+| `Query.CancelledError`                                       | Failure of an Effect request whose entry was removed before it settled. Promise verbs reject with an `AbortError` instead   |
+| `Query.BrowserOnlyError`                                     | Why an `ssr: false` query has no data on the server: its promise rejects with it, and `ensure` / `fetch` there fail with it |
+| `RedactedError`                                              | What a streamed pending query rejects with when its server request failed                                                   |
+| `QueryHandle<TFactory>`                                      | Handle type for props                                                                                                       |
+| `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                                                                       |
+| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`                                                                 |
+| `QueryOptions`, `InfiniteQueryOptions`, `InfiniteData`       | Typed by a bag: `QueryOptions<{ data: Post }>`. Effect `queryFn`s add `error` and `services` to it                          |
+| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                                                                     |
+| `ServicesOf<TFactory>`                                       | The services a factory's `queryFn` Effect needs; `never` for promises                                                       |
+| `Register`, `QueryMeta`                                      | Augment `Register` with `queryMeta` to type [`meta`](./query-meta.md)                                                       |

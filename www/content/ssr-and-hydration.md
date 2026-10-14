@@ -37,6 +37,34 @@ Only entries with data or a request in flight are sent. A query that had already
 
 A query sent while pending, that then fails on the server, rejects in the browser. By default it rejects with a `RedactedError` that names the query but not the message, so server internals (SQL errors, stack traces) don't leak into the page. The browser treats it like any failed load: the reader throws to its error boundary, and resetting the boundary refetches the query from the browser. Pass `keepErrors: true` in the integration's `dehydrateOptions` to send the original error instead.
 
+## Browser-only queries
+
+Some data only exists in the browser: a permission, a service worker, a media query. Mark its query `ssr: false`:
+
+```ts
+export function pushStateQuery(input: { channel: string }) {
+	return queryOptions({
+		queryKey: ["pushState", input.channel],
+		queryFn: () => detectPushState(input.channel),
+		ssr: false,
+	});
+}
+```
+
+A server client never starts it and never sends it, so loaders and components use it like any query: `prefetch` returns a handle on the server too, and the browser starts the request when the loader or the first read runs there. On the server, readers see it pending:
+
+```tsx
+const [pushPromise, push] = useQuery(pushStateQuery, loaderData.push);
+if (push.isPending) {
+	return <PushSwitch state="unknown" />;
+}
+return <PushSwitch state={use(pushPromise)} />;
+```
+
+The browser hydrates the same pending state, then renders the result. A reader that calls `use()` on the promise instead needs a Suspense boundary: on the server the promise rejects with `Query.BrowserOnlyError`, so React sends the fallback and renders the boundary in the browser. React reports that boundary to `onRecoverableError` while hydrating.
+
+`ensure` and `fetch` can't wait for it on the server, so they fail with `Query.BrowserOnlyError`. Use `prefetch` in loaders that also run on the server. `invalidate`, `reset`, `refetch` and the paging controls do nothing there.
+
 ## When the browser already has data
 
 On client-side navigations in Next.js, server components render again and send their cache entries with the RSC payload, while the browser may already have the same entries. The browser takes whichever copy is newer, by when it was fetched (`updatedAt`; server and browser clocks should agree):

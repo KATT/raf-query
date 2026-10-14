@@ -137,7 +137,11 @@ export function dehydrateEntries(
 	const sent = options.sent;
 	const dehydrated: Array<DehydratedQuery> = [];
 	for (const query of queries) {
-		if (!sent?.has(query.hash) && filter(query)) {
+		if (
+			!sent?.has(query.hash) &&
+			!Entry.isBrowserOnly(Entry.entryOf(query)) &&
+			filter(query)
+		) {
 			sent?.add(query.hash);
 			dehydrated.push(dehydrateUnsafe(query, options));
 		}
