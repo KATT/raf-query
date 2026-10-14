@@ -1,11 +1,13 @@
 // @vitest-environment-options {"settings":{"enableJavaScriptEvaluation":true,"suppressInsecureJavaScriptEnvironmentWarning":true}}
-import { describe, expect, it } from "@effect/vitest";
+import { describe, expect, expectTypeOf, it } from "@effect/vitest";
 import {
 	createRootRoute,
 	createRoute,
 	createRouter,
 	HeadContent,
+	Outlet,
 	Scripts,
+	type Serializable,
 } from "@tanstack/react-router";
 import {
 	createRequestHandler,
@@ -19,6 +21,8 @@ import { renderToReadableStream } from "react-dom/server.edge";
 
 import {
 	type DehydratedState,
+	type EnsuredQueryHandle,
+	hydrate,
 	Query,
 	QueryClient,
 	QueryClientProvider,
@@ -35,7 +39,15 @@ import { flush } from "./test-utils.ts";
 declare global {
 	/** Set by TanStack Router's inline scripts. */
 	var $_TSR:
-		| { readonly router: { readonly dehydratedData: DehydratedRouterQueries } }
+		| {
+				readonly router: {
+					readonly dehydratedData: DehydratedRouterQueries;
+					/** Each match's `beforeLoad` context (`b`), root first. */
+					readonly matches: ReadonlyArray<{
+						readonly b?: Record<string, unknown>;
+					}>;
+				};
+		  }
 		| undefined;
 }
 
@@ -138,21 +150,26 @@ describe("TanStack Router setupRouterIntegration", () => {
 		return response.text();
 	}
 
-	/** Run the router's scripts and take the query payload they deserialize. */
-	function receivePayload(html: string): DehydratedRouterQueries {
+	/** Run the router's scripts and take what they deserialize. */
+	function receiveRouter(html: string) {
 		runScripts(
 			inlineScripts(
 				html,
 				(source) => source.includes("$_TSR") || source.includes("($R=>"),
 			),
 		);
-		const payload = globalThis.$_TSR?.router.dehydratedData;
+		const router = globalThis.$_TSR?.router;
 		Reflect.deleteProperty(globalThis, "$_TSR");
 		Reflect.deleteProperty(globalThis, "$R");
-		if (!payload) {
+		if (!router) {
 			throw new Error("The HTML has no router payload");
 		}
-		return payload;
+		return router;
+	}
+
+	/** The query payload of the router's dehydrated state. */
+	function receivePayload(html: string): DehydratedRouterQueries {
+		return receiveRouter(html).dehydratedData;
 	}
 
 	async function readAll(stream: ReadableStream<DehydratedState>) {
@@ -238,6 +255,81 @@ describe("TanStack Router setupRouterIntegration", () => {
 		);
 		expect(String(failed.error)).toBe('Error: Query ["issue",-1] failed');
 		expect(backend.calls).toEqual([1, 2, -1]);
+	});
+
+	it("carries handles in beforeLoad context to child routes and the browser", async () => {
+		expectTypeOf<
+			EnsuredQueryHandle<Backend["issueQuery"]>
+		>().toExtend<Serializable>();
+		expectTypeOf<QueryHandle<Backend["issueQuery"]>>().toExtend<Serializable>();
+
+		const backend = createBackend();
+		const server = new QueryClient({ isServer: true });
+		const handler = createRequestHandler({
+			createRouter: () => {
+				const rootRoute = createRootRoute({
+					beforeLoad: async () => ({
+						issue: await server.ensure(backend.issueQuery, { id: 1 }),
+					}),
+					component: () => (
+						<html lang="en">
+							<head>
+								<HeadContent />
+							</head>
+							<body>
+								<Outlet />
+								<Scripts />
+							</body>
+						</html>
+					),
+				});
+				const indexRoute = createRoute({
+					component: function IssueTitle() {
+						const context = indexRoute.useRouteContext();
+						const [issue] = useQuery(backend.issueQuery, context.issue);
+						return <p>{issue.title}</p>;
+					},
+					getParentRoute: () => rootRoute,
+					loader: async (args) => {
+						const issue = await server.ensure(
+							backend.issueQuery,
+							args.context.issue.input,
+						);
+						return { issue };
+					},
+					path: "/",
+				});
+				const router = createRouter({
+					isServer: true,
+					routeTree: rootRoute.addChildren([indexRoute]),
+					Wrap: (props) => (
+						<QueryClientProvider client={server}>
+							{props.children}
+						</QueryClientProvider>
+					),
+				});
+				setupRouterIntegration({ queryClient: server, router });
+				return router;
+			},
+			request: new Request("http://localhost/"),
+		});
+		const html = await (await handler(defaultStreamHandler)).text();
+		expect(html).toContain("<p>Issue 1</p>");
+
+		const received = receiveRouter(html);
+		const handle = received.matches[0]?.b?.issue;
+		expect(handle).toEqual({
+			ensured: true,
+			input: { id: 1 },
+			key: ["issue", 1],
+		});
+
+		const browser = new QueryClient({ isServer: false });
+		hydrate(browser, received.dehydratedData.raf.initial);
+		expect(browser.getData(backend.issueQuery, { id: 1 })?.title).toBe(
+			"Issue 1",
+		);
+		expect(backend.calls).toEqual([1]);
 	});
 });
 
