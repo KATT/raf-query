@@ -9,14 +9,18 @@ TanStack Router's loaders are where raf-query wants queries to start, and its SS
 
 ## Setup
 
-```tsx title="src/router.tsx"
+```tsx twoslash title="src/router.tsx"
+/// <reference types="vite/client" />
+import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@raf-query/react";
 import { QueryDevtools } from "@raf-query/react/devtools";
-import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
-import { createRouter } from "@tanstack/react-router";
-
 import { routeTree } from "./routeTree.gen.ts";
-
+declare function createRouter(options: Record<string, unknown>): unknown;
+declare function setupRouterIntegration(options: {
+	readonly queryClient: QueryClient;
+	readonly router: unknown;
+}): void;
+// ---cut---
 export function getRouter() {
 	const queryClient = new QueryClient({ defaults: { staleTime: 5000 } });
 	const router = createRouter({
@@ -26,7 +30,7 @@ export function getRouter() {
 		defaultPreloadStaleTime: 0,
 		routeTree,
 		scrollRestoration: true,
-		Wrap: (props) => (
+		Wrap: (props: { children: ReactNode }) => (
 			<QueryClientProvider client={queryClient}>
 				{props.children}
 				{import.meta.env.DEV ? <QueryDevtools /> : null}
@@ -42,14 +46,12 @@ Mount DevTools only when `import.meta.env.DEV` is true so Vite drops the panel f
 
 Type the router context in the root route, so loaders see `queryClient`:
 
-```tsx title="src/routes/__root.tsx"
+```tsx twoslash title="src/routes/__root.tsx"
 import type { QueryClient } from "@raf-query/react";
-import { createRootRouteWithContext } from "@tanstack/react-router";
-
+import { createRootRouteWithContext } from "./_twoslash.ts";
+// ---cut---
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
-	{
-		// ...
-	},
+	{},
 );
 ```
 
@@ -75,7 +77,10 @@ Options:
 
 A loader starts every query its route needs and returns the handles:
 
-```tsx title="src/routes/posts.$slug.tsx"
+```tsx twoslash title="src/routes/posts.$slug.tsx"
+import { useQuery } from "@raf-query/react";
+import { commentsQuery, createFileRoute, postQuery } from "./_twoslash.ts";
+// ---cut---
 export const Route = createFileRoute("/posts/$slug")({
 	loader: async (args) => {
 		const qc = args.context.queryClient;
@@ -89,7 +94,7 @@ export const Route = createFileRoute("/posts/$slug")({
 function PostPage() {
 	const loaderData = Route.useLoaderData();
 	const [post] = useQuery(postQuery, loaderData.post);
-	// ...
+	return <h1>{post.title}</h1>;
 }
 ```
 
@@ -99,7 +104,17 @@ See [Starting queries](./starting-queries.md) for choosing between `prefetch` an
 
 `beforeLoad` can return handles too. They're part of the route context, so child routes' loaders and components read them, and the router serializes them to the browser with the rest of the context:
 
-```tsx title="src/routes/_auth.tsx"
+```tsx twoslash title="src/routes/_auth.tsx"
+import { queryOptions, useQuery } from "@raf-query/react";
+import { createFileRoute } from "./_twoslash.ts";
+declare function redirect(opts: { to: string }): never;
+function meQuery() {
+	return queryOptions({
+		queryKey: ["me"],
+		queryFn: async () => ({ id: "1", name: "Ada" }),
+	});
+}
+// ---cut---
 export const Route = createFileRoute("/_auth")({
 	beforeLoad: async (args) => {
 		const qc = args.context.queryClient;
@@ -115,11 +130,11 @@ export const Route = createFileRoute("/_auth")({
 function Dashboard() {
 	const context = Route.useRouteContext();
 	const [me] = useQuery(meQuery, context.me);
-	// ...
+	return <p>{me.name}</p>;
 }
 ```
 
-Importing `@raf-query/react/tanstack-router` registers handles as serializable, so Start's type check of `beforeLoad`'s result accepts them.
+Importing `@raf-query/react/tanstack-router` registers handles as serializable, so Start's type check of `beforeLoad`'s return accepts them.
 
 ### Router settings
 
@@ -135,9 +150,10 @@ Use `loaderDeps` to pass validated search params to the loader, so it reruns whe
 
 Factories can call server functions (`createServerFn`) directly. The loader runs on the server during SSR, where the call is a function call; in the browser, refetches call the same function over HTTP.
 
-```ts title="src/queries.ts"
+```ts twoslash title="src/queries.ts"
+import { queryOptions } from "@raf-query/react";
 import { getPost } from "./posts.functions.ts";
-
+// ---cut---
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
 		queryKey: ["post", input.slug],

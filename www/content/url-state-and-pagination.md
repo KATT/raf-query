@@ -7,7 +7,38 @@ order: 9
 
 Filters, sort order and pagination are search params. The loader turns them into the query's input, so every navigation starts the right query and the component only ever reads the handle it was given:
 
-```tsx title="src/routes/posts.tsx"
+```tsx twoslash title="src/routes/posts.tsx"
+import { use, type ReactNode } from "react";
+import { type QueryClient, queryOptions, useQuery } from "@raf-query/react";
+import type { Post } from "./_twoslash.ts";
+function postsQuery(input: { page: number; sort: "newest" | "oldest" }) {
+	return queryOptions({
+		queryFn: async (): Promise<ReadonlyArray<Post>> => [],
+		queryKey: ["posts", input],
+	});
+}
+type Search = { page: number; sort: "newest" | "oldest" };
+declare function createFileRoute(path: string): <TLoaderData>(options: {
+	readonly component: () => ReactNode;
+	readonly loader: (args: {
+		readonly context: { readonly queryClient: QueryClient };
+		readonly deps: Search;
+	}) => TLoaderData;
+	readonly loaderDeps: (args: { readonly search: Search }) => Search;
+	readonly validateSearch: { parse(input: unknown): Search };
+}) => {
+	useLoaderData(): TLoaderData;
+};
+declare function Link(props: {
+	readonly children?: ReactNode;
+	readonly search: (prev: Search) => Search;
+	readonly to: string;
+}): ReactNode;
+declare function PostList(props: {
+	readonly dimmed: boolean;
+	readonly posts: ReadonlyArray<Post>;
+}): ReactNode;
+// ---cut---
 import { z } from "zod";
 
 const PostsSearch = z.object({
@@ -71,15 +102,27 @@ This replaces TanStack Query's `placeholderData: keepPreviousData` and `isPlaceh
 
 To show a skeleton instead, for instance when moving between unrelated posts, give the Suspense boundary the query's key. React treats it as new content and shows its fallback, even inside a transition:
 
-```tsx
-// This loader prefetches the post instead of ensuring it.
-const [postPromise, postState] = useQuery(postQuery, loaderData.post);
+```tsx twoslash
+import { Suspense, type ReactNode } from "react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { postQuery } from "./_twoslash.ts";
+declare const loaderData: { post: QueryHandle<typeof postQuery> };
+declare function PostBody(props: {
+	readonly post: Promise<unknown>;
+}): ReactNode;
+declare function PostSkeleton(): ReactNode;
+function PostPage() {
+	// ---cut---
+	// This loader prefetches the post instead of ensuring it.
+	const [postPromise, postState] = useQuery(postQuery, loaderData.post);
 
-return (
-	<Suspense key={postState.hash} fallback={<PostSkeleton />}>
-		<PostBody post={postPromise} />
-	</Suspense>
-);
+	return (
+		<Suspense key={postState.hash} fallback={<PostSkeleton />}>
+			<PostBody post={postPromise} />
+		</Suspense>
+	);
+	// ---cut-after---
+}
 ```
 
 `hash` is the stable string form of the handle's key.

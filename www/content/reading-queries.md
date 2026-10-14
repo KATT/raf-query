@@ -7,16 +7,47 @@ order: 7
 
 Components read queries with `useQuery`, passing the factory and the handle the loader returned:
 
-```ts
-const [promise, controls] = useQuery(factory, handle, options?);
-const [data, controls] = useQuery(factory, ensuredHandle, options?);
+```ts twoslash
+import {
+	type EnsuredQueryHandle,
+	type QueryHandle,
+	type UseQueryOptions,
+	useQuery,
+} from "@raf-query/react";
+import { postQuery } from "./_twoslash.ts";
+declare const factory: typeof postQuery;
+declare const handle: QueryHandle<typeof postQuery>;
+declare const ensuredHandle: EnsuredQueryHandle<typeof postQuery>;
+declare const options: UseQueryOptions | undefined;
+// ---cut---
+{
+	const [promise, controls] = useQuery(factory, handle, options);
+}
+{
+	const [data, controls] = useQuery(factory, ensuredHandle, options);
+}
 ```
 
 `promise` is a stable `Promise<Data>` owned by the cache. Unwrap it with `use()`. When the cache already has data, the promise is pre-resolved and `use()` returns synchronously without suspending.
 
 A handle from `ensure` had its data loaded before the route rendered, so `useQuery` returns the data itself.
 
-```tsx
+```tsx twoslash
+import type { EnsuredQueryHandle, QueryHandle } from "@raf-query/react";
+import { useQuery } from "@raf-query/react";
+import { Suspense, startTransition } from "react";
+import { commentsQuery, postQuery } from "./_twoslash.ts";
+declare function CommentsSkeleton(): React.ReactNode;
+declare function Comments(props: {
+	handle: QueryHandle<typeof commentsQuery>;
+}): React.ReactNode;
+declare const Route: {
+	useLoaderData(): {
+		comments: QueryHandle<typeof commentsQuery>;
+		post: EnsuredQueryHandle<typeof postQuery>;
+	};
+};
+// ---cut---
 function PostPage() {
 	const loaderData = Route.useLoaderData();
 	// `post` came from `qc.ensure`, `comments` from `qc.prefetch`.
@@ -70,13 +101,23 @@ When the **first** load fails, the promise rejects and `use()` throws to the nea
 
 A component can call the hook with a prefetched handle and hand the promise to a child, so only the child suspends:
 
-```tsx
-const [postPromise] = useQuery(postQuery, loaderData.post); // from `qc.prefetch`
-return (
-	<Suspense fallback={<Spinner />}>
-		<PostBody post={postPromise} />
-	</Suspense>
-);
+```tsx twoslash
+import type { QueryHandle } from "@raf-query/react";
+import { useQuery } from "@raf-query/react";
+import { Suspense, use, type ReactNode } from "react";
+import { type Post, postQuery } from "./_twoslash.ts";
+declare function Spinner(): ReactNode;
+declare const loaderData: { post: QueryHandle<typeof postQuery> };
+function Parent() {
+	// ---cut---
+	const [postPromise] = useQuery(postQuery, loaderData.post); // from `qc.prefetch`
+	return (
+		<Suspense fallback={<Spinner />}>
+			<PostBody post={postPromise} />
+		</Suspense>
+	);
+	// ---cut-after---
+}
 
 function PostBody(props: { post: Promise<Post> }) {
 	const post = use(props.post);
@@ -88,7 +129,13 @@ A component re-renders when the promise changes, and when a control it reads cha
 
 Because `use()` can be called conditionally, a component can also decide **whether** to read:
 
-```tsx
+```tsx twoslash
+import { use } from "react";
+declare function DetailsTable(props: { details: Details }): React.ReactNode;
+interface Details {
+	readonly body: string;
+}
+// ---cut---
 function Details(props: { open: boolean; details: Promise<Details> }) {
 	if (!props.open) return null;
 	return <DetailsTable details={use(props.details)} />;

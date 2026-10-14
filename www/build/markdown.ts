@@ -265,11 +265,14 @@ function twoslashTransformer(root: string) {
 	const twoslasher = createTwoslasher({
 		compilerOptions: {
 			allowImportingTsExtensions: true,
+			baseUrl: root,
 			jsx: ts.JsxEmit.ReactJSX,
 			lib: ["lib.es2024.d.ts", "lib.dom.d.ts", "lib.dom.iterable.d.ts"],
 			module: ts.ModuleKind.ESNext,
 			moduleResolution: ts.ModuleResolutionKind.Bundler,
 			noEmit: true,
+			// Next.js samples import `~/query-client.ts`; stubs live next to the pages.
+			paths: { "~/*": ["./*"] },
 			skipLibCheck: true,
 			strict: true,
 			target: ts.ScriptTarget.ES2024,

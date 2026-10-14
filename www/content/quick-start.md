@@ -17,13 +17,16 @@ For the Next.js App Router, the same steps apply with a server component in plac
 
 Create one `QueryClient` per router. On the server, `getRouter` runs once per request, so each request gets its own cache; in the browser it runs once per tab.
 
-```tsx title="src/router.tsx"
+```tsx twoslash title="src/router.tsx"
+import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@raf-query/react";
-import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
-import { createRouter } from "@tanstack/react-router";
-
-import { routeTree } from "./routeTree.gen";
-
+import { routeTree } from "./routeTree.gen.ts";
+declare function createRouter(options: Record<string, unknown>): unknown;
+declare function setupRouterIntegration(options: {
+	readonly queryClient: QueryClient;
+	readonly router: unknown;
+}): void;
+// ---cut---
 export function getRouter() {
 	const queryClient = new QueryClient();
 	const router = createRouter({
@@ -32,7 +35,7 @@ export function getRouter() {
 		defaultPreload: "intent",
 		// The query cache decides what's fresh; loaders always run and dedupe there.
 		defaultPreloadStaleTime: 0,
-		Wrap: (props) => (
+		Wrap: (props: { children: ReactNode }) => (
 			<QueryClientProvider client={queryClient}>
 				{props.children}
 			</QueryClientProvider>
@@ -45,15 +48,13 @@ export function getRouter() {
 
 `setupRouterIntegration` streams the server's cache to the browser while the page renders, so data loaded on the server is never fetched twice. Give the root route the client's type:
 
-```tsx title="src/routes/__root.tsx"
+```tsx twoslash title="src/routes/__root.tsx"
 import type { QueryClient } from "@raf-query/react";
-import { createRootRouteWithContext } from "@tanstack/react-router";
-
+import { createRootRouteWithContext } from "./_twoslash.ts";
+// ---cut---
 export const Route = createRootRouteWithContext<{
 	queryClient: QueryClient;
-}>()({
-	// ...
-});
+}>()({});
 ```
 
 ## 2. Define a query
@@ -89,18 +90,13 @@ export function todoQuery(input: { id: number }) {
 
 The loader starts the query and returns its **handle**, a small `{ key, input }` object:
 
-```tsx title="src/routes/todos.tsx"
-import { useQuery } from "@raf-query/react";
-import { createFileRoute } from "@tanstack/react-router";
-import { Suspense, use } from "react";
-
-import { todosQuery } from "../queries";
-
+```tsx twoslash title="src/routes/todos.tsx"
+import { createFileRoute, todosQuery } from "./_twoslash.ts";
+// ---cut---
 export const Route = createFileRoute("/todos")({
 	loader: (args) => ({
 		todos: args.context.queryClient.prefetch(todosQuery),
 	}),
-	component: TodosPage,
 });
 ```
 
@@ -108,7 +104,17 @@ export const Route = createFileRoute("/todos")({
 
 ## 4. Read it in a component
 
-```tsx title="src/routes/todos.tsx"
+```tsx twoslash title="src/routes/todos.tsx"
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { Suspense, use } from "react";
+import { createFileRoute, todosQuery } from "./_twoslash.ts";
+export const Route = createFileRoute("/todos")({
+	loader: (args) => ({
+		todos: args.context.queryClient.prefetch(todosQuery),
+	}),
+	component: TodosPage,
+});
+// ---cut---
 function TodosPage() {
 	const loaderData = Route.useLoaderData();
 	return (
@@ -137,7 +143,10 @@ function TodoList(props: { handle: QueryHandle<typeof todosQuery> }) {
 
 There is no `useMutation`. Write in a form action, then invalidate what changed:
 
-```tsx
+```tsx twoslash
+import { useQueryClient } from "@raf-query/react";
+import { createTodo, todosQuery } from "./_twoslash.ts";
+// ---cut---
 function AddTodo() {
 	const qc = useQueryClient();
 	return (

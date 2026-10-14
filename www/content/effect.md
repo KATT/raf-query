@@ -13,9 +13,20 @@ raf-query's cache is written in [Effect](https://effect.website). Using raf-quer
 
 A `queryFn` can return an `Effect`:
 
-```ts
+```ts twoslash
+import { Effect, Schedule } from "effect";
+declare class IssueNotFound {
+	readonly _tag: "IssueNotFound";
+}
+declare interface Issue {
+	readonly id: number;
+	readonly title: string;
+}
+declare const IssueRepo: {
+	get(id: number): Effect.Effect<Issue, IssueNotFound>;
+};
+// ---cut---
 import { queryOptions } from "@raf-query/react";
-import { Schedule } from "effect";
 
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
@@ -37,9 +48,25 @@ From React, nothing changes: `useQuery` and the client's Promise methods read an
 
 `QueryClient` is a Promise wrapper around a `QueryCache` service, available as `qc.effect`. Effect code uses the cache directly, or builds its own with `QueryCache.make(config)` (scoped: closing the scope interrupts every request and timer) or `QueryCache.layer(config)`:
 
-```ts
+```ts twoslash
+import { queryOptions } from "@raf-query/react";
+import { Effect } from "effect";
+declare interface Issue {
+	readonly id: number;
+	readonly title: string;
+}
+declare const IssueRepo: {
+	get(id: number): Effect.Effect<Issue>;
+};
+function issueQuery(input: { id: number }) {
+	return queryOptions({
+		queryKey: ["issue", input.id],
+		queryFn: () => IssueRepo.get(input.id),
+	});
+}
+// ---cut---
 import { QueryCache } from "@raf-query/core";
-import { Effect, Stream } from "effect";
+import { Stream } from "effect";
 
 const program = Effect.gen(function* () {
 	const cache = yield* QueryCache.QueryCache;
@@ -61,9 +88,24 @@ Effect.runFork(program.pipe(Effect.provide(QueryCache.layer())));
 
 Entries are a data type with module functions, like Effect's own modules:
 
-```ts
-import { Query, QueryCache } from "@raf-query/core";
+```ts twoslash
+import { queryOptions } from "@raf-query/react";
 import { Effect } from "effect";
+declare interface Issue {
+	readonly id: number;
+	readonly title: string;
+}
+declare const IssueRepo: {
+	get(id: number): Effect.Effect<Issue>;
+};
+function issueQuery(input: { id: number }) {
+	return queryOptions({
+		queryKey: ["issue", input.id],
+		queryFn: () => IssueRepo.get(input.id),
+	});
+}
+// ---cut---
+import { Query, QueryCache } from "@raf-query/core";
 
 const program = Effect.gen(function* () {
 	const cache = yield* QueryCache.QueryCache;

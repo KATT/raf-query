@@ -13,7 +13,11 @@ raf-query has no `useMutation`. React already has the pieces a mutation needs:
 
 The cache's part is what happens after the write: [invalidating](./query-invalidation.md) the queries it affected, or writing the response straight into the cache with `setData`.
 
-```tsx
+```tsx twoslash
+import { useOptimistic } from "react";
+import { useQueryClient } from "@raf-query/react";
+import { type Post, postQuery, updatePost } from "./_twoslash.ts";
+// ---cut---
 function EditTitle(props: { post: Post }) {
 	const qc = useQueryClient();
 	const [title, setOptimisticTitle] = useOptimistic(props.post.title);
@@ -49,7 +53,13 @@ optimistic-updates
 
 The demo's form:
 
-```tsx
+```tsx twoslash
+import { useActionState, useOptimistic } from "react";
+import { useQueryClient } from "@raf-query/react";
+import { todosQuery } from "./_twoslash.ts";
+type Todo = { id: number; pending?: boolean; text: string };
+declare function addTodo(text: string): Promise<void>;
+// ---cut---
 function AddTodo(props: { todos: Todo[] }) {
 	const qc = useQueryClient();
 	const [todos, addOptimistic] = useOptimistic(
@@ -78,18 +88,24 @@ function AddTodo(props: { todos: Todo[] }) {
 
 `useOptimistic` covers the component that ran the action. When other parts of the page show the same data (a count in the sidebar, the same item in another list), update the cache instead, so every reader sees it:
 
-```ts
+```ts twoslash
+import { QueryClient } from "@raf-query/react";
+import { todosQuery } from "./_twoslash.ts";
+declare function toggleTodoApi(id: number): Promise<void>;
+const qc = new QueryClient();
+const api = { toggleTodo: toggleTodoApi };
+// ---cut---
 async function toggleTodo(id: number) {
 	const previous = qc.getData(todosQuery);
 	qc.setData(todosQuery, undefined, (todos) =>
-		todos?.map((todo) =>
+		(todos ?? []).map((todo) =>
 			todo.id === id ? { ...todo, done: !todo.done } : todo,
 		),
 	);
 	try {
 		await api.toggleTodo(id);
 	} catch (error) {
-		qc.setData(todosQuery, undefined, previous);
+		qc.setData(todosQuery, undefined, previous ?? []);
 		throw error;
 	} finally {
 		await qc.invalidate(todosQuery);
@@ -103,7 +119,13 @@ This is more code, and you're responsible for the rollback. Reach for it only wh
 
 When the server responds with the updated object, write it into the cache instead of refetching:
 
-```ts
+```ts twoslash
+import { QueryClient } from "@raf-query/react";
+import { postQuery, updatePost } from "./_twoslash.ts";
+const qc = new QueryClient();
+declare const slug: string;
+declare const title: string;
+// ---cut---
 const updated = await updatePost({ slug, title });
 qc.setData(postQuery, { slug }, updated);
 ```
@@ -120,7 +142,20 @@ Wrap the action in `useActionState` and return the caught error, as the demo doe
 
 Inside a form, `useFormStatus()` gives a submit button the form's pending state. Outside one, `useTransition` returns `isPending` for the actions you start with its `startTransition`:
 
-```tsx
+```tsx twoslash
+import { useTransition } from "react";
+import { QueryClient } from "@raf-query/react";
+import { queryOptions } from "@raf-query/react";
+const qc = new QueryClient();
+declare function deletePost(slug: string): Promise<void>;
+declare const props: { slug: string };
+function postsQuery() {
+	return queryOptions({
+		queryKey: ["posts"],
+		queryFn: async () => [] as Array<{ slug: string }>,
+	});
+}
+// ---cut---
 const [isPending, startTransition] = useTransition();
 
 <button

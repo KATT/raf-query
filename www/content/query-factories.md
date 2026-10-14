@@ -140,7 +140,23 @@ type PostHandle = QueryHandle<typeof postQuery>; // for props
 
 A library can wrap a typed API in a function that returns a factory, generic over the endpoint. Call it inline, wherever a factory goes; the types flow from the endpoint:
 
-```ts
+```ts twoslash
+import { QueryClient, queryOptions, useQuery } from "@raf-query/react";
+interface Endpoint<TArgs, TData> {
+	readonly name: string;
+}
+declare function call<TArgs, TData>(
+	endpoint: Endpoint<TArgs, TData>,
+	args: TArgs,
+): Promise<TData>;
+declare const api: {
+	posts: {
+		get: Endpoint<{ slug: string }, { title: string }>;
+	};
+};
+declare const slug: string;
+const qc = new QueryClient();
+// ---cut---
 function endpointQuery<TArgs, TData>(endpoint: Endpoint<TArgs, TData>) {
 	return (args: TArgs) =>
 		queryOptions({

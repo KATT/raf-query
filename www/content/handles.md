@@ -7,18 +7,25 @@ order: 6
 
 A handle is the only thing that crosses the loader → component or server → client boundary:
 
-```ts
-interface QueryHandle<TFactory> {
-	readonly key: QueryKey; // ["post", "hello"]
-	readonly input: InputOf<TFactory>; // { slug: "hello" }
-}
+```ts twoslash
+import type {
+	EnsuredQueryHandle,
+	InputOf,
+	QueryHandle,
+	QueryKey,
+} from "@raf-query/react";
+import { postQuery } from "./_twoslash.ts";
+// ---cut---
+type Handle = QueryHandle<typeof postQuery>;
+//   ^?
+// { key: QueryKey; input: { slug: string }; ensured: false }
 
-// From `ensure`: the route waited for the data.
-interface EnsuredQueryHandle<TFactory> {
-	readonly key: QueryKey;
-	readonly input: InputOf<TFactory>;
-	readonly ensured: true;
-}
+type Ensured = EnsuredQueryHandle<typeof postQuery>;
+//   ^?
+// { key: QueryKey; input: { slug: string }; ensured: true }
+
+type PostInput = InputOf<typeof postQuery>; // { slug: string }
+type PostKey = QueryKey; // readonly unknown[]
 ```
 
 ## Why handles hold no data
@@ -51,7 +58,9 @@ const [commentsPromise] = useQuery(commentsQuery, loaderData.comments); // prefe
 
 The two handle types aren't assignable to each other, so type a prop with the one its loader returns:
 
-```tsx
+```tsx twoslash
+import { commentsQuery } from "./_twoslash.ts";
+// ---cut---
 import type { EnsuredQueryHandle, QueryHandle } from "@raf-query/react";
 
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {

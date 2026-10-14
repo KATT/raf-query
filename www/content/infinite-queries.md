@@ -7,7 +7,10 @@ order: 10
 
 Lists that load more data onto what's already shown, such as "load more" buttons and infinite scroll, are a common UI pattern. A paged factory returns `infiniteQueryOptions(...)`; everything else uses the same `useQuery` and the same verbs as any query.
 
-```ts title="src/queries.ts"
+```ts twoslash title="src/queries.ts"
+import { infiniteQueryOptions } from "@raf-query/react";
+import { listComments } from "./_twoslash.ts";
+// ---cut---
 export function commentsQuery(input: { slug: string }) {
 	return infiniteQueryOptions({
 		queryKey: ["comments", input.slug],
@@ -68,7 +71,13 @@ They exist only on the type for paged factories.
 
 Infinite scroll is the same paged query with an automatic "Load more". A ref callback watches the button and presses it when it nears the viewport. Unmount the button while a page loads: it watches again when it remounts, so it keeps loading while it stays in reach. Its place is taken by skeletons the size of the incoming page, so the loaded rows replace them without moving anything below.
 
-```tsx
+```tsx twoslash
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { commentsQuery } from "./_twoslash.ts";
+declare function CommentSkeletons(): React.ReactNode;
+declare const props: { handle: QueryHandle<typeof commentsQuery> };
+const [, comments] = useQuery(commentsQuery, props.handle);
+// ---cut---
 {
 	comments.isFetchingNextPage ? <CommentSkeletons /> : null;
 }
@@ -107,7 +116,12 @@ infinite-scroll
 
 On the server, `ensure` and `fetch` load the first page. Pass `{ pages: n }` as a third argument to load more:
 
-```ts
+```ts twoslash
+import { QueryClient } from "@raf-query/react";
+import { commentsQuery } from "./_twoslash.ts";
+const qc = new QueryClient();
+declare const slug: string;
+// ---cut---
 const comments = await qc.ensure(commentsQuery, { slug }, { pages: 2 });
 ```
 
@@ -127,7 +141,19 @@ A refetch is different: it replaces every page with what it read, as a plain que
 
 Add `getPreviousPageParam` to load pages before the first one, for a chat log that starts in the middle:
 
-```ts
+```ts twoslash
+import { infiniteQueryOptions } from "@raf-query/react";
+interface MessagePage {
+	readonly items: ReadonlyArray<{ readonly id: string; readonly body: string }>;
+	readonly nextCursor: string | null;
+	readonly previousCursor: string | null;
+}
+declare function listMessages(input: {
+	readonly channel: string;
+	readonly cursor: string;
+}): Promise<MessagePage>;
+declare const input: { channel: string; around: string };
+// ---cut---
 infiniteQueryOptions({
 	queryKey: ["messages", input.channel],
 	queryFn: (context) =>

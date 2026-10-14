@@ -15,7 +15,12 @@ Queries start where the page's inputs are known: a route loader, a server compon
 
 Fresh cached data is reused by all three, without a request. So `prefetch` never holds anything up, `ensure` holds up only the first visit (returning to a page shows the cached data at once, then fresh data), and `fetch` always returns fresh data, at the cost of a round trip whenever the cache is stale.
 
-```tsx title="src/routes/posts.$slug.tsx"
+```tsx twoslash title="src/routes/posts.$slug.tsx"
+import { commentsQuery, createFileRoute, postQuery } from "./_twoslash.ts";
+function PostPage() {
+	return null;
+}
+// ---cut---
 export const Route = createFileRoute("/posts/$slug")({
 	loader: async (args) => {
 		const qc = args.context.queryClient;
@@ -47,13 +52,19 @@ starting-queries
 
 Await independent blocking queries together with `allKeyed`, which ships with raf-query. It's a ponyfill of the TC39 `Promise.allKeyed` proposal: a record of promises in, a promise of the same record out, rejecting on the first failure.
 
-```ts
-import { allKeyed } from "@raf-query/react";
-
-return await allKeyed({
-	post: qc.ensure(postQuery, { slug }),
-	author: qc.ensure(authorQuery, { slug }),
-});
+```ts twoslash
+import { allKeyed, type QueryClient } from "@raf-query/react";
+import { authorQuery, postQuery } from "./_twoslash.ts";
+declare const qc: QueryClient;
+declare const slug: string;
+async function load() {
+	// ---cut---
+	return await allKeyed({
+		post: qc.ensure(postQuery, { slug }),
+		author: qc.ensure(authorQuery, { id: slug }),
+	});
+	// ---cut-after---
+}
 ```
 
 ## When to use fetch
@@ -78,14 +89,21 @@ In a browser loader, prefer `ensure`: a stale `fetch` blocks the navigation on t
 
 Outside loaders, call the client directly. Starting a query when the pointer enters a link means the click finds it cached or in flight:
 
-```tsx
+```tsx twoslash
+import type { QueryClient } from "@raf-query/react";
+import { Link } from "@tanstack/react-router";
+import { postQuery } from "./_twoslash.ts";
+declare const qc: QueryClient;
+declare const slug: string;
+declare const title: string;
+// ---cut---
 <Link
 	to="/posts/$slug"
 	params={{ slug }}
 	onPointerEnter={() => qc.prefetch(postQuery, { slug })}
 >
 	{title}
-</Link>
+</Link>;
 ```
 
 With TanStack Router's `defaultPreload: "intent"` you get this for free: hovering a link runs its loader, which starts its queries.
