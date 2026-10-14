@@ -1,0 +1,40 @@
+{
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"buildCommand": "pnpm build",
+	"cleanUrls": true,
+	"framework": null,
+	"headers": [
+		{
+			"headers": [
+				{
+					"key": "Cache-Control",
+					"value": "public, max-age=31536000, immutable"
+				}
+			],
+			"source": "/assets/(.*)"
+		},
+		{
+			"headers": [
+				{
+					"key": "Cache-Control",
+					"value": "public, max-age=0, s-maxage=86400, stale-while-revalidate=604800"
+				}
+			],
+			"source": "/((?!assets/).*)"
+		},
+		{
+			"headers": [
+				{ "key": "X-Content-Type-Options", "value": "nosniff" },
+				{ "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+			],
+			"source": "/(.*)"
+		}
+	],
+	"ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ../packages ../examples/.shared/ui ../package.json ../pnpm-lock.yaml",
+	"installCommand": "pnpm install --frozen-lockfile",
+	"outputDirectory": "dist/client",
+	"redirects": [
+		{ "destination": "/docs/overview", "permanent": false, "source": "/docs" }
+	],
+	"trailingSlash": false
+}

@@ -6,6 +6,7 @@
 	"scripts": {
 		"build": "pnpm -r --filter \"./packages/*\" --filter \"./packages/.experimental/*\" build",
 		"bundle-size": "pnpm --filter @tooling/bundle-size measure",
+		"build:docs": "pnpm --filter @raf-query/docs build",
 		"build:examples": "pnpm -r --filter \"./examples/*\" --filter \"./examples/.experimental/*\" build",
 		"dev": "pnpm --parallel --filter \"./examples/*\" dev",
 		"dev:start": "pnpm --filter @examples/tanstack-start dev",
@@ -19,7 +20,7 @@
 		"lint:fix": "vp lint -c .oxlintrc.json --fix --disable-nested-config",
 		"prepare": "husky",
 		"test": "pnpm -r --filter \"./packages/*\" --filter \"./packages/.experimental/*\" --filter \"./tooling/*\" test",
-		"typecheck": "pnpm -r --filter \"./examples/*\" --filter \"./examples/.experimental/*\" --filter \"./examples/.shared/*\" --filter \"./packages/*\" --filter \"./packages/.experimental/*\" --filter \"./tooling/*\" typecheck",
+		"typecheck": "pnpm -r --filter \"./examples/*\" --filter \"./examples/.experimental/*\" --filter \"./examples/.shared/*\" --filter \"./docs\" --filter \"./packages/*\" --filter \"./packages/.experimental/*\" --filter \"./tooling/*\" typecheck",
 		"check": "vp check",
 		"postinstall": "vendor-src check"
 	},

@@ -459,7 +459,8 @@
 				"examples/*/src/**/*.{ts,tsx}",
 				"examples/*/app/**/*.{ts,tsx}",
 				"examples/.experimental/*/src/**/*.{ts,tsx}",
-				"examples/.shared/*/src/**/*.{ts,tsx}"
+				"examples/.shared/*/src/**/*.{ts,tsx}",
+				"docs/src/**/*.{ts,tsx}"
 			],
 			"rules": {
 				"workspace/infer-callback-params": "error",
@@ -471,7 +472,8 @@
 			// order (`validateSearch` before `loader`, `loader` before `head`).
 			"files": [
 				"examples/*/src/routes/**/*.{ts,tsx}",
-				"examples/.experimental/*/src/routes/**/*.{ts,tsx}"
+				"examples/.experimental/*/src/routes/**/*.{ts,tsx}",
+				"docs/src/routes/**/*.{ts,tsx}"
 			],
 			"rules": {
 				"perfectionist/sort-objects": "off"
