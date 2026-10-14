@@ -1,84 +1,68 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { cn } from "@examples/ui/lib/utils";
 import {
+	allKeyed,
 	type EnsuredQueryHandle,
 	type QueryHandle,
 	queryOptions,
 	type Thenable,
 	useQuery,
 } from "@raf-query/react";
-import { Suspense, use, useState } from "react";
+import { MessageSquare } from "lucide-react";
+import { type ReactNode, Suspense, use, useId } from "react";
 
-import { DemoBrowser, type DemoLoader, DemoLink } from "~/demo-kit/browser.tsx";
+import {
+	DemoBrowser,
+	type DemoLocation,
+	DemoLink,
+} from "~/demo-kit/browser.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
-import { type Post, seedComments, seedPosts } from "~/demo-kit/fixtures.ts";
+import {
+	type Comment,
+	type Post,
+	seedComments,
+	seedPosts,
+} from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
-const server = createFakeServer(() => ({
-	comments: seedComments(),
-	posts: seedPosts(),
-}));
-
-function postQuery(input: { id: number }) {
-	return queryOptions({
-		queryFn: (context) =>
-			server.respond(
-				`GET /posts/${input.id}`,
-				(db) => db.posts.find((post) => post.id === input.id),
-				{ signal: context.signal },
-			),
-		queryKey: ["posts", input.id],
-		staleTime: 10_000,
-	});
-}
-
-function commentsQuery(input: { postId: number }) {
-	return queryOptions({
-		queryFn: () =>
-			server.respond(`GET /posts/${input.postId}/comments`, (db) =>
-				db.comments.filter((comment) => comment.postId === input.postId),
-			),
-		queryKey: ["posts", input.postId, "comments"],
-		staleTime: 10_000,
-	});
-}
-
-type Mode = "ensure" | "prefetch";
-
-type PageData =
-	| { readonly page: "list" }
-	| {
-			readonly comments: QueryHandle<typeof commentsQuery>;
-			readonly page: "ensured";
-			readonly post: EnsuredQueryHandle<typeof postQuery>;
-	  }
-	| {
-			readonly comments: QueryHandle<typeof commentsQuery>;
-			readonly page: "prefetched";
-			readonly post: QueryHandle<typeof postQuery>;
-	  };
-
-function loaderFor(mode: Mode): DemoLoader<PageData> {
-	return async (args) => {
-		const id = Number(args.location.path.split("/")[2]);
-		if (!id) {
-			return { page: "list" };
-		}
-		const qc = args.client;
-		const comments = qc.prefetch(commentsQuery, { postId: id });
-		if (mode === "prefetch") {
-			return {
-				comments,
-				page: "prefetched",
-				post: qc.prefetch(postQuery, { id }),
-			};
-		}
-		return {
-			comments,
-			page: "ensured",
-			post: await qc.ensure(postQuery, { id }),
-		};
+/**
+ * A blog's server and the factories that query it. Each variant gets its
+ * own, so its network panel shows only its requests.
+ */
+function createBlog() {
+	const server = createFakeServer(() => ({
+		comments: seedComments(),
+		posts: seedPosts(),
+	}));
+	return {
+		commentsQuery: (input: { postId: number }) =>
+			queryOptions({
+				queryFn: (context) =>
+					server.respond(
+						`GET /posts/${input.postId}/comments`,
+						(db) =>
+							db.comments.filter((comment) => comment.postId === input.postId),
+						{ signal: context.signal },
+					),
+				queryKey: ["posts", input.postId, "comments"],
+				staleTime: 5000,
+			}),
+		postQuery: (input: { id: number }) =>
+			queryOptions({
+				queryFn: (context) =>
+					server.respond(
+						`GET /posts/${input.id}`,
+						(db) => db.posts.find((post) => post.id === input.id),
+						{ signal: context.signal },
+					),
+				queryKey: ["posts", input.id],
+				staleTime: 5000,
+			}),
+		server,
 	};
+}
+
+function postIdOf(location: DemoLocation) {
+	return Number(location.path.split("/")[2]);
 }
 
 function PostSkeleton() {
@@ -90,77 +74,64 @@ function PostSkeleton() {
 	);
 }
 
-function CommentsSkeleton() {
-	return (
-		<div className="grid gap-2">
-			<Skeleton className="h-10 w-full" />
-			<Skeleton className="h-10 w-full" />
-		</div>
-	);
-}
-
 function PostBody(props: { readonly post: Post | undefined }) {
 	return (
-		<div className="grid gap-1">
+		<article className="grid gap-1">
 			<h3 className="text-lg font-semibold">{props.post?.title}</h3>
 			<p className="text-sm text-muted-foreground">{props.post?.body}</p>
+		</article>
+	);
+}
+
+function CommentsSection(props: { readonly children: ReactNode }) {
+	const headingId = useId();
+	return (
+		<section aria-labelledby={headingId} className="grid gap-2 border-t pt-3">
+			<h4
+				className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+				id={headingId}
+			>
+				<MessageSquare className="size-3.5" /> Comments
+			</h4>
+			{props.children}
+		</section>
+	);
+}
+
+function CommentsSkeleton() {
+	return (
+		<div className="grid gap-3">
+			{[0, 1].map((row) => (
+				<div className="flex gap-2.5" key={row}>
+					<Skeleton className="size-7 shrink-0 rounded-full" />
+					<div className="grid flex-1 gap-1.5">
+						<Skeleton className="h-3.5 w-16" />
+						<Skeleton className="h-3.5 w-3/4" />
+					</div>
+				</div>
+			))}
 		</div>
 	);
 }
 
-function PromisedPost(props: { readonly post: Thenable<Post | undefined> }) {
-	return <PostBody post={use(props.post)} />;
-}
-
-function Comments(props: {
-	readonly handle: QueryHandle<typeof commentsQuery>;
-}) {
-	const [commentsPromise] = useQuery(commentsQuery, props.handle);
-	const comments = use(commentsPromise);
+function CommentList(props: { readonly comments: ReadonlyArray<Comment> }) {
 	return (
-		<ul className="grid gap-2">
-			{comments.map((comment) => (
-				<li className="rounded-md border px-3 py-2 text-sm" key={comment.id}>
-					<span className="mr-2 font-medium">{comment.author}</span>
-					{comment.body}
+		<ul className="grid gap-3">
+			{props.comments.map((comment) => (
+				<li className="flex gap-2.5 text-sm" key={comment.id}>
+					<span
+						aria-hidden="true"
+						className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-medium text-muted-foreground"
+					>
+						{comment.author.charAt(0)}
+					</span>
+					<div className="grid gap-0.5">
+						<span className="font-medium">{comment.author}</span>
+						<p className="text-muted-foreground">{comment.body}</p>
+					</div>
 				</li>
 			))}
 		</ul>
-	);
-}
-
-function EnsuredPost(props: {
-	readonly comments: QueryHandle<typeof commentsQuery>;
-	readonly post: EnsuredQueryHandle<typeof postQuery>;
-}) {
-	const [post] = useQuery(postQuery, props.post);
-	return (
-		<>
-			<PostBody post={post} />
-			<Suspense fallback={<CommentsSkeleton />} key={post?.id}>
-				<Comments handle={props.comments} />
-			</Suspense>
-		</>
-	);
-}
-
-function PrefetchedPost(props: {
-	readonly comments: QueryHandle<typeof commentsQuery>;
-	readonly post: QueryHandle<typeof postQuery>;
-}) {
-	const [postPromise, postState] = useQuery(postQuery, props.post);
-	return (
-		<>
-			<Suspense fallback={<PostSkeleton />} key={postState.hash}>
-				<PromisedPost post={postPromise} />
-			</Suspense>
-			<Suspense
-				fallback={<CommentsSkeleton />}
-				key={`${postState.hash}-comments`}
-			>
-				<Comments handle={props.comments} />
-			</Suspense>
-		</>
 	);
 }
 
@@ -183,11 +154,7 @@ function PostList() {
 	);
 }
 
-function Page(props: { readonly data: PageData }) {
-	const data = props.data;
-	if (data.page === "list") {
-		return <PostList />;
-	}
+function PostPage(props: { readonly children: ReactNode }) {
 	return (
 		<div className="grid gap-4">
 			<DemoLink
@@ -196,77 +163,216 @@ function Page(props: { readonly data: PageData }) {
 			>
 				← All posts
 			</DemoLink>
-			{data.page === "ensured" ? (
-				<EnsuredPost comments={data.comments} post={data.post} />
-			) : (
-				<PrefetchedPost comments={data.comments} post={data.post} />
-			)}
+			{props.children}
 		</div>
 	);
 }
 
-const modes: ReadonlyArray<{
-	readonly description: string;
-	readonly value: Mode;
-}> = [
-	{
-		description: "Opens the post at once, with skeletons.",
-		value: "prefetch",
-	},
-	{
-		description: "Stays on the list until the post loads.",
-		value: "ensure",
-	},
-];
+const prefetching = createBlog();
 
-function StartingQueries() {
-	const [mode, setMode] = useState<Mode>("prefetch");
-	const selected = modes.find((option) => option.value === mode);
+type PrefetchedPage =
+	| { readonly page: "list" }
+	| {
+			readonly comments: QueryHandle<typeof prefetching.commentsQuery>;
+			readonly page: "post";
+			readonly post: QueryHandle<typeof prefetching.postQuery>;
+	  };
+
+function PromisedPost(props: { readonly post: Thenable<Post | undefined> }) {
+	return <PostBody post={use(props.post)} />;
+}
+
+function PrefetchedComments(props: {
+	readonly handle: QueryHandle<typeof prefetching.commentsQuery>;
+}) {
+	const [commentsPromise] = useQuery(prefetching.commentsQuery, props.handle);
+	return <CommentList comments={use(commentsPromise)} />;
+}
+
+function PrefetchedPost(props: {
+	readonly comments: QueryHandle<typeof prefetching.commentsQuery>;
+	readonly post: QueryHandle<typeof prefetching.postQuery>;
+}) {
+	const [postPromise, postState] = useQuery(prefetching.postQuery, props.post);
 	return (
-		<div className="grid gap-3">
-			<fieldset className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-				<legend className="sr-only">Load the post with</legend>
-				<div className="inline-flex rounded-md border p-0.5">
-					{modes.map((option) => (
-						<label
-							className={cn(
-								"cursor-pointer rounded px-2.5 py-0.5 font-mono text-xs text-muted-foreground has-focus-visible:ring-2 has-focus-visible:ring-ring",
-								mode === option.value &&
-									"bg-accent font-medium text-foreground",
-							)}
-							key={option.value}
-						>
-							<input
-								checked={mode === option.value}
-								className="sr-only"
-								name="mode"
-								onChange={() => {
-									setMode(option.value);
-								}}
-								type="radio"
-							/>
-							{option.value}
-						</label>
-					))}
-				</div>
-				<p aria-live="polite" className="text-sm text-muted-foreground">
-					{selected?.description}
-				</p>
-			</fieldset>
-			<DemoBrowser
-				fallback={<PostSkeleton />}
-				initial={{ path: "/posts" }}
-				loader={loaderFor(mode)}
-			>
-				{(route) => <Page data={route.data} />}
-			</DemoBrowser>
-		</div>
+		<>
+			<Suspense fallback={<PostSkeleton />} key={postState.hash}>
+				<PromisedPost post={postPromise} />
+			</Suspense>
+			<CommentsSection>
+				<Suspense
+					fallback={<CommentsSkeleton />}
+					key={`${postState.hash}-comments`}
+				>
+					<PrefetchedComments handle={props.comments} />
+				</Suspense>
+			</CommentsSection>
+		</>
+	);
+}
+
+function PrefetchDemo() {
+	return (
+		<DemoBrowser<PrefetchedPage>
+			fallback={<PostSkeleton />}
+			initial={{ path: "/posts" }}
+			loader={(args) => {
+				const id = postIdOf(args.location);
+				if (!id) {
+					return { page: "list" };
+				}
+				const qc = args.client;
+				return {
+					comments: qc.prefetch(prefetching.commentsQuery, { postId: id }),
+					page: "post",
+					post: qc.prefetch(prefetching.postQuery, { id }),
+				};
+			}}
+		>
+			{(route) =>
+				route.data.page === "list" ? (
+					<PostList />
+				) : (
+					<PostPage>
+						<PrefetchedPost
+							comments={route.data.comments}
+							post={route.data.post}
+						/>
+					</PostPage>
+				)
+			}
+		</DemoBrowser>
+	);
+}
+
+const ensuring = createBlog();
+
+type EnsuredPage =
+	| { readonly page: "list" }
+	| {
+			readonly comments: EnsuredQueryHandle<typeof ensuring.commentsQuery>;
+			readonly page: "post";
+			readonly post: EnsuredQueryHandle<typeof ensuring.postQuery>;
+	  };
+
+function EnsuredPost(props: {
+	readonly comments: EnsuredQueryHandle<typeof ensuring.commentsQuery>;
+	readonly post: EnsuredQueryHandle<typeof ensuring.postQuery>;
+}) {
+	const [post] = useQuery(ensuring.postQuery, props.post);
+	const [comments] = useQuery(ensuring.commentsQuery, props.comments);
+	return (
+		<>
+			<PostBody post={post} />
+			<CommentsSection>
+				<CommentList comments={comments} />
+			</CommentsSection>
+		</>
+	);
+}
+
+function EnsureDemo() {
+	return (
+		<DemoBrowser<EnsuredPage>
+			fallback={<PostSkeleton />}
+			initial={{ path: "/posts" }}
+			loader={async (args) => {
+				const id = postIdOf(args.location);
+				if (!id) {
+					return { page: "list" };
+				}
+				const qc = args.client;
+				const handles = await allKeyed({
+					comments: qc.ensure(ensuring.commentsQuery, { postId: id }),
+					post: qc.ensure(ensuring.postQuery, { id }),
+				});
+				return { ...handles, page: "post" };
+			}}
+		>
+			{(route) =>
+				route.data.page === "list" ? (
+					<PostList />
+				) : (
+					<PostPage>
+						<EnsuredPost
+							comments={route.data.comments}
+							post={route.data.post}
+						/>
+					</PostPage>
+				)
+			}
+		</DemoBrowser>
+	);
+}
+
+const fetching = createBlog();
+
+type FetchedPage =
+	| { readonly page: "list" }
+	| {
+			readonly comments: ReadonlyArray<Comment>;
+			readonly page: "post";
+			readonly post: Post | undefined;
+	  };
+
+function FetchDemo() {
+	return (
+		<DemoBrowser<FetchedPage>
+			fallback={<PostSkeleton />}
+			initial={{ path: "/posts" }}
+			loader={async (args) => {
+				const id = postIdOf(args.location);
+				if (!id) {
+					return { page: "list" };
+				}
+				const qc = args.client;
+				const data = await allKeyed({
+					comments: qc.fetch(fetching.commentsQuery, { postId: id }),
+					post: qc.fetch(fetching.postQuery, { id }),
+				});
+				return { ...data, page: "post" };
+			}}
+		>
+			{(route) =>
+				route.data.page === "list" ? (
+					<PostList />
+				) : (
+					<PostPage>
+						<PostBody post={route.data.post} />
+						<CommentsSection>
+							<CommentList comments={route.data.comments} />
+						</CommentsSection>
+					</PostPage>
+				)
+			}
+		</DemoBrowser>
 	);
 }
 
 export default defineDemo({
-	Component: StartingQueries,
-	hint: "Open a post with each. The requests start at the same moment either way; only what you see while they load differs. Comments are always prefetched.",
-	server,
-	title: "prefetch vs ensure",
+	hint: "Open a post with each, then switch back and forth: each keeps its own page and network log. The requests start at the same moment every time. Go back and reopen the post after 5 seconds, once its cache is stale, to see ensure and fetch differ.",
+	title: "prefetch, ensure or fetch",
+	variants: [
+		{
+			Component: PrefetchDemo,
+			description: "Opens the post at once, with skeletons.",
+			label: "prefetch",
+			server: prefetching.server,
+		},
+		{
+			Component: EnsureDemo,
+			description:
+				"Stays on the list until the post and its comments load. Cached data opens at once and refetches in the background.",
+			label: "ensure",
+			server: ensuring.server,
+		},
+		{
+			Component: FetchDemo,
+			description:
+				"Stays on the list until the post and its comments load, and waits for the refetch whenever the cache is stale.",
+			label: "fetch",
+			server: fetching.server,
+		},
+	],
+	variantsLabel: "Load the post and its comments with",
 });

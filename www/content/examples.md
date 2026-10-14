@@ -40,7 +40,7 @@ pnpm dev:next    # Next.js on http://localhost:3001
 
 The guides embed live demos that run entirely in your browser. Each has its own query client and a fake server with adjustable latency, and shows its requests as a waterfall and its cache entries as they change. **Expand** opens the same demo in a dialog next to the [devtools](./devtools.md) panel. Good places to start:
 
-- [Starting queries](./starting-queries.md): prefetch versus ensure
+- [Starting queries](./starting-queries.md): prefetch, ensure and fetch
 - [Caching](./caching.md): fresh, stale, inactive and garbage-collected entries
 - [URL state and pagination](./url-state-and-pagination.md): `whilePending`
 - [Mutations](./mutations.md): optimistic updates that roll back

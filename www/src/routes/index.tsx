@@ -203,7 +203,7 @@ function HomePage() {
 						className="mb-2 text-2xl font-semibold tracking-tight"
 						id="try-it"
 					>
-						Try it: prefetch or ensure
+						Try it: prefetch, ensure or fetch
 					</h2>
 					<p className="max-w-2xl text-muted-foreground">
 						Every guide has live demos like this one. Each runs its own query

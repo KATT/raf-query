@@ -64,7 +64,7 @@ return await allKeyed({
 - a loader that must branch on the data, such as a redirect
 - outside React, in scripts and tests
 
-In a browser loader, prefer `ensure`: a stale `fetch` blocks the navigation on the refetch, while a stale `ensure` renders the cached data at once and updates when the refetch lands.
+In a browser loader, prefer `ensure`: a stale `fetch` blocks the navigation on the refetch, while a stale `ensure` renders the cached data at once and updates when the refetch lands. The [demo](#prefetch-or-ensure) shows both: open a post, go back, and reopen it once its cache is stale.
 
 ## Behavior
 
