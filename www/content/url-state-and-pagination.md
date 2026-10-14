@@ -8,32 +8,12 @@ order: 9
 Filters, sort order and pagination are search params. The loader turns them into the query's input, so every navigation starts the right query and the component only ever reads the handle it was given:
 
 ```tsx twoslash title="src/routes/posts.tsx"
+// @filename: tanstack-start/src/routes/posts.tsx
 import { use, type ReactNode } from "react";
-import { type QueryClient, queryOptions, useQuery } from "@raf-query/react";
-import type { Post } from "./_twoslash.ts";
-function postsQuery(input: { page: number; sort: "newest" | "oldest" }) {
-	return queryOptions({
-		queryFn: async (): Promise<ReadonlyArray<Post>> => [],
-		queryKey: ["posts", input],
-	});
-}
-type Search = { page: number; sort: "newest" | "oldest" };
-declare function createFileRoute(path: string): <TLoaderData>(options: {
-	readonly component: () => ReactNode;
-	readonly loader: (args: {
-		readonly context: { readonly queryClient: QueryClient };
-		readonly deps: Search;
-	}) => TLoaderData;
-	readonly loaderDeps: (args: { readonly search: Search }) => Search;
-	readonly validateSearch: { parse(input: unknown): Search };
-}) => {
-	useLoaderData(): TLoaderData;
-};
-declare function Link(props: {
-	readonly children?: ReactNode;
-	readonly search: (prev: Search) => Search;
-	readonly to: string;
-}): ReactNode;
+import { useQuery } from "@raf-query/react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import type { Post } from "~/api.ts";
+import { postsQuery } from "~/queries.ts";
 declare function PostList(props: {
 	readonly dimmed: boolean;
 	readonly posts: ReadonlyArray<Post>;
@@ -105,7 +85,7 @@ To show a skeleton instead, for instance when moving between unrelated posts, gi
 ```tsx twoslash
 import { Suspense, type ReactNode } from "react";
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 declare const loaderData: { post: QueryHandle<typeof postQuery> };
 declare function PostBody(props: {
 	readonly post: Promise<unknown>;

@@ -13,7 +13,9 @@ All of these are valid:
 
 ```ts twoslash
 import { queryOptions } from "@raf-query/react";
-import { fetchAllTodos, fetchTodoById } from "./_twoslash.ts";
+import type { Todo } from "~/api.ts";
+declare function fetchAllTodos(): Promise<ReadonlyArray<Todo>>;
+declare function fetchTodoById(id: number): Promise<Todo>;
 declare const id: number;
 // ---cut---
 queryOptions({ queryKey: ["todos"], queryFn: fetchAllTodos });

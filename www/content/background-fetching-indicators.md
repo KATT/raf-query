@@ -13,7 +13,7 @@ A query's first load suspends, so Suspense fallbacks cover it. Later requests (r
 
 ```tsx twoslash
 import { type EnsuredQueryHandle, useQuery } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 declare function Spinner(props: { readonly label: string }): React.ReactNode;
 // ---cut---
 function Post(props: { handle: EnsuredQueryHandle<typeof postQuery> }) {

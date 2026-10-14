@@ -16,7 +16,9 @@ Queries start where the page's inputs are known: a route loader, a server compon
 Fresh cached data is reused by all three, without a request. So `prefetch` never holds anything up, `ensure` holds up only the first visit (returning to a page shows the cached data at once, then fresh data), and `fetch` always returns fresh data, at the cost of a round trip whenever the cache is stale.
 
 ```tsx twoslash title="src/routes/posts.$slug.tsx"
-import { commentsQuery, createFileRoute, postQuery } from "./_twoslash.ts";
+// @filename: tanstack-start/src/routes/posts.$slug.tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { commentsQuery, postQuery } from "~/queries.ts";
 function PostPage() {
 	return null;
 }
@@ -54,7 +56,7 @@ Await independent blocking queries together with `allKeyed`, which ships with ra
 
 ```ts twoslash
 import { allKeyed, type QueryClient } from "@raf-query/react";
-import { authorQuery, postQuery } from "./_twoslash.ts";
+import { authorQuery, postQuery } from "~/queries.ts";
 declare const qc: QueryClient;
 declare const slug: string;
 async function load() {
@@ -92,7 +94,7 @@ Outside loaders, call the client directly. Starting a query when the pointer ent
 ```tsx twoslash
 import type { QueryClient } from "@raf-query/react";
 import { Link } from "@tanstack/react-router";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 declare const qc: QueryClient;
 declare const slug: string;
 declare const title: string;

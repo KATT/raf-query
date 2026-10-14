@@ -9,51 +9,13 @@ TanStack Router's loaders are where raf-query wants queries to start, and its SS
 
 ## Setup
 
-```tsx twoslash title="src/router.tsx"
-/// <reference types="vite/client" />
-import type { ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@raf-query/react";
-import { QueryDevtools } from "@raf-query/react/devtools";
-import { routeTree } from "./routeTree.gen.ts";
-declare function createRouter(options: Record<string, unknown>): unknown;
-declare function setupRouterIntegration(options: {
-	readonly queryClient: QueryClient;
-	readonly router: unknown;
-}): void;
-// ---cut---
-export function getRouter() {
-	const queryClient = new QueryClient({ defaults: { staleTime: 5000 } });
-	const router = createRouter({
-		context: { queryClient },
-		defaultPreload: "intent",
-		// The query cache decides what's fresh; loaders always run and dedupe there.
-		defaultPreloadStaleTime: 0,
-		routeTree,
-		scrollRestoration: true,
-		Wrap: (props: { children: ReactNode }) => (
-			<QueryClientProvider client={queryClient}>
-				{props.children}
-				{import.meta.env.DEV ? <QueryDevtools /> : null}
-			</QueryClientProvider>
-		),
-	});
-	setupRouterIntegration({ queryClient, router });
-	return router;
-}
-```
+<<< ../samples/tanstack-start/src/router.tsx
 
 Mount DevTools only when `import.meta.env.DEV` is true so Vite drops the panel from production builds. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
 
 Type the router context in the root route, so loaders see `queryClient`:
 
-```tsx twoslash title="src/routes/__root.tsx"
-import type { QueryClient } from "@raf-query/react";
-import { createRootRouteWithContext } from "./_twoslash.ts";
-// ---cut---
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
-	{},
-);
-```
+<<< ../samples/tanstack-start/src/routes/__root.tsx
 
 `getRouter` runs once per request on the server and once in the browser, so each request gets its own client and the browser keeps one for the session.
 
@@ -77,26 +39,7 @@ Options:
 
 A loader starts every query its route needs and returns the handles:
 
-```tsx twoslash title="src/routes/posts.$slug.tsx"
-import { useQuery } from "@raf-query/react";
-import { commentsQuery, createFileRoute, postQuery } from "./_twoslash.ts";
-// ---cut---
-export const Route = createFileRoute("/posts/$slug")({
-	loader: async (args) => {
-		const qc = args.context.queryClient;
-		const comments = qc.prefetch(commentsQuery, { slug: args.params.slug });
-		const post = await qc.ensure(postQuery, { slug: args.params.slug });
-		return { comments, post };
-	},
-	component: PostPage,
-});
-
-function PostPage() {
-	const loaderData = Route.useLoaderData();
-	const [post] = useQuery(postQuery, loaderData.post);
-	return <h1>{post.title}</h1>;
-}
-```
+<<< ../samples/tanstack-start/src/routes/posts.$slug.tsx
 
 See [Starting queries](./starting-queries.md) for choosing between `prefetch` and `ensure`.
 
@@ -104,35 +47,9 @@ See [Starting queries](./starting-queries.md) for choosing between `prefetch` an
 
 `beforeLoad` can return handles too. They're part of the route context, so child routes' loaders and components read them, and the router serializes them to the browser with the rest of the context:
 
-```tsx twoslash title="src/routes/_auth.tsx"
-import { queryOptions, useQuery } from "@raf-query/react";
-import { createFileRoute } from "./_twoslash.ts";
-declare function redirect(opts: { to: string }): never;
-function meQuery() {
-	return queryOptions({
-		queryKey: ["me"],
-		queryFn: async () => ({ id: "1", name: "Ada" }),
-	});
-}
-// ---cut---
-export const Route = createFileRoute("/_auth")({
-	beforeLoad: async (args) => {
-		const qc = args.context.queryClient;
-		const me = await qc.ensure(meQuery);
-		if (!qc.getData(meQuery)) {
-			throw redirect({ to: "/login" });
-		}
-		return { me };
-	},
-});
+<<< ../samples/tanstack-start/src/routes/_auth.tsx
 
-// In a child route
-function Dashboard() {
-	const context = Route.useRouteContext();
-	const [me] = useQuery(meQuery, context.me);
-	return <p>{me.name}</p>;
-}
-```
+<<< ../samples/tanstack-start/src/routes/_auth.dashboard.tsx#dashboard
 
 Importing `@raf-query/react/tanstack-router` registers handles as serializable, so Start's type check of `beforeLoad`'s return accepts them.
 
@@ -171,17 +88,7 @@ Use `loaderDeps` to pass validated search params to the loader, so it reruns whe
 
 Factories can call server functions (`createServerFn`) directly. The loader runs on the server during SSR, where the call is a function call; in the browser, refetches call the same function over HTTP.
 
-```ts twoslash title="src/queries.ts"
-import { queryOptions } from "@raf-query/react";
-import { getPost } from "./posts.functions.ts";
-// ---cut---
-export function postQuery(input: { slug: string }) {
-	return queryOptions({
-		queryKey: ["post", input.slug],
-		queryFn: () => getPost({ data: input }),
-	});
-}
-```
+<<< ../samples/tanstack-start/src/queries.ts#post-query
 
 ## Static prerendering
 

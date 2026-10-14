@@ -9,7 +9,7 @@ Lists that load more data onto what's already shown, such as "load more" buttons
 
 ```ts twoslash title="src/queries.ts"
 import { infiniteQueryOptions } from "@raf-query/react";
-import { listComments } from "./_twoslash.ts";
+import { listComments } from "~/api.ts";
 // ---cut---
 export function commentsQuery(input: { slug: string }) {
 	return infiniteQueryOptions({
@@ -33,7 +33,8 @@ With a paged factory, `useQuery` returns the same tuple. The promise resolves to
 ```tsx twoslash
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { use } from "react";
-import { commentsQuery, type PostComment } from "./_twoslash.ts";
+import type { PostComment } from "~/api.ts";
+import { commentsQuery } from "~/queries.ts";
 declare function Comment(props: PostComment): React.ReactNode;
 // ---cut---
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
@@ -73,7 +74,7 @@ Infinite scroll is the same paged query with an automatic "Load more". A ref cal
 
 ```tsx twoslash
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { commentsQuery } from "./_twoslash.ts";
+import { commentsQuery } from "~/queries.ts";
 declare function CommentSkeletons(): React.ReactNode;
 declare const props: { handle: QueryHandle<typeof commentsQuery> };
 const [, comments] = useQuery(commentsQuery, props.handle);
@@ -118,7 +119,7 @@ On the server, `ensure` and `fetch` load the first page. Pass `{ pages: n }` as 
 
 ```ts twoslash
 import { QueryClient } from "@raf-query/react";
-import { commentsQuery } from "./_twoslash.ts";
+import { commentsQuery } from "~/queries.ts";
 const qc = new QueryClient();
 declare const slug: string;
 // ---cut---

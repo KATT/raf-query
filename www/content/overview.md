@@ -32,7 +32,7 @@ React's own guidance is to start fetching before rendering: in the router's load
 ## A taste
 
 ```ts twoslash title="src/queries.ts"
-import { getPost } from "./_twoslash.ts";
+import { getPost } from "~/api.ts";
 // ---cut---
 import { queryOptions } from "@raf-query/react";
 
@@ -46,8 +46,10 @@ export function postQuery(input: { slug: string }) {
 ```
 
 ```tsx twoslash title="src/routes/posts.$slug.tsx"
+// @filename: tanstack-start/src/routes/posts.$slug.tsx
 import { useQuery } from "@raf-query/react";
-import { createFileRoute, postQuery } from "./_twoslash.ts";
+import { createFileRoute } from "@tanstack/react-router";
+import { postQuery } from "~/queries.ts";
 // ---cut---
 export const Route = createFileRoute("/posts/$slug")({
 	loader: async (args) => ({

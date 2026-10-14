@@ -3,6 +3,7 @@ title: Typed errors
 description: An Effect queryFn's error type is the query's. useQuery returns a Result so you match failures inline; catchTag in loaders and actions; or throwOnError to an error boundary.
 section: Effect
 order: 3
+sampleApp: tanstack-start-effect
 ---
 
 An Effect `queryFn`'s error type is the query's error type. It flows through the factory: `ErrorOf<TFactory>` names it, and every verb on the cache fails with it. Catch the failures you expect with `Effect.catchTag`, and the type tells you what's left.
@@ -16,7 +17,7 @@ The examples use the issue tracker from [Using Effect](./effect.md#the-whole-pic
 ```ts twoslash
 import { type ErrorOf, QueryCache, queryOptions } from "@raf-query/react";
 import { Effect } from "effect";
-import { IssueApi } from "./_effect.ts";
+import { IssueApi } from "~/issues.ts";
 // ---cut---
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
@@ -46,7 +47,7 @@ With a `layer`, the client defaults to `throwOnError: false`. `useQuery` then re
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { Result } from "effect";
 import { Suspense, use } from "react";
-import { assigneeQuery } from "./_effect.ts";
+import { assigneeQuery } from "~/queries.ts";
 // ---cut---
 function Assignee(props: { handle: QueryHandle<typeof assigneeQuery> }) {
 	const [assigneePromise, controls] = useQuery(assigneeQuery, props.handle);
@@ -82,7 +83,7 @@ Set `throwOnError: true` on the client or on the call to get a rejecting promise
 ```ts twoslash
 import { type ErrorOf, queryOptions } from "@raf-query/react";
 import { Schema } from "effect";
-import { assigneeQuery as _, IssueApi, Unauthorized } from "./_effect.ts";
+import { IssueApi, Unauthorized } from "~/issues.ts";
 // ---cut---
 export function assigneeQuery(input: { issueId: number }) {
 	return queryOptions({
@@ -104,10 +105,11 @@ Loaders that only `prefetch` or `ensure` use the Promise verbs, the same as a no
 A loader can turn a typed failure into the router's own error. Here a missing issue becomes TanStack Router's `notFound()`, so the route renders its not-found page, and anything else reaches `errorComponent`:
 
 ```tsx twoslash title="src/routes/issues.$issueId.tsx"
+// @filename: tanstack-start-effect/src/routes/issues.$issueId.tsx
 import { QueryCache } from "@raf-query/react";
-import { notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { Effect } from "effect";
-import { createFileRoute, issueQuery } from "./_effect.ts";
+import { issueQuery } from "~/queries.ts";
 // ---cut---
 const loadIssue = Effect.fn("loadIssue")(
 	function* (id: number) {
@@ -136,9 +138,10 @@ A form action can catch every failure it declares into the message the form show
 ```tsx twoslash title="src/components/rename-form.tsx"
 import { QueryCache } from "@raf-query/react";
 import { Effect } from "effect";
+import { getRouteApi } from "@tanstack/react-router";
 import { useActionState } from "react";
-import { type Issue, IssueApi, IssueRoute } from "./_effect.ts";
-const Route = IssueRoute;
+import { type Issue, IssueApi } from "~/issues.ts";
+const Route = getRouteApi("/issues/$issueId");
 // ---cut---
 const rename = Effect.fn("rename")(
 	function* (input: { readonly id: number; readonly title: string }) {
@@ -192,7 +195,8 @@ You don't have to match a `Result`. Set `throwOnError: true` on the client or on
 ```tsx twoslash
 import { type EnsuredQueryHandle, useQuery } from "@raf-query/react";
 import { Schema } from "effect";
-import { issueQuery, Unauthorized } from "./_effect.ts";
+import { Unauthorized } from "~/issues.ts";
+import { issueQuery } from "~/queries.ts";
 // ---cut---
 function IssueTitle(props: { handle: EnsuredQueryHandle<typeof issueQuery> }) {
 	const [issue, controls] = useQuery(issueQuery, props.handle, {

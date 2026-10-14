@@ -17,125 +17,29 @@ For the Next.js App Router, the same steps apply with a server component in plac
 
 Create one `QueryClient` per router. On the server, `getRouter` runs once per request, so each request gets its own cache; in the browser it runs once per tab.
 
-```tsx twoslash title="src/router.tsx"
-import type { ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@raf-query/react";
-import { routeTree } from "./routeTree.gen.ts";
-declare function createRouter(options: Record<string, unknown>): unknown;
-declare function setupRouterIntegration(options: {
-	readonly queryClient: QueryClient;
-	readonly router: unknown;
-}): void;
-// ---cut---
-export function getRouter() {
-	const queryClient = new QueryClient();
-	const router = createRouter({
-		routeTree,
-		context: { queryClient },
-		defaultPreload: "intent",
-		// The query cache decides what's fresh; loaders always run and dedupe there.
-		defaultPreloadStaleTime: 0,
-		Wrap: (props: { children: ReactNode }) => (
-			<QueryClientProvider client={queryClient}>
-				{props.children}
-			</QueryClientProvider>
-		),
-	});
-	setupRouterIntegration({ router, queryClient });
-	return router;
-}
-```
+<<< ../samples/tanstack-start/src/router.tsx
 
-`setupRouterIntegration` streams the server's cache to the browser while the page renders, so data loaded on the server is never fetched twice. Give the root route the client's type:
+`setupRouterIntegration` streams the server's cache to the browser while the page renders, so data loaded on the server is never fetched twice. In development, [DevTools](./devtools.md) show what's in the cache. Give the root route the client's type:
 
-```tsx twoslash title="src/routes/__root.tsx"
-import type { QueryClient } from "@raf-query/react";
-import { createRootRouteWithContext } from "./_twoslash.ts";
-// ---cut---
-export const Route = createRootRouteWithContext<{
-	queryClient: QueryClient;
-}>()({});
-```
+<<< ../samples/tanstack-start/src/routes/__root.tsx
 
 ## 2. Define a query
 
 A query is a **factory**: a function of at most one argument that returns `queryOptions(...)`. The argument is the query's input. Loaders and components call the same factory, so the data's type flows end to end.
 
-```ts twoslash title="src/queries.ts"
-import { fetchTodo } from "./_twoslash.ts";
-// ---cut---
-import { queryOptions } from "@raf-query/react";
-
-export function todosQuery() {
-	return queryOptions({
-		queryKey: ["todos"],
-		queryFn: async () => {
-			const response = await fetch("/api/todos");
-			if (!response.ok) throw new Error(`HTTP ${response.status}`);
-			return (await response.json()) as Array<{ id: number; title: string }>;
-		},
-	});
-}
-
-export function todoQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: ["todos", input.id],
-		queryFn: () => fetchTodo(input.id),
-		staleTime: 30_000,
-	});
-}
-```
+<<< ../samples/tanstack-start/src/queries.ts#todos
 
 ## 3. Start it in the loader
 
 The loader starts the query and returns its **handle**, a small `{ key, input }` object:
 
-```tsx twoslash title="src/routes/todos.tsx"
-import { createFileRoute, todosQuery } from "./_twoslash.ts";
-// ---cut---
-export const Route = createFileRoute("/todos")({
-	loader: (args) => ({
-		todos: args.context.queryClient.prefetch(todosQuery),
-	}),
-});
-```
+<<< ../samples/tanstack-start/src/routes/todos.tsx#loader
 
 `prefetch` starts the request and returns immediately, so the page renders while the data is on its way. Use `ensure` instead when the page can't lay out without the data: the navigation then waits for it. [Starting queries](./starting-queries.md) covers the trade-off.
 
 ## 4. Read it in a component
 
-```tsx twoslash title="src/routes/todos.tsx"
-import { type QueryHandle, useQuery } from "@raf-query/react";
-import { Suspense, use } from "react";
-import { createFileRoute, todosQuery } from "./_twoslash.ts";
-export const Route = createFileRoute("/todos")({
-	loader: (args) => ({
-		todos: args.context.queryClient.prefetch(todosQuery),
-	}),
-	component: TodosPage,
-});
-// ---cut---
-function TodosPage() {
-	const loaderData = Route.useLoaderData();
-	return (
-		<Suspense fallback={<p>Loading…</p>}>
-			<TodoList handle={loaderData.todos} />
-		</Suspense>
-	);
-}
-
-function TodoList(props: { handle: QueryHandle<typeof todosQuery> }) {
-	const [todosPromise, todosState] = useQuery(todosQuery, props.handle);
-	const todos = use(todosPromise);
-	return (
-		<ul aria-busy={todosState.isFetching}>
-			{todos.map((todo) => (
-				<li key={todo.id}>{todo.title}</li>
-			))}
-		</ul>
-	);
-}
-```
+<<< ../samples/tanstack-start/src/routes/todos.tsx#component
 
 `useQuery` returns a stable promise and the query's controls. `use()` suspends until the data is there, then returns it; once the cache has data, the promise is already resolved and `use()` returns synchronously.
 
@@ -143,25 +47,7 @@ function TodoList(props: { handle: QueryHandle<typeof todosQuery> }) {
 
 There is no `useMutation`. Write in a form action, then invalidate what changed:
 
-```tsx twoslash
-import { useQueryClient } from "@raf-query/react";
-import { createTodo, todosQuery } from "./_twoslash.ts";
-// ---cut---
-function AddTodo() {
-	const qc = useQueryClient();
-	return (
-		<form
-			action={async (formData) => {
-				await createTodo({ title: String(formData.get("title")) });
-				await qc.invalidate(todosQuery);
-			}}
-		>
-			<input name="title" />
-			<button>Add</button>
-		</form>
-	);
-}
-```
+<<< ../samples/tanstack-start/src/components/add-todo.tsx#add-todo
 
 `await qc.invalidate(...)` resolves once every query being read has refetched, so the form stays pending until the new todo is on screen. See [Mutations](./mutations.md) for optimistic updates and errors.
 

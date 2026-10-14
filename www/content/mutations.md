@@ -16,7 +16,8 @@ The cache's part is what happens after the write: [invalidating](./query-invalid
 ```tsx twoslash
 import { useOptimistic } from "react";
 import { useQueryClient } from "@raf-query/react";
-import { type Post, postQuery, updatePost } from "./_twoslash.ts";
+import { type Post, updatePost } from "~/api.ts";
+import { postQuery } from "~/queries.ts";
 // ---cut---
 function EditTitle(props: { post: Post }) {
 	const qc = useQueryClient();
@@ -56,7 +57,7 @@ The demo's form:
 ```tsx twoslash
 import { useActionState, useOptimistic } from "react";
 import { useQueryClient } from "@raf-query/react";
-import { todosQuery } from "./_twoslash.ts";
+import { todosQuery } from "~/queries.ts";
 type Todo = { id: number; pending?: boolean; text: string };
 declare function addTodo(text: string): Promise<void>;
 // ---cut---
@@ -90,7 +91,7 @@ function AddTodo(props: { todos: Todo[] }) {
 
 ```ts twoslash
 import { QueryClient } from "@raf-query/react";
-import { todosQuery } from "./_twoslash.ts";
+import { todosQuery } from "~/queries.ts";
 declare function toggleTodoApi(id: number): Promise<void>;
 const qc = new QueryClient();
 const api = { toggleTodo: toggleTodoApi };
@@ -121,7 +122,8 @@ When the server responds with the updated object, write it into the cache instea
 
 ```ts twoslash
 import { QueryClient } from "@raf-query/react";
-import { postQuery, updatePost } from "./_twoslash.ts";
+import { updatePost } from "~/api.ts";
+import { postQuery } from "~/queries.ts";
 const qc = new QueryClient();
 declare const slug: string;
 declare const title: string;

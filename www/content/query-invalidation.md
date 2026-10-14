@@ -9,7 +9,7 @@ Waiting for data to go stale on its own doesn't work after a write: the user jus
 
 ```ts twoslash
 import { QueryClient } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 const qc = new QueryClient();
 declare const slug: string;
 // ---cut---

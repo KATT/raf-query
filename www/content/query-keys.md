@@ -18,7 +18,8 @@ The simplest key is an array of constants. It suits:
 
 ```ts twoslash
 import { queryOptions } from "@raf-query/react";
-import { getSpecial, listTodos } from "./_twoslash.ts";
+import { listTodos } from "~/api.ts";
+declare function getSpecial(): Promise<unknown>;
 // ---cut---
 // A list of todos
 queryOptions({ queryKey: ["todos"], queryFn: () => listTodos() });
@@ -39,7 +40,7 @@ When a query needs more information to describe its data, add it to the array: a
 
 ```ts twoslash
 import { queryOptions } from "@raf-query/react";
-import { getTodo } from "./_twoslash.ts";
+import { getTodo } from "~/api.ts";
 declare function queryFn(): Promise<unknown>;
 // ---cut---
 // An individual todo
@@ -84,7 +85,7 @@ A query's key must change whenever its data would. In raf-query that's natural: 
 
 ```ts twoslash
 import { queryOptions } from "@raf-query/react";
-import { listTodos } from "./_twoslash.ts";
+import { listTodos } from "~/api.ts";
 // ---cut---
 export function todosQuery(input: { status: "open" | "done"; page: number }) {
 	return queryOptions({

@@ -9,7 +9,7 @@ order: 16
 
 ```tsx twoslash
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { buildQuery } from "./_twoslash.ts";
+import { buildQuery } from "~/queries.ts";
 // ---cut---
 function BuildStatus(props: { handle: QueryHandle<typeof buildQuery> }) {
 	const [buildPromise, build] = useQuery(buildQuery, props.handle, {
@@ -36,7 +36,7 @@ The interval is a plain value read on every render, so you can change it with st
 
 ```tsx twoslash
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { buildQuery } from "./_twoslash.ts";
+import { buildQuery } from "~/queries.ts";
 declare const props: { handle: QueryHandle<typeof buildQuery> };
 declare const buildState: "pending" | "running" | "done" | "failed";
 // ---cut---

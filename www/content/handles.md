@@ -14,7 +14,7 @@ import type {
 	QueryHandle,
 	QueryKey,
 } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 // ---cut---
 type Handle = QueryHandle<typeof postQuery>;
 //   ^?
@@ -39,15 +39,9 @@ That also keeps the cache the single source of truth. A component reading a hand
 The loader's return value lists exactly which queries a route started, and its types show which ones the route waited for. `useQuery` returns **the data** for an `EnsuredQueryHandle` and **a promise** for a `QueryHandle`:
 
 ```tsx twoslash
-import type { EnsuredQueryHandle, QueryHandle } from "@raf-query/react";
 import { useQuery } from "@raf-query/react";
-import { commentsQuery, postQuery } from "./_twoslash.ts";
-declare const Route: {
-	useLoaderData(): {
-		comments: QueryHandle<typeof commentsQuery>;
-		post: EnsuredQueryHandle<typeof postQuery>;
-	};
-};
+import { commentsQuery, postQuery } from "~/queries.ts";
+import { Route } from "~/routes/posts.$slug.tsx";
 // ---cut---
 const loaderData = Route.useLoaderData();
 const [post] = useQuery(postQuery, loaderData.post); // ensured
@@ -59,7 +53,7 @@ const [commentsPromise] = useQuery(commentsQuery, loaderData.comments); // prefe
 The two handle types aren't assignable to each other, so type a prop with the one its loader returns:
 
 ```tsx twoslash
-import { commentsQuery } from "./_twoslash.ts";
+import { commentsQuery } from "~/queries.ts";
 // ---cut---
 import type { EnsuredQueryHandle, QueryHandle } from "@raf-query/react";
 

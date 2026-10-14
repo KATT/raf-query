@@ -8,7 +8,7 @@ order: 4
 A query is a **factory**: a function of zero or one argument that returns `queryOptions(...)` or `infiniteQueryOptions(...)`. The loader and the component call the same factory, so data types flow end to end.
 
 ```ts twoslash title="src/queries.ts"
-import { getPost, listComments } from "./_twoslash.ts";
+import { getPost, listComments } from "~/api.ts";
 // ---cut---
 import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
 
@@ -39,7 +39,7 @@ Use an object even for one field (`{ slug }`, `{ id }`): it reads well at call s
 
 ```ts twoslash
 import { QueryClient, queryOptions } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 const qc = new QueryClient();
 function issuesQuery() {
 	return queryOptions({ queryKey: ["issues"], queryFn: async () => [] });
@@ -54,7 +54,7 @@ A factory with two parameters doesn't type-check where it's used:
 ```ts twoslash
 // @errors: 2345
 import { QueryClient, queryOptions } from "@raf-query/react";
-import { getPost } from "./_twoslash.ts";
+import { getPost } from "~/api.ts";
 const qc = new QueryClient();
 // ---cut---
 function postPageQuery(slug: string, page: number) {
@@ -92,7 +92,7 @@ TypeScript infers the data type from `queryFn`. For paged queries it infers the 
 
 ```ts twoslash
 import { infiniteQueryOptions } from "@raf-query/react";
-import { type CommentPage, listComments } from "./_twoslash.ts";
+import { type CommentPage, listComments } from "~/api.ts";
 // ---cut---
 const commentsOptions = infiniteQueryOptions({
 	getNextPageParam: (lastPage: CommentPage) => lastPage.nextCursor,
@@ -108,12 +108,8 @@ commentsOptions;
 The options' types take a bag of named types rather than a list of type arguments. `error` and `services` are only for [Effect](./effect.md) `queryFn`s, and default to `unknown` and `never`:
 
 ```ts twoslash
-import {
-	type CommentPage,
-	commentsQuery,
-	type Post,
-	postQuery,
-} from "./_twoslash.ts";
+import type { CommentPage, Post } from "~/api.ts";
+import { commentsQuery, postQuery } from "~/queries.ts";
 // ---cut---
 import type { InfiniteQueryOptions, QueryOptions } from "@raf-query/react";
 
@@ -125,7 +121,7 @@ const comments: InfiniteQueryOptions<{ page: CommentPage; pageParam: number }> =
 To name a factory's types elsewhere:
 
 ```ts twoslash
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 // ---cut---
 import type { DataOf, InputOf, QueryHandle } from "@raf-query/react";
 

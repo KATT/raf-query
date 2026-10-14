@@ -6,14 +6,12 @@ order: 0
 ---
 
 ```tsx twoslash title="src/routes/posts.$slug.tsx"
+// @filename: tanstack-start/src/routes/posts.$slug.tsx
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { Suspense, use } from "react";
-import {
-	commentsQuery,
-	createFileRoute,
-	type PostComment,
-	postQuery,
-} from "./_twoslash.ts";
+import { createFileRoute } from "@tanstack/react-router";
+import type { PostComment } from "~/api.ts";
+import { commentsQuery, postQuery } from "~/queries.ts";
 declare function CommentsSkeleton(): React.ReactNode;
 declare function renderComment(comment: PostComment): React.ReactNode;
 // ---cut---

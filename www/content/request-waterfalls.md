@@ -59,7 +59,9 @@ Suspense makes this worse, not better: a suspending component renders nothing be
 raf-query has no fetch-on-render hook. `useQuery` only reads; the loader starts every query:
 
 ```tsx twoslash
-import { commentsQuery, createFileRoute, postQuery } from "./_twoslash.ts";
+// @filename: tanstack-start/src/routes/posts.$slug.tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { commentsQuery, postQuery } from "~/queries.ts";
 declare function PostPage(): React.ReactNode;
 // ---cut---
 export const Route = createFileRoute("/posts/$slug")({
@@ -81,7 +83,7 @@ Inside a loader, the order matters. An `await` before a `prefetch` turns two par
 
 ```ts twoslash
 import { QueryClient } from "@raf-query/react";
-import { commentsQuery, postQuery } from "./_twoslash.ts";
+import { commentsQuery, postQuery } from "~/queries.ts";
 const qc = new QueryClient();
 declare const slug: string;
 // ---cut---
@@ -102,7 +104,7 @@ For several queries the route can't render without, `allKeyed` awaits them toget
 
 ```ts twoslash
 import { allKeyed, QueryClient, queryOptions } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 const qc = new QueryClient();
 declare const slug: string;
 declare function getAuthorBySlug(slug: string): Promise<{ name: string }>;
@@ -135,8 +137,9 @@ A query whose input comes from another query's result is a waterfall by construc
 A settings page needs the user and their organization, and the organization's id is a field of the user:
 
 ```ts twoslash
+// @filename: tanstack-start/src/routes/settings.tsx
 import { queryOptions } from "@raf-query/react";
-import { createFileRoute } from "./_twoslash.ts";
+import { createFileRoute } from "@tanstack/react-router";
 declare function getCurrentUser(): Promise<{ orgId: string }>;
 declare function getOrg(input: { orgId: string }): Promise<{ id: string }>;
 function currentUserQuery() {
@@ -169,8 +172,10 @@ With a 150 ms round trip, the organization can't arrive before 300 ms, and the n
 Fix it in the backend: the server can find the session's organization itself, so give it an endpoint and a query with no input.
 
 ```ts twoslash
+// @filename: tanstack-start/src/routes/settings.tsx
 import { queryOptions } from "@raf-query/react";
-import { createFileRoute, getCurrentOrg } from "./_twoslash.ts";
+import { createFileRoute } from "@tanstack/react-router";
+import { getCurrentOrg } from "~/api.ts";
 declare function getCurrentUser(): Promise<{ orgId: string }>;
 function currentUserQuery() {
 	return queryOptions({
@@ -215,7 +220,8 @@ When an input is only known at render time (an id from a parent query's result),
 ```tsx twoslash
 import { use } from "react";
 import { useQuery, useWaterfall } from "@raf-query/react";
-import { authorQuery, type Post } from "./_twoslash.ts";
+import type { Post } from "~/api.ts";
+import { authorQuery } from "~/queries.ts";
 declare function AuthorCard(props: {
 	readonly author: unknown;
 }): React.ReactNode;
@@ -235,7 +241,7 @@ In TanStack Start, the `queryFn` runs on the server during SSR and the router st
 
 ```tsx twoslash
 import { QueryClient } from "@raf-query/react";
-import { authorQuery, postQuery } from "./_twoslash.ts";
+import { authorQuery, postQuery } from "~/queries.ts";
 const qc = new QueryClient();
 declare const slug: string;
 // ---cut---

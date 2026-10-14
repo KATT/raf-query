@@ -9,7 +9,7 @@ When a request fails in the browser, raf-query retries it **3 times**, waiting 1
 
 ```ts twoslash
 import { queryOptions } from "@raf-query/react";
-import { getPost } from "./_twoslash.ts";
+import { getPost } from "~/api.ts";
 // ---cut---
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
@@ -34,10 +34,7 @@ A predicate is the place to skip retries for errors that won't go away:
 
 ```ts twoslash
 import { queryOptions } from "@raf-query/react";
-import { getPost } from "./_twoslash.ts";
-declare class HttpError extends Error {
-	readonly status: number;
-}
+import { getPost, HttpError } from "~/api.ts";
 // ---cut---
 queryOptions({
 	queryKey: ["post", "hello"],
@@ -63,7 +60,7 @@ const queryClient = new QueryClient({
 
 ```ts twoslash
 import { queryOptions } from "@raf-query/react";
-import { getPost } from "./_twoslash.ts";
+import { getPost } from "~/api.ts";
 // ---cut---
 queryOptions({
 	queryKey: ["post", "hello"],
@@ -95,7 +92,7 @@ What the user sees depends on whether there was data before the failure.
 import { Suspense, type ReactNode } from "react";
 import { type QueryHandle } from "@raf-query/react";
 import { CatchBoundary } from "@tanstack/react-router";
-import { commentsQuery } from "./_twoslash.ts";
+import { commentsQuery } from "~/queries.ts";
 declare const post: { hash: string };
 declare const loaderData: { comments: QueryHandle<typeof commentsQuery> };
 declare function Comments(props: {
@@ -134,7 +131,7 @@ Any error boundary works: `CatchBoundary` from TanStack Router, `react-error-bou
 
 ```tsx twoslash
 import { type EnsuredQueryHandle, useQuery } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 declare const loaderData: { post: EnsuredQueryHandle<typeof postQuery> };
 declare function formatTime(value: number): string;
 // ---cut---

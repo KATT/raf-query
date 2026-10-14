@@ -494,7 +494,7 @@
 			// rules-of-hooks matches any call whose property is named `use`.
 			"files": [
 				"examples/tanstack-start-effect/src/**/*.{ts,tsx}",
-				"www/content/_effect.ts"
+				"www/samples/tanstack-start-effect/src/**/*.{ts,tsx}"
 			],
 			"rules": {
 				"react-hooks/rules-of-hooks": "off",
@@ -513,6 +513,25 @@
 			],
 			"rules": {
 				"perfectionist/sort-objects": "off"
+			}
+		},
+		{
+			// The docs' example files are what readers copy: keys in the order
+			// the guides explain them (`queryKey` before `queryFn`), and no
+			// ceremony a sample doesn't need.
+			"files": ["www/samples/*/src/**/*.{ts,tsx}"],
+			"rules": {
+				"anti-slop/require-safety-comment-for-type-assertion": "off",
+				"curly": "off",
+				"eslint/no-underscore-dangle": [
+					"error",
+					{ "allow": ["_exhaustive", "_tag"] }
+				],
+				"perfectionist/sort-object-types": "off",
+				"perfectionist/sort-objects": "off",
+				"react/button-has-type": "off",
+				"react/no-unescaped-entities": "off",
+				"typescript/consistent-type-assertions": "off"
 			}
 		},
 		{
