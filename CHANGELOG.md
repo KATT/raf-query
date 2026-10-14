@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.4](https://github.com/KATT/raf-query/compare/0.4.3...0.4.4) (2026-10-14)
+
+### Features
+
+- **examples:** settings in the top bar for link prefetching and latency ([#67](https://github.com/KATT/raf-query/issues/67)) ([b8bde09](https://github.com/KATT/raf-query/commit/b8bde09f4d2525cc797bf59c35dd20b4404e8733))
+
 ## [0.4.3](https://github.com/KATT/raf-query/compare/0.4.2...0.4.3) (2026-10-14)
 
 ### Features
