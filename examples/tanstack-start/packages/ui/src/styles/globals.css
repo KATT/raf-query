@@ -4,7 +4,20 @@
 /* Scan the shared components, wherever the app's Tailwind entry lives. */
 @source "../components";
 
-@custom-variant dark (&:is(.dark *));
+/*
+ * A `dark` or `light` class on <html> picks the theme. Without either, the
+ * page follows the system setting.
+ */
+@custom-variant dark {
+	&:where(.dark, .dark *) {
+		@slot;
+	}
+	@media (prefers-color-scheme: dark) {
+		&:where(:root:not(.light), :root:not(.light) *) {
+			@slot;
+		}
+	}
+}
 
 @theme inline {
 	--color-background: var(--background);
@@ -31,47 +44,43 @@
 	--radius-xl: calc(var(--radius) + 4px);
 }
 
+/*
+ * Neutral grays with a trace of the brand's violet (hue 286). Violet itself,
+ * the middle of the logo's blue-to-coral gradient, is only the primary and
+ * the focus ring.
+ */
 :root {
+	color-scheme: light dark;
 	--radius: 0.625rem;
-	--background: oklch(1 0 0);
-	--foreground: oklch(0.145 0 0);
-	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.145 0 0);
-	--popover: oklch(1 0 0);
-	--popover-foreground: oklch(0.145 0 0);
-	--primary: oklch(0.205 0 0);
-	--primary-foreground: oklch(0.985 0 0);
-	--secondary: oklch(0.97 0 0);
-	--secondary-foreground: oklch(0.205 0 0);
-	--muted: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.556 0 0);
-	--accent: oklch(0.97 0 0);
-	--accent-foreground: oklch(0.205 0 0);
-	--destructive: oklch(0.577 0.245 27.325);
-	--border: oklch(0.922 0 0);
-	--input: oklch(0.922 0 0);
-	--ring: oklch(0.708 0 0);
+	--background: light-dark(oklch(1 0 0), oklch(0.145 0.006 286));
+	--foreground: light-dark(oklch(0.18 0.012 286), oklch(0.97 0.002 286));
+	--card: light-dark(oklch(1 0 0), oklch(0.185 0.008 286));
+	--card-foreground: var(--foreground);
+	--popover: var(--card);
+	--popover-foreground: var(--foreground);
+	--primary: light-dark(oklch(0.54 0.23 286), oklch(0.7 0.16 286));
+	--primary-foreground: light-dark(oklch(0.99 0 0), oklch(0.15 0.02 286));
+	--secondary: light-dark(oklch(0.965 0.003 286), oklch(0.26 0.008 286));
+	--secondary-foreground: var(--foreground);
+	--muted: var(--secondary);
+	--muted-foreground: light-dark(oklch(0.52 0.012 286), oklch(0.71 0.012 286));
+	--accent: var(--secondary);
+	--accent-foreground: var(--foreground);
+	--destructive: light-dark(
+		oklch(0.577 0.245 27.325),
+		oklch(0.704 0.191 22.216)
+	);
+	--border: light-dark(oklch(0.92 0.004 286), oklch(1 0 0 / 10%));
+	--input: light-dark(oklch(0.92 0.004 286), oklch(1 0 0 / 15%));
+	--ring: light-dark(oklch(0.6 0.2 286), oklch(0.62 0.16 286));
 }
 
-.dark {
-	--background: oklch(0.145 0 0);
-	--foreground: oklch(0.985 0 0);
-	--card: oklch(0.205 0 0);
-	--card-foreground: oklch(0.985 0 0);
-	--popover: oklch(0.205 0 0);
-	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.922 0 0);
-	--primary-foreground: oklch(0.205 0 0);
-	--secondary: oklch(0.269 0 0);
-	--secondary-foreground: oklch(0.985 0 0);
-	--muted: oklch(0.269 0 0);
-	--muted-foreground: oklch(0.708 0 0);
-	--accent: oklch(0.269 0 0);
-	--accent-foreground: oklch(0.985 0 0);
-	--destructive: oklch(0.704 0.191 22.216);
-	--border: oklch(1 0 0 / 10%);
-	--input: oklch(1 0 0 / 15%);
-	--ring: oklch(0.556 0 0);
+:root.light {
+	color-scheme: light;
+}
+
+:root.dark {
+	color-scheme: dark;
 }
 
 @layer base {
@@ -80,5 +89,8 @@
 	}
 	body {
 		@apply bg-background text-foreground;
+	}
+	::selection {
+		@apply bg-primary/25;
 	}
 }

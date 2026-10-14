@@ -1,5 +1,7 @@
 import "./globals.css";
 
+import { Logo } from "@examples/ui/components/logo";
+import { logoUrl } from "@examples/ui/lib/logo";
 import { LATENCY_COOKIE, parseLatency } from "@examples/db/types";
 import { QueryDevtools } from "@raf-query/react/devtools";
 import { QueryProvider } from "@raf-query/react/rsc";
@@ -12,6 +14,7 @@ import { queryClientConfig } from "~/query-client.ts";
 import { parsePrefetch, PREFETCH_COOKIE } from "~/settings.ts";
 
 export const metadata = {
+	icons: { icon: logoUrl },
 	title: "Issues · raf-query on Next.js",
 } satisfies Metadata;
 
@@ -28,7 +31,11 @@ export default async function RootLayout(props: {
 				>
 					<header className="border-b">
 						<nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3">
-							<AppLink className="font-semibold" href="/issues">
+							<AppLink
+								className="flex items-center gap-2.5 font-semibold"
+								href="/issues"
+							>
+								<Logo alt="" />
 								Issues
 							</AppLink>
 							<span className="text-sm text-muted-foreground">
