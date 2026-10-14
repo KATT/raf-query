@@ -1,6 +1,7 @@
 import { Effect, Predicate } from "effect";
 
 import type { InfiniteData, InfiniteQueryOptions } from "./options.ts";
+import { replaceEqualDeep } from "./share.ts";
 
 export type Direction = "backward" | "forward";
 
@@ -68,10 +69,18 @@ function addPage(
 			};
 }
 
+function edgeParam(data: Pages, direction: Direction) {
+	return direction === "forward" ? data.pageParams.at(-1) : data.pageParams[0];
+}
+
 /**
  * A paged query's request. With a `direction`, adds one page at that end of
- * `current`. Otherwise loads from the first page param again: as many pages
- * as `current` has, or `pages` if that's more, stopping at the last page.
+ * the entry's data, read again with `latest` once the page loads, so data
+ * written meanwhile (`setData`, a live subscription) stays. If that data no
+ * longer ends at the page param the request started from, the write
+ * replaced the list, and the page is dropped. Without a `direction`, loads
+ * from the first page param again: as many pages as `current` has, or
+ * `pages` if that's more, stopping at the last page.
  */
 export const fetchPages = /*#__PURE__*/ Effect.fnUntraced(function* (
 	options: PagedOptions,
@@ -81,23 +90,26 @@ export const fetchPages = /*#__PURE__*/ Effect.fnUntraced(function* (
 		pageParam: unknown,
 		direction: Direction,
 	) => Effect.Effect<unknown, unknown>,
+	latest: () => Pages | undefined,
 ): Effect.fn.Return<Pages, unknown> {
-	if (request.direction && current) {
+	const direction = request.direction;
+	if (direction && current) {
 		const pageParam =
-			request.direction === "forward"
+			direction === "forward"
 				? nextPageParam(options, current)
 				: previousPageParam(options, current);
 		if (pageParam == null) {
 			return current;
 		}
-		const page = yield* fetchPage(pageParam, request.direction);
-		return addPage(
-			current,
-			page,
-			pageParam,
-			request.direction,
-			options.maxPages,
-		);
+		const page = yield* fetchPage(pageParam, direction);
+		const now = latest() ?? current;
+		const startedFrom = edgeParam(current, direction);
+		if (
+			replaceEqualDeep(startedFrom, edgeParam(now, direction)) !== startedFrom
+		) {
+			return now;
+		}
+		return addPage(now, page, pageParam, direction, options.maxPages);
 	}
 
 	const count = Math.max(request.pages ?? 1, current?.pages.length ?? 0);
