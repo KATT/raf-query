@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.6.4](https://github.com/KATT/raf-query/compare/0.6.3...0.6.4) (2026-10-14)
+
+### Bug Fixes
+
+- **examples:** clear comment form and show pending optimistic UI ([#87](https://github.com/KATT/raf-query/issues/87)) ([aa64372](https://github.com/KATT/raf-query/commit/aa64372f2d4c4786788661474b486832511ee5af))
+
 ## [0.6.3](https://github.com/KATT/raf-query/compare/0.6.2...0.6.3) (2026-10-14)
 
 - enforce conventional pull request titles ([#83](https://github.com/KATT/raf-query/issues/83)) ([6d86c01](https://github.com/KATT/raf-query/commit/6d86c017bbfd12aed45c09a2c9c55878fbd5b69f)), references [#80](https://github.com/KATT/raf-query/issues/80)
