@@ -7,10 +7,11 @@ order: 2
 
 ## QueryClient
 
-```ts
-import { QueryClient } from "@raf-query/react";
-
-const queryClient = new QueryClient(config?);
+```ts twoslash
+import { QueryClient, type QueryClientConfig } from "@raf-query/react";
+declare const config: QueryClientConfig | undefined;
+// ---cut---
+const queryClient = new QueryClient(config);
 ```
 
 | Member                                              | Use                                                                                                                             |
@@ -56,9 +57,27 @@ Accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
 
 ## useQuery
 
-```ts
-const [promise, controls] = useQuery(factory, handle, options?);
-const [data, controls] = useQuery(factory, ensuredHandle, options?);
+```ts twoslash
+import {
+	type EnsuredQueryHandle,
+	type QueryHandle,
+	useQuery,
+} from "@raf-query/react";
+import { postQuery } from "./_twoslash.ts";
+declare const factory: typeof postQuery;
+declare const handle: QueryHandle<typeof postQuery>;
+declare const ensuredHandle: EnsuredQueryHandle<typeof postQuery>;
+declare const options:
+	| {
+			readonly refetchInterval?: number;
+			readonly refetchOnReconnect?: boolean;
+			readonly refetchOnWindowFocus?: boolean;
+			readonly whilePending?: "previous" | "suspend";
+	  }
+	| undefined;
+// ---cut---
+const [promise, controls] = useQuery(factory, handle, options);
+const [data, ensuredControls] = useQuery(factory, ensuredHandle, options);
 ```
 
 Options: `whilePending` (`"suspend"` or `"previous"`), `refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`.
