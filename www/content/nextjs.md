@@ -11,10 +11,10 @@ In the App Router, server components play the part of loaders: they start querie
 
 A query client per request for server components, scoped by React's `cache()`:
 
-```ts title="src/query-client.ts"
+```ts twoslash title="src/query-client.ts"
 import { QueryClient, type QueryClientConfig } from "@raf-query/react";
 import { cache } from "react";
-
+// ---cut---
 export const queryClientConfig = {
 	defaults: { staleTime: 5000 },
 } as const satisfies QueryClientConfig;
@@ -24,10 +24,15 @@ export const getQueryClient = cache(() => new QueryClient(queryClientConfig));
 
 `QueryProvider` in the root layout, for client components:
 
-```tsx title="src/app/layout.tsx"
+```tsx twoslash title="src/app/layout.tsx"
+import type { QueryClientConfig } from "@raf-query/react";
 import { QueryDevtools } from "@raf-query/react/devtools";
 import { QueryProvider } from "@raf-query/react/rsc";
-
+declare module "~/query-client.ts" {
+	export const queryClientConfig: QueryClientConfig;
+}
+declare const process: { env: { NODE_ENV?: string } };
+// ---cut---
 import { queryClientConfig } from "~/query-client.ts";
 
 export default function RootLayout(props: { children: React.ReactNode }) {
@@ -52,9 +57,16 @@ Mount DevTools only when `process.env.NODE_ENV !== "production"` so Next.js drop
 
 A server component starts queries, and wraps what it renders in a `HydrationBoundary` that sends the request client's entries to the browser:
 
-```tsx title="src/app/posts/[slug]/page.tsx"
+```tsx twoslash title="src/app/posts/[slug]/page.tsx"
 import { HydrationBoundary } from "@raf-query/react/rsc";
-
+import { Suspense } from "react";
+import { commentsQuery, postQuery } from "./_twoslash.ts";
+declare function getQueryClient(): import("@raf-query/react").QueryClient;
+declare function CommentsSkeleton(): React.ReactNode;
+declare function Comments(props: {
+	handle: import("@raf-query/react").QueryHandle<typeof commentsQuery>;
+}): React.ReactNode;
+// ---cut---
 export default async function Page(props: {
 	params: Promise<{ slug: string }>;
 }) {
@@ -77,8 +89,11 @@ export default async function Page(props: {
 }
 ```
 
-```tsx title="src/components/comments.tsx"
-"use client";
+```tsx twoslash title="src/components/comments.tsx"
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { commentsQuery } from "./_twoslash.ts";
+// ---cut---
+("use client");
 
 export function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	const [commentsPromise] = useQuery(commentsQuery, props.handle);
@@ -94,7 +109,21 @@ export function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 
 Read `searchParams` in the page, validate them, and pass them as the input:
 
-```tsx
+```tsx twoslash
+import { queryOptions } from "@raf-query/react";
+declare function getQueryClient(): import("@raf-query/react").QueryClient;
+declare const IssueListInput: {
+	parse: (value: Record<string, string | string[]>) => {
+		status: "open" | "done";
+	};
+};
+function issueListQuery(input: { status: "open" | "done" }) {
+	return queryOptions({
+		queryKey: ["issues", input],
+		queryFn: async () => [] as Array<{ id: number }>,
+	});
+}
+// ---cut---
 export default async function IssuesPage(props: {
 	searchParams: Promise<Record<string, string | string[]>>;
 }) {
@@ -117,7 +146,9 @@ Factories can call server actions: server components call them directly, and the
 
 The browser runs a page's server actions one at a time, so refetches wait for each other and for any pending mutation. For parallel requests, have the `queryFn` call a [Route Handler](https://nextjs.org/docs/app/api-reference/file-conventions/route) instead, as [`examples/nextjs`](https://github.com/KATT/raf-query/tree/main/examples/nextjs) does:
 
-```ts
+```ts twoslash
+import { queryOptions } from "@raf-query/react";
+// ---cut---
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
 		queryKey: ["issue", input.id],
@@ -133,13 +164,24 @@ export function issueQuery(input: { id: number }) {
 
 Write with a server action, then invalidate in the browser:
 
-```tsx
+```tsx twoslash
+import { QueryClient, queryOptions } from "@raf-query/react";
+declare function updateIssue(formData: FormData): Promise<void>;
+declare const id: number;
+const qc = new QueryClient();
+function issueQuery(input: { id: number }) {
+	return queryOptions({
+		queryKey: ["issue", input.id],
+		queryFn: async () => ({ id: input.id, title: "" }),
+	});
+}
+// ---cut---
 <form
 	action={async (formData) => {
 		await updateIssue(formData);
 		await qc.invalidate(issueQuery, { id });
 	}}
->
+/>;
 ```
 
 If the action also calls `revalidatePath` or `refresh()`, server components render again and send their entries, and the browser keeps whichever copy is newest.

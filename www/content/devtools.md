@@ -9,9 +9,16 @@ order: 1
 
 On Vite and TanStack Start, use `import.meta.env.DEV`:
 
-```tsx
+```tsx twoslash
+import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@raf-query/react";
 import { QueryDevtools } from "@raf-query/react/devtools";
-
+declare namespace ImportMeta {
+	readonly env: { readonly DEV: boolean };
+}
+declare const props: { children: ReactNode };
+declare const queryClient: QueryClient;
+// ---cut---
 <QueryClientProvider client={queryClient}>
 	{props.children}
 	{import.meta.env.DEV ? <QueryDevtools /> : null}
@@ -61,9 +68,9 @@ All optional:
 
 `QueryDevtoolsPanel` is the panel alone, to place in your own layout. It takes `client`, `theme`, `style`, and `onClose`, which adds a close button.
 
-```tsx
+```tsx twoslash
 import { QueryDevtoolsPanel } from "@raf-query/react/devtools";
-
+// ---cut---
 <QueryDevtoolsPanel style={{ height: 400 }} theme="dark" />;
 ```
 

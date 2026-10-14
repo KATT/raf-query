@@ -107,7 +107,12 @@ export declare function searchPosts(input: {
 export declare function createFileRoute(path: string): <
 	TLoaderData,
 	TSearch = Record<string, unknown>,
+	TContext = { readonly queryClient: QueryClient },
 >(options: {
+	readonly beforeLoad?: (args: {
+		readonly context: { readonly queryClient: QueryClient };
+		readonly params: { readonly slug: string };
+	}) => Promise<TContext> | TContext;
 	readonly component?: () => ReactNode;
 	readonly loader?: (args: {
 		readonly context: { readonly queryClient: QueryClient };
@@ -123,6 +128,7 @@ export declare function createFileRoute(path: string): <
 		| { parse: (search: Record<string, unknown>) => TSearch };
 }) => {
 	useLoaderData(): TLoaderData;
+	useRouteContext(): TContext;
 	useSearch(): TSearch;
 };
 
