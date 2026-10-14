@@ -16,11 +16,12 @@ import { cn } from "@examples/ui/lib/utils";
 import { QueryClient, QueryClientProvider } from "@raf-query/react";
 import { QueryDevtoolsPanel } from "@raf-query/react/devtools/production";
 import { Expand, FlaskConical, RotateCcw } from "lucide-react";
-import { type ReactNode, Suspense, useState } from "react";
+import { Activity, type ReactNode, Suspense, useId, useState } from "react";
 
 import { CachePanel } from "./cache-panel.tsx";
-import type { DemoDefinition } from "./define.ts";
+import type { DemoDefinition, DemoVariant } from "./define.ts";
 import { NetworkPanel } from "./network-panel.tsx";
+import type { FakeServer } from "./server.ts";
 
 const latencies = [
 	{ label: "Fast", ms: 250 },
@@ -33,24 +34,26 @@ interface Session {
 	readonly id: number;
 }
 
-let sessions = 0;
-// One live session per demo, like its fake server: React can discard a
+let sessionCount = 0;
+// One live session per variant, like its fake server: React can discard a
 // render and run `useState`'s initializer again, and a second client would
 // send the demo's first requests twice.
-const liveSessions = new WeakMap<DemoDefinition, Session>();
+const liveSessions = new WeakMap<DemoVariant, Session>();
 
-function createSession(demo: DemoDefinition): Session {
-	sessions++;
+function createSession(demo: DemoDefinition, variant: DemoVariant): Session {
+	sessionCount++;
 	const session = {
 		client: demo.createClient?.() ?? new QueryClient(),
-		id: sessions,
+		id: sessionCount,
 	};
-	liveSessions.set(demo, session);
+	liveSessions.set(variant, session);
 	return session;
 }
 
-function sessionFor(demo: DemoDefinition): Session {
-	return liveSessions.get(demo) ?? createSession(demo);
+function sessionsFor(demo: DemoDefinition): ReadonlyArray<Session> {
+	return demo.variants.map(
+		(variant) => liveSessions.get(variant) ?? createSession(demo, variant),
+	);
 }
 
 function DemoSkeleton() {
@@ -64,27 +67,39 @@ function DemoSkeleton() {
 
 function Inspector(props: {
 	readonly className?: string;
-	readonly demo: DemoDefinition;
 	readonly devtools?: boolean;
+	/** The variant shown, when the demo has several. */
+	readonly label?: string;
+	readonly server: FakeServer<unknown>;
 	readonly session: Session;
 }) {
 	return (
 		<Tabs className={props.className} defaultValue="network">
-			<TabsList className="h-8">
-				<TabsTrigger className="text-xs" value="network">
-					Network
-				</TabsTrigger>
-				<TabsTrigger className="text-xs" value="cache">
-					Cache
-				</TabsTrigger>
-				{props.devtools ? (
-					<TabsTrigger className="text-xs" value="devtools">
-						Devtools
+			<div className="flex flex-wrap items-center justify-between gap-2">
+				<TabsList className="h-8">
+					<TabsTrigger className="text-xs" value="network">
+						Network
 					</TabsTrigger>
+					<TabsTrigger className="text-xs" value="cache">
+						Cache
+					</TabsTrigger>
+					{props.devtools ? (
+						<TabsTrigger className="text-xs" value="devtools">
+							Devtools
+						</TabsTrigger>
+					) : null}
+				</TabsList>
+				{props.label ? (
+					<p className="text-xs text-muted-foreground">
+						Showing{" "}
+						<span className="font-mono font-medium text-foreground">
+							{props.label}
+						</span>
+					</p>
 				) : null}
-			</TabsList>
+			</div>
 			<TabsContent className="min-h-28" value="network">
-				<NetworkPanel server={props.demo.server} />
+				<NetworkPanel server={props.server} />
 			</TabsContent>
 			<TabsContent className="min-h-28" value="cache">
 				<CachePanel client={props.session.client} />
@@ -106,17 +121,86 @@ function Inspector(props: {
 	);
 }
 
+function VariantSwitch(props: {
+	readonly demo: DemoDefinition;
+	readonly onSelect: (index: number) => void;
+	readonly selected: number;
+}) {
+	const name = useId();
+	return (
+		<fieldset className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+			<legend className="sr-only">{props.demo.variantsLabel}</legend>
+			<div className="inline-flex rounded-md border p-0.5">
+				{props.demo.variants.map((variant, index) => (
+					<label
+						className={cn(
+							"cursor-pointer rounded px-2.5 py-0.5 font-mono text-xs text-muted-foreground has-focus-visible:ring-2 has-focus-visible:ring-ring",
+							index === props.selected &&
+								"bg-accent font-medium text-foreground",
+						)}
+						key={variant.label}
+					>
+						<input
+							checked={index === props.selected}
+							className="sr-only"
+							name={name}
+							onChange={() => {
+								props.onSelect(index);
+							}}
+							type="radio"
+						/>
+						{variant.label}
+					</label>
+				))}
+			</div>
+			<p aria-live="polite" className="text-sm text-muted-foreground">
+				{props.demo.variants[props.selected]?.description}
+			</p>
+		</fieldset>
+	);
+}
+
+/**
+ * The selected variant, and every variant opened since the last reset kept
+ * mounted in a hidden `<Activity>`, so switching back finds its page as it
+ * was left.
+ */
 function DemoBody(props: {
 	readonly demo: DemoDefinition;
-	readonly session: Session;
+	readonly onSelect: (index: number) => void;
+	readonly opened: ReadonlyArray<number>;
+	readonly selected: number;
+	readonly sessions: ReadonlyArray<Session>;
 }) {
-	const Component = props.demo.Component;
+	const demo = props.demo;
 	return (
-		<QueryClientProvider client={props.session.client} key={props.session.id}>
-			<Suspense fallback={<DemoSkeleton />}>
-				<Component />
-			</Suspense>
-		</QueryClientProvider>
+		<div className="flex flex-col gap-3">
+			{demo.variants.length > 1 ? (
+				<VariantSwitch
+					demo={demo}
+					onSelect={props.onSelect}
+					selected={props.selected}
+				/>
+			) : null}
+			{demo.variants.map((variant, index) => {
+				const session = props.sessions[index];
+				if (!session || !props.opened.includes(index)) {
+					return null;
+				}
+				return (
+					<Activity
+						key={variant.label}
+						mode={index === props.selected ? "visible" : "hidden"}
+					>
+						<QueryClientProvider client={session.client} key={session.id}>
+							<Suspense fallback={<DemoSkeleton />}>
+								<variant.Component />
+							</Suspense>
+						</QueryClientProvider>
+					</Activity>
+				);
+			})}
+		</div>
 	);
 }
 
@@ -125,7 +209,9 @@ function Toolbar(props: {
 	readonly demo: DemoDefinition;
 	readonly onReset: () => void;
 }) {
-	const [latency, setLatency] = useState(props.demo.server.latency);
+	const [latency, setLatency] = useState(
+		props.demo.variants[0]?.server.latency,
+	);
 	return (
 		<div className="flex flex-wrap items-center gap-2">
 			<div
@@ -142,7 +228,9 @@ function Toolbar(props: {
 						)}
 						key={option.ms}
 						onClick={() => {
-							props.demo.server.latency = option.ms;
+							for (const variant of props.demo.variants) {
+								variant.server.latency = option.ms;
+							}
 							setLatency(option.ms);
 						}}
 						role="radio"
@@ -164,17 +252,50 @@ function Toolbar(props: {
 /**
  * A live demo in a box: its own query client and fake server, with the
  * server's requests and the cache's entries underneath. Expanding it opens
- * the same session in a dialog with the devtools panel.
+ * the same session in a dialog with the devtools panel. A demo with
+ * variants gets a switch, and a session per variant; Reset starts them all
+ * over and keeps the switch where it is.
  */
 export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 	const demo = props.demo;
-	const [session, setSession] = useState(() => sessionFor(demo));
+	const [sessions, setSessions] = useState(() => sessionsFor(demo));
+	const [selected, setSelected] = useState(0);
+	const [opened, setOpened] = useState<ReadonlyArray<number>>([0]);
 	const [expanded, setExpanded] = useState(false);
+	const variant = demo.variants[selected];
+	const session = sessions[selected];
+	if (!variant || !session) {
+		throw new Error(`Demo "${demo.title}" has no variant ${selected}`);
+	}
 	const reset = () => {
-		void session.client.dispose();
-		demo.server.reset();
-		setSession(createSession(demo));
+		for (const previous of sessions) {
+			void previous.client.dispose();
+		}
+		for (const each of demo.variants) {
+			each.server.reset();
+		}
+		setSessions(demo.variants.map((each) => createSession(demo, each)));
+		setOpened([selected]);
 	};
+	const inspected = {
+		label: demo.variants.length > 1 ? variant.label : undefined,
+		server: variant.server,
+		session,
+	};
+	const body = (
+		<DemoBody
+			demo={demo}
+			onSelect={(index) => {
+				setSelected(index);
+				setOpened((previous) =>
+					previous.includes(index) ? previous : [...previous, index],
+				);
+			}}
+			opened={opened}
+			selected={selected}
+			sessions={sessions}
+		/>
+	);
 
 	return (
 		<figure className="not-prose my-8 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
@@ -204,14 +325,10 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 						Running in the expanded view.
 					</p>
 				) : (
-					<DemoBody demo={demo} session={session} />
+					body
 				)}
 			</div>
-			<Inspector
-				className="border-t bg-muted/30 px-4 py-3"
-				demo={demo}
-				session={session}
-			/>
+			<Inspector className="border-t bg-muted/30 px-4 py-3" {...inspected} />
 			<Dialog onOpenChange={setExpanded} open={expanded}>
 				<DialogContent className="grid h-[min(56rem,92dvh)] w-[96vw] max-w-none grid-rows-[auto_1fr] gap-4 overflow-hidden p-5 sm:max-w-7xl">
 					<div className="grid gap-2 pr-8">
@@ -223,14 +340,11 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 						<Toolbar demo={demo} onReset={reset} />
 					</div>
 					<div className="grid min-h-0 gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)]">
-						<div className="min-w-0">
-							<DemoBody demo={demo} session={session} />
-						</div>
+						<div className="min-w-0">{body}</div>
 						<Inspector
 							className="min-w-0 rounded-lg border bg-muted/30 p-3"
-							demo={demo}
 							devtools
-							session={session}
+							{...inspected}
 						/>
 					</div>
 				</DialogContent>
