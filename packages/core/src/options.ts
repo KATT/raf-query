@@ -60,11 +60,11 @@ type InfiniteQueryTypesOf<TPage, TPageParam, TError, TServices> =
 			? { page: TPage; pageParam: TPageParam }
 			: { page: TPage; pageParam: TPageParam; services: TServices }
 		: [TServices] extends [never]
-			? { page: TPage; pageParam: TPageParam; error: TError }
+			? { error: TError; page: TPage; pageParam: TPageParam }
 			: {
+					error: TError;
 					page: TPage;
 					pageParam: TPageParam;
-					error: TError;
 					services: TServices;
 				};
 
