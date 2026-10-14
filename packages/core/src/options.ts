@@ -277,11 +277,22 @@ interface FactoryResult {
  * TypeScript infers an inline factory's `queryOptions` type arguments from
  * it, and an `unknown` there would infer `unknown` services.
  */
-export type QueryFactory<TServices = unknown> = (
-	input: never,
-) => unknown extends TServices
-	? FactoryResult
-	: FactoryResult & ServicesField<TServices>;
+export type QueryFactory<TServices = unknown> = FactorySignature<
+	unknown extends TServices
+		? FactoryResult
+		: FactoryResult & ServicesField<TServices>
+>["call"];
+
+/**
+ * A method, so its `input` is checked bivariantly: a factory of any input
+ * type is assignable. A verb's factory parameter is contextually typed by
+ * this, and a generic factory maker called inline
+ * (`qc.ensure(makeFactory(x), input)`) infers its own type parameters
+ * against it. An `input: never` there would infer `never` for them.
+ */
+interface FactorySignature<TResult> {
+	call(input: unknown): TResult;
+}
 
 /** The factory's input type; `undefined` for factories without one. */
 export type InputOf<TFactory extends QueryFactory> =
@@ -387,8 +398,9 @@ export function optionsFor(
 	input: unknown,
 ): AnyQueryOptions {
 	// SAFETY: every caller passes the factory's own input (typed through
-	// `InputArgs<TFactory>`); `QueryFactory` erases it to `never` only so that
-	// any one-argument factory is assignable.
+	// `InputArgs<TFactory>`), which `QueryFactory` checks only bivariantly,
+	// and every factory returns `queryOptions(...)` or
+	// `infiniteQueryOptions(...)`, which `QueryFactory` erases to its kind and key.
 	// oxlint-disable-next-line typescript/consistent-type-assertions
 	const call = factory as (input: unknown) => AnyQueryOptions;
 	return call(input);
