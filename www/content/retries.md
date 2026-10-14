@@ -92,7 +92,7 @@ What the user sees depends on whether there was data before the failure.
 **The first load fails.** The query's promise rejects, so `use()` throws to the nearest error boundary. Resetting that boundary re-renders the reader, which refetches the query:
 
 ```tsx twoslash
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { type QueryHandle } from "@raf-query/react";
 import { CatchBoundary } from "@tanstack/react-router";
 import { commentsQuery } from "./_twoslash.ts";
@@ -100,29 +100,32 @@ declare const post: { hash: string };
 declare const loaderData: { comments: QueryHandle<typeof commentsQuery> };
 declare function Comments(props: {
 	readonly handle: QueryHandle<typeof commentsQuery>;
-}): React.ReactNode;
-declare function CommentsSkeleton(): React.ReactNode;
-// ---cut---
-import { CatchBoundary } from "@tanstack/react-router";
-
-<CatchBoundary
-	getResetKey={() => post.hash}
-	errorComponent={(props) => (
-		<div role="alert">
-			<p>
-				Couldn't load comments:{" "}
-				{props.error instanceof Error
-					? props.error.message
-					: String(props.error)}
-			</p>
-			<button onClick={props.reset}>Try again</button>
-		</div>
-	)}
->
-	<Suspense fallback={<CommentsSkeleton />}>
-		<Comments handle={loaderData.comments} />
-	</Suspense>
-</CatchBoundary>;
+}): ReactNode;
+declare function CommentsSkeleton(): ReactNode;
+function ErrorExample() {
+	return (
+		// ---cut---
+		<CatchBoundary
+			getResetKey={() => post.hash}
+			errorComponent={(props) => (
+				<div role="alert">
+					<p>
+						Couldn't load comments:{" "}
+						{props.error instanceof Error
+							? props.error.message
+							: String(props.error)}
+					</p>
+					<button onClick={props.reset}>Try again</button>
+				</div>
+			)}
+		>
+			<Suspense fallback={<CommentsSkeleton />}>
+				<Comments handle={loaderData.comments} />
+			</Suspense>
+		</CatchBoundary>
+		// ---cut-after---
+	);
+}
 ```
 
 Any error boundary works: `CatchBoundary` from TanStack Router, `react-error-boundary`, Next.js's `error.tsx`, or your own class component.

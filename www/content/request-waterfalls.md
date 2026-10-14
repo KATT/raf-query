@@ -112,11 +112,14 @@ function authorQuery(input: { slug: string }) {
 		queryKey: ["author", input.slug],
 	});
 }
-// ---cut---
-return await allKeyed({
-	author: qc.ensure(authorQuery, { slug }),
-	post: qc.ensure(postQuery, { slug }),
-});
+async function load() {
+	// ---cut---
+	return await allKeyed({
+		author: qc.ensure(authorQuery, { slug }),
+		post: qc.ensure(postQuery, { slug }),
+	});
+	// ---cut-after---
+}
 ```
 
 ## Dependent queries

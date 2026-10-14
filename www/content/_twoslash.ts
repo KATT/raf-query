@@ -101,7 +101,7 @@ export declare function searchPosts(input: {
 
 /**
  * TanStack Router's `createFileRoute`, typed without an app's route tree:
- * the loader gets the router context and `$slug`, and `useLoaderData`
+ * the loader gets the router context and params, and `useLoaderData`
  * returns what the loader resolves to.
  */
 export declare function createFileRoute(path: string): <
@@ -111,18 +111,18 @@ export declare function createFileRoute(path: string): <
 >(options: {
 	readonly beforeLoad?: (args: {
 		readonly context: { readonly queryClient: QueryClient };
-		readonly params: { readonly slug: string };
+		readonly params: Record<string, string>;
 	}) => Promise<TContext> | TContext;
-	readonly component?: () => ReactNode;
+	readonly component?: () => ReactNode | null | undefined;
 	readonly loader?: (args: {
-		readonly context: { readonly queryClient: QueryClient };
+		readonly context: { readonly queryClient: QueryClient } & TContext;
 		readonly deps: TSearch;
 		readonly location?: { readonly search: TSearch };
-		readonly params: { readonly slug: string };
+		readonly params: Record<string, string>;
 		readonly search: TSearch;
 	}) => Promise<TLoaderData> | TLoaderData;
 	readonly loaderDeps?: (args: { readonly search: TSearch }) => TSearch;
-	readonly pendingComponent?: () => ReactNode;
+	readonly pendingComponent?: () => ReactNode | null | undefined;
 	readonly validateSearch?:
 		| ((search: Record<string, unknown>) => TSearch)
 		| { parse: (search: Record<string, unknown>) => TSearch };
@@ -133,8 +133,8 @@ export declare function createFileRoute(path: string): <
 };
 
 export declare function createRootRouteWithContext<_TContext>(): (options: {
-	readonly component?: () => ReactNode;
-}) => { readonly _: unique symbol };
+	readonly component?: () => ReactNode | null | undefined;
+}) => unknown;
 
 export function postQuery(input: { slug: string }) {
 	return queryOptions({

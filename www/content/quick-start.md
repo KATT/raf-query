@@ -18,12 +18,15 @@ For the Next.js App Router, the same steps apply with a server component in plac
 Create one `QueryClient` per router. On the server, `getRouter` runs once per request, so each request gets its own cache; in the browser it runs once per tab.
 
 ```tsx twoslash title="src/router.tsx"
+import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@raf-query/react";
-import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
-import { createRouter } from "@tanstack/react-router";
-
-import { routeTree } from "./routeTree.gen";
-
+import { routeTree } from "./routeTree.gen.ts";
+declare function createRouter(options: Record<string, unknown>): unknown;
+declare function setupRouterIntegration(options: {
+	readonly queryClient: QueryClient;
+	readonly router: unknown;
+}): void;
+// ---cut---
 export function getRouter() {
 	const queryClient = new QueryClient();
 	const router = createRouter({
@@ -32,7 +35,7 @@ export function getRouter() {
 		defaultPreload: "intent",
 		// The query cache decides what's fresh; loaders always run and dedupe there.
 		defaultPreloadStaleTime: 0,
-		Wrap: (props) => (
+		Wrap: (props: { children: ReactNode }) => (
 			<QueryClientProvider client={queryClient}>
 				{props.children}
 			</QueryClientProvider>
@@ -47,13 +50,11 @@ export function getRouter() {
 
 ```tsx twoslash title="src/routes/__root.tsx"
 import type { QueryClient } from "@raf-query/react";
-import { createRootRouteWithContext } from "@tanstack/react-router";
-
+import { createRootRouteWithContext } from "./_twoslash.ts";
+// ---cut---
 export const Route = createRootRouteWithContext<{
 	queryClient: QueryClient;
-}>()({
-	// ...
-});
+}>()({});
 ```
 
 ## 2. Define a query
@@ -90,10 +91,8 @@ export function todoQuery(input: { id: number }) {
 The loader starts the query and returns its **handle**, a small `{ key, input }` object:
 
 ```tsx twoslash title="src/routes/todos.tsx"
-import { todosQuery } from "./_twoslash.ts";
+import { createFileRoute, todosQuery } from "./_twoslash.ts";
 // ---cut---
-import { createFileRoute } from "@tanstack/react-router";
-
 export const Route = createFileRoute("/todos")({
 	loader: (args) => ({
 		todos: args.context.queryClient.prefetch(todosQuery),

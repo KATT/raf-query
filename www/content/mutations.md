@@ -98,14 +98,14 @@ const api = { toggleTodo: toggleTodoApi };
 async function toggleTodo(id: number) {
 	const previous = qc.getData(todosQuery);
 	qc.setData(todosQuery, undefined, (todos) =>
-		todos?.map((todo) =>
+		(todos ?? []).map((todo) =>
 			todo.id === id ? { ...todo, done: !todo.done } : todo,
 		),
 	);
 	try {
 		await api.toggleTodo(id);
 	} catch (error) {
-		qc.setData(todosQuery, undefined, previous);
+		qc.setData(todosQuery, undefined, previous ?? []);
 		throw error;
 	} finally {
 		await qc.invalidate(todosQuery);

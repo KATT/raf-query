@@ -10,21 +10,17 @@ TanStack Router's loaders are where raf-query wants queries to start, and its SS
 ## Setup
 
 ```tsx twoslash title="src/router.tsx"
+/// <reference types="vite/client" />
 import type { ReactNode } from "react";
-declare module "./routeTree.gen.ts" {
-	export const routeTree: unknown;
-}
-declare namespace ImportMeta {
-	readonly env: { readonly DEV: boolean };
-}
-// ---cut---
 import { QueryClient, QueryClientProvider } from "@raf-query/react";
 import { QueryDevtools } from "@raf-query/react/devtools";
-import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
-import { createRouter } from "@tanstack/react-router";
-
 import { routeTree } from "./routeTree.gen.ts";
-
+declare function createRouter(options: Record<string, unknown>): unknown;
+declare function setupRouterIntegration(options: {
+	readonly queryClient: QueryClient;
+	readonly router: unknown;
+}): void;
+// ---cut---
 export function getRouter() {
 	const queryClient = new QueryClient({ defaults: { staleTime: 5000 } });
 	const router = createRouter({
@@ -52,12 +48,10 @@ Type the router context in the root route, so loaders see `queryClient`:
 
 ```tsx twoslash title="src/routes/__root.tsx"
 import type { QueryClient } from "@raf-query/react";
-import { createRootRouteWithContext } from "@tanstack/react-router";
+import { createRootRouteWithContext } from "./_twoslash.ts";
 // ---cut---
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
-	{
-		// ...
-	},
+	{},
 );
 ```
 
@@ -100,7 +94,7 @@ export const Route = createFileRoute("/posts/$slug")({
 function PostPage() {
 	const loaderData = Route.useLoaderData();
 	const [post] = useQuery(postQuery, loaderData.post);
-	// ...
+	return <h1>{post.title}</h1>;
 }
 ```
 
@@ -136,7 +130,7 @@ export const Route = createFileRoute("/_auth")({
 function Dashboard() {
 	const context = Route.useRouteContext();
 	const [me] = useQuery(meQuery, context.me);
-	// ...
+	return <p>{me.name}</p>;
 }
 ```
 
@@ -158,14 +152,8 @@ Factories can call server functions (`createServerFn`) directly. The loader runs
 
 ```ts twoslash title="src/queries.ts"
 import { queryOptions } from "@raf-query/react";
-declare module "./posts.functions.ts" {
-	export function getPost(args: {
-		data: { slug: string };
-	}): Promise<{ slug: string; title: string }>;
-}
-// ---cut---
 import { getPost } from "./posts.functions.ts";
-
+// ---cut---
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
 		queryKey: ["post", input.slug],

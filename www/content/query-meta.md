@@ -46,6 +46,8 @@ const queryClient = new QueryClient({
 `meta` is `Record<string, unknown>` by default. Type it for the whole app by augmenting `Register` in the package you import from (`@raf-query/react` re-exports it from `@raf-query/core`, so either works):
 
 ```ts twoslash
+import type { Register } from "@raf-query/react";
+type _Keep = Register;
 // ---cut---
 declare module "@raf-query/react" {
 	interface Register {

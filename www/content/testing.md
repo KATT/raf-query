@@ -200,7 +200,7 @@ declare const TestClock: {
 	adjust(duration: string): Effect.Effect<void>;
 };
 declare const it: {
-	effect(name: string, fn: () => Effect.Effect<void>): void;
+	effect(name: string, fn: () => Effect.Effect<void, unknown, never>): void;
 };
 declare function expect(value: unknown): { toBe(expected: unknown): void };
 const listeners = new Set<(event: "focus" | "online") => void>();

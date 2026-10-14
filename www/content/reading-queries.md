@@ -104,17 +104,20 @@ A component can call the hook with a prefetched handle and hand the promise to a
 ```tsx twoslash
 import type { QueryHandle } from "@raf-query/react";
 import { useQuery } from "@raf-query/react";
-import { Suspense, use } from "react";
+import { Suspense, use, type ReactNode } from "react";
 import { type Post, postQuery } from "./_twoslash.ts";
-declare function Spinner(): React.ReactNode;
+declare function Spinner(): ReactNode;
 declare const loaderData: { post: QueryHandle<typeof postQuery> };
-// ---cut---
-const [postPromise] = useQuery(postQuery, loaderData.post); // from `qc.prefetch`
-return (
-	<Suspense fallback={<Spinner />}>
-		<PostBody post={postPromise} />
-	</Suspense>
-);
+function Parent() {
+	// ---cut---
+	const [postPromise] = useQuery(postQuery, loaderData.post); // from `qc.prefetch`
+	return (
+		<Suspense fallback={<Spinner />}>
+			<PostBody post={postPromise} />
+		</Suspense>
+	);
+	// ---cut-after---
+}
 
 function PostBody(props: { post: Promise<Post> }) {
 	const post = use(props.post);

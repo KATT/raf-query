@@ -57,8 +57,9 @@ export function pushStateQuery(input: { channel: string }) {
 A server client never starts it and never sends it, so loaders and components use it like any query: `prefetch` returns a handle on the server too, and the browser starts the request when the loader or the first read runs there. On the server, readers see it pending:
 
 ```tsx twoslash
-import { use, useQuery } from "@raf-query/react";
+import { useQuery } from "@raf-query/react";
 import { queryOptions } from "@raf-query/react";
+import { use, type ReactNode } from "react";
 declare function detectPushState(channel: string): Promise<"on" | "off">;
 function pushStateQuery(input: { channel: string }) {
 	return queryOptions({
@@ -72,13 +73,15 @@ declare const loaderData: {
 };
 declare function PushSwitch(props: {
 	readonly state: "on" | "off" | "unknown";
-}): React.ReactNode;
+}): ReactNode;
 // ---cut---
-const [pushPromise, push] = useQuery(pushStateQuery, loaderData.push);
-if (push.isPending) {
-	return <PushSwitch state="unknown" />;
+function PushState() {
+	const [pushPromise, push] = useQuery(pushStateQuery, loaderData.push);
+	if (push.isPending) {
+		return <PushSwitch state="unknown" />;
+	}
+	return <PushSwitch state={use(pushPromise)} />;
 }
-return <PushSwitch state={use(pushPromise)} />;
 ```
 
 The browser hydrates the same pending state, then renders the result. A reader that calls `use()` on the promise instead needs a Suspense boundary: on the server the promise rejects with `Query.BrowserOnlyError`, so React sends the fallback and renders the boundary in the browser. React reports that boundary to `onRecoverableError` while hydrating.

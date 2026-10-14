@@ -78,8 +78,6 @@ Object segments match **partially**: `{ status: "done" }` matches any object seg
 import { Query, QueryClient } from "@raf-query/react";
 const qc = new QueryClient();
 // ---cut---
-import { Query } from "@raf-query/react";
-
 // Every todo list on page 2 or later
 await qc.invalidate({
 	predicate: (query) =>

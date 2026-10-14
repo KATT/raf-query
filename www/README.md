@@ -27,7 +27,7 @@ order: 16 # position in the section
 
 ### Types in code blocks
 
-Add `twoslash` to a `ts` or `tsx` fence to compile it with [Twoslash](https://twoslash.netlify.app): hovering a name shows its type, as in an editor.
+Every `ts` / `tsx` fence uses [Twoslash](https://twoslash.netlify.app): hovering a name shows its type, as in an editor.
 
 ````md
 ```tsx twoslash

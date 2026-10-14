@@ -21,10 +21,13 @@ import { queryOptions } from "@raf-query/react";
 import { getSpecial, listTodos } from "./_twoslash.ts";
 // ---cut---
 // A list of todos
-queryOptions({ queryKey: ["todos"], queryFn: listTodos });
+queryOptions({ queryKey: ["todos"], queryFn: () => listTodos() });
 
 // Something else, whatever!
-queryOptions({ queryKey: ["something", "special"], queryFn: getSpecial });
+queryOptions({
+	queryKey: ["something", "special"],
+	queryFn: () => getSpecial(),
+});
 ```
 
 ## Keys with variables

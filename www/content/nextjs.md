@@ -25,17 +25,14 @@ export const getQueryClient = cache(() => new QueryClient(queryClientConfig));
 `QueryProvider` in the root layout, for client components:
 
 ```tsx twoslash title="src/app/layout.tsx"
-import type { QueryClientConfig } from "@raf-query/react";
-import { QueryDevtools } from "@raf-query/react/devtools";
-import { QueryProvider } from "@raf-query/react/rsc";
-declare module "~/query-client.ts" {
-	export const queryClientConfig: QueryClientConfig;
-}
+import type { ReactNode } from "react";
 declare const process: { env: { NODE_ENV?: string } };
 // ---cut---
+import { QueryDevtools } from "@raf-query/react/devtools";
+import { QueryProvider } from "@raf-query/react/rsc";
 import { queryClientConfig } from "~/query-client.ts";
 
-export default function RootLayout(props: { children: React.ReactNode }) {
+export default function RootLayout(props: { children: ReactNode }) {
 	return (
 		<html lang="en">
 			<body>

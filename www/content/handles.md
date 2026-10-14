@@ -8,19 +8,24 @@ order: 6
 A handle is the only thing that crosses the loader → component or server → client boundary:
 
 ```ts twoslash
-import type { InputOf, QueryKey } from "@raf-query/react";
+import type {
+	EnsuredQueryHandle,
+	InputOf,
+	QueryHandle,
+	QueryKey,
+} from "@raf-query/react";
+import { postQuery } from "./_twoslash.ts";
 // ---cut---
-interface QueryHandle<TFactory> {
-	readonly key: QueryKey; // ["post", "hello"]
-	readonly input: InputOf<TFactory>; // { slug: "hello" }
-}
+type Handle = QueryHandle<typeof postQuery>;
+//   ^?
+// { key: QueryKey; input: { slug: string }; ensured: false }
 
-// From `ensure`: the route waited for the data.
-interface EnsuredQueryHandle<TFactory> {
-	readonly key: QueryKey;
-	readonly input: InputOf<TFactory>;
-	readonly ensured: true;
-}
+type Ensured = EnsuredQueryHandle<typeof postQuery>;
+//   ^?
+// { key: QueryKey; input: { slug: string }; ensured: true }
+
+type PostInput = InputOf<typeof postQuery>; // { slug: string }
+type PostKey = QueryKey; // readonly unknown[]
 ```
 
 ## Why handles hold no data

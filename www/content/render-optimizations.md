@@ -48,19 +48,16 @@ The controls object returned by `useQuery` tracks which fields a component reads
 
 ```tsx twoslash
 import { Suspense } from "react";
-import {
-	type EnsuredQueryHandle,
-	type QueryHandle,
-	useQuery,
-} from "@raf-query/react";
+import { type EnsuredQueryHandle, useQuery } from "@raf-query/react";
 import { postQuery } from "./_twoslash.ts";
+import type { ReactNode } from "react";
 declare const Route: {
 	useLoaderData(): {
 		post: EnsuredQueryHandle<typeof postQuery>;
 	};
 };
-declare function PostBody(props: { readonly post: unknown }): React.ReactNode;
-declare function PostSkeleton(): React.ReactNode;
+declare function PostBody(props: { readonly post: unknown }): ReactNode;
+declare function PostSkeleton(): ReactNode;
 // ---cut---
 function PostPage() {
 	const loaderData = Route.useLoaderData();
@@ -76,7 +73,9 @@ function PostPage() {
 	);
 }
 
-function RefreshButton(props: { handle: QueryHandle<typeof postQuery> }) {
+function RefreshButton(props: {
+	handle: EnsuredQueryHandle<typeof postQuery>;
+}) {
 	// Reads isFetching: re-renders when a request starts and ends.
 	const [, post] = useQuery(postQuery, props.handle);
 	return (
@@ -94,21 +93,24 @@ Both components read the same query; each pays only for what it reads. Destructu
 A parent can read a prefetched handle and hand the promise to a child, so only the child suspends. The parent re-renders when the promise changes, which is exactly when the child needs new props:
 
 ```tsx twoslash
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { postQuery } from "./_twoslash.ts";
 declare const loaderData: { post: QueryHandle<typeof postQuery> };
 declare function PostBody(props: {
 	readonly post: Promise<unknown>;
-}): React.ReactNode;
-declare function Spinner(): React.ReactNode;
-// ---cut---
-const [postPromise] = useQuery(postQuery, loaderData.post);
-return (
-	<Suspense fallback={<Spinner />}>
-		<PostBody post={postPromise} />
-	</Suspense>
-);
+}): ReactNode;
+declare function Spinner(): ReactNode;
+function Parent() {
+	// ---cut---
+	const [postPromise] = useQuery(postQuery, loaderData.post);
+	return (
+		<Suspense fallback={<Spinner />}>
+			<PostBody post={postPromise} />
+		</Suspense>
+	);
+	// ---cut-after---
+}
 ```
 
 ## Deriving data
