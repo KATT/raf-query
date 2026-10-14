@@ -46,6 +46,10 @@ jobs:
             echo "No releasable commits since the latest tag; skipping."
             exit 0
           fi
+          if grep -Fq "main moved during this release" /tmp/release-it.log; then
+            echo "main moved before publishing; the run for the newer commit releases it."
+            exit 0
+          fi
           exit "$code"
 
 name: Release
