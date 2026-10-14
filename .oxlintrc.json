@@ -61,6 +61,25 @@
 	],
 	"rules": {
 		"vitest/no-hooks": "error",
+		// Clean up with `using`: a test helper returns a `Disposable` that undoes
+		// what it set up, and the test's scope disposes it.
+		"no-restricted-imports": [
+			"error",
+			{
+				"paths": [
+					{
+						"importNames": ["onTestFinished"],
+						"message": "Return a Disposable and `using` it instead.",
+						"name": "@effect/vitest"
+					},
+					{
+						"importNames": ["onTestFinished"],
+						"message": "Return a Disposable and `using` it instead.",
+						"name": "vitest"
+					}
+				]
+			}
+		],
 		// `@effect/vitest` testers run their Effect as the test body.
 		"vitest/no-standalone-expect": [
 			"error",
