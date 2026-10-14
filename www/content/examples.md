@@ -16,13 +16,13 @@ The repository has one app built twice: a small issue tracker on [TanStack Start
 
 Every feature in these docs appears somewhere in the app:
 
-| Screen or action                       | Shows                                                                                                        |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Issue list with status filter and sort | Search params → loader → paged `prefetch`, infinite scroll, `whilePending: "previous"`, `isPrevious` dimming |
-| Issue detail                           | `ensure` (blocking) and a keyed Suspense skeleton when moving between issues                                 |
-| Comments under an issue                | A paged query, streamed `prefetch`, infinite scroll                                                          |
-| Assignee card                          | The loader or server component prefetches the assignee by issue id, next to the issue, so nothing waits      |
-| Edit the title, add a comment          | Form Actions, `useOptimistic` and `await qc.invalidate(...)`                                                 |
+| Screen or action                                        | Shows                                                                                                        |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Issue list with status filter and sort                  | Search params → loader → paged `prefetch`, infinite scroll, `whilePending: "previous"`, `isPrevious` dimming |
+| Issue detail                                            | `ensure` (blocking) and a keyed Suspense skeleton when moving between issues                                 |
+| Comments under an issue                                 | A paged query, streamed `prefetch`, infinite scroll                                                          |
+| Assignee card                                           | The loader or server component prefetches the assignee by issue id, next to the issue, so nothing waits      |
+| Inline-edit title and body; change status from the list | Form Actions / transitions, `useOptimistic` and `await qc.invalidate(...)`                                   |
 
 Data comes from an in-memory database with artificial latency (400 ms ± 50% per call), behind a small REST API both apps share. Data the server loads for the first render streams in with the HTML; later loads show up in the browser's network tab.
 

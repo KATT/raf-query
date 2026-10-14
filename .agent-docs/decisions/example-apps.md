@@ -15,7 +15,7 @@ App scope, small enough to read in one sitting, covering every documented featur
 | Issue detail                                  | `ensure` (blocking) + keyed Suspense skeleton when switching issues                                          |
 | Comments under an issue                       | paged `useQuery`, streamed `prefetch`, infinite scroll                                                       |
 | Assignee card                                 | Loader / server component: `prefetch` the issue's assignee beside the issue                                  |
-| Edit title, add comment                       | form Actions + `useOptimistic` + `await qc.invalidate`                                                       |
+| Inline edit title/body; change status in list | form Actions / transitions + `useOptimistic` + `await qc.invalidate`                                         |
 
 App: **issue tracker** (confirmed). Data: an in-memory fake DB with artificial latency, shared by both apps so their behavior matches. **`queryFn`s call the shared REST API** (`@examples/api`, human asked; see `examples-rest-api.md`), not server functions.
 

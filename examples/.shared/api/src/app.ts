@@ -14,7 +14,7 @@ import {
 	IssueListInput,
 	LATENCY_HEADER,
 	parseLatency,
-	UpdateTitleInput,
+	UpdateIssueFields,
 } from "@examples/db/types";
 import { sValidator } from "@hono/standard-validator";
 import { type Context, Hono } from "hono";
@@ -46,7 +46,7 @@ const routes = new Hono()
 	.patch(
 		"/issues/:id",
 		sValidator("param", IssueParam),
-		sValidator("json", UpdateTitleInput.omit({ id: true })),
+		sValidator("json", UpdateIssueFields),
 		async (c) =>
 			c.json(
 				await updateIssue(

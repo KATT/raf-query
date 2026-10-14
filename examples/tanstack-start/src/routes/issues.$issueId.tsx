@@ -6,8 +6,9 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Suspense } from "react";
 
 import { Comments, CommentsSkeleton } from "~/components/comments.tsx";
+import { EditBody } from "~/components/edit-body.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
-import { StatusBadge } from "~/components/status-badge.tsx";
+import { StatusSelect } from "~/components/status-select.tsx";
 import { AssigneeCard, AssigneeCardSkeleton } from "~/components/user.tsx";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 
@@ -66,17 +67,29 @@ function IssuePage() {
 			<div className="grid gap-8 md:grid-cols-[1fr_240px]">
 				<article className="grid content-start gap-6">
 					<EditTitle issue={issue} />
-					<div className="flex items-center gap-3 text-sm text-muted-foreground">
-						<StatusBadge status={issue.status} />
+					<p className="text-sm text-muted-foreground">
 						Opened {new Date(issue.createdAt).toDateString()}
-					</div>
-					<p className="text-sm whitespace-pre-line">{issue.body}</p>
+					</p>
+					<EditBody issue={issue} />
 					<Separator />
 					<Suspense fallback={<CommentsSkeleton />} key={issue.id}>
 						<Comments handle={data.comments} />
 					</Suspense>
 				</article>
-				<aside>
+				<aside className="grid content-start gap-4">
+					<section className="grid gap-3 rounded-lg border p-3">
+						<h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+							Properties
+						</h2>
+						<div className="flex items-center justify-between gap-3">
+							<span className="text-sm text-muted-foreground">Status</span>
+							<StatusSelect
+								align="end"
+								issueId={issue.id}
+								status={issue.status}
+							/>
+						</div>
+					</section>
 					<Suspense fallback={<AssigneeCardSkeleton />}>
 						<AssigneeCard handle={data.assignee} />
 					</Suspense>

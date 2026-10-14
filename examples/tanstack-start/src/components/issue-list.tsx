@@ -9,7 +9,7 @@ import { use } from "react";
 
 import { issueListQuery } from "~/queries.ts";
 
-import { StatusBadge } from "./status-badge.tsx";
+import { StatusSelect } from "./status-select.tsx";
 
 const dateFormat = new Intl.DateTimeFormat("en", {
 	day: "numeric",
@@ -55,27 +55,31 @@ export function IssueList(props: {
 						key={pages.pageParams[index]}
 					>
 						{page.issues.map((issue) => (
-							<Link
-								className={cn(rowClassName, "hover:bg-muted/50")}
+							<div
+								className={cn(rowClassName, "group hover:bg-muted/50")}
 								key={issue.id}
-								params={{ issueId: String(issue.id) }}
-								to="/issues/$issueId"
 							>
-								<span className="w-10 text-sm text-muted-foreground">
-									#{issue.id}
-								</span>
-								<span className="flex-1 truncate font-medium">
-									{issue.title}
-								</span>
-								<span className="flex items-center gap-1 text-xs text-muted-foreground">
+								<Link
+									className="flex min-w-0 flex-1 items-center gap-3"
+									params={{ issueId: String(issue.id) }}
+									to="/issues/$issueId"
+								>
+									<span className="w-10 shrink-0 text-sm text-muted-foreground">
+										#{issue.id}
+									</span>
+									<span className="flex-1 truncate font-medium">
+										{issue.title}
+									</span>
+								</Link>
+								<span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
 									<MessageSquare className="size-3" />
 									{issue.commentCount}
 								</span>
-								<span className="w-14 text-right text-xs text-muted-foreground">
+								<span className="w-14 shrink-0 text-right text-xs text-muted-foreground">
 									{dateFormat.format(new Date(issue.createdAt))}
 								</span>
-								<StatusBadge status={issue.status} />
-							</Link>
+								<StatusSelect issueId={issue.id} status={issue.status} />
+							</div>
 						))}
 					</div>
 				))}
