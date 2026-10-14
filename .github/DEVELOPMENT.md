@@ -45,11 +45,11 @@ pnpm build
 They import the libraries' source, so there is nothing to build first. Run them from the root; `pnpm` installs first when `node_modules` is out of date (`verifyDepsBeforeRun` in `pnpm-workspace.yaml`):
 
 ```shell
-pnpm dev                # TanStack Start and Next.js, in parallel
+pnpm dev                # TanStack Start, Next.js and the docs site, in parallel
 pnpm dev:start          # TanStack Start only
 pnpm dev:next           # Next.js only
 pnpm dev:experimental   # both apps on TanStack Query
-pnpm dev:all            # all four
+pnpm dev:all            # all four, and the docs site
 pnpm build:examples     # production builds of every app, as CI runs them
 pnpm preview:examples   # build all four, then serve the production builds
 ```
@@ -65,6 +65,26 @@ CodeSandbox opens one folder of a GitHub repo, but the apps import `@examples/*`
 ```shell
 pnpm --filter @tooling/codesandbox generate /tmp/codesandbox
 cd /tmp/codesandbox/examples/nextjs && pnpm install && pnpm dev
+```
+
+### Deploying
+
+`examples/tanstack-start` and `examples/nextjs` are each a Vercel project in the `trpc` team, with the app's directory as the root directory and its `vercel.json` setting the install and build commands. Pushes to `main` deploy to production, and pull requests get preview deployments. A project skips the build when nothing it uses changed (`ignoreCommand`). The experimental apps aren't deployed.
+
+| App                       | URL                                         |
+| ------------------------- | ------------------------------------------- |
+| `examples/tanstack-start` | <https://tanstack-start.raf-query.katt.dev> |
+| `examples/nextjs`         | <https://nextjs.raf-query.katt.dev>         |
+
+The Start apps build with Nitro's `nitro()` Vite plugin, which writes Vercel Build Output on Vercel and a Node server in `.output/` elsewhere. Each deployment's database lives in the memory of the function instance that serves it, so edits reset whenever an instance starts, and two instances can show different data.
+
+## Docs site
+
+`www/` is the documentation site at <https://raf-query.katt.dev>: a TanStack Start app, prerendered to static HTML, that renders the markdown in `www/content` and loads each page through raf-query. Pages embed live demos from `www/src/demos`. See [`www/README.md`](../www/README.md) for writing pages and demos, and deploying.
+
+```shell
+pnpm dev:www     # http://localhost:3004 (`pnpm dev` starts it too)
+pnpm build:www   # static build in www/dist/client, as CI runs it
 ```
 
 ## Formatting

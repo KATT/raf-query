@@ -2,6 +2,8 @@
 
 [![Open in CodeSandbox](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/nextjs?file=/apps/nextjs/src/app/issues/page.tsx)
 
+Live at [nextjs.raf-query.katt.dev](https://nextjs.raf-query.katt.dev).
+
 A small issue tracker built with [raf-query](https://github.com/KATT/raf-query#readme). [`examples/tanstack-start`](https://github.com/KATT/raf-query/tree/main/examples/tanstack-start) is the same app on TanStack Start, so the two integrations can be compared side by side.
 
 | Screen / action                               | Shows                                                                                                  | Files                                                                |

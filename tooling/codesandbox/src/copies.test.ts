@@ -17,10 +17,11 @@ import {
 const root = new URL("../../..", import.meta.url).pathname;
 
 describe("isIgnored", () => {
-	it("skips build output, dependencies and TypeScript build info", () => {
+	it("skips build output, dependencies, TypeScript build info and Vercel config", () => {
 		assert.isTrue(isIgnored("node_modules/react/index.js", "/"));
 		assert.isTrue(isIgnored("src/.next/cache", "/"));
 		assert.isTrue(isIgnored("tsconfig.tsbuildinfo", "/"));
+		assert.isTrue(isIgnored("vercel.json", "/"));
 		assert.isFalse(isIgnored("src/app/page.tsx", "/"));
 		assert.isFalse(isIgnored("src/dist-utils.ts", "/"));
 	});

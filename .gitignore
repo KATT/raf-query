@@ -17,5 +17,6 @@
 **/.next
 **/.tanstack
 **/.output
+**/.vercel
 **/next-env.d.ts
 **/*.tsbuildinfo
