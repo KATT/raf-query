@@ -36,23 +36,60 @@ issue;
 
 `ensure` and `fetch` add `Query.CancelledError`, for a request that was cancelled while they waited. `prefetch` never fails: it returns a handle, and readers of the handle see the error.
 
-## Catch it in the queryFn
+## In React
 
-Catching a failure in the `queryFn` takes it out of the query's error type. That's the place for failures the page treats as data. Use Effect's `Option`, not `null`:
+Success stays success: `use()` yields `User`, not `User | null`. Failures throw to the nearest error boundary. Narrow them with the same tagged-error schemas that built `ErrorOf` — React can't name which query threw, so the boundary's error is `unknown`:
+
+```tsx twoslash
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { CatchBoundary } from "@tanstack/react-router";
+import { Schema } from "effect";
+import { Suspense, use } from "react";
+import { assigneeQuery, IssueNotFound, Unauthorized } from "./_effect.ts";
+// ---cut---
+function Assignee(props: { handle: QueryHandle<typeof assigneeQuery> }) {
+	const [assigneePromise] = useQuery(assigneeQuery, props.handle);
+	const assignee = use(assigneePromise);
+	//    ^?
+	return <p>{assignee.name}</p>;
+}
+
+function AssigneeSection(props: { handle: QueryHandle<typeof assigneeQuery> }) {
+	return (
+		<CatchBoundary
+			getResetKey={() => props.handle.input.issueId}
+			errorComponent={(boundary) => (
+				<div role="alert">
+					{Schema.is(IssueNotFound)(boundary.error) ? (
+						<p>Unassigned</p>
+					) : Schema.is(Unauthorized)(boundary.error) ? (
+						<p>Sign in to see who's assigned.</p>
+					) : (
+						<p>Couldn't load the assignee.</p>
+					)}
+					<button onClick={boundary.reset}>Try again</button>
+				</div>
+			)}
+		>
+			<Suspense fallback={<p>Loading assignee…</p>}>
+				<Assignee handle={props.handle} />
+			</Suspense>
+		</CatchBoundary>
+	);
+}
+```
+
+`retry` and `retryDelay` still get the error as `unknown` (query defaults share them). Narrow with the schema there too:
 
 ```ts twoslash
 import { type ErrorOf, queryOptions } from "@raf-query/react";
-import { Effect, Option, Schema } from "effect";
-import { IssueApi, Unauthorized } from "./_effect.ts";
+import { Schema } from "effect";
+import { assigneeQuery as _, IssueApi, Unauthorized } from "./_effect.ts";
 // ---cut---
 export function assigneeQuery(input: { issueId: number }) {
 	return queryOptions({
 		queryKey: ["issue", input.issueId, "assignee"],
-		queryFn: () =>
-			IssueApi.use((api) => api.assignee(input.issueId)).pipe(
-				Effect.map(Option.some),
-				Effect.catchTag("IssueNotFound", () => Effect.succeed(Option.none())),
-			),
+		queryFn: () => IssueApi.use((api) => api.assignee(input.issueId)),
 		retry: (failures, error) =>
 			failures <= 3 && !Schema.is(Unauthorized)(error),
 	});
@@ -61,27 +98,6 @@ export function assigneeQuery(input: { issueId: number }) {
 type AssigneeError = ErrorOf<typeof assigneeQuery>;
 //   ^?
 ```
-
-The caught case is now part of the data. In React, `use()` gives you the `Option`, and you match it:
-
-```tsx twoslash
-import { type QueryHandle, useQuery } from "@raf-query/react";
-import { Option } from "effect";
-import { use } from "react";
-import { assigneeQuery } from "./_effect.ts";
-// ---cut---
-function Assignee(props: { handle: QueryHandle<typeof assigneeQuery> }) {
-	const [assigneePromise] = useQuery(assigneeQuery, props.handle);
-	const assignee = use(assigneePromise);
-	//    ^?
-	return Option.match(assignee, {
-		onNone: () => <p>Unassigned</p>,
-		onSome: (user) => <p>{user.name}</p>,
-	});
-}
-```
-
-`retry` and `retryDelay` get the error as `unknown`, because query defaults share them. Narrow it with the error's schema, as `retry` does above.
 
 ## Catch it where you call
 
@@ -167,48 +183,17 @@ Leave a tag out of `catchTags` and it stays in the error type: the promise can r
 You don't have to catch anything. A failure the Effect leaves uncaught behaves like a rejected promise:
 
 - The Promise verbs (`queryClient.fetch`, `ensure`, `runPromise`) reject with the failure itself, the `IssueNotFound` instance, not a wrapper around it.
-- When a query's first load fails, `use()` throws the failure to the nearest error boundary, and resetting the boundary refetches.
+- When a query's first load fails, `use()` throws the failure to the nearest error boundary (as above), and resetting the boundary refetches.
 - A failed background refetch keeps the old data on screen and puts the failure in `controls.error`.
 - A loader that rejects renders the route's `errorComponent`, and an action that rejects throws to the nearest error boundary.
 
-React can't know which query an error boundary caught, so there the error is `unknown`. It can also be a defect, or another query's error. Narrow it with the error's schema. Here an error boundary around the assignee keeps a failure from taking down the issue page, and the issue's title shows a hint when a refetch fails:
+`controls.error` is also `unknown` — narrow it the same way:
 
 ```tsx twoslash
-import {
-	type EnsuredQueryHandle,
-	type QueryHandle,
-	useQuery,
-} from "@raf-query/react";
-import { CatchBoundary } from "@tanstack/react-router";
+import { type EnsuredQueryHandle, useQuery } from "@raf-query/react";
 import { Schema } from "effect";
-import { Suspense, type ReactNode } from "react";
-import { assigneeQuery, issueQuery, Unauthorized } from "./_effect.ts";
-declare function Assignee(props: {
-	handle: QueryHandle<typeof assigneeQuery>;
-}): ReactNode;
+import { issueQuery, Unauthorized } from "./_effect.ts";
 // ---cut---
-function AssigneeSection(props: { handle: QueryHandle<typeof assigneeQuery> }) {
-	return (
-		<CatchBoundary
-			getResetKey={() => props.handle.input.issueId}
-			errorComponent={(boundary) => (
-				<div role="alert">
-					{Schema.is(Unauthorized)(boundary.error) ? (
-						<p>Sign in to see who's assigned.</p>
-					) : (
-						<p>Couldn't load the assignee.</p>
-					)}
-					<button onClick={boundary.reset}>Try again</button>
-				</div>
-			)}
-		>
-			<Suspense fallback={<p>Loading assignee…</p>}>
-				<Assignee handle={props.handle} />
-			</Suspense>
-		</CatchBoundary>
-	);
-}
-
 function IssueTitle(props: { handle: EnsuredQueryHandle<typeof issueQuery> }) {
 	const [issue, controls] = useQuery(issueQuery, props.handle);
 	return (

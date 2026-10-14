@@ -10,7 +10,7 @@ import {
 	type QueryHandle,
 	queryOptions,
 } from "@raf-query/react";
-import { Context, Effect, type Layer, Option, Schema } from "effect";
+import { Context, Effect, type Layer, Schema } from "effect";
 import type { ReactNode } from "react";
 
 export interface Issue {
@@ -68,12 +68,10 @@ export function issueQuery(input: { id: number }) {
 
 export function assigneeQuery(input: { issueId: number }) {
 	return queryOptions({
-		queryFn: () =>
-			IssueApi.use((api) => api.assignee(input.issueId)).pipe(
-				Effect.map(Option.some),
-				Effect.catchTag("IssueNotFound", () => Effect.succeed(Option.none())),
-			),
+		queryFn: () => IssueApi.use((api) => api.assignee(input.issueId)),
 		queryKey: ["issue", input.issueId, "assignee"],
+		retry: (failures, error) =>
+			failures <= 3 && !Schema.is(Unauthorized)(error),
 	});
 }
 

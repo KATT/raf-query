@@ -59,7 +59,6 @@ A `queryFn` returns an Effect that uses the service. The factory's type carries 
 
 ```ts twoslash title="src/queries.ts"
 import { type ErrorOf, queryOptions, type ServicesOf } from "@raf-query/react";
-import { Effect, Option } from "effect";
 import { IssueApi } from "./_effect.ts";
 // ---cut---
 export function issueQuery(input: { id: number }) {
@@ -69,15 +68,10 @@ export function issueQuery(input: { id: number }) {
 	});
 }
 
-/** No assignee is `Option.none()`, not an error. */
 export function assigneeQuery(input: { issueId: number }) {
 	return queryOptions({
 		queryKey: ["issue", input.issueId, "assignee"],
-		queryFn: () =>
-			IssueApi.use((api) => api.assignee(input.issueId)).pipe(
-				Effect.map(Option.some),
-				Effect.catchTag("IssueNotFound", () => Effect.succeed(Option.none())),
-			),
+		queryFn: () => IssueApi.use((api) => api.assignee(input.issueId)),
 	});
 }
 
@@ -143,13 +137,14 @@ Loaders use the same Promise verbs as a non-Effect app. Prefetch is sync; `ensur
 
 ```tsx twoslash title="src/routes/issues.$issueId.tsx"
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { notFound } from "@tanstack/react-router";
-import { Effect, Option } from "effect";
+import { CatchBoundary, notFound } from "@tanstack/react-router";
+import { Effect, Schema } from "effect";
 import { Suspense, use, type ReactNode } from "react";
 import {
 	assigneeQuery,
 	createFileRoute,
 	type Issue,
+	IssueNotFound,
 	issueQuery,
 } from "./_effect.ts";
 declare function RenameForm(props: { readonly issue: Issue }): ReactNode;
@@ -184,10 +179,30 @@ function IssuePage() {
 		<article>
 			<h1>{issue.title}</h1>
 			<RenameForm issue={issue} />
-			<Suspense fallback={<p>Loading assignee…</p>}>
-				<Assignee handle={loaderData.assignee} />
-			</Suspense>
+			<AssigneeSection handle={loaderData.assignee} />
 		</article>
+	);
+}
+
+function AssigneeSection(props: { handle: QueryHandle<typeof assigneeQuery> }) {
+	return (
+		<CatchBoundary
+			getResetKey={() => props.handle.input.issueId}
+			errorComponent={(boundary) =>
+				Schema.is(IssueNotFound)(boundary.error) ? (
+					<p>Unassigned</p>
+				) : (
+					<div role="alert">
+						<p>Couldn't load the assignee.</p>
+						<button onClick={boundary.reset}>Try again</button>
+					</div>
+				)
+			}
+		>
+			<Suspense fallback={<p>Loading assignee…</p>}>
+				<Assignee handle={props.handle} />
+			</Suspense>
+		</CatchBoundary>
 	);
 }
 
@@ -195,10 +210,7 @@ function Assignee(props: { handle: QueryHandle<typeof assigneeQuery> }) {
 	const [assigneePromise] = useQuery(assigneeQuery, props.handle);
 	const assignee = use(assigneePromise);
 	//    ^?
-	return Option.match(assignee, {
-		onNone: () => <p>Unassigned</p>,
-		onSome: (user) => <p>{user.name}</p>,
-	});
+	return <p>{assignee.name}</p>;
 }
 ```
 
