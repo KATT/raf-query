@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { Schema } from "effect";
 import type { Connect, Plugin } from "vite";
+import { removeTwoslashNotations } from "twoslash/fallback";
 import { parse as parseYaml } from "yaml";
 
 import type { Doc, DocMeta, DocSection } from "../src/content/types.ts";
@@ -41,6 +42,19 @@ interface Source {
 	readonly frontmatter: Frontmatter;
 	readonly markdown: string;
 	readonly slug: string;
+}
+
+/** Replaces each `// ^?` in a Twoslash block with the type it shows, as a comment. */
+function withTypes(code: string, types: ReadonlyArray<string>) {
+	let index = 0;
+	return code.replaceAll(/^([ \t]*)\/\/\s*\^\?[ \t]*$/gm, (marker, indent) => {
+		const type = types[index] ?? "";
+		index++;
+		return type
+			.split("\n")
+			.map((line) => `${indent}// ${line}`)
+			.join("\n");
+	});
 }
 
 const manifestId = "virtual:docs-manifest";
@@ -111,18 +125,23 @@ export function docPages(contentDir: string) {
 export function docsContent(options: ContentOptions): Plugin {
 	const contentDir = path.resolve(options.contentDir);
 	const rendered = new Map<string, Promise<Doc>>();
+	/** Each page's `twoslash` types, by file, for its markdown. */
+	const typeQueries = new Map<string, ReadonlyArray<ReadonlyArray<string>>>();
 
 	function render(source: Source): Promise<Doc> {
 		const cached = rendered.get(source.file);
 		if (cached) {
 			return cached;
 		}
-		const doc = renderMarkdown(source.markdown).then((result) => {
+		const doc = renderMarkdown(source.markdown, {
+			twoslashRoot: contentDir,
+		}).then((result) => {
 			for (const id of result.demos) {
 				if (!existsSync(path.join(options.demosDir, `${id}.tsx`))) {
 					throw new Error(`${source.file}: unknown demo "${id}"`);
 				}
 			}
+			typeQueries.set(source.file, result.typeQueries);
 			return {
 				demos: result.demos,
 				description: source.frontmatter.description,
@@ -178,13 +197,24 @@ export function docsContent(options: ContentOptions): Plugin {
 	];
 
 	/**
-	 * A page as agents read it: links point at the other pages' markdown, and
-	 * each demo, which only runs in a browser, becomes a link to the page and
-	 * to the demo's code.
+	 * A page as agents read it: links point at the other pages' markdown, each
+	 * demo, which only runs in a browser, becomes a link to the page and to the
+	 * demo's code, and `twoslash` blocks lose their hidden setup and markers,
+	 * with each `// ^?` replaced by the type it shows on the web.
 	 */
 	function pageMarkdown(source: Source) {
 		const url = `${options.siteUrl}/docs/${source.slug}`;
+		const types = typeQueries.get(source.file) ?? [];
+		let blockIndex = 0;
 		const body = source.markdown
+			.replaceAll(
+				/^```(\w+)([^\n]*)\btwoslash\b([^\n]*)\n([\s\S]*?)^```$/gm,
+				(fence, lang, before, after, code) => {
+					const queries = types[blockIndex] ?? [];
+					blockIndex++;
+					return `\`\`\`${lang}${`${before}${after}`.trimEnd()}\n${removeTwoslashNotations(withTypes(code, queries))}\`\`\``;
+				},
+			)
 			.replaceAll(
 				/\]\((?:\.\/)?([\w-]+)\.md(#[\w-]+)?\)/g,
 				(link, slug, hash) =>

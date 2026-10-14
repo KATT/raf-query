@@ -1,4 +1,8 @@
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
 import rehypeShiki from "@shikijs/rehype";
+import { createTransformerFactory, rendererRich } from "@shikijs/twoslash/core";
 import GithubSlugger from "github-slugger";
 import type { Element, ElementContent, Root as HastRoot } from "hast";
 import { toHtml } from "hast-util-to-html";
@@ -15,6 +19,10 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import type { ShikiTransformer } from "shiki";
+import { createTwoslasher } from "twoslash/core";
+// Twoslash runs the compiler through its JavaScript API, which TypeScript 7
+// doesn't have.
+import ts from "typescript6";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
 
@@ -25,6 +33,8 @@ export interface RenderedMarkdown {
 	readonly headings: ReadonlyArray<DocHeading>;
 	readonly segments: ReadonlyArray<DocSegment>;
 	readonly text: string;
+	/** Each `twoslash` block's `// ^?` types, in order. */
+	readonly typeQueries: ReadonlyArray<ReadonlyArray<string>>;
 }
 
 const alertTitles = {
@@ -112,6 +122,24 @@ function remarkDemos(demos: Array<string>) {
 				data: { hName: "raf-demo", hProperties: { dataDemo: id } },
 				type: "paragraph",
 			};
+		});
+	};
+}
+
+/**
+ * A fence's meta (`twoslash title="src/queries.ts"`) is `data` on the hast
+ * `<code>`, which `rehype-raw` drops. Shiki also reads it from the
+ * `metastring` property, which survives.
+ */
+function remarkCodeMeta() {
+	return (tree: MdastRoot) => {
+		visit(tree, "code", (node: Code) => {
+			if (node.meta) {
+				node.data = {
+					...node.data,
+					hProperties: { ...node.data?.hProperties, metastring: node.meta },
+				};
+			}
 		});
 	};
 }
@@ -220,24 +248,90 @@ function toSegments(tree: HastRoot): Array<DocSegment> {
 	return segments;
 }
 
+const twoslashTransformers = new Map<string, ShikiTransformer>();
+
+/**
+ * Fences with `twoslash` in their meta are compiled, so hovering a name shows
+ * its type, `// ^?` pins a type under the line, and `// @errors: 2345` shows
+ * an expected error. A compile error the block doesn't expect fails the
+ * build. Blocks resolve imports from `root`, so a hidden setup above
+ * `// ---cut---` can import from `content/_twoslash.ts`.
+ */
+function twoslashTransformer(root: string) {
+	const cached = twoslashTransformers.get(root);
+	if (cached) {
+		return cached;
+	}
+	const twoslasher = createTwoslasher({
+		compilerOptions: {
+			allowImportingTsExtensions: true,
+			jsx: ts.JsxEmit.ReactJSX,
+			lib: ["lib.es2024.d.ts", "lib.dom.d.ts", "lib.dom.iterable.d.ts"],
+			module: ts.ModuleKind.ESNext,
+			moduleResolution: ts.ModuleResolutionKind.Bundler,
+			noEmit: true,
+			skipLibCheck: true,
+			strict: true,
+			target: ts.ScriptTarget.ES2024,
+			types: [],
+		},
+		tsLibDirectory: path.dirname(
+			fileURLToPath(import.meta.resolve("typescript6")),
+		),
+		// @ts-expect-error -- twoslash types `tsModule` as the `typescript` package, which here is TypeScript 7's, with no JavaScript API
+		tsModule: ts,
+		vfsRoot: root,
+	});
+	const transformer = createTransformerFactory(
+		twoslasher,
+		rendererRich({ queryRendering: "line" }),
+	)({ explicitTrigger: true });
+	twoslashTransformers.set(root, transformer);
+	return transformer;
+}
+
+export interface RenderOptions {
+	/** Where `twoslash` blocks resolve imports from. */
+	readonly twoslashRoot: string;
+}
+
 export async function renderMarkdown(
 	markdown: string,
+	options: RenderOptions,
 ): Promise<RenderedMarkdown> {
 	const headings: Array<DocHeading> = [];
 	const demos: Array<string> = [];
+	const typeQueries: Array<ReadonlyArray<string>> = [];
 	const processor = unified()
 		.use(remarkParse)
 		.use(remarkGfm)
 		.use(remarkAlerts)
 		.use(remarkDocLinks)
 		.use(remarkDemos(demos))
+		.use(remarkCodeMeta)
 		.use(remarkRehype, { allowDangerousHtml: true })
 		.use(rehypeRaw)
 		.use(rehypeHeadings(headings))
 		.use(rehypeShiki, {
 			defaultColor: false,
 			themes: { dark: "github-dark", light: "github-light" },
-			transformers: [codeMeta],
+			transformers: [
+				twoslashTransformer(options.twoslashRoot),
+				codeMeta,
+				{
+					name: "raf-query-docs:type-queries",
+					pre() {
+						const twoslash = this.meta.twoslash;
+						if (twoslash) {
+							typeQueries.push(
+								twoslash.nodes.flatMap((node) =>
+									node.type === "query" ? [node.text] : [],
+								),
+							);
+						}
+					},
+				},
+			],
 		})
 		.use(rehypeCodeBlocks);
 	const tree = await processor.run(processor.parse(markdown));
@@ -246,5 +340,6 @@ export async function renderMarkdown(
 		headings,
 		segments: toSegments(tree),
 		text: toString(tree),
+		typeQueries,
 	};
 }

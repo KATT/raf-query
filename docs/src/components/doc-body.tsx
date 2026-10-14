@@ -31,6 +31,48 @@ function internalHref(target: EventTarget | null, root: HTMLElement) {
 	return url.pathname + url.hash;
 }
 
+/** The code a block shows, without Twoslash's types and error messages. */
+function codeText(pre: Element) {
+	const copy = pre.cloneNode(true);
+	if (!isElement(copy)) {
+		return "";
+	}
+	// A pinned type or an error is a line of its own, in place of the newline
+	// after the code line it belongs to.
+	for (const metaLine of copy.querySelectorAll(".twoslash-meta-line")) {
+		metaLine.replaceWith("\n");
+	}
+	for (const popup of copy.querySelectorAll(".twoslash-popup-container")) {
+		popup.remove();
+	}
+	return copy.textContent.trimEnd();
+}
+
+/**
+ * Shows a Twoslash hover popup next to its name, inside the viewport. The
+ * popup is `position: fixed`, so the code block's scrolling doesn't clip it.
+ */
+function placePopup(target: EventTarget | null) {
+	const hover = isElement(target)
+		? target.closest(".twoslash-hover:not(.twoslash-query-persisted)")
+		: null;
+	const popup = hover?.querySelector<HTMLElement>(
+		":scope > .twoslash-popup-container",
+	);
+	if (!hover || !popup) {
+		return;
+	}
+	const anchor = hover.getBoundingClientRect();
+	const margin = 8;
+	const below = anchor.bottom + 6;
+	popup.style.left = `${Math.max(margin, Math.min(anchor.left, window.innerWidth - popup.offsetWidth - margin))}px`;
+	popup.style.top = `${
+		below + popup.offsetHeight > window.innerHeight - margin
+			? Math.max(margin, anchor.top - popup.offsetHeight - 6)
+			: below
+	}px`;
+}
+
 /**
  * A page's prerendered HTML, with its demos in between. Links between pages
  * navigate client-side and preload on hover, like the router's `<Link>`.
@@ -49,7 +91,8 @@ export function DocBody(props: {
 					? target.closest("button[data-copy]")
 					: null;
 				if (copy) {
-					const code = copy.parentElement?.querySelector("pre")?.textContent;
+					const pre = copy.parentElement?.querySelector("pre");
+					const code = pre ? codeText(pre) : "";
 					if (code) {
 						void navigator.clipboard.writeText(code).then(() => {
 							copy.textContent = "Copied";
@@ -77,6 +120,7 @@ export function DocBody(props: {
 				}
 			}}
 			onPointerOver={(event) => {
+				placePopup(event.target);
 				const href = internalHref(event.target, event.currentTarget);
 				if (href) {
 					void router.preloadRoute({ to: href });

@@ -1,4 +1,5 @@
 @import "@examples/ui/globals.css";
+@import "@shikijs/twoslash/style-rich.css";
 @plugin "@tailwindcss/typography";
 
 @source "./";
@@ -152,6 +153,46 @@ html {
 	.code-copy {
 		opacity: 1;
 	}
+}
+
+/* Twoslash: types on hover, and `^?` types pinned under their line */
+:root {
+	--twoslash-popup-bg: var(--popover);
+	--twoslash-popup-color: var(--popover-foreground);
+	--twoslash-border-color: var(--border);
+	--twoslash-docs-color: var(--muted-foreground);
+	--twoslash-docs-font: var(--font-sans);
+	--twoslash-code-font: var(--font-mono);
+	--twoslash-popup-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
+}
+
+.twoslash .twoslash-popup-container {
+	border-radius: var(--radius-md);
+	font-size: 0.75rem;
+	white-space: pre-wrap;
+}
+
+/* `DocBody` places hover popups on screen, so the code block's scrolling
+   doesn't clip them */
+.twoslash
+	.twoslash-hover:not(.twoslash-query-persisted)
+	.twoslash-popup-container {
+	position: fixed;
+	max-width: min(40rem, calc(100vw - 1rem));
+	transform: none;
+}
+
+.twoslash .twoslash-hover:not(.twoslash-query-persisted) .twoslash-popup-arrow {
+	display: none;
+}
+
+.twoslash .twoslash-popup-docs {
+	max-width: 36rem;
+	white-space: normal;
+}
+
+.twoslash .twoslash-error-line {
+	white-space: pre-wrap;
 }
 
 /* Tables scroll instead of overflowing the page */
