@@ -25,6 +25,27 @@ order: 16 # position in the section
 - `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]` and friends render as callouts.
 - A code fence can take a title: ` ```ts title="src/queries.ts" `.
 
+### Types in code blocks
+
+Add `twoslash` to a `ts` or `tsx` fence to compile it with [Twoslash](https://twoslash.netlify.app): hovering a name shows its type, as in an editor.
+
+````md
+```tsx twoslash
+import { type EnsuredQueryHandle, useQuery } from "@raf-query/react";
+import { postQuery } from "./_twoslash.ts";
+declare const handle: EnsuredQueryHandle<typeof postQuery>;
+// ---cut---
+const [post] = useQuery(postQuery, handle);
+//     ^?
+```
+````
+
+- Code above `// ---cut---` compiles but isn't shown. Import what the block needs from `content/_twoslash.ts` there: an app's API (`getPost`, `listComments`) and factories the guides share (`postQuery`, `commentsQuery`).
+- `// ^?` pins the type of the name above it under the line.
+- `// @errors: 2345` shows an expected compiler error. Any error a block doesn't expect fails the build, so the samples stay correct as the API changes.
+- In a page's markdown for agents, the hidden setup and markers are removed, and each `// ^?` becomes a comment with its type.
+- Twoslash needs TypeScript's JavaScript API, which TypeScript 7 doesn't have, so it runs on `typescript6` (TypeScript 6). Restart `pnpm dev` after editing `content/_twoslash.ts`.
+
 ## Demos
 
 A fenced `demo` block embeds a live demo:
