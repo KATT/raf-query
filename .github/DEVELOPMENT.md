@@ -45,11 +45,11 @@ pnpm build
 They import the libraries' source, so there is nothing to build first. Run them from the root; `pnpm` installs first when `node_modules` is out of date (`verifyDepsBeforeRun` in `pnpm-workspace.yaml`):
 
 ```shell
-pnpm dev                # TanStack Start and Next.js, in parallel
+pnpm dev                # TanStack Start, Next.js and the docs site, in parallel
 pnpm dev:start          # TanStack Start only
 pnpm dev:next           # Next.js only
 pnpm dev:experimental   # both apps on TanStack Query
-pnpm dev:all            # all four
+pnpm dev:all            # all four, and the docs site
 pnpm build:examples     # production builds of every app, as CI runs them
 pnpm preview:examples   # build all four, then serve the production builds
 ```
@@ -65,6 +65,15 @@ CodeSandbox opens one folder of a GitHub repo, but the apps import `@examples/*`
 ```shell
 pnpm --filter @tooling/codesandbox generate /tmp/codesandbox
 cd /tmp/codesandbox/examples/nextjs && pnpm install && pnpm dev
+```
+
+## Docs site
+
+`www/` is the documentation site at <https://raf-query.katt.dev>: a TanStack Start app, prerendered to static HTML, that renders the markdown in `www/content` and loads each page through raf-query. Pages embed live demos from `www/src/demos`. See [`www/README.md`](../www/README.md) for writing pages and demos, and deploying.
+
+```shell
+pnpm dev:www     # http://localhost:3004 (`pnpm dev` starts it too)
+pnpm build:www   # static build in www/dist/client, as CI runs it
 ```
 
 ## Formatting

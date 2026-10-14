@@ -1,0 +1,80 @@
+---
+title: Devtools
+description: Inspect the browser's query cache as it changes, refetch, invalidate, reset or remove entries, and ship the panel in production.
+section: Reference
+order: 1
+---
+
+`@raf-query/react/devtools` shows the browser's query cache as it changes. Render `QueryDevtools` anywhere under the provider:
+
+```tsx
+import { QueryDevtools } from "@raf-query/react/devtools";
+
+<QueryClientProvider client={queryClient}>
+	{props.children}
+	<QueryDevtools />
+</QueryClientProvider>;
+```
+
+In Next.js, put it inside `QueryProvider` in the root layout. It's a client component, so a server component layout can render it.
+
+Every demo on this site has a **Devtools** tab in its expanded view, showing the demo's own cache.
+
+## The panel
+
+A button in the corner opens a panel docked to the edge of the viewport. The panel lists every entry with its observer count (mounted readers) and status:
+
+| Status     | Meaning                                    |
+| ---------- | ------------------------------------------ |
+| `fetching` | A request is in flight                     |
+| `error`    | The last request failed                    |
+| `stale`    | Read, and older than `staleTime`           |
+| `fresh`    | Read, and within `staleTime`               |
+| `inactive` | Nothing reads it; it's removed at `gcTime` |
+
+Select an entry to see its key, input, meta, data, error and last update, and to act on it:
+
+- **Refetch** it now.
+- **Invalidate** it: mark it stale, refetching it if it's read.
+- **Reset** it: drop its data, so readers suspend and refetch.
+- **Remove** it from the cache.
+
+The header filters entries by key, sorts them, and has **Invalidate all** and **Clear cache**. The panel keeps its open state and size in `localStorage`.
+
+## Props
+
+All optional:
+
+| Prop             | Values (default first)                                         |
+| ---------------- | -------------------------------------------------------------- |
+| `client`         | The nearest `QueryClientProvider`'s client, or another one     |
+| `initialIsOpen`  | `false`, `true`. Applies until the user opens or closes it     |
+| `buttonPosition` | `"bottom-right"`, `"bottom-left"`, `"top-right"`, `"top-left"` |
+| `position`       | `"bottom"`, `"top"`, `"left"`, `"right"`: the docked edge      |
+| `theme`          | `"system"`, `"dark"`, `"light"`                                |
+
+## Embedding the panel
+
+`QueryDevtoolsPanel` is the panel alone, to place in your own layout. It takes `client`, `theme`, `style`, and `onClose`, which adds a close button.
+
+```tsx
+import { QueryDevtoolsPanel } from "@raf-query/react/devtools";
+
+<QueryDevtoolsPanel style={{ height: 400 }} theme="dark" />;
+```
+
+## Production builds
+
+Both components render nothing on the server, since the server's cache isn't the browser's. They also render nothing when `process.env.NODE_ENV` is `"production"`, and bundlers drop the panel's code from production builds.
+
+To ship the panel in production, for example lazily behind a flag, import from `@raf-query/react/devtools/production`:
+
+```tsx
+const QueryDevtoolsProduction = lazy(() =>
+	import("@raf-query/react/devtools/production").then((module) => ({
+		default: module.QueryDevtools,
+	})),
+);
+```
+
+The demos on this site do exactly that, so the panel works in the deployed docs.

@@ -23,6 +23,7 @@
 		"editor.formatOnSave": true
 	},
 	"markdownlint.enable": false,
+	"json.schemaDownload.enable": true,
 	"oxc.path.oxfmt": "./node_modules/oxfmt/bin/oxfmt",
 	"oxc.path.oxlint": "./node_modules/oxlint/bin/oxlint",
 	"oxc.fmt.configPath": "./.oxfmtrc.json",
