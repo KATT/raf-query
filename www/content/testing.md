@@ -13,7 +13,7 @@ Create a new client for every test, so no cached data leaks between them. Turn r
 
 ```tsx
 import { QueryClient, QueryClientProvider } from "@raf-query/react";
-import { render } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 
 let queryClient: QueryClient;
 
@@ -26,13 +26,17 @@ afterEach(async () => {
 });
 
 function renderWithClient(ui: React.ReactNode) {
-	return render(
-		<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+	return act(async () =>
+		render(
+			<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+		),
 	);
 }
 ```
 
 `dispose()` interrupts in-flight requests and timers, so nothing runs after the test ends.
+
+Render inside an awaited, async `act`. A tree that suspends inside a sync `act`, which `render` on its own uses, is never retried by React once its data lands, with or without a Suspense boundary. The same holds for any `use(promise)`, not only raf-query's.
 
 ## Testing a component
 
@@ -42,7 +46,7 @@ A component takes a handle as a prop, so a test can start the query itself, the 
 test("shows the post", async () => {
 	const handle = queryClient.prefetch(postQuery, { slug: "hello" });
 
-	renderWithClient(
+	await renderWithClient(
 		<Suspense fallback="Loading…">
 			<Post handle={handle} />
 		</Suspense>,
