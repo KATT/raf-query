@@ -137,7 +137,9 @@ function IssuePage() {
 }
 
 function IssueTitle(props: { handle: QueryHandle<typeof issueQuery> }) {
-	const [issuePromise] = useQuery(issueQuery, props.handle);
+	const [issuePromise] = useQuery(issueQuery, props.handle, {
+		throwOnError: true,
+	});
 	return <h1>{use(issuePromise).title}</h1>;
 }
 ```
