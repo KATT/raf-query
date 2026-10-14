@@ -118,6 +118,15 @@ export interface QueryBehavior {
 	readonly retryDelay?:
 		| number
 		| ((failureCount: number, error: unknown) => number);
+	/**
+	 * `false`: only the browser runs the query, for data only a browser has
+	 * (permissions, device APIs). A server cache never starts it or sends it.
+	 * Readers there see `isPending`, and a promise that rejects with
+	 * `Query.BrowserOnlyError`: under Suspense, React renders the fallback on
+	 * the server and the query in the browser. `ensure` and `fetch` on the
+	 * server fail with that error. Default `true`.
+	 */
+	readonly ssr?: boolean;
 	/** How long data counts as fresh, in ms. Fresh data is never refetched. */
 	readonly staleTime?: number;
 	/**
