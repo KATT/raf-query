@@ -77,4 +77,4 @@ const QueryDevtoolsProduction = lazy(() =>
 );
 ```
 
-The demos on this site do exactly that, so the panel works in the deployed docs.
+The demos on this site and the [example apps](./examples.md) do exactly that, so the panel works in the deployed docs and demos.

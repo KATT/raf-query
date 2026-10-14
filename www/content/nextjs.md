@@ -25,7 +25,7 @@ export const getQueryClient = cache(() => new QueryClient(queryClientConfig));
 `QueryProvider` in the root layout, for client components:
 
 ```tsx title="src/app/layout.tsx"
-import { QueryDevtools } from "@raf-query/react/devtools";
+import { QueryDevtools } from "@raf-query/react/devtools/production";
 import { QueryProvider } from "@raf-query/react/rsc";
 
 import { queryClientConfig } from "~/query-client.ts";
@@ -45,6 +45,8 @@ export default function RootLayout(props: { children: React.ReactNode }) {
 ```
 
 `QueryProvider` creates one client per server render and one per browser tab. Its `config` must be serializable, since it crosses from the server component layout to the client.
+
+The [example app](./examples.md) imports `@raf-query/react/devtools/production` so the panel is visible in the deployed demo as well as in `next dev`. Apps that should drop the panel from production builds can import `@raf-query/react/devtools` instead.
 
 ## Pages
 
