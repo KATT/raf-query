@@ -1,4 +1,9 @@
-import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
+import {
+	type ErrorOf,
+	infiniteQueryOptions,
+	queryOptions,
+	type ServicesOf,
+} from "@raf-query/react";
 import { Effect, Schema } from "effect";
 
 import { Issues } from "~/issues.ts";
@@ -32,7 +37,10 @@ export function issueCountsQuery() {
 	});
 }
 
-/** Fails with `IssueNotFound | RpcClientError`; the issue page's loader handles both. */
+/**
+ * Fails with {@link IssueQueryError}. The issue page's loader catches
+ * `IssueNotFound` into the router's `notFound()`.
+ */
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
 		queryFn: () =>
@@ -46,6 +54,9 @@ export function issueQuery(input: { id: number }) {
 			failures <= 3 && !Schema.is(IssueNotFound)(error),
 	});
 }
+
+export type IssueQueryError = ErrorOf<typeof issueQuery>;
+export type IssueQueryServices = ServicesOf<typeof issueQuery>;
 
 export function commentsQuery(input: { issueId: number }) {
 	return infiniteQueryOptions({
@@ -64,11 +75,12 @@ export function commentsQuery(input: { issueId: number }) {
 	});
 }
 
+/**
+ * `IssueNotFound` is caught into `null`, so it is out of
+ * {@link AssigneeQueryError}; a missing assignee renders as unassigned.
+ */
 export function assigneeQuery(input: { issueId: number }) {
 	return queryOptions({
-		// `null` for a missing issue: the issue query already 404s the page, and
-		// this one starts beside it, so failing here would fail a second time.
-		// Catching the tag removes it from the query's error type.
 		queryFn: () =>
 			Effect.gen(function* () {
 				const issues = yield* Issues;
@@ -77,3 +89,5 @@ export function assigneeQuery(input: { issueId: number }) {
 		queryKey: ["issues", "assignee", input.issueId],
 	});
 }
+
+export type AssigneeQueryError = ErrorOf<typeof assigneeQuery>;

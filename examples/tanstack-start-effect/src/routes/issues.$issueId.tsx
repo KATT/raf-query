@@ -1,6 +1,6 @@
 import { Button } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
-import { QueryCache, useQuery } from "@raf-query/react";
+import { useQuery } from "@raf-query/react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Effect } from "effect";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
@@ -15,22 +15,17 @@ import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 
 export const Route = createFileRoute("/issues/$issueId")({
 	loader: (args) => {
+		const qc = args.context.queryClient;
 		const id = Number(args.params.issueId);
-		return args.context.queryClient.runPromise(
-			Effect.gen(function* () {
-				const cache = yield* QueryCache.QueryCache;
-				return {
-					assignee: yield* cache.prefetch(assigneeQuery, { issueId: id }),
-					comments: yield* cache.prefetch(commentsQuery, { issueId: id }),
-					// Fails with `IssueNotFound | RpcClientError | CancelledError`.
-					// The router renders its not-found page for a thrown `notFound()`.
-					issue: yield* cache
-						.ensure(issueQuery, { id })
-						.pipe(
-							Effect.catchTag("IssueNotFound", () => Effect.fail(notFound())),
-						),
-				};
-			}),
+		return qc.runPromise(
+			qc.effect.ensure(issueQuery, { id }).pipe(
+				Effect.catchTag("IssueNotFound", () => Effect.fail(notFound())),
+				Effect.map((issue) => ({
+					assignee: qc.prefetch(assigneeQuery, { issueId: id }),
+					comments: qc.prefetch(commentsQuery, { issueId: id }),
+					issue,
+				})),
+			),
 		);
 	},
 	component: IssuePage,

@@ -1,7 +1,6 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { QueryCache } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Effect, Schema } from "effect";
+import { Schema } from "effect";
 import { Suspense } from "react";
 
 import { IssueList, IssueListSkeleton } from "~/components/issue-list.tsx";
@@ -12,16 +11,13 @@ import { IssueListInput } from "~/rpc.ts";
 export const Route = createFileRoute("/issues/")({
 	validateSearch: Schema.toStandardSchemaV1(IssueListInput),
 	loaderDeps: (args) => args.search,
-	loader: (args) =>
-		args.context.queryClient.runPromise(
-			Effect.gen(function* () {
-				const cache = yield* QueryCache.QueryCache;
-				return {
-					counts: yield* cache.prefetch(issueCountsQuery),
-					issues: yield* cache.prefetch(issueListQuery, args.deps),
-				};
-			}),
-		),
+	loader: (args) => {
+		const qc = args.context.queryClient;
+		return {
+			counts: qc.prefetch(issueCountsQuery),
+			issues: qc.prefetch(issueListQuery, args.deps),
+		};
+	},
 	component: IssuesPage,
 });
 
