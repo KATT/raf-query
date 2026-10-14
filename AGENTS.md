@@ -9,6 +9,12 @@
 - Only use computer use (driving a browser on the VM) for things that need taste: how a UI looks or feels to use. Don't use it to check behavior that a test or a request can check.
 - Don't record video demos or screen recordings. They are slow and cost a lot of tokens. Instead, the PR description links to the Vercel previews of the pages the change affects: deep links to the exact page or route (with an anchor when it helps), not just the site root. The Vercel bot's PR comment has the preview base URL for `www` (`raf-query`), `examples/nextjs` (`raf-query-nextjs`) and `examples/tanstack-start` (`raf-query-tanstack-start`); add those links once the deployment is ready.
 
+## Big changes
+
+- Commit early and often: one commit per step that works, not one at the end.
+- Split a big body of work into stacked PRs instead of finishing it all first. Open each PR as soon as its piece stands on its own, with the previous PR's branch as its base, so review starts while you build the next piece. Say in each PR description where it sits in the stack and link the other PRs.
+- PRs merge with a squash, so when one lower in the stack merges, rebase the next branch onto `main` and point its PR's base at `main`.
+
 ## Documentation
 
 - The docs site's pages (`www/content`) are the full documentation, API reference included. The root `README.md` and each package's `README.md` are a short taste that links there: don't copy guides or reference tables into them.
