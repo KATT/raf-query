@@ -706,21 +706,25 @@ function requestEffect(
 			}),
 		);
 	}
-	const current = isInfiniteData(entry.state.data)
-		? entry.state.data
-		: undefined;
-	return fetchPages(options, current, request, (pageParam, direction) =>
-		attempt(entry, (readSignal) =>
-			options.queryFn({
-				direction,
-				meta,
-				pageParam,
-				queryKey,
-				get signal() {
-					return readSignal();
-				},
-			}),
-		),
+	const pagesOf = () =>
+		isInfiniteData(entry.state.data) ? entry.state.data : undefined;
+	return fetchPages(
+		options,
+		pagesOf(),
+		request,
+		(pageParam, direction) =>
+			attempt(entry, (readSignal) =>
+				options.queryFn({
+					direction,
+					meta,
+					pageParam,
+					queryKey,
+					get signal() {
+						return readSignal();
+					},
+				}),
+			),
+		pagesOf,
 	);
 }
 
