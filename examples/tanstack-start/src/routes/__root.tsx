@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import type { QueryTimeDefaults } from "@examples/db/types";
 import { Logo } from "@examples/ui/components/logo";
 import { Toaster } from "@examples/ui/components/sonner";
 import { logoUrl } from "@examples/ui/lib/logo";
@@ -19,6 +20,7 @@ import appCss from "~/styles.css?url";
 
 export const Route = createRootRouteWithContext<{
 	queryClient: QueryClient;
+	queryDefaults: QueryTimeDefaults;
 }>()({
 	head: () => ({
 		links: [
@@ -70,7 +72,13 @@ function RootDocument(props: { readonly children: ReactNode }) {
 									});
 									setPrefetch(next);
 								}}
+								onReset={() => {
+									router.options.context.queryClient.clear();
+									router.clearCache();
+									window.location.reload();
+								}}
 								prefetch={prefetch}
+								queryDefaults={router.options.context.queryDefaults}
 							/>
 						</div>
 					</nav>

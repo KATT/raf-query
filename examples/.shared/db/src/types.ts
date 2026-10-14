@@ -33,6 +33,57 @@ export function parseLatency(value: string | undefined) {
 	return latencyOptions.find((option) => String(option.ms) === value)?.ms;
 }
 
+/** The cookie the apps' settings menu stores `staleTime` in, in ms. */
+export const STALE_TIME_COOKIE = "stale-time";
+
+/** What the apps use until the menu picks one. */
+export const DEFAULT_STALE_TIME = 5000;
+
+export const staleTimeOptions = [
+	{ label: "0 ms", ms: 0 },
+	{ label: "5 s", ms: 5000 },
+	{ label: "30 s", ms: 30_000 },
+	{ label: "5 min", ms: 300_000 },
+	{ label: "Forever", ms: Number.POSITIVE_INFINITY },
+] as const;
+
+/** A stale-time cookie, or `undefined` when it's missing or not a choice. */
+export function parseStaleTime(value: string | undefined) {
+	return staleTimeOptions.find((option) => String(option.ms) === value)?.ms;
+}
+
+/**
+ * `gcTime` for a chosen `staleTime`. Unread entries stay at least five
+ * minutes, and at least twice as long as they stay fresh, so a revisit still
+ * has them after they go stale. Forever keeps them for the session: collecting
+ * them would drop data that never goes stale.
+ */
+export function gcTimeFor(staleTime: number) {
+	return Number.isFinite(staleTime)
+		? Math.max(staleTime * 2, 5 * 60_000)
+		: Number.POSITIVE_INFINITY;
+}
+
+/** The defaults object a browser query client holds and the menu mutates. */
+export interface QueryTimeDefaults {
+	gcTime?: number;
+	staleTime: number;
+}
+
+/**
+ * Defaults for a client, without `gcTime`. The browser adds that with
+ * {@link applyStaleTime} after it knows the client is not a server client.
+ */
+export function queryTimeDefaults(staleTime: number): QueryTimeDefaults {
+	return { staleTime };
+}
+
+/** Point a live client's defaults at another stale time, and its `gcTime`. */
+export function applyStaleTime(defaults: QueryTimeDefaults, staleTime: number) {
+	defaults.gcTime = gcTimeFor(staleTime);
+	defaults.staleTime = staleTime;
+}
+
 const Id = z.int().positive();
 const Text = z.string().trim().min(1);
 
