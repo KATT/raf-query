@@ -66,8 +66,8 @@ export function postQuery(input: { slug: string }) {
 }
 
 export function commentsQuery(input: { slug: string }) {
-	return infiniteQueryOptions<CommentPage, number>({
-		getNextPageParam: (lastPage) => lastPage.nextCursor,
+	return infiniteQueryOptions({
+		getNextPageParam: (lastPage: CommentPage) => lastPage.nextCursor,
 		initialPageParam: 0,
 		queryFn: (context) =>
 			listComments({ cursor: context.pageParam, slug: input.slug }),

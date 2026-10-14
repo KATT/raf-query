@@ -14,6 +14,7 @@ export {
 	type InfiniteQueryOptions,
 	infiniteQueryOptions,
 	type InfiniteQueryOptionsInput,
+	type InfiniteQueryTypes,
 	type InputArgs,
 	type InputOf,
 	type IsPaged,
@@ -25,6 +26,7 @@ export {
 	type QueryOptions,
 	queryOptions,
 	type QueryOptionsInput,
+	type QueryTypes,
 } from "./options.ts";
 export {
 	type PagingControls,

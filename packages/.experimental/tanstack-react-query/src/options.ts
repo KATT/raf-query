@@ -31,25 +31,44 @@ type BehaviorKey =
 	| "staleTime"
 	| "structuralSharing";
 
-export type QueryBehavior<TData> = Pick<
-	QueryObserverOptions<TData, DefaultError, TData, TData, QueryKey>,
+/** The types of a plain query: what its `queryFn` resolves to. */
+export interface QueryTypes {
+	readonly data: unknown;
+}
+
+/** The types of a paged query: one page, and the param that loads it. */
+export interface InfiniteQueryTypes {
+	readonly page: unknown;
+	readonly pageParam: unknown;
+}
+
+export type QueryBehavior<TTypes extends QueryTypes> = Pick<
+	QueryObserverOptions<
+		TTypes["data"],
+		DefaultError,
+		TTypes["data"],
+		TTypes["data"],
+		QueryKey
+	>,
 	BehaviorKey
 >;
 
-export type InfiniteQueryBehavior<TPage, TPageParam> = Pick<
+export type InfiniteQueryBehavior<TTypes extends InfiniteQueryTypes> = Pick<
 	InfiniteQueryObserverOptions<
-		TPage,
+		TTypes["page"],
 		DefaultError,
-		InfiniteData<TPage, TPageParam>,
+		InfiniteData<TTypes["page"], TTypes["pageParam"]>,
 		QueryKey,
-		TPageParam
+		TTypes["pageParam"]
 	>,
 	BehaviorKey
 >;
 
 /** What `queryOptions` takes. */
-export interface QueryOptionsInput<TData> extends QueryBehavior<TData> {
-	queryFn: QueryFunction<TData, QueryKey>;
+export interface QueryOptionsInput<
+	TTypes extends QueryTypes,
+> extends QueryBehavior<TTypes> {
+	queryFn: QueryFunction<TTypes["data"], QueryKey>;
 	queryKey: QueryKey;
 }
 
@@ -57,34 +76,44 @@ export interface QueryOptionsInput<TData> extends QueryBehavior<TData> {
  * Options for a plain query. `queryKey` carries TanStack's data tag, so
  * `queryClient.getQueryData(issueQuery(input).queryKey)` is typed.
  */
-export interface QueryOptions<TData> extends QueryOptionsInput<TData> {
+export interface QueryOptions<
+	TTypes extends QueryTypes,
+> extends QueryOptionsInput<TTypes> {
 	readonly kind: "query";
-	queryKey: DataTag<QueryKey, TData, DefaultError>;
+	queryKey: DataTag<QueryKey, TTypes["data"], DefaultError>;
 }
 
 /** What `infiniteQueryOptions` takes. */
 export interface InfiniteQueryOptionsInput<
-	TPage,
-	TPageParam,
-> extends InfiniteQueryBehavior<TPage, TPageParam> {
+	TTypes extends InfiniteQueryTypes,
+> extends InfiniteQueryBehavior<TTypes> {
 	/** Param for the page after `lastPage`, or `null` / `undefined` at the end. */
-	getNextPageParam: GetNextPageParamFunction<TPageParam, TPage>;
+	getNextPageParam: GetNextPageParamFunction<
+		TTypes["pageParam"],
+		TTypes["page"]
+	>;
 	/** Param for the page before `firstPage`, or `null` / `undefined` at the start. */
-	getPreviousPageParam?: GetPreviousPageParamFunction<TPageParam, TPage>;
-	initialPageParam: TPageParam;
+	getPreviousPageParam?: GetPreviousPageParamFunction<
+		TTypes["pageParam"],
+		TTypes["page"]
+	>;
+	initialPageParam: TTypes["pageParam"];
 	/** Keep at most this many pages; the far end is dropped when paging. */
 	maxPages?: number;
-	queryFn: QueryFunction<TPage, QueryKey, TPageParam>;
+	queryFn: QueryFunction<TTypes["page"], QueryKey, TTypes["pageParam"]>;
 	queryKey: QueryKey;
 }
 
 /** Options for a paged query. Its data is `{ pages, pageParams }`. */
 export interface InfiniteQueryOptions<
-	TPage,
-	TPageParam,
-> extends InfiniteQueryOptionsInput<TPage, TPageParam> {
+	TTypes extends InfiniteQueryTypes,
+> extends InfiniteQueryOptionsInput<TTypes> {
 	readonly kind: "infinite";
-	queryKey: DataTag<QueryKey, InfiniteData<TPage, TPageParam>, DefaultError>;
+	queryKey: DataTag<
+		QueryKey,
+		InfiniteData<TTypes["page"], TTypes["pageParam"]>,
+		DefaultError
+	>;
 }
 
 /** The part of either options shape that holds without knowing the data type. */
@@ -106,20 +135,28 @@ export interface AnyQueryOptions {
  * ```
  */
 export function queryOptions<TData>(
-	options: QueryOptionsInput<TData>,
-): QueryOptions<TData> {
+	options: QueryOptionsInput<{ data: TData }>,
+): QueryOptions<{ data: TData }> {
 	// SAFETY: the data tag on `queryKey` is type-only (TanStack's own
 	// `queryOptions` is the identity function); `queryFn` produces `TData`.
-	return unsafeCast<QueryOptions<TData>>({ ...options, kind: "query" });
+	return unsafeCast<QueryOptions<{ data: TData }>>({
+		...options,
+		kind: "query",
+	});
 }
 
-/** Typed options for a paged query factory. */
+/**
+ * Typed options for a paged query factory. The type parameters are only
+ * there for TypeScript to infer the types bag from `queryFn`.
+ */
 export function infiniteQueryOptions<TPage, TPageParam>(
-	options: InfiniteQueryOptionsInput<TPage, TPageParam>,
-): InfiniteQueryOptions<TPage, TPageParam> {
+	options: InfiniteQueryOptionsInput<{ page: TPage; pageParam: TPageParam }>,
+): InfiniteQueryOptions<{ page: TPage; pageParam: TPageParam }> {
 	// SAFETY: as in `queryOptions`; the paged `queryFn` and page params make
 	// the entry's data `InfiniteData<TPage, TPageParam>`.
-	return unsafeCast<InfiniteQueryOptions<TPage, TPageParam>>({
+	return unsafeCast<
+		InfiniteQueryOptions<{ page: TPage; pageParam: TPageParam }>
+	>({
 		...options,
 		kind: "infinite",
 	});

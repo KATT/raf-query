@@ -86,15 +86,15 @@ const noop = () => {};
 const identity = <T>(value: T) => value;
 
 /** The default dehydrate filter: entries with data or a request in flight. */
-export function canDehydrate<TData, TFactory extends QueryFactory, TError>(
-	query: Query.Query<TData, TFactory, TError>,
+export function canDehydrate<TFactory extends QueryFactory>(
+	query: Query.Query<TFactory>,
 ): boolean {
 	const state = Query.getUnsafe(query);
 	return state.hasData || state.isFetching;
 }
 
-export function dehydrateUnsafe<TData, TFactory extends QueryFactory, TError>(
-	query: Query.Query<TData, TFactory, TError>,
+export function dehydrateUnsafe<TFactory extends QueryFactory>(
+	query: Query.Query<TFactory>,
 	options: DehydrateOptions,
 ): DehydratedQuery {
 	const state = Query.getUnsafe(query);
@@ -121,8 +121,8 @@ export function dehydrateUnsafe<TData, TFactory extends QueryFactory, TError>(
 }
 
 /** Snapshot one entry for transfer. */
-export function dehydrateQuery<TData, TFactory extends QueryFactory, TError>(
-	query: Query.Query<TData, TFactory, TError>,
+export function dehydrateQuery<TFactory extends QueryFactory>(
+	query: Query.Query<TFactory>,
 	options: DehydrateOptions = {},
 ): Effect.Effect<DehydratedQuery> {
 	return Effect.sync(() => dehydrateUnsafe(query, options));
