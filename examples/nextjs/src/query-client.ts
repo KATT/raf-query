@@ -1,8 +1,10 @@
+import { DEFAULT_STALE_TIME } from "@examples/db/types";
 import { QueryClient, type QueryClientConfig } from "@raf-query/react";
 import { cache } from "react";
 
+/** The server render's client. The browser client's times come from the menu. */
 export const queryClientConfig = {
-	defaults: { staleTime: 5000 },
+	defaults: { staleTime: DEFAULT_STALE_TIME },
 } as const satisfies QueryClientConfig;
 
 /** The server components' query client, one per request. */
