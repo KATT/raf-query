@@ -7,7 +7,9 @@ order: 4
 
 A query is a **factory**: a function of zero or one argument that returns `queryOptions(...)` or `infiniteQueryOptions(...)`. The loader and the component call the same factory, so data types flow end to end.
 
-```ts title="src/queries.ts"
+```ts twoslash title="src/queries.ts"
+import { getPost, listComments } from "./_twoslash.ts";
+// ---cut---
 import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
 
 export function postQuery(input: { slug: string }) {
@@ -35,9 +37,34 @@ Factories take **at most one argument**; the type rejects two or more. That argu
 
 Use an object even for one field (`{ slug }`, `{ id }`): it reads well at call sites and leaves room to grow.
 
-```ts
+```ts twoslash
+import { QueryClient, queryOptions } from "@raf-query/react";
+import { postQuery } from "./_twoslash.ts";
+const qc = new QueryClient();
+function issuesQuery() {
+	return queryOptions({ queryKey: ["issues"], queryFn: async () => [] });
+}
+// ---cut---
 qc.prefetch(postQuery, { slug: "hello-world" });
 qc.prefetch(issuesQuery); // a factory without input
+```
+
+A factory with two parameters doesn't type-check where it's used:
+
+```ts twoslash
+// @errors: 2345
+import { QueryClient, queryOptions } from "@raf-query/react";
+import { getPost } from "./_twoslash.ts";
+const qc = new QueryClient();
+// ---cut---
+function postPageQuery(slug: string, page: number) {
+	return queryOptions({
+		queryKey: ["post", slug, page],
+		queryFn: () => getPost(slug),
+	});
+}
+
+qc.prefetch(postPageQuery, "hello-world");
 ```
 
 ## The factory decides everything
@@ -74,11 +101,15 @@ infiniteQueryOptions<CommentPage, number>({
 
 To name a factory's types elsewhere:
 
-```ts
+```ts twoslash
+import { postQuery } from "./_twoslash.ts";
+// ---cut---
 import type { DataOf, InputOf, QueryHandle } from "@raf-query/react";
 
-type Post = DataOf<typeof postQuery>; // what queryFn resolves to
-type PostInput = InputOf<typeof postQuery>; // { slug: string }
+type PostData = DataOf<typeof postQuery>; // what queryFn resolves to
+//   ^?
+type PostInput = InputOf<typeof postQuery>;
+//   ^?
 type PostHandle = QueryHandle<typeof postQuery>; // for props
 ```
 

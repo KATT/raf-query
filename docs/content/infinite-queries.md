@@ -27,10 +27,16 @@ export function commentsQuery(input: { slug: string }) {
 
 With a paged factory, `useQuery` returns the same tuple. The promise resolves to `{ pages, pageParams }`, and the controls add paging:
 
-```tsx
+```tsx twoslash
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { use } from "react";
+import { commentsQuery, type PostComment } from "./_twoslash.ts";
+declare function Comment(props: PostComment): React.ReactNode;
+// ---cut---
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	const [pagesPromise, comments] = useQuery(commentsQuery, props.handle);
 	const data = use(pagesPromise);
+	//    ^?
 
 	return (
 		<>

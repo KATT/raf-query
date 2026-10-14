@@ -60,7 +60,9 @@ export const Route = createRootRouteWithContext<{
 
 A query is a **factory**: a function of at most one argument that returns `queryOptions(...)`. The argument is the query's input. Loaders and components call the same factory, so the data's type flows end to end.
 
-```ts title="src/queries.ts"
+```ts twoslash title="src/queries.ts"
+import { fetchTodo } from "./_twoslash.ts";
+// ---cut---
 import { queryOptions } from "@raf-query/react";
 
 export function todosQuery() {
