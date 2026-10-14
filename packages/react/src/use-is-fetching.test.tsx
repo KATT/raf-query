@@ -1,4 +1,4 @@
-import { describe, expect, it, onTestFinished, vi } from "@effect/vitest";
+import { describe, expect, it, vi } from "@effect/vitest";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { type ReactNode, Suspense } from "react";
 import { hydrateRoot } from "react-dom/client";
@@ -99,10 +99,7 @@ describe("useIsFetching", () => {
 	});
 
 	it("hears about a fetch another component starts while rendering", async () => {
-		const errors = vi.spyOn(console, "error").mockImplementation(() => {});
-		onTestFinished(() => {
-			errors.mockRestore();
-		});
+		using errors = vi.spyOn(console, "error").mockImplementation(() => {});
 		const test = setup();
 		function Author() {
 			useWaterfall(test.userQuery, { id: 1 });
@@ -129,10 +126,7 @@ describe("useIsFetching", () => {
 	});
 
 	it("is 0 on the server and while hydrating, then catches up", async () => {
-		const errors = vi.spyOn(console, "error").mockImplementation(() => {});
-		onTestFinished(() => {
-			errors.mockRestore();
-		});
+		using errors = vi.spyOn(console, "error").mockImplementation(() => {});
 		const test = setup();
 		test.client.prefetch(test.issueQuery, { id: 1 });
 		const html = renderToString(test.view(<test.Count />));
