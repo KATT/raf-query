@@ -206,6 +206,23 @@ describe("prefetch, ensure or fetch", () => {
 		]);
 	});
 
+	it("leaves the page's scroll alone", async () => {
+		await renderDemo();
+		const scrollTo = vi.spyOn(window, "scrollTo");
+		onTestFinished(() => {
+			scrollTo.mockRestore();
+		});
+
+		await selectVariant("ensure");
+		await openPost("Why loaders beat effects");
+		await screen.findByRole("heading", { name: "Why loaders beat effects" });
+		await click(screen.getByRole("link", { name: "← All posts" }));
+		await click(screen.getByRole("button", { name: "Reload" }));
+		await selectVariant("fetch");
+
+		expect(scrollTo).not.toHaveBeenCalled();
+	});
+
 	it("Reset starts every variant over and keeps the selection", async () => {
 		await renderDemo();
 		await openPost("Render-as-you-fetch, explained");

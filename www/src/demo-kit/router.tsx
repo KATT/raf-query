@@ -34,6 +34,10 @@ export function DemoRouter(props: {
 				initialEntries: [session.location ?? props.initial],
 			}),
 			routeTree: props.routeTree,
+			// The router scrolls the window to the top after each navigation, its
+			// first load included, unless this returns false. The window is the
+			// docs page, not the demo.
+			scrollRestoration: () => false,
 		}),
 	);
 	const href = useRouterState({
