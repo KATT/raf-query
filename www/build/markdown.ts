@@ -27,6 +27,7 @@ import { unified } from "unified";
 import { visit } from "unist-util-visit";
 
 import type { DocHeading, DocSegment } from "../src/content/types.ts";
+import { collapseRegions } from "./collapse.ts";
 
 export interface RenderedMarkdown {
 	readonly demos: ReadonlyArray<string>;
@@ -305,6 +306,7 @@ export async function renderMarkdown(
 	const headings: Array<DocHeading> = [];
 	const demos: Array<string> = [];
 	const typeQueries: Array<ReadonlyArray<string>> = [];
+	let collapseId = 0;
 	const processor = unified()
 		.use(remarkParse)
 		.use(remarkGfm)
@@ -320,6 +322,10 @@ export async function renderMarkdown(
 			themes: { dark: "github-dark", light: "github-light" },
 			transformers: [
 				twoslashTransformer(options.twoslashRoot),
+				collapseRegions(() => {
+					collapseId += 1;
+					return `code-collapse-${collapseId}`;
+				}),
 				codeMeta,
 				{
 					name: "raf-query-docs:type-queries",

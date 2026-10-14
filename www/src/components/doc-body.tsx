@@ -45,6 +45,10 @@ function codeText(pre: Element) {
 	for (const popup of copy.querySelectorAll(".twoslash-popup-container")) {
 		popup.remove();
 	}
+	// The fold's label isn't part of the sample. The lines stay in the body.
+	for (const toggle of copy.querySelectorAll(".code-collapse-toggle")) {
+		toggle.remove();
+	}
 	return copy.textContent.trimEnd();
 }
 
@@ -73,6 +77,27 @@ function placePopup(target: EventTarget | null) {
 	}px`;
 }
 
+/** Opens or closes a folded code region. The lines stay in the page either way. */
+function toggleCodeCollapse(target: EventTarget | null) {
+	if (!isElement(target)) {
+		return false;
+	}
+	const button = target.closest("button[data-collapse]");
+	const region = button?.closest(".code-collapse");
+	const body = region?.querySelector(":scope > .code-collapse-body");
+	const closed = button?.querySelector(".code-collapse-when-closed");
+	const open = button?.querySelector(".code-collapse-when-open");
+	if (!button || !body || !closed || !open) {
+		return false;
+	}
+	const willOpen = body.hasAttribute("hidden");
+	body.toggleAttribute("hidden", !willOpen);
+	closed.toggleAttribute("hidden", willOpen);
+	open.toggleAttribute("hidden", !willOpen);
+	button.setAttribute("aria-expanded", String(willOpen));
+	return true;
+}
+
 /**
  * A page's prerendered HTML, with its demos in between. Links between pages
  * navigate client-side and preload on hover, like the router's `<Link>`.
@@ -86,6 +111,9 @@ export function DocBody(props: {
 		<div
 			className="prose prose-neutral max-w-none dark:prose-invert"
 			onClick={(event) => {
+				if (toggleCodeCollapse(event.target)) {
+					return;
+				}
 				const target = event.target;
 				const copy = isElement(target)
 					? target.closest("button[data-copy]")
