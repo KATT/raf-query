@@ -55,7 +55,7 @@ export class IssueApi extends Context.Service<
 
 ### Queries
 
-A `queryFn` returns an Effect that `yield*`s the service. The factory's type carries the service and the errors:
+A `queryFn` returns an Effect that `yield*`s the service. The factory's type carries the service and the errors — `ErrorOf` and `ServicesOf` name them, and every cache verb fails or requires them:
 
 ```ts twoslash title="src/queries.ts"
 import { type ErrorOf, queryOptions, type ServicesOf } from "@raf-query/react";
@@ -143,10 +143,10 @@ export const Route = createRootRouteWithContext<{
 
 ### The route
 
-The loader is an Effect too. `queryClient.runPromise` runs it with the cache (`QueryCache`) and the layer's services. It starts the assignee without waiting, waits for the issue, and turns a missing issue into the router's not-found page. The components read the queries with `useQuery`, as they would any query:
+Loaders use the same Promise verbs as a non-Effect app. Prefetch is sync; `ensure` returns a Promise. Drop into Effect only when you need a typed catch (or to `yield*` a service yourself). `queryClient.effect` is the cache's Effect API, and `runPromise` runs it with the layer's services — the same shape as Effect's `ManagedRuntime`:
 
 ```tsx twoslash title="src/routes/issues.$issueId.tsx"
-import { QueryCache, type QueryHandle, useQuery } from "@raf-query/react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
 import { notFound } from "@tanstack/react-router";
 import { Effect } from "effect";
 import { Suspense, use, type ReactNode } from "react";
@@ -159,21 +159,19 @@ import {
 declare function RenameForm(props: { readonly issue: Issue }): ReactNode;
 // ---cut---
 export const Route = createFileRoute("/issues/$issueId")({
-	loader: (args) =>
-		args.context.queryClient.runPromise(
-			Effect.gen(function* () {
-				const cache = yield* QueryCache.QueryCache;
-				const id = Number(args.params.issueId);
-				return {
-					assignee: yield* cache.prefetch(assigneeQuery, { issueId: id }),
-					issue: yield* cache
-						.ensure(issueQuery, { id })
-						.pipe(
-							Effect.catchTag("IssueNotFound", () => Effect.fail(notFound())),
-						),
-				};
-			}),
-		),
+	loader: (args) => {
+		const qc = args.context.queryClient;
+		const id = Number(args.params.issueId);
+		return qc.runPromise(
+			qc.effect.ensure(issueQuery, { id }).pipe(
+				Effect.catchTag("IssueNotFound", () => Effect.fail(notFound())),
+				Effect.map((issue) => ({
+					assignee: qc.prefetch(assigneeQuery, { issueId: id }),
+					issue,
+				})),
+			),
+		);
+	},
 	component: IssuePage,
 	errorComponent: (props) => (
 		<div role="alert">
@@ -203,6 +201,18 @@ function Assignee(props: { handle: QueryHandle<typeof assigneeQuery> }) {
 	//    ^?
 	return <p>{assignee === null ? "Unassigned" : assignee.name}</p>;
 }
+```
+
+A list page that only prefetches never needs `runPromise`:
+
+```ts
+loader: (args) => {
+	const qc = args.context.queryClient;
+	return {
+		counts: qc.prefetch(issueCountsQuery),
+		issues: qc.prefetch(issueListQuery, args.deps),
+	};
+},
 ```
 
 What the loader doesn't catch, like `Unauthorized`, rejects into `errorComponent`. The components never see the services: the cache runs each `queryFn` with the layer's, whoever starts it.

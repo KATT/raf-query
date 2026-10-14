@@ -85,31 +85,25 @@ function Assignee(props: { handle: QueryHandle<typeof assigneeQuery> }) {
 
 ## Catch it where you call
 
-Loaders and form actions are Effects too. `queryClient.runPromise(effect)` runs one with the cache (`QueryCache`) and the services of the client's [layer](./effect-services.md#services-in-queryclient). The failures stay typed until the Effect catches them, and the promise rejects with whatever is left.
+Loaders that only `prefetch` or `ensure` use the Promise verbs, the same as a non-Effect app. Reach for `queryClient.runPromise` when the loader itself needs Effect — a typed `catchTag`, or `yield*` of a service. `queryClient.effect` is the cache's Effect API; `runPromise` runs it with the services of the client's [layer](./effect-services.md#services-in-queryclient), as Effect's `ManagedRuntime` does. The failures stay typed until the Effect catches them, and the promise rejects with whatever is left.
 
 A loader can turn a typed failure into the router's own error. Here a missing issue becomes TanStack Router's `notFound()`, so the route renders its not-found page, and anything else reaches `errorComponent`:
 
 ```tsx twoslash title="src/routes/issues.$issueId.tsx"
-import { QueryCache } from "@raf-query/react";
 import { notFound } from "@tanstack/react-router";
 import { Effect } from "effect";
 import { createFileRoute, issueQuery } from "./_effect.ts";
 // ---cut---
 export const Route = createFileRoute("/issues/$issueId")({
-	loader: (args) =>
-		args.context.queryClient.runPromise(
-			Effect.gen(function* () {
-				const cache = yield* QueryCache.QueryCache;
-				const issue = cache.ensure(issueQuery, {
-					id: Number(args.params.issueId),
-				});
-				return {
-					issue: yield* issue.pipe(
-						Effect.catchTag("IssueNotFound", () => Effect.fail(notFound())),
-					),
-				};
-			}),
-		),
+	loader: (args) => {
+		const qc = args.context.queryClient;
+		return qc.runPromise(
+			qc.effect.ensure(issueQuery, { id: Number(args.params.issueId) }).pipe(
+				Effect.catchTag("IssueNotFound", () => Effect.fail(notFound())),
+				Effect.map((issue) => ({ issue })),
+			),
+		);
+	},
 	errorComponent: (props) => (
 		<div role="alert">
 			<p>Couldn't load the issue.</p>
@@ -118,6 +112,8 @@ export const Route = createFileRoute("/issues/$issueId")({
 	),
 });
 ```
+
+`catchTag("IssueNotFound", …)` type-checks because `ErrorOf<typeof issueQuery>` includes that tag. Leave a tag out and TypeScript rejects the call.
 
 A form action can catch every failure it declares into the message the form shows. `Effect.catchTags` lists them, and the Effect is left with `never` in its error channel, so its promise never rejects:
 
