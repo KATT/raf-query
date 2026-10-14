@@ -1,0 +1,16 @@
+{
+	"engines": {
+		"node": ">=24"
+	},
+	"name": "raf-query-tanstack-start-effect-example",
+	"packageManager": "pnpm@12.9.1",
+	"private": true,
+	"scripts": {
+		"build": "pnpm --filter @examples/tanstack-start-effect build",
+		"dev": "pnpm --filter @examples/tanstack-start-effect dev",
+		"start": "pnpm --filter @examples/tanstack-start-effect start",
+		"typecheck": "pnpm --recursive typecheck"
+	},
+	"type": "module",
+	"version": "0.0.0"
+}

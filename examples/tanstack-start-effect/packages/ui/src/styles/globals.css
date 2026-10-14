@@ -1,0 +1,96 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Scan the shared components, wherever the app's Tailwind entry lives. */
+@source "../components";
+
+/*
+ * A `dark` or `light` class on <html> picks the theme. Without either, the
+ * page follows the system setting.
+ */
+@custom-variant dark {
+	&:where(.dark, .dark *) {
+		@slot;
+	}
+	@media (prefers-color-scheme: dark) {
+		&:where(:root:not(.light), :root:not(.light) *) {
+			@slot;
+		}
+	}
+}
+
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+}
+
+/*
+ * Neutral grays with a trace of the brand's violet (hue 286). Violet itself,
+ * the middle of the logo's blue-to-coral gradient, is only the primary and
+ * the focus ring.
+ */
+:root {
+	color-scheme: light dark;
+	--radius: 0.625rem;
+	--background: light-dark(oklch(1 0 0), oklch(0.145 0.006 286));
+	--foreground: light-dark(oklch(0.18 0.012 286), oklch(0.97 0.002 286));
+	--card: light-dark(oklch(1 0 0), oklch(0.185 0.008 286));
+	--card-foreground: var(--foreground);
+	--popover: var(--card);
+	--popover-foreground: var(--foreground);
+	--primary: light-dark(oklch(0.54 0.23 286), oklch(0.7 0.16 286));
+	--primary-foreground: light-dark(oklch(0.99 0 0), oklch(0.15 0.02 286));
+	--secondary: light-dark(oklch(0.965 0.003 286), oklch(0.26 0.008 286));
+	--secondary-foreground: var(--foreground);
+	--muted: var(--secondary);
+	--muted-foreground: light-dark(oklch(0.52 0.012 286), oklch(0.71 0.012 286));
+	--accent: var(--secondary);
+	--accent-foreground: var(--foreground);
+	--destructive: light-dark(
+		oklch(0.577 0.245 27.325),
+		oklch(0.704 0.191 22.216)
+	);
+	--border: light-dark(oklch(0.92 0.004 286), oklch(1 0 0 / 10%));
+	--input: light-dark(oklch(0.92 0.004 286), oklch(1 0 0 / 15%));
+	--ring: light-dark(oklch(0.6 0.2 286), oklch(0.62 0.16 286));
+}
+
+:root.light {
+	color-scheme: light;
+}
+
+:root.dark {
+	color-scheme: dark;
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+	::selection {
+		@apply bg-primary/25;
+	}
+}

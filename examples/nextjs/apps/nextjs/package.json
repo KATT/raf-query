@@ -20,7 +20,7 @@
 		"@examples/api": "workspace:*",
 		"@examples/db": "workspace:*",
 		"@examples/ui": "workspace:*",
-		"@raf-query/react": "0.7.8",
+		"@raf-query/react": "0.7.9",
 		"lucide-react": "1.55.0",
 		"next": "16.4.0",
 		"react": "19.3.0",

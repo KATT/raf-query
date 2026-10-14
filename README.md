@@ -4,3 +4,4 @@ Generated from [`examples/`](https://github.com/KATT/raf-query/tree/main/example
 
 - [`examples/nextjs`](./examples/nextjs): [open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/nextjs?file=/apps/nextjs/src/app/issues/page.tsx)
 - [`examples/tanstack-start`](./examples/tanstack-start): [open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/tanstack-start?file=/apps/tanstack-start/src/routes/issues.index.tsx)
+- [`examples/tanstack-start-effect`](./examples/tanstack-start-effect): [open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/tanstack-start-effect?file=/apps/tanstack-start-effect/src/routes/issues.index.tsx)
