@@ -9,3 +9,4 @@
 - Frontmatter: `title`, `description`, `section` (one of `site.ts`'s `sections`), `order`. `_name.md` files are fragments rendered by components (the home page's code sample), not pages.
 - Lint: `docs/src` gets the examples' JSX rules, and `docs/src/routes` the examples' `sort-objects` exemption.
 - Vercel: project root `docs/`, settings in `docs/vercel.json` (hashed `/assets` immutable, HTML revalidated at the edge).
+- **Agents can request markdown** (human asked; details agent): each page's URL answers `Accept: text/markdown` with its markdown (`Vary: Accept`), next to `/docs/<slug>.md`, `llms.txt`, `llms-full.txt`, `<link rel="alternate" type="text/markdown">` and a "Copy page" button. The build writes Vercel Build Output (`docs/build/vercel-output.ts`), because `vercel.json` rewrites run only after a file has failed to match, and every page is a file. Lost: Routing Middleware (a function call on every page view, in front of a static site).
