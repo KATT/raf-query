@@ -32,7 +32,7 @@ Every `ts` / `tsx` fence uses [Twoslash](https://twoslash.netlify.app): hovering
 ````md
 ```tsx twoslash
 import { type EnsuredQueryHandle, useQuery } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 declare const handle: EnsuredQueryHandle<typeof postQuery>;
 // ---cut---
 const [post] = useQuery(postQuery, handle);
@@ -40,11 +40,22 @@ const [post] = useQuery(postQuery, handle);
 ```
 ````
 
-- Code above `// ---cut---` compiles but isn't shown. Import what the block needs from `content/_twoslash.ts` there: an app's API (`getPost`, `listComments`) and factories the guides share (`postQuery`, `commentsQuery`).
+- Code above `// ---cut---` compiles but isn't shown. Import what the block needs there: real libraries, and files of the TanStack Start sample app the blocks are written against (`~/api.ts`, `~/queries.ts`, `~/routes/posts.$slug.tsx`). Declare anything else the block leans on, like a component it renders (`declare function Spinner(): ReactNode`).
+- A block that defines a route starts with `// @filename: tanstack-start/src/routes/posts.$slug.tsx` (a path from `samples/`), so it compiles as that route file and `Route.useLoaderData()` has its loader's types.
 - `// ^?` pins the type of the name above it under the line.
 - `// @errors: 2345` shows an expected compiler error. Any error a block doesn't expect fails the build, so the samples stay correct as the API changes.
 - In a page's markdown for agents, the hidden setup and markers are removed, and each `// ^?` becomes a comment with its type.
-- Twoslash needs TypeScript's JavaScript API, which TypeScript 7 doesn't have, so it runs on `typescript6` (TypeScript 6). Restart `pnpm dev` after editing `content/_twoslash.ts`.
+- Twoslash needs TypeScript's JavaScript API, which TypeScript 7 doesn't have, so it runs on `typescript6` (TypeScript 6).
+
+The sample apps are workspace packages in `samples/`: `tanstack-start` (`@samples/tanstack-start`) for every inline block and the pages built on TanStack Start, `tanstack-start-effect` (`@samples/tanstack-start-effect`) for the Effect pages, and `nextjs` (`@samples/nextjs`) for the Next.js page. A page's inline blocks compile in `tanstack-start` unless its frontmatter names another app, like `sampleApp: tanstack-start-effect`. Each declares the dependencies its blocks import, and `pnpm typecheck` runs its `tsc`. The build regenerates their route trees.
+
+Pages that walk through an app's files (the quick start, TanStack Start, Next.js) include them from a sample app:
+
+```md
+<<< ../samples/tanstack-start/src/routes/todos.tsx#loader
+```
+
+That shows the `// #region loader` … `// #endregion` part of the file, compiled with the rest of it in its app. Without `#loader` it shows the whole file.
 
 ## Demos
 
