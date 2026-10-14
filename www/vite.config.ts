@@ -15,7 +15,7 @@ export default defineConfig({
 		docsContent({
 			contentDir,
 			demosDir,
-			demosUrl: `${site.github}/blob/main/docs/src/demos`,
+			demosUrl: `${site.github}/blob/main/www/src/demos`,
 			sections,
 			siteUrl: site.url,
 		}),

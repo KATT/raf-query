@@ -75,4 +75,4 @@ curl -H 'Accept: text/markdown' http://localhost:3004/docs/caching
 
 ## Deploying
 
-The Vercel project's root directory is `docs`. `vercel.json` sets the install and build commands. The build ends with `build/vercel-output.ts`, which writes [Build Output](https://vercel.com/docs/build-output-api/v3) to `.vercel/output`: the static files, cache headers, redirects and the `Accept: text/markdown` routes. `vercel.json` rewrites can't do this, because they only run when no file matches the URL. Vercel needs Node 24 (the root `package.json`'s `engines`) and pnpm from `packageManager` (set `ENABLE_EXPERIMENTAL_COREPACK=1`).
+The Vercel project's root directory is `www`. `vercel.json` sets the install and build commands. The build ends with `build/vercel-output.ts`, which writes [Build Output](https://vercel.com/docs/build-output-api/v3) to `.vercel/output`: the static files, cache headers, redirects and the `Accept: text/markdown` routes. `vercel.json` rewrites can't do this, because they only run when no file matches the URL. Vercel needs Node 24 (the root `package.json`'s `engines`) and pnpm from `packageManager` (set `ENABLE_EXPERIMENTAL_COREPACK=1`).

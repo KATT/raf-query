@@ -98,7 +98,7 @@ function DocPage() {
 				<footer className="mt-12 grid gap-6 border-t pt-6">
 					<a
 						className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-						href={`${site.github}/edit/main/docs/content/${doc.slug}.md`}
+						href={`${site.github}/edit/main/www/content/${doc.slug}.md`}
 					>
 						<Pencil className="size-3.5" /> Edit this page on GitHub
 					</a>

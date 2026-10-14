@@ -1,5 +1,5 @@
 {
-	"name": "@raf-query/docs",
+	"name": "@raf-query/www",
 	"version": "0.0.0",
 	"private": true,
 	"description": "Documentation site for raf-query, served at raf-query.katt.dev",
