@@ -444,6 +444,12 @@
 			}
 		},
 		{
+			"files": ["tooling/pr-title/src/cli.ts"],
+			"rules": {
+				"no-console": "off"
+			}
+		},
+		{
 			// Library internals are type-erased on purpose: the cache stores any
 			// query's data and errors, and factory generics restore the types at
 			// the public boundary.

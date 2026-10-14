@@ -1,0 +1,23 @@
+# Squash-merge uses the PR title as the commit release-it reads. Keep titles
+# conventional so the changelog and version bump stay correct.
+name: PR Title
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+
+jobs:
+  pr_title:
+    name: Conventional title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - name: Check pull request title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: pnpm --filter @tooling/pr-title check

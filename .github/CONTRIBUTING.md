@@ -42,8 +42,10 @@ Be sure to fill out the pull request template's requested information -- otherwi
 
 PRs are also expected to have a title that adheres to [conventional commits](https://www.conventionalcommits.org/en/v1.0.0).
 Only PR titles need to be in that format, not individual commits.
+CI checks the title on every PR (`PR Title` workflow); a failing check means fix the title, not the commits.
 Don't worry if you get this wrong: you can always change the PR title after sending it.
 Check [previously merged PRs](https://github.com/KATT/raf-query/pulls?q=is%3Apr+is%3Amerged+-label%3Adependencies+) for reference.
+Breaking changes mark the type with `!` (for example `feat(react)!: remove useIsFetching`), so release-it can bump accordingly.
 
 #### Draft PRs
 
