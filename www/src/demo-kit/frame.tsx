@@ -22,6 +22,7 @@ import { CachePanel } from "./cache-panel.tsx";
 import type { DemoDefinition, DemoVariant } from "./define.ts";
 import { NetworkPanel } from "./network-panel.tsx";
 import type { FakeServer } from "./server.ts";
+import { DemoSessionContext } from "./session.ts";
 
 const latencies = [
 	{ label: "Fast", ms: 250 },
@@ -31,10 +32,9 @@ const latencies = [
 
 interface Session {
 	readonly client: QueryClient;
-	/** Remounts the variant when it changes: Reset. */
 	readonly id: number;
-	/** Restarts since Reset: reloads, which keep the variant mounted. */
-	readonly restarts: number;
+	/** Where a reloaded browser opens. */
+	readonly location?: string;
 }
 
 let sessionCount = 0;
@@ -46,13 +46,13 @@ const liveSessions = new WeakMap<DemoVariant, Session>();
 function createSession(
 	demo: DemoDefinition,
 	variant: DemoVariant,
-	restarted?: Session,
+	location?: string,
 ): Session {
 	sessionCount++;
 	const session = {
 		client: demo.createClient?.() ?? new QueryClient(),
-		id: restarted?.id ?? sessionCount,
-		restarts: restarted ? restarted.restarts + 1 : 0,
+		id: sessionCount,
+		location,
 	};
 	liveSessions.set(variant, session);
 	return session;
@@ -136,9 +136,9 @@ function VariantSwitch(props: {
 }) {
 	const name = useId();
 	return (
-		<fieldset className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+		<fieldset className="flex flex-col items-start gap-1.5">
 			<legend className="sr-only">{props.demo.variantsLabel}</legend>
-			<div className="inline-flex rounded-md border p-0.5">
+			<div className="inline-flex flex-wrap rounded-md border p-0.5">
 				{props.demo.variants.map((variant, index) => (
 					<label
 						className={cn(
@@ -175,6 +175,7 @@ function VariantSwitch(props: {
  */
 function DemoBody(props: {
 	readonly demo: DemoDefinition;
+	readonly onReload: (index: number, location: string) => void;
 	readonly onSelect: (index: number) => void;
 	readonly opened: ReadonlyArray<number>;
 	readonly selected: number;
@@ -201,9 +202,18 @@ function DemoBody(props: {
 						mode={index === props.selected ? "visible" : "hidden"}
 					>
 						<QueryClientProvider client={session.client} key={session.id}>
-							<Suspense fallback={<DemoSkeleton />}>
-								<variant.Component />
-							</Suspense>
+							<DemoSessionContext
+								value={{
+									location: session.location,
+									reload: (location) => {
+										props.onReload(index, location);
+									},
+								}}
+							>
+								<Suspense fallback={<DemoSkeleton />}>
+									<variant.Component />
+								</Suspense>
+							</DemoSessionContext>
 						</QueryClientProvider>
 					</Activity>
 				);
@@ -262,7 +272,8 @@ function Toolbar(props: {
  * server's requests and the cache's entries underneath. Expanding it opens
  * the same session in a dialog with the devtools panel. A demo with
  * variants gets a switch, and a session per variant; Reset starts them all
- * over and keeps the switch where it is.
+ * over and keeps the switch where it is. A browser's Reload starts only its
+ * own variant over, on the URL it was showing.
  */
 export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 	const demo = props.demo;
@@ -293,6 +304,19 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 	const body = (
 		<DemoBody
 			demo={demo}
+			onReload={(index, location) => {
+				const reloaded = demo.variants[index];
+				if (!reloaded) {
+					return;
+				}
+				void sessions[index]?.client.dispose();
+				reloaded.server.reset();
+				setSessions((previous) =>
+					previous.map((each, at) =>
+						at === index ? createSession(demo, reloaded, location) : each,
+					),
+				);
+			}}
 			onSelect={(index) => {
 				setSelected(index);
 				setOpened((previous) =>

@@ -107,17 +107,45 @@ export function DemoBrowser<TData>(props: {
 	const previous = history.at(-2);
 
 	return (
+		<BrowserWindow
+			canGoBack={previous !== undefined}
+			href={href(current.location)}
+			isNavigating={isNavigating}
+			onBack={() => {
+				if (previous) {
+					go(previous.location, history.length - 2);
+				}
+			}}
+			onReload={() => {
+				go(current.location, history.length - 1);
+			}}
+		>
+			<NavigationContext value={navigation}>
+				<Suspense fallback={props.fallback}>
+					<RouteView entry={current}>{props.children}</RouteView>
+				</Suspense>
+			</NavigationContext>
+		</BrowserWindow>
+	);
+}
+
+/** A browser window's chrome: back, reload, the address bar and a progress bar. */
+export function BrowserWindow(props: {
+	readonly canGoBack: boolean;
+	readonly children: ReactNode;
+	readonly href: string;
+	readonly isNavigating: boolean;
+	readonly onBack: () => void;
+	readonly onReload: () => void;
+}) {
+	return (
 		<div className="overflow-hidden rounded-lg border bg-background shadow-xs">
 			<div className="relative flex items-center gap-1.5 border-b bg-muted/50 px-2 py-1.5">
 				<button
 					aria-label="Back"
 					className="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent disabled:opacity-40"
-					disabled={!previous}
-					onClick={() => {
-						if (previous) {
-							go(previous.location, history.length - 2);
-						}
-					}}
+					disabled={!props.canGoBack}
+					onClick={props.onBack}
 					type="button"
 				>
 					<ArrowLeft className="size-4" />
@@ -125,37 +153,29 @@ export function DemoBrowser<TData>(props: {
 				<button
 					aria-label="Reload"
 					className="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent"
-					onClick={() => {
-						go(current.location, history.length - 1);
-					}}
+					onClick={props.onReload}
 					type="button"
 				>
 					<RotateCw
-						className={cn("size-3.5", isNavigating && "animate-spin")}
+						className={cn("size-3.5", props.isNavigating && "animate-spin")}
 					/>
 				</button>
 				<div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md border bg-background px-2.5 py-1 font-mono text-xs">
 					<Lock className="size-3 shrink-0 text-muted-foreground" />
 					<span className="text-muted-foreground">app.example</span>
-					<span className="truncate">{href(current.location)}</span>
+					<span className="truncate">{props.href}</span>
 				</div>
 				<div
 					aria-hidden="true"
 					className={cn(
 						"absolute inset-x-0 bottom-0 h-0.5 origin-left bg-primary transition-transform",
-						isNavigating
+						props.isNavigating
 							? "scale-x-75 duration-[2000ms] ease-out"
 							: "scale-x-0 duration-0",
 					)}
 				/>
 			</div>
-			<NavigationContext value={navigation}>
-				<div className="p-4">
-					<Suspense fallback={props.fallback}>
-						<RouteView entry={current}>{props.children}</RouteView>
-					</Suspense>
-				</div>
-			</NavigationContext>
+			<div className="p-4">{props.children}</div>
 		</div>
 	);
 }

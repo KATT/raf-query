@@ -1,15 +1,22 @@
-import type { QueryClient } from "@raf-query/react";
-import { createContext } from "react";
+import { createContext, use } from "react";
 
-/**
- * How a demo's browser reloads its variant: `restart` swaps in a new client
- * and empties the server, as a reload drops the page's memory, and returns
- * the new client. The variant's own controls stay mounted.
- */
-export interface DemoRestart {
-	/** Counts restarts, to key what must remount with the new client. */
-	readonly count: number;
-	restart(): QueryClient<unknown>;
+/** What a variant's browser knows about the frame's session around it. */
+export interface DemoSession {
+	/** Where the browser opens: a reload's URL, or `undefined` for its own start. */
+	readonly location: string | undefined;
+	/**
+	 * Start the variant over at `location`: a new client and router, and an
+	 * emptied server, as a browser reload drops the page's memory.
+	 */
+	reload(location: string): void;
 }
 
-export const DemoRestartContext = createContext<DemoRestart | null>(null);
+export const DemoSessionContext = createContext<DemoSession | null>(null);
+
+export function useDemoSession(): DemoSession {
+	const session = use(DemoSessionContext);
+	if (!session) {
+		throw new Error("useDemoSession: render it inside a DemoFrame");
+	}
+	return session;
+}
