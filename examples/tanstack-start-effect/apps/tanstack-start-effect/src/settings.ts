@@ -11,13 +11,13 @@ import { getCookies } from "@tanstack/react-start/server";
 export const PREFETCH_COOKIE = "link-prefetch";
 
 export const prefetchOptions = [
+	{ label: "Off", value: "off" },
 	{ label: "On intent", value: "intent" },
 	{ label: "In viewport", value: "viewport" },
 	{ label: "On render", value: "render" },
-	{ label: "Off", value: "off" },
 ] as const;
 export type Prefetch = (typeof prefetchOptions)[number]["value"];
-export const DEFAULT_PREFETCH: Prefetch = "intent";
+export const DEFAULT_PREFETCH: Prefetch = "off";
 
 /** The request's cookies on the server, the document's in the browser. */
 const readCookies = createIsomorphicFn()

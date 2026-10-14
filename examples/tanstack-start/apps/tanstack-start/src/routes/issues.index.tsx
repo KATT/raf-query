@@ -25,8 +25,8 @@ function IssuesPage() {
 	const search = Route.useSearch();
 
 	return (
-		<div className="grid gap-8 md:grid-cols-[180px_1fr]">
-			<Suspense fallback={<Skeleton className="h-48" />}>
+		<div className="grid gap-6 md:grid-cols-[180px_1fr] md:gap-8">
+			<Suspense fallback={<Skeleton className="h-20 md:h-48" />}>
 				<StatusFilter counts={data.counts} current={search} />
 			</Suspense>
 			<Suspense fallback={<IssueListSkeleton />}>

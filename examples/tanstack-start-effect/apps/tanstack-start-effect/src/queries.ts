@@ -49,8 +49,8 @@ export function issueCountsQuery() {
 }
 
 /**
- * Fails with {@link IssueQueryError}. The issue page's loader catches
- * `IssueNotFound` into the router's `notFound()`.
+ * Fails with {@link IssueQueryError}. The issue page turns `IssueNotFound`
+ * into the router's `notFound()` when it reads the issue.
  */
 export function issueQuery(input: { id: number }) {
 	return queryOptions({

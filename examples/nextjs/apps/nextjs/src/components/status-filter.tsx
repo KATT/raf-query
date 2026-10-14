@@ -23,12 +23,12 @@ export function StatusFilter(props: {
 	const current = props.current;
 
 	return (
-		<aside className="grid content-start gap-6">
-			<nav className="grid gap-1">
+		<aside className="grid content-start gap-3 md:gap-6">
+			<nav className="flex flex-wrap gap-1 md:grid">
 				{(["all", ...issueStatuses] as const).map((status) => (
 					<AppLink
 						className={cn(
-							"flex justify-between rounded-md px-3 py-1.5 text-sm hover:bg-muted",
+							"flex justify-between gap-2 rounded-md px-3 py-1.5 text-sm hover:bg-muted",
 							current.status === status && "bg-muted font-medium",
 						)}
 						href={{
@@ -42,7 +42,7 @@ export function StatusFilter(props: {
 					</AppLink>
 				))}
 			</nav>
-			<nav className="grid gap-1">
+			<nav className="flex flex-wrap items-center gap-1 md:grid">
 				<span className="px-3 text-xs font-medium text-muted-foreground uppercase">
 					Sort
 				</span>

@@ -1,7 +1,6 @@
 import { api, parseFound, parseResponse } from "~/api.ts";
 import type { IssueListInput } from "@examples/db/types";
 import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
-import { notFound } from "next/navigation";
 
 export function issueListQuery(input: IssueListInput) {
 	return infiniteQueryOptions({
@@ -27,15 +26,10 @@ export function issueCountsQuery() {
 
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
-		queryFn: async () => {
-			const issue = await parseFound(
-				api.issues[":id"].$get({ param: { id: String(input.id) } }),
-			);
-			if (!issue) {
-				notFound();
-			}
-			return issue;
-		},
+		// `null` when the issue is missing. The page calls `notFound()` so the
+		// route can open before this request finishes.
+		queryFn: () =>
+			parseFound(api.issues[":id"].$get({ param: { id: String(input.id) } })),
 		queryKey: ["issues", "detail", input.id],
 	});
 }
@@ -58,8 +52,8 @@ export function commentsQuery(input: { issueId: number }) {
 
 export function assigneeQuery(input: { issueId: number }) {
 	return queryOptions({
-		// `null` for a missing issue: the issue query already 404s the page, and
-		// this one starts beside it, so throwing here would fail a second time.
+		// `null` for a missing issue. The page 404s from the issue query, and this
+		// one starts beside it, so throwing here would fail a second time.
 		queryFn: () =>
 			parseFound(
 				api.issues[":id"].assignee.$get({

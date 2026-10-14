@@ -31,7 +31,7 @@ export default async function RootLayout(props: {
 					prefetch={parsePrefetch(cookieStore.get(PREFETCH_COOKIE)?.value)}
 				>
 					<header className="border-b">
-						<nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3">
+						<nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
 							<AppLink
 								className="flex items-center gap-2.5 font-semibold"
 								href="/issues"
@@ -49,7 +49,7 @@ export default async function RootLayout(props: {
 							</div>
 						</nav>
 					</header>
-					<main className="mx-auto max-w-5xl px-6 py-8">
+					<main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
 						<QueryProvider config={queryClientConfig}>
 							{props.children}
 							<QueryDevtools />

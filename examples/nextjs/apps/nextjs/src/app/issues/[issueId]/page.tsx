@@ -21,14 +21,11 @@ export default async function Page(props: {
 	const qc = getQueryClient();
 	const assignee = qc.prefetch(assigneeQuery, { issueId: id });
 	const comments = qc.prefetch(commentsQuery, { issueId: id });
+	const issue = qc.prefetch(issueQuery, { id });
 
 	return (
 		<HydrationBoundary client={qc}>
-			<IssuePage
-				assignee={assignee}
-				comments={comments}
-				issue={await qc.ensure(issueQuery, { id })}
-			/>
+			<IssuePage assignee={assignee} comments={comments} issue={issue} />
 		</HydrationBoundary>
 	);
 }
