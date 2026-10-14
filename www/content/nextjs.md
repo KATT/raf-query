@@ -102,6 +102,34 @@ export function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 - Pending entries stream as promises through the RSC payload: the page's shell renders while `comments` loads.
 - `fetch` and `ensure` wait for the same thing on the server. `await qc.fetch(...)` the data the server component renders itself. When it also hands the query to a client component, pass `await qc.ensure(...)`, so the client component gets the data from `useQuery` without a promise.
 
+## Pending UI
+
+While a link navigation is loading the next RSC payload, show pending state with Next.js — not [`useIsFetching`](./background-fetching-indicators.md#useisfetching). Render [`useLinkStatus`](https://nextjs.org/docs/app/api-reference/functions/use-link-status) as a child of the `Link` it tracks:
+
+```tsx twoslash
+import type { ReactNode } from "react";
+declare function Link(props: {
+	readonly children?: ReactNode;
+	readonly href: string;
+}): ReactNode;
+declare function useLinkStatus(): { readonly pending: boolean };
+declare function Spinner(): ReactNode;
+// ---cut---
+("use client");
+
+function PendingHint() {
+	const { pending } = useLinkStatus();
+	return pending ? <Spinner /> : null;
+}
+
+<Link href="/issues">
+	Issues
+	<PendingHint />
+</Link>;
+```
+
+Per-query background refetches after the page has rendered use `controls.isFetching`. See [Background fetching indicators](./background-fetching-indicators.md).
+
 ## Search params
 
 Read `searchParams` in the page, validate them, and pass them as the input:
