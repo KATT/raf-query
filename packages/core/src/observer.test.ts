@@ -1,4 +1,4 @@
-import { describe, expect, it, onTestFinished, vi } from "@effect/vitest";
+import { describe, expect, it, vi } from "@effect/vitest";
 import { Effect, Fiber, Stream } from "effect";
 
 import { Query, QueryObserver } from "./index.ts";
@@ -14,11 +14,13 @@ async function setup() {
 	return { backend, qc, query };
 }
 
-function useFakeTimers() {
+function fakeTimers(): Disposable {
 	vi.useFakeTimers();
-	onTestFinished(() => {
-		vi.useRealTimers();
-	});
+	return {
+		[Symbol.dispose]() {
+			vi.useRealTimers();
+		},
+	};
 }
 
 describe("QueryObserver", () => {
@@ -93,7 +95,7 @@ describe("QueryObserver", () => {
 
 	it("refetches on refetchInterval while subscribed", async () => {
 		const test = await setup();
-		useFakeTimers();
+		using _timers = fakeTimers();
 		const observer = QueryObserver.makeUnsafe(test.query, {
 			refetchInterval: 1000,
 		});
@@ -111,7 +113,7 @@ describe("QueryObserver", () => {
 
 	it("restarts polling when refetchInterval changes", async () => {
 		const test = await setup();
-		useFakeTimers();
+		using _timers = fakeTimers();
 		const observer = QueryObserver.makeUnsafe(test.query, {
 			refetchInterval: 1000,
 		});
@@ -133,7 +135,7 @@ describe("QueryObserver", () => {
 
 	it("stops polling when its query leaves the cache", async () => {
 		const test = await setup();
-		useFakeTimers();
+		using _timers = fakeTimers();
 		const observer = QueryObserver.makeUnsafe(test.query, {
 			refetchInterval: 1000,
 		});

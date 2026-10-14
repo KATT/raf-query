@@ -1,4 +1,4 @@
-import { describe, expect, it, onTestFinished, vi } from "@effect/vitest";
+import { describe, expect, it, vi } from "@effect/vitest";
 import {
 	act,
 	cleanup,
@@ -87,16 +87,18 @@ function setup() {
 	return { backend, client, Issue };
 }
 
-function useCleanup() {
-	onTestFinished(() => {
-		cleanup();
-		window.localStorage.clear();
-	});
+function domCleanup(): Disposable {
+	return {
+		[Symbol.dispose]() {
+			cleanup();
+			window.localStorage.clear();
+		},
+	};
 }
 
 describe("QueryDevtoolsPanel", () => {
 	it("lists entries with their status and observers, live", async () => {
-		useCleanup();
+		using _dom = domCleanup();
 		const app = setup();
 		const handle = app.client.prefetch(app.backend.issueQuery, { id: 1 });
 		app.client.setData(
@@ -143,7 +145,7 @@ describe("QueryDevtoolsPanel", () => {
 	});
 
 	it("shows a selected entry's details, data and input", async () => {
-		useCleanup();
+		using _dom = domCleanup();
 		const app = setup();
 		app.client.setData(
 			app.backend.issueQuery,
@@ -163,7 +165,7 @@ describe("QueryDevtoolsPanel", () => {
 	});
 
 	it("shows the selected entry's meta", async () => {
-		useCleanup();
+		using _dom = domCleanup();
 		const client = new QueryClient({ isServer: false });
 		function metaQuery() {
 			return queryOptions({
@@ -183,7 +185,7 @@ describe("QueryDevtoolsPanel", () => {
 	});
 
 	it("refetches, invalidates, resets and removes the selected entry", async () => {
-		useCleanup();
+		using _dom = domCleanup();
 		const app = setup();
 		const handle = app.client.prefetch(app.backend.issueQuery, { id: 1 });
 		await mount(
@@ -231,7 +233,7 @@ describe("QueryDevtoolsPanel", () => {
 	});
 
 	it("filters and sorts entries", async () => {
-		useCleanup();
+		using _dom = domCleanup();
 		const app = setup();
 		app.client.setData(
 			app.backend.issueQuery,
@@ -267,7 +269,7 @@ describe("QueryDevtoolsPanel", () => {
 	});
 
 	it("clears the cache and invalidates everything from the header", async () => {
-		useCleanup();
+		using _dom = domCleanup();
 		const app = setup();
 		app.client.setData(
 			app.backend.issueQuery,
@@ -292,7 +294,7 @@ describe("QueryDevtoolsPanel", () => {
 	});
 
 	it("needs a client from props or a provider", async () => {
-		useCleanup();
+		using _dom = domCleanup();
 		vi.spyOn(console, "error").mockImplementation(() => {});
 		await expect(mount(<QueryDevtoolsPanel />)).rejects.toThrow(
 			"pass `client` or render inside a QueryClientProvider",
@@ -308,7 +310,7 @@ describe("QueryDevtoolsPanel", () => {
 
 describe("QueryDevtools", () => {
 	it("opens from the toggle button, closes, and remembers", async () => {
-		useCleanup();
+		using _dom = domCleanup();
 		const client = new QueryClient({ isServer: false });
 		const view = await mount(<QueryDevtools client={client} />);
 
@@ -335,7 +337,7 @@ describe("QueryDevtools", () => {
 	});
 
 	it("starts open with initialIsOpen, docked where asked", async () => {
-		useCleanup();
+		using _dom = domCleanup();
 		const client = new QueryClient({ isServer: false });
 		await mount(
 			<QueryDevtools client={client} initialIsOpen position="right" />,
@@ -347,7 +349,7 @@ describe("QueryDevtools", () => {
 	});
 
 	it("resizes by dragging its edge, and remembers the size", async () => {
-		useCleanup();
+		using _dom = domCleanup();
 		const client = new QueryClient({ isServer: false });
 		await mount(<QueryDevtools client={client} initialIsOpen />);
 		const handle = screen.getByRole("separator", {
@@ -374,11 +376,13 @@ describe("production builds", () => {
 	it("render nothing from the default entry", async () => {
 		vi.stubEnv("NODE_ENV", "production");
 		vi.resetModules();
-		onTestFinished(() => {
-			vi.unstubAllEnvs();
-			vi.resetModules();
-			cleanup();
-		});
+		using _production = {
+			[Symbol.dispose]() {
+				vi.unstubAllEnvs();
+				vi.resetModules();
+				cleanup();
+			},
+		};
 		const entry = await import("./devtools.tsx");
 		const client = new QueryClient({ isServer: false });
 

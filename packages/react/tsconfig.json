@@ -10,7 +10,7 @@
 		"rewriteRelativeImportExtensions": true,
 		"skipLibCheck": true,
 		"strict": true,
-		"lib": ["ES2024", "DOM", "DOM.Iterable"],
+		"lib": ["ES2024", "ESNext.Disposable", "DOM", "DOM.Iterable"],
 		"target": "ES2024"
 	},
 	"include": ["src", "scripts"],

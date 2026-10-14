@@ -1,21 +1,18 @@
-import {
-	describe,
-	expect,
-	expectTypeOf,
-	it,
-	onTestFinished,
-	vi,
-} from "@effect/vitest";
+import { describe, expect, expectTypeOf, it, vi } from "@effect/vitest";
 import { Context, Effect, Layer, Schedule } from "effect";
 
 import { dehydrate, Query, QueryClient, queryOptions } from "./index.ts";
 import { createBackend, flush } from "./test-utils.ts";
 
-function useFakeTimers(options?: Parameters<typeof vi.useFakeTimers>[0]) {
+function fakeTimers(
+	options?: Parameters<typeof vi.useFakeTimers>[0],
+): Disposable {
 	vi.useFakeTimers(options);
-	onTestFinished(() => {
-		vi.useRealTimers();
-	});
+	return {
+		[Symbol.dispose]() {
+			vi.useRealTimers();
+		},
+	};
 }
 
 describe("prefetch", () => {
@@ -39,7 +36,7 @@ describe("prefetch", () => {
 			defaults: { staleTime: 1000 },
 			isServer: false,
 		});
-		useFakeTimers({ toFake: ["Date"] });
+		using _timers = fakeTimers({ toFake: ["Date"] });
 
 		qc.prefetch(backend.issueQuery, { id: 1 });
 		backend.respondAll();
@@ -521,7 +518,7 @@ describe("subscriptions", () => {
 	});
 
 	it("mark a read entry stale when its staleTime passes", async () => {
-		useFakeTimers();
+		using _timers = fakeTimers();
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(() =>
 			queryOptions({ queryFn: () => 1, queryKey: ["n"], staleTime: 100 }),
@@ -782,7 +779,7 @@ describe("retry", () => {
 	});
 
 	it("backs off exponentially by default", async () => {
-		useFakeTimers();
+		using _timers = fakeTimers();
 		let calls = 0;
 		const qc = new QueryClient({ isServer: false });
 		const result = qc.fetch(() =>
@@ -804,7 +801,7 @@ describe("retry", () => {
 	});
 
 	it("waits retryDelay(failureCount, error) between attempts", async () => {
-		useFakeTimers();
+		using _timers = fakeTimers();
 		const retryDelay = vi.fn((failureCount: number) => failureCount * 100);
 		let calls = 0;
 		const qc = new QueryClient({ isServer: false });
@@ -884,7 +881,7 @@ describe("retry", () => {
 		}
 
 		it("waits for the browser to come back online before retrying", async () => {
-			useFakeTimers();
+			using _timers = fakeTimers();
 			const browser = goOffline();
 			const queryFn = failingOnce();
 			const qc = new QueryClient({ isServer: false });
@@ -909,7 +906,7 @@ describe("retry", () => {
 		});
 
 		it("still waits for the retry delay", async () => {
-			useFakeTimers();
+			using _timers = fakeTimers();
 			const browser = goOffline();
 			const queryFn = failingOnce();
 			const qc = new QueryClient({ isServer: false });
@@ -927,7 +924,7 @@ describe("retry", () => {
 		});
 
 		it("pauses Schedule retries too", async () => {
-			useFakeTimers();
+			using _timers = fakeTimers();
 			const browser = goOffline();
 			const queryFn = failingOnce();
 			const qc = new QueryClient({ isServer: false });
@@ -948,7 +945,7 @@ describe("retry", () => {
 		});
 
 		it("stops waiting when the query is removed", async () => {
-			useFakeTimers();
+			using _timers = fakeTimers();
 			const browser = goOffline();
 			const removeListener = vi.spyOn(browser.target, "removeEventListener");
 			const queryFn = vi.fn(() => Promise.reject(new Error("down")));
@@ -1051,7 +1048,7 @@ describe("Effect queryFn", () => {
 
 describe("garbage collection", () => {
 	it("removes unread entries after gcTime", async () => {
-		useFakeTimers();
+		using _timers = fakeTimers();
 		const backend = createBackend();
 		const qc = new QueryClient({ defaults: { gcTime: 50 }, isServer: false });
 		const query = qc.getQuery(backend.issueQuery, { id: 1 });
@@ -1068,7 +1065,7 @@ describe("garbage collection", () => {
 	});
 
 	it("keeps everything on the server", async () => {
-		useFakeTimers();
+		using _timers = fakeTimers();
 		const qc = new QueryClient({ isServer: true });
 		await qc.fetch(() => queryOptions({ queryFn: () => 1, queryKey: ["n"] }));
 
