@@ -24,6 +24,7 @@
 	},
 	"devDependencies": {
 		"@babel/core": "7.29.7",
+		"@effect/platform-node": "catalog:",
 		"@effect/vitest": "catalog:",
 		"@rolldown/plugin-babel": "0.2.4",
 		"@shikijs/rehype": "4.5.0",

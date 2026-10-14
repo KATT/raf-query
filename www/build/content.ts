@@ -1,19 +1,18 @@
-import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import path from "node:path";
-
-import { Schema } from "effect";
+import { NodeServices } from "@effect/platform-node";
+import { Effect, FileSystem, Path, Schema } from "effect";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import type { Connect, Plugin } from "vite";
 import { removeTwoslashNotations } from "twoslash/fallback";
 import { parse as parseYaml } from "yaml";
 
 import type { Doc, DocMeta, DocSection } from "../src/content/types.ts";
+import { ContentError, messageOf } from "./content-error.ts";
 import { generateRouteTrees } from "./example-apps.ts";
 import { renderMarkdown } from "./markdown.ts";
 import { expandSnippets } from "./snippets.ts";
 
 export interface ContentOptions {
-	/** Directory of the `.md` pages. */
+	/** Directory of the `.md` pages, as an absolute path. */
 	readonly contentDir: string;
 	/** Directory with one `<id>.tsx` per demo. */
 	readonly demosDir: string;
@@ -37,7 +36,7 @@ const Frontmatter = Schema.Struct({
 
 type Frontmatter = typeof Frontmatter.Type;
 
-const decodeFrontmatter = Schema.decodeUnknownSync(Frontmatter);
+const decodeFrontmatter = Schema.decodeUnknownEffect(Frontmatter);
 
 interface Source {
 	readonly file: string;
@@ -65,18 +64,28 @@ function withTypes(code: string, types: ReadonlyArray<string>) {
 const manifestId = "virtual:docs-manifest";
 const resolvedManifestId = `\0${manifestId}`;
 
-function parseSource(contentDir: string, file: string, raw: string): Source {
+const parseSource = Effect.fn("parseSource")(function* (
+	contentDir: string,
+	file: string,
+	raw: string,
+) {
+	const path = yield* Path.Path;
 	const match = /^---\n([\s\S]*?)\n---\n/.exec(raw);
 	if (!match?.[1]) {
-		throw new Error(`${file}: missing frontmatter`);
+		return yield* new ContentError({ message: `${file}: missing frontmatter` });
 	}
-	let frontmatter: Frontmatter;
-	try {
-		frontmatter = decodeFrontmatter(parseYaml(match[1]));
-	} catch (error) {
-		throw new Error(`${file}: invalid frontmatter`, { cause: error });
-	}
-	const expanded = expandSnippets(raw.slice(match[0].length), {
+	const yaml = match[1];
+	const frontmatter = yield* Effect.try(() => parseYaml(yaml)).pipe(
+		Effect.flatMap(decodeFrontmatter),
+		Effect.mapError(
+			(cause) =>
+				new ContentError({
+					cause,
+					message: `${file}: invalid frontmatter: ${messageOf(cause)}`,
+				}),
+		),
+	);
+	const expanded = yield* expandSnippets(raw.slice(match[0].length), {
 		file,
 		root: contentDir,
 	});
@@ -86,44 +95,61 @@ function parseSource(contentDir: string, file: string, raw: string): Source {
 		markdown: expanded.markdown,
 		slug: path.basename(file, ".md"),
 		snippets: expanded.files,
-	};
-}
+	} satisfies Source;
+});
 
-function lastModified(file: string) {
-	try {
-		const date = execFileSync(
-			"git",
-			["log", "-1", "--format=%cI", "--", file],
-			{
+/** When `file` last changed in git, if it's committed. */
+const lastModified = Effect.fn("lastModified")(
+	function* (file: string) {
+		const path = yield* Path.Path;
+		const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+		const date = yield* spawner.string(
+			ChildProcess.make("git", ["log", "-1", "--format=%cI", "--", file], {
 				cwd: path.dirname(file),
-				encoding: "utf8",
-				stdio: ["ignore", "pipe", "ignore"],
-			},
-		).trim();
-		return date || undefined;
-	} catch {
-		return undefined;
-	}
-}
+				stderr: "ignore",
+			}),
+		);
+		return date.trim() || undefined;
+	},
+	Effect.orElseSucceed(() => undefined),
+);
 
-export function readSources(contentDir: string): ReadonlyArray<Source> {
-	return (
-		readdirSync(contentDir)
+export const readSources = Effect.fn("readSources")(function* (
+	contentDir: string,
+) {
+	const fs = yield* FileSystem.FileSystem;
+	const path = yield* Path.Path;
+	const names = yield* fs.readDirectory(contentDir);
+	return yield* Effect.forEach(
+		names
 			// `_name.md` files are page fragments (the home page's code), not pages.
-			.filter((name) => name.endsWith(".md") && !name.startsWith("_"))
-			.map((name) => {
-				const file = path.join(contentDir, name);
-				return parseSource(contentDir, file, readFileSync(file, "utf8"));
-			})
+			.filter((name) => name.endsWith(".md") && !name.startsWith("_")),
+		(name) => {
+			const file = path.join(contentDir, name);
+			return Effect.flatMap(fs.readFileString(file), (raw) =>
+				parseSource(contentDir, file, raw),
+			);
+		},
+		{ concurrency: "unbounded" },
 	);
-}
+});
 
 /** Page paths for prerendering and the sitemap. */
-export function docPages(contentDir: string) {
-	return readSources(contentDir).map((source) => ({
-		lastModified: lastModified(source.file),
-		path: `/docs/${source.slug}`,
-	}));
+export const docPages = Effect.fn("docPages")(function* (contentDir: string) {
+	return yield* Effect.forEach(
+		yield* readSources(contentDir),
+		(source) =>
+			Effect.map(lastModified(source.file), (date) => ({
+				lastModified: date,
+				path: `/docs/${source.slug}`,
+			})),
+		{ concurrency: "unbounded" },
+	);
+});
+
+/** Runs a build step from one of Vite's hooks. */
+function run<A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) {
+	return Effect.runPromise(Effect.provide(effect, NodeServices.layer));
 }
 
 /**
@@ -134,42 +160,55 @@ export function docPages(contentDir: string) {
  * markdown source at `/docs/<slug>.md`.
  */
 export function docsContent(options: ContentOptions): Plugin {
-	const contentDir = path.resolve(options.contentDir);
+	const { contentDir } = options;
 	const rendered = new Map<string, Promise<Doc>>();
 	/** Each page's `twoslash` types, by file, for its markdown. */
 	const typeQueries = new Map<string, ReadonlyArray<ReadonlyArray<string>>>();
+
+	const renderDoc = Effect.fn("renderDoc")(function* (source: Source) {
+		const fs = yield* FileSystem.FileSystem;
+		const path = yield* Path.Path;
+		const result = yield* renderMarkdown(source.markdown, { contentDir }).pipe(
+			Effect.mapError(
+				(error) =>
+					new ContentError({
+						cause: error,
+						message: `${source.file}: ${error.message}`,
+					}),
+			),
+		);
+		for (const id of result.demos) {
+			if (!(yield* fs.exists(path.join(options.demosDir, `${id}.tsx`)))) {
+				return yield* new ContentError({
+					message: `${source.file}: unknown demo "${id}"`,
+				});
+			}
+		}
+		typeQueries.set(source.file, result.typeQueries);
+		return {
+			demos: result.demos,
+			description: source.frontmatter.description,
+			headings: result.headings,
+			lastModified: yield* lastModified(source.file),
+			section: source.frontmatter.section,
+			segments: result.segments,
+			slug: source.slug,
+			title: source.frontmatter.title,
+		} satisfies Doc;
+	});
 
 	function render(source: Source): Promise<Doc> {
 		const cached = rendered.get(source.file);
 		if (cached) {
 			return cached;
 		}
-		const doc = renderMarkdown(source.markdown, {
-			contentDir,
-		}).then((result) => {
-			for (const id of result.demos) {
-				if (!existsSync(path.join(options.demosDir, `${id}.tsx`))) {
-					throw new Error(`${source.file}: unknown demo "${id}"`);
-				}
-			}
-			typeQueries.set(source.file, result.typeQueries);
-			return {
-				demos: result.demos,
-				description: source.frontmatter.description,
-				headings: result.headings,
-				lastModified: lastModified(source.file),
-				section: source.frontmatter.section,
-				segments: result.segments,
-				slug: source.slug,
-				title: source.frontmatter.title,
-			};
-		});
+		const doc = run(renderDoc(source));
 		rendered.set(source.file, doc);
 		return doc;
 	}
 
 	async function manifest(): Promise<ReadonlyArray<DocSection>> {
-		const sources = readSources(contentDir);
+		const sources = await run(readSources(contentDir));
 		for (const source of sources) {
 			if (!options.sections.includes(source.frontmatter.section)) {
 				throw new Error(
@@ -279,7 +318,10 @@ export function docsContent(options: ContentOptions): Plugin {
 	async function agentFiles() {
 		const sections = await manifest();
 		const sources = new Map(
-			readSources(contentDir).map((source) => [source.slug, source]),
+			(await run(readSources(contentDir))).map((source) => [
+				source.slug,
+				source,
+			]),
 		);
 		const pages = sections
 			.flatMap((section) => section.docs)
@@ -350,7 +392,7 @@ export function docsContent(options: ContentOptions): Plugin {
 
 	return {
 		async buildStart() {
-			routeTrees ??= generateRouteTrees(contentDir);
+			routeTrees ??= run(generateRouteTrees(contentDir));
 			await routeTrees;
 		},
 		configurePreviewServer: serveAgentFiles,
@@ -392,7 +434,7 @@ export function docsContent(options: ContentOptions): Plugin {
 			if (!file.startsWith(contentDir) || !file.endsWith(".md")) {
 				return undefined;
 			}
-			const source = parseSource(contentDir, file, code);
+			const source = await run(parseSource(contentDir, file, code));
 			for (const snippet of source.snippets) {
 				this.addWatchFile(snippet);
 			}

@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
+import { Effect, FileSystem, Path } from "effect";
 
-import { appOf } from "./example-apps.ts";
+import { ContentError } from "./content-error.ts";
+import { appOf, exampleApps } from "./example-apps.ts";
 
 export interface ExpandedSnippets {
 	/** Every file the page includes, for the dev server to watch. */
@@ -35,11 +35,11 @@ interface Line {
  * `// ^?` outside the region too, so a file can hold several regions with
  * their own queries.
  */
-function markRegion(
+const markRegion = Effect.fn("markRegion")(function* (
 	code: string,
 	region: string | undefined,
 	file: string,
-): ReadonlyArray<Line> {
+) {
 	const lines: Array<Line> = [];
 	const open: Array<string> = [];
 	let found = !region;
@@ -60,19 +60,23 @@ function markRegion(
 		}
 		const closed = open.pop();
 		if (closed === undefined || (name && name !== closed)) {
-			throw new Error(
-				`${file}:${index + 1}: "// #endregion ${name}" doesn't close a region`,
-			);
+			return yield* new ContentError({
+				message: `${file}:${index + 1}: "// #endregion ${name}" doesn't close a region`,
+			});
 		}
 	}
 	if (!found) {
-		throw new Error(`${file}: no "// #region ${region}"`);
+		return yield* new ContentError({
+			message: `${file}: no "// #region ${region}"`,
+		});
 	}
 	if (open.length) {
-		throw new Error(`${file}: "// #region ${open.join(", ")}" isn't closed`);
+		return yield* new ContentError({
+			message: `${file}: "// #region ${open.join(", ")}" isn't closed`,
+		});
 	}
 	return lines;
-}
+});
 
 /**
  * The block's code: hidden runs of lines go between `// ---cut-start---`
@@ -112,7 +116,7 @@ function twoslashCode(lines: ReadonlyArray<Line>, filename: string) {
  * app, so `src/file.tsx` here; `[title]` after the path replaces it, and
  * `[]` leaves it out.
  */
-export function expandSnippets(
+export const expandSnippets = Effect.fn("expandSnippets")(function* (
 	markdown: string,
 	options: {
 		/** The page's `.md` file. */
@@ -120,41 +124,52 @@ export function expandSnippets(
 		/** The content dir, which holds the example apps. */
 		readonly root: string;
 	},
-): ExpandedSnippets {
+) {
+	const fs = yield* FileSystem.FileSystem;
+	const path = yield* Path.Path;
+	const toPosix = (file: string) => file.split(path.sep).join("/");
+	const apps = yield* exampleApps(options.root);
 	const files: Array<string> = [];
-	const expanded = markdown.replaceAll(
-		includeLine,
-		(_line, relative: string, region?: string, title?: string) => {
-			const file = path.resolve(path.dirname(options.file), relative);
-			const lang = path.extname(file).slice(1);
-			if (lang !== "ts" && lang !== "tsx") {
-				throw new Error(
-					`${options.file}: can only include .ts and .tsx files, not ${relative}`,
-				);
-			}
-			const app = appOf(file, options.root);
-			if (!app) {
-				throw new Error(
-					`${options.file}: ${relative} isn't in an example app (a folder in content/ with a tsconfig.json)`,
-				);
-			}
-			files.push(file);
-			const lines = markRegion(readFileSync(file, "utf8"), region, file);
-			const shownTitle =
-				title ?? path.relative(app, file).split(path.sep).join("/");
-			// Twoslash empties a block's files once it's done, so the block gets a
-			// name of its own next to the file: other blocks importing the file
-			// still read it from disk.
-			const virtualPath = path
-				.relative(
-					options.root,
-					`${file.slice(0, -lang.length - 1)}.${region ?? "file"}.twoslash.${lang}`,
-				)
-				.split(path.sep)
-				.join("/");
-			const meta = shownTitle ? ` title="${shownTitle}"` : "";
-			return `\`\`\`${lang} twoslash${meta}\n${twoslashCode(lines, virtualPath)}\n\`\`\``;
-		},
-	);
-	return { files, markdown: expanded };
-}
+	const parts: Array<string> = [];
+	let end = 0;
+	for (const match of markdown.matchAll(includeLine)) {
+		const [line, relative = "", region, title] = match;
+		const file = path.resolve(path.dirname(options.file), relative);
+		const lang = path.extname(file).slice(1);
+		if (lang !== "ts" && lang !== "tsx") {
+			return yield* new ContentError({
+				message: `${options.file}: can only include .ts and .tsx files, not ${relative}`,
+			});
+		}
+		const app = appOf(path, file, apps);
+		if (!app) {
+			return yield* new ContentError({
+				message: `${options.file}: ${relative} isn't in an example app (a folder in content/ with a tsconfig.json)`,
+			});
+		}
+		files.push(file);
+		const lines = yield* markRegion(
+			yield* fs.readFileString(file),
+			region,
+			file,
+		);
+		const shownTitle = title ?? toPosix(path.relative(app, file));
+		// Twoslash empties a block's files once it's done, so the block gets a
+		// name of its own next to the file: other blocks importing the file
+		// still read it from disk.
+		const virtualPath = toPosix(
+			path.relative(
+				options.root,
+				`${file.slice(0, -lang.length - 1)}.${region ?? "file"}.twoslash.${lang}`,
+			),
+		);
+		const meta = shownTitle ? ` title="${shownTitle}"` : "";
+		parts.push(
+			markdown.slice(end, match.index),
+			`\`\`\`${lang} twoslash${meta}\n${twoslashCode(lines, virtualPath)}\n\`\`\``,
+		);
+		end = match.index + line.length;
+	}
+	parts.push(markdown.slice(end));
+	return { files, markdown: parts.join("") } satisfies ExpandedSnippets;
+});

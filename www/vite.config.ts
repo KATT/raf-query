@@ -1,7 +1,9 @@
+import { NodeServices } from "@effect/platform-node";
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import { Effect } from "effect";
 import { defineConfig } from "vite";
 
 import { docPages, docsContent } from "./build/content.ts";
@@ -9,6 +11,9 @@ import { sections, site } from "./src/site.ts";
 
 const contentDir = new URL("content", import.meta.url).pathname;
 const demosDir = new URL("src/demos", import.meta.url).pathname;
+const pages = await Effect.runPromise(
+	docPages(contentDir).pipe(Effect.provide(NodeServices.layer)),
+);
 
 export default defineConfig({
 	plugins: [
@@ -23,7 +28,7 @@ export default defineConfig({
 		tanstackStart({
 			pages: [
 				{ path: "/", sitemap: { changefreq: "weekly", priority: 1 } },
-				...docPages(contentDir).map((page) => ({
+				...pages.map((page) => ({
 					path: page.path,
 					sitemap: {
 						changefreq: "weekly" as const,

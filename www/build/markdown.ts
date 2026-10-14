@@ -1,13 +1,10 @@
-import { existsSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-
 import rehypeShiki from "@shikijs/rehype";
 import {
 	createTransformerFactory,
 	rendererRich,
 	type TwoslashShikiFunction,
 } from "@shikijs/twoslash/core";
+import { Effect, FileSystem, Path } from "effect";
 import GithubSlugger from "github-slugger";
 import type { Element, ElementContent, Root as HastRoot } from "hast";
 import { toHtml } from "hast-util-to-html";
@@ -32,7 +29,8 @@ import { unified } from "unified";
 import { visit } from "unist-util-visit";
 
 import type { DocHeading, DocSegment } from "../src/content/types.ts";
-import { appOf } from "./example-apps.ts";
+import { ContentError, messageOf } from "./content-error.ts";
+import { appOf, exampleApps } from "./example-apps.ts";
 
 export interface RenderedMarkdown {
 	readonly demos: ReadonlyArray<string>;
@@ -254,8 +252,6 @@ function toSegments(tree: HastRoot): Array<DocSegment> {
 	return segments;
 }
 
-const twoslashTransformers = new Map<string, ShikiTransformer>();
-
 interface Project {
 	readonly compilerOptions: ts.CompilerOptions;
 	/**
@@ -265,33 +261,53 @@ interface Project {
 	readonly extraFiles: Record<string, string>;
 }
 
-/** An example app's `tsconfig.json`, or the options for the pages' inline blocks. */
-function project(root: string): Project {
-	const file = path.join(root, "tsconfig.json");
-	if (existsSync(file)) {
-		const parsed = ts.getParsedCommandLineOfConfigFile(file, undefined, {
-			...ts.sys,
-			onUnRecoverableConfigFileDiagnostic: (diagnostic) => {
-				throw new Error(
-					`${file}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")}`,
-				);
-			},
-		});
-		if (!parsed || parsed.errors.length) {
-			throw new Error(`${file}: invalid tsconfig`);
-		}
-		return {
-			compilerOptions: parsed.options,
-			extraFiles: Object.fromEntries(
-				parsed.fileNames.map((name) => [
-					path.relative(root, name).split(path.sep).join("/"),
-					readFileSync(name, "utf8"),
-				]),
-			),
-		};
-	}
-	return { compilerOptions: inlineCompilerOptions, extraFiles: {} };
+function flatten(diagnostic: ts.Diagnostic) {
+	return ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
 }
+
+/**
+ * An example app's `tsconfig.json` and the files it includes, read for each
+ * render, so a block sees edits to the rest of its app.
+ */
+const loadProject = Effect.fn("loadProject")(function* (app: string) {
+	const fs = yield* FileSystem.FileSystem;
+	const path = yield* Path.Path;
+	const file = path.join(app, "tsconfig.json");
+	// TypeScript resolves `extends` and `include` itself, through `ts.sys`.
+	const parsed = yield* Effect.try({
+		catch: (cause) =>
+			new ContentError({ cause, message: `${file}: ${messageOf(cause)}` }),
+		try: () =>
+			ts.getParsedCommandLineOfConfigFile(file, undefined, {
+				...ts.sys,
+				onUnRecoverableConfigFileDiagnostic: (diagnostic) => {
+					throw new Error(flatten(diagnostic));
+				},
+			}),
+	});
+	if (!parsed || parsed.errors.length) {
+		return yield* new ContentError({
+			message: `${file}: ${parsed?.errors.map(flatten).join("\n") ?? "invalid tsconfig"}`,
+		});
+	}
+	const extraFiles = yield* Effect.forEach(
+		parsed.fileNames,
+		(name) =>
+			Effect.map(
+				fs.readFileString(name),
+				(contents) =>
+					[
+						path.relative(app, name).split(path.sep).join("/"),
+						contents,
+					] as const,
+			),
+		{ concurrency: "unbounded" },
+	);
+	return {
+		compilerOptions: parsed.options,
+		extraFiles: Object.fromEntries(extraFiles),
+	} satisfies Project;
+});
 
 const inlineCompilerOptions: ts.CompilerOptions = {
 	allowImportingTsExtensions: true,
@@ -308,6 +324,25 @@ const inlineCompilerOptions: ts.CompilerOptions = {
 	types: [],
 };
 
+/** A twoslasher per project root; each keeps a TypeScript environment per set of compiler options. */
+const twoslashers = new Map<string, TwoslashShikiFunction>();
+
+function twoslasherFor(root: string, tsLibDirectory: string) {
+	let twoslasher = twoslashers.get(root);
+	if (!twoslasher) {
+		twoslasher = createTwoslasher({
+			tsLibDirectory,
+			// @ts-expect-error -- twoslash types `tsModule` as the `typescript` package, which here is TypeScript 7's, with no JavaScript API
+			tsModule: ts,
+			vfsRoot: root,
+		});
+		twoslashers.set(root, twoslasher);
+	}
+	return twoslasher;
+}
+
+const blockFilename = /^\/\/ @filename: (.+)$/m;
+
 /**
  * Fences with `twoslash` in their meta are compiled, so hovering a name shows
  * its type, `// ^?` pins a type under the line, and `// @errors: 2345` shows
@@ -317,59 +352,66 @@ const inlineCompilerOptions: ts.CompilerOptions = {
  * blocks resolve imports from the content dir, where a hidden setup above
  * `// ---cut---` can import from `content/_twoslash.ts`.
  */
-function twoslashTransformer(contentDir: string) {
-	const cached = twoslashTransformers.get(contentDir);
-	if (cached) {
-		return cached;
-	}
-	const twoslashers = new Map<string, TwoslashShikiFunction>();
-	function twoslasherFor(root: string) {
-		let twoslasher = twoslashers.get(root);
-		if (!twoslasher) {
-			twoslasher = createTwoslasher({
-				...project(root),
-				tsLibDirectory: path.dirname(
-					fileURLToPath(import.meta.resolve("typescript6")),
-				),
-				// @ts-expect-error -- twoslash types `tsModule` as the `typescript` package, which here is TypeScript 7's, with no JavaScript API
-				tsModule: ts,
-				vfsRoot: root,
-			});
-			twoslashers.set(root, twoslasher);
-		}
-		return twoslasher;
-	}
+const twoslashTransformer = Effect.fn("twoslashTransformer")(function* (
+	markdown: string,
+	contentDir: string,
+) {
+	const path = yield* Path.Path;
+	const apps = yield* exampleApps(contentDir);
+	const appOfBlock = (filename: string) =>
+		appOf(path, path.join(contentDir, filename), apps);
+	const used = new Set(
+		Array.from(
+			markdown.matchAll(new RegExp(blockFilename.source, "gm")),
+			(match) => appOfBlock(match[1] ?? ""),
+		).filter((app) => app !== undefined),
+	);
+	const projects = new Map(
+		yield* Effect.forEach(
+			used,
+			(app) =>
+				Effect.map(loadProject(app), (project) => [app, project] as const),
+			{ concurrency: "unbounded" },
+		),
+	);
+	const tsLibDirectory = path.dirname(
+		yield* path.fromFileUrl(new URL(import.meta.resolve("typescript6"))),
+	);
 	const twoslasher: TwoslashShikiFunction = (code, lang, options) => {
-		const filename = /^\/\/ @filename: (.+)$/m.exec(code);
-		const file = filename?.[1] && path.join(contentDir, filename[1]);
-		const app = file && appOf(file, contentDir);
-		if (!filename || !file || !app) {
-			return twoslasherFor(contentDir)(code, lang, options);
+		const filename = blockFilename.exec(code);
+		const app = filename?.[1] && appOfBlock(filename[1]);
+		const project = app && projects.get(app);
+		if (!filename?.[1] || !app || !project) {
+			return twoslasherFor(contentDir, tsLibDirectory)(code, lang, {
+				...options,
+				compilerOptions: inlineCompilerOptions,
+			});
 		}
-		const inApp = path.relative(app, file).split(path.sep).join("/");
-		return twoslasherFor(app)(
+		const inApp = path
+			.relative(app, path.join(contentDir, filename[1]))
+			.split(path.sep)
+			.join("/");
+		return twoslasherFor(app, tsLibDirectory)(
 			code.replace(filename[0], `// @filename: ${inApp}`),
 			lang,
-			options,
+			{ ...options, ...project },
 		);
 	};
-	const transformer = createTransformerFactory(
+	return createTransformerFactory(
 		twoslasher,
 		rendererRich({ queryRendering: "line" }),
 	)({ explicitTrigger: true });
-	twoslashTransformers.set(contentDir, transformer);
-	return transformer;
-}
+});
 
 export interface RenderOptions {
 	/** The content dir, which holds the example apps. */
 	readonly contentDir: string;
 }
 
-export async function renderMarkdown(
+export const renderMarkdown = Effect.fn("renderMarkdown")(function* (
 	markdown: string,
 	options: RenderOptions,
-): Promise<RenderedMarkdown> {
+) {
 	const headings: Array<DocHeading> = [];
 	const demos: Array<string> = [];
 	const typeQueries: Array<ReadonlyArray<string>> = [];
@@ -387,7 +429,7 @@ export async function renderMarkdown(
 			defaultColor: false,
 			themes: { dark: "github-dark", light: "github-light" },
 			transformers: [
-				twoslashTransformer(options.contentDir),
+				yield* twoslashTransformer(markdown, options.contentDir),
 				codeMeta,
 				{
 					name: "raf-query-docs:type-queries",
@@ -405,12 +447,15 @@ export async function renderMarkdown(
 			],
 		})
 		.use(rehypeCodeBlocks);
-	const tree = await processor.run(processor.parse(markdown));
+	const tree = yield* Effect.tryPromise({
+		catch: (cause) => new ContentError({ cause, message: messageOf(cause) }),
+		try: async () => processor.run(processor.parse(markdown)),
+	});
 	return {
 		demos,
 		headings,
 		segments: toSegments(tree),
 		text: toString(tree),
 		typeQueries,
-	};
-}
+	} satisfies RenderedMarkdown;
+});

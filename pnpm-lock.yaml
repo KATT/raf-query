@@ -825,6 +825,9 @@ importers:
       '@babel/core':
         specifier: 7.29.7
         version: 7.29.7
+      '@effect/platform-node':
+        specifier: 'catalog:'
+        version: 4.0.1(effect@4.0.1)(redis@6.3.0)
       '@effect/vitest':
         specifier: 'catalog:'
         version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
