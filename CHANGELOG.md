@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.6.6](https://github.com/KATT/raf-query/compare/0.6.5...0.6.6) (2026-10-14)
+
+- build on Vercel when the last deployed commit is gone (1/2) ([#88](https://github.com/KATT/raf-query/issues/88)) ([33737ca](https://github.com/KATT/raf-query/commit/33737ca7ead288c35f3d60d063bcee69d07b0491)), references [#80](https://github.com/KATT/raf-query/issues/80) [#84](https://github.com/KATT/raf-query/issues/84) [#85](https://github.com/KATT/raf-query/issues/85) [#84](https://github.com/KATT/raf-query/issues/84)
+- clean up with `using` instead of onTestFinished, and lint for it (2/2) ([#84](https://github.com/KATT/raf-query/issues/84)) ([731b0f3](https://github.com/KATT/raf-query/commit/731b0f3aec9f3e3cf2988788ca5203e92f0a0da8)), references [#79](https://github.com/KATT/raf-query/issues/79)
+
 ## [0.6.5](https://github.com/KATT/raf-query/compare/0.6.4...0.6.5) (2026-10-14)
 
 - run the starting queries demo on TanStack Router, with Reload per variant and Vitest tests (1/2) ([#79](https://github.com/KATT/raf-query/issues/79)) ([ae8b1eb](https://github.com/KATT/raf-query/commit/ae8b1eb4907238d5a228554ae5d5702a1078132d)), references [#73](https://github.com/KATT/raf-query/issues/73) [#84](https://github.com/KATT/raf-query/issues/84)
