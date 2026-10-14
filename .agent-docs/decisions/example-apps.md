@@ -12,7 +12,7 @@ App scope, small enough to read in one sitting, covering every documented featur
 | Screen / action                               | Exercises                                                                                                    |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Issue list with status filter and sort in URL | search params → loader → paged `prefetch`, infinite scroll, `whilePending: "previous"`, `isPrevious` dimming |
-| Issue detail                                  | `ensure` (blocking) + keyed Suspense skeleton when switching issues                                          |
+| Issue detail                                  | `prefetch` + skeletons. The route opens at once; title, body, and status suspend                             |
 | Comments under an issue                       | paged `useQuery`, streamed `prefetch`, infinite scroll                                                       |
 | Assignee card                                 | Loader / server component: `prefetch` the issue's assignee beside the issue                                  |
 | Inline edit title/body; change status in list | form Actions / transitions + `useOptimistic` + `await qc.invalidate`                                         |
