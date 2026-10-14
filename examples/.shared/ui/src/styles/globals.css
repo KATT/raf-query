@@ -4,18 +4,19 @@
 /* Scan the shared components, wherever the app's Tailwind entry lives. */
 @source "../components";
 
-@custom-variant dark (@media (prefers-color-scheme: dark));
-
 /*
- * Brand colors, the same stops as the logo's gradient: tRPC's blue blended
- * through violet into TanStack Query's coral, with its amber on the side.
- * Text on a tint of one uses its `-ink` shade, which flips in dark mode.
+ * A `dark` or `light` class on <html> picks the theme. Without either, the
+ * page follows the system setting.
  */
-@theme {
-	--color-brand-blue: oklch(0.641 0.16 253.5);
-	--color-brand-violet: oklch(0.598 0.23 285.9);
-	--color-brand-coral: oklch(0.679 0.213 14.7);
-	--color-brand-amber: oklch(0.824 0.149 73.3);
+@custom-variant dark {
+	&:where(.dark, .dark *) {
+		@slot;
+	}
+	@media (prefers-color-scheme: dark) {
+		&:where(:root:not(.light), :root:not(.light) *) {
+			@slot;
+		}
+	}
 }
 
 @theme inline {
@@ -37,84 +38,54 @@
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
-	--color-brand-blue-ink: var(--brand-blue-ink);
-	--color-brand-violet-ink: var(--brand-violet-ink);
-	--color-brand-coral-ink: var(--brand-coral-ink);
-	--color-brand-amber-ink: var(--brand-amber-ink);
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);
 	--radius-lg: var(--radius);
 	--radius-xl: calc(var(--radius) + 4px);
 }
 
-@utility bg-brand-gradient {
-	background-image: linear-gradient(
-		135deg,
-		var(--color-brand-blue),
-		var(--color-brand-violet),
-		var(--color-brand-coral)
-	);
-}
-
+/*
+ * Neutral grays with a trace of the brand's violet (hue 286). Violet itself,
+ * the middle of the logo's blue-to-coral gradient, is only the primary and
+ * the focus ring.
+ */
 :root {
+	color-scheme: light dark;
 	--radius: 0.625rem;
-	--background: oklch(0.985 0.004 286);
-	--foreground: oklch(0.21 0.03 286);
-	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.21 0.03 286);
-	--popover: oklch(1 0 0);
-	--popover-foreground: oklch(0.21 0.03 286);
-	--primary: oklch(0.54 0.23 286);
-	--primary-foreground: oklch(0.99 0.005 286);
-	--secondary: oklch(0.95 0.025 286);
-	--secondary-foreground: oklch(0.4 0.15 286);
-	--muted: oklch(0.96 0.008 286);
-	--muted-foreground: oklch(0.5 0.025 286);
-	--accent: oklch(0.95 0.03 286);
-	--accent-foreground: oklch(0.42 0.17 286);
-	--destructive: oklch(0.58 0.22 20);
-	--border: oklch(0.91 0.012 286);
-	--input: oklch(0.89 0.015 286);
-	--ring: oklch(0.6 0.2 286);
-	--brand-blue-ink: oklch(0.48 0.15 255);
-	--brand-violet-ink: oklch(0.47 0.21 287);
-	--brand-coral-ink: oklch(0.52 0.2 17);
-	--brand-amber-ink: oklch(0.5 0.12 60);
+	--background: light-dark(oklch(1 0 0), oklch(0.145 0.006 286));
+	--foreground: light-dark(oklch(0.18 0.012 286), oklch(0.97 0.002 286));
+	--card: light-dark(oklch(1 0 0), oklch(0.185 0.008 286));
+	--card-foreground: var(--foreground);
+	--popover: var(--card);
+	--popover-foreground: var(--foreground);
+	--primary: light-dark(oklch(0.54 0.23 286), oklch(0.7 0.16 286));
+	--primary-foreground: light-dark(oklch(0.99 0 0), oklch(0.15 0.02 286));
+	--secondary: light-dark(oklch(0.965 0.003 286), oklch(0.26 0.008 286));
+	--secondary-foreground: var(--foreground);
+	--muted: var(--secondary);
+	--muted-foreground: light-dark(oklch(0.52 0.012 286), oklch(0.71 0.012 286));
+	--accent: var(--secondary);
+	--accent-foreground: var(--foreground);
+	--destructive: light-dark(
+		oklch(0.577 0.245 27.325),
+		oklch(0.704 0.191 22.216)
+	);
+	--border: light-dark(oklch(0.92 0.004 286), oklch(1 0 0 / 10%));
+	--input: light-dark(oklch(0.92 0.004 286), oklch(1 0 0 / 15%));
+	--ring: light-dark(oklch(0.6 0.2 286), oklch(0.62 0.16 286));
 }
 
-@media (prefers-color-scheme: dark) {
-	:root {
-		--background: oklch(0.155 0.02 286);
-		--foreground: oklch(0.96 0.008 286);
-		--card: oklch(0.195 0.025 286);
-		--card-foreground: oklch(0.96 0.008 286);
-		--popover: oklch(0.195 0.025 286);
-		--popover-foreground: oklch(0.96 0.008 286);
-		--primary: oklch(0.7 0.17 286);
-		--primary-foreground: oklch(0.16 0.03 286);
-		--secondary: oklch(0.28 0.05 286);
-		--secondary-foreground: oklch(0.92 0.03 286);
-		--muted: oklch(0.24 0.025 286);
-		--muted-foreground: oklch(0.7 0.03 286);
-		--accent: oklch(0.28 0.06 286);
-		--accent-foreground: oklch(0.9 0.06 286);
-		--destructive: oklch(0.7 0.19 20);
-		--border: oklch(1 0 0 / 9%);
-		--input: oklch(1 0 0 / 14%);
-		--ring: oklch(0.62 0.17 286);
-		--brand-blue-ink: oklch(0.8 0.1 250);
-		--brand-violet-ink: oklch(0.8 0.12 287);
-		--brand-coral-ink: oklch(0.8 0.12 15);
-		--brand-amber-ink: oklch(0.85 0.12 75);
-	}
+:root.light {
+	color-scheme: light;
+}
+
+:root.dark {
+	color-scheme: dark;
 }
 
 @layer base {
 	* {
 		@apply border-border outline-ring/50;
-	}
-	html {
-		color-scheme: light dark;
 	}
 	body {
 		@apply bg-background text-foreground;

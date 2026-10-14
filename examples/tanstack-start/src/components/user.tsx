@@ -26,9 +26,7 @@ export function AssigneeCard(props: {
 		<Card className="py-4">
 			<CardContent className="flex items-center gap-3 px-4">
 				<Avatar>
-					<AvatarFallback className="bg-brand-gradient font-medium text-white">
-						{initials(user.name)}
-					</AvatarFallback>
+					<AvatarFallback>{initials(user.name)}</AvatarFallback>
 				</Avatar>
 				<div className="grid">
 					<span className="text-xs text-muted-foreground">Assignee</span>

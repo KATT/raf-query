@@ -8,32 +8,24 @@ const labels = {
 	open: "Open",
 } as const satisfies Record<IssueStatus, string>;
 
-const variants = {
-	closed: "violet",
-	in_progress: "amber",
-	open: "blue",
-} as const satisfies Record<IssueStatus, string>;
-
 const dots = {
-	all: "bg-brand-gradient",
-	closed: "bg-brand-violet",
-	in_progress: "bg-brand-amber",
-	open: "bg-brand-blue",
-} as const satisfies Record<IssueStatus | "all", string>;
+	closed: "bg-zinc-400 dark:bg-zinc-500",
+	in_progress: "bg-amber-500",
+	open: "bg-emerald-500",
+} as const satisfies Record<IssueStatus, string>;
 
 export function statusLabel(status: IssueStatus | "all") {
 	return status === "all" ? "All" : labels[status];
 }
 
 export function StatusBadge(props: { readonly status: IssueStatus }) {
-	return <Badge variant={variants[props.status]}>{labels[props.status]}</Badge>;
-}
-
-export function StatusDot(props: { readonly status: IssueStatus | "all" }) {
 	return (
-		<span
-			aria-hidden
-			className={cn("size-2 rounded-full", dots[props.status])}
-		/>
+		<Badge className="gap-1.5" variant="outline">
+			<span
+				aria-hidden
+				className={cn("size-1.5 rounded-full", dots[props.status])}
+			/>
+			{labels[props.status]}
+		</Badge>
 	);
 }
