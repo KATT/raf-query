@@ -97,7 +97,7 @@ export class QueryClient<TServices = never> {
 	getQuery<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
-	): Query.Of<TFactory> {
+	): Query.Query<TFactory> {
 		return this.effect.getQueryUnsafe(factory, ...args);
 	}
 

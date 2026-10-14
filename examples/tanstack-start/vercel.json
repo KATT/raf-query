@@ -2,6 +2,6 @@
 	"$schema": "https://openapi.vercel.sh/vercel.json",
 	"buildCommand": "pnpm build",
 	"framework": "tanstack-start",
-	"ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ../.shared ../../packages ../../package.json ../../pnpm-lock.yaml",
+	"ignoreCommand": "[ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ] && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- . ../.shared ../../packages ../../package.json ../../pnpm-lock.yaml",
 	"installCommand": "pnpm install --frozen-lockfile"
 }

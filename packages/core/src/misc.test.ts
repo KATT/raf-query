@@ -6,13 +6,17 @@ import {
 	type ErrorOf,
 	hashKey,
 	type InfiniteData,
+	type InfiniteQueryOptions,
 	infiniteQueryOptions,
 	matchesKey,
+	type PageOf,
 	Query,
 	type QueryFunctionContext,
 	type QueryHandle,
 	type QueryMeta,
+	type QueryOptions,
 	queryOptions,
+	type ServicesOf,
 } from "./index.ts";
 import { makeCacheUnsafe } from "./test-utils.ts";
 
@@ -78,7 +82,7 @@ describe("types", () => {
 			Effect.Effect<Option.Option<{ slug: string; title: string }>>
 		>();
 		expectTypeOf<DataOf<typeof commentsQuery>>().toEqualTypeOf<
-			InfiniteData<{ next: number | null }, number>
+			InfiniteData<{ page: { next: number | null }; pageParam: number }>
 		>();
 		expectTypeOf(
 			Effect.runSync(cache.prefetch(meQuery)).input,
@@ -99,6 +103,65 @@ describe("types", () => {
 		).toEqualTypeOf<
 			Effect.Effect<{ id: number }, NotFound | Query.CancelledError>
 		>();
+	});
+
+	it("name options by a types bag, defaulting error and services", () => {
+		interface Post {
+			readonly slug: string;
+			readonly title: string;
+		}
+		const promiseFactory = (): QueryOptions<{ data: Post }> =>
+			queryOptions({
+				queryFn: () => Promise.resolve({ slug: "a", title: "A" }),
+				queryKey: ["post"],
+			});
+		const effectFactory = (): QueryOptions<{
+			data: { id: number };
+			error: NotFound;
+		}> => issueQuery({ id: 1 });
+		const pagedFactory = (): InfiniteQueryOptions<{
+			page: { next: number | null };
+			pageParam: number;
+		}> => commentsQuery({ slug: "a" });
+
+		expectTypeOf<DataOf<typeof promiseFactory>>().toEqualTypeOf<Post>();
+		expectTypeOf<ErrorOf<typeof promiseFactory>>().toEqualTypeOf<unknown>();
+		expectTypeOf<ServicesOf<typeof promiseFactory>>().toEqualTypeOf<never>();
+		expectTypeOf<ErrorOf<typeof effectFactory>>().toEqualTypeOf<NotFound>();
+		expectTypeOf<DataOf<typeof pagedFactory>>().toEqualTypeOf<
+			InfiniteData<{ page: { next: number | null }; pageParam: number }>
+		>();
+		expectTypeOf<PageOf<typeof pagedFactory>>().toEqualTypeOf<{
+			next: number | null;
+		}>();
+	});
+
+	it("infer the page type for a getNextPageParam after queryFn", () => {
+		const unsortedQuery = () =>
+			infiniteQueryOptions({
+				queryFn: (context) => Promise.resolve({ next: context.pageParam + 1 }),
+				// After `queryFn`: its page type reaches `lastPage`.
+				getNextPageParam: (lastPage) => lastPage.next,
+				initialPageParam: 0,
+				queryKey: ["unsorted"],
+			});
+
+		expectTypeOf<PageOf<typeof unsortedQuery>>().toEqualTypeOf<{
+			next: number;
+		}>();
+	});
+
+	it("type a query by its factory alone", () => {
+		const cache = makeCacheUnsafe({ isServer: true });
+		const query = cache.getQueryUnsafe(postQuery, { slug: "a" });
+
+		expectTypeOf(query).toEqualTypeOf<Query.Query<typeof postQuery>>();
+		expectTypeOf(Query.getUnsafe(query).data).toEqualTypeOf<
+			{ slug: string; title: string } | undefined
+		>();
+		expectTypeOf(
+			(erased: Query.Query) => Query.getUnsafe(erased).data,
+		).returns.toEqualTypeOf<unknown>();
 	});
 
 	it("type meta as a string-keyed record unless Register declares queryMeta", () => {

@@ -119,6 +119,7 @@ Framework-agnostic and Effect-only:
 | `QueryHandle<TFactory>`                                      | Handle type for props                                                                                                     |
 | `EnsuredQueryHandle<TFactory>`                               | Handle type for props fed by `ensure`                                                                                     |
 | `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`                                                               |
+| `QueryOptions`, `InfiniteQueryOptions`, `InfiniteData`       | Typed by a bag: `QueryOptions<{ data: Post }>`. Effect `queryFn`s add `error` and `services` to it                        |
 | `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                                                                   |
 | `ServicesOf<TFactory>`                                       | The services a factory's `queryFn` Effect needs; `never` for promises                                                     |
 | `Register`, `QueryMeta`                                      | Augment `Register` with `queryMeta` to type [`meta`](./query-meta.md)                                                     |

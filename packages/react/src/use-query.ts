@@ -78,7 +78,7 @@ export function queryFor<TFactory extends QueryFactory>(
 	client: QueryClient<unknown>,
 	factory: TFactory,
 	input: unknown,
-): Query.Of<TFactory> {
+): Query.Query<TFactory> {
 	// SAFETY: `input` is a handle's input, and handles are typed to the
 	// factory they were created through (`QueryHandle<TFactory>`).
 	// oxlint-disable-next-line typescript/consistent-type-assertions
@@ -127,12 +127,12 @@ function withPromiseCommands(tracked: QueryObserver.Result): PromiseCommands {
 /** An observer, with the stable callbacks `useSyncExternalStore` needs. */
 interface ObserverStore<TFactory extends QueryFactory> {
 	getSnapshot(): QueryObserver.Result<DataOf<TFactory>>;
-	readonly observer: QueryObserver.QueryObserver<DataOf<TFactory>, TFactory>;
+	readonly observer: QueryObserver.QueryObserver<TFactory>;
 	subscribe(onChange: () => void): () => void;
 }
 
 function storeFor<TFactory extends QueryFactory>(
-	query: Query.Of<TFactory>,
+	query: Query.Query<TFactory>,
 	options: UseQueryOptions,
 ): ObserverStore<TFactory> {
 	const observer = QueryObserver.makeUnsafe(query, options);

@@ -28,11 +28,11 @@ export const TypeId: typeof internal.TypeId = internal.TypeId;
 
 export type TypeId = typeof TypeId;
 
-export interface Query<
-	TData = unknown,
-	TFactory extends QueryFactory = QueryFactory,
-	TError = unknown,
->
+/**
+ * A cache entry, typed by the factory whose calls fill it: its data is the
+ * factory's {@link DataOf}, its error the factory's {@link ErrorOf}.
+ */
+export interface Query<TFactory extends QueryFactory = QueryFactory>
 	extends Pipeable.Pipeable {
 	/** The serializable handle for this entry's factory call. */
 	readonly handle: QueryHandle<TFactory>;
@@ -42,17 +42,10 @@ export interface Query<
 	/** Options from the latest factory call; `undefined` for an entry only hydrated so far. */
 	readonly options: AnyQueryOptions | undefined;
 	readonly [TypeId]: {
-		readonly _A: (_: never) => TData;
-		readonly _E: (_: never) => TError;
+		readonly _A: (_: never) => DataOf<TFactory>;
+		readonly _E: (_: never) => ErrorOf<TFactory>;
 	};
 }
-
-/** The entry of a factory call, typed by the factory. */
-export type Of<TFactory extends QueryFactory> = Query<
-	DataOf<TFactory>,
-	TFactory,
-	ErrorOf<TFactory>
->;
 
 /** A snapshot of one cache entry. Replaced, never mutated, on every change. */
 export interface State<TData> {
@@ -103,20 +96,30 @@ export type CancelledError = internal.CancelledError;
 
 export const isQuery: (value: unknown) => value is Query = internal.isQuery;
 
-function typed<TData, TError, TServices>(
-	effect: Effect.Effect<unknown, unknown, TServices>,
-): Effect.Effect<TData, TError | CancelledError, TServices> {
+function typed<TFactory extends QueryFactory>(
+	effect: Effect.Effect<unknown, unknown, ServicesOf<TFactory>>,
+): Effect.Effect<
+	DataOf<TFactory>,
+	ErrorOf<TFactory> | CancelledError,
+	ServicesOf<TFactory>
+> {
 	// SAFETY: an entry is keyed by its factory's `queryKey`, and only that
 	// factory's `queryFn` (or data written through it) fills it, so its data
 	// and failures have the factory's types. Interrupts become CancelledError.
-	return unsafeCast<Effect.Effect<TData, TError | CancelledError, TServices>>(
-		effect,
-	);
+	return unsafeCast<
+		Effect.Effect<
+			DataOf<TFactory>,
+			ErrorOf<TFactory> | CancelledError,
+			ServicesOf<TFactory>
+		>
+	>(effect);
 }
 
-function typedState<TData>(state: State<unknown>): State<TData> {
+function typedState<TFactory extends QueryFactory>(
+	state: State<unknown>,
+): State<DataOf<TFactory>> {
 	// SAFETY: as in `typed`; `data` and `promise` hold the factory's data.
-	return unsafeCast<State<TData>>(state);
+	return unsafeCast<State<DataOf<TFactory>>>(state);
 }
 
 /**
@@ -128,20 +131,28 @@ function typedState<TData>(state: State<unknown>): State<TData> {
 export const fetch: {
 	(
 		request?: FetchRequest,
-	): <TData, TFactory extends QueryFactory, TError>(
-		self: Query<TData, TFactory, TError>,
-	) => Effect.Effect<TData, TError | CancelledError, ServicesOf<TFactory>>;
-	<TData, TFactory extends QueryFactory, TError>(
-		self: Query<TData, TFactory, TError>,
+	): <TFactory extends QueryFactory>(
+		self: Query<TFactory>,
+	) => Effect.Effect<
+		DataOf<TFactory>,
+		ErrorOf<TFactory> | CancelledError,
+		ServicesOf<TFactory>
+	>;
+	<TFactory extends QueryFactory>(
+		self: Query<TFactory>,
 		request?: FetchRequest,
-	): Effect.Effect<TData, TError | CancelledError, ServicesOf<TFactory>>;
+	): Effect.Effect<
+		DataOf<TFactory>,
+		ErrorOf<TFactory> | CancelledError,
+		ServicesOf<TFactory>
+	>;
 } = dual(
 	(args) => isQuery(args[0]),
-	<TData, TFactory extends QueryFactory, TError>(
-		self: Query<TData, TFactory, TError>,
+	<TFactory extends QueryFactory>(
+		self: Query<TFactory>,
 		request?: FetchRequest,
 	) =>
-		typed<TData, TError, ServicesOf<TFactory>>(
+		typed<TFactory>(
 			Effect.contextWith((caller: Context.Context<never>) => {
 				const entry = internal.entryOf(self);
 				internal.provide(entry, caller);
@@ -151,29 +162,29 @@ export const fetch: {
 );
 
 /** Refetch now; succeeds when the request settles, whatever its outcome. */
-export function refetch<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
+export function refetch<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
 ): Effect.Effect<void> {
 	return internal.entryOf(self).commands.refetch;
 }
 
 /** Load the page after the last one; succeeds once it settles. */
-export function fetchNextPage<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
+export function fetchNextPage<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
 ): Effect.Effect<void> {
 	return internal.entryOf(self).commands.fetchNextPage;
 }
 
 /** Load the page before the first one; succeeds once it settles. */
-export function fetchPreviousPage<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
+export function fetchPreviousPage<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
 ): Effect.Effect<void> {
 	return internal.entryOf(self).commands.fetchPreviousPage;
 }
 
 /** Mark stale, and refetch if read; succeeds once that refetch settles. */
-export function invalidate<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
+export function invalidate<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
 ): Effect.Effect<void> {
 	return internal.invalidate(internal.entryOf(self));
 }
@@ -182,8 +193,8 @@ export function invalidate<TData, TFactory extends QueryFactory, TError>(
  * Drop data and errors, back to the state of a new entry. Readers suspend
  * and refetch; succeeds when that refetch settles.
  */
-export function reset<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
+export function reset<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
 ): Effect.Effect<void> {
 	return internal.reset(internal.entryOf(self));
 }
@@ -192,35 +203,35 @@ export function reset<TData, TFactory extends QueryFactory, TError>(
  * The query's `meta`: the latest factory call's (the one it was hydrated
  * with, before any), else the cache default's.
  */
-export function metaUnsafe<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
+export function metaUnsafe<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
 ): QueryMeta | undefined {
 	return internal.metaOf(internal.entryOf(self));
 }
 
 /** The entry's current state. */
-export function get<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
-): Effect.Effect<State<TData>> {
+export function get<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
+): Effect.Effect<State<DataOf<TFactory>>> {
 	return Effect.sync(() => getUnsafe(self));
 }
 
 /** {@link get}, synchronously. */
-export function getUnsafe<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
-): State<TData> {
-	return typedState<TData>(internal.entryOf(self).state);
+export function getUnsafe<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
+): State<DataOf<TFactory>> {
+	return typedState<TFactory>(internal.entryOf(self).state);
 }
 
 /**
  * The entry's current state, then every change. Counts as a reader while
  * the stream runs, so invalidation and focus refetch it.
  */
-export function changes<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
-): Stream.Stream<State<TData>> {
+export function changes<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
+): Stream.Stream<State<DataOf<TFactory>>> {
 	// SAFETY: as in `typedState`, for every element.
-	return unsafeCast<Stream.Stream<State<TData>>>(
+	return unsafeCast<Stream.Stream<State<DataOf<TFactory>>>>(
 		internal.changes(internal.entryOf(self)),
 	);
 }
@@ -229,11 +240,11 @@ export function changes<TData, TFactory extends QueryFactory, TError>(
  * The promise a render should unwrap. Starts the first request if nothing
  * has, and retries a failed first load once its error has been shown.
  */
-export function readUnsafe<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
-): Thenable<TData> {
+export function readUnsafe<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
+): Thenable<DataOf<TFactory>> {
 	// SAFETY: as in `typedState`.
-	return unsafeCast<Thenable<TData>>(
+	return unsafeCast<Thenable<DataOf<TFactory>>>(
 		internal.readUnsafe(internal.entryOf(self)),
 	);
 }
@@ -243,15 +254,15 @@ export function readUnsafe<TData, TFactory extends QueryFactory, TError>(
  * (on a server cache, only if invalidated). Does nothing without data or
  * while a request is in flight.
  */
-export function revalidateUnsafe<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
+export function revalidateUnsafe<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
 ): void {
 	internal.revalidate(internal.entryOf(self));
 }
 
 /** Listen for state changes. Subscribed entries count as read. */
-export function subscribeUnsafe<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
+export function subscribeUnsafe<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
 	listener: () => void,
 	options?: SubscribeOptions,
 ): () => void {
@@ -259,31 +270,27 @@ export function subscribeUnsafe<TData, TFactory extends QueryFactory, TError>(
 }
 
 /** Staleness as of now; `state.isStale` is only kept current while read. */
-export function isStaleUnsafe<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
+export function isStaleUnsafe<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
 ): boolean {
 	return internal.isStaleUnsafe(internal.entryOf(self));
 }
 
-export function hasNextPageUnsafe<TData, TFactory extends QueryFactory, TError>(
-	self: Query<TData, TFactory, TError>,
+export function hasNextPageUnsafe<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
 ): boolean {
 	return internal.hasNextPageUnsafe(internal.entryOf(self));
 }
 
-export function hasPreviousPageUnsafe<
-	TData,
-	TFactory extends QueryFactory,
-	TError,
->(self: Query<TData, TFactory, TError>): boolean {
+export function hasPreviousPageUnsafe<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
+): boolean {
 	return internal.hasPreviousPageUnsafe(internal.entryOf(self));
 }
 
 /** Readers currently subscribed. */
-export function observerCountUnsafe<
-	TData,
-	TFactory extends QueryFactory,
-	TError,
->(self: Query<TData, TFactory, TError>): number {
+export function observerCountUnsafe<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
+): number {
 	return internal.entryOf(self).listeners.size;
 }

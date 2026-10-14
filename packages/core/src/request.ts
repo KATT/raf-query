@@ -3,7 +3,7 @@ import { Context, Effect, Scope } from "effect";
 import type { QueryFnResult } from "./options.ts";
 
 function isEffectResult<T, E, R>(
-	result: QueryFnResult<T, E, R>,
+	result: QueryFnResult<{ data: T; error: E; services: R }>,
 ): result is Effect.Effect<T, E, R> {
 	return Effect.isEffect(result);
 }
@@ -16,10 +16,12 @@ function isEffectResult<T, E, R>(
  * `Effect.sync`.
  */
 export function fromQueryFn<T, E, R>(
-	call: (signal: AbortSignal) => QueryFnResult<T, E, R>,
+	call: (
+		signal: AbortSignal,
+	) => QueryFnResult<{ data: T; error: E; services: R }>,
 ): Effect.Effect<T, E, R> {
 	return Effect.callback<T, E, R>((resume, signal) => {
-		let result: QueryFnResult<T, E, R>;
+		let result: QueryFnResult<{ data: T; error: E; services: R }>;
 		try {
 			result = call(signal);
 		} catch (error) {

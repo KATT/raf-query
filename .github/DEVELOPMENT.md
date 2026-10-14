@@ -69,7 +69,7 @@ cd /tmp/codesandbox/examples/nextjs && pnpm install && pnpm dev
 
 ### Deploying
 
-`examples/tanstack-start` and `examples/nextjs` are each a Vercel project in the `trpc` team, with the app's directory as the root directory and its `vercel.json` setting the install and build commands. Pushes to `main` deploy to production, and pull requests get preview deployments. A project skips the build when nothing it uses changed (`ignoreCommand`). The experimental apps aren't deployed.
+`examples/tanstack-start` and `examples/nextjs` are each a Vercel project in the `trpc` team, with the app's directory as the root directory and its `vercel.json` setting the install and build commands. Pushes to `main` deploy to production, and pull requests get preview deployments. A project skips the build when nothing it uses changed since its last successful deployment on that branch (`ignoreCommand`, diffing from `VERCEL_GIT_PREVIOUS_SHA`); a branch's first deployment always builds. The docs site (`www/`) works the same way. The experimental apps aren't deployed.
 
 | App                       | URL                                         |
 | ------------------------- | ------------------------------------------- |

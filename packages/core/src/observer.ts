@@ -25,7 +25,7 @@ import { unsafeCast } from "./cast.ts";
 import { entryOf } from "./entry.ts";
 import type { QueryKey } from "./key.ts";
 import { listen } from "./listen.ts";
-import type { QueryFactory } from "./options.ts";
+import type { DataOf, QueryFactory } from "./options.ts";
 import { Platform } from "./platform.ts";
 import * as Query from "./query.ts";
 import type { Thenable } from "./thenable.ts";
@@ -86,17 +86,15 @@ export interface Result<TData = unknown> {
 
 export type ResultKey = keyof Result;
 
-export interface QueryObserver<
-	TData = unknown,
-	TFactory extends QueryFactory = QueryFactory,
->
+/** An observer of a factory's queries; its results hold the factory's {@link DataOf}. */
+export interface QueryObserver<TFactory extends QueryFactory = QueryFactory>
 	extends Pipeable.Pipeable {
 	/** The options set by the latest `make` or {@link setOptionsUnsafe}. */
 	readonly options: Options;
 	/** The observed query. */
-	readonly query: Query.Query<TData, TFactory>;
+	readonly query: Query.Query<TFactory>;
 	readonly [TypeId]: {
-		readonly _A: (_: never) => TData;
+		readonly _A: (_: never) => DataOf<TFactory>;
 	};
 }
 
@@ -108,16 +106,13 @@ interface Subscription {
 	readonly scope: Scope.Closeable;
 }
 
-interface Impl<TData, TFactory extends QueryFactory> extends QueryObserver<
-	TData,
-	TFactory
-> {
-	current: Result<TData>;
+interface Impl<TFactory extends QueryFactory> extends QueryObserver<TFactory> {
+	current: Result<DataOf<TFactory>>;
 	/** The last observed query that had data, for `whilePending: "previous"`. */
-	lastWithData: Query.Query<TData, TFactory> | undefined;
+	lastWithData: Query.Query<TFactory> | undefined;
 	readonly listeners: Set<() => void>;
 	options: Options;
-	query: Query.Query<TData, TFactory>;
+	query: Query.Query<TFactory>;
 	subscription: Subscription | undefined;
 	/** Result properties a reader has read; empty means notify on any change. */
 	readonly trackedProps: Set<ResultKey>;
@@ -152,12 +147,12 @@ export function isQueryObserver(value: unknown): value is QueryObserver {
 	return Predicate.hasProperty(value, TypeId);
 }
 
-function implOf<TData, TFactory extends QueryFactory>(
-	self: QueryObserver<TData, TFactory>,
-): Impl<TData, TFactory> {
+function implOf<TFactory extends QueryFactory>(
+	self: QueryObserver<TFactory>,
+): Impl<TFactory> {
 	// SAFETY: `makeUnsafe` creates every value that carries `TypeId`, and the
 	// public `QueryObserver` type is how they leave this module.
-	return unsafeCast<Impl<TData, TFactory>>(self);
+	return unsafeCast<Impl<TFactory>>(self);
 }
 
 function isResultKey(name: PropertyKey): name is ResultKey {
@@ -174,11 +169,11 @@ function shallowEqual(a: Result, b: Result) {
 }
 
 /** The result for `query` with `options`, given the last query that had data. */
-function resultOf<TData, TFactory extends QueryFactory>(
-	query: Query.Query<TData, TFactory>,
+function resultOf<TFactory extends QueryFactory>(
+	query: Query.Query<TFactory>,
 	options: Options,
-	lastWithData: Query.Query<TData, TFactory> | undefined,
-): Result<TData> {
+	lastWithData: Query.Query<TFactory> | undefined,
+): Result<DataOf<TFactory>> {
 	const state = Query.getUnsafe(query);
 	const previous =
 		options.whilePending === "previous" &&
@@ -212,11 +207,11 @@ function resultOf<TData, TFactory extends QueryFactory>(
 }
 
 /** Observe `query`. Doesn't subscribe to it until the observer has a listener. */
-export function makeUnsafe<TData, TFactory extends QueryFactory>(
-	query: Query.Query<TData, TFactory>,
+export function makeUnsafe<TFactory extends QueryFactory>(
+	query: Query.Query<TFactory>,
 	options: Options = {},
-): QueryObserver<TData, TFactory> {
-	const self: Impl<TData, TFactory> = Object.assign(Object.create(Proto), {
+): QueryObserver<TFactory> {
+	const self: Impl<TFactory> = Object.assign(Object.create(Proto), {
 		current: resultOf(query, options, undefined),
 		lastWithData: Query.getUnsafe(query).hasData ? query : undefined,
 		listeners: new Set(),
@@ -229,24 +224,24 @@ export function makeUnsafe<TData, TFactory extends QueryFactory>(
 }
 
 /** {@link makeUnsafe}, as an Effect. */
-export function make<TData, TFactory extends QueryFactory>(
-	query: Query.Query<TData, TFactory>,
+export function make<TFactory extends QueryFactory>(
+	query: Query.Query<TFactory>,
 	options?: Options,
-): Effect.Effect<QueryObserver<TData, TFactory>> {
+): Effect.Effect<QueryObserver<TFactory>> {
 	return Effect.sync(() => makeUnsafe(query, options));
 }
 
 /** The current result. */
-export function getUnsafe<TData, TFactory extends QueryFactory>(
-	self: QueryObserver<TData, TFactory>,
-): Result<TData> {
+export function getUnsafe<TFactory extends QueryFactory>(
+	self: QueryObserver<TFactory>,
+): Result<DataOf<TFactory>> {
 	return implOf(self).current;
 }
 
 /** {@link getUnsafe}, as an Effect. */
-export function get<TData, TFactory extends QueryFactory>(
-	self: QueryObserver<TData, TFactory>,
-): Effect.Effect<Result<TData>> {
+export function get<TFactory extends QueryFactory>(
+	self: QueryObserver<TFactory>,
+): Effect.Effect<Result<DataOf<TFactory>>> {
 	return Effect.sync(() => getUnsafe(self));
 }
 
@@ -254,11 +249,11 @@ export function get<TData, TFactory extends QueryFactory>(
  * The result for `query` with `options` right now, without switching to
  * them. Bindings call this during render, before `setOptionsUnsafe` commits.
  */
-export function getOptimisticResultUnsafe<TData, TFactory extends QueryFactory>(
-	self: QueryObserver<TData, TFactory>,
-	query: Query.Query<TData, TFactory>,
+export function getOptimisticResultUnsafe<TFactory extends QueryFactory>(
+	self: QueryObserver<TFactory>,
+	query: Query.Query<TFactory>,
 	options: Options,
-): Result<TData> {
+): Result<DataOf<TFactory>> {
 	const impl = implOf(self);
 	const result = resultOf(query, options, impl.lastWithData);
 	if (!shallowEqual(impl.current, result)) {
@@ -268,9 +263,9 @@ export function getOptimisticResultUnsafe<TData, TFactory extends QueryFactory>(
 }
 
 /** Observe `query` with `options` from now on. */
-export function setOptionsUnsafe<TData, TFactory extends QueryFactory>(
-	self: QueryObserver<TData, TFactory>,
-	query: Query.Query<TData, TFactory>,
+export function setOptionsUnsafe<TFactory extends QueryFactory>(
+	self: QueryObserver<TFactory>,
+	query: Query.Query<TFactory>,
 	options: Options,
 ): void {
 	const impl = implOf(self);
@@ -289,8 +284,8 @@ export function setOptionsUnsafe<TData, TFactory extends QueryFactory>(
 }
 
 /** Listen for result changes. The first listener subscribes to the query. */
-export function subscribeUnsafe<TData, TFactory extends QueryFactory>(
-	self: QueryObserver<TData, TFactory>,
+export function subscribeUnsafe<TFactory extends QueryFactory>(
+	self: QueryObserver<TFactory>,
 	listener: () => void,
 ): () => void {
 	const impl = implOf(self);
@@ -311,11 +306,11 @@ export function subscribeUnsafe<TData, TFactory extends QueryFactory>(
  * The current result, then every change listeners are notified of. Counts
  * as a listener while the stream runs, so the query counts as read.
  */
-export function changes<TData, TFactory extends QueryFactory>(
-	self: QueryObserver<TData, TFactory>,
-): Stream.Stream<Result<TData>> {
+export function changes<TFactory extends QueryFactory>(
+	self: QueryObserver<TFactory>,
+): Stream.Stream<Result<DataOf<TFactory>>> {
 	return listen((push) => {
-		let last: Result<TData> | undefined;
+		let last: Result<DataOf<TFactory>> | undefined;
 		const emit = () => {
 			const result = getUnsafe(self);
 			if (result !== last) {
@@ -335,10 +330,9 @@ export function changes<TData, TFactory extends QueryFactory>(
  * changes.
  */
 export function trackResult<
-	TData,
 	TFactory extends QueryFactory,
-	TResult extends Result<TData>,
->(self: QueryObserver<TData, TFactory>, result: TResult): TResult {
+	TResult extends Result<DataOf<TFactory>>,
+>(self: QueryObserver<TFactory>, result: TResult): TResult {
 	return new Proxy(result, {
 		get: (target, name, receiver) => {
 			if (isResultKey(name)) {
@@ -351,17 +345,15 @@ export function trackResult<
 }
 
 /** Mark `name` as read, for bindings that track access themselves. */
-export function trackProp<TData, TFactory extends QueryFactory>(
-	self: QueryObserver<TData, TFactory>,
+export function trackProp<TFactory extends QueryFactory>(
+	self: QueryObserver<TFactory>,
 	name: ResultKey,
 ): void {
 	implOf(self).trackedProps.add(name);
 }
 
 /** Recompute the result, and notify listeners if a tracked property changed. */
-function updateResult<TData, TFactory extends QueryFactory>(
-	self: Impl<TData, TFactory>,
-) {
+function updateResult<TFactory extends QueryFactory>(self: Impl<TFactory>) {
 	const previous = self.current;
 	const next = resultOf(self.query, self.options, self.lastWithData);
 	if (Query.getUnsafe(self.query).hasData) {
@@ -378,8 +370,8 @@ function updateResult<TData, TFactory extends QueryFactory>(
 	}
 }
 
-function shouldNotify<TData, TFactory extends QueryFactory>(
-	self: Impl<TData, TFactory>,
+function shouldNotify<TFactory extends QueryFactory>(
+	self: Impl<TFactory>,
 	previous: Result,
 	next: Result,
 ) {
@@ -398,9 +390,7 @@ function shouldNotify<TData, TFactory extends QueryFactory>(
  * Subscribe to the current query in a new scope under its entry's, and
  * start polling. Replaces any previous subscription.
  */
-function connect<TData, TFactory extends QueryFactory>(
-	self: Impl<TData, TFactory>,
-) {
+function connect<TFactory extends QueryFactory>(self: Impl<TFactory>) {
 	disconnect(self);
 	const query = self.query;
 	const preferences: Query.SubscribeOptions = {
@@ -431,9 +421,7 @@ function connect<TData, TFactory extends QueryFactory>(
 	restartPolling(self);
 }
 
-function disconnect<TData, TFactory extends QueryFactory>(
-	self: Impl<TData, TFactory>,
-) {
+function disconnect<TFactory extends QueryFactory>(self: Impl<TFactory>) {
 	const subscription = self.subscription;
 	self.subscription = undefined;
 	if (subscription) {
@@ -442,9 +430,7 @@ function disconnect<TData, TFactory extends QueryFactory>(
 }
 
 /** Run `poll` for the current `refetchInterval`, or stop polling without one. */
-function restartPolling<TData, TFactory extends QueryFactory>(
-	self: Impl<TData, TFactory>,
-) {
+function restartPolling<TFactory extends QueryFactory>(self: Impl<TFactory>) {
 	const subscription = self.subscription;
 	if (!subscription) {
 		return;
@@ -459,8 +445,8 @@ function restartPolling<TData, TFactory extends QueryFactory>(
 }
 
 /** Refetch `query` every `interval` ms while the page is visible. */
-function poll<TData, TFactory extends QueryFactory>(
-	query: Query.Query<TData, TFactory>,
+function poll<TFactory extends QueryFactory>(
+	query: Query.Query<TFactory>,
 	interval: number,
 ): Effect.Effect<never> {
 	return Effect.gen(function* () {
