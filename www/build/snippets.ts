@@ -21,60 +21,89 @@ function dedent(lines: ReadonlyArray<string>) {
 	return lines.map((line) => line.slice(indent));
 }
 
+interface Line {
+	readonly shown: boolean;
+	readonly text: string;
+}
+
 /**
- * Splits `code` around `region` (the whole file when it's undefined). Every
- * `// #region` / `// #endregion` line is dropped, and a `// ^?` outside the
- * region too, so a file can hold several regions with their own queries.
+ * Marks each line of `code` as in `region` or not (all of them when it's
+ * undefined). A region can appear more than once, and its parts are shown
+ * together. Every `// #region` / `// #endregion` line is dropped, and a
+ * `// ^?` outside the region too, so a file can hold several regions with
+ * their own queries.
  */
-function splitRegion(code: string, region: string | undefined, file: string) {
-	const before: Array<string> = [];
-	const inside: Array<string> = [];
-	const after: Array<string> = [];
+function markRegion(
+	code: string,
+	region: string | undefined,
+	file: string,
+): ReadonlyArray<Line> {
+	const lines: Array<Line> = [];
 	const open: Array<string> = [];
-	let state: "before" | "inside" | "after" = region ? "before" : "inside";
-	for (const [index, line] of code.trimEnd().split("\n").entries()) {
-		const marker = regionMarker.exec(line);
-		if (marker) {
-			const [, kind, name = ""] = marker;
-			if (kind === "region") {
-				open.push(name);
-				if (region && name === region && state === "before") {
-					state = "inside";
-				}
-			} else {
-				const closed = open.pop();
-				if (closed === undefined || (name && name !== closed)) {
-					throw new Error(
-						`${file}:${index + 1}: "// #endregion ${name}" doesn't close a region`,
-					);
-				}
-				if (region && closed === region && state === "inside") {
-					state = "after";
-				}
+	let found = !region;
+	for (const [index, text] of code.trimEnd().split("\n").entries()) {
+		const marker = regionMarker.exec(text);
+		if (!marker) {
+			const shown = !region || open.includes(region);
+			if (shown || !queryMarker.test(text)) {
+				lines.push({ shown, text });
 			}
 			continue;
 		}
-		if (state === "inside") {
-			inside.push(line);
-		} else if (!queryMarker.test(line)) {
-			(state === "before" ? before : after).push(line);
+		const [, kind, name = ""] = marker;
+		if (kind === "region") {
+			open.push(name);
+			found ||= name === region;
+			continue;
+		}
+		const closed = open.pop();
+		if (closed === undefined || (name && name !== closed)) {
+			throw new Error(
+				`${file}:${index + 1}: "// #endregion ${name}" doesn't close a region`,
+			);
 		}
 	}
-	if (region && state === "before") {
+	if (!found) {
 		throw new Error(`${file}: no "// #region ${region}"`);
 	}
 	if (open.length) {
 		throw new Error(`${file}: "// #region ${open.join(", ")}" isn't closed`);
 	}
-	return { after, before, inside: dedent(inside) };
+	return lines;
+}
+
+/**
+ * The block's code: hidden runs of lines go between `// ---cut-start---`
+ * and `// ---cut-end---`, the first one with the block's `// @filename`.
+ */
+function twoslashCode(lines: ReadonlyArray<Line>, filename: string) {
+	const shown = dedent(lines.filter((line) => line.shown).map((l) => l.text));
+	const code: Array<string> = [];
+	let hidden: Array<string> = [`// @filename: ${filename}`];
+	const flush = () => {
+		if (hidden.some((text) => text.trim())) {
+			code.push("// ---cut-start---", ...hidden, "// ---cut-end---");
+		}
+		hidden = [];
+	};
+	for (const line of lines) {
+		if (line.shown) {
+			flush();
+			code.push(shown.shift() ?? "");
+		} else {
+			hidden.push(line.text);
+		}
+	}
+	flush();
+	return code.join("\n");
 }
 
 /**
  * A line `<<< ./page/src/file.tsx#name` includes the `// #region name` …
  * `// #endregion` part of a TypeScript file as a `twoslash` block (the
  * whole file without `#name`), like VitePress's code snippets. The rest of
- * the file is still compiled, as hidden setup, in the file's folder, so its
- * imports resolve like they do in the editor.
+ * the file is still compiled, hidden, in the file's folder, so its imports
+ * resolve like they do in the editor.
  *
  * The block's title is the file's path inside the page's folder
  * (`content/<page>/`), so `src/file.tsx` here; `[title]` after the path
@@ -102,11 +131,7 @@ export function expandSnippets(
 				);
 			}
 			files.push(file);
-			const { after, before, inside } = splitRegion(
-				readFileSync(file, "utf8"),
-				region,
-				file,
-			);
+			const lines = markRegion(readFileSync(file, "utf8"), region, file);
 			const shownTitle =
 				title ??
 				(file.startsWith(`${pageDir}${path.sep}`)
@@ -122,17 +147,8 @@ export function expandSnippets(
 				)
 				.split(path.sep)
 				.join("/");
-			const code = [
-				`// @filename: ${virtualPath}`,
-				...before,
-				"// ---cut---",
-				...inside,
-				...(after.some((line) => line.trim())
-					? ["// ---cut-after---", ...after]
-					: []),
-			];
 			const meta = shownTitle ? ` title="${shownTitle}"` : "";
-			return `\`\`\`${lang} twoslash${meta}\n${code.join("\n")}\n\`\`\``;
+			return `\`\`\`${lang} twoslash${meta}\n${twoslashCode(lines, virtualPath)}\n\`\`\``;
 		},
 	);
 	return { files, markdown: expanded };

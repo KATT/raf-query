@@ -49,17 +49,19 @@ describe("expandSnippets", () => {
 				"Intro",
 				"",
 				'```tsx twoslash title="src/routes/todos.tsx"',
+				"// ---cut-start---",
 				"// @filename: page/src/routes/todos.loader.twoslash.tsx",
 				'import { todosQuery } from "../queries.ts";',
 				"",
-				"// ---cut---",
+				"// ---cut-end---",
 				"export const Route = 1;",
 				"// ^?",
-				"// ---cut-after---",
+				"// ---cut-start---",
 				"",
 				"export function Page() {",
 				"\treturn Route;",
 				"}",
+				"// ---cut-end---",
 				"```",
 				"",
 				"Outro",
@@ -75,16 +77,18 @@ describe("expandSnippets", () => {
 		).toBe(
 			[
 				"```tsx twoslash",
+				"// ---cut-start---",
 				"// @filename: page/src/routes/todos.body.twoslash.tsx",
 				'import { todosQuery } from "../queries.ts";',
 				"",
 				"export const Route = 1;",
 				"",
 				"export function Page() {",
-				"// ---cut---",
+				"// ---cut-end---",
 				"return Route;",
-				"// ---cut-after---",
+				"// ---cut-start---",
 				"}",
+				"// ---cut-end---",
 				"```",
 			].join("\n"),
 		);
@@ -95,9 +99,40 @@ describe("expandSnippets", () => {
 		expect(page.expand("<<< ./shared/client.ts [src/client.ts]").markdown).toBe(
 			[
 				'```ts twoslash title="src/client.ts"',
+				"// ---cut-start---",
 				"// @filename: shared/client.file.twoslash.ts",
-				"// ---cut---",
+				"// ---cut-end---",
 				"export const a = 1;",
+				"```",
+			].join("\n"),
+		);
+	});
+
+	it("shows every part of a region that appears more than once", () => {
+		const page = setup({
+			"page/a.ts": [
+				"// #region use",
+				'import { a } from "./b.ts";',
+				"// #endregion",
+				'import { c } from "./c.ts";',
+				"",
+				"// #region use",
+				"a(c);",
+				"// #endregion use",
+			].join("\n"),
+		});
+		expect(page.expand("<<< ./page/a.ts#use").markdown).toBe(
+			[
+				'```ts twoslash title="a.ts"',
+				"// ---cut-start---",
+				"// @filename: page/a.use.twoslash.ts",
+				"// ---cut-end---",
+				'import { a } from "./b.ts";',
+				"// ---cut-start---",
+				'import { c } from "./c.ts";',
+				"",
+				"// ---cut-end---",
+				"a(c);",
 				"```",
 			].join("\n"),
 		);

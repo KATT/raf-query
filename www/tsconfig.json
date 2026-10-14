@@ -17,8 +17,7 @@
 	"include": [
 		"src",
 		"build",
-		"content/**/*.ts",
-		"content/**/*.tsx",
+		"content/*.ts",
 		"vite.config.ts",
 		"vitest.config.ts"
 	]

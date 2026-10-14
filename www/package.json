@@ -9,7 +9,7 @@
 		"dev": "vp dev --port 3004",
 		"start": "vp preview --port 3004",
 		"test": "vp test",
-		"typecheck": "tsc"
+		"typecheck": "tsc && node build/typecheck-examples.ts"
 	},
 	"dependencies": {
 		"@examples/ui": "workspace:*",
@@ -30,6 +30,7 @@
 		"@shikijs/twoslash": "4.5.0",
 		"@tailwindcss/typography": "0.5.20",
 		"@tailwindcss/vite": "4.3.3",
+		"@tanstack/router-generator": "1.167.41",
 		"@testing-library/react": "16.3.3",
 		"@types/hast": "3.0.5",
 		"@types/mdast": "4.0.4",
@@ -43,6 +44,7 @@
 		"happy-dom": "21.0.1",
 		"hast-util-to-html": "9.0.5",
 		"hast-util-to-string": "3.0.1",
+		"next": "16.4.0",
 		"rehype-raw": "7.0.0",
 		"remark-gfm": "4.0.1",
 		"remark-parse": "11.0.0",

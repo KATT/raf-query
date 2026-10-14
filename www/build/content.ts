@@ -8,6 +8,7 @@ import { removeTwoslashNotations } from "twoslash/fallback";
 import { parse as parseYaml } from "yaml";
 
 import type { Doc, DocMeta, DocSection } from "../src/content/types.ts";
+import { generateRouteTrees } from "./example-apps.ts";
 import { renderMarkdown } from "./markdown.ts";
 import { expandSnippets } from "./snippets.ts";
 
@@ -46,6 +47,8 @@ interface Source {
 	readonly slug: string;
 	/** The files the page includes. */
 	readonly snippets: ReadonlyArray<string>;
+	/** The page's example app, `content/<slug>/`, or the content dir without one. */
+	readonly twoslashRoot: string;
 }
 
 /** Replaces each `// ^?` in a Twoslash block with the type it shows, as a comment. */
@@ -75,16 +78,22 @@ function parseSource(contentDir: string, file: string, raw: string): Source {
 	} catch (error) {
 		throw new Error(`${file}: invalid frontmatter`, { cause: error });
 	}
+	const slug = path.basename(file, ".md");
+	const app = path.join(contentDir, slug);
+	const twoslashRoot = existsSync(path.join(app, "tsconfig.json"))
+		? app
+		: contentDir;
 	const expanded = expandSnippets(raw.slice(match[0].length), {
 		file,
-		root: contentDir,
+		root: twoslashRoot,
 	});
 	return {
 		file,
 		frontmatter,
 		markdown: expanded.markdown,
-		slug: path.basename(file, ".md"),
+		slug,
 		snippets: expanded.files,
+		twoslashRoot,
 	};
 }
 
@@ -144,7 +153,7 @@ export function docsContent(options: ContentOptions): Plugin {
 			return cached;
 		}
 		const doc = renderMarkdown(source.markdown, {
-			twoslashRoot: contentDir,
+			twoslashRoot: source.twoslashRoot,
 		}).then((result) => {
 			for (const id of result.demos) {
 				if (!existsSync(path.join(options.demosDir, `${id}.tsx`))) {
@@ -345,7 +354,13 @@ export function docsContent(options: ContentOptions): Plugin {
 		});
 	}
 
+	let routeTrees: Promise<void> | undefined;
+
 	return {
+		async buildStart() {
+			routeTrees ??= generateRouteTrees(contentDir);
+			await routeTrees;
+		},
 		configurePreviewServer: serveAgentFiles,
 		configureServer: serveAgentFiles,
 		async generateBundle() {

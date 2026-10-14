@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -250,12 +251,65 @@ function toSegments(tree: HastRoot): Array<DocSegment> {
 
 const twoslashTransformers = new Map<string, ShikiTransformer>();
 
+interface Project {
+	readonly compilerOptions: ts.CompilerOptions;
+	/**
+	 * Every file of an example app, by path from its root, so a block's
+	 * program has what `tsc` has, like the route tree's `declare module`.
+	 */
+	readonly extraFiles: Record<string, string>;
+}
+
+/** An example app's `tsconfig.json`, or the options for the pages' inline blocks. */
+function project(root: string): Project {
+	const file = path.join(root, "tsconfig.json");
+	if (existsSync(file)) {
+		const parsed = ts.getParsedCommandLineOfConfigFile(file, undefined, {
+			...ts.sys,
+			onUnRecoverableConfigFileDiagnostic: (diagnostic) => {
+				throw new Error(
+					`${file}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")}`,
+				);
+			},
+		});
+		if (!parsed || parsed.errors.length) {
+			throw new Error(`${file}: invalid tsconfig`);
+		}
+		return {
+			compilerOptions: parsed.options,
+			extraFiles: Object.fromEntries(
+				parsed.fileNames.map((name) => [
+					path.relative(root, name).split(path.sep).join("/"),
+					readFileSync(name, "utf8"),
+				]),
+			),
+		};
+	}
+	return { compilerOptions: inlineCompilerOptions, extraFiles: {} };
+}
+
+const inlineCompilerOptions: ts.CompilerOptions = {
+	allowImportingTsExtensions: true,
+	jsx: ts.JsxEmit.ReactJSX,
+	lib: ["lib.es2024.d.ts", "lib.dom.d.ts", "lib.dom.iterable.d.ts"],
+	module: ts.ModuleKind.ESNext,
+	moduleResolution: ts.ModuleResolutionKind.Bundler,
+	noEmit: true,
+	// Next.js samples import `~/query-client.ts`; stubs live next to the pages.
+	paths: { "~/*": ["./*"] },
+	skipLibCheck: true,
+	strict: true,
+	target: ts.ScriptTarget.ES2024,
+	types: [],
+};
+
 /**
  * Fences with `twoslash` in their meta are compiled, so hovering a name shows
  * its type, `// ^?` pins a type under the line, and `// @errors: 2345` shows
  * an expected error. A compile error the block doesn't expect fails the
- * build. Blocks resolve imports from `root`, so a hidden setup above
- * `// ---cut---` can import from `content/_twoslash.ts`.
+ * build. Blocks resolve imports from `root`: a page's example app
+ * (`content/<page>/`, with its `tsconfig.json`), or the content dir, where a
+ * hidden setup above `// ---cut---` can import from `content/_twoslash.ts`.
  */
 function twoslashTransformer(root: string) {
 	const cached = twoslashTransformers.get(root);
@@ -263,21 +317,7 @@ function twoslashTransformer(root: string) {
 		return cached;
 	}
 	const twoslasher = createTwoslasher({
-		compilerOptions: {
-			allowImportingTsExtensions: true,
-			baseUrl: root,
-			jsx: ts.JsxEmit.ReactJSX,
-			lib: ["lib.es2024.d.ts", "lib.dom.d.ts", "lib.dom.iterable.d.ts"],
-			module: ts.ModuleKind.ESNext,
-			moduleResolution: ts.ModuleResolutionKind.Bundler,
-			noEmit: true,
-			// Next.js samples import `~/query-client.ts`; stubs live next to the pages.
-			paths: { "~/*": ["./*"] },
-			skipLibCheck: true,
-			strict: true,
-			target: ts.ScriptTarget.ES2024,
-			types: [],
-		},
+		...project(root),
 		tsLibDirectory: path.dirname(
 			fileURLToPath(import.meta.resolve("typescript6")),
 		),
