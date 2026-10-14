@@ -29,12 +29,12 @@ export const Route = createFileRoute("/posts/$slug")({
 
 ## prefetch or ensure?
 
-`prefetch` and `ensure` start the request at the same moment, so neither is faster. They differ in what the user sees while it's in flight:
+Neither is faster: both start the request at the same moment. The difference is what the user sees while it loads:
 
-- **`prefetch`: granular skeletons.** The navigation commits right away. Each part of the page that reads a query still loading suspends to its nearest Suspense boundary and fills in when its data streams in.
-- **`ensure`: a blocked navigation.** The previous page stays on screen until the data is in. In TanStack Router, a route with a `pendingComponent` shows it once `pendingMs` (1 second by default) has passed, which makes a full-page skeleton.
+- **`prefetch` navigates now.** The new page renders at once, and each part still waiting for data shows its nearest Suspense fallback.
+- **`ensure` navigates when the data is in.** Until then the previous page stays on screen. In TanStack Router, a route's `pendingComponent` replaces it after `pendingMs` (1 second by default).
 
-Choose per query. `ensure` what the page can't lay out without, where a skeleton would only flash or shift (the post itself), and `prefetch` the rest (comments, sidebars, counts). Open a post below with each loader and watch the network panel: the two requests start together either way.
+Choose per query: `ensure` what the page can't lay out without (the post itself), and `prefetch` the rest (comments, sidebars, counts).
 
 ```demo
 starting-queries
