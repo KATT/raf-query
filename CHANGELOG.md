@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.7.1](https://github.com/KATT/raf-query/compare/0.7.0...0.7.1) (2026-10-14)
+
+- give overview code samples Twoslash like the homepage ([#90](https://github.com/KATT/raf-query/issues/90)) ([2b82a4a](https://github.com/KATT/raf-query/commit/2b82a4a0464d64de1156a3fb590c13c7cdf95968))
+
 ## [0.7.0](https://github.com/KATT/raf-query/compare/0.6.6...0.7.0) (2026-10-14)
 
 ### ⚠ BREAKING CHANGES
