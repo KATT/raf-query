@@ -19,7 +19,7 @@
 	"dependencies": {
 		"@examples/db": "workspace:*",
 		"@examples/ui": "workspace:*",
-		"@raf-query/react": "0.7.10",
+		"@raf-query/react": "0.7.11",
 		"@tanstack/react-router": "1.170.42",
 		"@tanstack/react-start": "1.168.61",
 		"effect": "catalog:",
