@@ -176,7 +176,7 @@ export interface QueryCache {
 	getQuery<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
-	): Effect.Effect<Query.Of<TFactory>, never, ServicesOf<TFactory>>;
+	): Effect.Effect<Query.Query<TFactory>, never, ServicesOf<TFactory>>;
 	/**
 	 * `getQuery`, synchronously, for renders. Leaves the entry's services as
 	 * they are: the cache's, or the latest verb caller's.
@@ -184,7 +184,7 @@ export interface QueryCache {
 	getQueryUnsafe<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
-	): Query.Of<TFactory>;
+	): Query.Query<TFactory>;
 	/**
 	 * Write dehydrated entries. Existing entries only take newer data; pending
 	 * entries resume the sender's request.
@@ -274,11 +274,11 @@ function isUpdateFunction<TData>(
 
 function typed<TFactory extends QueryFactory>(
 	entry: Entry.Entry,
-): Query.Of<TFactory> {
+): Query.Query<TFactory> {
 	// SAFETY: an entry's hash comes from its factory's `queryKey`, and only
 	// that factory's `queryFn` (or data written through the same factory)
 	// fills it, so its data and errors have the factory's types.
-	return unsafeCast<Query.Of<TFactory>>(entry);
+	return unsafeCast<Query.Query<TFactory>>(entry);
 }
 
 function handleOf<TFactory extends QueryFactory>(

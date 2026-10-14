@@ -103,7 +103,7 @@ describe("types", () => {
 			title: string;
 		}>();
 		expectTypeOf<DataOf<typeof commentsQuery>>().toEqualTypeOf<
-			InfiniteData<{ next: number | null }, number>
+			InfiniteData<{ page: { next: number | null }; pageParam: number }>
 		>();
 		expectTypeOf(qc.prefetch(meQuery).input).toEqualTypeOf<undefined>();
 	});

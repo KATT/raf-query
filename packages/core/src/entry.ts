@@ -132,8 +132,8 @@ export function isQuery(value: unknown): value is Query {
 	return Predicate.hasProperty(value, TypeId);
 }
 
-export function entryOf<TData, TFactory extends QueryFactory, TError>(
-	query: Query<TData, TFactory, TError>,
+export function entryOf<TFactory extends QueryFactory>(
+	query: Query<TFactory>,
 ): Entry {
 	// SAFETY: `make` below creates every value that carries `TypeId`, and the
 	// public `Query` type is how those entries leave this module.
@@ -732,7 +732,7 @@ function requestEffect(
  */
 function attempt(
 	entry: Entry,
-	call: (readSignal: () => AbortSignal) => QueryFnResult<unknown>,
+	call: (readSignal: () => AbortSignal) => QueryFnResult<{ data: unknown }>,
 ): Effect.Effect<unknown, unknown> {
 	const once = fromQueryFn<unknown, unknown, never>((signal) => {
 		const result = call(() => {

@@ -36,9 +36,9 @@ export class BrowserRenderError extends Error {
 }
 
 /** Throw {@link BrowserRenderError} if reading `query` would start a request here. */
-export function assertSent<TData, TFactory extends QueryFactory, TError>(
+export function assertSent<TFactory extends QueryFactory>(
 	client: QueryClient<unknown>,
-	query: Query.Query<TData, TFactory, TError>,
+	query: Query.Query<TFactory>,
 ) {
 	if (startsRequests(client)) {
 		return;
