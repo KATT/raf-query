@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.2](https://github.com/KATT/raf-query/compare/0.7.1...0.7.2) (2026-10-14)
+
+### Features
+
+- **examples:** warn on writes that the mock DB may not stick ([#91](https://github.com/KATT/raf-query/issues/91)) ([8ccad7e](https://github.com/KATT/raf-query/commit/8ccad7e088a6218abec3ea492991c1af2d5f503a))
+
 ## [0.7.1](https://github.com/KATT/raf-query/compare/0.7.0...0.7.1) (2026-10-14)
 
 - give overview code samples Twoslash like the homepage ([#90](https://github.com/KATT/raf-query/issues/90)) ([2b82a4a](https://github.com/KATT/raf-query/commit/2b82a4a0464d64de1156a3fb590c13c7cdf95968))
