@@ -16,7 +16,7 @@ import { Effect, Layer, Option } from "effect";
 import { Headers, HttpRouter } from "effect/http";
 import { RpcSerialization, RpcServer } from "effect/rpc";
 
-import { EmptyTitle, IssueNotFound, IssueRpcs } from "./rpc.ts";
+import { EmptyBody, EmptyTitle, IssueNotFound, IssueRpcs } from "./rpc.ts";
 
 /** The database options a request asked for in its headers. */
 function options(request: { readonly headers: Headers.Headers }) {
@@ -54,6 +54,12 @@ const IssueHandlers = IssueRpcs.toLayer({
 		Effect.promise(() => listComments(payload, options(request))),
 	ListIssues: (payload, request) =>
 		Effect.promise(() => listIssues(payload, options(request))),
+	SetStatus: (payload, request) =>
+		Effect.promise(() => updateIssue(payload, options(request))),
+	UpdateBody: (payload, request) =>
+		payload.body.trim() === ""
+			? Effect.fail(new EmptyBody())
+			: Effect.promise(() => updateIssue(payload, options(request))),
 	UpdateTitle: (payload, request) =>
 		payload.title.trim() === ""
 			? Effect.fail(new EmptyTitle())

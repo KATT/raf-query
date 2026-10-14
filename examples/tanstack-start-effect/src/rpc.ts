@@ -78,6 +78,11 @@ export class EmptyTitle extends Schema.TaggedError<EmptyTitle>()(
 	{},
 ) {}
 
+export class EmptyBody extends Schema.TaggedError<EmptyBody>()(
+	"EmptyBody",
+	{},
+) {}
+
 export const IssueRpcs = RpcGroup.make(
 	Rpc.make("ListIssues", {
 		payload: { ...IssueListInput.fields, cursor: Cursor },
@@ -92,6 +97,15 @@ export const IssueRpcs = RpcGroup.make(
 	Rpc.make("UpdateTitle", {
 		error: EmptyTitle,
 		payload: { id: Id, title: Schema.String },
+		success: Issue,
+	}),
+	Rpc.make("UpdateBody", {
+		error: EmptyBody,
+		payload: { body: Schema.String, id: Id },
+		success: Issue,
+	}),
+	Rpc.make("SetStatus", {
+		payload: { id: Id, status: IssueStatus },
 		success: Issue,
 	}),
 	/** Newest first. */

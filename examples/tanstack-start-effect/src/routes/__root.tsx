@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { Logo } from "@examples/ui/components/logo";
+import { Toaster } from "@examples/ui/components/sonner";
 import { logoUrl } from "@examples/ui/lib/logo";
 import type { QueryClient } from "@raf-query/react";
 import {
@@ -79,6 +80,7 @@ function RootDocument(props: { readonly children: ReactNode }) {
 				<main className="mx-auto max-w-5xl px-6 py-8" key={prefetch}>
 					{props.children}
 				</main>
+				<Toaster closeButton position="bottom-right" richColors />
 				<Scripts />
 			</body>
 		</html>

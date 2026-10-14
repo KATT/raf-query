@@ -1,5 +1,6 @@
 import { Badge } from "@examples/ui/components/badge";
 import { cn } from "@examples/ui/lib/utils";
+import { ChevronDown } from "lucide-react";
 
 import type { IssueStatus } from "~/rpc.ts";
 
@@ -19,14 +20,26 @@ export function statusLabel(status: IssueStatus | "all") {
 	return status === "all" ? "All" : labels[status];
 }
 
-export function StatusBadge(props: { readonly status: IssueStatus }) {
+export function StatusDot(props: { readonly status: IssueStatus }) {
+	return (
+		<span
+			aria-hidden
+			className={cn("size-1.5 rounded-full", dots[props.status])}
+		/>
+	);
+}
+
+export function StatusBadge(props: {
+	readonly interactive?: boolean;
+	readonly status: IssueStatus;
+}) {
 	return (
 		<Badge className="gap-1.5" variant="outline">
-			<span
-				aria-hidden
-				className={cn("size-1.5 rounded-full", dots[props.status])}
-			/>
+			<StatusDot status={props.status} />
 			{labels[props.status]}
+			{props.interactive ? (
+				<ChevronDown aria-hidden className="size-3 opacity-60" />
+			) : null}
 		</Badge>
 	);
 }
