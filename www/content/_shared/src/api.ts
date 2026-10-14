@@ -65,13 +65,6 @@ export function listPosts(input: { page: number; sort: "newest" | "oldest" }) {
 	);
 }
 
-export function searchPosts(input: { q: string; signal?: AbortSignal }) {
-	return request<ReadonlyArray<Post>>(
-		`/api/posts?q=${encodeURIComponent(input.q)}`,
-		{ signal: input.signal },
-	);
-}
-
 export function updatePost(input: { slug: string; title: string }) {
 	return request<Post>(`/api/posts/${input.slug}`, {
 		method: "PATCH",
@@ -88,20 +81,6 @@ export function listTodos(input?: { page?: number; status?: "open" | "done" }) {
 
 export function getTodo(id: number) {
 	return request<Todo>(`/api/todos/${id}`);
-}
-
-export function createTodo(input: { title: string }) {
-	return request<Todo>("/api/todos", {
-		method: "POST",
-		body: JSON.stringify(input),
-	});
-}
-
-export function updateTodo(input: { done: boolean; id: number }) {
-	return request<Todo>(`/api/todos/${input.id}`, {
-		method: "PATCH",
-		body: JSON.stringify(input),
-	});
 }
 
 export function getAuthor(id: string) {

@@ -14,17 +14,8 @@ raf-query's cache is written in [Effect](https://effect.website). Using raf-quer
 A `queryFn` can return an `Effect`:
 
 ```ts twoslash
-import { Effect, Schedule } from "effect";
-declare class IssueNotFound {
-	readonly _tag: "IssueNotFound";
-}
-declare interface Issue {
-	readonly id: number;
-	readonly title: string;
-}
-declare const IssueRepo: {
-	get(id: number): Effect.Effect<Issue, IssueNotFound>;
-};
+import { Schedule } from "effect";
+import { IssueRepo } from "~/issues.ts";
 // ---cut---
 import { queryOptions } from "@raf-query/react";
 
@@ -49,21 +40,8 @@ From React, nothing changes: `useQuery` and the client's Promise methods read an
 `QueryClient` is a Promise wrapper around a `QueryCache` service, available as `qc.effect`. Effect code uses the cache directly, or builds its own with `QueryCache.make(config)` (scoped: closing the scope interrupts every request and timer) or `QueryCache.layer(config)`:
 
 ```ts twoslash
-import { queryOptions } from "@raf-query/react";
 import { Effect } from "effect";
-declare interface Issue {
-	readonly id: number;
-	readonly title: string;
-}
-declare const IssueRepo: {
-	get(id: number): Effect.Effect<Issue>;
-};
-function issueQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: ["issue", input.id],
-		queryFn: () => IssueRepo.get(input.id),
-	});
-}
+import { issueQuery } from "~/issues.ts";
 // ---cut---
 import { QueryCache } from "@raf-query/core";
 import { Stream } from "effect";
@@ -89,21 +67,8 @@ Effect.runFork(program.pipe(Effect.provide(QueryCache.layer())));
 Entries are a data type with module functions, like Effect's own modules:
 
 ```ts twoslash
-import { queryOptions } from "@raf-query/react";
 import { Effect } from "effect";
-declare interface Issue {
-	readonly id: number;
-	readonly title: string;
-}
-declare const IssueRepo: {
-	get(id: number): Effect.Effect<Issue>;
-};
-function issueQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: ["issue", input.id],
-		queryFn: () => IssueRepo.get(input.id),
-	});
-}
+import { issueQuery } from "~/issues.ts";
 // ---cut---
 import { Query, QueryCache } from "@raf-query/core";
 

@@ -62,19 +62,13 @@ import {
 	type EnsuredQueryHandle,
 	type QueryHandle,
 	useQuery,
+	type UseQueryOptions,
 } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 declare const factory: typeof postQuery;
 declare const handle: QueryHandle<typeof postQuery>;
 declare const ensuredHandle: EnsuredQueryHandle<typeof postQuery>;
-declare const options:
-	| {
-			readonly refetchInterval?: number;
-			readonly refetchOnReconnect?: boolean;
-			readonly refetchOnWindowFocus?: boolean;
-			readonly whilePending?: "previous" | "suspend";
-	  }
-	| undefined;
+declare const options: UseQueryOptions | undefined;
 // ---cut---
 const [promise, controls] = useQuery(factory, handle, options);
 const [data, ensuredControls] = useQuery(factory, ensuredHandle, options);

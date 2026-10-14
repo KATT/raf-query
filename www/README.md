@@ -32,7 +32,7 @@ Every `ts` / `tsx` fence uses [Twoslash](https://twoslash.netlify.app): hovering
 ````md
 ```tsx twoslash
 import { type EnsuredQueryHandle, useQuery } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
+import { postQuery } from "~/queries.ts";
 declare const handle: EnsuredQueryHandle<typeof postQuery>;
 // ---cut---
 const [post] = useQuery(postQuery, handle);
@@ -40,11 +40,20 @@ const [post] = useQuery(postQuery, handle);
 ```
 ````
 
-- Code above `// ---cut---` compiles but isn't shown. Import what the block needs from `content/_twoslash.ts` there: an app's API (`getPost`, `listComments`) and factories the guides share (`postQuery`, `commentsQuery`).
+- Code above `// ---cut---` compiles but isn't shown. Import what the block needs there: real libraries, and the shared app in `content/_shared`, an app the samples are written against (`~/api.ts`, `~/queries.ts`, `~/routes/posts.$slug.tsx`). Declare anything else the block leans on, like a component it renders (`declare function Spinner(): ReactNode`).
+- A block that defines a route starts with `// @filename: _shared/src/routes/posts.$slug.tsx`, so it compiles as that route file and `Route.useLoaderData()` has its loader's types.
 - `// ^?` pins the type of the name above it under the line.
 - `// @errors: 2345` shows an expected compiler error. Any error a block doesn't expect fails the build, so the samples stay correct as the API changes.
 - In a page's markdown for agents, the hidden setup and markers are removed, and each `// ^?` becomes a comment with its type.
-- Twoslash needs TypeScript's JavaScript API, which TypeScript 7 doesn't have, so it runs on `typescript6` (TypeScript 6). Restart `pnpm dev` after editing `content/_twoslash.ts`.
+- Twoslash needs TypeScript's JavaScript API, which TypeScript 7 doesn't have, so it runs on `typescript6` (TypeScript 6).
+
+Pages that walk through an app's files (the quick start, TanStack Start, Next.js) include them from an example app in `content/<page>/` instead:
+
+```md
+<<< ./quick-start/src/routes/todos.tsx#loader
+```
+
+That shows the `// #region loader` … `// #endregion` part of the file, compiled with the rest of it in its app. Without `#loader` it shows the whole file. `pnpm typecheck` checks every app, the shared one included, and the build regenerates their route trees.
 
 ## Demos
 

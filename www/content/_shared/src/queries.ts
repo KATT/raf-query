@@ -4,14 +4,11 @@ import {
 	type CommentPage,
 	getAuthor,
 	getBuild,
-	getCurrentOrg,
 	getPost,
 	getSettings,
-	getTodo,
 	listComments,
 	listPosts,
 	listTodos,
-	searchPosts,
 } from "./api.ts";
 
 export function postQuery(input: { slug: string }) {
@@ -53,23 +50,6 @@ export function todosQuery() {
 	});
 }
 
-export function filteredTodosQuery(input: {
-	readonly page: number;
-	readonly status: "open" | "done";
-}) {
-	return queryOptions({
-		queryKey: ["todos", "list", input],
-		queryFn: () => listTodos(input),
-	});
-}
-
-export function todoQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: ["todos", input.id],
-		queryFn: () => getTodo(input.id),
-	});
-}
-
 export function buildQuery(input: { id: string }) {
 	return queryOptions({
 		queryKey: ["build", input.id],
@@ -77,23 +57,9 @@ export function buildQuery(input: { id: string }) {
 	});
 }
 
-export function currentOrgQuery() {
-	return queryOptions({
-		queryKey: ["org", "current"],
-		queryFn: () => getCurrentOrg(),
-	});
-}
-
 export function settingsQuery() {
 	return queryOptions({
 		queryKey: ["settings"],
 		queryFn: () => getSettings(),
-	});
-}
-
-export function searchQuery(input: { q: string }) {
-	return queryOptions({
-		queryKey: ["search", input.q],
-		queryFn: (context) => searchPosts({ q: input.q, signal: context.signal }),
 	});
 }
