@@ -45,7 +45,7 @@ function clipboard() {
 	};
 }
 
-async function click(element: HTMLElement) {
+async function click(element: Element) {
 	await act(async () => {
 		fireEvent.click(element);
 	});
@@ -69,11 +69,9 @@ describe("DocBody code folds", () => {
 		using copied = clipboard();
 		const rendered = await renderMarkdown(
 			[
-				"```ts",
+				"```ts collapse={2-2}",
 				"const shown = 1;",
-				"// ---collapse---",
 				"const hidden = 2;",
-				"// ---/collapse---",
 				"```",
 			].join("\n"),
 			{ twoslashRoot: contentDir },
@@ -84,20 +82,16 @@ describe("DocBody code folds", () => {
 		}
 		await renderPage([html]);
 
-		const fold = screen.getByRole("button", { name: "1 collapsed line" });
-		expect(fold.getAttribute("aria-expanded")).toBe("false");
+		const fold = screen.getByText("1 collapsed line").closest("summary");
+		if (!fold) {
+			throw new Error("expected a summary");
+		}
+		const details = fold.closest("details");
+		expect(details?.open).toBe(false);
 		await click(fold);
-		expect(fold.getAttribute("aria-expanded")).toBe("true");
-		expect(screen.getByRole("button", { name: "Hide 1 line" })).toBe(fold);
-		expect(
-			document.querySelector(".code-collapse-body")?.hasAttribute("hidden"),
-		).toBe(false);
-
+		expect(details?.open).toBe(true);
 		await click(fold);
-		expect(fold.getAttribute("aria-expanded")).toBe("false");
-		expect(
-			document.querySelector(".code-collapse-body")?.hasAttribute("hidden"),
-		).toBe(true);
+		expect(details?.open).toBe(false);
 
 		await click(screen.getByRole("button", { name: "Copy code" }));
 		expect(copied.writeText).toHaveBeenCalledWith(

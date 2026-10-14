@@ -3,17 +3,18 @@ import path from "node:path";
 
 import { describe, expect, it } from "@effect/vitest";
 
-import { stripCollapseMarkers } from "./collapse.ts";
 import { renderMarkdown } from "./markdown.ts";
 
 // `pnpm test` runs in `www/`. Vitest serves this file from a non-file URL.
 const contentDir = path.resolve("content");
 
+async function rendered(markdown: string) {
+	return renderMarkdown(markdown, { twoslashRoot: contentDir });
+}
+
 async function htmlOf(markdown: string) {
-	const rendered = await renderMarkdown(markdown, {
-		twoslashRoot: contentDir,
-	});
-	return rendered.segments
+	const result = await rendered(markdown);
+	return result.segments
 		.map((segment) => (segment.kind === "html" ? segment.html : ""))
 		.join("");
 }
@@ -28,99 +29,93 @@ function isElement(node: Node): node is HTMLElement {
 	return node.nodeType === Node.ELEMENT_NODE;
 }
 
-function fence(body: string) {
-	return `\`\`\`ts\n${body}\n\`\`\``;
+function fence(body: string, meta = "") {
+	return `\`\`\`ts${meta ? ` ${meta}` : ""}\n${body}\n\`\`\``;
 }
 
-describe("collapse regions", () => {
+describe("Expressive Code folds", () => {
 	it("folds a range and keeps it in the block", async () => {
 		const root = mount(
 			await htmlOf(
 				fence(
 					[
 						"function demo() {",
-						"\t// ---collapse---",
 						"\tconst a = 1;",
 						"\tconst b = 2;",
-						"\t// ---/collapse---",
 						"\treturn a;",
 						"}",
 					].join("\n"),
+					"collapse={2-3}",
 				),
 			),
 		);
-		const pre = root.querySelector("pre");
-		const button = pre?.querySelector("button[data-collapse]");
-		const body = pre?.querySelector(".code-collapse-body");
-		expect(
-			button?.querySelector(".code-collapse-when-closed")?.textContent,
-		).toBe("2 collapsed lines");
-		expect(
-			button?.querySelector(".code-collapse-when-open")?.hasAttribute("hidden"),
-		).toBe(true);
-		expect(button?.getAttribute("aria-expanded")).toBe("false");
-		expect(button?.getAttribute("aria-controls")).toBe("code-collapse-1");
-		expect(button?.getAttribute("style")).toBe("--collapse-indent: 2");
-		expect(body?.hasAttribute("hidden")).toBe(true);
-		expect(body?.textContent).toContain("const a = 1;");
-		expect(body?.textContent).toContain("const b = 2;");
-		expect(root.textContent).not.toContain("---collapse---");
-		expect(pre?.textContent).toContain("return a;");
+		const section = root.querySelector(".ec-section");
+		const summary = section?.querySelector("summary");
+		const lines = section?.querySelector(".content-lines");
+		expect(summary?.textContent).toContain("2 collapsed lines");
+		expect(section?.querySelector("details")?.hasAttribute("open")).toBe(false);
+		expect(lines?.textContent).toContain("const a = 1;");
+		expect(lines?.textContent).toContain("const b = 2;");
+		expect(root.textContent).toContain("return a;");
+		expect(summary?.querySelector(".ec-line")?.getAttribute("style")).toContain(
+			"2ch",
+		);
 	});
 
 	it("counts a blank line in the folded range", async () => {
 		const root = mount(
-			await htmlOf(
-				fence("// ---collapse---\n\nconst a = 1;\n// ---/collapse---"),
-			),
+			await htmlOf(fence("const a = 1;\n\nconst b = 2;", "collapse={2-3}")),
 		);
-		expect(root.querySelector(".code-collapse-when-closed")?.textContent).toBe(
+		expect(root.querySelector("summary")?.textContent).toContain(
 			"2 collapsed lines",
 		);
 	});
 
-	it("leaves a block without markers unchanged", async () => {
-		const root = mount(await htmlOf(fence("const a = 1;")));
-		expect(root.querySelector("[data-collapse]")).toBeNull();
-	});
-
-	it("rejects a region that is unclosed, empty, or nested", async () => {
-		await expect(
-			htmlOf(fence("// ---collapse---\nconst a = 1;")),
-		).rejects.toThrow(/no \/\/ ---\/collapse---/);
-		await expect(
-			htmlOf(fence("// ---collapse---\n// ---/collapse---")),
-		).rejects.toThrow(/empty/);
-		await expect(
-			htmlOf(
-				fence(
-					"// ---collapse---\n// ---collapse---\nconst a = 1;\n// ---/collapse---\n// ---/collapse---",
-				),
-			),
-		).rejects.toThrow(/Nested/);
-		await expect(
-			htmlOf(fence("const a = 1;\n// ---/collapse---")),
-		).rejects.toThrow(/no \/\/ ---collapse--- before/);
-	});
-
-	it("keeps a pinned type with the lines it belongs to", async () => {
+	it("shows an expected error and fails on one a block doesn't expect", async () => {
 		const root = mount(
 			await htmlOf(
 				[
 					"```ts twoslash",
-					"const value = 1;",
-					"// ---collapse---",
-					"const hidden = value;",
-					"//       ^?",
-					"// ---/collapse---",
-					"const after = hidden;",
+					"// @errors: 2322",
+					"const value: string = 1;",
 					"```",
 				].join("\n"),
 			),
 		);
+		expect(root.querySelector(".twoslash-error-line")?.textContent).toContain(
+			"not assignable",
+		);
+		await expect(
+			htmlOf(["```ts twoslash", "const value: string = 1;", "```"].join("\n")),
+		).rejects.toThrow(/not assignable/);
+	});
+
+	it("leaves a block without a fold unchanged", async () => {
+		const root = mount(await htmlOf(fence("const a = 1;")));
+		expect(root.querySelector(".ec-section")).toBeNull();
+		expect(root.querySelector("pre")?.textContent).toContain("const a = 1;");
+	});
+
+	it("keeps a pinned type with the lines it belongs to", async () => {
+		const result = await rendered(
+			[
+				"```ts twoslash collapse={2-2}",
+				"const value = 1;",
+				"const hidden = value;",
+				"//       ^?",
+				"const after = hidden;",
+				"```",
+			].join("\n"),
+		);
+		const root = mount(
+			result.segments
+				.map((segment) => (segment.kind === "html" ? segment.html : ""))
+				.join(""),
+		);
 		const query = root.querySelector(".twoslash-query-line");
-		expect(query?.closest(".code-collapse-body")).not.toBeNull();
+		expect(query?.closest(".content-lines")).not.toBeNull();
 		expect(query?.textContent).toContain("hidden");
+		expect(result.typeQueries[0]?.[0]).toContain("hidden");
 	});
 
 	it("folds the homepage sample under the loader", async () => {
@@ -129,21 +124,19 @@ describe("collapse regions", () => {
 			"utf8",
 		).replace(/^---\n[\s\S]*?\n---\n/, "");
 		const root = mount(await htmlOf(markdown));
-		const bodies = [...root.querySelectorAll(".code-collapse-body")];
-		expect(bodies.map((body) => body.id)).toEqual([
-			"code-collapse-1",
-			"code-collapse-2",
-		]);
-		expect(bodies[0]?.textContent).toContain("Suspense");
-		expect(bodies[1]?.textContent).toContain("function Comments");
-		expect(bodies[1]?.querySelector(".twoslash-query-line")).not.toBeNull();
+		const sections = [...root.querySelectorAll(".ec-section")];
+		expect(sections).toHaveLength(2);
+		expect(sections[0]?.textContent).toContain("6 collapsed lines");
+		expect(sections[0]?.textContent).toContain("Suspense");
+		expect(sections[1]?.textContent).toContain("function Comments");
+		expect(sections[1]?.querySelector(".twoslash-query-line")).not.toBeNull();
 
 		const shown = root.cloneNode(true);
 		if (!isElement(shown)) {
 			throw new Error("expected an element");
 		}
 		for (const node of shown.querySelectorAll(
-			".code-collapse-body, .code-collapse-toggle, .twoslash-popup-container",
+			".content-lines, summary, .twoslash-popup-container",
 		)) {
 			node.remove();
 		}
@@ -152,16 +145,6 @@ describe("collapse regions", () => {
 		expect(shown.textContent).not.toContain("function Comments");
 		expect(shown.textContent).not.toContain("Suspense");
 		const queries = [...root.querySelectorAll(".twoslash-query-line")];
-		expect(queries[0]?.closest(".code-collapse-body")).toBeNull();
-	});
-});
-
-describe("stripCollapseMarkers", () => {
-	it("drops the markers and keeps the lines", () => {
-		expect(
-			stripCollapseMarkers(
-				"a\n// ---collapse---\n\tb\n\t// ---/collapse---\nc\n",
-			),
-		).toBe("a\n\tb\nc\n");
+		expect(queries[0]?.closest(".content-lines")).toBeNull();
 	});
 });

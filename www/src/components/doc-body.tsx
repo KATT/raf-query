@@ -31,25 +31,29 @@ function internalHref(target: EventTarget | null, root: HTMLElement) {
 	return url.pathname + url.hash;
 }
 
-/** The code a block shows, without Twoslash's types and error messages. */
+/** The code a block shows, without Twoslash's types and fold labels. */
 function codeText(pre: Element) {
-	const copy = pre.cloneNode(true);
-	if (!isElement(copy)) {
-		return "";
+	const lines = [...pre.querySelectorAll(".ec-line")].filter(
+		(line) => !line.closest("summary"),
+	);
+	if (lines.length === 0) {
+		return pre.textContent.trimEnd();
 	}
-	// A pinned type or an error is a line of its own, in place of the newline
-	// after the code line it belongs to.
-	for (const metaLine of copy.querySelectorAll(".twoslash-meta-line")) {
-		metaLine.replaceWith("\n");
-	}
-	for (const popup of copy.querySelectorAll(".twoslash-popup-container")) {
-		popup.remove();
-	}
-	// The fold's label isn't part of the sample. The lines stay in the body.
-	for (const toggle of copy.querySelectorAll(".code-collapse-toggle")) {
-		toggle.remove();
-	}
-	return copy.textContent.trimEnd();
+	return lines
+		.map((line) => {
+			const copy = line.cloneNode(true);
+			if (!isElement(copy)) {
+				return "";
+			}
+			for (const extra of copy.querySelectorAll(
+				".twoslash-meta-line, .twoslash-popup-container",
+			)) {
+				extra.remove();
+			}
+			return copy.textContent ?? "";
+		})
+		.join("\n")
+		.trimEnd();
 }
 
 /**
@@ -77,30 +81,10 @@ function placePopup(target: EventTarget | null) {
 	}px`;
 }
 
-/** Opens or closes a folded code region. The lines stay in the page either way. */
-function toggleCodeCollapse(target: EventTarget | null) {
-	if (!isElement(target)) {
-		return false;
-	}
-	const button = target.closest("button[data-collapse]");
-	const region = button?.closest(".code-collapse");
-	const body = region?.querySelector(":scope > .code-collapse-body");
-	const closed = button?.querySelector(".code-collapse-when-closed");
-	const open = button?.querySelector(".code-collapse-when-open");
-	if (!button || !body || !closed || !open) {
-		return false;
-	}
-	const willOpen = body.hasAttribute("hidden");
-	body.toggleAttribute("hidden", !willOpen);
-	closed.toggleAttribute("hidden", willOpen);
-	open.toggleAttribute("hidden", !willOpen);
-	button.setAttribute("aria-expanded", String(willOpen));
-	return true;
-}
-
 /**
  * A page's prerendered HTML, with its demos in between. Links between pages
  * navigate client-side and preload on hover, like the router's `<Link>`.
+ * Folded code is a `<details>` element, so the browser opens and closes it.
  */
 export function DocBody(props: {
 	readonly demos: Readonly<Record<string, QueryHandle<typeof demoQuery>>>;
@@ -111,9 +95,6 @@ export function DocBody(props: {
 		<div
 			className="prose prose-neutral max-w-none dark:prose-invert"
 			onClick={(event) => {
-				if (toggleCodeCollapse(event.target)) {
-					return;
-				}
 				const target = event.target;
 				const copy = isElement(target)
 					? target.closest("button[data-copy]")

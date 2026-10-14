@@ -100,6 +100,27 @@ html[data-announcement-dismissed] .announcement-bar {
 	background: var(--shiki-dark-bg, var(--card));
 }
 
+/* Expressive Code draws the tokens. The card around them stays ours. */
+.expressive-code .code-block,
+.dark .expressive-code .code-block {
+	margin-block: 0;
+	background: var(--ec-codeBg, var(--card));
+	border-color: var(--border);
+}
+
+.expressive-code {
+	margin-block: 1.5em;
+}
+
+.expressive-code .code-block pre {
+	border: 0;
+	padding: 0.35rem 0;
+}
+
+.expressive-code .code-block pre > code {
+	padding-block: 0;
+}
+
 .code-block pre {
 	margin: 0;
 	overflow-x: auto;
@@ -151,58 +172,6 @@ html[data-announcement-dismissed] .announcement-bar {
 .code-block:hover .code-copy,
 .code-copy:focus-visible {
 	opacity: 1;
-}
-
-/* Folded lines: “N collapsed lines”, opened from `DocBody`. A tab in the
-   indent is two columns, the same as `tab-size` on `pre` above. */
-.code-collapse {
-	display: block;
-}
-
-.code-collapse-toggle {
-	display: flex;
-	align-items: center;
-	gap: 0.45em;
-	width: 100%;
-	margin: 0;
-	border: 0;
-	border-radius: 0.25rem;
-	background: color-mix(in oklch, var(--foreground) 7%, transparent);
-	padding: 0 0.45em;
-	padding-inline-start: calc(var(--collapse-indent, 0) * 1ch + 0.45em);
-	color: var(--muted-foreground);
-	font: inherit;
-	line-height: inherit;
-	text-align: start;
-	cursor: pointer;
-	user-select: none;
-}
-
-.code-collapse-toggle:hover {
-	background: color-mix(in oklch, var(--foreground) 12%, transparent);
-	color: var(--foreground);
-}
-
-.code-collapse-toggle:focus-visible {
-	outline: 2px solid var(--ring);
-	outline-offset: 1px;
-}
-
-.code-collapse-chevron {
-	flex: none;
-	width: 0.4em;
-	height: 0.4em;
-	border-right: 1.5px solid currentColor;
-	border-bottom: 1.5px solid currentColor;
-	transform: translateY(-0.05em) rotate(-45deg);
-}
-
-.code-collapse-toggle[aria-expanded="true"] .code-collapse-chevron {
-	transform: translateY(0.05em) rotate(45deg);
-}
-
-.code-collapse-body {
-	display: block;
 }
 
 @media (hover: none) {
@@ -318,6 +287,25 @@ html[data-announcement-dismissed] .announcement-bar {
 .prose summary {
 	cursor: pointer;
 	font-weight: 600;
+}
+
+/* The fold is Expressive Code's `<details>`, nested in `.prose`. The prose
+   box and Tailwind's `.collapse { visibility: collapse }` utility would hide
+   the icon that closes an open range. */
+.prose .expressive-code details {
+	margin-block: 0;
+	border: 0;
+	border-radius: 0;
+	padding: 0;
+}
+
+.prose .expressive-code summary {
+	font-weight: inherit;
+}
+
+.expressive-code .expand,
+.expressive-code .collapse {
+	visibility: visible;
 }
 
 @keyframes indeterminate {
