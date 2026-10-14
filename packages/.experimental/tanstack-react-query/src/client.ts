@@ -7,7 +7,6 @@ import {
 	type Updater,
 } from "@tanstack/react-query";
 
-import { unsafeCast } from "./cast.ts";
 import {
 	type AnyQueryOptions,
 	type DataOf,
@@ -35,15 +34,20 @@ function start(
 		client.defaultQueryOptions(options).retry ??
 		(environmentManager.isServer() ? 0 : 3);
 	if (options.kind === "infinite") {
+		const execute = { ...options, pages, retry };
 		// SAFETY: `kind: "infinite"` is only stamped by `infiniteQueryOptions`,
 		// whose options are TanStack infinite query options.
 		return client.infiniteQuery(
-			unsafeCast<InfiniteQueryExecuteOptions>({ ...options, pages, retry }),
+			// oxlint-disable-next-line typescript/consistent-type-assertions
+			execute as unknown as InfiniteQueryExecuteOptions,
 		);
 	}
 	// SAFETY: `kind: "query"` is only stamped by `queryOptions`, whose options
 	// are TanStack query options.
-	return client.query(unsafeCast<QueryExecuteOptions>({ ...options, retry }));
+	return client.query(
+		// oxlint-disable-next-line typescript/consistent-type-assertions
+		{ ...options, retry } as QueryExecuteOptions,
+	);
 }
 
 /**
@@ -101,9 +105,8 @@ export async function ensureData<TFactory extends QueryFactory>(
 ): Promise<DataOf<TFactory>> {
 	const options = optionsFor(client, factory, args[0]);
 	// SAFETY: the entry under this factory's key holds this factory's data.
-	return unsafeCast<DataOf<TFactory>>(
-		await load(client, options, args[1]?.pages),
-	);
+	// oxlint-disable-next-line typescript/consistent-type-assertions
+	return (await load(client, options, args[1]?.pages)) as DataOf<TFactory>;
 }
 
 /**
@@ -139,7 +142,6 @@ export function getData<TFactory extends QueryFactory>(
 ): DataOf<TFactory> | undefined {
 	const options = optionsFor(client, factory, args[0]);
 	// SAFETY: the entry under this factory's key holds this factory's data.
-	return unsafeCast<DataOf<TFactory> | undefined>(
-		client.getQueryData(options.queryKey),
-	);
+	// oxlint-disable-next-line typescript/consistent-type-assertions
+	return client.getQueryData(options.queryKey) as DataOf<TFactory> | undefined;
 }

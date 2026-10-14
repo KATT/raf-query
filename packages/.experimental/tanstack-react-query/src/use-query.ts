@@ -18,7 +18,6 @@ import {
 } from "@tanstack/react-query";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
-import { unsafeCast } from "./cast.ts";
 import {
 	type AnyQueryOptions,
 	type DataOf,
@@ -134,25 +133,23 @@ function createReader(
 	const infinite = paged
 		? new InfiniteQueryObserver(
 				client,
-				unsafeCast<
-					ConstructorParameters<
-						typeof InfiniteQueryObserver<
-							unknown,
-							DefaultError,
-							InfiniteData<unknown>,
-							QueryKey,
-							unknown
-						>
-					>[1]
-				>(options),
+				// oxlint-disable-next-line typescript/consistent-type-assertions
+				options as ConstructorParameters<
+					typeof InfiniteQueryObserver<
+						unknown,
+						DefaultError,
+						InfiniteData<unknown>,
+						QueryKey,
+						unknown
+					>
+				>[1],
 			)
 		: undefined;
+	// SAFETY: an infinite observer is a query observer whose data is
+	// `InfiniteData`; readers only pass that data through as `unknown`.
 	const observer = infinite
-		? // SAFETY: an infinite observer is a query observer whose data is
-			// `InfiniteData`; readers only pass that data through as `unknown`.
-			unsafeCast<QueryObserver<unknown, DefaultError, unknown, unknown>>(
-				infinite,
-			)
+		? // oxlint-disable-next-line typescript/consistent-type-assertions
+			(infinite as QueryObserver<unknown, DefaultError, unknown, unknown>)
 		: new QueryObserver<unknown, DefaultError, unknown, unknown>(
 				client,
 				options,
@@ -190,7 +187,8 @@ function observerOptions(
 ): Defaulted {
 	// SAFETY: factory options are TanStack observer options plus `kind`
 	// (see `queryOptions` / `infiniteQueryOptions`).
-	const base = unsafeCast<ObserverOptions>(options);
+	// oxlint-disable-next-line typescript/consistent-type-assertions
+	const base = options as ObserverOptions;
 	const next: ObserverOptions = { ...base, refetchOnMount: false };
 	if (read.refetchInterval !== undefined) {
 		next.refetchInterval = read.refetchInterval;
@@ -319,5 +317,6 @@ export function useQuery<TFactory extends QueryFactory>(
 	// SAFETY: `shown.promise` is this factory's entry's promise (or an earlier
 	// input's entry of the same factory), and `controls` has every field of
 	// both control shapes.
-	return unsafeCast<UseQueryResult<TFactory>>([shown.promise, controls]);
+	// oxlint-disable-next-line typescript/consistent-type-assertions
+	return [shown.promise, controls] as UseQueryResult<TFactory>;
 }

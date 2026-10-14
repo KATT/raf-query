@@ -17,7 +17,6 @@ import { Effect } from "effect";
 import { use, useEffect, useState, useSyncExternalStore } from "react";
 
 import { assertSent } from "./browser-requests.ts";
-import { unsafeCast } from "./cast.ts";
 import type { QueryClient } from "./client.ts";
 import { useQueryClient } from "./provider.tsx";
 
@@ -105,23 +104,23 @@ type PromiseCommands = Omit<QueryObserver.Result, Command> &
 
 /** `tracked`, with the observer's command Effects as Promise functions. */
 function withPromiseCommands(tracked: QueryObserver.Result): PromiseCommands {
-	// SAFETY: the trap below replaces exactly the `Command` properties with
+	const proxied = new Proxy(tracked, {
+		get: (target, name, receiver) => {
+			if (
+				name === "fetchNextPage" ||
+				name === "fetchPreviousPage" ||
+				name === "refetch"
+			) {
+				return commandFor(target[name]);
+			}
+			// oxlint-disable-next-line anti-slop/no-reflect-get -- a Proxy trap forwarding to its target
+			return Reflect.get(target, name, receiver);
+		},
+	});
+	// SAFETY: the trap above replaces exactly the `Command` properties with
 	// Promise functions and forwards every other read.
-	return unsafeCast<PromiseCommands>(
-		new Proxy(tracked, {
-			get: (target, name, receiver) => {
-				if (
-					name === "fetchNextPage" ||
-					name === "fetchPreviousPage" ||
-					name === "refetch"
-				) {
-					return commandFor(target[name]);
-				}
-				// oxlint-disable-next-line anti-slop/no-reflect-get -- a Proxy trap forwarding to its target
-				return Reflect.get(target, name, receiver);
-			},
-		}),
-	);
+	// oxlint-disable-next-line typescript/consistent-type-assertions
+	return proxied as unknown as PromiseCommands;
 }
 
 /** An observer, with the stable callbacks `useSyncExternalStore` needs. */
@@ -222,14 +221,14 @@ export function useQuery<TFactory extends QueryFactory>(
 		QueryObserver.trackResult(observer, result),
 	);
 	if (handle.ensured === true) {
+		const data = use(result.promise);
 		// SAFETY: as below; `use` unwraps the promise to its data.
-		return unsafeCast<UseEnsuredQueryResult<TFactory>>([
-			use(result.promise),
-			controls,
-		]);
+		// oxlint-disable-next-line typescript/consistent-type-assertions
+		return [data, controls] as UseEnsuredQueryResult<TFactory>;
 	}
 	// SAFETY: the result's promise is this factory's entry's promise (or an
 	// earlier input's entry of the same factory), and the result has every
 	// field of both control shapes.
-	return unsafeCast<UseQueryResult<TFactory>>([result.promise, controls]);
+	// oxlint-disable-next-line typescript/consistent-type-assertions
+	return [result.promise, controls] as UseQueryResult<TFactory>;
 }

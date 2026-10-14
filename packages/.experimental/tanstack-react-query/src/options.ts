@@ -12,8 +12,6 @@ import {
 	type QueryObserverOptions,
 } from "@tanstack/react-query";
 
-import { unsafeCast } from "./cast.ts";
-
 /**
  * The TanStack options a factory may set. The rest (`enabled`, `select`,
  * `placeholderData`, `initialData`, `refetchOnMount`, `suspense`,
@@ -139,10 +137,8 @@ export function queryOptions<TData>(
 ): QueryOptions<{ data: TData }> {
 	// SAFETY: the data tag on `queryKey` is type-only (TanStack's own
 	// `queryOptions` is the identity function); `queryFn` produces `TData`.
-	return unsafeCast<QueryOptions<{ data: TData }>>({
-		...options,
-		kind: "query",
-	});
+	// oxlint-disable-next-line typescript/consistent-type-assertions
+	return { ...options, kind: "query" } as QueryOptions<{ data: TData }>;
 }
 
 /**
@@ -154,12 +150,11 @@ export function infiniteQueryOptions<TPage, TPageParam>(
 ): InfiniteQueryOptions<{ page: TPage; pageParam: TPageParam }> {
 	// SAFETY: as in `queryOptions`; the paged `queryFn` and page params make
 	// the entry's data `InfiniteData<TPage, TPageParam>`.
-	return unsafeCast<
-		InfiniteQueryOptions<{ page: TPage; pageParam: TPageParam }>
-	>({
-		...options,
-		kind: "infinite",
-	});
+	// oxlint-disable-next-line typescript/consistent-type-assertions
+	return { ...options, kind: "infinite" } as InfiniteQueryOptions<{
+		page: TPage;
+		pageParam: TPageParam;
+	}>;
 }
 
 /**
@@ -227,7 +222,8 @@ export function handleOf<TFactory extends QueryFactory>(
 ): QueryHandle<TFactory> {
 	// SAFETY: `input` is what the caller passed for this factory, which
 	// `InputArgs<TFactory>` type-checked.
-	return unsafeCast<QueryHandle<TFactory>>({ input, key: options.queryKey });
+	// oxlint-disable-next-line typescript/consistent-type-assertions
+	return { input, key: options.queryKey } as QueryHandle<TFactory>;
 }
 
 /** Input hashes seen per key hash, to catch keys that leave out the input. */

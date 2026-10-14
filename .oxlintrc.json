@@ -143,7 +143,6 @@
 				"minimumDescriptionLength": 10
 			}
 		],
-		"anti-slop/no-chained-type-assertions": "error",
 		"anti-slop/no-module-mocking": "error",
 		"anti-slop/no-reflect-apply": "error",
 		"anti-slop/no-unknown-type-aliases": "error",
@@ -513,7 +512,6 @@
 			"rules": {
 				"typescript/consistent-type-assertions": "off",
 				"typescript/no-deprecated": "off",
-				"anti-slop/no-chained-type-assertions": "off",
 				"anti-slop/no-conditional-empty-object-spread": "off",
 				"anti-slop/no-known-value-widening": "off",
 				"anti-slop/no-object-parameters": "off",

@@ -15,7 +15,6 @@ import {
 } from "effect";
 
 import type { Event as CacheEvent } from "./cache.ts";
-import { unsafeCast } from "./cast.ts";
 import {
 	type Direction,
 	fetchPages,
@@ -149,7 +148,8 @@ export function entryOf<TFactory extends QueryFactory>(
 ): Entry {
 	// SAFETY: `make` below creates every value that carries `TypeId`, and the
 	// public `Query` type is how those entries leave this module.
-	return unsafeCast<Entry>(query);
+	// oxlint-disable-next-line typescript/consistent-type-assertions
+	return query as unknown as Entry;
 }
 
 export function emit(cache: CacheState, event: CacheEvent) {

@@ -9,7 +9,6 @@
 import { type Context, Effect, type Pipeable, type Stream } from "effect";
 import { dual } from "effect/Function";
 
-import { unsafeCast } from "./cast.ts";
 import * as internal from "./entry.ts";
 import type { Direction } from "./infinite.ts";
 import type { QueryKey } from "./key.ts";
@@ -111,20 +110,20 @@ function typed<TFactory extends QueryFactory>(
 	// SAFETY: an entry is keyed by its factory's `queryKey`, and only that
 	// factory's `queryFn` (or data written through it) fills it, so its data
 	// and failures have the factory's types. Interrupts become CancelledError.
-	return unsafeCast<
-		Effect.Effect<
-			DataOf<TFactory>,
-			ErrorOf<TFactory> | CancelledError,
-			ServicesOf<TFactory>
-		>
-	>(effect);
+	// oxlint-disable-next-line typescript/consistent-type-assertions
+	return effect as Effect.Effect<
+		DataOf<TFactory>,
+		ErrorOf<TFactory> | CancelledError,
+		ServicesOf<TFactory>
+	>;
 }
 
 function typedState<TFactory extends QueryFactory>(
 	state: State<unknown>,
 ): State<DataOf<TFactory>> {
 	// SAFETY: as in `typed`; `data` and `promise` hold the factory's data.
-	return unsafeCast<State<DataOf<TFactory>>>(state);
+	// oxlint-disable-next-line typescript/consistent-type-assertions
+	return state as State<DataOf<TFactory>>;
 }
 
 /**
@@ -236,9 +235,10 @@ export function changes<TFactory extends QueryFactory>(
 	self: Query<TFactory>,
 ): Stream.Stream<State<DataOf<TFactory>>> {
 	// SAFETY: as in `typedState`, for every element.
-	return unsafeCast<Stream.Stream<State<DataOf<TFactory>>>>(
-		internal.changes(internal.entryOf(self)),
-	);
+	// oxlint-disable-next-line typescript/consistent-type-assertions
+	return internal.changes(internal.entryOf(self)) as Stream.Stream<
+		State<DataOf<TFactory>>
+	>;
 }
 
 /**
@@ -249,9 +249,10 @@ export function readUnsafe<TFactory extends QueryFactory>(
 	self: Query<TFactory>,
 ): Thenable<DataOf<TFactory>> {
 	// SAFETY: as in `typedState`.
-	return unsafeCast<Thenable<DataOf<TFactory>>>(
-		internal.readUnsafe(internal.entryOf(self)),
-	);
+	// oxlint-disable-next-line typescript/consistent-type-assertions
+	return internal.readUnsafe(internal.entryOf(self)) as Thenable<
+		DataOf<TFactory>
+	>;
 }
 
 /**
