@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.6.2](https://github.com/KATT/raf-query/compare/0.6.1...0.6.2) (2026-10-14)
+
+### Features
+
+- **examples:** Linear-style inline edits and list status changes ([#82](https://github.com/KATT/raf-query/issues/82)) ([10119d0](https://github.com/KATT/raf-query/commit/10119d0d78f216b8eaff09ab3880538060412c6c))
+
 ## [0.6.1](https://github.com/KATT/raf-query/compare/0.6.0...0.6.1) (2026-10-14)
 
 - skip a release when main moved before publishing ([#81](https://github.com/KATT/raf-query/issues/81)) ([9ca107d](https://github.com/KATT/raf-query/commit/9ca107df549d12957edbb1019217b73bb59ec740)), references [#78](https://github.com/KATT/raf-query/issues/78) [#78](https://github.com/KATT/raf-query/issues/78)
