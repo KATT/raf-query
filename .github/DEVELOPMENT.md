@@ -114,7 +114,7 @@ pnpm lint
 
 Both packages are released together and always share a version. The latest git tag is the version source.
 
-Pushing to `main` runs [`.github/workflows/release.yaml`](./workflows/release.yaml), which runs [release-it](https://github.com/release-it/release-it) from the repo root:
+Pushing to `main` runs [`.github/workflows/release.yaml`](./workflows/release.yaml), which runs [release-it](https://github.com/release-it/release-it) from the repo root. It skips when nothing under `packages/core` or `packages/react` changed since the latest tag (docs, examples, agent docs, and `packages/.experimental/*` alone do not release):
 
 1. Computes the next version from conventional commits since the latest tag and updates `CHANGELOG.md`.
 2. Writes the version into `packages/core/package.json` and `packages/react/package.json`.
