@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.6.1](https://github.com/KATT/raf-query/compare/0.6.0...0.6.1) (2026-10-14)
+
+- skip a release when main moved before publishing ([#81](https://github.com/KATT/raf-query/issues/81)) ([9ca107d](https://github.com/KATT/raf-query/commit/9ca107df549d12957edbb1019217b73bb59ec740)), references [#78](https://github.com/KATT/raf-query/issues/78) [#78](https://github.com/KATT/raf-query/issues/78)
+
 ## [0.6.0](https://github.com/KATT/raf-query/compare/0.5.3...0.6.0) (2026-10-14)
 
 ### ⚠ BREAKING CHANGES
