@@ -238,9 +238,9 @@ describe("types", () => {
 			>();
 			// @ts-expect-error the input is the endpoint's args
 			void qc.ensure(endpointQuery(getPost), { tag: "a" });
-			// @ts-expect-error the input is the endpoint's args
 			void qc.ensure(
 				endpointPagesQuery(listPosts),
+				// @ts-expect-error the input is the endpoint's args
 				{ slug: "a" },
 				{ pages: 2 },
 			);
