@@ -178,25 +178,25 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 
 	return (
 		<figure className="not-prose my-8 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
-			<figcaption className="flex flex-wrap items-start gap-3 border-b px-4 py-3">
-				<div className="grid min-w-0 flex-1 gap-0.5">
+			<figcaption className="grid gap-1.5 border-b px-4 py-3">
+				<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
 					<p className="flex items-center gap-2 text-sm font-semibold">
-						<FlaskConical className="size-4 text-emerald-600 dark:text-emerald-400" />
+						<FlaskConical className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
 						{demo.title}
 					</p>
-					<p className="text-xs text-muted-foreground">{demo.hint}</p>
+					<Toolbar demo={demo} onReset={reset}>
+						<Button
+							onClick={() => {
+								setExpanded(true);
+							}}
+							size="xs"
+							variant="outline"
+						>
+							<Expand /> Expand
+						</Button>
+					</Toolbar>
 				</div>
-				<Toolbar demo={demo} onReset={reset}>
-					<Button
-						onClick={() => {
-							setExpanded(true);
-						}}
-						size="xs"
-						variant="outline"
-					>
-						<Expand /> Expand
-					</Button>
-				</Toolbar>
+				<p className="text-xs text-muted-foreground">{demo.hint}</p>
 			</figcaption>
 			<div className="p-4">
 				{expanded ? (
