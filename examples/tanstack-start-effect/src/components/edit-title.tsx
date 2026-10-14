@@ -1,20 +1,18 @@
 import { warnMockDbWrite } from "@examples/ui/lib/mock-db-toast";
 import { cn } from "@examples/ui/lib/utils";
-import { QueryCache } from "@raf-query/react";
 import { useRouteContext } from "@tanstack/react-router";
 import { Effect } from "effect";
 import { useActionState, useOptimistic } from "react";
 
 import { Issues } from "~/issues.ts";
+import { invalidateIssues } from "~/queries.ts";
 import type { Issue } from "~/rpc.ts";
 
 /** Saves the title, then waits for the refetched issue. `null` when it saved. */
 const rename = Effect.fn("rename")(
 	function* (input: { readonly id: number; readonly title: string }) {
 		yield* Issues.use((issues) => issues.UpdateTitle(input));
-		yield* QueryCache.QueryCache.use((cache) =>
-			cache.invalidate({ queryKey: ["issues"] }),
-		);
+		yield* invalidateIssues;
 		return null;
 	},
 	Effect.catchTags({

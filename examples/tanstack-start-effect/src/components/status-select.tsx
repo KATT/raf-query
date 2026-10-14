@@ -6,13 +6,13 @@ import {
 } from "@examples/ui/components/dropdown-menu";
 import { warnMockDbWrite } from "@examples/ui/lib/mock-db-toast";
 import { cn } from "@examples/ui/lib/utils";
-import { QueryCache } from "@raf-query/react";
 import { useRouteContext } from "@tanstack/react-router";
 import { Check } from "lucide-react";
 import { Effect } from "effect";
 import { useOptimistic, useTransition } from "react";
 
 import { Issues } from "~/issues.ts";
+import { invalidateIssues } from "~/queries.ts";
 import { type IssueStatus, issueStatuses } from "~/rpc.ts";
 
 import { StatusBadge, StatusDot, statusLabel } from "./status-badge.tsx";
@@ -26,9 +26,7 @@ const setStatus = Effect.fn("setStatus")(function* (input: {
 	readonly status: IssueStatus;
 }) {
 	yield* Issues.use((issues) => issues.SetStatus(input));
-	yield* QueryCache.QueryCache.use((cache) =>
-		cache.invalidate({ queryKey: ["issues"] }),
-	);
+	yield* invalidateIssues;
 });
 
 /** Status badge that opens a menu and saves the choice optimistically. */

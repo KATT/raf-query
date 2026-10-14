@@ -5,7 +5,7 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { Textarea } from "@examples/ui/components/textarea";
 import { warnMockDbWrite } from "@examples/ui/lib/mock-db-toast";
 import { cn } from "@examples/ui/lib/utils";
-import { QueryCache, type QueryHandle, useQuery } from "@raf-query/react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
 import { useRouteContext } from "@tanstack/react-router";
 import { Effect } from "effect";
 import { Loader2 } from "lucide-react";
@@ -13,7 +13,7 @@ import { use, useOptimistic, useRef } from "react";
 import { useFormStatus } from "react-dom";
 
 import { Issues } from "~/issues.ts";
-import { commentsQuery } from "~/queries.ts";
+import { commentsQuery, invalidateIssues } from "~/queries.ts";
 import type { Comment } from "~/rpc.ts";
 
 /**
@@ -26,9 +26,7 @@ const addComment = Effect.fn("addComment")(function* (input: {
 	readonly issueId: number;
 }) {
 	yield* Issues.use((issues) => issues.AddComment(input));
-	yield* QueryCache.QueryCache.use((cache) =>
-		cache.invalidate({ queryKey: ["issues"] }),
-	);
+	yield* invalidateIssues;
 });
 
 const commentClassName = "rounded-lg border p-3";

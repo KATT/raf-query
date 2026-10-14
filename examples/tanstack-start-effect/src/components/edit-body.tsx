@@ -1,20 +1,18 @@
 import { warnMockDbWrite } from "@examples/ui/lib/mock-db-toast";
 import { cn } from "@examples/ui/lib/utils";
-import { QueryCache } from "@raf-query/react";
 import { useRouteContext } from "@tanstack/react-router";
 import { Effect } from "effect";
 import { useActionState, useOptimistic } from "react";
 
 import { Issues } from "~/issues.ts";
+import { invalidateIssues } from "~/queries.ts";
 import type { Issue } from "~/rpc.ts";
 
 /** Saves the body, then waits for the refetched issue. `null` when it saved. */
 const saveBody = Effect.fn("saveBody")(
 	function* (input: { readonly body: string; readonly id: number }) {
 		yield* Issues.use((issues) => issues.UpdateBody(input));
-		yield* QueryCache.QueryCache.use((cache) =>
-			cache.invalidate({ queryKey: ["issues"] }),
-		);
+		yield* invalidateIssues;
 		return null;
 	},
 	Effect.catchTags({

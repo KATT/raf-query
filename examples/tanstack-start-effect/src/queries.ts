@@ -1,13 +1,29 @@
 import {
 	type ErrorOf,
 	infiniteQueryOptions,
+	QueryCache,
 	queryOptions,
 	type ServicesOf,
 } from "@raf-query/react";
-import { Schema } from "effect";
+import { Schedule, Schema } from "effect";
 
 import { Issues } from "~/issues.ts";
 import { type IssueListInput, IssueNotFound } from "~/rpc.ts";
+
+/**
+ * Refetches every issue query being read. Actions end with it, so they stay
+ * pending until the saved change is on screen.
+ */
+export const invalidateIssues = QueryCache.QueryCache.use((cache) =>
+	cache.invalidate({ queryKey: ["issues"] }),
+);
+
+/** Three retries, backing off from 1 s. A missing issue won't turn up on a retry. */
+const retryUnlessNotFound = Schedule.exponential("1 second").pipe(
+	Schedule.while(
+		(step) => step.attempt <= 3 && !Schema.is(IssueNotFound)(step.input),
+	),
+);
 
 export function issueListQuery(input: IssueListInput) {
 	return infiniteQueryOptions({
@@ -40,9 +56,7 @@ export function issueQuery(input: { id: number }) {
 	return queryOptions({
 		queryFn: () => Issues.use((issues) => issues.GetIssue(input)),
 		queryKey: ["issues", "detail", input.id],
-		// A missing issue won't turn up on a retry.
-		retry: (failures, error) =>
-			failures <= 3 && !Schema.is(IssueNotFound)(error),
+		retry: retryUnlessNotFound,
 	});
 }
 
@@ -70,8 +84,7 @@ export function assigneeQuery(input: { issueId: number }) {
 	return queryOptions({
 		queryFn: () => Issues.use((issues) => issues.GetIssueAssignee(input)),
 		queryKey: ["issues", "assignee", input.issueId],
-		retry: (failures, error) =>
-			failures <= 3 && !Schema.is(IssueNotFound)(error),
+		retry: retryUnlessNotFound,
 	});
 }
 
