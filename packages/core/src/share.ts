@@ -1,4 +1,3 @@
-import { unsafeCast } from "./cast.ts";
 import { isPlainRecord } from "./key.ts";
 
 function isPlainArray(value: unknown): value is ReadonlyArray<unknown> {
@@ -41,5 +40,5 @@ function share(previous: unknown, next: unknown, depth: number): unknown {
 export function replaceEqualDeep<T>(previous: unknown, next: T): T {
 	// SAFETY: `share` returns `next`, or `previous` / a copy only where they
 	// are deeply equal to `next`, so the result has `next`'s shape.
-	return unsafeCast<T>(share(previous, next, 0));
+	return share(previous, next, 0) as T;
 }

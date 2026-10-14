@@ -98,11 +98,8 @@
 		"workspace/no-custom-test-timeout": "error",
 		// Destructure only fields read three or more times: `const post = use(p)`.
 		"workspace/no-overzealous-destructuring": "error",
-		// Type assertions can hide mismatches. Narrow values or use `satisfies` instead.
-		"typescript/consistent-type-assertions": [
-			"error",
-			{ "assertionStyle": "never" }
-		],
+		// `anti-slop/require-safety-comment-for-type-assertion` covers assertions.
+		"typescript/consistent-type-assertions": "off",
 		// JSDoc `@deprecated` is not a TypeScript error; fail the lint instead.
 		// `typeAware` is required. Other tsgolint rules in correctness/suspicious
 		// stay off so this stays an opt-in rule, not a full type-aware rollout.
@@ -143,7 +140,6 @@
 				"minimumDescriptionLength": 10
 			}
 		],
-		"anti-slop/no-chained-type-assertions": "error",
 		"anti-slop/no-module-mocking": "error",
 		"anti-slop/no-reflect-apply": "error",
 		"anti-slop/no-unknown-type-aliases": "error",
@@ -422,7 +418,6 @@
 				"**/tests/**/*.{js,jsx,ts,tsx}"
 			],
 			"rules": {
-				"typescript/consistent-type-assertions": "off",
 				"no-console": "off",
 				"eslint/no-underscore-dangle": "off",
 				"vitest/require-mock-type-parameters": "off",
@@ -511,9 +506,7 @@
 				"examples/.shared/ui/src/hooks/**"
 			],
 			"rules": {
-				"typescript/consistent-type-assertions": "off",
 				"typescript/no-deprecated": "off",
-				"anti-slop/no-chained-type-assertions": "off",
 				"anti-slop/no-conditional-empty-object-spread": "off",
 				"anti-slop/no-known-value-widening": "off",
 				"anti-slop/no-object-parameters": "off",

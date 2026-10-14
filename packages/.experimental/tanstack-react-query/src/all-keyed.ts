@@ -24,6 +24,5 @@ export async function allKeyed<
 	);
 	// SAFETY: `result` has exactly `record`'s keys, each holding the awaited
 	// value of the same key.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	return result as Settled<TRecord>;
 }

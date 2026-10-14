@@ -23,7 +23,6 @@ import {
 	Stream,
 } from "effect";
 
-import { unsafeCast } from "./cast.ts";
 import * as Entry from "./entry.ts";
 import {
 	dehydrateEntries,
@@ -290,7 +289,7 @@ function typed<TFactory extends QueryFactory>(
 	// SAFETY: an entry's hash comes from its factory's `queryKey`, and only
 	// that factory's `queryFn` (or data written through the same factory)
 	// fills it, so its data and errors have the factory's types.
-	return unsafeCast<Query.Query<TFactory>>(entry);
+	return entry as unknown as Query.Query<TFactory>;
 }
 
 function handleOf<TFactory extends QueryFactory>(
@@ -298,7 +297,7 @@ function handleOf<TFactory extends QueryFactory>(
 ): QueryHandle<TFactory> {
 	// SAFETY: `entry.handle.input` is the input of the latest call through
 	// this factory, which `InputArgs<TFactory>` type-checked.
-	return unsafeCast<QueryHandle<TFactory>>(entry.handle);
+	return entry.handle as unknown as QueryHandle<TFactory>;
 }
 
 function dataOf<TFactory extends QueryFactory>(
@@ -306,7 +305,7 @@ function dataOf<TFactory extends QueryFactory>(
 ): DataOf<TFactory> {
 	// SAFETY: only called when `hasData` is set, so `data` came from this
 	// factory's queryFn or Entry.setData, even when its type includes `undefined`.
-	return unsafeCast<DataOf<TFactory>>(entry.state.data);
+	return entry.state.data as DataOf<TFactory>;
 }
 
 function keyMatcher(filter: Filter): (entry: Entry.Entry) => boolean {
@@ -333,9 +332,10 @@ function load<TFactory extends QueryFactory>(
 ): Effect.Effect<DataOf<TFactory>, ErrorOf<TFactory> | Query.CancelledError> {
 	if (!entry.state.hasData || (fresh && Entry.needsRefetch(entry))) {
 		// SAFETY: as in `typed`.
-		return unsafeCast<
-			Effect.Effect<DataOf<TFactory>, ErrorOf<TFactory> | Query.CancelledError>
-		>(Entry.fetch(entry, { pages }));
+		return Entry.fetch(entry, { pages }) as Effect.Effect<
+			DataOf<TFactory>,
+			ErrorOf<TFactory> | Query.CancelledError
+		>;
 	}
 	Entry.revalidate(entry);
 	return Effect.succeed(dataOf<TFactory>(entry));
@@ -393,8 +393,10 @@ export const make: (
 		const match = <TFactory extends QueryFactory>(target: Target<TFactory>) => {
 			// SAFETY: a target is a factory and its input, or a lone filter;
 			// `InputArgs` only narrows the input's type.
-			const [first, input] =
-				unsafeCast<readonly [QueryFactory | Filter, unknown?]>(target);
+			const [first, input] = target as readonly [
+				QueryFactory | Filter,
+				unknown?,
+			];
 			if (Predicate.isFunction(first)) {
 				const entry = state.entries.get(
 					hashKey(optionsFor(first, input).queryKey),
@@ -525,11 +527,13 @@ export const make: (
 			[TypeId]: TypeId,
 			watch: (factory, ...args) =>
 				Stream.unwrap(
-					Effect.map(buildFor(factory, args[0]), (entry) =>
-						// SAFETY: as in `typed`, for every element.
-						unsafeCast<Stream.Stream<Query.State<DataOf<typeof factory>>>>(
-							Entry.changes(entry),
-						),
+					Effect.map(
+						buildFor(factory, args[0]),
+						(entry) =>
+							// SAFETY: as in `typed`, for every element.
+							Entry.changes(entry) as Stream.Stream<
+								Query.State<DataOf<typeof factory>>
+							>,
 					),
 				),
 		};
