@@ -15,8 +15,6 @@ import {
 } from "@raf-query/core";
 import { Context, Effect, Exit, Layer, Option, Predicate, Scope } from "effect";
 
-import { unsafeCast } from "./cast.ts";
-
 export interface QueryClientConfig<TServices = never>
 	extends QueryCache.Config {
 	/**
@@ -47,7 +45,7 @@ function provided<A, E, R>(
 	// SAFETY: the cache was built over the client's `layer`, so every request
 	// already runs with those services, and the verbs take only factories of
 	// `QueryFactory<TServices>`.
-	return unsafeCast<Effect.Effect<A, E>>(effect);
+	return effect as Effect.Effect<A, E>;
 }
 
 /**
@@ -71,7 +69,7 @@ function loadArgs<TFactory extends QueryFactory>(
 	// SAFETY: the client's overloads checked `input` against the factory and
 	// allowed `options` for paged factories only, as the cache's overloads do;
 	// the cache reads both positions.
-	return unsafeCast<InputArgs<TFactory>>([input, options]);
+	return [input, options] as unknown as InputArgs<TFactory>;
 }
 
 /**
@@ -297,10 +295,10 @@ export class QueryClient<TServices = never> {
 	runPromise<A, E>(
 		effect: Effect.Effect<A, E, QueryCache.QueryCache | TServices>,
 	): Promise<A> {
-		// SAFETY: `#context` holds the cache and the layer's services, the
-		// requirement of every Effect this method's signature accepts.
 		return Effect.runPromiseWith(this.#context)(
-			unsafeCast<Effect.Effect<A, E>>(effect),
+			// SAFETY: `#context` holds the cache and the layer's services, the
+			// requirement of every Effect this method's signature accepts.
+			effect as Effect.Effect<A, E>,
 		);
 	}
 

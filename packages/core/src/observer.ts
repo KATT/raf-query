@@ -21,7 +21,6 @@ import {
 	type Stream,
 } from "effect";
 
-import { unsafeCast } from "./cast.ts";
 import { entryOf } from "./entry.ts";
 import type { QueryKey } from "./key.ts";
 import { listen } from "./listen.ts";
@@ -152,7 +151,7 @@ function implOf<TFactory extends QueryFactory>(
 ): Impl<TFactory> {
 	// SAFETY: `makeUnsafe` creates every value that carries `TypeId`, and the
 	// public `QueryObserver` type is how they leave this module.
-	return unsafeCast<Impl<TFactory>>(self);
+	return self as Impl<TFactory>;
 }
 
 function isResultKey(name: PropertyKey): name is ResultKey {

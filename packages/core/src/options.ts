@@ -422,7 +422,6 @@ export function optionsFor(
 	// `InputArgs<TFactory>`), which `QueryFactory` checks only bivariantly,
 	// and every factory returns `queryOptions(...)` or
 	// `infiniteQueryOptions(...)`, which `QueryFactory` erases to its kind and key.
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	const call = factory as (input: unknown) => AnyQueryOptions;
 	return call(input);
 }

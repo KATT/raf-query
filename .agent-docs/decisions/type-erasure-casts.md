@@ -1,3 +1,3 @@
-# Casts in the type-erased cache (agent)
+# Casts in the type-erased cache (human)
 
-- `.oxlintrc.json` turns off `anti-slop/no-unknown-parameters`, `no-unknown-returns`, `no-unsafe-dictionary-type` for `packages/*/src/**`: the cache is type-erased on purpose and factory generics restore types at the public boundary. Each remaining cast has a `SAFETY:` comment and an oxlint disable. Where a value must be widened before the cast, use the package's `unsafeCast<T>(value: unknown)` (`cast.ts`, not exported): `anti-slop/no-widen-then-assert` bans the inline `const x: unknown = …; x as T` form.
+- `.oxlintrc.json` turns off `anti-slop/no-unknown-parameters`, `no-unknown-returns`, `no-unsafe-dictionary-type` for `packages/*/src/**`: the cache is type-erased on purpose and factory generics restore types at the public boundary. Each remaining cast is inline, with a `SAFETY:` comment immediately before it (`anti-slop/require-safety-comment-for-type-assertion`). A comment on a statement covers the assertion only when the assertion is that statement's value. When the types don't overlap, the cast is `value as unknown as T` (`anti-slop/no-chained-type-assertions` is off).

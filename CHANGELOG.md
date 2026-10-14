@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.8](https://github.com/KATT/raf-query/compare/0.7.7...0.7.8) (2026-10-14)
+
+- inline type assertions next to their SAFETY comments ([#104](https://github.com/KATT/raf-query/issues/104)) ([53fdbdb](https://github.com/KATT/raf-query/commit/53fdbdbfdcb146799b145faadb579bbb45e19139))
+- **release:** skip npm publish when packages did not change ([#101](https://github.com/KATT/raf-query/issues/101)) ([4c6c315](https://github.com/KATT/raf-query/commit/4c6c3156224cfb74a62f6c6e5505c30da7400289)), references [#80](https://github.com/KATT/raf-query/issues/80)
+- say the route waits for the post and comments stream in after ([#102](https://github.com/KATT/raf-query/issues/102)) ([3d0c5f4](https://github.com/KATT/raf-query/commit/3d0c5f4c089921fc178b374179dc23bafdbe899c))
+
+### Bug Fixes
+
+- **examples:** start prefetch off and link whole issue rows ([#105](https://github.com/KATT/raf-query/issues/105)) ([cf83077](https://github.com/KATT/raf-query/commit/cf8307701abc6e6ff50304b7245e3bc2af929f3a))
+
 ## [0.7.7](https://github.com/KATT/raf-query/compare/0.7.6...0.7.7) (2026-10-14)
 
 - **examples:** placeholder for the Effect example's Vercel project ([#100](https://github.com/KATT/raf-query/issues/100)) ([0142c6e](https://github.com/KATT/raf-query/commit/0142c6ef9448631c6239fff4a4ddf16db02b35de))

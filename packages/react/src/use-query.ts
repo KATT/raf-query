@@ -20,7 +20,6 @@ import { Effect, Result } from "effect";
 import { use, useEffect, useState, useSyncExternalStore } from "react";
 
 import { assertSent } from "./browser-requests.ts";
-import { unsafeCast } from "./cast.ts";
 import type { QueryClient } from "./client.ts";
 import { useQueryClient } from "./provider.tsx";
 
@@ -138,7 +137,6 @@ export function queryFor<TFactory extends QueryFactory>(
 ): Query.Query<TFactory> {
 	// SAFETY: `input` is a handle's input, and handles are typed to the
 	// factory they were created through (`QueryHandle<TFactory>`).
-	// oxlint-disable-next-line typescript/consistent-type-assertions
 	const args = [input] as InputArgs<TFactory>;
 	return client.getQuery(factory, ...args);
 }
@@ -162,23 +160,22 @@ type PromiseCommands = Omit<QueryObserver.Result, Command> &
 
 /** `tracked`, with the observer's command Effects as Promise functions. */
 function withPromiseCommands(tracked: QueryObserver.Result): PromiseCommands {
-	// SAFETY: the trap below replaces exactly the `Command` properties with
+	const proxied = new Proxy(tracked, {
+		get: (target, name, receiver) => {
+			if (
+				name === "fetchNextPage" ||
+				name === "fetchPreviousPage" ||
+				name === "refetch"
+			) {
+				return commandFor(target[name]);
+			}
+			// oxlint-disable-next-line anti-slop/no-reflect-get -- a Proxy trap forwarding to its target
+			return Reflect.get(target, name, receiver);
+		},
+	});
+	// SAFETY: the trap above replaces exactly the `Command` properties with
 	// Promise functions and forwards every other read.
-	return unsafeCast<PromiseCommands>(
-		new Proxy(tracked, {
-			get: (target, name, receiver) => {
-				if (
-					name === "fetchNextPage" ||
-					name === "fetchPreviousPage" ||
-					name === "refetch"
-				) {
-					return commandFor(target[name]);
-				}
-				// oxlint-disable-next-line anti-slop/no-reflect-get -- a Proxy trap forwarding to its target
-				return Reflect.get(target, name, receiver);
-			},
-		}),
-	);
+	return proxied as unknown as PromiseCommands;
 }
 
 /** An observer, with the stable callbacks `useSyncExternalStore` needs. */
@@ -214,13 +211,20 @@ function asResultThenable<A, E>(
 ): Thenable<Result.Result<A, E>> {
 	const cached = resultThenables.get(promise);
 	if (cached) {
-		return unsafeCast<Thenable<Result.Result<A, E>>>(cached);
+		// SAFETY: each thenable is stored under the Result shape for its A/E.
+		return cached as Thenable<Result.Result<A, E>>;
 	}
 	let next: Thenable<Result.Result<A, E>>;
 	if (promise.status === "fulfilled") {
 		next = fulfilled(Result.succeed(promise.value));
 	} else if (promise.status === "rejected") {
-		next = fulfilled(Result.fail(unsafeCast<E>(promise.reason)));
+		next = fulfilled(
+			Result.fail(
+				// SAFETY: rejected reasons are this factory's ErrorOf when Result
+				// mode is on (typed Effect queryFn).
+				promise.reason as E,
+			),
+		);
 	} else {
 		const deferred = pending<Result.Result<A, E>>();
 		promise.then(
@@ -228,14 +232,20 @@ function asResultThenable<A, E>(
 				deferred.resolve(Result.succeed(value));
 			},
 			(error: unknown) => {
-				deferred.resolve(Result.fail(unsafeCast<E>(error)));
+				deferred.resolve(
+					Result.fail(
+						// SAFETY: as above for rejected reasons.
+						error as E,
+					),
+				);
 			},
 		);
 		next = deferred.promise;
 	}
 	resultThenables.set(
 		promise,
-		unsafeCast<Thenable<Result.Result<unknown, unknown>>>(next),
+		// SAFETY: WeakMap values are Result thenables; A/E are erased in the map.
+		next as Thenable<Result.Result<unknown, unknown>>,
 	);
 	return next;
 }
@@ -345,25 +355,28 @@ export function useQuery<TFactory extends QueryFactory>(
 			result.promise,
 		);
 		if (handle.ensured === true) {
-			return unsafeCast<UseEnsuredQueryResult<TFactory, false>>([
-				use(resultPromise),
-				controls,
-			]);
+			// SAFETY: `use` unwraps to Result when throwOnError is false.
+			return [use(resultPromise), controls] as unknown as UseEnsuredQueryResult<
+				TFactory,
+				false
+			>;
 		}
-		return unsafeCast<UseQueryResult<TFactory, false>>([
-			resultPromise,
-			controls,
-		]);
+		// SAFETY: Result thenable for typed ErrorOf when throwOnError is false.
+		return [resultPromise, controls] as unknown as UseQueryResult<
+			TFactory,
+			false
+		>;
 	}
 	if (handle.ensured === true) {
+		const data = use(result.promise);
 		// SAFETY: as below; `use` unwraps the promise to its data.
-		return unsafeCast<UseEnsuredQueryResult<TFactory, true>>([
-			use(result.promise),
-			controls,
-		]);
+		return [data, controls] as unknown as UseEnsuredQueryResult<TFactory, true>;
 	}
 	// SAFETY: the result's promise is this factory's entry's promise (or an
 	// earlier input's entry of the same factory), and the result has every
 	// field of both control shapes.
-	return unsafeCast<UseQueryResult<TFactory, true>>([result.promise, controls]);
+	return [result.promise, controls] as unknown as UseQueryResult<
+		TFactory,
+		true
+	>;
 }
