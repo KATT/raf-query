@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.3](https://github.com/KATT/raf-query/compare/0.4.2...0.4.3) (2026-10-14)
+
+### Features
+
+- **examples:** deploy the example apps to Vercel under *.raf-query.katt.dev ([#66](https://github.com/KATT/raf-query/issues/66)) ([1a84495](https://github.com/KATT/raf-query/commit/1a84495d341ac81dea6f80013baa1043ca72b0a7))
+
 ## [0.4.2](https://github.com/KATT/raf-query/compare/0.4.1...0.4.2) (2026-10-14)
 
 - add a docs site with live demos, deployed at raf-query.katt.dev ([#65](https://github.com/KATT/raf-query/issues/65)) ([f4293b8](https://github.com/KATT/raf-query/commit/f4293b8943c82ef61288b65f99a146035b71d592))

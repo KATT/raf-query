@@ -1,6 +1,6 @@
 {
 	"name": "@raf-query/react",
-	"version": "0.4.2",
+	"version": "0.4.3",
 	"description": "React bindings for raf-query, a render-as-you-fetch query library",
 	"keywords": [
 		"query",
