@@ -24,6 +24,8 @@ export const Route = createFileRoute("/issues/$issueId")({
 		};
 	},
 	component: IssuePage,
+	// Previous and next stay on this route, so a new id mounts a fresh page.
+	remountDeps: (opts) => opts.params,
 });
 
 function IssuePage() {
@@ -35,11 +37,11 @@ function IssuePage() {
 			<IssueNav id={id} />
 			<div className="grid gap-8 md:grid-cols-[1fr_240px]">
 				<article className="grid content-start gap-6">
-					<Suspense fallback={<IssueBodySkeleton id={id} />} key={id}>
+					<Suspense fallback={<IssueBodySkeleton id={id} />}>
 						<IssueBody handle={data.issue} />
 					</Suspense>
 					<Separator />
-					<Suspense fallback={<CommentsSkeleton />} key={id}>
+					<Suspense fallback={<CommentsSkeleton />}>
 						<Comments handle={data.comments} />
 					</Suspense>
 				</article>
@@ -50,12 +52,12 @@ function IssuePage() {
 						</h2>
 						<div className="flex items-center justify-between gap-3">
 							<span className="text-sm text-muted-foreground">Status</span>
-							<Suspense fallback={<StatusSkeleton />} key={id}>
+							<Suspense fallback={<StatusSkeleton />}>
 								<IssueStatus handle={data.issue} />
 							</Suspense>
 						</div>
 					</section>
-					<Suspense fallback={<AssigneeCardSkeleton />} key={id}>
+					<Suspense fallback={<AssigneeCardSkeleton />}>
 						<AssigneeCard handle={data.assignee} />
 					</Suspense>
 				</aside>
