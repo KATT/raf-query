@@ -110,21 +110,17 @@ export function Settings(props: { readonly latency: number | undefined }) {
 }
 
 /**
- * `next/link`, prefetching as the settings say. "On intent" prefetches the
- * full route once the pointer or focus reaches the link. Next.js only
- * prefetches in production builds.
+ * `next/link`, prefetching as the settings say. Off passes `prefetch={false}`,
+ * in the viewport passes `true`, and "On intent" passes `true` once the
+ * pointer or focus reaches the link. Next.js only prefetches in production
+ * builds.
  */
 export function AppLink(props: ComponentProps<typeof Link>) {
-	const { prefetch } = use(PrefetchContext);
+	const settings = use(PrefetchContext);
 	const [intent, setIntent] = useState(false);
 
-	if (prefetch !== "intent") {
-		return (
-			<Link
-				{...props}
-				prefetch={prefetch === "auto" ? null : prefetch === "viewport"}
-			/>
-		);
+	if (settings.prefetch !== "intent") {
+		return <Link {...props} prefetch={settings.prefetch === "viewport"} />;
 	}
 	const showIntent = () => {
 		setIntent(true);
