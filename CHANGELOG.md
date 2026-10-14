@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.7.3](https://github.com/KATT/raf-query/compare/0.7.2...0.7.3) (2026-10-14)
+
+- typecheck every ts/tsx sample with Twoslash ([#92](https://github.com/KATT/raf-query/issues/92)) ([a658baa](https://github.com/KATT/raf-query/commit/a658baaecf4706e11136e7fc0a322fbce539c583)), references [#90](https://github.com/KATT/raf-query/issues/90)
+
 ## [0.7.2](https://github.com/KATT/raf-query/compare/0.7.1...0.7.2) (2026-10-14)
 
 ### Features
