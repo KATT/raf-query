@@ -9,7 +9,7 @@ This is a Vite+ / pnpm monorepo. The publishable packages live in `packages/`:
 
 Experiments live in `.experimental/` folders, which the release and the root `./packages/*` / `./examples/*` globs don't reach. `packages/.experimental/tanstack-react-query` (`@raf-query/experimental-tanstack-react-query`) is the same API built on TanStack Query instead of raf-query's own engine. It's private, isn't published, and stays at version `0.0.0`. See [its README](../packages/.experimental/tanstack-react-query/README.md).
 
-Root `README.md` / `LICENSE.md` / `CHANGELOG.md` are canonical. Each package's `prepack` runs [`scripts/sync-package-docs.ts`](../scripts/sync-package-docs.ts), which copies them into the package so the npm tarball includes them without a second copy in git.
+Each package has its own `README.md`, shown on npm. Root `LICENSE.md` / `CHANGELOG.md` are shared: each package's `prepack` runs [`scripts/sync-package-docs.ts`](../scripts/sync-package-docs.ts), which copies them into the package so the npm tarball includes them without a second copy in git.
 
 Scripts live in `scripts/` and are written in TypeScript with Effect, run with plain `node`.
 
