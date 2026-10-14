@@ -3,9 +3,12 @@
 import {
 	type DataOf,
 	type EnsuredQueryHandle,
+	type ErrorOf,
+	fulfilled,
 	type InputArgs,
 	type InputOf,
 	type IsPaged,
+	pending,
 	type QueryFactory,
 	type QueryHandle,
 	type QueryKey,
@@ -13,7 +16,7 @@ import {
 	type Thenable,
 	Query,
 } from "@raf-query/core";
-import { Effect } from "effect";
+import { Effect, Result } from "effect";
 import { use, useEffect, useState, useSyncExternalStore } from "react";
 
 import { assertSent } from "./browser-requests.ts";
@@ -22,6 +25,22 @@ import { useQueryClient } from "./provider.tsx";
 
 /** `refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`, `whilePending`. */
 export type UseQueryOptions = QueryObserver.Options;
+
+/**
+ * `throwOnError` only when {@link ErrorOf} is typed (Effect `queryFn`).
+ * Promise factories always throw; the option is not part of their options.
+ */
+export type UseQueryThrowOptions<TFactory extends QueryFactory> =
+	HasTypedError<TFactory> extends true
+		? {
+				/**
+				 * When `false`, the first tuple slot is a `Result` instead of a
+				 * rejecting promise. Omit to use the client's default (`false`
+				 * with a `layer`, `true` without).
+				 */
+				readonly throwOnError?: boolean;
+			}
+		: { readonly throwOnError?: never };
 
 /** The second element of {@link useQuery}'s result. */
 export interface QueryControls<TFactory extends QueryFactory> {
@@ -62,16 +81,54 @@ export type UseQueryControls<TFactory extends QueryFactory> =
 		? QueryControls<TFactory> & PagingControls
 		: QueryControls<TFactory>;
 
-export type UseQueryResult<TFactory extends QueryFactory> = readonly [
-	promise: Thenable<DataOf<TFactory>>,
-	controls: UseQueryControls<TFactory>,
-];
+/**
+ * `true` when the factory's error channel is typed (Effect `queryFn`), not
+ * `unknown` (promise / plain value).
+ */
+export type HasTypedError<TFactory extends QueryFactory> =
+	unknown extends ErrorOf<TFactory> ? false : true;
+
+/**
+ * Whether this read throws on failure. Untyped errors always throw. Typed
+ * errors follow `options.throwOnError`, else the client's default (`false`
+ * with a `layer`, `true` without). Types treat an omitted flag as `false`
+ * (Result), matching a client with a `layer`.
+ */
+export type ThrowsOnError<
+	TFactory extends QueryFactory,
+	TThrow extends boolean | undefined,
+> =
+	HasTypedError<TFactory> extends false
+		? true
+		: TThrow extends boolean
+			? TThrow
+			: false;
+
+export type UseQueryResult<
+	TFactory extends QueryFactory,
+	TThrow extends boolean | undefined = undefined,
+> =
+	ThrowsOnError<TFactory, TThrow> extends true
+		? readonly [
+				promise: Thenable<DataOf<TFactory>>,
+				controls: UseQueryControls<TFactory>,
+			]
+		: readonly [
+				promise: Thenable<Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>>,
+				controls: UseQueryControls<TFactory>,
+			];
 
 /** {@link useQuery}'s result for a handle from `ensure`. */
-export type UseEnsuredQueryResult<TFactory extends QueryFactory> = readonly [
-	data: DataOf<TFactory>,
-	controls: UseQueryControls<TFactory>,
-];
+export type UseEnsuredQueryResult<
+	TFactory extends QueryFactory,
+	TThrow extends boolean | undefined = undefined,
+> =
+	ThrowsOnError<TFactory, TThrow> extends true
+		? readonly [data: DataOf<TFactory>, controls: UseQueryControls<TFactory>]
+		: readonly [
+				result: Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>,
+				controls: UseQueryControls<TFactory>,
+			];
 
 export function queryFor<TFactory extends QueryFactory>(
 	client: QueryClient<unknown>,
@@ -130,7 +187,7 @@ interface ObserverStore<TFactory extends QueryFactory> {
 
 function storeFor<TFactory extends QueryFactory>(
 	query: Query.Query<TFactory>,
-	options: UseQueryOptions,
+	options: QueryObserver.Options,
 ): ObserverStore<TFactory> {
 	const observer = QueryObserver.makeUnsafe(query, options);
 	return {
@@ -138,6 +195,59 @@ function storeFor<TFactory extends QueryFactory>(
 		observer,
 		subscribe: (onChange) => QueryObserver.subscribeUnsafe(observer, onChange),
 	};
+}
+
+/**
+ * One `Result` thenable per data thenable, so `use()` sees a stable identity
+ * across re-renders the same way it does for the data promise.
+ */
+const resultThenables = new WeakMap<
+	Thenable<unknown>,
+	Thenable<Result.Result<unknown, unknown>>
+>();
+
+function asResultThenable<A, E>(
+	promise: Thenable<A>,
+): Thenable<Result.Result<A, E>> {
+	const cached = resultThenables.get(promise);
+	if (cached) {
+		// SAFETY: each thenable is stored under the Result shape for its A/E.
+		return cached as Thenable<Result.Result<A, E>>;
+	}
+	let next: Thenable<Result.Result<A, E>>;
+	if (promise.status === "fulfilled") {
+		next = fulfilled(Result.succeed(promise.value));
+	} else if (promise.status === "rejected") {
+		next = fulfilled(
+			Result.fail(
+				// SAFETY: rejected reasons are this factory's ErrorOf when Result
+				// mode is on (typed Effect queryFn).
+				promise.reason as E,
+			),
+		);
+	} else {
+		const deferred = pending<Result.Result<A, E>>();
+		promise.then(
+			(value) => {
+				deferred.resolve(Result.succeed(value));
+			},
+			(error: unknown) => {
+				deferred.resolve(
+					Result.fail(
+						// SAFETY: as above for rejected reasons.
+						error as E,
+					),
+				);
+			},
+		);
+		next = deferred.promise;
+	}
+	resultThenables.set(
+		promise,
+		// SAFETY: WeakMap values are Result thenables; A/E are erased in the map.
+		next as Thenable<Result.Result<unknown, unknown>>,
+	);
+	return next;
 }
 
 /**
@@ -149,13 +259,23 @@ function storeFor<TFactory extends QueryFactory>(
  * const post = use(postPromise);
  * ```
  *
+ * For an Effect `queryFn` (typed {@link ErrorOf}), with the client's
+ * `throwOnError: false` (the default when it has a `layer`), the first slot
+ * is a `Result` instead — `use()` never throws:
+ *
+ * ```tsx
+ * const [issueResult, issueState] = useQuery(issueQuery, loaderData.issue);
+ * const issue = use(issueResult);
+ * Result.match(issue, { onFailure: …, onSuccess: … });
+ * ```
+ *
  * The promise is stable per data version and already fulfilled once the
  * cache has data, so `use()` only suspends while there is nothing to show.
  * The component re-renders when the promise changes, and when a control it
  * has read changes; changes to controls it never reads are skipped.
  *
  * A handle from `ensure` had its data loaded before the route rendered, so
- * the hook returns the data itself:
+ * the hook returns the data (or `Result`) itself:
  *
  * ```tsx
  * const [post, postState] = useQuery(postQuery, loaderData.post);
@@ -164,21 +284,32 @@ function storeFor<TFactory extends QueryFactory>(
  * If that entry has lost its data since (garbage-collected, `reset`), the
  * hook suspends until it is refetched.
  */
-export function useQuery<TFactory extends QueryFactory>(
+export function useQuery<
+	TFactory extends QueryFactory,
+	const TThrow extends boolean | undefined = undefined,
+>(
 	factory: TFactory,
 	handle: EnsuredQueryHandle<TFactory>,
-	options?: UseQueryOptions,
-): UseEnsuredQueryResult<TFactory>;
-export function useQuery<TFactory extends QueryFactory>(
+	options?: UseQueryOptions &
+		UseQueryThrowOptions<TFactory> & { readonly throwOnError?: TThrow },
+): UseEnsuredQueryResult<TFactory, TThrow>;
+export function useQuery<
+	TFactory extends QueryFactory,
+	const TThrow extends boolean | undefined = undefined,
+>(
 	factory: TFactory,
 	handle: QueryHandle<TFactory>,
-	options?: UseQueryOptions,
-): UseQueryResult<TFactory>;
+	options?: UseQueryOptions &
+		UseQueryThrowOptions<TFactory> & { readonly throwOnError?: TThrow },
+): UseQueryResult<TFactory, TThrow>;
 export function useQuery<TFactory extends QueryFactory>(
 	factory: TFactory,
 	handle: EnsuredQueryHandle<TFactory> | QueryHandle<TFactory>,
-	options: UseQueryOptions = {},
-): UseEnsuredQueryResult<TFactory> | UseQueryResult<TFactory> {
+	options: UseQueryOptions & { readonly throwOnError?: boolean } = {},
+	// Overloads name the return; the body picks at runtime.
+):
+	| UseEnsuredQueryResult<TFactory, boolean>
+	| UseQueryResult<TFactory, boolean> {
 	const client = useQueryClient();
 	const query = queryFor(client, factory, handle.input);
 	assertSent(client, query);
@@ -218,13 +349,34 @@ export function useQuery<TFactory extends QueryFactory>(
 	const controls = withPromiseCommands(
 		QueryObserver.trackResult(observer, result),
 	);
+	const throwOnError = options.throwOnError ?? client.throwOnError;
+	if (!throwOnError) {
+		const resultPromise = asResultThenable<DataOf<TFactory>, ErrorOf<TFactory>>(
+			result.promise,
+		);
+		if (handle.ensured === true) {
+			// SAFETY: `use` unwraps to Result when throwOnError is false.
+			return [use(resultPromise), controls] as unknown as UseEnsuredQueryResult<
+				TFactory,
+				false
+			>;
+		}
+		// SAFETY: Result thenable for typed ErrorOf when throwOnError is false.
+		return [resultPromise, controls] as unknown as UseQueryResult<
+			TFactory,
+			false
+		>;
+	}
 	if (handle.ensured === true) {
 		const data = use(result.promise);
 		// SAFETY: as below; `use` unwraps the promise to its data.
-		return [data, controls] as UseEnsuredQueryResult<TFactory>;
+		return [data, controls] as unknown as UseEnsuredQueryResult<TFactory, true>;
 	}
 	// SAFETY: the result's promise is this factory's entry's promise (or an
 	// earlier input's entry of the same factory), and the result has every
 	// field of both control shapes.
-	return [result.promise, controls] as UseQueryResult<TFactory>;
+	return [result.promise, controls] as unknown as UseQueryResult<
+		TFactory,
+		true
+	>;
 }

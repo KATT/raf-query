@@ -1,7 +1,13 @@
 import { describe, expect, expectTypeOf, it, vi } from "@effect/vitest";
 import { Context, Effect, Layer, Schedule } from "effect";
 
-import { dehydrate, Query, QueryClient, queryOptions } from "./index.ts";
+import {
+	dehydrate,
+	Query,
+	QueryCache,
+	QueryClient,
+	queryOptions,
+} from "./index.ts";
 import { createBackend, flush } from "./test-utils.ts";
 
 function fakeTimers(
@@ -1132,6 +1138,10 @@ class Api extends Context.Service<
 	{ readonly user: (id: number) => Effect.Effect<string, NotFound> }
 >()("test/Api") {}
 
+class Other extends Context.Service<Other, { readonly name: string }>()(
+	"test/Other",
+) {}
+
 class NotFound extends Error {
 	readonly _tag = "NotFound";
 }
@@ -1176,6 +1186,24 @@ describe("layer", () => {
 		await expect(qc.ensure(userQuery, { id: 0 })).rejects.toBeInstanceOf(
 			NotFound,
 		);
+	});
+
+	it("runs an app's Effects with the cache and the layer's services", async () => {
+		const qc = new QueryClient({ isServer: false, layer: apiLayer([]) });
+		const program = Effect.gen(function* () {
+			const api = yield* Api;
+			const cache = yield* QueryCache.QueryCache;
+			const handle = yield* cache.ensure(userQuery, { id: 1 });
+			return [yield* api.user(2), handle.key] as const;
+		});
+
+		expect(await qc.runPromise(program)).toEqual(["#2", ["user", 1]]);
+		expect(qc.getData(userQuery, { id: 1 })).toBe("#1");
+		await expect(
+			qc.runPromise(Effect.flatMap(Effect.service(Api), (api) => api.user(0))),
+		).rejects.toBeInstanceOf(NotFound);
+		// @ts-expect-error: the client's layer doesn't provide `Other`.
+		expectTypeOf(() => qc.runPromise(Effect.service(Other))).toBeFunction();
 	});
 
 	it("dispose runs the layer's finalizers and interrupts requests", async () => {

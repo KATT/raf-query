@@ -1,6 +1,6 @@
 ---
 title: Using Effect
-description: The cache is written in Effect. Return Effects from queryFns for typed errors and interruption, and use the cache, entries and observers as Effect data types.
+description: The cache is written in Effect. Return Effects from queryFns for typed errors, services and interruption, run loaders and actions as Effects, and read the same queries from React.
 section: Effect
 order: 1
 ---
@@ -9,61 +9,300 @@ raf-query's cache is written in [Effect](https://effect.website). Using raf-quer
 
 `effect` (`^4.0.0`) is a peer dependency of both packages, so an app that uses Effect shares one copy with raf-query.
 
-## Effect queryFns
+## The whole picture
 
-A `queryFn` can return an `Effect`:
+An issue page on TanStack Start, from the API to the form that renames the issue. The [Effect example app](./examples.md) is the same thing, in full, with Effect RPC.
 
-```ts twoslash
-import { Effect, Schedule } from "effect";
-declare class IssueNotFound {
-	readonly _tag: "IssueNotFound";
-}
-declare interface Issue {
-	readonly id: number;
-	readonly title: string;
-}
-declare const IssueRepo: {
-	get(id: number): Effect.Effect<Issue, IssueNotFound>;
-};
+### The API: errors and a service
+
+Failures are tagged errors, and the API is a service. Its methods say how they can fail:
+
+```ts twoslash title="src/issues.ts"
+import { Context, Effect, Schema } from "effect";
+import type { Issue, User } from "./_effect.ts";
 // ---cut---
-import { queryOptions } from "@raf-query/react";
+export class IssueNotFound extends Schema.TaggedError<IssueNotFound>()(
+	"IssueNotFound",
+	{ id: Schema.Number },
+) {}
+export class Unauthorized extends Schema.TaggedError<Unauthorized>()(
+	"Unauthorized",
+	{},
+) {}
+export class EmptyTitle extends Schema.TaggedError<EmptyTitle>()(
+	"EmptyTitle",
+	{},
+) {}
 
+export class IssueApi extends Context.Service<
+	IssueApi,
+	{
+		readonly get: (
+			id: number,
+		) => Effect.Effect<Issue, IssueNotFound | Unauthorized>;
+		readonly assignee: (
+			issueId: number,
+		) => Effect.Effect<User, IssueNotFound | Unauthorized>;
+		readonly rename: (input: {
+			readonly id: number;
+			readonly title: string;
+		}) => Effect.Effect<Issue, EmptyTitle | Unauthorized>;
+	}
+>()("app/IssueApi") {}
+```
+
+`IssueApiLive`, a `Layer<IssueApi>`, implements it: an HTTP client, an RPC client, a database.
+
+### Queries
+
+A `queryFn` returns an Effect that uses the service. The factory's type carries the service and the errors — `ErrorOf` and `ServicesOf` name them, and every cache verb fails or requires them:
+
+```ts twoslash title="src/queries.ts"
+import { type ErrorOf, queryOptions, type ServicesOf } from "@raf-query/react";
+import { IssueApi } from "./_effect.ts";
+// ---cut---
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
 		queryKey: ["issue", input.id],
-		queryFn: () => IssueRepo.get(input.id), // Effect<Issue, IssueNotFound>
+		queryFn: () => IssueApi.use((api) => api.get(input.id)),
+	});
+}
+
+export function assigneeQuery(input: { issueId: number }) {
+	return queryOptions({
+		queryKey: ["issue", input.issueId, "assignee"],
+		queryFn: () => IssueApi.use((api) => api.assignee(input.issueId)),
+	});
+}
+
+type IssueError = ErrorOf<typeof issueQuery>;
+//   ^?
+type AssigneeError = ErrorOf<typeof assigneeQuery>;
+//   ^?
+type Services = ServicesOf<typeof issueQuery>;
+//   ^?
+```
+
+### The client
+
+The `QueryClient`'s `layer` provides the services, and the router context carries the client with their type, so loaders can only start queries the layer can run:
+
+```tsx twoslash title="src/router.tsx"
+/// <reference types="vite/client" />
+import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@raf-query/react";
+import { routeTree } from "./routeTree.gen.ts";
+import { IssueApiLive } from "./_effect.ts";
+declare function createRouter(options: Record<string, unknown>): unknown;
+declare function setupRouterIntegration(options: {
+	readonly queryClient: QueryClient<unknown>;
+	readonly router: unknown;
+}): void;
+// ---cut---
+export function getRouter() {
+	const queryClient = new QueryClient({
+		defaults: { staleTime: 5000 },
+		layer: IssueApiLive,
+	});
+	queryClient;
+	// ^?
+	const router = createRouter({
+		context: { queryClient },
+		defaultPreloadStaleTime: 0,
+		routeTree,
+		Wrap: (props: { children: ReactNode }) => (
+			<QueryClientProvider client={queryClient}>
+				{props.children}
+			</QueryClientProvider>
+		),
+	});
+	setupRouterIntegration({ queryClient, router });
+	return router;
+}
+```
+
+```tsx twoslash title="src/routes/__root.tsx"
+import type { QueryClient } from "@raf-query/react";
+import { createRootRouteWithContext } from "./_twoslash.ts";
+import type { IssueApi } from "./_effect.ts";
+// ---cut---
+export const Route = createRootRouteWithContext<{
+	queryClient: QueryClient<IssueApi>;
+}>()({});
+```
+
+### The route
+
+Loaders use the same Promise verbs as a non-Effect app. Prefetch is sync; `ensure` returns a Promise. A loader that needs a typed catch is an `Effect.fn`, like a form action: it `yield*`s the `QueryCache` service, starts its reads together with `Effect.all`, and catches what it expects. `runPromise` runs it with the layer's services — the same shape as Effect's `ManagedRuntime`:
+
+```tsx twoslash title="src/routes/issues.$issueId.tsx"
+import { QueryCache, type QueryHandle, useQuery } from "@raf-query/react";
+import { notFound } from "@tanstack/react-router";
+import { Effect, Result } from "effect";
+import { Suspense, use, type ReactNode } from "react";
+import {
+	assigneeQuery,
+	createFileRoute,
+	type Issue,
+	issueQuery,
+} from "./_effect.ts";
+declare function RenameForm(props: { readonly issue: Issue }): ReactNode;
+// ---cut---
+const loadIssue = Effect.fn("loadIssue")(
+	function* (id: number) {
+		const cache = yield* QueryCache.QueryCache;
+		return yield* Effect.all(
+			{
+				assignee: cache.prefetch(assigneeQuery, { issueId: id }),
+				issue: cache.ensure(issueQuery, { id }),
+			},
+			{ concurrency: "unbounded" },
+		);
+	},
+	Effect.catchTag("IssueNotFound", () => Effect.fail(notFound())),
+);
+
+export const Route = createFileRoute("/issues/$issueId")({
+	loader: (args) =>
+		args.context.queryClient.runPromise(loadIssue(Number(args.params.issueId))),
+	component: IssuePage,
+	errorComponent: (props) => (
+		<div role="alert">
+			<p>Couldn't load the issue.</p>
+			<button onClick={props.reset}>Try again</button>
+		</div>
+	),
+});
+
+function IssuePage() {
+	const loaderData = Route.useLoaderData();
+	// Loader handled IssueNotFound; throw any other failure to errorComponent.
+	const [issue] = useQuery(issueQuery, loaderData.issue, {
+		throwOnError: true,
+	});
+	return (
+		<article>
+			<h1>{issue.title}</h1>
+			<RenameForm issue={issue} />
+			<Suspense fallback={<p>Loading assignee…</p>}>
+				<Assignee handle={loaderData.assignee} />
+			</Suspense>
+		</article>
+	);
+}
+
+function Assignee(props: { handle: QueryHandle<typeof assigneeQuery> }) {
+	const [assigneePromise, controls] = useQuery(assigneeQuery, props.handle);
+	const assignee = use(assigneePromise);
+	//    ^?
+	return Result.match(assignee, {
+		onFailure: (error) =>
+			error._tag === "IssueNotFound" ? (
+				<p>Unassigned</p>
+			) : (
+				<div role="alert">
+					<p>Couldn't load the assignee.</p>
+					<button onClick={() => void controls.refetch()}>Try again</button>
+				</div>
+			),
+		onSuccess: (user) => <p>{user.name}</p>,
+	});
+}
+```
+
+With a `layer`, the client defaults to `throwOnError: false`: Effect `useQuery` returns a `Result` so you can match failures inline ([Typed errors](./effect-errors.md#in-react)). Pass `throwOnError: true` when you want a rejecting promise instead.
+
+A list page that only prefetches never needs `runPromise`:
+
+```ts
+loader: (args) => {
+	const qc = args.context.queryClient;
+	return {
+		counts: qc.prefetch(issueCountsQuery),
+		issues: qc.prefetch(issueListQuery, args.deps),
+	};
+},
+```
+
+What the loader doesn't catch, like `Unauthorized`, rejects into `errorComponent`. The components never see the services: the cache runs each `queryFn` with the layer's, whoever starts it.
+
+### A form action
+
+The action is an `Effect.fn` that renames and then waits for the refetched issue. It catches every failure `rename` declares into a message, so the Effect can't fail, and the form shows the message:
+
+```tsx twoslash title="src/components/rename-form.tsx"
+import { QueryCache } from "@raf-query/react";
+import { Effect } from "effect";
+import { useActionState } from "react";
+import { type Issue, IssueApi, IssueRoute } from "./_effect.ts";
+const Route = IssueRoute;
+// ---cut---
+const rename = Effect.fn("rename")(
+	function* (input: { readonly id: number; readonly title: string }) {
+		const api = yield* IssueApi;
+		const cache = yield* QueryCache.QueryCache;
+		yield* api.rename(input);
+		yield* cache.invalidate({ queryKey: ["issue", input.id] });
+		return null;
+	},
+	Effect.catchTags({
+		EmptyTitle: () => Effect.succeed("Title can't be empty"),
+		Unauthorized: () => Effect.succeed("Sign in to rename issues"),
+	}),
+);
+
+export function RenameForm(props: { issue: Issue }) {
+	const queryClient = Route.useRouteContext().queryClient;
+	const [message, action, isPending] = useActionState(
+		(_previous: string | null, formData: FormData) =>
+			queryClient.runPromise(
+				rename({ id: props.issue.id, title: String(formData.get("title")) }),
+			),
+		null,
+	);
+	return (
+		<form action={action}>
+			<input defaultValue={props.issue.title} name="title" />
+			<button disabled={isPending}>Rename</button>
+			{message === null ? null : <p role="alert">{message}</p>}
+		</form>
+	);
+}
+```
+
+The client comes from the router context, not `useQueryClient()`: that one is a `QueryClient<unknown>`, so it can't check the action's services ([Services](./effect-services.md#in-react)). [Typed errors](./effect-errors.md) covers where else to catch failures, and what React sees when you don't.
+
+## Effect queryFns
+
+What an Effect `queryFn` adds over a promise:
+
+- **Typed errors.** The Effect's error type is the query's: `qc.effect.fetch(issueQuery, input)` fails with `IssueNotFound | Unauthorized | Query.CancelledError`. `ErrorOf<TFactory>` names it; it's `unknown` for promises. See [Typed errors](./effect-errors.md).
+- **Services.** What the Effect requires, `ServicesOf<TFactory>`, every verb that can start the query requires. See [Services](./effect-services.md).
+- **Defects aren't retried.** A `queryFn` that throws instead of returning, or an Effect that dies, is a defect: it fails the request without retrying.
+- **Interruption.** Cancelling the request interrupts the fiber, so its finalizers run. No `AbortSignal` needed.
+- **Schedules.** `retry` accepts a `Schedule` as well as a count or predicate:
+
+```ts twoslash
+import { queryOptions } from "@raf-query/react";
+import { Effect, Schedule } from "effect";
+import { IssueApi } from "./_effect.ts";
+// ---cut---
+export function issueQuery(input: { id: number }) {
+	return queryOptions({
+		queryKey: ["issue", input.id],
+		queryFn: () => IssueApi.use((api) => api.get(input.id)),
 		retry: Schedule.exponential("200 millis").pipe(Schedule.upTo({ times: 3 })),
 	});
 }
 ```
 
-- **Typed errors.** The Effect's error type is the query's: `qc.effect.fetch(issueQuery, input)` fails with `IssueNotFound | Query.CancelledError`. `ErrorOf<TFactory>` names it; it's `unknown` for promises.
-- **Defects aren't retried.** A `queryFn` that throws instead of returning, or an Effect that dies, is a defect: it fails the request without retrying.
-- **Interruption.** Cancelling the request interrupts the fiber, so its finalizers run. No `AbortSignal` needed.
-- **Schedules.** `retry` accepts a `Schedule` as well as a count or predicate.
-
-From React, nothing changes: `useQuery` and the client's Promise methods read an Effect query like any other.
-
 ## The cache as an Effect service
 
-`QueryClient` is a Promise wrapper around a `QueryCache` service, available as `qc.effect`. Effect code uses the cache directly, or builds its own with `QueryCache.make(config)` (scoped: closing the scope interrupts every request and timer) or `QueryCache.layer(config)`:
+`QueryClient` is a Promise wrapper around a `QueryCache` service. `queryClient.runPromise` hands it to loaders and actions, as above, and `qc.effect` is the same service as a value. Effect code outside React builds its own with `QueryCache.make(config)` (scoped: closing the scope interrupts every request and timer) or `QueryCache.layer(config)`:
 
 ```ts twoslash
-import { queryOptions } from "@raf-query/react";
 import { Effect } from "effect";
-declare interface Issue {
-	readonly id: number;
-	readonly title: string;
-}
-declare const IssueRepo: {
-	get(id: number): Effect.Effect<Issue>;
-};
-function issueQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: ["issue", input.id],
-		queryFn: () => IssueRepo.get(input.id),
-	});
-}
+import { issueQuery, IssueApiLive } from "./_effect.ts";
 // ---cut---
 import { QueryCache } from "@raf-query/core";
 import { Stream } from "effect";
@@ -77,10 +316,15 @@ const program = Effect.gen(function* () {
 	);
 });
 
-Effect.runFork(program.pipe(Effect.provide(QueryCache.layer())));
+Effect.runFork(
+	program.pipe(
+		Effect.provide(QueryCache.layer()),
+		Effect.provide(IssueApiLive),
+	),
+);
 ```
 
-`qc.effect` has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidate`, `reset`, `remove`, `setData`, `getData` (an `Option`), `isFetching` (a count), `dehydrate` and `hydrate`. `watch` is a `Stream` of an entry's state, and `events` a `Stream` of cache events.
+The cache has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidate`, `reset`, `remove`, `setData`, `getData` (an `Option`), `isFetching` (a count), `dehydrate` and `hydrate`. `watch` is a `Stream` of an entry's state, and `events` a `Stream` of cache events.
 
 `watch` counts as a reader while it runs, so invalidation and window focus refetch the entry. Outside React, `cache.mount` (`Effect<void, never, Scope>`) refetches read, stale entries on window focus and reconnect while its scope is open.
 
@@ -89,21 +333,8 @@ Effect.runFork(program.pipe(Effect.provide(QueryCache.layer())));
 Entries are a data type with module functions, like Effect's own modules:
 
 ```ts twoslash
-import { queryOptions } from "@raf-query/react";
 import { Effect } from "effect";
-declare interface Issue {
-	readonly id: number;
-	readonly title: string;
-}
-declare const IssueRepo: {
-	get(id: number): Effect.Effect<Issue>;
-};
-function issueQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: ["issue", input.id],
-		queryFn: () => IssueRepo.get(input.id),
-	});
-}
+import { issueQuery } from "./_effect.ts";
 // ---cut---
 import { Query, QueryCache } from "@raf-query/core";
 
