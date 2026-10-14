@@ -1,11 +1,11 @@
 import { Button } from "@examples/ui/components/button";
+import { Logo } from "@examples/ui/components/logo";
 import { Link } from "@tanstack/react-router";
 
 import { firstDoc } from "~/content/docs.ts";
 import { site } from "~/site.ts";
 
 import { GitHubIcon } from "./icons.tsx";
-import { LogoMark } from "./logo.tsx";
 import { MobileNav } from "./mobile-nav.tsx";
 import { SearchButton } from "./search.tsx";
 import { ThemeToggle } from "./theme-toggle.tsx";
@@ -20,7 +20,7 @@ export function SiteHeader() {
 					className="mr-4 flex items-center gap-2 font-semibold tracking-tight"
 					to="/"
 				>
-					<LogoMark className="size-6" />
+					<Logo alt="" />
 					{site.name}
 				</Link>
 				<nav
