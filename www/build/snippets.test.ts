@@ -207,4 +207,23 @@ describe("expandSnippets", () => {
 			expect(error.message).toContain("isn't in an example app");
 		}).pipe(Effect.provide(NodeServices.layer)),
 	);
+
+	it.effect("includes a Next.js path that contains [param]", () =>
+		Effect.gen(function* () {
+			const page = yield* setup({
+				...app("page"),
+				"page/src/app/posts/[slug]/page.tsx":
+					"export default function Page() {}\n",
+			});
+			const expanded = yield* page.expand(
+				"<<< ./page/src/app/posts/[slug]/page.tsx",
+			);
+			expect(expanded.markdown).toContain(
+				'```tsx twoslash title="src/app/posts/[slug]/page.tsx"',
+			);
+			expect(expanded.markdown).toContain(
+				"// @filename: page/src/app/posts/[slug]/page.file.twoslash.tsx",
+			);
+		}).pipe(Effect.provide(NodeServices.layer)),
+	);
 });

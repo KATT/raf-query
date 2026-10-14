@@ -10,8 +10,9 @@ export interface ExpandedSnippets {
 }
 
 /** `<<< ./quick-start/src/routes/todos.tsx#loader`, with an optional `[title]`. */
+/** Path, optional `#region`, optional `[title]` / `[]`. Paths may contain `[param]` segments (Next.js). */
 const includeLine =
-	/^<<< (\.{1,2}\/[^\s#[]+)(?:#([\w-]+))?(?:[ \t]+\[([^\]]*)\])?[ \t]*$/gm;
+	/^<<< (\.{1,2}\/.+?)(?:#([\w-]+))?(?:[ \t]+\[([^\]]*)\])?[ \t]*$/gm;
 const regionMarker = /^[ \t]*\/\/ ?#(region|endregion)\b[ \t]*([\w-]*)[ \t]*$/;
 const queryMarker = /^[ \t]*\/\/\s*\^\?[ \t]*$/;
 
