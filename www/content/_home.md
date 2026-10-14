@@ -20,8 +20,9 @@ declare function renderComment(comment: PostComment): React.ReactNode;
 export const Route = createFileRoute("/posts/$slug")({
 	loader: async (args) => {
 		const qc = args.context.queryClient;
-		// Start everything before awaiting anything.
+		// Comments stream in after the route changes, under the skeleton below.
 		const comments = qc.prefetch(commentsQuery, { slug: args.params.slug });
+		// The route change waits for the post.
 		const post = await qc.ensure(postQuery, { slug: args.params.slug });
 		return { comments, post };
 	},
@@ -30,7 +31,8 @@ export const Route = createFileRoute("/posts/$slug")({
 
 function PostPage() {
 	const data = Route.useLoaderData();
-	const [post] = useQuery(postQuery, data.post); // ensured: the data itself
+	// The route already waited for this, so it's the post itself.
+	const [post] = useQuery(postQuery, data.post);
 	return (
 		<article>
 			<h1>{post.title}</h1>
@@ -42,6 +44,7 @@ function PostPage() {
 }
 
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
+	// Still loading. use() suspends until the pages stream in.
 	const [pages] = useQuery(commentsQuery, props.handle);
 	return use(pages)
 		.pages.flatMap((page) => page.items)
