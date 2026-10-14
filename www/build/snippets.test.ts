@@ -19,6 +19,10 @@ function setup(files: Record<string, string>) {
 	};
 }
 
+function app(dir: string) {
+	return { [`${dir}/tsconfig.json`]: "{}" };
+}
+
 const todos = [
 	'import { todosQuery } from "../queries.ts";',
 	"",
@@ -37,7 +41,7 @@ const todos = [
 
 describe("expandSnippets", () => {
 	it("shows the region and compiles the rest of the file next to it", () => {
-		const page = setup({ "page/src/routes/todos.tsx": todos });
+		const page = setup({ "page/src/routes/todos.tsx": todos, ...app("page") });
 		const expanded = page.expand(
 			"Intro\n\n<<< ./page/src/routes/todos.tsx#loader\n\nOutro\n",
 		);
@@ -71,7 +75,7 @@ describe("expandSnippets", () => {
 	});
 
 	it("dedents a region and drops other regions' queries", () => {
-		const page = setup({ "page/src/routes/todos.tsx": todos });
+		const page = setup({ "page/src/routes/todos.tsx": todos, ...app("page") });
 		expect(
 			page.expand("<<< ./page/src/routes/todos.tsx#body []").markdown,
 		).toBe(
@@ -95,7 +99,10 @@ describe("expandSnippets", () => {
 	});
 
 	it("includes a whole file, with a custom title", () => {
-		const page = setup({ "shared/client.ts": "export const a = 1;\n" });
+		const page = setup({
+			"shared/client.ts": "export const a = 1;\n",
+			...app("shared"),
+		});
 		expect(page.expand("<<< ./shared/client.ts [src/client.ts]").markdown).toBe(
 			[
 				'```ts twoslash title="src/client.ts"',
@@ -110,6 +117,7 @@ describe("expandSnippets", () => {
 
 	it("shows every part of a region that appears more than once", () => {
 		const page = setup({
+			...app("page"),
 			"page/a.ts": [
 				"// #region use",
 				'import { a } from "./b.ts";',
@@ -140,11 +148,29 @@ describe("expandSnippets", () => {
 
 	it("fails on a missing or unclosed region", () => {
 		const page = setup({
+			...app("page"),
 			"page/a.ts": "// #region open\nexport const a = 1;\n",
 		});
 		expect(() => page.expand("<<< ./page/a.ts#missing")).toThrow(
 			'no "// #region missing"',
 		);
 		expect(() => page.expand("<<< ./page/a.ts#open")).toThrow("isn't closed");
+	});
+
+	it("titles a block by its path in the closest app", () => {
+		const page = setup({
+			...app("page/before"),
+			"page/before/src/post.ts": "export const a = 1;\n",
+		});
+		expect(page.expand("<<< ./page/before/src/post.ts").markdown).toContain(
+			'```ts twoslash title="src/post.ts"\n// ---cut-start---\n// @filename: page/before/src/post.file.twoslash.ts',
+		);
+	});
+
+	it("fails on a file outside an example app", () => {
+		const page = setup({ "page/a.ts": "export const a = 1;\n" });
+		expect(() => page.expand("<<< ./page/a.ts")).toThrow(
+			"isn't in an example app",
+		);
 	});
 });

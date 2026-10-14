@@ -47,8 +47,6 @@ interface Source {
 	readonly slug: string;
 	/** The files the page includes. */
 	readonly snippets: ReadonlyArray<string>;
-	/** The page's example app, `content/<slug>/`, or the content dir without one. */
-	readonly twoslashRoot: string;
 }
 
 /** Replaces each `// ^?` in a Twoslash block with the type it shows, as a comment. */
@@ -78,22 +76,16 @@ function parseSource(contentDir: string, file: string, raw: string): Source {
 	} catch (error) {
 		throw new Error(`${file}: invalid frontmatter`, { cause: error });
 	}
-	const slug = path.basename(file, ".md");
-	const app = path.join(contentDir, slug);
-	const twoslashRoot = existsSync(path.join(app, "tsconfig.json"))
-		? app
-		: contentDir;
 	const expanded = expandSnippets(raw.slice(match[0].length), {
 		file,
-		root: twoslashRoot,
+		root: contentDir,
 	});
 	return {
 		file,
 		frontmatter,
 		markdown: expanded.markdown,
-		slug,
+		slug: path.basename(file, ".md"),
 		snippets: expanded.files,
-		twoslashRoot,
 	};
 }
 
@@ -153,7 +145,7 @@ export function docsContent(options: ContentOptions): Plugin {
 			return cached;
 		}
 		const doc = renderMarkdown(source.markdown, {
-			twoslashRoot: source.twoslashRoot,
+			contentDir,
 		}).then((result) => {
 			for (const id of result.demos) {
 				if (!existsSync(path.join(options.demosDir, `${id}.tsx`))) {

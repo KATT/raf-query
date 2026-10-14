@@ -1,21 +1,33 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, globSync } from "node:fs";
 import path from "node:path";
 
 import { Generator, getConfig } from "@tanstack/router-generator";
 
 /**
- * A page's samples can live in an example app, `content/<page>/`: its own
- * TypeScript project (`tsconfig.json`), so each app's route tree registers
- * its own routes.
+ * A page's samples live in example apps under `content/<page>/`: the folder
+ * itself, or folders inside it when the page shows versions of the same
+ * file (`content/<page>/<version>/`). Each app is its own TypeScript project
+ * (`tsconfig.json`), so each app's route tree registers its own routes.
  */
 export function exampleApps(contentDir: string): ReadonlyArray<string> {
-	return readdirSync(contentDir, { withFileTypes: true })
-		.filter(
-			(entry) =>
-				entry.isDirectory() &&
-				existsSync(path.join(contentDir, entry.name, "tsconfig.json")),
-		)
-		.map((entry) => path.join(contentDir, entry.name));
+	return globSync("*/**/tsconfig.json", {
+		cwd: contentDir,
+		exclude: ["**/node_modules/**"],
+	})
+		.map((file) => path.join(contentDir, path.dirname(file)))
+		.toSorted();
+}
+
+/** The example app `file` is in: the closest folder with a `tsconfig.json`. */
+export function appOf(file: string, contentDir: string): string | undefined {
+	let dir = path.dirname(file);
+	while (dir.startsWith(`${contentDir}${path.sep}`)) {
+		if (existsSync(path.join(dir, "tsconfig.json"))) {
+			return dir;
+		}
+		dir = path.dirname(dir);
+	}
+	return undefined;
 }
 
 /** Writes `src/routeTree.gen.ts` for each example app with `src/routes`, like TanStack Start's plugin does. */

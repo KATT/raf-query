@@ -3,7 +3,11 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 import rehypeShiki from "@shikijs/rehype";
-import { createTransformerFactory, rendererRich } from "@shikijs/twoslash/core";
+import {
+	createTransformerFactory,
+	rendererRich,
+	type TwoslashShikiFunction,
+} from "@shikijs/twoslash/core";
 import GithubSlugger from "github-slugger";
 import type { Element, ElementContent, Root as HastRoot } from "hast";
 import { toHtml } from "hast-util-to-html";
@@ -28,6 +32,7 @@ import { unified } from "unified";
 import { visit } from "unist-util-visit";
 
 import type { DocHeading, DocSegment } from "../src/content/types.ts";
+import { appOf } from "./example-apps.ts";
 
 export interface RenderedMarkdown {
 	readonly demos: ReadonlyArray<string>;
@@ -307,35 +312,58 @@ const inlineCompilerOptions: ts.CompilerOptions = {
  * Fences with `twoslash` in their meta are compiled, so hovering a name shows
  * its type, `// ^?` pins a type under the line, and `// @errors: 2345` shows
  * an expected error. A compile error the block doesn't expect fails the
- * build. Blocks resolve imports from `root`: a page's example app
- * (`content/<page>/`, with its `tsconfig.json`), or the content dir, where a
- * hidden setup above `// ---cut---` can import from `content/_twoslash.ts`.
+ * build. A block included from an example app (its first `// @filename`,
+ * from the content dir, is in one) compiles in that app's project; other
+ * blocks resolve imports from the content dir, where a hidden setup above
+ * `// ---cut---` can import from `content/_twoslash.ts`.
  */
-function twoslashTransformer(root: string) {
-	const cached = twoslashTransformers.get(root);
+function twoslashTransformer(contentDir: string) {
+	const cached = twoslashTransformers.get(contentDir);
 	if (cached) {
 		return cached;
 	}
-	const twoslasher = createTwoslasher({
-		...project(root),
-		tsLibDirectory: path.dirname(
-			fileURLToPath(import.meta.resolve("typescript6")),
-		),
-		// @ts-expect-error -- twoslash types `tsModule` as the `typescript` package, which here is TypeScript 7's, with no JavaScript API
-		tsModule: ts,
-		vfsRoot: root,
-	});
+	const twoslashers = new Map<string, TwoslashShikiFunction>();
+	function twoslasherFor(root: string) {
+		let twoslasher = twoslashers.get(root);
+		if (!twoslasher) {
+			twoslasher = createTwoslasher({
+				...project(root),
+				tsLibDirectory: path.dirname(
+					fileURLToPath(import.meta.resolve("typescript6")),
+				),
+				// @ts-expect-error -- twoslash types `tsModule` as the `typescript` package, which here is TypeScript 7's, with no JavaScript API
+				tsModule: ts,
+				vfsRoot: root,
+			});
+			twoslashers.set(root, twoslasher);
+		}
+		return twoslasher;
+	}
+	const twoslasher: TwoslashShikiFunction = (code, lang, options) => {
+		const filename = /^\/\/ @filename: (.+)$/m.exec(code);
+		const file = filename?.[1] && path.join(contentDir, filename[1]);
+		const app = file && appOf(file, contentDir);
+		if (!filename || !file || !app) {
+			return twoslasherFor(contentDir)(code, lang, options);
+		}
+		const inApp = path.relative(app, file).split(path.sep).join("/");
+		return twoslasherFor(app)(
+			code.replace(filename[0], `// @filename: ${inApp}`),
+			lang,
+			options,
+		);
+	};
 	const transformer = createTransformerFactory(
 		twoslasher,
 		rendererRich({ queryRendering: "line" }),
 	)({ explicitTrigger: true });
-	twoslashTransformers.set(root, transformer);
+	twoslashTransformers.set(contentDir, transformer);
 	return transformer;
 }
 
 export interface RenderOptions {
-	/** Where `twoslash` blocks resolve imports from. */
-	readonly twoslashRoot: string;
+	/** The content dir, which holds the example apps. */
+	readonly contentDir: string;
 }
 
 export async function renderMarkdown(
@@ -359,7 +387,7 @@ export async function renderMarkdown(
 			defaultColor: false,
 			themes: { dark: "github-dark", light: "github-light" },
 			transformers: [
-				twoslashTransformer(options.twoslashRoot),
+				twoslashTransformer(options.contentDir),
 				codeMeta,
 				{
 					name: "raf-query-docs:type-queries",

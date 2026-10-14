@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
+import { appOf } from "./example-apps.ts";
+
 export interface ExpandedSnippets {
 	/** Every file the page includes, for the dev server to watch. */
 	readonly files: ReadonlyArray<string>;
@@ -105,20 +107,20 @@ function twoslashCode(lines: ReadonlyArray<Line>, filename: string) {
  * the file is still compiled, hidden, in the file's folder, so its imports
  * resolve like they do in the editor.
  *
- * The block's title is the file's path inside the page's folder
- * (`content/<page>/`), so `src/file.tsx` here; `[title]` after the path
- * replaces it, and `[]` leaves it out.
+ * The file must be in an example app (see `exampleApps`), and the block
+ * compiles in that app's project. Its title is the file's path inside the
+ * app, so `src/file.tsx` here; `[title]` after the path replaces it, and
+ * `[]` leaves it out.
  */
 export function expandSnippets(
 	markdown: string,
 	options: {
 		/** The page's `.md` file. */
 		readonly file: string;
-		/** Where `twoslash` blocks resolve imports from. */
+		/** The content dir, which holds the example apps. */
 		readonly root: string;
 	},
 ): ExpandedSnippets {
-	const pageDir = options.file.slice(0, -".md".length);
 	const files: Array<string> = [];
 	const expanded = markdown.replaceAll(
 		includeLine,
@@ -130,13 +132,16 @@ export function expandSnippets(
 					`${options.file}: can only include .ts and .tsx files, not ${relative}`,
 				);
 			}
+			const app = appOf(file, options.root);
+			if (!app) {
+				throw new Error(
+					`${options.file}: ${relative} isn't in an example app (a folder in content/ with a tsconfig.json)`,
+				);
+			}
 			files.push(file);
 			const lines = markRegion(readFileSync(file, "utf8"), region, file);
 			const shownTitle =
-				title ??
-				(file.startsWith(`${pageDir}${path.sep}`)
-					? path.relative(pageDir, file).split(path.sep).join("/")
-					: undefined);
+				title ?? path.relative(app, file).split(path.sep).join("/");
 			// Twoslash empties a block's files once it's done, so the block gets a
 			// name of its own next to the file: other blocks importing the file
 			// still read it from disk.
