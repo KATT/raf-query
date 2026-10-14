@@ -8,6 +8,10 @@ import {
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import {
+	AnnouncementBar,
+	announcementScript,
+} from "~/components/announcement-bar.tsx";
 import { SiteFooter } from "~/components/site-footer.tsx";
 import { SiteHeader } from "~/components/site-header.tsx";
 import { themeScript } from "~/components/theme-toggle.tsx";
@@ -45,7 +49,7 @@ export const Route = createRootRouteWithContext<{
 			},
 			{ content: site.name, name: "application-name" },
 		],
-		scripts: [{ children: themeScript }],
+		scripts: [{ children: themeScript }, { children: announcementScript }],
 	}),
 	component: Outlet,
 	shellComponent: RootDocument,
@@ -64,6 +68,7 @@ function RootDocument(props: { readonly children: ReactNode }) {
 				>
 					Skip to content
 				</a>
+				<AnnouncementBar />
 				<SiteHeader />
 				<div className="flex-1" id="content">
 					{props.children}

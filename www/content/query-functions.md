@@ -7,7 +7,7 @@ order: 3
 
 A query function can be literally any function that **returns a value, a promise, or an [Effect](./effect.md)**. The promise should either **resolve the data** or **throw an error**.
 
-Unlike TanStack Query, `undefined` is a valid result: a `queryFn` typed `Promise<User | undefined>` caches `undefined` like any other value.
+Unlike TanStack Query, `undefined` is a valid result: a `queryFn` typed `Promise<User | undefined>` caches `undefined` like any other value. So `getData` and a `setData` updater's `previous` are `undefined` both with no data and with `undefined` data; `Query.getUnsafe(qc.getQuery(factory, input)).hasData` tells them apart.
 
 All of these are valid:
 

@@ -1,6 +1,6 @@
 # Implementation notes
 
-Mechanisms the build should copy, each verified against vendored or local source (not memory). Root `README.md` is the spec; this file is how to get there.
+Mechanisms the build should copy, each verified against vendored or local source (not memory). The docs site's pages (`www/content`) are the spec; this file is how to get there.
 
 ## Where each concern lives
 
@@ -26,4 +26,4 @@ Mirror TanStack's split: `.repos/query/packages/query-core` (no React import any
 
 ## Open implementation questions
 
-- RSC `HydrationBoundary` dehydrates when it renders, which is before child server components run. Queries those children start need their own boundary (README says so). Check whether passing a `ReadableStream` / async iterable prop through Flight lets one boundary cover a subtree instead.
+- RSC `HydrationBoundary` dehydrates when it renders, which is before child server components run. Queries those children start need their own boundary (the docs say so). Check whether passing a `ReadableStream` / async iterable prop through Flight lets one boundary cover a subtree instead.

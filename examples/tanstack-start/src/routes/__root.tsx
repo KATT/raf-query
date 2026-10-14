@@ -8,9 +8,12 @@ import {
 	Link,
 	Outlet,
 	Scripts,
+	useRouter,
 } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
+import { Settings } from "~/components/settings.tsx";
+import { readPrefetch, toDefaultPreload } from "~/settings.ts";
 import appCss from "~/styles.css?url";
 
 export const Route = createRootRouteWithContext<{
@@ -35,6 +38,9 @@ export const Route = createRootRouteWithContext<{
 });
 
 function RootDocument(props: { readonly children: ReactNode }) {
+	const router = useRouter();
+	const [prefetch, setPrefetch] = useState(readPrefetch);
+
 	return (
 		<html lang="en">
 			<head>
@@ -42,20 +48,36 @@ function RootDocument(props: { readonly children: ReactNode }) {
 			</head>
 			<body className="min-h-screen antialiased">
 				<header className="border-b">
-					<nav className="mx-auto flex max-w-5xl items-center gap-6 px-6 py-3">
+					<nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3">
 						<Link
 							className="flex items-center gap-2.5 font-semibold"
+							key={prefetch}
 							to="/issues"
 						>
 							<Logo alt="" />
 							Issues
 						</Link>
-						<span className="ml-auto text-sm text-muted-foreground">
+						<span className="text-sm text-muted-foreground">
 							raf-query · TanStack Start
 						</span>
+						<div className="ml-auto">
+							<Settings
+								onPrefetchChange={(next) => {
+									router.update({
+										...router.options,
+										defaultPreload: toDefaultPreload(next),
+									});
+									setPrefetch(next);
+								}}
+								prefetch={prefetch}
+							/>
+						</div>
 					</nav>
 				</header>
-				<main className="mx-auto max-w-5xl px-6 py-8">{props.children}</main>
+				{/* Remounts the page, so every `Link` picks up a new prefetch setting. */}
+				<main className="mx-auto max-w-5xl px-6 py-8" key={prefetch}>
+					{props.children}
+				</main>
 				<Scripts />
 			</body>
 		</html>
