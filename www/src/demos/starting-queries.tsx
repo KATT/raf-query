@@ -44,7 +44,7 @@ function createBlog() {
 						{ signal: context.signal },
 					),
 				queryKey: ["posts", input.postId, "comments"],
-				staleTime: 10_000,
+				staleTime: 5000,
 			}),
 		postQuery: (input: { id: number }) =>
 			queryOptions({
@@ -55,7 +55,7 @@ function createBlog() {
 						{ signal: context.signal },
 					),
 				queryKey: ["posts", input.id],
-				staleTime: 10_000,
+				staleTime: 5000,
 			}),
 		server,
 	};
@@ -305,9 +305,53 @@ function EnsureDemo() {
 	);
 }
 
+const fetching = createBlog();
+
+type FetchedPage =
+	| { readonly page: "list" }
+	| {
+			readonly comments: ReadonlyArray<Comment>;
+			readonly page: "post";
+			readonly post: Post | undefined;
+	  };
+
+function FetchDemo() {
+	return (
+		<DemoBrowser<FetchedPage>
+			fallback={<PostSkeleton />}
+			initial={{ path: "/posts" }}
+			loader={async (args) => {
+				const id = postIdOf(args.location);
+				if (!id) {
+					return { page: "list" };
+				}
+				const qc = args.client;
+				const data = await allKeyed({
+					comments: qc.fetch(fetching.commentsQuery, { postId: id }),
+					post: qc.fetch(fetching.postQuery, { id }),
+				});
+				return { ...data, page: "post" };
+			}}
+		>
+			{(route) =>
+				route.data.page === "list" ? (
+					<PostList />
+				) : (
+					<PostPage>
+						<PostBody post={route.data.post} />
+						<CommentsSection>
+							<CommentList comments={route.data.comments} />
+						</CommentsSection>
+					</PostPage>
+				)
+			}
+		</DemoBrowser>
+	);
+}
+
 export default defineDemo({
-	hint: "Open a post with each, then switch back and forth: each keeps its own page and network log. The requests start at the same moment either way; only what you see while they load differs.",
-	title: "prefetch vs ensure",
+	hint: "Open a post with each, then switch back and forth: each keeps its own page and network log. The requests start at the same moment every time. Go back and reopen the post after 5 seconds, once its cache is stale, to see ensure and fetch differ.",
+	title: "prefetch, ensure or fetch",
 	variants: [
 		{
 			Component: PrefetchDemo,
@@ -317,9 +361,17 @@ export default defineDemo({
 		},
 		{
 			Component: EnsureDemo,
-			description: "Stays on the list until the post and its comments load.",
+			description:
+				"Stays on the list until the post and its comments load. Cached data opens at once and refetches in the background.",
 			label: "ensure",
 			server: ensuring.server,
+		},
+		{
+			Component: FetchDemo,
+			description:
+				"Stays on the list until the post and its comments load, and waits for the refetch whenever the cache is stale.",
+			label: "fetch",
+			server: fetching.server,
 		},
 	],
 	variantsLabel: "Load the post and its comments with",
