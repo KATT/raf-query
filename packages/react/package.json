@@ -34,7 +34,6 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./devtools": "./src/devtools.tsx",
-		"./devtools/production": "./src/devtools-production.tsx",
 		"./rsc": "./src/rsc.tsx",
 		"./tanstack-router": {
 			"workerd": "./src/tanstack-router.ts",
@@ -86,7 +85,6 @@
 		"exports": {
 			".": "./dist/index.mjs",
 			"./devtools": "./dist/devtools.mjs",
-			"./devtools/production": "./dist/devtools-production.mjs",
 			"./rsc": "./dist/rsc.mjs",
 			"./tanstack-router": {
 				"workerd": "./dist/tanstack-router.mjs",

@@ -3,7 +3,7 @@ import "./globals.css";
 import { Logo } from "@examples/ui/components/logo";
 import { logoUrl } from "@examples/ui/lib/logo";
 import { LATENCY_COOKIE, parseLatency } from "@examples/db/types";
-import { QueryDevtools } from "@raf-query/react/devtools/production";
+import { QueryDevtools } from "@raf-query/react/devtools";
 import { QueryProvider } from "@raf-query/react/rsc";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";

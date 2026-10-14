@@ -1,4 +1,3 @@
-# Example apps use production DevTools (agent)
+# Example apps always mount QueryDevtools (agent)
 
-- Both example apps import `QueryDevtools` from `@raf-query/react/devtools/production` (parent agent, 2026-10-14), so the panel ships in deployed demos and in local `dev`. The default `@raf-query/react/devtools` entry still drops the panel when `NODE_ENV === "production"`.
-- Docs setup snippets for Next.js and TanStack Start match the examples and note the trade-off.
+- Both example apps render `<QueryDevtools />` from `@raf-query/react/devtools` with no `NODE_ENV` guard (parent agent, 2026-10-14), so the panel is in deployed demos and in local `dev`. Ordinary apps omit the element in production to tree-shake it — see [devtools.md](./devtools.md).

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@raf-query/react";
-import { QueryDevtools } from "@raf-query/react/devtools/production";
+import { QueryDevtools } from "@raf-query/react/devtools";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import { createRouter } from "@tanstack/react-router";
 

@@ -372,28 +372,6 @@ describe("QueryDevtools", () => {
 	});
 });
 
-describe("production builds", () => {
-	it("render nothing from the default entry", async () => {
-		vi.stubEnv("NODE_ENV", "production");
-		vi.resetModules();
-		using _production = {
-			[Symbol.dispose]() {
-				vi.unstubAllEnvs();
-				vi.resetModules();
-				cleanup();
-			},
-		};
-		const entry = await import("./devtools.tsx");
-		const client = new QueryClient({ isServer: false });
-
-		const view = await mount(
-			<entry.QueryDevtools client={client} initialIsOpen />,
-		);
-
-		expect(view.container.innerHTML).toBe("");
-	});
-});
-
 describe("preview", () => {
 	it("summarizes values in one line", () => {
 		expect(preview("a")).toBe('"a"');

@@ -11,7 +11,7 @@ TanStack Router's loaders are where raf-query wants queries to start, and its SS
 
 ```tsx title="src/router.tsx"
 import { QueryClient, QueryClientProvider } from "@raf-query/react";
-import { QueryDevtools } from "@raf-query/react/devtools/production";
+import { QueryDevtools } from "@raf-query/react/devtools";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import { createRouter } from "@tanstack/react-router";
 
@@ -29,7 +29,7 @@ export function getRouter() {
 		Wrap: (props) => (
 			<QueryClientProvider client={queryClient}>
 				{props.children}
-				<QueryDevtools />
+				{process.env.NODE_ENV !== "production" ? <QueryDevtools /> : null}
 			</QueryClientProvider>
 		),
 	});
@@ -38,7 +38,7 @@ export function getRouter() {
 }
 ```
 
-The [example app](./examples.md) imports `@raf-query/react/devtools/production` so the panel is visible in the deployed demo as well as in development. Apps that should drop the panel from production builds can import `@raf-query/react/devtools` instead.
+Omit `<QueryDevtools />` in production so bundlers drop the panel. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
 
 Type the router context in the root route, so loaders see `queryClient`:
 

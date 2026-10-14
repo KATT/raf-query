@@ -51,7 +51,7 @@ function PostPage() {
 | `@raf-query/react`                 | `QueryClient`, `QueryClientProvider`, `useQuery`, `useWaterfall`, `useIsFetching`, and all of core |
 | `@raf-query/react/tanstack-router` | [TanStack Start and Router](https://raf-query.katt.dev/docs/tanstack-start) SSR streaming          |
 | `@raf-query/react/rsc`             | [React Server Components](https://raf-query.katt.dev/docs/nextjs), such as the Next.js App Router  |
-| `@raf-query/react/devtools`        | The [devtools](https://raf-query.katt.dev/docs/devtools) panel, dropped from production builds     |
+| `@raf-query/react/devtools`        | The [devtools](https://raf-query.katt.dev/docs/devtools) panel; omit the element to tree-shake it  |
 
 ## License
 

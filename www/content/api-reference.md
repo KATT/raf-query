@@ -94,12 +94,11 @@ Everything from `@raf-query/core`, plus:
 
 Subpath entries:
 
-| Entry                                  | Use                                                              |
-| -------------------------------------- | ---------------------------------------------------------------- |
-| `@raf-query/react/tanstack-router`     | `setupRouterIntegration`. [TanStack Start](./tanstack-start.md)  |
-| `@raf-query/react/rsc`                 | `QueryProvider` and `HydrationBoundary`. [Next.js](./nextjs.md)  |
-| `@raf-query/react/devtools`            | `QueryDevtools`, `QueryDevtoolsPanel`. [Devtools](./devtools.md) |
-| `@raf-query/react/devtools/production` | The same, included in production builds                          |
+| Entry                              | Use                                                              |
+| ---------------------------------- | ---------------------------------------------------------------- |
+| `@raf-query/react/tanstack-router` | `setupRouterIntegration`. [TanStack Start](./tanstack-start.md)  |
+| `@raf-query/react/rsc`             | `QueryProvider` and `HydrationBoundary`. [Next.js](./nextjs.md)  |
+| `@raf-query/react/devtools`        | `QueryDevtools`, `QueryDevtoolsPanel`. [Devtools](./devtools.md) |
 
 ## @raf-query/core
 

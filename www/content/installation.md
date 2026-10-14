@@ -35,7 +35,7 @@ The integrations are subpath exports of the same package, so there is nothing el
 | ---------------------------------- | ----------------------------------------------------------------------- |
 | `@raf-query/react/tanstack-router` | [TanStack Start and TanStack Router](./tanstack-start.md) SSR streaming |
 | `@raf-query/react/rsc`             | [React Server Components](./nextjs.md), such as the Next.js App Router  |
-| `@raf-query/react/devtools`        | The [devtools](./devtools.md) panel, dropped from production builds     |
+| `@raf-query/react/devtools`        | The [devtools](./devtools.md) panel; omit the element to tree-shake it  |
 
 `@tanstack/react-router` is an optional peer: only apps that import `/tanstack-router` need it.
 
