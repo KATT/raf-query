@@ -93,6 +93,32 @@ function PostPage() {
 
 See [Starting queries](./starting-queries.md) for choosing between `prefetch` and `ensure`.
 
+### Handles in route context
+
+`beforeLoad` can return handles too. They're part of the route context, so child routes' loaders and components read them, and the router serializes them to the browser with the rest of the context:
+
+```tsx title="src/routes/_auth.tsx"
+export const Route = createFileRoute("/_auth")({
+	beforeLoad: async (args) => {
+		const qc = args.context.queryClient;
+		const me = await qc.ensure(meQuery);
+		if (!qc.getData(meQuery)) {
+			throw redirect({ to: "/login" });
+		}
+		return { me };
+	},
+});
+
+// In a child route
+function Dashboard() {
+	const context = Route.useRouteContext();
+	const [me] = useQuery(meQuery, context.me);
+	// ...
+}
+```
+
+Importing `@raf-query/react/tanstack-router` registers handles as serializable, so Start's type check of `beforeLoad`'s result accepts them.
+
 ### Router settings
 
 - **`defaultPreload: "intent"`** runs a route's loader when the user hovers or focuses a link, so the queries start before the click.
