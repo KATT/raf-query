@@ -84,7 +84,7 @@ export type UseQueryControls<TFactory extends QueryFactory> =
 		: QueryControls<TFactory>;
 
 export type UseQueryResult<TFactory extends QueryFactory> = readonly [
-	promise: Thenable<DataOf<TFactory>>,
+	promise: Promise<DataOf<TFactory>>,
 	controls: UseQueryControls<TFactory>,
 ];
 

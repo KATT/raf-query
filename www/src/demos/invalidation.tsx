@@ -5,7 +5,6 @@ import {
 	type QueryCache,
 	type QueryHandle,
 	queryOptions,
-	type Thenable,
 	useQuery,
 	useQueryClient,
 } from "@raf-query/react";
@@ -61,7 +60,7 @@ interface PageData {
 	readonly users: QueryHandle<typeof usersQuery>;
 }
 
-function ListCard(props: { readonly items: Thenable<ReadonlyArray<string>> }) {
+function ListCard(props: { readonly items: Promise<ReadonlyArray<string>> }) {
 	return (
 		<ul className="grid gap-1 text-sm">
 			{use(props.items).map((item) => (
@@ -75,7 +74,7 @@ function ListCard(props: { readonly items: Thenable<ReadonlyArray<string>> }) {
 
 function Card(props: {
 	readonly fetching: boolean;
-	readonly items: Thenable<ReadonlyArray<string>>;
+	readonly items: Promise<ReadonlyArray<string>>;
 	readonly label: string;
 	readonly updatedAt: number;
 }) {

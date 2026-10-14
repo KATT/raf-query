@@ -101,16 +101,16 @@ Paged factories add `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `ha
 
 Everything from `@raf-query/core`, plus:
 
-| Export                                         | Use                                                                                                                                                                                                |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `QueryClient`                                  | The cache with Promise methods ([above](#queryclient))                                                                                                                                             |
-| `allKeyed(record)`                             | Await a record of promises, keeping keys                                                                                                                                                           |
-| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations                                                                                                                                                  |
-| `QueryClientProvider`                          | Provides a client to the tree                                                                                                                                                                      |
-| `useQueryClient()`                             | Read the client                                                                                                                                                                                    |
-| `useQuery(factory, handle, options?)`          | `[Thenable<Data>, controls]`; Effect `queryFn`s with `throwOnError: false` (default when the client has a `layer`) yield `Result<Data, ErrorOf>` instead. Paged: `Data` is `{ pages, pageParams }` |
-| `useWaterfall(factory, input)`                 | Start a query during render and return its handle. [Request waterfalls](./request-waterfalls.md#render-time-inputs-usewaterfall)                                                                   |
-| `useIsFetching(filter?)`                       | Global in-flight count (compatibility). Prefer router pending + per-query `isFetching`. [Background fetching indicators](./background-fetching-indicators.md)                                      |
+| Export                                         | Use                                                                                                                                                                                               |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `QueryClient`                                  | The cache with Promise methods ([above](#queryclient))                                                                                                                                            |
+| `allKeyed(record)`                             | Await a record of promises, keeping keys                                                                                                                                                          |
+| `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations                                                                                                                                                 |
+| `QueryClientProvider`                          | Provides a client to the tree                                                                                                                                                                     |
+| `useQueryClient()`                             | Read the client                                                                                                                                                                                   |
+| `useQuery(factory, handle, options?)`          | `[Promise<Data>, controls]`; Effect `queryFn`s with `throwOnError: false` (default when the client has a `layer`) yield `Result<Data, ErrorOf>` instead. Paged: `Data` is `{ pages, pageParams }` |
+| `useWaterfall(factory, input)`                 | Start a query during render and return its handle. [Request waterfalls](./request-waterfalls.md#render-time-inputs-usewaterfall)                                                                  |
+| `useIsFetching(filter?)`                       | Global in-flight count (compatibility). Prefer router pending + per-query `isFetching`. [Background fetching indicators](./background-fetching-indicators.md)                                     |
 
 Subpath entries:
 

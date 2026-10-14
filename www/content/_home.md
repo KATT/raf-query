@@ -33,6 +33,7 @@ function PostPage() {
 	const data = Route.useLoaderData();
 	// The route already waited for this, so it's the post itself.
 	const [post] = useQuery(postQuery, data.post);
+	//     ^?
 	return (
 		<article>
 			<h1>{post.title}</h1>
@@ -46,6 +47,7 @@ function PostPage() {
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	// Still loading. use() suspends until the pages stream in.
 	const [pages] = useQuery(commentsQuery, props.handle);
+	//     ^?
 	return use(pages)
 		.pages.flatMap((page) => page.items)
 		.map(renderComment);
