@@ -29,7 +29,7 @@ export function getRouter() {
 		Wrap: (props) => (
 			<QueryClientProvider client={queryClient}>
 				{props.children}
-				{process.env.NODE_ENV !== "production" ? <QueryDevtools /> : null}
+				{import.meta.env.DEV ? <QueryDevtools /> : null}
 			</QueryClientProvider>
 		),
 	});
@@ -38,7 +38,7 @@ export function getRouter() {
 }
 ```
 
-Omit `<QueryDevtools />` in production so bundlers drop the panel. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
+Mount DevTools only when `import.meta.env.DEV` is true so Vite drops the panel from production builds. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
 
 Type the router context in the root route, so loaders see `queryClient`:
 

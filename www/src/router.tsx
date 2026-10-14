@@ -25,7 +25,7 @@ export function getRouter() {
 		Wrap: (props) => (
 			<QueryClientProvider client={queryClient}>
 				{props.children}
-				{process.env.NODE_ENV !== "production" ? (
+				{import.meta.env.DEV ? (
 					<QueryDevtools buttonPosition="bottom-left" />
 				) : null}
 			</QueryClientProvider>

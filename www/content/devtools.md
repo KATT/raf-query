@@ -5,18 +5,20 @@ section: Reference
 order: 1
 ---
 
-`@raf-query/react/devtools` shows the browser's query cache as it changes. Render `QueryDevtools` anywhere under the provider:
+`@raf-query/react/devtools` shows the browser's query cache as it changes. Render `QueryDevtools` anywhere under the provider, and only mount it in development so bundlers drop the panel from production builds.
+
+On Vite and TanStack Start, use `import.meta.env.DEV`:
 
 ```tsx
 import { QueryDevtools } from "@raf-query/react/devtools";
 
 <QueryClientProvider client={queryClient}>
 	{props.children}
-	{process.env.NODE_ENV !== "production" ? <QueryDevtools /> : null}
+	{import.meta.env.DEV ? <QueryDevtools /> : null}
 </QueryClientProvider>;
 ```
 
-Bundlers replace `process.env.NODE_ENV`, so the production branch is empty and the panel's code is dropped. Omit the element (or the whole import) whenever you don't want the panel — there is no separate production entry.
+On Next.js, use `process.env.NODE_ENV !== "production"` instead — see [Next.js](./nextjs.md). Either check is replaced at build time, so the production branch is empty and the panel's code is tree-shaken. Omit the element (or the whole import) whenever you don't want the panel — there is no separate production entry.
 
 In Next.js, put it inside `QueryProvider` in the root layout. It's a client component, so a server component layout can render it.
 
