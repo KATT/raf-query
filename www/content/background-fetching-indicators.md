@@ -1,11 +1,11 @@
 ---
 title: Background fetching indicators
-description: Show that a query is refreshing with isFetching, and add an app-wide progress indicator with useIsFetching.
+description: Show that a query is refreshing with isFetching. Prefer the router's pending UI for navigations; useIsFetching stays for compatibility when you need a global count.
 section: Guides
 order: 17
 ---
 
-A query's first load suspends, so Suspense fallbacks cover it. Later requests (refetches on navigation, focus, invalidation) happen in the background, while the old data stays on screen. Two tools tell the user something is happening.
+A query's first load suspends, so Suspense fallbacks cover it. Later requests (refetches on focus, invalidation) happen in the background, while the old data stays on screen. Read `isFetching` on that query's controls. For navigations, prefer the router's pending UI — you usually don't need a global fetch counter.
 
 ## One query: isFetching
 
@@ -32,9 +32,18 @@ function Post(props: { handle: EnsuredQueryHandle<typeof postQuery> }) {
 
 Controls are tracked: only components that read `isFetching` re-render when it changes. A parent that just passes the promise down stays put during background refetches.
 
-## The whole app: useIsFetching
+## Navigations
 
-`useIsFetching()` returns how many queries have a request in flight, and re-renders when the number changes. Render it once in the root layout for a global indicator:
+A navigation is not a background fetch: it's a transition. Use the router's pending state for the navigation itself:
+
+- [TanStack Start](./tanstack-start.md#pending-ui): `pendingComponent` / `pendingMs`, or `useRouterState({ select: (state) => state.isLoading })`
+- [Next.js](./nextjs.md#pending-ui): `useLinkStatus` from `next/link`
+
+`isFetching` covers what happens after the page has rendered.
+
+## useIsFetching
+
+You probably don't need this. Prefer the router's pending UI for navigations ([TanStack Start](./tanstack-start.md#pending-ui), [Next.js](./nextjs.md#pending-ui)) and per-query `isFetching` for background refetches. The hook stays for TanStack Query compatibility when you want one count of every in-flight request across the app:
 
 ```tsx twoslash
 import { useIsFetching } from "@raf-query/react";
@@ -77,7 +86,3 @@ On a fast connection, a background refetch can finish in 50 ms, and a spinner th
 	}
 }
 ```
-
-## Navigations
-
-A navigation is not a background fetch: it's a transition. In TanStack Router and Next.js, use the router's pending state for the navigation itself (`useRouterState({ select: (state) => state.isLoading })`, or `useLinkStatus` in Next.js). `isFetching` and `useIsFetching` cover what happens after the page has rendered.

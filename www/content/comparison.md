@@ -11,23 +11,23 @@ What changes is the API around the cache. TanStack Query lets any component star
 
 ## API map
 
-| TanStack Query                                       | raf-query                                                   | Notes                                                                          |
-| ---------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `queryOptions({ queryKey, queryFn })`                | `function q(input) { return queryOptions({ ... }) }`        | A [factory](./query-factories.md) of one input, so handles can carry the input |
-| `queryClient.prefetchQuery()` (not awaited)          | `qc.prefetch(factory, input)` → handle                      | [Starting queries](./starting-queries.md)                                      |
-| `queryClient.ensureQueryData({ revalidateIfStale })` | `qc.ensure(factory, input)` → `Promise<EnsuredQueryHandle>` |                                                                                |
-| `queryClient.fetchQuery()`                           | `qc.fetch(factory, input)` → `Promise<Data>`                |                                                                                |
-| `useSuspenseQuery()`                                 | `use(useQuery(factory, handle)[0])`                         | The hook returns a promise; [read it](./reading-queries.md) where you need it  |
-| `useQuery()` in render, starting the request         | `useWaterfall(factory, input)` + `useQuery`                 | An [escape hatch](./request-waterfalls.md#render-time-inputs-usewaterfall)     |
-| `useInfiniteQuery()`                                 | `useQuery()` with an `infiniteQueryOptions` factory         | [Infinite queries](./infinite-queries.md)                                      |
-| `placeholderData: keepPreviousData`                  | `useQuery(f, h, { whilePending: "previous" })`              | `isPrevious` instead of `isPlaceholderData`                                    |
-| `useMutation()`                                      | Form Actions + `qc.invalidate()`                            | React provides pending and [optimistic](./mutations.md) state                  |
-| `queryClient.invalidateQueries(filters)`             | `qc.invalidate(filter)` or `qc.invalidate(factory, input)`  | Resolves when read queries have refetched                                      |
-| `queryClient.resetQueries` / `removeQueries`         | `qc.reset(...)` / `qc.remove(...)`                          | Same [filters](./query-invalidation.md#query-filters)                          |
-| `queryClient.setQueryData` / `getQueryData`          | `qc.setData(factory, input, updater)` / `qc.getData(...)`   |                                                                                |
-| `useIsFetching()`                                    | `useIsFetching()`                                           | [Background indicators](./background-fetching-indicators.md)                   |
-| `HydrationBoundary` + `dehydrate()`                  | Automatic streaming                                         | [SSR and hydration](./ssr-and-hydration.md)                                    |
-| `cancelQueries()`                                    | `qc.remove(...)`                                            | Unread background refetches are [aborted](./query-cancellation.md) for you     |
+| TanStack Query                                       | raf-query                                                   | Notes                                                                                                                                |
+| ---------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `queryOptions({ queryKey, queryFn })`                | `function q(input) { return queryOptions({ ... }) }`        | A [factory](./query-factories.md) of one input, so handles can carry the input                                                       |
+| `queryClient.prefetchQuery()` (not awaited)          | `qc.prefetch(factory, input)` → handle                      | [Starting queries](./starting-queries.md)                                                                                            |
+| `queryClient.ensureQueryData({ revalidateIfStale })` | `qc.ensure(factory, input)` → `Promise<EnsuredQueryHandle>` |                                                                                                                                      |
+| `queryClient.fetchQuery()`                           | `qc.fetch(factory, input)` → `Promise<Data>`                |                                                                                                                                      |
+| `useSuspenseQuery()`                                 | `use(useQuery(factory, handle)[0])`                         | The hook returns a promise; [read it](./reading-queries.md) where you need it                                                        |
+| `useQuery()` in render, starting the request         | `useWaterfall(factory, input)` + `useQuery`                 | An [escape hatch](./request-waterfalls.md#render-time-inputs-usewaterfall)                                                           |
+| `useInfiniteQuery()`                                 | `useQuery()` with an `infiniteQueryOptions` factory         | [Infinite queries](./infinite-queries.md)                                                                                            |
+| `placeholderData: keepPreviousData`                  | `useQuery(f, h, { whilePending: "previous" })`              | `isPrevious` instead of `isPlaceholderData`                                                                                          |
+| `useMutation()`                                      | Form Actions + `qc.invalidate()`                            | React provides pending and [optimistic](./mutations.md) state                                                                        |
+| `queryClient.invalidateQueries(filters)`             | `qc.invalidate(filter)` or `qc.invalidate(factory, input)`  | Resolves when read queries have refetched                                                                                            |
+| `queryClient.resetQueries` / `removeQueries`         | `qc.reset(...)` / `qc.remove(...)`                          | Same [filters](./query-invalidation.md#query-filters)                                                                                |
+| `queryClient.setQueryData` / `getQueryData`          | `qc.setData(factory, input, updater)` / `qc.getData(...)`   |                                                                                                                                      |
+| `useIsFetching()`                                    | `useIsFetching()`                                           | Kept for compatibility; prefer router pending + per-query `isFetching`. [Background indicators](./background-fetching-indicators.md) |
+| `HydrationBoundary` + `dehydrate()`                  | Automatic streaming                                         | [SSR and hydration](./ssr-and-hydration.md)                                                                                          |
+| `cancelQueries()`                                    | `qc.remove(...)`                                            | Unread background refetches are [aborted](./query-cancellation.md) for you                                                           |
 
 ## What stays the same
 

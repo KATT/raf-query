@@ -139,7 +139,7 @@ function FetchingIndicators() {
 
 export default defineDemo({
 	Component: FetchingIndicators,
-	hint: "Each card shows its own isFetching; the bar on top counts every request with useIsFetching. Refetch one card, or invalidate them all.",
+	hint: "Each card shows its own isFetching. The optional bar uses useIsFetching for a global count — prefer the router's pending UI for navigations. Refetch one card, or invalidate them all.",
 	server,
 	title: "isFetching and useIsFetching",
 });
