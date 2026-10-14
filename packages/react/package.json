@@ -1,6 +1,6 @@
 {
 	"name": "@raf-query/react",
-	"version": "0.4.3",
+	"version": "0.4.5",
 	"description": "React bindings for raf-query, a render-as-you-fetch query library",
 	"keywords": [
 		"query",
@@ -19,7 +19,7 @@
 		"url": "git+https://github.com/KATT/raf-query.git",
 		"directory": "packages/react"
 	},
-	"homepage": "https://github.com/KATT/raf-query#readme",
+	"homepage": "https://raf-query.katt.dev",
 	"bugs": {
 		"url": "https://github.com/KATT/raf-query/issues"
 	},

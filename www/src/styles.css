@@ -8,6 +8,10 @@ html {
 	scroll-padding-top: 5rem;
 }
 
+html[data-announcement-dismissed] .announcement-bar {
+	display: none;
+}
+
 .prose {
 	--tw-prose-body: var(--foreground);
 	--tw-prose-headings: var(--foreground);

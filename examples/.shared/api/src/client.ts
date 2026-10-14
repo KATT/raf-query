@@ -10,9 +10,17 @@ import type { Api } from "./app.ts";
 export { parseResponse } from "hono/client";
 export type { Api } from "./app.ts";
 
+/** Headers to send with every request, read when each request starts. */
+export type RequestHeaders = () =>
+	| Record<string, string>
+	| Promise<Record<string, string>>;
+
 /** A typed client for the API. Responses and inputs are inferred from `app.ts`. */
-export function createClient(fetch?: typeof globalThis.fetch) {
-	return hc<Api>("/api", { fetch });
+export function createClient(options: {
+	readonly fetch?: typeof globalThis.fetch;
+	readonly headers?: RequestHeaders | undefined;
+}) {
+	return hc<Api>("/api", options);
 }
 
 /** Like `parseResponse`, but resolves `null` for a 404. */

@@ -12,10 +12,12 @@ import {
 	Cursor,
 	IssueId,
 	IssueListInput,
+	LATENCY_HEADER,
+	parseLatency,
 	UpdateTitleInput,
 } from "@examples/db/types";
 import { sValidator } from "@hono/standard-validator";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { z } from "zod";
 
 // Path and query values arrive as strings: coerce them, then check them with
@@ -24,16 +26,21 @@ const numeric = z.coerce.number<string>();
 const IssueParam = z.object({ id: numeric.pipe(IssueId) });
 const QueryCursor = numeric.pipe(Cursor);
 
+/** The database options a request asked for in its headers. */
+function options(c: Context) {
+	return { latencyMs: parseLatency(c.req.header(LATENCY_HEADER)) };
+}
+
 const routes = new Hono()
 	.get(
 		"/issues",
 		sValidator("query", IssueListInput.extend({ cursor: QueryCursor })),
-		async (c) => c.json(await listIssues(c.req.valid("query"))),
+		async (c) => c.json(await listIssues(c.req.valid("query"), options(c))),
 	)
 	// Registered before `/issues/:id`, which would match it too.
-	.get("/issues/counts", async (c) => c.json(await countIssues()))
+	.get("/issues/counts", async (c) => c.json(await countIssues(options(c))))
 	.get("/issues/:id", sValidator("param", IssueParam), async (c) => {
-		const issue = await getIssue(c.req.valid("param").id);
+		const issue = await getIssue(c.req.valid("param").id, options(c));
 		return issue ? c.json(issue) : c.json({ error: "Issue not found" }, 404);
 	})
 	.patch(
@@ -42,10 +49,13 @@ const routes = new Hono()
 		sValidator("json", UpdateTitleInput.omit({ id: true })),
 		async (c) =>
 			c.json(
-				await updateIssue({
-					...c.req.valid("json"),
-					id: c.req.valid("param").id,
-				}),
+				await updateIssue(
+					{
+						...c.req.valid("json"),
+						id: c.req.valid("param").id,
+					},
+					options(c),
+				),
 			),
 	)
 	.get(
@@ -54,10 +64,13 @@ const routes = new Hono()
 		sValidator("query", z.object({ cursor: QueryCursor })),
 		async (c) =>
 			c.json(
-				await listComments({
-					cursor: c.req.valid("query").cursor,
-					issueId: c.req.valid("param").id,
-				}),
+				await listComments(
+					{
+						cursor: c.req.valid("query").cursor,
+						issueId: c.req.valid("param").id,
+					},
+					options(c),
+				),
 			),
 	)
 	.post(
@@ -66,17 +79,20 @@ const routes = new Hono()
 		sValidator("json", AddCommentInput.omit({ issueId: true })),
 		async (c) =>
 			c.json(
-				await addComment({
-					...c.req.valid("json"),
-					issueId: c.req.valid("param").id,
-				}),
+				await addComment(
+					{
+						...c.req.valid("json"),
+						issueId: c.req.valid("param").id,
+					},
+					options(c),
+				),
 				201,
 			),
 	)
 	// Nested under the issue, so a page can ask for the assignee with the id
 	// from its URL, beside the issue, instead of after it.
 	.get("/issues/:id/assignee", sValidator("param", IssueParam), async (c) => {
-		const user = await getIssueAssignee(c.req.valid("param").id);
+		const user = await getIssueAssignee(c.req.valid("param").id, options(c));
 		return user ? c.json(user) : c.json({ error: "Issue not found" }, 404);
 	});
 

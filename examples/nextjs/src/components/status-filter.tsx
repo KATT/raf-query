@@ -7,7 +7,7 @@ import {
 } from "@examples/db/types";
 import { cn } from "@examples/ui/lib/utils";
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import Link from "next/link";
+import { AppLink } from "./settings.tsx";
 import { use } from "react";
 
 import { issueCountsQuery } from "~/queries.ts";
@@ -26,7 +26,7 @@ export function StatusFilter(props: {
 		<aside className="grid content-start gap-6">
 			<nav className="grid gap-1">
 				{(["all", ...issueStatuses] as const).map((status) => (
-					<Link
+					<AppLink
 						className={cn(
 							"flex justify-between rounded-md px-3 py-1.5 text-sm hover:bg-muted",
 							current.status === status && "bg-muted font-medium",
@@ -39,7 +39,7 @@ export function StatusFilter(props: {
 					>
 						{statusLabel(status)}
 						<span className="text-muted-foreground">{counts[status]}</span>
-					</Link>
+					</AppLink>
 				))}
 			</nav>
 			<nav className="grid gap-1">
@@ -47,7 +47,7 @@ export function StatusFilter(props: {
 					Sort
 				</span>
 				{issueSorts.map((sort) => (
-					<Link
+					<AppLink
 						className={cn(
 							"rounded-md px-3 py-1.5 text-sm capitalize hover:bg-muted",
 							current.sort === sort && "bg-muted font-medium",
@@ -56,7 +56,7 @@ export function StatusFilter(props: {
 						key={sort}
 					>
 						{sort}
-					</Link>
+					</AppLink>
 				))}
 			</nav>
 		</aside>

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.5](https://github.com/KATT/raf-query/compare/0.4.4...0.4.5) (2026-10-14)
+
+- trim the READMEs, give each package its own, and warn that raf-query is early on the docs site ([#70](https://github.com/KATT/raf-query/issues/70)) ([2c06462](https://github.com/KATT/raf-query/commit/2c0646291f5fc45d2d64bc43c52f3e089c46ce05))
+
+## [0.4.4](https://github.com/KATT/raf-query/compare/0.4.3...0.4.4) (2026-10-14)
+
+### Features
+
+- **examples:** settings in the top bar for link prefetching and latency ([#67](https://github.com/KATT/raf-query/issues/67)) ([b8bde09](https://github.com/KATT/raf-query/commit/b8bde09f4d2525cc797bf59c35dd20b4404e8733))
+
 ## [0.4.3](https://github.com/KATT/raf-query/compare/0.4.2...0.4.3) (2026-10-14)
 
 ### Features

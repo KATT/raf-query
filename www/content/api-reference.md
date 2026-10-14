@@ -21,7 +21,7 @@ const queryClient = new QueryClient(config?);
 | `fetch(factory, input, options?)`                   | Wait for fresh data; returns `Promise<Data>`                                                                                    |
 | `invalidate(factory, input)` / `invalidate(filter)` | Mark stale and refetch read queries. [Query invalidation](./query-invalidation.md)                                              |
 | `setData(factory, input, updater)`                  | Write data. [Mutations](./mutations.md)                                                                                         |
-| `getData(factory, input)`                           | Cached data, or `undefined`                                                                                                     |
+| `getData(factory, input)`                           | Cached data, or `undefined`. [Query functions](./query-functions.md)                                                            |
 | `reset(factory, input)` / `reset(filter)`           | Drop data and errors; read queries suspend and refetch. Resolves when they settle                                               |
 | `remove(factory, input)` / `remove(filter)`         | Remove entries and abort their requests                                                                                         |
 | `effect`                                            | The [Effect](./effect.md) `QueryCache` behind the client                                                                        |
