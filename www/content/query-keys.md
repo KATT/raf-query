@@ -31,25 +31,11 @@ When a query needs more information to describe its data, add it to the array: a
 
 Object keys are sorted before hashing, and `undefined` fields are dropped, so all of these name the same entry:
 
-```ts twoslash
-declare const status: string;
-declare const page: number;
-// ---cut---
-["todos", { status, page }];
-["todos", { page, status }];
-["todos", { page, status, other: undefined }];
-```
+<<< ./query-keys/src/key-arrays.ts#object-keys-hash-same
 
 Array order does matter. These are three different entries:
 
-```ts twoslash
-declare const status: string;
-declare const page: number;
-// ---cut---
-["todos", status, page];
-["todos", page, status];
-["todos", undefined, page, status];
-```
+<<< ./query-keys/src/key-arrays.ts#array-order-differs
 
 `hashKey(key)` returns the string form, and `useQuery`'s controls expose it as `hash`, which makes a good `key` prop for a Suspense boundary.
 
