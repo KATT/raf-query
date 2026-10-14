@@ -31,30 +31,32 @@ pnpm build
 
 ## Example apps
 
-`examples/` holds the same issue tracker on two frameworks. The packages they share live in `examples/.shared/`. The copies in `examples/.experimental/` run the same app on the experimental `@raf-query/experimental-tanstack-react-query`:
+`examples/` holds the same issue tracker three times: on TanStack Start, on Next.js, and on TanStack Start written with Effect and Effect RPC. The packages they share live in `examples/.shared/`. The copies in `examples/.experimental/` run the same app on the experimental `@raf-query/experimental-tanstack-react-query`:
 
-| Directory                                      | What                                                                   |
-| ---------------------------------------------- | ---------------------------------------------------------------------- |
-| `examples/tanstack-start`                      | TanStack Start app, <http://localhost:3000>                            |
-| `examples/nextjs`                              | Next.js App Router app, <http://localhost:3001>                        |
-| `examples/.experimental/tanstack-query-start`  | TanStack Start app on TanStack Query, <http://localhost:3002>          |
-| `examples/.experimental/tanstack-query-nextjs` | Next.js App Router app on TanStack Query, <http://localhost:3003>      |
-| `examples/.shared/ui`                          | shadcn/ui components and the Tailwind theme (`@examples/ui`)           |
-| `examples/.shared/db`                          | In-memory fake database with latency (`@examples/db`), and its schemas |
+| Directory                                      | What                                                                           |
+| ---------------------------------------------- | ------------------------------------------------------------------------------ |
+| `examples/tanstack-start`                      | TanStack Start app, <http://localhost:3000>                                    |
+| `examples/nextjs`                              | Next.js App Router app, <http://localhost:3001>                                |
+| `examples/tanstack-start-effect`               | TanStack Start app written with Effect and Effect RPC, <http://localhost:3005> |
+| `examples/.experimental/tanstack-query-start`  | TanStack Start app on TanStack Query, <http://localhost:3002>                  |
+| `examples/.experimental/tanstack-query-nextjs` | Next.js App Router app on TanStack Query, <http://localhost:3003>              |
+| `examples/.shared/ui`                          | shadcn/ui components and the Tailwind theme (`@examples/ui`)                   |
+| `examples/.shared/db`                          | In-memory fake database with latency (`@examples/db`), and its schemas         |
 
 They import the libraries' source, so there is nothing to build first. Run them from the root; `pnpm` installs first when `node_modules` is out of date (`verifyDepsBeforeRun` in `pnpm-workspace.yaml`):
 
 ```shell
-pnpm dev                # TanStack Start, Next.js and the docs site, in parallel
+pnpm dev                # the three apps and the docs site, in parallel
 pnpm dev:start          # TanStack Start only
 pnpm dev:next           # Next.js only
+pnpm dev:effect         # TanStack Start with Effect only
 pnpm dev:experimental   # both apps on TanStack Query
-pnpm dev:all            # all four, and the docs site
+pnpm dev:all            # all five, and the docs site
 pnpm build:examples     # production builds of every app, as CI runs them
-pnpm preview:examples   # build all four, then serve the production builds
+pnpm preview:examples   # build all five, then serve the production builds
 ```
 
-Every database call waits the latency picked in the app's top bar, or `DB_LATENCY_MS` (default 400), ± 50%. The top bar also sets how links prefetch. Data the server loads for the first render streams in with the HTML. Later loads (scrolling, filters, opening an issue) are requests to the shared REST API (`examples/.shared/api`) in the browser's network tab, such as `GET /api/issues?status=open&cursor=10`, and mutations are `PATCH` / `POST` to it. Both apps serve the same API under `/api`. Data lives in memory and resets when the server restarts. To add a shadcn component, run `pnpm dlx shadcn@latest add <name>` in `examples/.shared/ui`, then check that it imports `cn` from `@examples/ui/lib/utils` (the CLI can write a bare `"cn"` import and add a `cn` dependency).
+Every database call waits the latency picked in the app's top bar, or `DB_LATENCY_MS` (default 400), ± 50%. The top bar also sets how links prefetch. Data the server loads for the first render streams in with the HTML. Later loads (scrolling, filters, opening an issue) are requests to the shared REST API (`examples/.shared/api`) in the browser's network tab, such as `GET /api/issues?status=open&cursor=10`, and mutations are `PATCH` / `POST` to it. The TanStack Start and Next.js apps serve the same API under `/api`. The Effect app serves an Effect RPC group instead, and its requests are `POST /rpc/` with the procedure's name (`GetIssue`, `UpdateTitle`) in the body. Data lives in memory and resets when the server restarts. To add a shadcn component, run `pnpm dlx shadcn@latest add <name>` in `examples/.shared/ui`, then check that it imports `cn` from `@examples/ui/lib/utils` (the CLI can write a bare `"cn"` import and add a `cn` dependency).
 
 ### CodeSandbox
 
@@ -69,12 +71,13 @@ cd /tmp/codesandbox/examples/nextjs && pnpm install && pnpm dev
 
 ### Deploying
 
-`examples/tanstack-start` and `examples/nextjs` are each a Vercel project in the `trpc` team, with the app's directory as the root directory and its `vercel.json` setting the install and build commands. Pushes to `main` deploy to production, and pull requests get preview deployments. A project skips the build when nothing it uses changed since its last successful deployment on that branch (`ignoreCommand`, diffing from `VERCEL_GIT_PREVIOUS_SHA`); a branch's first deployment always builds. The docs site (`www/`) works the same way. The experimental apps aren't deployed.
+`examples/tanstack-start`, `examples/nextjs` and `examples/tanstack-start-effect` are each a Vercel project in the `trpc` team, with the app's directory as the root directory and its `vercel.json` setting the install and build commands. Pushes to `main` deploy to production, and pull requests get preview deployments. A project skips the build when nothing it uses changed since its last successful deployment on that branch (`ignoreCommand`, diffing from `VERCEL_GIT_PREVIOUS_SHA`); a branch's first deployment always builds. The docs site (`www/`) works the same way. The experimental apps aren't deployed.
 
-| App                       | URL                                         |
-| ------------------------- | ------------------------------------------- |
-| `examples/tanstack-start` | <https://tanstack-start.raf-query.katt.dev> |
-| `examples/nextjs`         | <https://nextjs.raf-query.katt.dev>         |
+| App                              | URL                                                |
+| -------------------------------- | -------------------------------------------------- |
+| `examples/tanstack-start`        | <https://tanstack-start.raf-query.katt.dev>        |
+| `examples/nextjs`                | <https://nextjs.raf-query.katt.dev>                |
+| `examples/tanstack-start-effect` | <https://tanstack-start-effect.raf-query.katt.dev> |
 
 The Start apps build with Nitro's `nitro()` Vite plugin, which writes Vercel Build Output on Vercel and a Node server in `.output/` elsewhere. Each deployment's database lives in the memory of the function instance that serves it, so edits reset whenever an instance starts, and two instances can show different data.
 

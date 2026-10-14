@@ -7,7 +7,7 @@
 
 - Test programmatically: unit tests, type checks, builds, `curl` against a dev server or a preview. See [`.github/DEVELOPMENT.md`](.github/DEVELOPMENT.md).
 - Only use computer use (driving a browser on the VM) for things that need taste: how a UI looks or feels to use. Don't use it to check behavior that a test or a request can check.
-- Don't record video demos or screen recordings. They are slow and cost a lot of tokens. Instead, the PR description links to the Vercel previews of the pages the change affects: deep links to the exact page or route (with an anchor when it helps), not just the site root. The Vercel bot's PR comment has the preview base URL for `www` (`raf-query`), `examples/nextjs` (`raf-query-nextjs`) and `examples/tanstack-start` (`raf-query-tanstack-start`); add those links once the deployment is ready.
+- Don't record video demos or screen recordings. They are slow and cost a lot of tokens. Instead, the PR description links to the Vercel previews of the pages the change affects: deep links to the exact page or route (with an anchor when it helps), not just the site root. The Vercel bot's PR comment has the preview base URL for `www` (`raf-query`), `examples/nextjs` (`raf-query-nextjs`), `examples/tanstack-start` (`raf-query-tanstack-start`) and `examples/tanstack-start-effect` (`raf-query-tanstack-start-effect`); add those links once the deployment is ready.
 
 ## Big changes
 
