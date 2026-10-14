@@ -517,6 +517,39 @@ describe("useQuery", () => {
 		cleanup();
 	});
 
+	describe("a root with no Suspense boundary", () => {
+		function bare(test: ReturnType<typeof setup>) {
+			const handle = test.client.prefetch(test.backend.issueQuery, { id: 1 });
+			return (
+				<QueryClientProvider client={test.client}>
+					<test.IssueTitle handle={handle} />
+				</QueryClientProvider>
+			);
+		}
+
+		it("renders once the data lands, when rendered in an async act", async () => {
+			const test = setup();
+			await mount(bare(test));
+			expect(document.body.textContent).toBe("");
+
+			await test.backend.respond();
+			expect(screen.getByText("First")).toBeDefined();
+			cleanup();
+		});
+
+		// React queues the retry of a tree that suspended in a sync `act` (which
+		// RTL's `render` uses) on that act's queue, which is then dropped. A
+		// plain `use(promise)` stays suspended the same way, boundary or not.
+		it("stays suspended when rendered in a sync act", async () => {
+			const test = setup();
+			render(bare(test));
+
+			await test.backend.respond();
+			expect(screen.queryByText("First")).toBeNull();
+			cleanup();
+		});
+	});
+
 	it("types reads of ensured handles as data", () => {
 		const backend = createBackend();
 		expectTypeOf<EnsuredQueryHandle<typeof backend.issueQuery>>().not.toExtend<
