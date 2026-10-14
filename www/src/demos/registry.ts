@@ -4,6 +4,7 @@ import type { DemoDefinition } from "~/demo-kit/define.ts";
 
 const modules = import.meta.glob<{ default: DemoDefinition }>([
 	"./*.tsx",
+	"!./*.test.tsx",
 	"!./registry.ts",
 ]);
 

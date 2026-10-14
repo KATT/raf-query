@@ -175,6 +175,37 @@ describe("prefetch, ensure or fetch", () => {
 		]);
 	});
 
+	it("Reload starts its own variant over on the same URL", async () => {
+		await renderDemo();
+		await openPost("Render-as-you-fetch, explained");
+		await screen.findByRole("heading", {
+			name: "Render-as-you-fetch, explained",
+		});
+		await selectVariant("ensure");
+		await openPost("Why loaders beat effects");
+		await screen.findByRole("heading", { name: "Why loaders beat effects" });
+
+		await click(screen.getByRole("button", { name: "Reload" }));
+
+		expect(screen.getByText("/posts/2")).toBeTruthy();
+		expect(requestsOf("ensure")).toEqual([
+			"GET /posts/2/comments pending",
+			"GET /posts/2 pending",
+		]);
+		await screen.findByRole("heading", { name: "Why loaders beat effects" });
+		expect(comments().getAllByRole("listitem")).toHaveLength(4);
+
+		await selectVariant("prefetch");
+
+		expect(
+			screen.getByRole("heading", { name: "Render-as-you-fetch, explained" }),
+		).toBeTruthy();
+		expect(requestsOf("prefetch")).toEqual([
+			"GET /posts/1/comments success",
+			"GET /posts/1 success",
+		]);
+	});
+
 	it("Reset starts every variant over and keeps the selection", async () => {
 		await renderDemo();
 		await openPost("Render-as-you-fetch, explained");

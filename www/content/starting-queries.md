@@ -64,7 +64,7 @@ return await allKeyed({
 - a loader that must branch on the data, such as a redirect
 - outside React, in scripts and tests
 
-In a browser loader, prefer `ensure`: a stale `fetch` blocks the navigation on the refetch, while a stale `ensure` renders the cached data at once and updates when the refetch lands. The [demo](#prefetch-or-ensure) shows both: open a post, go back, and reopen it once its cache is stale.
+In a browser loader, prefer `ensure`: a stale `fetch` blocks the navigation on the refetch, while a stale `ensure` renders the cached data at once and updates when the refetch lands. TanStack Router hides the difference while it still holds the route's last loader data: it renders that and reruns the loader in the background, unless the loader's `staleReloadMode` is `"blocking"`, as in the [demo](#prefetch-or-ensure). There, open a post, go back, and reopen it once its cache is stale.
 
 ## Behavior
 

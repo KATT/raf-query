@@ -1,20 +1,21 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	allKeyed,
-	type EnsuredQueryHandle,
-	type QueryHandle,
+	type QueryClient,
 	queryOptions,
 	type Thenable,
 	useQuery,
 } from "@raf-query/react";
+import {
+	createRootRouteWithContext,
+	createRoute,
+	Link,
+	type LinkComponentProps,
+	type Router,
+} from "@tanstack/react-router";
 import { MessageSquare } from "lucide-react";
 import { type ReactNode, Suspense, use, useId } from "react";
 
-import {
-	DemoBrowser,
-	type DemoLocation,
-	DemoLink,
-} from "~/demo-kit/browser.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import {
 	type Comment,
@@ -22,6 +23,7 @@ import {
 	seedComments,
 	seedPosts,
 } from "~/demo-kit/fixtures.ts";
+import { DemoRouter } from "~/demo-kit/router.tsx";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
 /**
@@ -61,8 +63,20 @@ function createBlog() {
 	};
 }
 
-function postIdOf(location: DemoLocation) {
-	return Number(location.path.split("/")[2]);
+interface RouterContext {
+	readonly queryClient: QueryClient;
+}
+
+// The docs site registers its own router, so the hooks and links below name
+// the demo's. Every variant's routes have the same paths.
+type PrefetchRouter = Router<typeof prefetchTree>;
+type EnsureRouter = Router<typeof ensureTree>;
+type FetchRouter = Router<typeof fetchTree>;
+
+function BlogLink<const TTo extends string>(
+	props: LinkComponentProps<"a", PrefetchRouter, string, TTo, string, "">,
+) {
+	return <Link<PrefetchRouter, string, TTo> {...props} />;
 }
 
 function PostSkeleton() {
@@ -135,19 +149,20 @@ function CommentList(props: { readonly comments: ReadonlyArray<Comment> }) {
 	);
 }
 
-function PostList() {
+function PostList(): ReactNode {
 	return (
 		<ul className="grid gap-1">
 			{seedPosts()
 				.slice(0, 4)
 				.map((post) => (
 					<li key={post.id}>
-						<DemoLink
+						<BlogLink
 							className="block rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-							to={{ path: `/posts/${post.id}` }}
+							params={{ id: String(post.id) }}
+							to="/posts/$id"
 						>
 							{post.title}
-						</DemoLink>
+						</BlogLink>
 					</li>
 				))}
 		</ul>
@@ -157,45 +172,54 @@ function PostList() {
 function PostPage(props: { readonly children: ReactNode }) {
 	return (
 		<div className="grid gap-4">
-			<DemoLink
+			<BlogLink
 				className="text-xs text-muted-foreground hover:text-foreground"
-				to={{ path: "/posts" }}
+				to="/posts"
 			>
 				← All posts
-			</DemoLink>
+			</BlogLink>
 			{props.children}
 		</div>
 	);
 }
 
 const prefetching = createBlog();
-
-type PrefetchedPage =
-	| { readonly page: "list" }
-	| {
-			readonly comments: QueryHandle<typeof prefetching.commentsQuery>;
-			readonly page: "post";
-			readonly post: QueryHandle<typeof prefetching.postQuery>;
-	  };
+const prefetchRoot = createRootRouteWithContext<RouterContext>()();
+const prefetchPost = createRoute({
+	component: PrefetchedPost,
+	getParentRoute: () => prefetchRoot,
+	loader: (args) => {
+		const qc = args.context.queryClient;
+		const id = Number(args.params.id);
+		return {
+			comments: qc.prefetch(prefetching.commentsQuery, { postId: id }),
+			post: qc.prefetch(prefetching.postQuery, { id }),
+		};
+	},
+	path: "/posts/$id",
+});
+const prefetchList = createRoute({
+	component: PostList,
+	getParentRoute: () => prefetchRoot,
+	path: "/posts",
+});
+const prefetchTree = prefetchRoot.addChildren([prefetchList, prefetchPost]);
 
 function PromisedPost(props: { readonly post: Thenable<Post | undefined> }) {
 	return <PostBody post={use(props.post)} />;
 }
 
-function PrefetchedComments(props: {
-	readonly handle: QueryHandle<typeof prefetching.commentsQuery>;
-}) {
-	const [commentsPromise] = useQuery(prefetching.commentsQuery, props.handle);
+function PrefetchedComments(): ReactNode {
+	const data = prefetchPost.useLoaderData<PrefetchRouter>();
+	const [commentsPromise] = useQuery(prefetching.commentsQuery, data.comments);
 	return <CommentList comments={use(commentsPromise)} />;
 }
 
-function PrefetchedPost(props: {
-	readonly comments: QueryHandle<typeof prefetching.commentsQuery>;
-	readonly post: QueryHandle<typeof prefetching.postQuery>;
-}) {
-	const [postPromise, postState] = useQuery(prefetching.postQuery, props.post);
+function PrefetchedPost(): ReactNode {
+	const data = prefetchPost.useLoaderData<PrefetchRouter>();
+	const [postPromise, postState] = useQuery(prefetching.postQuery, data.post);
 	return (
-		<>
+		<PostPage>
 			<Suspense fallback={<PostSkeleton />} key={postState.hash}>
 				<PromisedPost post={postPromise} />
 			</Suspense>
@@ -204,148 +228,80 @@ function PrefetchedPost(props: {
 					fallback={<CommentsSkeleton />}
 					key={`${postState.hash}-comments`}
 				>
-					<PrefetchedComments handle={props.comments} />
+					<PrefetchedComments />
 				</Suspense>
 			</CommentsSection>
-		</>
-	);
-}
-
-function PrefetchDemo() {
-	return (
-		<DemoBrowser<PrefetchedPage>
-			fallback={<PostSkeleton />}
-			initial={{ path: "/posts" }}
-			loader={(args) => {
-				const id = postIdOf(args.location);
-				if (!id) {
-					return { page: "list" };
-				}
-				const qc = args.client;
-				return {
-					comments: qc.prefetch(prefetching.commentsQuery, { postId: id }),
-					page: "post",
-					post: qc.prefetch(prefetching.postQuery, { id }),
-				};
-			}}
-		>
-			{(route) =>
-				route.data.page === "list" ? (
-					<PostList />
-				) : (
-					<PostPage>
-						<PrefetchedPost
-							comments={route.data.comments}
-							post={route.data.post}
-						/>
-					</PostPage>
-				)
-			}
-		</DemoBrowser>
+		</PostPage>
 	);
 }
 
 const ensuring = createBlog();
+const ensureRoot = createRootRouteWithContext<RouterContext>()();
+const ensurePost = createRoute({
+	component: EnsuredPost,
+	getParentRoute: () => ensureRoot,
+	loader: async (args) => {
+		const qc = args.context.queryClient;
+		const id = Number(args.params.id);
+		return await allKeyed({
+			comments: qc.ensure(ensuring.commentsQuery, { postId: id }),
+			post: qc.ensure(ensuring.postQuery, { id }),
+		});
+	},
+	path: "/posts/$id",
+});
+const ensureList = createRoute({
+	component: PostList,
+	getParentRoute: () => ensureRoot,
+	path: "/posts",
+});
+const ensureTree = ensureRoot.addChildren([ensureList, ensurePost]);
 
-type EnsuredPage =
-	| { readonly page: "list" }
-	| {
-			readonly comments: EnsuredQueryHandle<typeof ensuring.commentsQuery>;
-			readonly page: "post";
-			readonly post: EnsuredQueryHandle<typeof ensuring.postQuery>;
-	  };
-
-function EnsuredPost(props: {
-	readonly comments: EnsuredQueryHandle<typeof ensuring.commentsQuery>;
-	readonly post: EnsuredQueryHandle<typeof ensuring.postQuery>;
-}) {
-	const [post] = useQuery(ensuring.postQuery, props.post);
-	const [comments] = useQuery(ensuring.commentsQuery, props.comments);
+function EnsuredPost(): ReactNode {
+	const data = ensurePost.useLoaderData<EnsureRouter>();
+	const [post] = useQuery(ensuring.postQuery, data.post);
+	const [comments] = useQuery(ensuring.commentsQuery, data.comments);
 	return (
-		<>
+		<PostPage>
 			<PostBody post={post} />
 			<CommentsSection>
 				<CommentList comments={comments} />
 			</CommentsSection>
-		</>
-	);
-}
-
-function EnsureDemo() {
-	return (
-		<DemoBrowser<EnsuredPage>
-			fallback={<PostSkeleton />}
-			initial={{ path: "/posts" }}
-			loader={async (args) => {
-				const id = postIdOf(args.location);
-				if (!id) {
-					return { page: "list" };
-				}
-				const qc = args.client;
-				const handles = await allKeyed({
-					comments: qc.ensure(ensuring.commentsQuery, { postId: id }),
-					post: qc.ensure(ensuring.postQuery, { id }),
-				});
-				return { ...handles, page: "post" };
-			}}
-		>
-			{(route) =>
-				route.data.page === "list" ? (
-					<PostList />
-				) : (
-					<PostPage>
-						<EnsuredPost
-							comments={route.data.comments}
-							post={route.data.post}
-						/>
-					</PostPage>
-				)
-			}
-		</DemoBrowser>
+		</PostPage>
 	);
 }
 
 const fetching = createBlog();
+const fetchRoot = createRootRouteWithContext<RouterContext>()();
+const fetchPost = createRoute({
+	component: FetchedPost,
+	getParentRoute: () => fetchRoot,
+	loader: async (args) => {
+		const qc = args.context.queryClient;
+		const id = Number(args.params.id);
+		return await allKeyed({
+			comments: qc.fetch(fetching.commentsQuery, { postId: id }),
+			post: qc.fetch(fetching.postQuery, { id }),
+		});
+	},
+	path: "/posts/$id",
+});
+const fetchList = createRoute({
+	component: PostList,
+	getParentRoute: () => fetchRoot,
+	path: "/posts",
+});
+const fetchTree = fetchRoot.addChildren([fetchList, fetchPost]);
 
-type FetchedPage =
-	| { readonly page: "list" }
-	| {
-			readonly comments: ReadonlyArray<Comment>;
-			readonly page: "post";
-			readonly post: Post | undefined;
-	  };
-
-function FetchDemo() {
+function FetchedPost(): ReactNode {
+	const data = fetchPost.useLoaderData<FetchRouter>();
 	return (
-		<DemoBrowser<FetchedPage>
-			fallback={<PostSkeleton />}
-			initial={{ path: "/posts" }}
-			loader={async (args) => {
-				const id = postIdOf(args.location);
-				if (!id) {
-					return { page: "list" };
-				}
-				const qc = args.client;
-				const data = await allKeyed({
-					comments: qc.fetch(fetching.commentsQuery, { postId: id }),
-					post: qc.fetch(fetching.postQuery, { id }),
-				});
-				return { ...data, page: "post" };
-			}}
-		>
-			{(route) =>
-				route.data.page === "list" ? (
-					<PostList />
-				) : (
-					<PostPage>
-						<PostBody post={route.data.post} />
-						<CommentsSection>
-							<CommentList comments={route.data.comments} />
-						</CommentsSection>
-					</PostPage>
-				)
-			}
-		</DemoBrowser>
+		<PostPage>
+			<PostBody post={data.post} />
+			<CommentsSection>
+				<CommentList comments={data.comments} />
+			</CommentsSection>
+		</PostPage>
 	);
 }
 
@@ -354,20 +310,20 @@ export default defineDemo({
 	title: "prefetch, ensure or fetch",
 	variants: [
 		{
-			Component: PrefetchDemo,
+			Component: () => <DemoRouter initial="/posts" routeTree={prefetchTree} />,
 			description: "Opens the post at once, with skeletons.",
 			label: "prefetch",
 			server: prefetching.server,
 		},
 		{
-			Component: EnsureDemo,
+			Component: () => <DemoRouter initial="/posts" routeTree={ensureTree} />,
 			description:
 				"Stays on the list until the post and its comments load. Cached data opens at once and refetches in the background.",
 			label: "ensure",
 			server: ensuring.server,
 		},
 		{
-			Component: FetchDemo,
+			Component: () => <DemoRouter initial="/posts" routeTree={fetchTree} />,
 			description:
 				"Stays on the list until the post and its comments load, and waits for the refetch whenever the cache is stale.",
 			label: "fetch",
