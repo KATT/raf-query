@@ -40,18 +40,7 @@ A server client (one per request) renders once, so it behaves differently:
 
 Every option can be set per query in the factory, or for every query with `config.defaults`. A query's own option wins:
 
-```ts twoslash
-import { QueryClient } from "@raf-query/react";
-// ---cut---
-const queryClient = new QueryClient({
-	defaults: {
-		staleTime: 30_000,
-		gcTime: 10 * 60_000,
-		retry: 1,
-		refetchOnWindowFocus: false,
-	},
-});
-```
+<<< ./important-defaults/src/router.tsx#defaults
 
 | Option                                            | Default                                   |
 | ------------------------------------------------- | ----------------------------------------- |
