@@ -18,7 +18,9 @@ An issue page on TanStack Start, from the API to the form that renames the issue
 
 Failures are tagged errors, and the API is a service. Its methods say how they can fail:
 
-<<< ../samples/tanstack-start-effect/src/issues.ts#api
+```sample
+tanstack-start-effect/src/issues.ts#api
+```
 
 `IssueApiLive`, a `Layer<IssueApi>`, implements it: an HTTP client, an RPC client, a database.
 
@@ -26,21 +28,29 @@ Failures are tagged errors, and the API is a service. Its methods say how they c
 
 A `queryFn` returns an Effect that uses the service. The factory's type carries the service and the errors — `ErrorOf` and `ServicesOf` name them, and every cache verb fails or requires them:
 
-<<< ../samples/tanstack-start-effect/src/queries.ts
+```sample
+tanstack-start-effect/src/queries.ts
+```
 
 ### The client
 
 The `QueryClient`'s `layer` provides the services, and the router context carries the client with their type, so loaders can only start queries the layer can run:
 
-<<< ../samples/tanstack-start-effect/src/router.tsx
+```sample
+tanstack-start-effect/src/router.tsx
+```
 
-<<< ../samples/tanstack-start-effect/src/routes/__root.tsx
+```sample
+tanstack-start-effect/src/routes/__root.tsx
+```
 
 ### The route
 
 Loaders use the same Promise verbs as a non-Effect app. Prefetch is sync; `ensure` returns a Promise. A loader that needs a typed catch is an `Effect.fn`, like a form action: it `yield*`s the `QueryCache` service, starts its reads together with `Effect.all`, and catches what it expects. `runPromise` runs it with the layer's services — the same shape as Effect's `ManagedRuntime`:
 
-<<< ../samples/tanstack-start-effect/src/routes/issues.$issueId.tsx
+```sample
+tanstack-start-effect/src/routes/issues.$issueId.tsx
+```
 
 With a `layer`, the client defaults to `throwOnError: false`: Effect `useQuery` returns a `Result` so you can match failures inline ([Typed errors](./effect-errors.md#in-react)). Pass `throwOnError: true` when you want a rejecting promise instead.
 
@@ -62,7 +72,9 @@ What the loader doesn't catch, like `Unauthorized`, rejects into `errorComponent
 
 The action is an `Effect.fn` that renames and then waits for the refetched issue. It catches every failure `rename` declares into a message, so the Effect can't fail, and the form shows the message:
 
-<<< ../samples/tanstack-start-effect/src/components/rename-form.tsx
+```sample
+tanstack-start-effect/src/components/rename-form.tsx
+```
 
 The client comes from the router context, not `useQueryClient()`: that one is a `QueryClient<unknown>`, so it can't check the action's services ([Services](./effect-services.md#in-react)). [Typed errors](./effect-errors.md) covers where else to catch failures, and what React sees when you don't.
 

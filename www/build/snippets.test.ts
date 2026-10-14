@@ -26,6 +26,10 @@ const setup = Effect.fn("setup")(function* (files: Record<string, string>) {
 	};
 });
 
+function sample(path: string, meta = "") {
+	return `\`\`\`sample${meta}\n${path}\n\`\`\``;
+}
+
 function app(dir: string) {
 	return { [`${dir}/tsconfig.json`]: "{}" };
 }
@@ -56,7 +60,7 @@ describe("expandSnippets", () => {
 					...app("page"),
 				});
 				const expanded = yield* page.expand(
-					"Intro\n\n<<< ./page/src/routes/todos.tsx#loader\n\nOutro\n",
+					`Intro\n\n${sample("page/src/routes/todos.tsx#loader")}\n\nOutro\n`,
 				);
 				expect(expanded.files).toEqual([
 					page.path.join(page.root, "page/src/routes/todos.tsx"),
@@ -95,7 +99,7 @@ describe("expandSnippets", () => {
 				...app("page"),
 			});
 			const expanded = yield* page.expand(
-				"<<< ./page/src/routes/todos.tsx#body []",
+				sample("page/src/routes/todos.tsx#body", ' title=""'),
 			);
 			expect(expanded.markdown).toBe(
 				[
@@ -125,7 +129,7 @@ describe("expandSnippets", () => {
 				...app("shared"),
 			});
 			const expanded = yield* page.expand(
-				"<<< ./shared/client.ts [src/client.ts]",
+				sample("shared/client.ts", ' title="src/client.ts"'),
 			);
 			expect(expanded.markdown).toBe(
 				[
@@ -155,7 +159,7 @@ describe("expandSnippets", () => {
 					"// #endregion use",
 				].join("\n"),
 			});
-			const expanded = yield* page.expand("<<< ./page/a.ts#use");
+			const expanded = yield* page.expand(sample("page/a.ts#use"));
 			expect(expanded.markdown).toBe(
 				[
 					'```ts twoslash title="a.ts"',
@@ -181,10 +185,10 @@ describe("expandSnippets", () => {
 				"page/a.ts": "// #region open\nexport const a = 1;\n",
 			});
 			const missing = yield* Effect.flip(
-				page.expand("<<< ./page/a.ts#missing"),
+				page.expand(sample("page/a.ts#missing")),
 			);
 			expect(missing.message).toContain('no "// #region missing"');
-			const open = yield* Effect.flip(page.expand("<<< ./page/a.ts#open"));
+			const open = yield* Effect.flip(page.expand(sample("page/a.ts#open")));
 			expect(open.message).toContain("isn't closed");
 		}).pipe(Effect.provide(NodeServices.layer)),
 	);
@@ -192,7 +196,7 @@ describe("expandSnippets", () => {
 	it.effect("fails on a file outside a sample app", () =>
 		Effect.gen(function* () {
 			const page = yield* setup({ "page/a.ts": "export const a = 1;\n" });
-			const error = yield* Effect.flip(page.expand("<<< ./page/a.ts"));
+			const error = yield* Effect.flip(page.expand(sample("page/a.ts")));
 			expect(error.message).toContain("isn't in a sample app");
 		}).pipe(Effect.provide(NodeServices.layer)),
 	);
@@ -205,13 +209,52 @@ describe("expandSnippets", () => {
 					"export default function Page() {}\n",
 			});
 			const expanded = yield* page.expand(
-				"<<< ./page/src/app/posts/[slug]/page.tsx",
+				sample("page/src/app/posts/[slug]/page.tsx"),
 			);
 			expect(expanded.markdown).toContain(
 				'```tsx twoslash title="src/app/posts/[slug]/page.tsx"',
 			);
 			expect(expanded.markdown).toContain(
 				"// @filename: page/src/app/posts/[slug]/page.file.twoslash.tsx",
+			);
+		}).pipe(Effect.provide(NodeServices.layer)),
+	);
+
+	it.effect("gives a page's own samples no title", () =>
+		Effect.gen(function* () {
+			const page = yield* setup({
+				...app("page"),
+				"page/src/docs/retries.ts": "export const a = 1;\n",
+			});
+			const expanded = yield* page.expand(sample("page/src/docs/retries.ts"));
+			expect(expanded.markdown).toContain("```ts twoslash\n");
+		}).pipe(Effect.provide(NodeServices.layer)),
+	);
+
+	it.effect("shows an expected error as Twoslash's @errors", () =>
+		Effect.gen(function* () {
+			const page = yield* setup({
+				...app("page"),
+				"page/a.ts": [
+					"declare function f(input: { a: number }): void;",
+					"// #region call",
+					"// @ts-expect-error -- 2345: the input is an object",
+					"f(1);",
+					"// #endregion",
+				].join("\n"),
+			});
+			const expanded = yield* page.expand(sample("page/a.ts#call"));
+			expect(expanded.markdown).toBe(
+				[
+					'```ts twoslash title="a.ts"',
+					"// ---cut-start---",
+					"// @filename: page/a.call.twoslash.ts",
+					"// @errors: 2345",
+					"declare function f(input: { a: number }): void;",
+					"// ---cut-end---",
+					"f(1);",
+					"```",
+				].join("\n"),
 			);
 		}).pipe(Effect.provide(NodeServices.layer)),
 	);

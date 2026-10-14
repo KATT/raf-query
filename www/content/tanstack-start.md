@@ -9,13 +9,17 @@ TanStack Router's loaders are where raf-query wants queries to start, and its SS
 
 ## Setup
 
-<<< ../samples/tanstack-start/src/router.tsx
+```sample
+tanstack-start/src/router.tsx
+```
 
 Mount DevTools only when `import.meta.env.DEV` is true so Vite drops the panel from production builds. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
 
 Type the router context in the root route, so loaders see `queryClient`:
 
-<<< ../samples/tanstack-start/src/routes/__root.tsx
+```sample
+tanstack-start/src/routes/__root.tsx
+```
 
 `getRouter` runs once per request on the server and once in the browser, so each request gets its own client and the browser keeps one for the session.
 
@@ -39,7 +43,9 @@ Options:
 
 A loader starts every query its route needs and returns the handles:
 
-<<< ../samples/tanstack-start/src/routes/posts.$slug.tsx
+```sample
+tanstack-start/src/routes/posts.$slug.tsx
+```
 
 See [Starting queries](./starting-queries.md) for choosing between `prefetch` and `ensure`.
 
@@ -47,9 +53,13 @@ See [Starting queries](./starting-queries.md) for choosing between `prefetch` an
 
 `beforeLoad` can return handles too. They're part of the route context, so child routes' loaders and components read them, and the router serializes them to the browser with the rest of the context:
 
-<<< ../samples/tanstack-start/src/routes/_auth.tsx
+```sample
+tanstack-start/src/routes/_auth.tsx
+```
 
-<<< ../samples/tanstack-start/src/routes/_auth.dashboard.tsx#dashboard
+```sample
+tanstack-start/src/routes/_auth.dashboard.tsx#dashboard
+```
 
 Importing `@raf-query/react/tanstack-router` registers handles as serializable, so Start's type check of `beforeLoad`'s return accepts them.
 
@@ -88,7 +98,9 @@ Use `loaderDeps` to pass validated search params to the loader, so it reruns whe
 
 Factories can call server functions (`createServerFn`) directly. The loader runs on the server during SSR, where the call is a function call; in the browser, refetches call the same function over HTTP.
 
-<<< ../samples/tanstack-start/src/queries.ts#post-query
+```sample
+tanstack-start/src/queries.ts#post-query
+```
 
 ## Static prerendering
 

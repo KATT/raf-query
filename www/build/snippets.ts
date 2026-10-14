@@ -10,14 +10,16 @@ export interface ExpandedSnippets {
 }
 
 /**
- * `<<< ../samples/tanstack-start/src/routes/todos.tsx#loader`: a path,
- * optional `#region`, optional `[title]` / `[]`. Paths may contain `[param]`
- * segments (Next.js).
+ * A `sample` fence: its one line is a path from the samples dir, an optional
+ * `#region`, and the fence's meta an optional `title="…"`. Paths may contain
+ * `[param]` segments (Next.js).
  */
-const includeLine =
-	/^<<< (\.{1,2}\/.+?)(?:#([\w-]+))?(?:[ \t]+\[([^\]]*)\])?[ \t]*$/gm;
+const sampleFence =
+	/^```sample([^\n]*)\n([^\n#]+?)(?:#([\w-]+))?[ \t]*\n```$/gm;
 const regionMarker = /^[ \t]*\/\/ ?#(region|endregion)\b[ \t]*([\w-]*)[ \t]*$/;
 const queryMarker = /^[ \t]*\/\/\s*\^\?[ \t]*$/;
+/** `// @ts-expect-error -- 2345: why`, which a block shows as the error. */
+const expectedError = /^[ \t]*\/\/ @ts-expect-error -- (\d+)\b.*$/;
 
 function dedent(lines: ReadonlyArray<string>) {
 	const indents = lines
@@ -84,19 +86,32 @@ const markRegion = Effect.fn("markRegion")(function* (
 
 /**
  * The block's code: hidden runs of lines go between `// ---cut-start---`
- * and `// ---cut-end---`, the first one with the block's `// @filename`.
+ * and `// ---cut-end---`, the first one with the block's `// @filename`. A
+ * shown `// @ts-expect-error -- 2345` becomes Twoslash's `// @errors: 2345`,
+ * so the block shows the error that `tsc` expects.
  */
 function twoslashCode(lines: ReadonlyArray<Line>, filename: string) {
-	const shown = dedent(lines.filter((line) => line.shown).map((l) => l.text));
+	const errors: Array<string> = [];
+	const kept = lines.filter((line) => {
+		const error = line.shown ? expectedError.exec(line.text) : null;
+		if (error?.[1]) {
+			errors.push(error[1]);
+		}
+		return !error;
+	});
+	const shown = dedent(kept.filter((line) => line.shown).map((l) => l.text));
 	const code: Array<string> = [];
-	let hidden: Array<string> = [`// @filename: ${filename}`];
+	let hidden: Array<string> = [
+		`// @filename: ${filename}`,
+		...(errors.length ? [`// @errors: ${errors.join(" ")}`] : []),
+	];
 	const flush = () => {
 		if (hidden.some((text) => text.trim())) {
 			code.push("// ---cut-start---", ...hidden, "// ---cut-end---");
 		}
 		hidden = [];
 	};
-	for (const line of lines) {
+	for (const line of kept) {
 		if (line.shown) {
 			flush();
 			code.push(shown.shift() ?? "");
@@ -109,16 +124,21 @@ function twoslashCode(lines: ReadonlyArray<Line>, filename: string) {
 }
 
 /**
- * A line `<<< ../samples/app/src/file.tsx#name` includes the `// #region name` …
- * `// #endregion` part of a TypeScript file as a `twoslash` block (the
- * whole file without `#name`), like VitePress's code snippets. The rest of
- * the file is still compiled, hidden, in the file's folder, so its imports
- * resolve like they do in the editor.
+ * A `sample` fence includes the `// #region name` … `// #endregion` part of
+ * a TypeScript file of a sample app as a `twoslash` block (the whole file
+ * without `#name`):
  *
- * The file must be in a sample app (see `sampleApps`), and the block
- * compiles in that app's project. Its title is the file's path inside the
- * app, so `src/file.tsx` here; `[title]` after the path replaces it, and
- * `[]` leaves it out.
+ * ````md
+ * ```sample title="src/routes/todos.tsx"
+ * tanstack-start/src/routes/todos.tsx#loader
+ * ```
+ * ````
+ *
+ * The rest of the file is still compiled, hidden, in the file's folder, so
+ * its imports resolve like they do in the editor, and the block compiles in
+ * that app's project. Its title is the file's path inside the app, unless
+ * the file is in `src/docs/` (a page's own samples, not a file of the app)
+ * or the fence sets `title="…"` (`title=""` for none).
  */
 export const expandSnippets = Effect.fn("expandSnippets")(function* (
 	markdown: string,
@@ -136,13 +156,13 @@ export const expandSnippets = Effect.fn("expandSnippets")(function* (
 	const files: Array<string> = [];
 	const parts: Array<string> = [];
 	let end = 0;
-	for (const match of markdown.matchAll(includeLine)) {
-		const [line, relative = "", region, title] = match;
-		const file = path.resolve(path.dirname(options.file), relative);
+	for (const match of markdown.matchAll(sampleFence)) {
+		const [fence, meta = "", relative = "", region] = match;
+		const file = path.join(options.samplesDir, relative.trim());
 		const lang = path.extname(file).slice(1);
 		if (lang !== "ts" && lang !== "tsx") {
 			return yield* new ContentError({
-				message: `${options.file}: can only include .ts and .tsx files, not ${relative}`,
+				message: `${options.file}: a sample is a .ts or .tsx file, not ${relative}`,
 			});
 		}
 		const app = appOf(path, file, apps);
@@ -157,7 +177,10 @@ export const expandSnippets = Effect.fn("expandSnippets")(function* (
 			region,
 			file,
 		);
-		const shownTitle = title ?? toPosix(path.relative(app, file));
+		const inApp = toPosix(path.relative(app, file));
+		const title =
+			/\btitle="([^"]*)"/.exec(meta)?.[1] ??
+			(inApp.startsWith("src/docs/") ? "" : inApp);
 		// Twoslash empties a block's files once it's done, so the block gets a
 		// name of its own next to the file: other blocks importing the file
 		// still read it from disk.
@@ -167,12 +190,11 @@ export const expandSnippets = Effect.fn("expandSnippets")(function* (
 				`${file.slice(0, -lang.length - 1)}.${region ?? "file"}.twoslash.${lang}`,
 			),
 		);
-		const meta = shownTitle ? ` title="${shownTitle}"` : "";
 		parts.push(
 			markdown.slice(end, match.index),
-			`\`\`\`${lang} twoslash${meta}\n${twoslashCode(lines, virtualPath)}\n\`\`\``,
+			`\`\`\`${lang} twoslash${title ? ` title="${title}"` : ""}\n${twoslashCode(lines, virtualPath)}\n\`\`\``,
 		);
-		end = match.index + line.length;
+		end = match.index + fence.length;
 	}
 	parts.push(markdown.slice(end));
 	return { files, markdown: parts.join("") } satisfies ExpandedSnippets;

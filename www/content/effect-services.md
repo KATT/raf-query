@@ -94,7 +94,9 @@ Like `Effect.runPromise`, it rejects with the Effect's failure or defect. An Eff
 
 Components rarely need the services anyway. `useQuery` reads what a loader started, and the cache runs every request with the layer's services: the loader's, a render's, a refetch, an invalidation. So keep the check where Effects start: type the router context with the client's services, and loaders and actions get the typed client from it.
 
-<<< ../samples/tanstack-start-effect/src/routes/__root.tsx
+```sample
+tanstack-start-effect/src/routes/__root.tsx
+```
 
 Loaders start queries through the typed client, so a factory that needs a service the layer doesn't provide is a type error there. Components read the handles with `useQuery`, which needs no services:
 
