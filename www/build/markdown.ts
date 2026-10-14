@@ -316,8 +316,6 @@ const inlineCompilerOptions: ts.CompilerOptions = {
 	module: ts.ModuleKind.ESNext,
 	moduleResolution: ts.ModuleResolutionKind.Bundler,
 	noEmit: true,
-	// Next.js samples import `~/query-client.ts`; stubs live next to the pages.
-	paths: { "~/*": ["./*"] },
 	skipLibCheck: true,
 	strict: true,
 	target: ts.ScriptTarget.ES2024,

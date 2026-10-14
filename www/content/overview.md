@@ -31,9 +31,43 @@ React's own guidance is to start fetching before rendering: in the router's load
 
 ## A taste
 
-<<< ./overview/src/queries.ts
+```ts twoslash title="src/queries.ts"
+import { getPost } from "./_twoslash.ts";
+// ---cut---
+import { queryOptions } from "@raf-query/react";
 
-<<< ./overview/src/routes/posts.$slug.tsx
+export function postQuery(input: { slug: string }) {
+	return queryOptions({
+		queryKey: ["post", input.slug],
+		queryFn: () => getPost(input.slug),
+		staleTime: 30_000,
+	});
+}
+```
+
+```tsx twoslash title="src/routes/posts.$slug.tsx"
+import { useQuery } from "@raf-query/react";
+import { createFileRoute, postQuery } from "./_twoslash.ts";
+// ---cut---
+export const Route = createFileRoute("/posts/$slug")({
+	loader: async (args) => ({
+		post: await args.context.queryClient.ensure(postQuery, {
+			slug: args.params.slug,
+		}),
+	}),
+	component: PostPage,
+});
+
+function PostPage() {
+	const [post, postState] = useQuery(postQuery, Route.useLoaderData().post);
+	return (
+		<article aria-busy={postState.isFetching}>
+			<h1>{post.title}</h1>
+			<p>{post.body}</p>
+		</article>
+	);
+}
+```
 
 The loader decides when the request starts and whether navigation waits for it; the component only reads. Try both strategies:
 
