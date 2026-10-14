@@ -11,7 +11,8 @@ import type { Issue } from "~/rpc.ts";
 /** Saves the title, then waits for the refetched issue. `null` when it saved. */
 const rename = Effect.fn("rename")(
 	function* (input: { readonly id: number; readonly title: string }) {
-		yield* Issues.use((issues) => issues.UpdateTitle(input));
+		const issues = yield* Issues;
+		yield* issues.UpdateTitle(input);
 		yield* invalidateIssues;
 		return null;
 	},

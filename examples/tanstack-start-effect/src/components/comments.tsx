@@ -25,7 +25,8 @@ const addComment = Effect.fn("addComment")(function* (input: {
 	readonly id: string;
 	readonly issueId: number;
 }) {
-	yield* Issues.use((issues) => issues.AddComment(input));
+	const issues = yield* Issues;
+	yield* issues.AddComment(input);
 	yield* invalidateIssues;
 });
 

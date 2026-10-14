@@ -83,10 +83,10 @@ const queryClient = new QueryClient({ layer: IssueApiLive });
 // ---cut---
 await queryClient.runPromise(
 	Effect.gen(function* () {
-		yield* IssueApi.use((api) => api.rename({ id: 1, title: "Renamed" }));
-		yield* QueryCache.QueryCache.use((cache) =>
-			cache.invalidate({ queryKey: ["issue", 1] }),
-		);
+		const api = yield* IssueApi;
+		const cache = yield* QueryCache.QueryCache;
+		yield* api.rename({ id: 1, title: "Renamed" });
+		yield* cache.invalidate({ queryKey: ["issue", 1] });
 	}),
 );
 ```

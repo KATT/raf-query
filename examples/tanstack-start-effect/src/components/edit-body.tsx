@@ -11,7 +11,8 @@ import type { Issue } from "~/rpc.ts";
 /** Saves the body, then waits for the refetched issue. `null` when it saved. */
 const saveBody = Effect.fn("saveBody")(
 	function* (input: { readonly body: string; readonly id: number }) {
-		yield* Issues.use((issues) => issues.UpdateBody(input));
+		const issues = yield* Issues;
+		yield* issues.UpdateBody(input);
 		yield* invalidateIssues;
 		return null;
 	},

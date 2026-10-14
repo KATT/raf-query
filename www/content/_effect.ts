@@ -77,10 +77,10 @@ export function assigneeQuery(input: { issueId: number }) {
 
 export const rename = Effect.fn("rename")(
 	function* (input: { readonly id: number; readonly title: string }) {
-		yield* IssueApi.use((api) => api.rename(input));
-		yield* QueryCache.QueryCache.use((cache) =>
-			cache.invalidate({ queryKey: ["issue", input.id] }),
-		);
+		const api = yield* IssueApi;
+		const cache = yield* QueryCache.QueryCache;
+		yield* api.rename(input);
+		yield* cache.invalidate({ queryKey: ["issue", input.id] });
 		return null;
 	},
 	Effect.catchTags({

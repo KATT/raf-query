@@ -25,7 +25,8 @@ const setStatus = Effect.fn("setStatus")(function* (input: {
 	readonly id: number;
 	readonly status: IssueStatus;
 }) {
-	yield* Issues.use((issues) => issues.SetStatus(input));
+	const issues = yield* Issues;
+	yield* issues.SetStatus(input);
 	yield* invalidateIssues;
 });
 
