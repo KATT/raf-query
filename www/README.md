@@ -58,6 +58,11 @@ polling
 
 The name is a file in `src/demos/`, which default-exports `defineDemo({ Component, server, title, hint })`. A demo talks to a fake server from `createFakeServer` (`src/demo-kit/server.ts`) instead of the network, and gets its own query client, a network panel, a cache panel and an expanded view with the devtools.
 
+- To compare ways of doing the same thing, pass `variants` (each a `Component`, `server`, `label` and `description`) instead of `Component` and `server`. The frame shows a switch and gives each variant its own client. Every variant opened stays mounted in a hidden `<Activity>`, so switching back finds its page and requests as they were.
+- `DemoRouter` (`src/demo-kit/router.tsx`) runs a TanStack Router route tree in the demo's browser window, on a memory history, with the client as `context.queryClient`. Its Reload starts the variant over on the same URL. `DemoBrowser` is a smaller hand-rolled router that the other demos use.
+- The docs site registers its own router type, so demo routes name theirs: `route.useLoaderData<typeof router>()`, and `Link` with all its type parameters. See `src/demos/starting-queries.tsx`.
+- `pnpm test` runs the demos' tests (Vitest, happy-dom).
+
 ## For agents
 
 Every page is also markdown, for coding agents and chat assistants:

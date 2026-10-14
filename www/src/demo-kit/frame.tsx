@@ -21,17 +21,14 @@ import { Activity, type ReactNode, Suspense, useId, useState } from "react";
 import { CachePanel } from "./cache-panel.tsx";
 import type { DemoDefinition, DemoVariant } from "./define.ts";
 import { NetworkPanel } from "./network-panel.tsx";
-import type { FakeServer } from "./server.ts";
-
-const latencies = [
-	{ label: "Fast", ms: 250 },
-	{ label: "3G", ms: 900 },
-	{ label: "Slow", ms: 2500 },
-] as const;
+import { type FakeServer, latencies } from "./server.ts";
+import { DemoSessionContext } from "./session.ts";
 
 interface Session {
 	readonly client: QueryClient;
 	readonly id: number;
+	/** Where a reloaded browser opens. */
+	readonly location?: string;
 }
 
 let sessionCount = 0;
@@ -40,11 +37,16 @@ let sessionCount = 0;
 // send the demo's first requests twice.
 const liveSessions = new WeakMap<DemoVariant, Session>();
 
-function createSession(demo: DemoDefinition, variant: DemoVariant): Session {
+function createSession(
+	demo: DemoDefinition,
+	variant: DemoVariant,
+	location?: string,
+): Session {
 	sessionCount++;
 	const session = {
 		client: demo.createClient?.() ?? new QueryClient(),
 		id: sessionCount,
+		location,
 	};
 	liveSessions.set(variant, session);
 	return session;
@@ -128,9 +130,9 @@ function VariantSwitch(props: {
 }) {
 	const name = useId();
 	return (
-		<fieldset className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+		<fieldset className="flex flex-col items-start gap-1.5">
 			<legend className="sr-only">{props.demo.variantsLabel}</legend>
-			<div className="inline-flex rounded-md border p-0.5">
+			<div className="inline-flex flex-wrap rounded-md border p-0.5">
 				{props.demo.variants.map((variant, index) => (
 					<label
 						className={cn(
@@ -167,6 +169,7 @@ function VariantSwitch(props: {
  */
 function DemoBody(props: {
 	readonly demo: DemoDefinition;
+	readonly onReload: (index: number, location: string) => void;
 	readonly onSelect: (index: number) => void;
 	readonly opened: ReadonlyArray<number>;
 	readonly selected: number;
@@ -193,9 +196,18 @@ function DemoBody(props: {
 						mode={index === props.selected ? "visible" : "hidden"}
 					>
 						<QueryClientProvider client={session.client} key={session.id}>
-							<Suspense fallback={<DemoSkeleton />}>
-								<variant.Component />
-							</Suspense>
+							<DemoSessionContext
+								value={{
+									location: session.location,
+									reload: (location) => {
+										props.onReload(index, location);
+									},
+								}}
+							>
+								<Suspense fallback={<DemoSkeleton />}>
+									<variant.Component />
+								</Suspense>
+							</DemoSessionContext>
 						</QueryClientProvider>
 					</Activity>
 				);
@@ -207,11 +219,11 @@ function DemoBody(props: {
 function Toolbar(props: {
 	readonly children?: ReactNode;
 	readonly demo: DemoDefinition;
+	/** Shared by the frame's toolbar and the expanded dialog's. */
+	readonly latency: number | undefined;
+	readonly onLatency: (ms: number) => void;
 	readonly onReset: () => void;
 }) {
-	const [latency, setLatency] = useState(
-		props.demo.variants[0]?.server.latency,
-	);
 	return (
 		<div className="flex flex-wrap items-center gap-2">
 			<div
@@ -221,17 +233,18 @@ function Toolbar(props: {
 			>
 				{latencies.map((option) => (
 					<button
-						aria-checked={latency === option.ms}
+						aria-checked={props.latency === option.ms}
 						className={cn(
 							"rounded px-2 py-0.5 text-xs text-muted-foreground",
-							latency === option.ms && "bg-accent font-medium text-foreground",
+							props.latency === option.ms &&
+								"bg-accent font-medium text-foreground",
 						)}
 						key={option.ms}
 						onClick={() => {
 							for (const variant of props.demo.variants) {
 								variant.server.latency = option.ms;
 							}
-							setLatency(option.ms);
+							props.onLatency(option.ms);
 						}}
 						role="radio"
 						title={`Server responds in about ${option.ms} ms`}
@@ -254,7 +267,8 @@ function Toolbar(props: {
  * server's requests and the cache's entries underneath. Expanding it opens
  * the same session in a dialog with the devtools panel. A demo with
  * variants gets a switch, and a session per variant; Reset starts them all
- * over and keeps the switch where it is.
+ * over and keeps the switch where it is. A browser's Reload starts only its
+ * own variant over, on the URL it was showing.
  */
 export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 	const demo = props.demo;
@@ -262,6 +276,7 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 	const [selected, setSelected] = useState(0);
 	const [opened, setOpened] = useState<ReadonlyArray<number>>([0]);
 	const [expanded, setExpanded] = useState(false);
+	const [latency, setLatency] = useState(demo.variants[0]?.server.latency);
 	const variant = demo.variants[selected];
 	const session = sessions[selected];
 	if (!variant || !session) {
@@ -285,6 +300,19 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 	const body = (
 		<DemoBody
 			demo={demo}
+			onReload={(index, location) => {
+				const reloaded = demo.variants[index];
+				if (!reloaded) {
+					return;
+				}
+				void sessions[index]?.client.dispose();
+				reloaded.server.reset();
+				setSessions((previous) =>
+					previous.map((each, at) =>
+						at === index ? createSession(demo, reloaded, location) : each,
+					),
+				);
+			}}
 			onSelect={(index) => {
 				setSelected(index);
 				setOpened((previous) =>
@@ -305,7 +333,12 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 						<FlaskConical className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
 						{demo.title}
 					</p>
-					<Toolbar demo={demo} onReset={reset}>
+					<Toolbar
+						demo={demo}
+						latency={latency}
+						onLatency={setLatency}
+						onReset={reset}
+					>
 						<Button
 							onClick={() => {
 								setExpanded(true);
@@ -337,7 +370,12 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 							{demo.title}
 						</DialogTitle>
 						<DialogDescription>{demo.hint}</DialogDescription>
-						<Toolbar demo={demo} onReset={reset} />
+						<Toolbar
+							demo={demo}
+							latency={latency}
+							onLatency={setLatency}
+							onReset={reset}
+						/>
 					</div>
 					<div className="grid min-h-0 gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)]">
 						<div className="min-w-0">{body}</div>

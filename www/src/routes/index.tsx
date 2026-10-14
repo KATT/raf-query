@@ -206,9 +206,8 @@ function HomePage() {
 						Try it: prefetch, ensure or fetch
 					</h2>
 					<p className="max-w-2xl text-muted-foreground">
-						Every guide has live demos like this one. Each runs its own query
-						client against a fake server in your browser, with the requests and
-						the cache shown underneath.
+						The demo runs in your browser against a fake server, with the
+						requests and the cache shown underneath.
 					</p>
 					<DemoEmbed handle={data.demo} />
 				</div>

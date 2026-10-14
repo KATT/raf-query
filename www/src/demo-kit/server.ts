@@ -48,6 +48,13 @@ function wait(ms: number, signal: AbortSignal | undefined) {
 	});
 }
 
+/** The latencies a demo's toolbar offers. A server starts at `3G`. */
+export const latencies = [
+	{ label: "Fast", ms: 250 },
+	{ label: "3G", ms: 900 },
+	{ label: "Slow", ms: 2500 },
+] as const;
+
 /** A pretend backend that lives in the page, so demos need no network. */
 export function createFakeServer<TDb>(seed: () => TDb): FakeServer<TDb> {
 	let db = seed();
@@ -82,7 +89,7 @@ export function createFakeServer<TDb>(seed: () => TDb): FakeServer<TDb> {
 			return failures;
 		},
 		getRequests: () => requests,
-		latency: 800,
+		latency: latencies[1].ms,
 		reset() {
 			db = seed();
 			requests = [];

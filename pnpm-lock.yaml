@@ -816,6 +816,9 @@ importers:
       '@babel/core':
         specifier: 7.29.7
         version: 7.29.7
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
       '@rolldown/plugin-babel':
         specifier: 0.2.4
         version: 0.2.4(@babel/core@7.29.7)(@babel/runtime@7.29.10)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(rolldown@1.2.13)
@@ -831,6 +834,9 @@ importers:
       '@tailwindcss/vite':
         specifier: 4.3.3
         version: 4.3.3(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))
+      '@testing-library/react':
+        specifier: 16.3.3
+        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@types/hast':
         specifier: 3.0.5
         version: 3.0.5
@@ -858,6 +864,9 @@ importers:
       github-slugger:
         specifier: 2.0.0
         version: 2.0.0
+      happy-dom:
+        specifier: 21.0.1
+        version: 21.0.1
       hast-util-to-html:
         specifier: 9.0.5
         version: 9.0.5

@@ -14,5 +14,11 @@
 		"target": "ES2024",
 		"types": ["node", "vite/client"]
 	},
-	"include": ["src", "build", "content/*.ts", "vite.config.ts"]
+	"include": [
+		"src",
+		"build",
+		"content/*.ts",
+		"vite.config.ts",
+		"vitest.config.ts"
+	]
 }
