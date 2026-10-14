@@ -40,20 +40,22 @@ const [post] = useQuery(postQuery, handle);
 ```
 ````
 
-- Code above `// ---cut---` compiles but isn't shown. Import what the block needs there: real libraries, and the shared app in `content/_shared`, an app the samples are written against (`~/api.ts`, `~/queries.ts`, `~/routes/posts.$slug.tsx`). Declare anything else the block leans on, like a component it renders (`declare function Spinner(): ReactNode`).
-- A block that defines a route starts with `// @filename: _shared/src/routes/posts.$slug.tsx`, so it compiles as that route file and `Route.useLoaderData()` has its loader's types.
+- Code above `// ---cut---` compiles but isn't shown. Import what the block needs there: real libraries, and files of the TanStack Start sample app the blocks are written against (`~/api.ts`, `~/queries.ts`, `~/routes/posts.$slug.tsx`). Declare anything else the block leans on, like a component it renders (`declare function Spinner(): ReactNode`).
+- A block that defines a route starts with `// @filename: tanstack-start/src/routes/posts.$slug.tsx`, so it compiles as that route file and `Route.useLoaderData()` has its loader's types.
 - `// ^?` pins the type of the name above it under the line.
 - `// @errors: 2345` shows an expected compiler error. Any error a block doesn't expect fails the build, so the samples stay correct as the API changes.
 - In a page's markdown for agents, the hidden setup and markers are removed, and each `// ^?` becomes a comment with its type.
 - Twoslash needs TypeScript's JavaScript API, which TypeScript 7 doesn't have, so it runs on `typescript6` (TypeScript 6).
 
-Pages that walk through an app's files (the quick start, TanStack Start, Next.js) include them from an example app in `content/<page>/` instead:
+The sample apps are workspace packages in `samples/`: `tanstack-start` (`@samples/tanstack-start`) for every inline block and the pages built on TanStack Start, and `nextjs` (`@samples/nextjs`) for the Next.js page. Each declares the dependencies its blocks import, and `pnpm typecheck` runs its `tsc`. The build regenerates their route trees.
+
+Pages that walk through an app's files (the quick start, TanStack Start, Next.js) include them from a sample app:
 
 ```md
-<<< ./quick-start/src/routes/todos.tsx#loader
+<<< ../samples/tanstack-start/src/routes/todos.tsx#loader
 ```
 
-That shows the `// #region loader` … `// #endregion` part of the file, compiled with the rest of it in its app. Without `#loader` it shows the whole file. `pnpm typecheck` checks every app, the shared one included, and the build regenerates their route trees.
+That shows the `// #region loader` … `// #endregion` part of the file, compiled with the rest of it in its app. Without `#loader` it shows the whole file.
 
 ## Demos
 
