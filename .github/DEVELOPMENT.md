@@ -67,6 +67,15 @@ pnpm --filter @tooling/codesandbox generate /tmp/codesandbox
 cd /tmp/codesandbox/examples/nextjs && pnpm install && pnpm dev
 ```
 
+## Docs site
+
+`docs/` is the documentation site at <https://raf-query.katt.dev>: a TanStack Start app, prerendered to static HTML, that renders the markdown in `docs/content` and loads each page through raf-query. Pages embed live demos from `docs/src/demos`. See [`docs/README.md`](../docs/README.md) for writing pages and demos, and deploying.
+
+```shell
+pnpm --filter @raf-query/docs dev   # http://localhost:3004
+pnpm build:docs                     # static build in docs/dist/client, as CI runs it
+```
+
 ## Formatting
 
 [Vite+ fmt](https://viteplus.dev/) (Oxfmt) is used to format code.
