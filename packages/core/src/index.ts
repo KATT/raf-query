@@ -28,6 +28,7 @@ export {
 	type IsPaged,
 	type LoadOptions,
 	type PageFunctionContext,
+	type PagedQueryFactory,
 	type PageOf,
 	type QueryBehavior,
 	type QueryFactory,

@@ -44,6 +44,7 @@ import {
 	type InputOf,
 	type LoadOptions,
 	optionsFor,
+	type PagedQueryFactory,
 	type QueryBehavior,
 	type QueryFactory,
 	type QueryHandle,
@@ -99,11 +100,6 @@ export interface Filter {
 	readonly queryKey?: QueryKey;
 }
 
-/** `ensure` / `fetch` arguments: the input, then load options for paged factories. */
-export type LoadArgs<TFactory extends QueryFactory> =
-	| InputArgs<TFactory>
-	| [input: InputOf<TFactory>, options: LoadOptions<TFactory>];
-
 /** The entries `invalidate`, `reset` and `remove` act on: one factory call, or a filter. */
 export type Target<TFactory extends QueryFactory> =
 	| [factory: TFactory, ...args: InputArgs<TFactory>]
@@ -114,6 +110,18 @@ export type Target<TFactory extends QueryFactory> =
  * both with no data and with `undefined` data.
  */
 export type Updater<TData> = TData | ((previous: TData | undefined) => TData);
+
+type Ensured<TFactory extends QueryFactory> = Effect.Effect<
+	EnsuredQueryHandle<TFactory>,
+	ErrorOf<TFactory> | Query.CancelledError,
+	ServicesOf<TFactory>
+>;
+
+type Fetched<TFactory extends QueryFactory> = Effect.Effect<
+	DataOf<TFactory>,
+	ErrorOf<TFactory> | Query.CancelledError,
+	ServicesOf<TFactory>
+>;
 
 export interface QueryCache {
 	/** Every entry. */
@@ -139,12 +147,14 @@ export interface QueryCache {
 	 */
 	ensure<TFactory extends QueryFactory>(
 		factory: TFactory,
-		...args: LoadArgs<TFactory>
-	): Effect.Effect<
-		EnsuredQueryHandle<TFactory>,
-		ErrorOf<TFactory> | Query.CancelledError,
-		ServicesOf<TFactory>
-	>;
+		...args: InputArgs<TFactory>
+	): Ensured<TFactory>;
+	/** {@link ensure}, loading `options.pages` pages of a paged query. */
+	ensure<TFactory extends PagedQueryFactory>(
+		factory: TFactory,
+		input: InputOf<TFactory>,
+		options: LoadOptions,
+	): Ensured<TFactory>;
 	/** Cache events from the moment the stream starts. */
 	readonly events: Stream.Stream<Event>;
 	/**
@@ -154,12 +164,14 @@ export interface QueryCache {
 	 */
 	fetch<TFactory extends QueryFactory>(
 		factory: TFactory,
-		...args: LoadArgs<TFactory>
-	): Effect.Effect<
-		DataOf<TFactory>,
-		ErrorOf<TFactory> | Query.CancelledError,
-		ServicesOf<TFactory>
-	>;
+		...args: InputArgs<TFactory>
+	): Fetched<TFactory>;
+	/** {@link fetch}, loading `options.pages` pages of a paged query. */
+	fetch<TFactory extends PagedQueryFactory>(
+		factory: TFactory,
+		input: InputOf<TFactory>,
+		options: LoadOptions,
+	): Fetched<TFactory>;
 	/**
 	 * Cached data for a factory call. `Some(undefined)` when the data itself
 	 * is `undefined`.
@@ -438,16 +450,24 @@ export const make: (
 				Effect.sync(() => dehydrateEntries(state.entries.values(), options)),
 			dehydrateStream: (options = {}) =>
 				dehydrateStream(() => state.entries.values(), subscribeUnsafe, options),
-			ensure: (factory, ...args) =>
-				Effect.flatMap(buildFor(factory, args[0]), (entry) =>
-					load<typeof factory>(entry, args[1]?.pages, false).pipe(
-						Effect.as({ ...handleOf<typeof factory>(entry), ensured: true }),
+			ensure: <TFactory extends QueryFactory>(
+				factory: TFactory,
+				input?: InputOf<TFactory>,
+				options?: LoadOptions,
+			): Ensured<TFactory> =>
+				Effect.flatMap(buildFor(factory, input), (entry) =>
+					load<TFactory>(entry, options?.pages, false).pipe(
+						Effect.as({ ...handleOf<TFactory>(entry), ensured: true }),
 					),
 				),
 			events: listen(subscribeUnsafe),
-			fetch: (factory, ...args) =>
-				Effect.flatMap(buildFor(factory, args[0]), (entry) =>
-					load<typeof factory>(entry, args[1]?.pages, true),
+			fetch: <TFactory extends QueryFactory>(
+				factory: TFactory,
+				input?: InputOf<TFactory>,
+				options?: LoadOptions,
+			): Fetched<TFactory> =>
+				Effect.flatMap(buildFor(factory, input), (entry) =>
+					load<TFactory>(entry, options?.pages, true),
 				),
 			getData: (factory, ...args) =>
 				Effect.sync(() => {

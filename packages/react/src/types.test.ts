@@ -14,6 +14,8 @@ import {
 	type QueryHandle,
 	queryOptions,
 	type ServicesOf,
+	useQuery,
+	useWaterfall,
 } from "./index.ts";
 
 describe("allKeyed", () => {
@@ -151,6 +153,103 @@ describe("types", () => {
 			void plain.invalidate(userQuery, { id: 1 });
 		};
 		expect(typeOnly).toBeTypeOf("function");
+	});
+
+	it("infer generic factory makers passed inline", async () => {
+		/** A typed endpoint name, as a generated API client would export. */
+		interface Endpoint<TArgs, TData> {
+			readonly args?: TArgs;
+			readonly data?: TData;
+			readonly name: string;
+		}
+		function endpointQuery<TArgs, TData>(endpoint: Endpoint<TArgs, TData>) {
+			return (args: TArgs) =>
+				queryOptions({
+					queryFn: (): TData => {
+						throw new Error(`${endpoint.name} isn't implemented`);
+					},
+					queryKey: [endpoint.name, args],
+				});
+		}
+		function endpointPagesQuery<TArgs, TPage>(
+			endpoint: Endpoint<TArgs, TPage>,
+		) {
+			return (args: TArgs) =>
+				infiniteQueryOptions({
+					getNextPageParam: () => null,
+					initialPageParam: 0,
+					queryFn: (): TPage => {
+						throw new Error(`${endpoint.name} isn't implemented`);
+					},
+					queryKey: [endpoint.name, args],
+				});
+		}
+		function apiQuery<TArgs>(name: string, _args?: TArgs) {
+			return (args: TArgs) =>
+				queryOptions({
+					queryFn: () =>
+						Effect.gen(function* () {
+							const api = yield* Api;
+							return yield* api.user(1);
+						}),
+					queryKey: [name, args],
+				});
+		}
+		const getPost: Endpoint<{ slug: string }, { title: string }> = {
+			name: "posts.get",
+		};
+		const listPosts: Endpoint<{ tag: string }, { items: Array<string> }> = {
+			name: "posts.list",
+		};
+		const qc = new QueryClient({ isServer: true });
+		qc.setData(endpointQuery(getPost), { slug: "a" }, { title: "Hello" });
+
+		const handle = await qc.ensure(endpointQuery(getPost), { slug: "a" });
+		expectTypeOf(handle.input).toEqualTypeOf<{ slug: string }>();
+		expectTypeOf(
+			qc.getData(endpointQuery(getPost), { slug: "a" }),
+		).toEqualTypeOf<{ title: string } | undefined>();
+		expectTypeOf(
+			qc.prefetch(endpointPagesQuery(listPosts), { tag: "news" }).input,
+		).toEqualTypeOf<{ tag: string }>();
+		expectTypeOf<
+			DataOf<ReturnType<typeof endpointPagesQuery<{ tag: string }, number>>>
+		>().toEqualTypeOf<InfiniteData<{ page: number; pageParam: number }>>();
+		const withApi = new QueryClient({ isServer: true, layer: apiLayer });
+		expectTypeOf(
+			withApi.fetch(apiQuery<{ id: number }>("user"), { id: 1 }),
+		).resolves.toEqualTypeOf<string>();
+
+		function useTypeOnly() {
+			void qc.invalidate(endpointQuery(getPost), { slug: "a" });
+			const [post] = useQuery(endpointQuery(getPost), handle);
+			expectTypeOf(post).toEqualTypeOf<{ title: string }>();
+			const pages = useWaterfall(endpointPagesQuery(listPosts), { tag: "a" });
+			expectTypeOf(
+				useQuery(endpointPagesQuery(listPosts), pages)[1],
+			).toHaveProperty("fetchNextPage");
+			expectTypeOf(
+				qc.ensure(endpointPagesQuery(listPosts), { tag: "a" }, { pages: 2 }),
+			).resolves.toHaveProperty("input");
+			expectTypeOf(
+				qc.fetch(endpointPagesQuery(listPosts), { tag: "a" }, { pages: 2 }),
+			).resolves.toEqualTypeOf<
+				InfiniteData<{ page: { items: Array<string> }; pageParam: number }>
+			>();
+			// @ts-expect-error the input is the endpoint's args
+			void qc.ensure(endpointQuery(getPost), { tag: "a" });
+			void qc.ensure(
+				endpointPagesQuery(listPosts),
+				// @ts-expect-error the input is the endpoint's args
+				{ slug: "a" },
+				{ pages: 2 },
+			);
+			// @ts-expect-error `pages` is only for paged factories
+			void qc.ensure(endpointQuery(getPost), { slug: "a" }, { pages: 2 });
+			// @ts-expect-error the client has no layer
+			void qc.fetch(apiQuery<{ id: number }>("user"), { id: 1 });
+		}
+		expect(useTypeOnly).toBeTypeOf("function");
 	});
 
 	it("accept a client of any services where any client goes", () => {

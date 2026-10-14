@@ -136,6 +136,25 @@ type PostInput = InputOf<typeof postQuery>;
 type PostHandle = QueryHandle<typeof postQuery>; // for props
 ```
 
+## Factory makers
+
+A library can wrap a typed API in a function that returns a factory, generic over the endpoint. Call it inline, wherever a factory goes; the types flow from the endpoint:
+
+```ts
+function endpointQuery<TArgs, TData>(endpoint: Endpoint<TArgs, TData>) {
+	return (args: TArgs) =>
+		queryOptions({
+			queryKey: [endpoint.name, args],
+			queryFn: (): Promise<TData> => call(endpoint, args),
+		});
+}
+
+const post = await qc.ensure(endpointQuery(api.posts.get), { slug });
+const [data] = useQuery(endpointQuery(api.posts.get), post);
+```
+
+Each call returns a new function, but entries are found by `queryKey`, so every call for the same endpoint and args reaches the same entry. Put everything the key depends on in it.
+
 ## Server-only factories
 
 A factory whose `queryFn` imports server-only code (a database client) can't be imported by a client component, so it can't be read with `useQuery` in the browser. Render its data in a server component, or call the database through a server function or an API route so the browser can refetch it. See [React Server Components](./nextjs.md#server-only-queries).
