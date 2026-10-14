@@ -7,11 +7,14 @@ order: 14
 
 When a request fails in the browser, raf-query retries it **3 times**, waiting 1, 2 and then 4 seconds, before treating the query as failed. Readers keep suspending, or keep showing their current data, the whole time.
 
-```ts
+```ts twoslash
+import { queryOptions } from "@raf-query/react";
+import { getPost } from "./_twoslash.ts";
+// ---cut---
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
 		queryKey: ["post", input.slug],
-		queryFn: () => getPost(input),
+		queryFn: () => getPost(input.slug),
 		retry: 5, // or false, true, a predicate, or a Schedule
 	});
 }
@@ -29,14 +32,26 @@ Server renders never retry by default: the user is waiting for the HTML, and a f
 
 A predicate is the place to skip retries for errors that won't go away:
 
-```ts
-retry: (failureCount, error) =>
-	failureCount <= 3 && !(error instanceof HttpError && error.status === 404),
+```ts twoslash
+import { queryOptions } from "@raf-query/react";
+import { getPost } from "./_twoslash.ts";
+declare class HttpError extends Error {
+	readonly status: number;
+}
+// ---cut---
+queryOptions({
+	queryKey: ["post", "hello"],
+	queryFn: () => getPost("hello"),
+	retry: (failureCount, error) =>
+		failureCount <= 3 && !(error instanceof HttpError && error.status === 404),
+});
 ```
 
 Set it once for the app with `config.defaults`:
 
-```ts
+```ts twoslash
+import { QueryClient } from "@raf-query/react";
+// ---cut---
 const queryClient = new QueryClient({
 	defaults: { retry: 1 },
 });
@@ -46,12 +61,24 @@ const queryClient = new QueryClient({
 
 `retryDelay` sets the wait before each retry. The default doubles from one second, up to 30 seconds. Pass a number for a constant delay, or a function:
 
-```ts
-// Constant
-retryDelay: 1000,
+```ts twoslash
+import { queryOptions } from "@raf-query/react";
+import { getPost } from "./_twoslash.ts";
+// ---cut---
+queryOptions({
+	queryKey: ["post", "hello"],
+	queryFn: () => getPost("hello"),
+	// Constant
+	retryDelay: 1000,
+});
 
-// Exponential with a ceiling, the default's shape
-retryDelay: (failureCount) => Math.min(1000 * 2 ** (failureCount - 1), 30_000),
+queryOptions({
+	queryKey: ["post", "hello"],
+	queryFn: () => getPost("hello"),
+	// Exponential with a ceiling, the default's shape
+	retryDelay: (failureCount) =>
+		Math.min(1000 * 2 ** (failureCount - 1), 30_000),
+});
 ```
 
 ### Retries while offline
@@ -64,14 +91,30 @@ What the user sees depends on whether there was data before the failure.
 
 **The first load fails.** The query's promise rejects, so `use()` throws to the nearest error boundary. Resetting that boundary re-renders the reader, which refetches the query:
 
-```tsx
+```tsx twoslash
+import { Suspense } from "react";
+import { type QueryHandle } from "@raf-query/react";
+import { CatchBoundary } from "@tanstack/react-router";
+import { commentsQuery } from "./_twoslash.ts";
+declare const post: { hash: string };
+declare const loaderData: { comments: QueryHandle<typeof commentsQuery> };
+declare function Comments(props: {
+	readonly handle: QueryHandle<typeof commentsQuery>;
+}): React.ReactNode;
+declare function CommentsSkeleton(): React.ReactNode;
+// ---cut---
 import { CatchBoundary } from "@tanstack/react-router";
 
 <CatchBoundary
 	getResetKey={() => post.hash}
 	errorComponent={(props) => (
 		<div role="alert">
-			<p>Couldn't load comments: {props.error.message}</p>
+			<p>
+				Couldn't load comments:{" "}
+				{props.error instanceof Error
+					? props.error.message
+					: String(props.error)}
+			</p>
 			<button onClick={props.reset}>Try again</button>
 		</div>
 	)}
@@ -86,7 +129,12 @@ Any error boundary works: `CatchBoundary` from TanStack Router, `react-error-bou
 
 **A background refetch fails.** The existing data stays on screen: losing it because a refetch failed would be worse than showing it a little longer. The error is on the reader's controls as `error`, for a hint:
 
-```tsx
+```tsx twoslash
+import { type EnsuredQueryHandle, useQuery } from "@raf-query/react";
+import { postQuery } from "./_twoslash.ts";
+declare const loaderData: { post: EnsuredQueryHandle<typeof postQuery> };
+declare function formatTime(value: number): string;
+// ---cut---
 const [post, postState] = useQuery(postQuery, loaderData.post);
 
 {
@@ -114,7 +162,13 @@ This is one more reason to choose per query: `ensure` what the page can't do wit
 
 `config.onError` is called for every failed request, after its retries, whether or not anything shows it. It's the place for logging and toasts:
 
-```ts
+```ts twoslash
+import { QueryClient } from "@raf-query/react";
+declare function reportError(
+	error: unknown,
+	context: { readonly key: unknown },
+): void;
+// ---cut---
 const queryClient = new QueryClient({
 	onError: (error, query) => {
 		reportError(error, { key: query.key });

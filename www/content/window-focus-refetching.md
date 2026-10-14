@@ -13,7 +13,9 @@ Only queries that are being read refetch, and only stale ones: data within its `
 
 For every query, in the client's defaults:
 
-```ts
+```ts twoslash
+import { QueryClient } from "@raf-query/react";
+// ---cut---
 const queryClient = new QueryClient({
 	defaults: {
 		refetchOnReconnect: false,
@@ -24,7 +26,10 @@ const queryClient = new QueryClient({
 
 For one query, in its factory:
 
-```ts
+```ts twoslash
+import { queryOptions } from "@raf-query/react";
+import { getSettings } from "./_twoslash.ts";
+// ---cut---
 export function settingsQuery() {
 	return queryOptions({
 		queryKey: ["settings"],
@@ -36,7 +41,11 @@ export function settingsQuery() {
 
 Or for one reader, in `useQuery`'s options. The query refetches on focus if any reader wants it to:
 
-```ts
+```ts twoslash
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { settingsQuery } from "./_twoslash.ts";
+declare const loaderData: { settings: QueryHandle<typeof settingsQuery> };
+// ---cut---
 const [settings] = useQuery(settingsQuery, loaderData.settings, {
 	refetchOnWindowFocus: false,
 });
@@ -54,10 +63,14 @@ To test it by hand, switch tabs and come back. The [polling](./polling.md) demo 
 
 The cache learns about focus and network changes from a `Platform` service. Its default reads `window`, `document` and `navigator`. Provide your own for environments without them (React Native, an embedded webview) or to control focus in tests:
 
-```ts
+```ts twoslash
 import { Platform, QueryClient } from "@raf-query/react";
 import { Layer } from "effect";
-
+declare const AppState: {
+	readonly currentState: string;
+	addEventListener(event: "change", listener: (state: string) => void): void;
+};
+// ---cut---
 const listeners = new Set<(event: "focus" | "online") => void>();
 
 const AppPlatform = Layer.succeed(Platform.Platform, {
@@ -66,7 +79,9 @@ const AppPlatform = Layer.succeed(Platform.Platform, {
 	isVisibleUnsafe: () => AppState.currentState === "active",
 	subscribeUnsafe(listener) {
 		listeners.add(listener);
-		return () => listeners.delete(listener);
+		return () => {
+			listeners.delete(listener);
+		};
 	},
 });
 

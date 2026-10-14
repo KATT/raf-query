@@ -41,7 +41,10 @@ A query sent while pending, that then fails on the server, rejects in the browse
 
 Some data only exists in the browser: a permission, a service worker, a media query. Mark its query `ssr: false`:
 
-```ts
+```ts twoslash
+import { queryOptions } from "@raf-query/react";
+declare function detectPushState(channel: string): Promise<"on" | "off">;
+// ---cut---
 export function pushStateQuery(input: { channel: string }) {
 	return queryOptions({
 		queryKey: ["pushState", input.channel],
@@ -53,7 +56,24 @@ export function pushStateQuery(input: { channel: string }) {
 
 A server client never starts it and never sends it, so loaders and components use it like any query: `prefetch` returns a handle on the server too, and the browser starts the request when the loader or the first read runs there. On the server, readers see it pending:
 
-```tsx
+```tsx twoslash
+import { use, useQuery } from "@raf-query/react";
+import { queryOptions } from "@raf-query/react";
+declare function detectPushState(channel: string): Promise<"on" | "off">;
+function pushStateQuery(input: { channel: string }) {
+	return queryOptions({
+		queryKey: ["pushState", input.channel],
+		queryFn: () => detectPushState(input.channel),
+		ssr: false,
+	});
+}
+declare const loaderData: {
+	push: import("@raf-query/react").QueryHandle<typeof pushStateQuery>;
+};
+declare function PushSwitch(props: {
+	readonly state: "on" | "off" | "unknown";
+}): React.ReactNode;
+// ---cut---
 const [pushPromise, push] = useQuery(pushStateQuery, loaderData.push);
 if (push.isPending) {
 	return <PushSwitch state="unknown" />;
@@ -79,7 +99,12 @@ Data, keys, inputs and `meta` cross the wire, so they must be serializable by th
 
 Only send what's serializable. These docs, for instance, cache each demo's code module as a query, and a module full of components can't cross the wire. The router integration's `filter` option keeps those entries out of the stream. A `filter` replaces the default one, `canDehydrate` (entries with data or a request in flight), so combine the two:
 
-```ts
+```ts twoslash
+import { canDehydrate, QueryClient } from "@raf-query/react";
+import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
+declare const queryClient: QueryClient;
+declare const router: Parameters<typeof setupRouterIntegration>[0]["router"];
+// ---cut---
 setupRouterIntegration({
 	dehydrateOptions: {
 		filter: (query) => query.key[0] === "doc" && canDehydrate(query),
