@@ -9,6 +9,7 @@ import { parse as parseYaml } from "yaml";
 
 import type { Doc, DocMeta, DocSection } from "../src/content/types.ts";
 import { renderMarkdown } from "./markdown.ts";
+import { expandSnippets } from "./snippets.ts";
 
 export interface ContentOptions {
 	/** Directory of the `.md` pages. */
@@ -40,8 +41,11 @@ const decodeFrontmatter = Schema.decodeUnknownSync(Frontmatter);
 interface Source {
 	readonly file: string;
 	readonly frontmatter: Frontmatter;
+	/** With `<<<` includes expanded into `twoslash` blocks. */
 	readonly markdown: string;
 	readonly slug: string;
+	/** The files the page includes. */
+	readonly snippets: ReadonlyArray<string>;
 }
 
 /** Replaces each `// ^?` in a Twoslash block with the type it shows, as a comment. */
@@ -60,7 +64,7 @@ function withTypes(code: string, types: ReadonlyArray<string>) {
 const manifestId = "virtual:docs-manifest";
 const resolvedManifestId = `\0${manifestId}`;
 
-function parseFrontmatter(file: string, raw: string) {
+function parseSource(contentDir: string, file: string, raw: string): Source {
 	const match = /^---\n([\s\S]*?)\n---\n/.exec(raw);
 	if (!match?.[1]) {
 		throw new Error(`${file}: missing frontmatter`);
@@ -71,7 +75,17 @@ function parseFrontmatter(file: string, raw: string) {
 	} catch (error) {
 		throw new Error(`${file}: invalid frontmatter`, { cause: error });
 	}
-	return { frontmatter, markdown: raw.slice(match[0].length) };
+	const expanded = expandSnippets(raw.slice(match[0].length), {
+		file,
+		root: contentDir,
+	});
+	return {
+		file,
+		frontmatter,
+		markdown: expanded.markdown,
+		slug: path.basename(file, ".md"),
+		snippets: expanded.files,
+	};
 }
 
 function lastModified(file: string) {
@@ -98,11 +112,7 @@ export function readSources(contentDir: string): ReadonlyArray<Source> {
 			.filter((name) => name.endsWith(".md") && !name.startsWith("_"))
 			.map((name) => {
 				const file = path.join(contentDir, name);
-				return {
-					file,
-					slug: name.slice(0, -".md".length),
-					...parseFrontmatter(file, readFileSync(file, "utf8")),
-				};
+				return parseSource(contentDir, file, readFileSync(file, "utf8"));
 			})
 	);
 }
@@ -375,12 +385,10 @@ export function docsContent(options: ContentOptions): Plugin {
 			if (!file.startsWith(contentDir) || !file.endsWith(".md")) {
 				return undefined;
 			}
-			const name = path.basename(file);
-			const source = {
-				file,
-				slug: name.slice(0, -".md".length),
-				...parseFrontmatter(file, code),
-			};
+			const source = parseSource(contentDir, file, code);
+			for (const snippet of source.snippets) {
+				this.addWatchFile(snippet);
+			}
 			rendered.delete(file);
 			const doc = await render(source);
 			return { code: `export default ${JSON.stringify(doc)};`, map: null };

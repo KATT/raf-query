@@ -505,6 +505,19 @@
 			}
 		},
 		{
+			// The docs' example files are what readers copy: keys in the order
+			// the guides explain them (`queryKey` before `queryFn`), and no
+			// ceremony a sample doesn't need.
+			"files": ["www/content/*/**/*.{ts,tsx}"],
+			"rules": {
+				"anti-slop/require-safety-comment-for-type-assertion": "off",
+				"curly": "off",
+				"perfectionist/sort-objects": "off",
+				"react/button-has-type": "off",
+				"typescript/consistent-type-assertions": "off"
+			}
+		},
+		{
 			// Vendored shadcn/ui registry components — not first-party code.
 			"files": [
 				"examples/.shared/ui/src/components/**",
