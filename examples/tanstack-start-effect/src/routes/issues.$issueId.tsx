@@ -1,6 +1,6 @@
 import { Button } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
-import { useQuery } from "@raf-query/react";
+import { QueryCache, useQuery } from "@raf-query/react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Effect } from "effect";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
@@ -13,21 +13,25 @@ import { StatusSelect } from "~/components/status-select.tsx";
 import { AssigneeCard, AssigneeCardSkeleton } from "~/components/user.tsx";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 
-export const Route = createFileRoute("/issues/$issueId")({
-	loader: (args) => {
-		const qc = args.context.queryClient;
-		const id = Number(args.params.issueId);
-		return qc.runPromise(
-			qc.effect.ensure(issueQuery, { id }).pipe(
-				Effect.catchTag("IssueNotFound", () => Effect.fail(notFound())),
-				Effect.map((issue) => ({
-					assignee: qc.prefetch(assigneeQuery, { issueId: id }),
-					comments: qc.prefetch(commentsQuery, { issueId: id }),
-					issue,
-				})),
-			),
+/** Waits for the issue and streams in its assignee and comments. A missing issue is the router's not-found page. */
+const loadIssue = Effect.fn("loadIssue")(
+	function* (id: number) {
+		const cache = yield* QueryCache.QueryCache;
+		return yield* Effect.all(
+			{
+				assignee: cache.prefetch(assigneeQuery, { issueId: id }),
+				comments: cache.prefetch(commentsQuery, { issueId: id }),
+				issue: cache.ensure(issueQuery, { id }),
+			},
+			{ concurrency: "unbounded" },
 		);
 	},
+	Effect.catchTag("IssueNotFound", () => Effect.fail(notFound())),
+);
+
+export const Route = createFileRoute("/issues/$issueId")({
+	loader: (args) =>
+		args.context.queryClient.runPromise(loadIssue(Number(args.params.issueId))),
 	component: IssuePage,
 });
 

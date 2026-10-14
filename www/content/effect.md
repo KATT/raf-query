@@ -133,10 +133,10 @@ export const Route = createRootRouteWithContext<{
 
 ### The route
 
-Loaders use the same Promise verbs as a non-Effect app. Prefetch is sync; `ensure` returns a Promise. Drop into Effect only when you need a typed catch (or to `yield*` a service yourself). `queryClient.effect` is the cache's Effect API, and `runPromise` runs it with the layer's services — the same shape as Effect's `ManagedRuntime`:
+Loaders use the same Promise verbs as a non-Effect app. Prefetch is sync; `ensure` returns a Promise. A loader that needs a typed catch is an `Effect.fn`, like a form action: it `yield*`s the `QueryCache` service, starts its reads together with `Effect.all`, and catches what it expects. `runPromise` runs it with the layer's services — the same shape as Effect's `ManagedRuntime`:
 
 ```tsx twoslash title="src/routes/issues.$issueId.tsx"
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import { QueryCache, type QueryHandle, useQuery } from "@raf-query/react";
 import { notFound } from "@tanstack/react-router";
 import { Effect, Result } from "effect";
 import { Suspense, use, type ReactNode } from "react";
@@ -148,20 +148,23 @@ import {
 } from "./_effect.ts";
 declare function RenameForm(props: { readonly issue: Issue }): ReactNode;
 // ---cut---
-export const Route = createFileRoute("/issues/$issueId")({
-	loader: (args) => {
-		const qc = args.context.queryClient;
-		const id = Number(args.params.issueId);
-		return qc.runPromise(
-			qc.effect.ensure(issueQuery, { id }).pipe(
-				Effect.catchTag("IssueNotFound", () => Effect.fail(notFound())),
-				Effect.map((issue) => ({
-					assignee: qc.prefetch(assigneeQuery, { issueId: id }),
-					issue,
-				})),
-			),
+const loadIssue = Effect.fn("loadIssue")(
+	function* (id: number) {
+		const cache = yield* QueryCache.QueryCache;
+		return yield* Effect.all(
+			{
+				assignee: cache.prefetch(assigneeQuery, { issueId: id }),
+				issue: cache.ensure(issueQuery, { id }),
+			},
+			{ concurrency: "unbounded" },
 		);
 	},
+	Effect.catchTag("IssueNotFound", () => Effect.fail(notFound())),
+);
+
+export const Route = createFileRoute("/issues/$issueId")({
+	loader: (args) =>
+		args.context.queryClient.runPromise(loadIssue(Number(args.params.issueId))),
 	component: IssuePage,
 	errorComponent: (props) => (
 		<div role="alert">

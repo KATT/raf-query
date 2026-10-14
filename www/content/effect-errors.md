@@ -99,25 +99,27 @@ type AssigneeError = ErrorOf<typeof assigneeQuery>;
 
 ## Catch it where you call
 
-Loaders that only `prefetch` or `ensure` use the Promise verbs, the same as a non-Effect app. Reach for `queryClient.runPromise` when the loader itself needs Effect — a typed `catchTag`, or `yield*` of a service. `queryClient.effect` is the cache's Effect API; `runPromise` runs it with the services of the client's [layer](./effect-services.md#services-in-queryclient), as Effect's `ManagedRuntime` does. The failures stay typed until the Effect catches them, and the promise rejects with whatever is left.
+Loaders that only `prefetch` or `ensure` use the Promise verbs, the same as a non-Effect app. When the loader itself needs Effect — a typed `catchTag`, or `yield*` of a service — write it as an `Effect.fn` that `yield*`s the `QueryCache` service, and run it with `queryClient.runPromise`. That runs it with the services of the client's [layer](./effect-services.md#services-in-queryclient), as Effect's `ManagedRuntime` does. The failures stay typed until the Effect catches them, and the promise rejects with whatever is left.
 
 A loader can turn a typed failure into the router's own error. Here a missing issue becomes TanStack Router's `notFound()`, so the route renders its not-found page, and anything else reaches `errorComponent`:
 
 ```tsx twoslash title="src/routes/issues.$issueId.tsx"
+import { QueryCache } from "@raf-query/react";
 import { notFound } from "@tanstack/react-router";
 import { Effect } from "effect";
 import { createFileRoute, issueQuery } from "./_effect.ts";
 // ---cut---
-export const Route = createFileRoute("/issues/$issueId")({
-	loader: (args) => {
-		const qc = args.context.queryClient;
-		return qc.runPromise(
-			qc.effect.ensure(issueQuery, { id: Number(args.params.issueId) }).pipe(
-				Effect.catchTag("IssueNotFound", () => Effect.fail(notFound())),
-				Effect.map((issue) => ({ issue })),
-			),
-		);
+const loadIssue = Effect.fn("loadIssue")(
+	function* (id: number) {
+		const cache = yield* QueryCache.QueryCache;
+		return { issue: yield* cache.ensure(issueQuery, { id }) };
 	},
+	Effect.catchTag("IssueNotFound", () => Effect.fail(notFound())),
+);
+
+export const Route = createFileRoute("/issues/$issueId")({
+	loader: (args) =>
+		args.context.queryClient.runPromise(loadIssue(Number(args.params.issueId))),
 	errorComponent: (props) => (
 		<div role="alert">
 			<p>Couldn't load the issue.</p>
