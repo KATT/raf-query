@@ -9,24 +9,24 @@
 		"dev": "vp dev --port 3004",
 		"start": "vp preview --port 3004",
 		"test": "vp test",
-		"typecheck": "tsc && node build/typecheck-examples.ts"
+		"typecheck": "tsc"
 	},
 	"dependencies": {
 		"@examples/ui": "workspace:*",
-		"@raf-query/core": "workspace:*",
 		"@raf-query/react": "workspace:*",
 		"@tanstack/react-router": "1.170.42",
 		"@tanstack/react-start": "1.168.61",
 		"lucide-react": "1.55.0",
 		"react": "19.3.0",
-		"react-dom": "19.3.0",
-		"zod": "^4.6.5"
+		"react-dom": "19.3.0"
 	},
 	"devDependencies": {
 		"@babel/core": "7.29.7",
 		"@effect/platform-node": "catalog:",
 		"@effect/vitest": "catalog:",
 		"@rolldown/plugin-babel": "0.2.4",
+		"@samples/nextjs": "workspace:*",
+		"@samples/tanstack-start": "workspace:*",
 		"@shikijs/rehype": "4.5.0",
 		"@shikijs/twoslash": "4.5.0",
 		"@tailwindcss/typography": "0.5.20",
@@ -45,7 +45,6 @@
 		"happy-dom": "21.0.1",
 		"hast-util-to-html": "9.0.5",
 		"hast-util-to-string": "3.0.1",
-		"next": "16.4.0",
 		"rehype-raw": "7.0.0",
 		"remark-gfm": "4.0.1",
 		"remark-parse": "11.0.0",

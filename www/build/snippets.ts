@@ -1,7 +1,7 @@
 import { Effect, FileSystem, Path } from "effect";
 
 import { ContentError } from "./content-error.ts";
-import { appOf, exampleApps } from "./example-apps.ts";
+import { appOf, sampleApps } from "./sample-apps.ts";
 
 export interface ExpandedSnippets {
 	/** Every file the page includes, for the dev server to watch. */
@@ -9,8 +9,11 @@ export interface ExpandedSnippets {
 	readonly markdown: string;
 }
 
-/** `<<< ./quick-start/src/routes/todos.tsx#loader`, with an optional `[title]`. */
-/** Path, optional `#region`, optional `[title]` / `[]`. Paths may contain `[param]` segments (Next.js). */
+/**
+ * `<<< ../samples/tanstack-start/src/routes/todos.tsx#loader`: a path,
+ * optional `#region`, optional `[title]` / `[]`. Paths may contain `[param]`
+ * segments (Next.js).
+ */
 const includeLine =
 	/^<<< (\.{1,2}\/.+?)(?:#([\w-]+))?(?:[ \t]+\[([^\]]*)\])?[ \t]*$/gm;
 const regionMarker = /^[ \t]*\/\/ ?#(region|endregion)\b[ \t]*([\w-]*)[ \t]*$/;
@@ -106,13 +109,13 @@ function twoslashCode(lines: ReadonlyArray<Line>, filename: string) {
 }
 
 /**
- * A line `<<< ./page/src/file.tsx#name` includes the `// #region name` …
+ * A line `<<< ../samples/app/src/file.tsx#name` includes the `// #region name` …
  * `// #endregion` part of a TypeScript file as a `twoslash` block (the
  * whole file without `#name`), like VitePress's code snippets. The rest of
  * the file is still compiled, hidden, in the file's folder, so its imports
  * resolve like they do in the editor.
  *
- * The file must be in an example app (see `exampleApps`), and the block
+ * The file must be in a sample app (see `sampleApps`), and the block
  * compiles in that app's project. Its title is the file's path inside the
  * app, so `src/file.tsx` here; `[title]` after the path replaces it, and
  * `[]` leaves it out.
@@ -122,14 +125,14 @@ export const expandSnippets = Effect.fn("expandSnippets")(function* (
 	options: {
 		/** The page's `.md` file. */
 		readonly file: string;
-		/** The content dir, which holds the example apps. */
-		readonly root: string;
+		/** The dir of the sample apps. */
+		readonly samplesDir: string;
 	},
 ) {
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path;
 	const toPosix = (file: string) => file.split(path.sep).join("/");
-	const apps = yield* exampleApps(options.root);
+	const apps = yield* sampleApps(options.samplesDir);
 	const files: Array<string> = [];
 	const parts: Array<string> = [];
 	let end = 0;
@@ -145,7 +148,7 @@ export const expandSnippets = Effect.fn("expandSnippets")(function* (
 		const app = appOf(path, file, apps);
 		if (!app) {
 			return yield* new ContentError({
-				message: `${options.file}: ${relative} isn't in an example app (a folder in content/ with a tsconfig.json)`,
+				message: `${options.file}: ${relative} isn't in a sample app (a folder of samples/ with a tsconfig.json)`,
 			});
 		}
 		files.push(file);
@@ -160,7 +163,7 @@ export const expandSnippets = Effect.fn("expandSnippets")(function* (
 		// still read it from disk.
 		const virtualPath = toPosix(
 			path.relative(
-				options.root,
+				options.samplesDir,
 				`${file.slice(0, -lang.length - 1)}.${region ?? "file"}.twoslash.${lang}`,
 			),
 		);

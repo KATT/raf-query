@@ -6,7 +6,7 @@ order: 0
 ---
 
 ```tsx twoslash title="src/routes/posts.$slug.tsx"
-// @filename: _shared/src/routes/posts.$slug.tsx
+// @filename: tanstack-start/src/routes/posts.$slug.tsx
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { Suspense, use } from "react";
 import { createFileRoute } from "@tanstack/react-router";

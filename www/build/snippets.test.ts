@@ -4,7 +4,7 @@ import { Effect, FileSystem, Path } from "effect";
 
 import { expandSnippets } from "./snippets.ts";
 
-/** Writes `files` to a temporary content dir, removed when the test ends. */
+/** Writes `files` to a temporary samples dir, removed when the test ends. */
 const setup = Effect.fn("setup")(function* (files: Record<string, string>) {
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path;
@@ -17,7 +17,10 @@ const setup = Effect.fn("setup")(function* (files: Record<string, string>) {
 	}
 	return {
 		expand: (markdown: string) =>
-			expandSnippets(markdown, { file: path.join(root, "page.md"), root }),
+			expandSnippets(markdown, {
+				file: path.join(root, "page.md"),
+				samplesDir: root,
+			}),
 		path,
 		root,
 	};
@@ -186,25 +189,11 @@ describe("expandSnippets", () => {
 		}).pipe(Effect.provide(NodeServices.layer)),
 	);
 
-	it.effect("titles a block by its path in the closest app", () =>
-		Effect.gen(function* () {
-			const page = yield* setup({
-				...app("page"),
-				...app("page/before"),
-				"page/before/src/post.ts": "export const a = 1;\n",
-			});
-			const expanded = yield* page.expand("<<< ./page/before/src/post.ts");
-			expect(expanded.markdown).toContain(
-				'```ts twoslash title="src/post.ts"\n// ---cut-start---\n// @filename: page/before/src/post.file.twoslash.ts',
-			);
-		}).pipe(Effect.provide(NodeServices.layer)),
-	);
-
-	it.effect("fails on a file outside an example app", () =>
+	it.effect("fails on a file outside a sample app", () =>
 		Effect.gen(function* () {
 			const page = yield* setup({ "page/a.ts": "export const a = 1;\n" });
 			const error = yield* Effect.flip(page.expand("<<< ./page/a.ts"));
-			expect(error.message).toContain("isn't in an example app");
+			expect(error.message).toContain("isn't in a sample app");
 		}).pipe(Effect.provide(NodeServices.layer)),
 	);
 

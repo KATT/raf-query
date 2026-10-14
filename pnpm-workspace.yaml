@@ -1,5 +1,6 @@
 packages:
   - "www"
+  - "www/samples/*"
   - "examples/*"
   - "examples/.shared/*"
   - "examples/.experimental/*"

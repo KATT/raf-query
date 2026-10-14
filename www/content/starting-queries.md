@@ -16,7 +16,7 @@ Queries start where the page's inputs are known: a route loader, a server compon
 Fresh cached data is reused by all three, without a request. So `prefetch` never holds anything up, `ensure` holds up only the first visit (returning to a page shows the cached data at once, then fresh data), and `fetch` always returns fresh data, at the cost of a round trip whenever the cache is stale.
 
 ```tsx twoslash title="src/routes/posts.$slug.tsx"
-// @filename: _shared/src/routes/posts.$slug.tsx
+// @filename: tanstack-start/src/routes/posts.$slug.tsx
 import { createFileRoute } from "@tanstack/react-router";
 import { commentsQuery, postQuery } from "~/queries.ts";
 function PostPage() {

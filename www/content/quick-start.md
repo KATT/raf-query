@@ -17,29 +17,29 @@ For the Next.js App Router, the same steps apply with a server component in plac
 
 Create one `QueryClient` per router. On the server, `getRouter` runs once per request, so each request gets its own cache; in the browser it runs once per tab.
 
-<<< ./quick-start/src/router.tsx
+<<< ../samples/tanstack-start/src/router.tsx
 
-`setupRouterIntegration` streams the server's cache to the browser while the page renders, so data loaded on the server is never fetched twice. Give the root route the client's type:
+`setupRouterIntegration` streams the server's cache to the browser while the page renders, so data loaded on the server is never fetched twice. In development, [DevTools](./devtools.md) show what's in the cache. Give the root route the client's type:
 
-<<< ./quick-start/src/routes/__root.tsx
+<<< ../samples/tanstack-start/src/routes/__root.tsx
 
 ## 2. Define a query
 
 A query is a **factory**: a function of at most one argument that returns `queryOptions(...)`. The argument is the query's input. Loaders and components call the same factory, so the data's type flows end to end.
 
-<<< ./quick-start/src/queries.ts
+<<< ../samples/tanstack-start/src/queries.ts#todos
 
 ## 3. Start it in the loader
 
 The loader starts the query and returns its **handle**, a small `{ key, input }` object:
 
-<<< ./quick-start/src/routes/todos.tsx#loader
+<<< ../samples/tanstack-start/src/routes/todos.tsx#loader
 
 `prefetch` starts the request and returns immediately, so the page renders while the data is on its way. Use `ensure` instead when the page can't lay out without the data: the navigation then waits for it. [Starting queries](./starting-queries.md) covers the trade-off.
 
 ## 4. Read it in a component
 
-<<< ./quick-start/src/routes/todos.tsx#component
+<<< ../samples/tanstack-start/src/routes/todos.tsx#component
 
 `useQuery` returns a stable promise and the query's controls. `use()` suspends until the data is there, then returns it; once the cache has data, the promise is already resolved and `use()` returns synchronously.
 
@@ -47,7 +47,7 @@ The loader starts the query and returns its **handle**, a small `{ key, input }`
 
 There is no `useMutation`. Write in a form action, then invalidate what changed:
 
-<<< ./quick-start/src/components/add-todo.tsx#add-todo
+<<< ../samples/tanstack-start/src/components/add-todo.tsx#add-todo
 
 `await qc.invalidate(...)` resolves once every query being read has refetched, so the form stays pending until the new todo is on screen. See [Mutations](./mutations.md) for optimistic updates and errors.
 

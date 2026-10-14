@@ -797,9 +797,6 @@ importers:
       '@examples/ui':
         specifier: workspace:*
         version: link:../examples/.shared/ui
-      '@raf-query/core':
-        specifier: workspace:*
-        version: link:../packages/core
       '@raf-query/react':
         specifier: workspace:*
         version: link:../packages/react
@@ -818,9 +815,6 @@ importers:
       react-dom:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
-      zod:
-        specifier: ^4.6.5
-        version: 4.6.5
     devDependencies:
       '@babel/core':
         specifier: 7.29.7
@@ -834,6 +828,12 @@ importers:
       '@rolldown/plugin-babel':
         specifier: 0.2.4
         version: 0.2.4(@babel/core@7.29.7)(@babel/runtime@7.29.10)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(rolldown@1.2.13)
+      '@samples/nextjs':
+        specifier: workspace:*
+        version: link:samples/nextjs
+      '@samples/tanstack-start':
+        specifier: workspace:*
+        version: link:samples/tanstack-start
       '@shikijs/rehype':
         specifier: 4.5.0
         version: 4.5.0
@@ -888,9 +888,6 @@ importers:
       hast-util-to-string:
         specifier: 3.0.1
         version: 3.0.1
-      next:
-        specifier: 16.4.0
-        version: 16.4.0(@babel/core@7.29.7)(@types/node@26.6.4)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       rehype-raw:
         specifier: 7.0.0
         version: 7.0.0
@@ -933,6 +930,71 @@ importers:
       yaml:
         specifier: 2.9.1
         version: 2.9.1
+
+  www/samples/nextjs:
+    dependencies:
+      '@raf-query/react':
+        specifier: workspace:*
+        version: link:../../../packages/react
+      react:
+        specifier: 19.3.0
+        version: 19.3.0
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.4
+        version: 26.6.4
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+
+  www/samples/tanstack-start:
+    dependencies:
+      '@raf-query/core':
+        specifier: workspace:*
+        version: link:../../../packages/core
+      '@raf-query/react':
+        specifier: workspace:*
+        version: link:../../../packages/react
+      '@tanstack/react-router':
+        specifier: 1.170.42
+        version: 1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@tanstack/react-start':
+        specifier: 1.168.61
+        version: 1.168.61(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(crossws@0.4.15(srvx@1.0.5))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(rolldown@1.2.13)
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.1
+      react:
+        specifier: 19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: 19.3.0
+        version: 19.3.0(react@19.3.0)
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
+      '@testing-library/react':
+        specifier: 16.3.3
+        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@1.0.0
+        version: '@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)'
 
 packages:
 

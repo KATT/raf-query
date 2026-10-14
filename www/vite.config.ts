@@ -10,9 +10,10 @@ import { docPages, docsContent } from "./build/content.ts";
 import { sections, site } from "./src/site.ts";
 
 const contentDir = new URL("content", import.meta.url).pathname;
+const samplesDir = new URL("samples", import.meta.url).pathname;
 const demosDir = new URL("src/demos", import.meta.url).pathname;
 const pages = await Effect.runPromise(
-	docPages(contentDir).pipe(Effect.provide(NodeServices.layer)),
+	docPages({ contentDir, samplesDir }).pipe(Effect.provide(NodeServices.layer)),
 );
 
 export default defineConfig({
@@ -21,6 +22,7 @@ export default defineConfig({
 			contentDir,
 			demosDir,
 			demosUrl: `${site.github}/blob/main/www/src/demos`,
+			samplesDir,
 			sections,
 			siteUrl: site.url,
 		}),

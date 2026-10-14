@@ -11,11 +11,11 @@ In the App Router, server components play the part of loaders: they start querie
 
 A query client per request for server components, scoped by React's `cache()`:
 
-<<< ./nextjs/src/query-client.ts
+<<< ../samples/nextjs/src/query-client.ts
 
 `QueryProvider` in the root layout, for client components:
 
-<<< ./nextjs/src/app/layout.tsx
+<<< ../samples/nextjs/src/app/layout.tsx
 
 `QueryProvider` creates one client per server render and one per browser tab. Its `config` must be serializable, since it crosses from the server component layout to the client.
 
@@ -25,9 +25,9 @@ Mount DevTools only when `process.env.NODE_ENV !== "production"` so Next.js drop
 
 A server component starts queries, and wraps what it renders in a `HydrationBoundary` that sends the request client's entries to the browser:
 
-<<< ./nextjs/src/app/posts/[slug]/page.tsx
+<<< ../samples/nextjs/src/app/posts/[slug]/page.tsx
 
-<<< ./nextjs/src/components/comments.tsx#component
+<<< ../samples/nextjs/src/components/comments.tsx#component
 
 - Render a `HydrationBoundary` in each server component that starts queries for client components. Entries already sent in this request are skipped, so nesting them is fine.
 - Pending entries stream as promises through the RSC payload: the page's shell renders while `comments` loads.
@@ -37,7 +37,7 @@ A server component starts queries, and wraps what it renders in a `HydrationBoun
 
 Read `searchParams` in the page, validate them, and pass them as the input:
 
-<<< ./nextjs/src/app/issues/page.tsx#page
+<<< ../samples/nextjs/src/app/issues/page.tsx#page
 
 Changing search params with `<Link>` or `router.push` renders the page again on the server with the new input. See [URL state and pagination](./url-state-and-pagination.md) for what to show while it loads.
 
@@ -51,13 +51,13 @@ Factories can call server actions: server components call them directly, and the
 
 The browser runs a page's server actions one at a time, so refetches wait for each other and for any pending mutation. For parallel requests, have the `queryFn` call a [Route Handler](https://nextjs.org/docs/app/api-reference/file-conventions/route) instead, as [`examples/nextjs`](https://github.com/KATT/raf-query/tree/main/examples/nextjs) does:
 
-<<< ./nextjs/src/queries.ts#route-handler
+<<< ../samples/nextjs/src/queries.ts#route-handler
 
 ## Mutations
 
 Write with a server action, then invalidate in the browser:
 
-<<< ./nextjs/src/components/update-issue-form.tsx#form
+<<< ../samples/nextjs/src/components/update-issue-form.tsx#form
 
 If the action also calls `revalidatePath` or `refresh()`, server components render again and send their entries, and the browser keeps whichever copy is newest.
 

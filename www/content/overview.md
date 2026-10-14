@@ -46,7 +46,7 @@ export function postQuery(input: { slug: string }) {
 ```
 
 ```tsx twoslash title="src/routes/posts.$slug.tsx"
-// @filename: _shared/src/routes/posts.$slug.tsx
+// @filename: tanstack-start/src/routes/posts.$slug.tsx
 import { useQuery } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { postQuery } from "~/queries.ts";

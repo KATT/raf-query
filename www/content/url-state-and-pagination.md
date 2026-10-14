@@ -8,7 +8,7 @@ order: 9
 Filters, sort order and pagination are search params. The loader turns them into the query's input, so every navigation starts the right query and the component only ever reads the handle it was given:
 
 ```tsx twoslash title="src/routes/posts.tsx"
-// @filename: _shared/src/routes/posts.tsx
+// @filename: tanstack-start/src/routes/posts.tsx
 import { use, type ReactNode } from "react";
 import { useQuery } from "@raf-query/react";
 import { createFileRoute, Link } from "@tanstack/react-router";

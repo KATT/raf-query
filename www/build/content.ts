@@ -7,13 +7,18 @@ import { parse as parseYaml } from "yaml";
 
 import type { Doc, DocMeta, DocSection } from "../src/content/types.ts";
 import { ContentError, messageOf } from "./content-error.ts";
-import { generateRouteTrees } from "./example-apps.ts";
+import { generateRouteTrees } from "./sample-apps.ts";
 import { renderMarkdown } from "./markdown.ts";
 import { expandSnippets } from "./snippets.ts";
 
-export interface ContentOptions {
+export interface ContentDirs {
 	/** Directory of the `.md` pages, as an absolute path. */
 	readonly contentDir: string;
+	/** Directory of the sample apps the pages' code blocks compile in. */
+	readonly samplesDir: string;
+}
+
+export interface ContentOptions extends ContentDirs {
 	/** Directory with one `<id>.tsx` per demo. */
 	readonly demosDir: string;
 	/** Where `demosDir` is browsable, for the markdown pages' demo links. */
@@ -65,7 +70,7 @@ const manifestId = "virtual:docs-manifest";
 const resolvedManifestId = `\0${manifestId}`;
 
 const parseSource = Effect.fn("parseSource")(function* (
-	contentDir: string,
+	dirs: ContentDirs,
 	file: string,
 	raw: string,
 ) {
@@ -87,7 +92,7 @@ const parseSource = Effect.fn("parseSource")(function* (
 	);
 	const expanded = yield* expandSnippets(raw.slice(match[0].length), {
 		file,
-		root: contentDir,
+		samplesDir: dirs.samplesDir,
 	});
 	return {
 		file,
@@ -115,19 +120,19 @@ const lastModified = Effect.fn("lastModified")(
 );
 
 export const readSources = Effect.fn("readSources")(function* (
-	contentDir: string,
+	dirs: ContentDirs,
 ) {
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path;
-	const names = yield* fs.readDirectory(contentDir);
+	const names = yield* fs.readDirectory(dirs.contentDir);
 	return yield* Effect.forEach(
 		names
 			// `_name.md` files are page fragments (the home page's code), not pages.
 			.filter((name) => name.endsWith(".md") && !name.startsWith("_")),
 		(name) => {
-			const file = path.join(contentDir, name);
+			const file = path.join(dirs.contentDir, name);
 			return Effect.flatMap(fs.readFileString(file), (raw) =>
-				parseSource(contentDir, file, raw),
+				parseSource(dirs, file, raw),
 			);
 		},
 		{ concurrency: "unbounded" },
@@ -135,9 +140,9 @@ export const readSources = Effect.fn("readSources")(function* (
 });
 
 /** Page paths for prerendering and the sitemap. */
-export const docPages = Effect.fn("docPages")(function* (contentDir: string) {
+export const docPages = Effect.fn("docPages")(function* (dirs: ContentDirs) {
 	return yield* Effect.forEach(
-		yield* readSources(contentDir),
+		yield* readSources(dirs),
 		(source) =>
 			Effect.map(lastModified(source.file), (date) => ({
 				lastModified: date,
@@ -160,7 +165,7 @@ function run<A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) {
  * markdown source at `/docs/<slug>.md`.
  */
 export function docsContent(options: ContentOptions): Plugin {
-	const { contentDir } = options;
+	const { samplesDir } = options;
 	const rendered = new Map<string, Promise<Doc>>();
 	/** Each page's `twoslash` types, by file, for its markdown. */
 	const typeQueries = new Map<string, ReadonlyArray<ReadonlyArray<string>>>();
@@ -168,7 +173,7 @@ export function docsContent(options: ContentOptions): Plugin {
 	const renderDoc = Effect.fn("renderDoc")(function* (source: Source) {
 		const fs = yield* FileSystem.FileSystem;
 		const path = yield* Path.Path;
-		const result = yield* renderMarkdown(source.markdown, { contentDir }).pipe(
+		const result = yield* renderMarkdown(source.markdown, { samplesDir }).pipe(
 			Effect.mapError(
 				(error) =>
 					new ContentError({
@@ -208,7 +213,7 @@ export function docsContent(options: ContentOptions): Plugin {
 	}
 
 	async function manifest(): Promise<ReadonlyArray<DocSection>> {
-		const sources = await run(readSources(contentDir));
+		const sources = await run(readSources(options));
 		for (const source of sources) {
 			if (!options.sections.includes(source.frontmatter.section)) {
 				throw new Error(
@@ -318,10 +323,7 @@ export function docsContent(options: ContentOptions): Plugin {
 	async function agentFiles() {
 		const sections = await manifest();
 		const sources = new Map(
-			(await run(readSources(contentDir))).map((source) => [
-				source.slug,
-				source,
-			]),
+			(await run(readSources(options))).map((source) => [source.slug, source]),
 		);
 		const pages = sections
 			.flatMap((section) => section.docs)
@@ -392,7 +394,7 @@ export function docsContent(options: ContentOptions): Plugin {
 
 	return {
 		async buildStart() {
-			routeTrees ??= run(generateRouteTrees(contentDir));
+			routeTrees ??= run(generateRouteTrees(samplesDir));
 			await routeTrees;
 		},
 		configurePreviewServer: serveAgentFiles,
@@ -406,7 +408,10 @@ export function docsContent(options: ContentOptions): Plugin {
 			}
 		},
 		hotUpdate(context) {
-			if (!context.file.startsWith(contentDir)) {
+			if (
+				!context.file.startsWith(options.contentDir) &&
+				!context.file.startsWith(samplesDir)
+			) {
 				return undefined;
 			}
 			rendered.delete(context.file);
@@ -431,10 +436,10 @@ export function docsContent(options: ContentOptions): Plugin {
 		},
 		async transform(code, id) {
 			const file = id.split("?")[0] ?? id;
-			if (!file.startsWith(contentDir) || !file.endsWith(".md")) {
+			if (!file.startsWith(options.contentDir) || !file.endsWith(".md")) {
 				return undefined;
 			}
-			const source = await run(parseSource(contentDir, file, code));
+			const source = await run(parseSource(options, file, code));
 			for (const snippet of source.snippets) {
 				this.addWatchFile(snippet);
 			}

@@ -59,7 +59,7 @@ Suspense makes this worse, not better: a suspending component renders nothing be
 raf-query has no fetch-on-render hook. `useQuery` only reads; the loader starts every query:
 
 ```tsx twoslash
-// @filename: _shared/src/routes/posts.$slug.tsx
+// @filename: tanstack-start/src/routes/posts.$slug.tsx
 import { createFileRoute } from "@tanstack/react-router";
 import { commentsQuery, postQuery } from "~/queries.ts";
 declare function PostPage(): React.ReactNode;
@@ -137,7 +137,7 @@ A query whose input comes from another query's result is a waterfall by construc
 A settings page needs the user and their organization, and the organization's id is a field of the user:
 
 ```ts twoslash
-// @filename: _shared/src/routes/settings.tsx
+// @filename: tanstack-start/src/routes/settings.tsx
 import { queryOptions } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 declare function getCurrentUser(): Promise<{ orgId: string }>;
@@ -172,7 +172,7 @@ With a 150 ms round trip, the organization can't arrive before 300 ms, and the n
 Fix it in the backend: the server can find the session's organization itself, so give it an endpoint and a query with no input.
 
 ```ts twoslash
-// @filename: _shared/src/routes/settings.tsx
+// @filename: tanstack-start/src/routes/settings.tsx
 import { queryOptions } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { getCurrentOrg } from "~/api.ts";
