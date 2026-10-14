@@ -13,29 +13,7 @@ raf-query's cache is written in [Effect](https://effect.website). Using raf-quer
 
 A `queryFn` can return an `Effect`:
 
-```ts twoslash
-import { Effect, Schedule } from "effect";
-declare class IssueNotFound {
-	readonly _tag: "IssueNotFound";
-}
-declare interface Issue {
-	readonly id: number;
-	readonly title: string;
-}
-declare const IssueRepo: {
-	get(id: number): Effect.Effect<Issue, IssueNotFound>;
-};
-// ---cut---
-import { queryOptions } from "@raf-query/react";
-
-export function issueQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: ["issue", input.id],
-		queryFn: () => IssueRepo.get(input.id), // Effect<Issue, IssueNotFound>
-		retry: Schedule.exponential("200 millis").pipe(Schedule.upTo({ times: 3 })),
-	});
-}
-```
+<<< ./effect/src/queries.ts#effect-query-fn
 
 - **Typed errors.** The Effect's error type is the query's: `qc.effect.fetch(issueQuery, input)` fails with `IssueNotFound | Query.CancelledError`. `ErrorOf<TFactory>` names it; it's `unknown` for promises.
 - **Defects aren't retried.** A `queryFn` that throws instead of returning, or an Effect that dies, is a defect: it fails the request without retrying.
@@ -48,37 +26,7 @@ From React, nothing changes: `useQuery` and the client's Promise methods read an
 
 `QueryClient` is a Promise wrapper around a `QueryCache` service, available as `qc.effect`. Effect code uses the cache directly, or builds its own with `QueryCache.make(config)` (scoped: closing the scope interrupts every request and timer) or `QueryCache.layer(config)`:
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-import { Effect } from "effect";
-declare interface Issue {
-	readonly id: number;
-	readonly title: string;
-}
-declare const IssueRepo: {
-	get(id: number): Effect.Effect<Issue>;
-};
-function issueQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: ["issue", input.id],
-		queryFn: () => IssueRepo.get(input.id),
-	});
-}
-// ---cut---
-import { QueryCache } from "@raf-query/core";
-import { Stream } from "effect";
-
-const program = Effect.gen(function* () {
-	const cache = yield* QueryCache.QueryCache;
-	const issue = yield* cache.fetch(issueQuery, { id: 1 });
-	yield* cache.watch(issueQuery, { id: 1 }).pipe(
-		Stream.map((state) => state.data?.title),
-		Stream.runForEach((title) => Effect.log(title)),
-	);
-});
-
-Effect.runFork(program.pipe(Effect.provide(QueryCache.layer())));
-```
+<<< ./effect/src/log-issue-title.ts#program
 
 `qc.effect` has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidate`, `reset`, `remove`, `setData`, `getData` (an `Option`), `isFetching` (a count), `dehydrate` and `hydrate`. `watch` is a `Stream` of an entry's state, and `events` a `Stream` of cache events.
 
@@ -88,33 +36,7 @@ Effect.runFork(program.pipe(Effect.provide(QueryCache.layer())));
 
 Entries are a data type with module functions, like Effect's own modules:
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-import { Effect } from "effect";
-declare interface Issue {
-	readonly id: number;
-	readonly title: string;
-}
-declare const IssueRepo: {
-	get(id: number): Effect.Effect<Issue>;
-};
-function issueQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: ["issue", input.id],
-		queryFn: () => IssueRepo.get(input.id),
-	});
-}
-// ---cut---
-import { Query, QueryCache } from "@raf-query/core";
-
-const program = Effect.gen(function* () {
-	const cache = yield* QueryCache.QueryCache;
-	const query = yield* cache.getQuery(issueQuery, { id: 1 });
-	yield* Query.fetch(query);
-	yield* Query.invalidate(query);
-	return Query.getUnsafe(query); // synchronous read
-});
-```
+<<< ./effect/src/issue-entry.ts#entry
 
 `Query.changes(query)` streams the entry's state, and `Query.subscribeUnsafe(query, listener)` is the synchronous version.
 
