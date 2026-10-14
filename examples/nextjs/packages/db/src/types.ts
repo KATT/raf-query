@@ -57,8 +57,24 @@ export const IssueId = Id;
 export const CommentsInput = z.object({ cursor: Cursor, issueId: Id });
 export type CommentsInput = z.infer<typeof CommentsInput>;
 
-export const UpdateTitleInput = z.object({ id: Id, title: Text });
-export type UpdateTitleInput = z.infer<typeof UpdateTitleInput>;
+/** Fields a client may PATCH on an issue. At least one is required. */
+export const UpdateIssueFields = z
+	.object({
+		body: Text.optional(),
+		status: IssueStatus.optional(),
+		title: Text.optional(),
+	})
+	.refine(
+		(value) =>
+			value.body !== undefined ||
+			value.status !== undefined ||
+			value.title !== undefined,
+		{ message: "Nothing to update" },
+	);
+export type UpdateIssueFields = z.infer<typeof UpdateIssueFields>;
+
+export const UpdateIssueInput = UpdateIssueFields.and(z.object({ id: Id }));
+export type UpdateIssueInput = z.infer<typeof UpdateIssueInput>;
 
 /** The client picks `id`, so its optimistic entry and the saved comment match. */
 export const AddCommentInput = z.object({

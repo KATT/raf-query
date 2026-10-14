@@ -182,8 +182,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@raf-query/react':
-        specifier: 0.6.1
-        version: 0.6.1(effect@4.0.4)(react@19.3.0)
+        specifier: 0.6.2
+        version: 0.6.2(effect@4.0.4)(react@19.3.0)
       lucide-react:
         specifier: 1.55.0
         version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
@@ -1262,14 +1262,14 @@ packages:
   '@radix-ui/rect@1.1.3':
     resolution: {integrity: sha512-JtyZR+mqgBibTo8xea3B6ZRmzZiM/YeVBtUkas6zMuXjAlfIFIW2FgqeM9eLyvEaYX66vr6DJMK+4U6LV0KhNw==}
 
-  '@raf-query/core@0.6.1':
-    resolution: {integrity: sha512-BmGLSQijx4T0I+cr6IRso7fD+WFPuIaufQQ0DZsNgYtrUX6GIqv8QSDWTw1QTLsUGUSMN0QzzA+AbPbh1S438g==}
+  '@raf-query/core@0.6.2':
+    resolution: {integrity: sha512-13YyYUglm7LmzluCf6yX4d3Z/iz4WFC9E+HaFBkgw8DYUvN2HXMz7YUmMLC22KumOsMbEQHepGUBDP+76dKvtg==}
     engines: {node: '>=22'}
     peerDependencies:
       effect: ^4.0.0
 
-  '@raf-query/react@0.6.1':
-    resolution: {integrity: sha512-kh8sPDzk7svfuPS6dcaT8TxRd5LMRgh4c13SmIhbHOdmAqm+8YYRl8cTmKJiVpyvex/UaKxp6IX5cN5u1NfMnQ==}
+  '@raf-query/react@0.6.2':
+    resolution: {integrity: sha512-J9nHSuC3OpDP96Y6J/3AxP8QPy7vagEXv3/OLa/rjMB0XWH/Xr+xgHyypDI+txMajbnCRB2PT5+xpirBALZOkg==}
     engines: {node: '>=22'}
     peerDependencies:
       '@tanstack/react-router': ^1.170.0
@@ -2765,13 +2765,13 @@ snapshots:
 
   '@radix-ui/rect@1.1.3': {}
 
-  '@raf-query/core@0.6.1(effect@4.0.4)':
+  '@raf-query/core@0.6.2(effect@4.0.4)':
     dependencies:
       effect: 4.0.4
 
-  '@raf-query/react@0.6.1(effect@4.0.4)(react@19.3.0)':
+  '@raf-query/react@0.6.2(effect@4.0.4)(react@19.3.0)':
     dependencies:
-      '@raf-query/core': 0.6.1(effect@4.0.4)
+      '@raf-query/core': 0.6.2(effect@4.0.4)
       effect: 4.0.4
       react: 19.3.0
 

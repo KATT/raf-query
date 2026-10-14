@@ -129,6 +129,7 @@ export async function listComments(
 
 export async function updateIssue(
 	input: {
+		readonly body?: string;
 		readonly id: number;
 		readonly status?: IssueStatus;
 		readonly title?: string;
@@ -145,8 +146,13 @@ export async function updateIssue(
 	if (title === "") {
 		throw new Error("Title can't be empty");
 	}
+	const body = input.body?.trim();
+	if (body === "") {
+		throw new Error("Body can't be empty");
+	}
 	const updated: Issue = {
 		...current,
+		body: body ?? current.body,
 		status: input.status ?? current.status,
 		title: title ?? current.title,
 	};

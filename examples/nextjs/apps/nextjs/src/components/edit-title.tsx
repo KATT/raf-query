@@ -2,19 +2,27 @@
 
 import { api, parseResponse } from "~/api.ts";
 import type { Issue } from "@examples/db/types";
-import { Button } from "@examples/ui/components/button";
-import { Input } from "@examples/ui/components/input";
+import { cn } from "@examples/ui/lib/utils";
 import { useQueryClient } from "@raf-query/react";
 import { useActionState, useOptimistic } from "react";
 
-/** The issue's title, editable in place. Shows the new title while it saves. */
+/**
+ * The issue title, editable in place. Click (or tab) into it, then Enter or
+ * blur to save; Escape cancels. Shows the new title while it saves.
+ */
 export function EditTitle(props: { readonly issue: Issue }) {
 	const queryClient = useQueryClient();
 	const issue = props.issue;
 	const [title, setOptimisticTitle] = useOptimistic(issue.title);
 	const [saveError, save, isSaving] = useActionState<string | null, FormData>(
 		async (_previous, formData) => {
-			const next = String(formData.get("title") ?? "");
+			const next = String(formData.get("title") ?? "").trim();
+			if (next === issue.title) {
+				return null;
+			}
+			if (next === "") {
+				return "Title can't be empty";
+			}
 			setOptimisticTitle(next);
 			try {
 				await parseResponse(
@@ -33,24 +41,44 @@ export function EditTitle(props: { readonly issue: Issue }) {
 	);
 
 	return (
-		<div className="grid gap-3">
-			<h1 className="text-2xl font-semibold">
-				{title} <span className="text-muted-foreground">#{issue.id}</span>
-			</h1>
-			<form action={save} className="flex gap-2">
-				<Input
+		<form action={save} className="grid gap-1">
+			<div className="flex items-baseline gap-2">
+				<input
 					aria-label="Title"
-					defaultValue={issue.title}
-					key={issue.title}
+					className={cn(
+						"min-w-0 flex-1 rounded-md bg-transparent px-1.5 py-0.5 text-2xl font-semibold tracking-tight outline-none",
+						"-mx-1.5 transition-[box-shadow,background-color]",
+						"hover:bg-muted/60 focus:bg-muted/60 focus-visible:ring-[3px] focus-visible:ring-ring/50",
+						isSaving && "opacity-70",
+					)}
+					defaultValue={title}
+					disabled={isSaving}
+					key={title}
 					name="title"
+					onBlur={(event) => {
+						if (event.currentTarget.value.trim() === issue.title) {
+							return;
+						}
+						event.currentTarget.form?.requestSubmit();
+					}}
+					onKeyDown={(event) => {
+						if (event.key === "Enter") {
+							event.preventDefault();
+							event.currentTarget.blur();
+						}
+						if (event.key === "Escape") {
+							event.currentTarget.value = issue.title;
+							event.currentTarget.blur();
+						}
+					}}
 				/>
-				<Button disabled={isSaving} type="submit" variant="secondary">
-					{isSaving ? "Saving…" : "Rename"}
-				</Button>
-			</form>
+				<span className="shrink-0 text-lg text-muted-foreground">
+					#{issue.id}
+				</span>
+			</div>
 			{saveError === null ? null : (
 				<p className="text-sm text-destructive">{saveError}</p>
 			)}
-		</div>
+		</form>
 	);
 }
