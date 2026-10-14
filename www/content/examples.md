@@ -1,16 +1,16 @@
 ---
 title: Examples
-description: The same issue tracker built on TanStack Start and on the Next.js App Router, ready to open in CodeSandbox.
+description: The same issue tracker built on TanStack Start and on the Next.js App Router, running live and ready to open in CodeSandbox.
 section: Getting started
 order: 5
 ---
 
-The repository has one app built twice: a small issue tracker on [TanStack Start](https://tanstack.com/start) and on the [Next.js App Router](https://nextjs.org/docs/app), so the two integrations can be compared side by side. Each opens in CodeSandbox, which runs it on a cloud VM.
+The repository has one app built twice: a small issue tracker on [TanStack Start](https://tanstack.com/start) and on the [Next.js App Router](https://nextjs.org/docs/app), so the two integrations can be compared side by side. Each runs live on Vercel, and opens in CodeSandbox, which runs it on a cloud VM.
 
-| Example       | Framework          | Source                                                                                           | Try it                                                                                                                                                                      |
-| ------------- | ------------------ | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Issue tracker | TanStack Start     | [`examples/tanstack-start`](https://github.com/KATT/raf-query/tree/main/examples/tanstack-start) | [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/tanstack-start?file=/apps/tanstack-start/src/routes/issues.index.tsx) |
-| Issue tracker | Next.js App Router | [`examples/nextjs`](https://github.com/KATT/raf-query/tree/main/examples/nextjs)                 | [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/nextjs?file=/apps/nextjs/src/app/issues/page.tsx)                     |
+| Example       | Framework          | Source                                                                                           | Live                                                                           | Try it                                                                                                                                                                      |
+| ------------- | ------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Issue tracker | TanStack Start     | [`examples/tanstack-start`](https://github.com/KATT/raf-query/tree/main/examples/tanstack-start) | [tanstack-start.raf-query.katt.dev](https://tanstack-start.raf-query.katt.dev) | [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/tanstack-start?file=/apps/tanstack-start/src/routes/issues.index.tsx) |
+| Issue tracker | Next.js App Router | [`examples/nextjs`](https://github.com/KATT/raf-query/tree/main/examples/nextjs)                 | [nextjs.raf-query.katt.dev](https://nextjs.raf-query.katt.dev)                 | [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/nextjs?file=/apps/nextjs/src/app/issues/page.tsx)                     |
 
 ## What they cover
 

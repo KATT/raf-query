@@ -247,7 +247,7 @@ Effect.gen(function* () {
 				stdio: "ignore",
 			}),
 		);
-		const assets = path.join(dir, "dist/client/assets");
+		const assets = path.join(dir, ".output/public/assets");
 		const files = (yield* fs.readDirectory(assets)).filter((file) =>
 			file.endsWith(".js"),
 		);
