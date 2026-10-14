@@ -1,6 +1,6 @@
-import { fetchTodo } from "../../_twoslash.ts";
-// #region queries
 import { queryOptions } from "@raf-query/react";
+
+import { fetchTodo } from "./api";
 
 export function todosQuery() {
 	return queryOptions({
@@ -20,4 +20,3 @@ export function todoQuery(input: { id: number }) {
 		staleTime: 30_000,
 	});
 }
-// #endregion

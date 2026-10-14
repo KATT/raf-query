@@ -27,7 +27,7 @@ Create one `QueryClient` per router. On the server, `getRouter` runs once per re
 
 A query is a **factory**: a function of at most one argument that returns `queryOptions(...)`. The argument is the query's input. Loaders and components call the same factory, so the data's type flows end to end.
 
-<<< ./quick-start/src/queries.ts#queries
+<<< ./quick-start/src/queries.ts
 
 ## 3. Start it in the loader
 

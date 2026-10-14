@@ -1,7 +1,7 @@
 import { useQueryClient } from "@raf-query/react";
 
-import { createTodo } from "../../../_twoslash.ts";
-import { todosQuery } from "../queries.ts";
+import { createTodo } from "../api";
+import { todosQuery } from "../queries";
 
 // #region add-todo
 export function AddTodo() {

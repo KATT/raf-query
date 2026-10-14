@@ -1,10 +1,10 @@
+// #region loader
 import { type QueryHandle, useQuery } from "@raf-query/react";
+import { createFileRoute } from "@tanstack/react-router";
 import { Suspense, use } from "react";
 
-import { createFileRoute } from "../../../_twoslash.ts";
-import { todosQuery } from "../queries.ts";
+import { todosQuery } from "../queries";
 
-// #region loader
 export const Route = createFileRoute("/todos")({
 	loader: (args) => ({
 		todos: args.context.queryClient.prefetch(todosQuery),
