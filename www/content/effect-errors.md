@@ -19,11 +19,7 @@ import { IssueApi } from "./_effect.ts";
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
 		queryKey: ["issue", input.id],
-		queryFn: () =>
-			Effect.gen(function* () {
-				const api = yield* IssueApi;
-				return yield* api.get(input.id);
-			}),
+		queryFn: () => IssueApi.use((api) => api.get(input.id)),
 	});
 }
 
@@ -42,21 +38,21 @@ issue;
 
 ## Catch it in the queryFn
 
-Catching a failure in the `queryFn` takes it out of the query's error type. That's the place for failures the page treats as data, like a missing assignee that renders as "Unassigned":
+Catching a failure in the `queryFn` takes it out of the query's error type. That's the place for failures the page treats as data. Use Effect's `Option`, not `null`:
 
 ```ts twoslash
 import { type ErrorOf, queryOptions } from "@raf-query/react";
-import { Effect, Schema } from "effect";
+import { Effect, Option, Schema } from "effect";
 import { IssueApi, Unauthorized } from "./_effect.ts";
 // ---cut---
 export function assigneeQuery(input: { issueId: number }) {
 	return queryOptions({
 		queryKey: ["issue", input.issueId, "assignee"],
 		queryFn: () =>
-			Effect.gen(function* () {
-				const api = yield* IssueApi;
-				return yield* api.assignee(input.issueId);
-			}).pipe(Effect.catchTag("IssueNotFound", () => Effect.succeed(null))),
+			IssueApi.use((api) => api.assignee(input.issueId)).pipe(
+				Effect.map(Option.some),
+				Effect.catchTag("IssueNotFound", () => Effect.succeed(Option.none())),
+			),
 		retry: (failures, error) =>
 			failures <= 3 && !Schema.is(Unauthorized)(error),
 	});
@@ -66,10 +62,11 @@ type AssigneeError = ErrorOf<typeof assigneeQuery>;
 //   ^?
 ```
 
-The caught case is now part of the data, so the component that reads the query handles it like any other value:
+The caught case is now part of the data. In React, `use()` gives you the `Option`, and you match it:
 
 ```tsx twoslash
 import { type QueryHandle, useQuery } from "@raf-query/react";
+import { Option } from "effect";
 import { use } from "react";
 import { assigneeQuery } from "./_effect.ts";
 // ---cut---
@@ -77,7 +74,10 @@ function Assignee(props: { handle: QueryHandle<typeof assigneeQuery> }) {
 	const [assigneePromise] = useQuery(assigneeQuery, props.handle);
 	const assignee = use(assigneePromise);
 	//    ^?
-	return <p>{assignee === null ? "Unassigned" : assignee.name}</p>;
+	return Option.match(assignee, {
+		onNone: () => <p>Unassigned</p>,
+		onSome: (user) => <p>{user.name}</p>,
+	});
 }
 ```
 
@@ -126,10 +126,10 @@ const Route = IssueRoute;
 // ---cut---
 const rename = Effect.fn("rename")(
 	function* (input: { readonly id: number; readonly title: string }) {
-		const api = yield* IssueApi;
-		const cache = yield* QueryCache.QueryCache;
-		yield* api.rename(input);
-		yield* cache.invalidate({ queryKey: ["issue", input.id] });
+		yield* IssueApi.use((api) => api.rename(input));
+		yield* QueryCache.QueryCache.use((cache) =>
+			cache.invalidate({ queryKey: ["issue", input.id] }),
+		);
 		return null;
 	},
 	Effect.catchTags({

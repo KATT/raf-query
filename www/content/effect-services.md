@@ -32,11 +32,7 @@ const IssueApiLive = Layer.succeed(IssueApi, { get: IssueRepo.get });
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
 		queryKey: ["issue", input.id],
-		queryFn: () =>
-			Effect.gen(function* () {
-				const api = yield* IssueApi;
-				return yield* api.get(input.id);
-			}),
+		queryFn: () => IssueApi.use((api) => api.get(input.id)),
 	});
 }
 
@@ -87,10 +83,10 @@ const queryClient = new QueryClient({ layer: IssueApiLive });
 // ---cut---
 await queryClient.runPromise(
 	Effect.gen(function* () {
-		const api = yield* IssueApi;
-		const cache = yield* QueryCache.QueryCache;
-		yield* api.rename({ id: 1, title: "Renamed" });
-		yield* cache.invalidate({ queryKey: ["issue", 1] });
+		yield* IssueApi.use((api) => api.rename({ id: 1, title: "Renamed" }));
+		yield* QueryCache.QueryCache.use((cache) =>
+			cache.invalidate({ queryKey: ["issue", 1] }),
+		);
 	}),
 );
 ```
@@ -159,13 +155,12 @@ export function RenameForm(props: { issue: Issue }) {
 		<form
 			action={(formData) =>
 				queryClient.runPromise(
-					Effect.gen(function* () {
-						const api = yield* IssueApi;
-						yield* api.rename({
+					IssueApi.use((api) =>
+						api.rename({
 							id: props.issue.id,
 							title: String(formData.get("title")),
-						});
-					}).pipe(Effect.ignore),
+						}),
+					).pipe(Effect.ignore),
 				)
 			}
 		>

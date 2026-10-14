@@ -493,6 +493,18 @@
 			}
 		},
 		{
+			// Effect's `Context.Service.use` is not a React hook; the rules-of-hooks
+			// plugin matches any call whose property is named `use`.
+			"files": [
+				"examples/tanstack-start-effect/src/**/*.{ts,tsx}",
+				"www/content/_effect.ts"
+			],
+			"rules": {
+				"react-hooks/rules-of-hooks": "off",
+				"react/rules-of-hooks": "off"
+			}
+		},
+		{
 			// TanStack Router infers loader/search/context types from option key
 			// order (`validateSearch` before `loader`, `loader` before `head`).
 			"files": [

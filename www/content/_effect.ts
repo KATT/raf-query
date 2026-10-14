@@ -10,7 +10,7 @@ import {
 	type QueryHandle,
 	queryOptions,
 } from "@raf-query/react";
-import { Context, Effect, type Layer, Schema } from "effect";
+import { Context, Effect, type Layer, Option, Schema } from "effect";
 import type { ReactNode } from "react";
 
 export interface Issue {
@@ -61,11 +61,7 @@ export declare const IssueApiLive: Layer.Layer<IssueApi>;
 
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
-		queryFn: () =>
-			Effect.gen(function* () {
-				const api = yield* IssueApi;
-				return yield* api.get(input.id);
-			}),
+		queryFn: () => IssueApi.use((api) => api.get(input.id)),
 		queryKey: ["issue", input.id],
 	});
 }
@@ -73,20 +69,20 @@ export function issueQuery(input: { id: number }) {
 export function assigneeQuery(input: { issueId: number }) {
 	return queryOptions({
 		queryFn: () =>
-			Effect.gen(function* () {
-				const api = yield* IssueApi;
-				return yield* api.assignee(input.issueId);
-			}).pipe(Effect.catchTag("IssueNotFound", () => Effect.succeed(null))),
+			IssueApi.use((api) => api.assignee(input.issueId)).pipe(
+				Effect.map(Option.some),
+				Effect.catchTag("IssueNotFound", () => Effect.succeed(Option.none())),
+			),
 		queryKey: ["issue", input.issueId, "assignee"],
 	});
 }
 
 export const rename = Effect.fn("rename")(
 	function* (input: { readonly id: number; readonly title: string }) {
-		const api = yield* IssueApi;
-		const cache = yield* QueryCache.QueryCache;
-		yield* api.rename(input);
-		yield* cache.invalidate({ queryKey: ["issue", input.id] });
+		yield* IssueApi.use((api) => api.rename(input));
+		yield* QueryCache.QueryCache.use((cache) =>
+			cache.invalidate({ queryKey: ["issue", input.id] }),
+		);
 		return null;
 	},
 	Effect.catchTags({
