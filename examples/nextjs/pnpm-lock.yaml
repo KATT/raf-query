@@ -182,8 +182,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@raf-query/react':
-        specifier: 0.4.1
-        version: 0.4.1(effect@4.0.3)(react@19.3.0)
+        specifier: 0.4.2
+        version: 0.4.2(effect@4.0.4)(react@19.3.0)
       lucide-react:
         specifier: 1.55.0
         version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
@@ -1262,14 +1262,14 @@ packages:
   '@radix-ui/rect@1.1.3':
     resolution: {integrity: sha512-JtyZR+mqgBibTo8xea3B6ZRmzZiM/YeVBtUkas6zMuXjAlfIFIW2FgqeM9eLyvEaYX66vr6DJMK+4U6LV0KhNw==}
 
-  '@raf-query/core@0.4.1':
-    resolution: {integrity: sha512-yZxDmIjW6znf0G0HILp2X8vkk4xb84WgEEWtLgMtc4tvLgzvTBNOplE2A8xdfHZmxlGp+UqdNFbNY1AtzwcRow==}
+  '@raf-query/core@0.4.2':
+    resolution: {integrity: sha512-CkgOR0uH1fZFlHYdELmjnoIxdbltlrXmA8dmYxALku3g1h3XBeIvSSse10gkOR2f/jJYd7h/XJPTUjxJV/i7Zw==}
     engines: {node: '>=22'}
     peerDependencies:
       effect: ^4.0.0
 
-  '@raf-query/react@0.4.1':
-    resolution: {integrity: sha512-N5xl/m7QBg8qE3KN3Ahh9oXbBwl8Om0l8+HDVis84z/OcWHOzvdco59Riyi52LFqUKP0TcgHW/09HDWvlt0VxQ==}
+  '@raf-query/react@0.4.2':
+    resolution: {integrity: sha512-CbZMd+ARaggxlLYvoqqVy6HLQpkkxj2YJCdCG6eg4T9IAE7Lj+sWSrKoizVpf2O8EZWOR1c/YKGNxzhbbQFPRg==}
     engines: {node: '>=22'}
     peerDependencies:
       '@tanstack/react-router': ^1.170.0
@@ -1543,8 +1543,8 @@ packages:
   detect-node-es@1.1.0:
     resolution: {integrity: sha512-ypdmJU/TbBby2Dxibuv7ZLW3Bs1QEmM7nHjEANfohJLvE0XVujisn1qPJcZxg+qDucsr+bP6fLD1rPS3AhJ7EQ==}
 
-  effect@4.0.3:
-    resolution: {integrity: sha512-LoWn/Uwwx0JjHSDmBAAahx8sB+klzM6vsZovnbYowBNw6B4QScJLRLBByO61plvNiycx7HPN8FnsWUCu0eXW5w==}
+  effect@4.0.4:
+    resolution: {integrity: sha512-Sr50OeVSC3M5UkoUYUhFf3EULryhGaZZUf6OzDHTvaznOw7HRlxOKdF3/4nvQXHL22StOyMG3Cvo8Bt7xUp+Ng==}
 
   enhanced-resolve@5.26.0:
     resolution: {integrity: sha512-9vhedylFonb2YGogzUKX6+Ja72gOJbN1QHAqdrvqLwhdl/QWbKopzoUC9EbQNVsAns/bx/4uyqalrQAoy1IByw==}
@@ -2765,14 +2765,14 @@ snapshots:
 
   '@radix-ui/rect@1.1.3': {}
 
-  '@raf-query/core@0.4.1(effect@4.0.3)':
+  '@raf-query/core@0.4.2(effect@4.0.4)':
     dependencies:
-      effect: 4.0.3
+      effect: 4.0.4
 
-  '@raf-query/react@0.4.1(effect@4.0.3)(react@19.3.0)':
+  '@raf-query/react@0.4.2(effect@4.0.4)(react@19.3.0)':
     dependencies:
-      '@raf-query/core': 0.4.1(effect@4.0.3)
-      effect: 4.0.3
+      '@raf-query/core': 0.4.2(effect@4.0.4)
+      effect: 4.0.4
       react: 19.3.0
 
   '@standard-schema/spec@1.1.0': {}
@@ -2948,7 +2948,7 @@ snapshots:
 
   detect-node-es@1.1.0: {}
 
-  effect@4.0.3: {}
+  effect@4.0.4: {}
 
   enhanced-resolve@5.26.0:
     dependencies:
