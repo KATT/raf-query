@@ -4,12 +4,13 @@ import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import { createRouter } from "@tanstack/react-router";
 
 import { routeTree } from "./routeTree.gen.ts";
+import { readPrefetch, toDefaultPreload } from "./settings.ts";
 
 export function getRouter() {
 	const queryClient = new QueryClient({ defaults: { staleTime: 5000 } });
 	const router = createRouter({
 		context: { queryClient },
-		defaultPreload: "intent",
+		defaultPreload: toDefaultPreload(readPrefetch()),
 		// The query cache decides what's fresh; loaders always run and dedupe there.
 		defaultPreloadStaleTime: 0,
 		routeTree,

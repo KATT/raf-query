@@ -17,9 +17,13 @@ export * from "./types.ts";
 export const ISSUES_PER_PAGE = 10;
 export const COMMENTS_PER_PAGE = 4;
 
+/** The current request's latency in milliseconds, if it chose one. */
+export type LatencySource = () => Promise<number | undefined>;
+
 declare global {
 	/** Survives dev-server module reloads, so edits aren't lost on save. */
 	var exampleDbStore: Store | undefined;
+	var exampleDbLatencySource: LatencySource | undefined;
 }
 
 function store(): Store {
@@ -27,9 +31,25 @@ function store(): Store {
 	return globalThis.exampleDbStore;
 }
 
-/** Every call waits like a real database round trip: `DB_LATENCY_MS` ± 50%. */
+/**
+ * Lets each request pick its latency, such as from the `LATENCY_COOKIE` the
+ * settings menu writes. Each app sets it once, where it can read the request.
+ */
+export function setLatencySource(source: LatencySource) {
+	globalThis.exampleDbLatencySource = source;
+}
+
+/**
+ * Every call waits like a real database round trip: the request's latency, or
+ * `DB_LATENCY_MS`, ± 50%.
+ */
 async function latency() {
-	const base = Number(process.env["DB_LATENCY_MS"] ?? 400);
+	const base =
+		(await globalThis.exampleDbLatencySource?.()) ??
+		Number(process.env["DB_LATENCY_MS"] ?? 400);
+	if (base === 0) {
+		return;
+	}
 	await new Promise((resolve) => {
 		setTimeout(resolve, base * (0.5 + Math.random()));
 	});
