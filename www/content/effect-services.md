@@ -101,6 +101,39 @@ await queryClient.dispose();
 
 The client's type is `QueryClient<TServices>`, and its verbs accept only factories whose services the layer provides. Any other factory is a type error. `dispose()` interrupts every request and runs the layer's finalizers.
 
+`queryClient.runPromise(effect)` runs an app's own Effect (a loader, a form action) with the cache and the layer's services, so it can `yield*` both:
+
+```ts twoslash
+import { QueryCache, QueryClient } from "@raf-query/react";
+import { Context, Effect, Layer } from "effect";
+declare interface Issue {
+	readonly id: number;
+	readonly title: string;
+}
+class IssueApi extends Context.Service<
+	IssueApi,
+	{
+		readonly rename: (input: {
+			readonly id: number;
+			readonly title: string;
+		}) => Effect.Effect<Issue>;
+	}
+>()("app/IssueApi") {}
+declare const IssueApiLive: Layer.Layer<IssueApi>;
+const queryClient = new QueryClient({ layer: IssueApiLive });
+// ---cut---
+await queryClient.runPromise(
+	Effect.gen(function* () {
+		const api = yield* IssueApi;
+		const cache = yield* QueryCache.QueryCache;
+		yield* api.rename({ id: 1, title: "Renamed" });
+		yield* cache.invalidate({ queryKey: ["issue", 1] });
+	}),
+);
+```
+
+Like `Effect.runPromise`, it rejects with the Effect's failure or defect. An Effect that needs a service the layer doesn't provide is a type error. [Typed errors](./effect-errors.md) covers catching the failures first.
+
 ### In React
 
 `QueryClientProvider` takes a client with any services. A hook can't know which ones, so `useQueryClient()` returns a `QueryClient<unknown>`, whose verbs accept any factory, and `useQuery` reads any factory. A request then fails with a defect if the client's layer lacks a service it needs.

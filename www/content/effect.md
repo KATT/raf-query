@@ -37,7 +37,7 @@ export function issueQuery(input: { id: number }) {
 }
 ```
 
-- **Typed errors.** The Effect's error type is the query's: `qc.effect.fetch(issueQuery, input)` fails with `IssueNotFound | Query.CancelledError`. `ErrorOf<TFactory>` names it; it's `unknown` for promises.
+- **Typed errors.** The Effect's error type is the query's: `qc.effect.fetch(issueQuery, input)` fails with `IssueNotFound | Query.CancelledError`. `ErrorOf<TFactory>` names it; it's `unknown` for promises. [Typed errors](./effect-errors.md) shows where to catch them, and what happens when you don't.
 - **Defects aren't retried.** A `queryFn` that throws instead of returning, or an Effect that dies, is a defect: it fails the request without retrying.
 - **Interruption.** Cancelling the request interrupts the fiber, so its finalizers run. No `AbortSignal` needed.
 - **Schedules.** `retry` accepts a `Schedule` as well as a count or predicate.

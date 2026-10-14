@@ -26,6 +26,7 @@ const queryClient = new QueryClient(config);
 | `reset(factory, input)` / `reset(filter)`           | Drop data and errors; read queries suspend and refetch. Resolves when they settle                                               |
 | `remove(factory, input)` / `remove(filter)`         | Remove entries and abort their requests                                                                                         |
 | `effect`                                            | The [Effect](./effect.md) `QueryCache` behind the client                                                                        |
+| `runPromise(effect)`                                | Run an Effect with `QueryCache` and the layer's services, for loaders and actions. [Typed errors](./effect-errors.md)           |
 | `subscribe(listener)`                               | Cache events: `added`, `updated`, `observers` (a reader subscribed or left), `removed`, and `failed` (with the `error`)         |
 | `isFetching(filter?)`                               | How many entries have a request in flight, optionally only those matching `{ queryKey, exact? }`                                |
 | `getAll()`, `getQuery(factory, input?)`             | Cache entries, for devtools and integrations                                                                                    |
