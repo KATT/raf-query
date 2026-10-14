@@ -1,6 +1,12 @@
 "use client";
 
-import { LATENCY_COOKIE, latencyOptions } from "@examples/db/types";
+import {
+	DEFAULT_LATENCY_MS,
+	LATENCY_COOKIE,
+	latencyOptions,
+	parseLatency,
+} from "@examples/db/types";
+import { Button } from "@examples/ui/components/button";
 import {
 	NativeSelect,
 	NativeSelectOption,
@@ -15,6 +21,8 @@ import {
 } from "react";
 
 import {
+	clearCookie,
+	DEFAULT_PREFETCH,
 	parsePrefetch,
 	type Prefetch,
 	PREFETCH_COOKIE,
@@ -25,7 +33,7 @@ import {
 const PrefetchContext = createContext<{
 	readonly prefetch: Prefetch;
 	readonly setPrefetch: (prefetch: Prefetch) => void;
-}>({ prefetch: "auto", setPrefetch: () => {} });
+}>({ prefetch: DEFAULT_PREFETCH, setPrefetch: () => {} });
 
 /** Holds the prefetch setting, starting from the value in its cookie. */
 export function SettingsProvider(props: {
@@ -41,9 +49,11 @@ export function SettingsProvider(props: {
 }
 
 /** Settings for trying the app under different conditions. */
-export function Settings(props: { readonly latency: number }) {
+export function Settings(props: { readonly latency: number | undefined }) {
 	const settings = use(PrefetchContext);
 	const [latency, setLatency] = useState(props.latency);
+	const changed =
+		latency !== undefined || settings.prefetch !== DEFAULT_PREFETCH;
 
 	return (
 		<div className="flex items-center gap-4 text-sm">
@@ -70,10 +80,10 @@ export function Settings(props: { readonly latency: number }) {
 				<NativeSelect
 					onChange={(event) => {
 						writeCookie(LATENCY_COOKIE, event.target.value);
-						setLatency(Number(event.target.value));
+						setLatency(parseLatency(event.target.value));
 					}}
 					size="sm"
-					value={latency}
+					value={latency ?? DEFAULT_LATENCY_MS}
 				>
 					{latencyOptions.map((option) => (
 						<NativeSelectOption key={option.ms} value={option.ms}>
@@ -82,6 +92,19 @@ export function Settings(props: { readonly latency: number }) {
 					))}
 				</NativeSelect>
 			</label>
+			<Button
+				disabled={!changed}
+				onClick={() => {
+					clearCookie(PREFETCH_COOKIE);
+					clearCookie(LATENCY_COOKIE);
+					setLatency(undefined);
+					settings.setPrefetch(DEFAULT_PREFETCH);
+				}}
+				size="sm"
+				variant="ghost"
+			>
+				Reset
+			</Button>
 		</div>
 	);
 }

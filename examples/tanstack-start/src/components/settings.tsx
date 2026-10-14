@@ -1,4 +1,10 @@
-import { LATENCY_COOKIE, latencyOptions } from "@examples/db/types";
+import {
+	DEFAULT_LATENCY_MS,
+	LATENCY_COOKIE,
+	latencyOptions,
+	parseLatency,
+} from "@examples/db/types";
+import { Button } from "@examples/ui/components/button";
 import {
 	NativeSelect,
 	NativeSelectOption,
@@ -6,6 +12,8 @@ import {
 import { useState } from "react";
 
 import {
+	clearCookie,
+	DEFAULT_PREFETCH,
 	parsePrefetch,
 	type Prefetch,
 	PREFETCH_COOKIE,
@@ -19,7 +27,8 @@ export function Settings(props: {
 	readonly onPrefetchChange: (prefetch: Prefetch) => void;
 	readonly prefetch: Prefetch;
 }) {
-	const [latency, setLatency] = useState<number>(readLatency);
+	const [latency, setLatency] = useState(readLatency);
+	const changed = latency !== undefined || props.prefetch !== DEFAULT_PREFETCH;
 
 	return (
 		<div className="flex items-center gap-4 text-sm">
@@ -46,10 +55,10 @@ export function Settings(props: {
 				<NativeSelect
 					onChange={(event) => {
 						writeCookie(LATENCY_COOKIE, event.target.value);
-						setLatency(Number(event.target.value));
+						setLatency(parseLatency(event.target.value));
 					}}
 					size="sm"
-					value={latency}
+					value={latency ?? DEFAULT_LATENCY_MS}
 				>
 					{latencyOptions.map((option) => (
 						<NativeSelectOption key={option.ms} value={option.ms}>
@@ -58,6 +67,19 @@ export function Settings(props: {
 					))}
 				</NativeSelect>
 			</label>
+			<Button
+				disabled={!changed}
+				onClick={() => {
+					clearCookie(PREFETCH_COOKIE);
+					clearCookie(LATENCY_COOKIE);
+					setLatency(undefined);
+					props.onPrefetchChange(DEFAULT_PREFETCH);
+				}}
+				size="sm"
+				variant="ghost"
+			>
+				Reset
+			</Button>
 		</div>
 	);
 }

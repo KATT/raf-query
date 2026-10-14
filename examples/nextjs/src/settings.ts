@@ -8,13 +8,19 @@ export const prefetchOptions = [
 	{ label: "Off", value: "off" },
 ] as const;
 export type Prefetch = (typeof prefetchOptions)[number]["value"];
+export const DEFAULT_PREFETCH: Prefetch = "auto";
 
 export function parsePrefetch(value: string | undefined): Prefetch {
 	return (
-		prefetchOptions.find((option) => option.value === value)?.value ?? "auto"
+		prefetchOptions.find((option) => option.value === value)?.value ??
+		DEFAULT_PREFETCH
 	);
 }
 
 export function writeCookie(name: string, value: string) {
 	document.cookie = `${name}=${value}; path=/; max-age=31536000; samesite=lax`;
+}
+
+export function clearCookie(name: string) {
+	document.cookie = `${name}=; path=/; max-age=0`;
 }

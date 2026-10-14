@@ -1,4 +1,4 @@
-import { api, parseFound, parseResponse } from "@examples/api/client";
+import { api, parseFound, parseResponse } from "~/api.ts";
 import type { IssueListInput } from "@examples/db/types";
 import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
 import { notFound } from "@tanstack/react-router";

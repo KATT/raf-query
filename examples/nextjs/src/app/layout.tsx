@@ -36,9 +36,7 @@ export default async function RootLayout(props: {
 							</span>
 							<div className="ml-auto">
 								<Settings
-									latency={
-										parseLatency(cookieStore.get(LATENCY_COOKIE)?.value) ?? 400
-									}
+									latency={parseLatency(cookieStore.get(LATENCY_COOKIE)?.value)}
 								/>
 							</div>
 						</nav>

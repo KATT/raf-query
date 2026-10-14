@@ -1,6 +1,6 @@
 "use client";
 
-import { api, parseResponse } from "@examples/api/client";
+import { api, parseResponse } from "~/api.ts";
 import type { Issue } from "@examples/db/types";
 import { Button } from "@examples/ui/components/button";
 import { Input } from "@examples/ui/components/input";
