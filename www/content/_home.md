@@ -5,7 +5,18 @@ section: Project
 order: 0
 ---
 
-```tsx title="src/routes/posts.$slug.tsx"
+```tsx twoslash title="src/routes/posts.$slug.tsx"
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { Suspense, use } from "react";
+import {
+	commentsQuery,
+	createFileRoute,
+	type PostComment,
+	postQuery,
+} from "./_twoslash.ts";
+declare function CommentsSkeleton(): React.ReactNode;
+declare function renderComment(comment: PostComment): React.ReactNode;
+// ---cut---
 export const Route = createFileRoute("/posts/$slug")({
 	loader: async (args) => {
 		const qc = args.context.queryClient;

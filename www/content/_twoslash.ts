@@ -3,7 +3,12 @@
  * app's API and the factories the guides build on. Readers never see this
  * file, only the types it gives the blocks.
  */
-import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
+import {
+	infiniteQueryOptions,
+	type QueryClient,
+	queryOptions,
+} from "@raf-query/react";
+import type { ReactNode } from "react";
 
 export interface Post {
 	readonly body: string;
@@ -36,6 +41,21 @@ export declare function listComments(input: {
 }): Promise<CommentPage>;
 
 export declare function fetchTodo(id: number): Promise<Todo>;
+
+/**
+ * TanStack Router's `createFileRoute`, typed without an app's route tree:
+ * the loader gets the router context and `$slug`, and `useLoaderData`
+ * returns what the loader resolves to.
+ */
+export declare function createFileRoute(
+	path: string,
+): <TLoaderData>(options: {
+	readonly component: () => ReactNode;
+	readonly loader: (args: {
+		readonly context: { readonly queryClient: QueryClient };
+		readonly params: { readonly slug: string };
+	}) => Promise<TLoaderData> | TLoaderData;
+}) => { useLoaderData(): TLoaderData };
 
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
