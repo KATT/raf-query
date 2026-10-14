@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.6.0](https://github.com/KATT/raf-query/compare/0.5.3...0.6.0) (2026-10-14)
+
+### ⚠ BREAKING CHANGES
+
+- **core:** LoadOptions takes no type argument, and QueryCache.LoadArgs is gone.
+
+- **testing:** render in an async act so suspended trees resume ([#78](https://github.com/KATT/raf-query/issues/78)) ([c706b9d](https://github.com/KATT/raf-query/commit/c706b9db0d3ba3ea2d5b3fd1e21dc8e1fe315b82))
+
+### Features
+
+- **core:** ssr: false runs a query in the browser only ([#77](https://github.com/KATT/raf-query/issues/77)) ([22c47bd](https://github.com/KATT/raf-query/commit/22c47bdad9da2e9e84728017db3dde636c5d4113))
+
+### Bug Fixes
+
+- **core:** infer generic factory makers passed inline to a verb ([#76](https://github.com/KATT/raf-query/issues/76)) ([f0616f7](https://github.com/KATT/raf-query/commit/f0616f7cd4288fb4a00e784f6d94dc3880d19a39))
+- **core:** keep data written while a page loads ([#75](https://github.com/KATT/raf-query/issues/75)) ([d1b8ae5](https://github.com/KATT/raf-query/commit/d1b8ae560540cea345dad1008f8b4d8a467f48aa))
+- **react:** let beforeLoad return handles in TanStack Start route context ([#74](https://github.com/KATT/raf-query/issues/74)) ([70c2121](https://github.com/KATT/raf-query/commit/70c2121a1926b4045049e6d9bfe56778262be42f))
+
 ## [0.5.3](https://github.com/KATT/raf-query/compare/0.5.2...0.5.3) (2026-10-14)
 
 - compare prefetch, ensure and fetch in the starting queries demo ([#73](https://github.com/KATT/raf-query/issues/73)) ([b26a65e](https://github.com/KATT/raf-query/commit/b26a65e3e003f18308ce456646eba1d3f50c1357))
