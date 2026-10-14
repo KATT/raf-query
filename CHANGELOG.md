@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.0](https://github.com/KATT/raf-query/compare/0.4.5...0.5.0) (2026-10-14)
+
+### ⚠ BREAKING CHANGES
+
+- type options by a bag instead of positional type arguments ([#69](https://github.com/KATT/raf-query/issues/69))
+
+### Features
+
+- type options by a bag instead of positional type arguments ([#69](https://github.com/KATT/raf-query/issues/69)) ([df7ef81](https://github.com/KATT/raf-query/commit/df7ef816d33039166686cfe1113333bb6c444a27))
+
 ## [0.4.5](https://github.com/KATT/raf-query/compare/0.4.4...0.4.5) (2026-10-14)
 
 - trim the READMEs, give each package its own, and warn that raf-query is early on the docs site ([#70](https://github.com/KATT/raf-query/issues/70)) ([2c06462](https://github.com/KATT/raf-query/commit/2c0646291f5fc45d2d64bc43c52f3e089c46ce05))
