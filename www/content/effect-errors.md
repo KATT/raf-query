@@ -1,11 +1,13 @@
 ---
 title: Typed errors
-description: An Effect queryFn's error type is the query's. Every Effect verb fails with it, so you catch what you expect with catchTag, and the rest throws to React's error boundaries.
+description: An Effect queryFn's error type is the query's. useQuery returns a Result so you match failures inline; catchTag in loaders and actions; or throwOnError to an error boundary.
 section: Effect
 order: 3
 ---
 
-An Effect `queryFn`'s error type is the query's error type. It flows through the factory: `ErrorOf<TFactory>` names it, and every verb on the cache fails with it. Catch the failures you expect with `Effect.catchTag`, and the type tells you what's left. Whatever you don't catch throws, as a rejected promise does, and React shows it in an error boundary.
+An Effect `queryFn`'s error type is the query's error type. It flows through the factory: `ErrorOf<TFactory>` names it, and every verb on the cache fails with it. Catch the failures you expect with `Effect.catchTag`, and the type tells you what's left.
+
+In React, a client with a `layer` defaults to `throwOnError: false`: `useQuery` gives you a `Result<Data, ErrorOf>` so you match failures inline with Effect's `Result`. Promise `queryFn`s keep a rejecting promise — their `ErrorOf` is `unknown`, so a `Result` would not help.
 
 The examples use the issue tracker from [Using Effect](./effect.md#the-whole-picture): an `IssueApi` service whose methods fail with `IssueNotFound`, `Unauthorized` and `EmptyTitle`.
 
@@ -38,46 +40,42 @@ issue;
 
 ## In React
 
-Success stays success: `use()` yields `User`, not `User | null`. Failures throw to the nearest error boundary. Narrow them with the same tagged-error schemas that built `ErrorOf` — React can't name which query threw, so the boundary's error is `unknown`:
+With a `layer`, the client defaults to `throwOnError: false`. `useQuery` then returns a thenable of `Result<Data, ErrorOf>` — `use()` suspends while pending and never throws. Match the Result:
 
 ```tsx twoslash
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { CatchBoundary } from "@tanstack/react-router";
-import { Schema } from "effect";
+import { Result } from "effect";
 import { Suspense, use } from "react";
-import { assigneeQuery, IssueNotFound, Unauthorized } from "./_effect.ts";
+import { assigneeQuery } from "./_effect.ts";
 // ---cut---
 function Assignee(props: { handle: QueryHandle<typeof assigneeQuery> }) {
-	const [assigneePromise] = useQuery(assigneeQuery, props.handle);
+	const [assigneePromise, controls] = useQuery(assigneeQuery, props.handle);
 	const assignee = use(assigneePromise);
 	//    ^?
-	return <p>{assignee.name}</p>;
+	return Result.match(assignee, {
+		onFailure: (error) =>
+			error._tag === "IssueNotFound" ? (
+				<p>Unassigned</p>
+			) : (
+				<div role="alert">
+					<p>Couldn't load the assignee.</p>
+					<button onClick={() => void controls.refetch()}>Try again</button>
+				</div>
+			),
+		onSuccess: (user) => <p>{user.name}</p>,
+	});
 }
 
 function AssigneeSection(props: { handle: QueryHandle<typeof assigneeQuery> }) {
 	return (
-		<CatchBoundary
-			getResetKey={() => props.handle.input.issueId}
-			errorComponent={(boundary) => (
-				<div role="alert">
-					{Schema.is(IssueNotFound)(boundary.error) ? (
-						<p>Unassigned</p>
-					) : Schema.is(Unauthorized)(boundary.error) ? (
-						<p>Sign in to see who's assigned.</p>
-					) : (
-						<p>Couldn't load the assignee.</p>
-					)}
-					<button onClick={boundary.reset}>Try again</button>
-				</div>
-			)}
-		>
-			<Suspense fallback={<p>Loading assignee…</p>}>
-				<Assignee handle={props.handle} />
-			</Suspense>
-		</CatchBoundary>
+		<Suspense fallback={<p>Loading assignee…</p>}>
+			<Assignee handle={props.handle} />
+		</Suspense>
 	);
 }
 ```
+
+Set `throwOnError: true` on the client or on the call to get a rejecting promise again (and throw to an error boundary). That option only exists in the type when `ErrorOf` is typed — promise `queryFn`s always throw.
 
 `retry` and `retryDelay` still get the error as `unknown` (query defaults share them). Narrow with the schema there too:
 
@@ -180,10 +178,10 @@ Leave a tag out of `catchTags` and it stays in the error type: the promise can r
 
 ## Or let it throw
 
-You don't have to catch anything. A failure the Effect leaves uncaught behaves like a rejected promise:
+You don't have to match a `Result`. Set `throwOnError: true` on the client or on the call, and a failure the Effect leaves uncaught behaves like a rejected promise:
 
 - The Promise verbs (`queryClient.fetch`, `ensure`, `runPromise`) reject with the failure itself, the `IssueNotFound` instance, not a wrapper around it.
-- When a query's first load fails, `use()` throws the failure to the nearest error boundary (as above), and resetting the boundary refetches.
+- When a query's first load fails, `use()` throws the failure to the nearest error boundary, and resetting the boundary refetches.
 - A failed background refetch keeps the old data on screen and puts the failure in `controls.error`.
 - A loader that rejects renders the route's `errorComponent`, and an action that rejects throws to the nearest error boundary.
 
@@ -195,7 +193,9 @@ import { Schema } from "effect";
 import { issueQuery, Unauthorized } from "./_effect.ts";
 // ---cut---
 function IssueTitle(props: { handle: EnsuredQueryHandle<typeof issueQuery> }) {
-	const [issue, controls] = useQuery(issueQuery, props.handle);
+	const [issue, controls] = useQuery(issueQuery, props.handle, {
+		throwOnError: true,
+	});
 	return (
 		<header>
 			<h1>{issue.title}</h1>

@@ -2,9 +2,8 @@ import { Avatar, AvatarFallback } from "@examples/ui/components/avatar";
 import { Card, CardContent } from "@examples/ui/components/card";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { CatchBoundary } from "@tanstack/react-router";
-import { Schema } from "effect";
-import { Suspense, use } from "react";
+import { Result, Schema } from "effect";
+import { use } from "react";
 
 import { assigneeQuery } from "~/queries.ts";
 import { IssueNotFound } from "~/rpc.ts";
@@ -16,59 +15,50 @@ function initials(name: string) {
 		.join("");
 }
 
-function AssigneeCardInner(props: {
-	readonly handle: QueryHandle<typeof assigneeQuery>;
-}) {
-	const [userPromise] = useQuery(assigneeQuery, props.handle);
-	const user = use(userPromise);
-	return (
-		<Card className="py-4">
-			<CardContent className="flex items-center gap-3 px-4">
-				<Avatar>
-					<AvatarFallback>{initials(user.name)}</AvatarFallback>
-				</Avatar>
-				<div className="grid">
-					<span className="text-xs text-muted-foreground">Assignee</span>
-					<span className="font-medium">{user.name}</span>
-					<span className="text-xs text-muted-foreground">{user.title}</span>
-				</div>
-			</CardContent>
-		</Card>
-	);
-}
-
 /**
- * Reads the assignee as `User`. A typed `IssueNotFound` (the issue vanished
- * beside a successful detail fetch) renders nothing; anything else retries.
+ * Reads the assignee as `Result<User, …>`. The client's `layer` defaults
+ * `throwOnError` to false, so `use()` never throws — match the Result.
  */
 export function AssigneeCard(props: {
 	readonly handle: QueryHandle<typeof assigneeQuery>;
 }) {
-	return (
-		<CatchBoundary
-			errorComponent={(boundary) =>
-				Schema.is(IssueNotFound)(boundary.error) ? null : (
-					<div role="alert">
-						<p className="text-sm text-destructive">
-							Could not load the assignee.
-						</p>
-						<button
-							className="text-sm underline"
-							onClick={boundary.reset}
-							type="button"
-						>
-							Try again
-						</button>
+	const [userPromise, controls] = useQuery(assigneeQuery, props.handle);
+	const user = use(userPromise);
+	return Result.match(user, {
+		onFailure: (error) =>
+			Schema.is(IssueNotFound)(error) ? null : (
+				<div role="alert">
+					<p className="text-sm text-destructive">
+						Could not load the assignee.
+					</p>
+					<button
+						className="text-sm underline"
+						onClick={() => {
+							void controls.refetch();
+						}}
+						type="button"
+					>
+						Try again
+					</button>
+				</div>
+			),
+		onSuccess: (assignee) => (
+			<Card className="py-4">
+				<CardContent className="flex items-center gap-3 px-4">
+					<Avatar>
+						<AvatarFallback>{initials(assignee.name)}</AvatarFallback>
+					</Avatar>
+					<div className="grid">
+						<span className="text-xs text-muted-foreground">Assignee</span>
+						<span className="font-medium">{assignee.name}</span>
+						<span className="text-xs text-muted-foreground">
+							{assignee.title}
+						</span>
 					</div>
-				)
-			}
-			getResetKey={() => props.handle.input.issueId}
-		>
-			<Suspense fallback={<AssigneeCardSkeleton />}>
-				<AssigneeCardInner handle={props.handle} />
-			</Suspense>
-		</CatchBoundary>
-	);
+				</CardContent>
+			</Card>
+		),
+	});
 }
 
 export function AssigneeCardSkeleton() {

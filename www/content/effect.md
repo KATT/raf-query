@@ -137,14 +137,13 @@ Loaders use the same Promise verbs as a non-Effect app. Prefetch is sync; `ensur
 
 ```tsx twoslash title="src/routes/issues.$issueId.tsx"
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { CatchBoundary, notFound } from "@tanstack/react-router";
-import { Effect, Schema } from "effect";
+import { notFound } from "@tanstack/react-router";
+import { Effect, Result } from "effect";
 import { Suspense, use, type ReactNode } from "react";
 import {
 	assigneeQuery,
 	createFileRoute,
 	type Issue,
-	IssueNotFound,
 	issueQuery,
 } from "./_effect.ts";
 declare function RenameForm(props: { readonly issue: Issue }): ReactNode;
@@ -174,45 +173,41 @@ export const Route = createFileRoute("/issues/$issueId")({
 
 function IssuePage() {
 	const loaderData = Route.useLoaderData();
-	const [issue] = useQuery(issueQuery, loaderData.issue); // ensured: the data
+	// Loader handled IssueNotFound; throw any other failure to errorComponent.
+	const [issue] = useQuery(issueQuery, loaderData.issue, {
+		throwOnError: true,
+	});
 	return (
 		<article>
 			<h1>{issue.title}</h1>
 			<RenameForm issue={issue} />
-			<AssigneeSection handle={loaderData.assignee} />
+			<Suspense fallback={<p>Loading assignee…</p>}>
+				<Assignee handle={loaderData.assignee} />
+			</Suspense>
 		</article>
 	);
 }
 
-function AssigneeSection(props: { handle: QueryHandle<typeof assigneeQuery> }) {
-	return (
-		<CatchBoundary
-			getResetKey={() => props.handle.input.issueId}
-			errorComponent={(boundary) =>
-				Schema.is(IssueNotFound)(boundary.error) ? (
-					<p>Unassigned</p>
-				) : (
-					<div role="alert">
-						<p>Couldn't load the assignee.</p>
-						<button onClick={boundary.reset}>Try again</button>
-					</div>
-				)
-			}
-		>
-			<Suspense fallback={<p>Loading assignee…</p>}>
-				<Assignee handle={props.handle} />
-			</Suspense>
-		</CatchBoundary>
-	);
-}
-
 function Assignee(props: { handle: QueryHandle<typeof assigneeQuery> }) {
-	const [assigneePromise] = useQuery(assigneeQuery, props.handle);
+	const [assigneePromise, controls] = useQuery(assigneeQuery, props.handle);
 	const assignee = use(assigneePromise);
 	//    ^?
-	return <p>{assignee.name}</p>;
+	return Result.match(assignee, {
+		onFailure: (error) =>
+			error._tag === "IssueNotFound" ? (
+				<p>Unassigned</p>
+			) : (
+				<div role="alert">
+					<p>Couldn't load the assignee.</p>
+					<button onClick={() => void controls.refetch()}>Try again</button>
+				</div>
+			),
+		onSuccess: (user) => <p>{user.name}</p>,
+	});
 }
 ```
+
+With a `layer`, the client defaults to `throwOnError: false`: Effect `useQuery` returns a `Result` so you can match failures inline ([Typed errors](./effect-errors.md#in-react)). Pass `throwOnError: true` when you want a rejecting promise instead.
 
 A list page that only prefetches never needs `runPromise`:
 

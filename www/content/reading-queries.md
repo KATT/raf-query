@@ -97,6 +97,8 @@ When the cache updates — refetch, invalidation, `setData` — the hook returns
 
 When the **first** load fails, the promise rejects and `use()` throws to the nearest error boundary. Resetting that boundary refetches the query. A failed **background** refetch doesn't throw: the old data stays on screen and `controls.error` holds the error, so the component can show it next to the data. [Retries](./retries.md) has a demo of both.
 
+Effect `queryFn`s can return a typed `Result` in the first tuple slot instead of rejecting — see [Typed errors](./effect-errors.md#in-react).
+
 ## Passing promises down
 
 A component can call the hook with a prefetched handle and hand the promise to a child, so only the child suspends:

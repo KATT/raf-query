@@ -24,6 +24,7 @@ export function IssueList(props: {
 	readonly handle: QueryHandle<typeof issueListQuery>;
 }) {
 	const [pagesPromise, list] = useQuery(issueListQuery, props.handle, {
+		throwOnError: true,
 		whilePending: "previous",
 	});
 	const pages = use(pagesPromise);

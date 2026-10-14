@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it, vi } from "@effect/vitest";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, Result, Schema } from "effect";
 import { Component, type ReactNode, StrictMode, Suspense, use } from "react";
 
 import {
@@ -584,6 +584,17 @@ describe("useQuery", () => {
 		expect(useTypes).toBeTypeOf("function");
 	});
 
+	it("rejects throwOnError on promise queryFns", () => {
+		const backend = createBackend();
+		const useTypes = (handle: QueryHandle<typeof backend.issueQuery>) => {
+			useQuery(backend.issueQuery, handle, {
+				// @ts-expect-error unknown ErrorOf: throwOnError is not an option
+				throwOnError: false,
+			});
+		};
+		expect(useTypes).toBeTypeOf("function");
+	});
+
 	it("starts a request with the client's layer services during render", async () => {
 		const client = new QueryClient({
 			isServer: false,
@@ -592,8 +603,10 @@ describe("useQuery", () => {
 		function Greet(props: {
 			readonly handle: QueryHandle<typeof greetingQuery>;
 		}) {
+			// Layer ⇒ throwOnError false ⇒ Result; unwrap the success.
 			const [greetingPromise] = useQuery(greetingQuery, props.handle);
-			return <p>{use(greetingPromise)}</p>;
+			const greeting = use(greetingPromise);
+			return <p>{Result.getOrThrow(greeting)}</p>;
 		}
 
 		await mount(
@@ -608,6 +621,103 @@ describe("useQuery", () => {
 
 		await waitFor(() => screen.getByText("Hello, Ada"));
 		expect(screen.queryByText("Loading")).toBeNull();
+		cleanup();
+	});
+
+	it("returns a Result for Effect queryFns when throwOnError is false", async () => {
+		class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {
+			id: Schema.Number,
+		}) {}
+		class Api extends Context.Service<
+			Api,
+			{ get: (id: number) => Effect.Effect<string, NotFound> }
+		>()("test/Api") {}
+		function nameQuery(input: { id: number }) {
+			return queryOptions({
+				queryFn: () => Api.use((api) => api.get(input.id)),
+				queryKey: ["name", input.id],
+				retry: false,
+			});
+		}
+		const client = new QueryClient({
+			isServer: false,
+			layer: Layer.succeed(Api, {
+				get: (id) =>
+					id === 1 ? Effect.succeed("Ada") : Effect.fail(new NotFound({ id })),
+			}),
+		});
+		expect(client.throwOnError).toBe(false);
+		function Name(props: {
+			readonly handle: QueryHandle<typeof nameQuery>;
+		}) {
+			const [namePromise] = useQuery(nameQuery, props.handle);
+			const name = use(namePromise);
+			expectTypeOf(name).toEqualTypeOf<Result.Result<string, NotFound>>();
+			return (
+				<p>
+					{Result.match(name, {
+						onFailure: (error) => `missing ${error.id}`,
+						onSuccess: (value) => value,
+					})}
+				</p>
+			);
+		}
+
+		const ok = client.prefetch(nameQuery, { id: 1 });
+		await mount(
+			<QueryClientProvider client={client}>
+				<Suspense fallback={<p>Loading</p>}>
+					<Name handle={ok} />
+				</Suspense>
+			</QueryClientProvider>,
+		);
+		await waitFor(() => screen.getByText("Ada"));
+		cleanup();
+
+		const missing = client.prefetch(nameQuery, { id: 404 });
+		await mount(
+			<QueryClientProvider client={client}>
+				<Suspense fallback={<p>Loading</p>}>
+					<Name handle={missing} />
+				</Suspense>
+			</QueryClientProvider>,
+		);
+		await waitFor(() => screen.getByText("missing 404"));
+		cleanup();
+	});
+
+	it("throws Effect failures when throwOnError is true", async () => {
+		class Boom extends Schema.TaggedError<Boom>()("Boom", {}) {}
+		function boomQuery() {
+			return queryOptions({
+				queryFn: () => Effect.fail(new Boom()),
+				queryKey: ["boom"],
+				retry: false,
+			});
+		}
+		const client = new QueryClient({
+			isServer: false,
+			layer: Layer.empty,
+			throwOnError: true,
+		});
+		function BoomView(props: {
+			readonly handle: QueryHandle<typeof boomQuery>;
+		}) {
+			const [boomPromise] = useQuery(boomQuery, props.handle, {
+				throwOnError: true,
+			});
+			return <p>{use(boomPromise)}</p>;
+		}
+		await mount(
+			<QueryClientProvider client={client}>
+				<Boundary>
+					<Suspense fallback={<p>Loading</p>}>
+						<BoomView handle={client.prefetch(boomQuery)} />
+					</Suspense>
+				</Boundary>
+			</QueryClientProvider>,
+		);
+		await waitFor(() => screen.getByText(/Error:/));
 		cleanup();
 	});
 });

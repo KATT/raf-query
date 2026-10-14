@@ -48,7 +48,9 @@ export function Comments(props: {
 		select: (context) => context.queryClient,
 	});
 	const formRef = useRef<HTMLFormElement>(null);
-	const [pagesPromise, comments] = useQuery(commentsQuery, props.handle);
+	const [pagesPromise, comments] = useQuery(commentsQuery, props.handle, {
+		throwOnError: true,
+	});
 	const pages = use(pagesPromise);
 	const issueId = props.handle.input.issueId;
 	const loaded = pages.pages.flatMap((page) => page.comments);

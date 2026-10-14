@@ -43,4 +43,9 @@ export {
 	type RetryPolicy,
 	type ServicesOf,
 } from "./options.ts";
-export type { Thenable } from "./thenable.ts";
+export {
+	fulfilled,
+	pending,
+	type Pending,
+	type Thenable,
+} from "./thenable.ts";

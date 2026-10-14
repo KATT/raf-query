@@ -16,7 +16,7 @@ const queryClient = new QueryClient(config);
 
 | Member                                              | Use                                                                                                                             |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `new QueryClient(config?)`                          | `config.defaults` (query options below), `config.onError`, `config.isServer`, `config.layer` ([services](./effect-services.md)) |
+| `new QueryClient(config?)`                          | `config.defaults`, `config.onError`, `config.isServer`, `config.layer`, `config.throwOnError` (Effect reads; default `false` with a `layer`) ([typed errors](./effect-errors.md)) |
 | `prefetch(factory, input)`                          | Start a query; returns a `QueryHandle`. [Starting queries](./starting-queries.md)                                               |
 | `ensure(factory, input, options?)`                  | Wait for data on a cache miss; returns `Promise<EnsuredQueryHandle>`                                                            |
 | `fetch(factory, input, options?)`                   | Wait for fresh data; returns `Promise<Data>`                                                                                    |
@@ -108,7 +108,7 @@ Everything from `@raf-query/core`, plus:
 | `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations                                                                                                             |
 | `QueryClientProvider`                          | Provides a client to the tree                                                                                                                                 |
 | `useQueryClient()`                             | Read the client                                                                                                                                               |
-| `useQuery(factory, handle, options?)`          | `[Thenable<Data>, controls]`; for paged factories `Data` is `{ pages, pageParams }` and controls include paging                                               |
+| `useQuery(factory, handle, options?)`          | `[Thenable<Data>, controls]`; Effect `queryFn`s with `throwOnError: false` (default when the client has a `layer`) yield `Result<Data, ErrorOf>` instead. Paged: `Data` is `{ pages, pageParams }`                                               |
 | `useWaterfall(factory, input)`                 | Start a query during render and return its handle. [Request waterfalls](./request-waterfalls.md#render-time-inputs-usewaterfall)                              |
 | `useIsFetching(filter?)`                       | Global in-flight count (compatibility). Prefer router pending + per-query `isFetching`. [Background fetching indicators](./background-fetching-indicators.md) |
 
