@@ -6,7 +6,7 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { MessageSquare } from "lucide-react";
-import Link from "next/link";
+import { AppLink } from "./settings.tsx";
 import { use } from "react";
 
 import { issueListQuery } from "~/queries.ts";
@@ -57,7 +57,7 @@ export function IssueList(props: {
 						key={pages.pageParams[index]}
 					>
 						{page.issues.map((issue) => (
-							<Link
+							<AppLink
 								className={cn(rowClassName, "hover:bg-muted/50")}
 								href={`/issues/${issue.id}`}
 								key={issue.id}
@@ -76,7 +76,7 @@ export function IssueList(props: {
 									{dateFormat.format(new Date(issue.createdAt))}
 								</span>
 								<StatusBadge status={issue.status} />
-							</Link>
+							</AppLink>
 						))}
 					</div>
 				))}
