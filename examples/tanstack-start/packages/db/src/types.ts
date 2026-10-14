@@ -8,6 +8,31 @@ export const issueSorts = ["newest", "oldest"] as const;
 export const IssueSort = z.enum(issueSorts);
 export type IssueSort = z.infer<typeof IssueSort>;
 
+/** The cookie the apps' settings menu stores the database latency in, in ms. */
+export const LATENCY_COOKIE = "db-latency";
+
+/**
+ * The request header that sets the database latency for one API request, in
+ * ms. The apps' API clients send the settings menu's choice in it.
+ */
+export const LATENCY_HEADER = "x-db-latency";
+
+/** The latency when neither the request nor `DB_LATENCY_MS` sets one. */
+export const DEFAULT_LATENCY_MS = 400;
+
+export const latencyOptions = [
+	{ label: "None", ms: 0 },
+	{ label: "100 ms", ms: 100 },
+	{ label: "400 ms", ms: 400 },
+	{ label: "1 s", ms: 1000 },
+	{ label: "3 s", ms: 3000 },
+] as const;
+
+/** A latency cookie or header, or `undefined` when it's missing or not a choice. */
+export function parseLatency(value: string | undefined) {
+	return latencyOptions.find((option) => String(option.ms) === value)?.ms;
+}
+
 const Id = z.int().positive();
 const Text = z.string().trim().min(1);
 

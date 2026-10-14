@@ -3,6 +3,7 @@ import {
 	type Comment,
 	currentUser,
 	type CommentPage,
+	DEFAULT_LATENCY_MS,
 	type Issue,
 	type IssueCounts,
 	type IssuePage,
@@ -17,6 +18,12 @@ export * from "./types.ts";
 export const ISSUES_PER_PAGE = 10;
 export const COMMENTS_PER_PAGE = 4;
 
+/** Per-call options, which the API reads from each request. */
+export interface CallOptions {
+	/** Overrides `DB_LATENCY_MS` for this call. */
+	readonly latencyMs?: number | undefined;
+}
+
 declare global {
 	/** Survives dev-server module reloads, so edits aren't lost on save. */
 	var exampleDbStore: Store | undefined;
@@ -27,17 +34,28 @@ function store(): Store {
 	return globalThis.exampleDbStore;
 }
 
-/** Every call waits like a real database round trip: `DB_LATENCY_MS` ± 50%. */
-async function latency() {
-	const base = Number(process.env["DB_LATENCY_MS"] ?? 400);
+/**
+ * Every call waits like a real database round trip: `options.latencyMs`, or
+ * `DB_LATENCY_MS`, ± 50%.
+ */
+async function latency(options: CallOptions) {
+	const base =
+		options.latencyMs ??
+		Number(process.env["DB_LATENCY_MS"] ?? DEFAULT_LATENCY_MS);
+	if (base === 0) {
+		return;
+	}
 	await new Promise((resolve) => {
 		setTimeout(resolve, base * (0.5 + Math.random()));
 	});
 }
 
 /** `cursor` is the index of the first issue to return. */
-export async function listIssues(input: IssuePageInput): Promise<IssuePage> {
-	await latency();
+export async function listIssues(
+	input: IssuePageInput,
+	options: CallOptions = {},
+): Promise<IssuePage> {
+	await latency(options);
 	const matching = store()
 		.issues.filter(
 			(issue) => input.status === "all" || issue.status === input.status,
@@ -55,21 +73,29 @@ export async function listIssues(input: IssuePageInput): Promise<IssuePage> {
 	};
 }
 
-export async function getIssue(id: number): Promise<Issue | null> {
-	await latency();
+export async function getIssue(
+	id: number,
+	options: CallOptions = {},
+): Promise<Issue | null> {
+	await latency(options);
 	return store().issues.find((issue) => issue.id === id) ?? null;
 }
 
 /** The issue's assignee in one round trip, like a join; `null` if no issue. */
-export async function getIssueAssignee(issueId: number): Promise<User | null> {
-	await latency();
+export async function getIssueAssignee(
+	issueId: number,
+	options: CallOptions = {},
+): Promise<User | null> {
+	await latency(options);
 	const data = store();
 	const issue = data.issues.find((candidate) => candidate.id === issueId);
 	return data.users.find((user) => user.id === issue?.assigneeId) ?? null;
 }
 
-export async function countIssues(): Promise<IssueCounts> {
-	await latency();
+export async function countIssues(
+	options: CallOptions = {},
+): Promise<IssueCounts> {
+	await latency(options);
 	const issues = store().issues;
 	const count = (status: IssueStatus) =>
 		issues.filter((issue) => issue.status === status).length;
@@ -82,11 +108,14 @@ export async function countIssues(): Promise<IssueCounts> {
 }
 
 /** Newest first; `cursor` is the index of the first comment to return. */
-export async function listComments(input: {
-	readonly cursor: number;
-	readonly issueId: number;
-}): Promise<CommentPage> {
-	await latency();
+export async function listComments(
+	input: {
+		readonly cursor: number;
+		readonly issueId: number;
+	},
+	options: CallOptions = {},
+): Promise<CommentPage> {
+	await latency(options);
 	const comments = store()
 		.comments.filter((comment) => comment.issueId === input.issueId)
 		.toReversed();
@@ -98,12 +127,15 @@ export async function listComments(input: {
 	};
 }
 
-export async function updateIssue(input: {
-	readonly id: number;
-	readonly status?: IssueStatus;
-	readonly title?: string;
-}): Promise<Issue> {
-	await latency();
+export async function updateIssue(
+	input: {
+		readonly id: number;
+		readonly status?: IssueStatus;
+		readonly title?: string;
+	},
+	options: CallOptions = {},
+): Promise<Issue> {
+	await latency(options);
 	const data = store();
 	const current = data.issues.find((issue) => issue.id === input.id);
 	if (!current) {
@@ -124,12 +156,15 @@ export async function updateIssue(input: {
 	return updated;
 }
 
-export async function addComment(input: {
-	readonly body: string;
-	readonly id: string;
-	readonly issueId: number;
-}): Promise<Comment> {
-	await latency();
+export async function addComment(
+	input: {
+		readonly body: string;
+		readonly id: string;
+		readonly issueId: number;
+	},
+	options: CallOptions = {},
+): Promise<Comment> {
+	await latency(options);
 	const data = store();
 	const body = input.body.trim();
 	if (body === "") {

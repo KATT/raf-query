@@ -1,4 +1,4 @@
-import { api, parseResponse } from "@examples/api/client";
+import { api, parseResponse } from "~/api.ts";
 import { type Comment, currentUser } from "@examples/db/types";
 import { Button } from "@examples/ui/components/button";
 import { LoadMore } from "@examples/ui/components/load-more";

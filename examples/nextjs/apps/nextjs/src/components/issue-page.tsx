@@ -8,7 +8,7 @@ import {
 	useQuery,
 } from "@raf-query/react";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
-import Link from "next/link";
+import { AppLink } from "./settings.tsx";
 import { Suspense } from "react";
 
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
@@ -29,19 +29,19 @@ export function IssuePage(props: {
 		<div className="grid gap-6">
 			<nav className="flex items-center gap-2">
 				<Button asChild size="sm" variant="ghost">
-					<Link href="/issues">
+					<AppLink href="/issues">
 						<ArrowLeft /> All issues
-					</Link>
+					</AppLink>
 				</Button>
 				<div className="ml-auto flex gap-1">
 					{issue.id > 1 ? (
 						<Button asChild size="icon" variant="outline">
-							<Link
+							<AppLink
 								aria-label="Previous issue"
 								href={`/issues/${issue.id - 1}`}
 							>
 								<ChevronLeft />
-							</Link>
+							</AppLink>
 						</Button>
 					) : (
 						<Button
@@ -54,9 +54,9 @@ export function IssuePage(props: {
 						</Button>
 					)}
 					<Button asChild size="icon" variant="outline">
-						<Link aria-label="Next issue" href={`/issues/${issue.id + 1}`}>
+						<AppLink aria-label="Next issue" href={`/issues/${issue.id + 1}`}>
 							<ChevronRight />
-						</Link>
+						</AppLink>
 					</Button>
 				</div>
 			</nav>

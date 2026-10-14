@@ -4,6 +4,12 @@
 	"private": true,
 	"description": "raf-query issue tracker on Next.js App Router",
 	"type": "module",
+	"imports": {
+		"#latency-cookie": {
+			"browser": "./src/latency-cookie.browser.ts",
+			"default": "./src/latency-cookie.ts"
+		}
+	},
 	"scripts": {
 		"build": "next build",
 		"dev": "next dev --port 3001",
@@ -14,7 +20,7 @@
 		"@examples/api": "workspace:*",
 		"@examples/db": "workspace:*",
 		"@examples/ui": "workspace:*",
-		"@raf-query/react": "0.4.3",
+		"@raf-query/react": "0.4.4",
 		"lucide-react": "1.55.0",
 		"next": "16.4.0",
 		"react": "19.3.0",
