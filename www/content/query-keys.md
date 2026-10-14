@@ -16,19 +16,7 @@ The simplest key is an array of constants. It suits:
 - generic list or index resources
 - non-hierarchical resources
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-import { getSpecial, listTodos } from "./_twoslash.ts";
-// ---cut---
-// A list of todos
-queryOptions({ queryKey: ["todos"], queryFn: () => listTodos() });
-
-// Something else, whatever!
-queryOptions({
-	queryKey: ["something", "special"],
-	queryFn: () => getSpecial(),
-});
-```
+<<< ./query-keys/src/queries.ts#simple-keys
 
 ## Keys with variables
 
@@ -37,20 +25,7 @@ When a query needs more information to describe its data, add it to the array: a
 - hierarchical or nested resources, usually identified by an id
 - queries with parameters, usually passed as an object
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-import { getTodo } from "./_twoslash.ts";
-declare function queryFn(): Promise<unknown>;
-// ---cut---
-// An individual todo
-queryOptions({ queryKey: ["todo", 5], queryFn: () => getTodo(5) });
-
-// An individual todo in a "preview" format
-queryOptions({ queryKey: ["todo", 5, { preview: true }], queryFn });
-
-// A list of todos that are "done"
-queryOptions({ queryKey: ["todos", { status: "done" }], queryFn });
-```
+<<< ./query-keys/src/queries.ts#keys-with-variables
 
 ## Keys are hashed deterministically
 
@@ -82,17 +57,7 @@ declare const page: number;
 
 A query's key must change whenever its data would. In raf-query that's natural: a factory's single argument is its **input**, and the key is built from it.
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-import { listTodos } from "./_twoslash.ts";
-// ---cut---
-export function todosQuery(input: { status: "open" | "done"; page: number }) {
-	return queryOptions({
-		queryKey: ["todos", "list", input],
-		queryFn: () => listTodos(input),
-	});
-}
-```
+<<< ./query-keys/src/queries.ts#todos-query
 
 Each distinct input gets its own entry, cached independently. Because the input comes from the URL (see [URL state and pagination](./url-state-and-pagination.md)), a new search param means a new key, and the loader starts it.
 
@@ -100,16 +65,6 @@ Each distinct input gets its own entry, cached independently. Because the input 
 
 Filters match keys by **prefix**, and object segments match partially. Ordering a key from general to specific lets one call reach a whole group:
 
-```ts twoslash
-import { QueryClient } from "@raf-query/react";
-const qc = new QueryClient();
-// ---cut---
-["issues", "list", { projectId: 3, status: "open" }];
-["issues", "detail", 42];
-["issues", "comments", 42];
-
-await qc.invalidate({ queryKey: ["issues"] }); // all three
-await qc.invalidate({ queryKey: ["issues", "list", { projectId: 3 }] }); // every list in project 3
-```
+<<< ./query-keys/src/invalidation.ts#invalidation
 
 See [Query invalidation](./query-invalidation.md) for every filter option.
