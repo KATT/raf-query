@@ -1,9 +1,10 @@
 import { Button } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
-import { useQuery } from "@raf-query/react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Skeleton } from "@examples/ui/components/skeleton";
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
-import { Suspense } from "react";
+import { Suspense, use } from "react";
 
 import { Comments, CommentsSkeleton } from "~/components/comments.tsx";
 import { EditBody } from "~/components/edit-body.tsx";
@@ -13,13 +14,13 @@ import { AssigneeCard, AssigneeCardSkeleton } from "~/components/user.tsx";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 
 export const Route = createFileRoute("/issues/$issueId")({
-	loader: async (args) => {
+	loader: (args) => {
 		const qc = args.context.queryClient;
 		const id = Number(args.params.issueId);
 		return {
 			assignee: qc.prefetch(assigneeQuery, { issueId: id }),
 			comments: qc.prefetch(commentsQuery, { issueId: id }),
-			issue: await qc.ensure(issueQuery, { id }),
+			issue: qc.prefetch(issueQuery, { id }),
 		};
 	},
 	component: IssuePage,
@@ -27,52 +28,18 @@ export const Route = createFileRoute("/issues/$issueId")({
 
 function IssuePage() {
 	const data = Route.useLoaderData();
-	const [issue] = useQuery(issueQuery, data.issue);
+	const id = Number(Route.useParams().issueId);
 
 	return (
 		<div className="grid gap-6">
-			<nav className="flex items-center gap-2">
-				<Button asChild size="sm" variant="ghost">
-					<Link to="/issues">
-						<ArrowLeft /> All issues
-					</Link>
-				</Button>
-				<div className="ml-auto flex gap-1">
-					<Button
-						asChild
-						disabled={issue.id <= 1}
-						size="icon"
-						variant="outline"
-					>
-						<Link
-							aria-label="Previous issue"
-							disabled={issue.id <= 1}
-							params={{ issueId: String(issue.id - 1) }}
-							to="/issues/$issueId"
-						>
-							<ChevronLeft />
-						</Link>
-					</Button>
-					<Button asChild size="icon" variant="outline">
-						<Link
-							aria-label="Next issue"
-							params={{ issueId: String(issue.id + 1) }}
-							to="/issues/$issueId"
-						>
-							<ChevronRight />
-						</Link>
-					</Button>
-				</div>
-			</nav>
+			<IssueNav id={id} />
 			<div className="grid gap-8 md:grid-cols-[1fr_240px]">
 				<article className="grid content-start gap-6">
-					<EditTitle issue={issue} />
-					<p className="text-sm text-muted-foreground">
-						Opened {new Date(issue.createdAt).toDateString()}
-					</p>
-					<EditBody issue={issue} />
+					<Suspense fallback={<IssueBodySkeleton id={id} />} key={id}>
+						<IssueBody handle={data.issue} />
+					</Suspense>
 					<Separator />
-					<Suspense fallback={<CommentsSkeleton />} key={issue.id}>
+					<Suspense fallback={<CommentsSkeleton />} key={id}>
 						<Comments handle={data.comments} />
 					</Suspense>
 				</article>
@@ -83,18 +50,99 @@ function IssuePage() {
 						</h2>
 						<div className="flex items-center justify-between gap-3">
 							<span className="text-sm text-muted-foreground">Status</span>
-							<StatusSelect
-								align="end"
-								issueId={issue.id}
-								status={issue.status}
-							/>
+							<Suspense fallback={<StatusSkeleton />} key={id}>
+								<IssueStatus handle={data.issue} />
+							</Suspense>
 						</div>
 					</section>
-					<Suspense fallback={<AssigneeCardSkeleton />}>
+					<Suspense fallback={<AssigneeCardSkeleton />} key={id}>
 						<AssigneeCard handle={data.assignee} />
 					</Suspense>
 				</aside>
 			</div>
 		</div>
 	);
+}
+
+/** Back, previous, and next come from the URL, so the bar renders before the issue. */
+function IssueNav(props: { readonly id: number }) {
+	return (
+		<nav className="flex items-center gap-2">
+			<Button asChild size="sm" variant="ghost">
+				<Link to="/issues">
+					<ArrowLeft /> All issues
+				</Link>
+			</Button>
+			<div className="ml-auto flex gap-1">
+				<Button asChild disabled={props.id <= 1} size="icon" variant="outline">
+					<Link
+						aria-label="Previous issue"
+						disabled={props.id <= 1}
+						params={{ issueId: String(props.id - 1) }}
+						to="/issues/$issueId"
+					>
+						<ChevronLeft />
+					</Link>
+				</Button>
+				<Button asChild size="icon" variant="outline">
+					<Link
+						aria-label="Next issue"
+						params={{ issueId: String(props.id + 1) }}
+						to="/issues/$issueId"
+					>
+						<ChevronRight />
+					</Link>
+				</Button>
+			</div>
+		</nav>
+	);
+}
+
+function useIssue(handle: QueryHandle<typeof issueQuery>) {
+	const [issuePromise] = useQuery(issueQuery, handle);
+	const issue = use(issuePromise);
+	if (!issue) {
+		throw notFound();
+	}
+	return issue;
+}
+
+function IssueBody(props: { readonly handle: QueryHandle<typeof issueQuery> }) {
+	const issue = useIssue(props.handle);
+
+	return (
+		<div className="grid gap-6">
+			<EditTitle issue={issue} />
+			<p className="text-sm text-muted-foreground">
+				Opened {new Date(issue.createdAt).toDateString()}
+			</p>
+			<EditBody issue={issue} />
+		</div>
+	);
+}
+
+function IssueBodySkeleton(props: { readonly id: number }) {
+	return (
+		<div className="grid gap-6">
+			<div className="flex items-baseline gap-2">
+				<Skeleton className="h-9 min-w-0 flex-1" />
+				<span className="shrink-0 text-lg text-muted-foreground">
+					#{props.id}
+				</span>
+			</div>
+			<Skeleton className="h-5 w-40" />
+			<Skeleton className="h-28" />
+		</div>
+	);
+}
+
+function IssueStatus(props: {
+	readonly handle: QueryHandle<typeof issueQuery>;
+}) {
+	const issue = useIssue(props.handle);
+	return <StatusSelect align="end" issueId={issue.id} status={issue.status} />;
+}
+
+function StatusSkeleton() {
+	return <Skeleton className="h-6 w-24 rounded-full" />;
 }
