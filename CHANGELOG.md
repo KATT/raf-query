@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.4.2](https://github.com/KATT/raf-query/compare/0.4.1...0.4.2) (2026-10-14)
+
+- add a docs site with live demos, deployed at raf-query.katt.dev ([#65](https://github.com/KATT/raf-query/issues/65)) ([f4293b8](https://github.com/KATT/raf-query/commit/f4293b8943c82ef61288b65f99a146035b71d592))
+
 ## [0.4.1](https://github.com/KATT/raf-query/compare/0.4.0...0.4.1) (2026-10-13)
 
 - one table for the query verbs; fetch and ensure wait alike in server components ([#64](https://github.com/KATT/raf-query/issues/64)) ([13e5549](https://github.com/KATT/raf-query/commit/13e5549e9f1b6df4fe0e8f23f79e1aef7bf94e53))
