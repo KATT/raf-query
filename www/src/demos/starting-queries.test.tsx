@@ -1,4 +1,4 @@
-import { describe, expect, it, onTestFinished, vi } from "@effect/vitest";
+import { describe, expect, it, vi } from "@effect/vitest";
 import {
 	act,
 	cleanup,
@@ -31,17 +31,26 @@ async function click(element: HTMLElement) {
 	});
 }
 
-async function renderDemo() {
+async function renderDemo(): Promise<Disposable> {
 	for (const variant of demo.variants) {
 		variant.server.latency = 40;
 	}
-	onTestFinished(cleanup);
 	await act(async () => {
 		render(<DemoFrame demo={demo} />);
 	});
 	// Sessions outlive a render, as on the page, so start each test from
 	// Reset's fresh clients and servers.
 	await click(screen.getByRole("button", { name: "Reset" }));
+	return { [Symbol.dispose]: cleanup };
+}
+
+function fakeDate(): Disposable {
+	vi.useFakeTimers({ toFake: ["Date"] });
+	return {
+		[Symbol.dispose]() {
+			vi.useRealTimers();
+		},
+	};
 }
 
 function selectVariant(label: string) {
@@ -58,7 +67,7 @@ function comments() {
 
 describe("prefetch, ensure or fetch", () => {
 	it("prefetch opens the post at once, with skeletons", async () => {
-		await renderDemo();
+		using _demo = await renderDemo();
 
 		await openPost("Render-as-you-fetch, explained");
 
@@ -78,7 +87,7 @@ describe("prefetch, ensure or fetch", () => {
 	});
 
 	it("ensure stays on the list until the post and its comments load", async () => {
-		await renderDemo();
+		using _demo = await renderDemo();
 		await selectVariant("ensure");
 
 		await openPost("Why loaders beat effects");
@@ -97,15 +106,12 @@ describe("prefetch, ensure or fetch", () => {
 	});
 
 	it("ensure reopens a stale post at once and refetches in the background", async () => {
-		await renderDemo();
+		using _demo = await renderDemo();
 		await selectVariant("ensure");
 		await openPost("Why loaders beat effects");
 		await screen.findByRole("heading", { name: "Why loaders beat effects" });
 		await click(screen.getByRole("link", { name: "← All posts" }));
-		vi.useFakeTimers({ toFake: ["Date"] });
-		onTestFinished(() => {
-			vi.useRealTimers();
-		});
+		using _date = fakeDate();
 		vi.setSystemTime(Date.now() + 5000);
 
 		await openPost("Why loaders beat effects");
@@ -120,16 +126,13 @@ describe("prefetch, ensure or fetch", () => {
 	});
 
 	it("fetch waits for the refetch when reopening a stale post", async () => {
-		await renderDemo();
+		using _demo = await renderDemo();
 		await selectVariant("fetch");
 		await openPost("Why loaders beat effects");
 		await screen.findByRole("heading", { name: "Why loaders beat effects" });
 		expect(comments().getAllByRole("listitem")).toHaveLength(4);
 		await click(screen.getByRole("link", { name: "← All posts" }));
-		vi.useFakeTimers({ toFake: ["Date"] });
-		onTestFinished(() => {
-			vi.useRealTimers();
-		});
+		using _date = fakeDate();
 		vi.setSystemTime(Date.now() + 5000);
 
 		await openPost("Why loaders beat effects");
@@ -145,7 +148,7 @@ describe("prefetch, ensure or fetch", () => {
 	});
 
 	it("keeps each variant's page and requests while another is shown", async () => {
-		await renderDemo();
+		using _demo = await renderDemo();
 		await openPost("Render-as-you-fetch, explained");
 		await screen.findByRole("heading", {
 			name: "Render-as-you-fetch, explained",
@@ -176,7 +179,7 @@ describe("prefetch, ensure or fetch", () => {
 	});
 
 	it("Reload starts its own variant over on the same URL", async () => {
-		await renderDemo();
+		using _demo = await renderDemo();
 		await openPost("Render-as-you-fetch, explained");
 		await screen.findByRole("heading", {
 			name: "Render-as-you-fetch, explained",
@@ -207,11 +210,8 @@ describe("prefetch, ensure or fetch", () => {
 	});
 
 	it("leaves the page's scroll alone", async () => {
-		await renderDemo();
-		const scrollTo = vi.spyOn(window, "scrollTo");
-		onTestFinished(() => {
-			scrollTo.mockRestore();
-		});
+		using _demo = await renderDemo();
+		using scrollTo = vi.spyOn(window, "scrollTo");
 
 		await selectVariant("ensure");
 		await openPost("Why loaders beat effects");
@@ -224,7 +224,7 @@ describe("prefetch, ensure or fetch", () => {
 	});
 
 	it("Reset starts every variant over and keeps the selection", async () => {
-		await renderDemo();
+		using _demo = await renderDemo();
 		await openPost("Render-as-you-fetch, explained");
 		await selectVariant("ensure");
 		await openPost("Why loaders beat effects");
