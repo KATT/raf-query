@@ -1,3 +1,4 @@
+import { Skeleton } from "@examples/ui/components/skeleton";
 import { useQueryClient } from "@raf-query/react";
 import {
 	type AnyRoute,
@@ -10,6 +11,17 @@ import { useState } from "react";
 
 import { BrowserWindow } from "./browser.tsx";
 import { useDemoSession } from "./session.ts";
+
+/** A page's first load, before its loader has data to render. */
+function PageSkeleton() {
+	return (
+		<div aria-label="Loading page" className="grid gap-2" role="status">
+			<Skeleton className="h-8 w-full" />
+			<Skeleton className="h-8 w-full" />
+			<Skeleton className="h-8 w-2/3" />
+		</div>
+	);
+}
 
 /**
  * A TanStack Router app in a browser window, on its own memory history.
@@ -52,6 +64,11 @@ export function DemoRouter(props: {
 		router,
 		select: (state) => state.status === "pending",
 	});
+	// Until its first load resolves, the router renders nothing.
+	const isFirstLoad = useRouterState({
+		router,
+		select: (state) => state.resolvedLocation === undefined,
+	});
 	return (
 		<BrowserWindow
 			canGoBack={canGoBack}
@@ -64,6 +81,7 @@ export function DemoRouter(props: {
 				session.reload(href);
 			}}
 		>
+			{isFirstLoad ? <PageSkeleton /> : null}
 			<RouterProvider router={router} />
 		</BrowserWindow>
 	);

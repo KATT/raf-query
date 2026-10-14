@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 
 import { DemoFrame } from "~/demo-kit/frame.tsx";
+import { createFakeServer } from "~/demo-kit/server.ts";
 import demo from "./starting-queries.tsx";
 
 function serverOf(label: string) {
@@ -31,9 +32,9 @@ async function click(element: HTMLElement) {
 	});
 }
 
-async function renderDemo(): Promise<Disposable> {
+async function renderDemo(latency = 40): Promise<Disposable> {
 	for (const variant of demo.variants) {
-		variant.server.latency = 40;
+		variant.server.latency = latency;
 	}
 	await act(async () => {
 		render(<DemoFrame demo={demo} />);
@@ -57,8 +58,8 @@ function selectVariant(label: string) {
 	return click(screen.getByRole("radio", { name: label }));
 }
 
-function openPost(title: string) {
-	return click(screen.getByRole("link", { name: title }));
+async function openPost(title: string) {
+	await click(await screen.findByRole("link", { name: title }));
 }
 
 function comments() {
@@ -76,6 +77,7 @@ describe("prefetch, ensure or fetch", () => {
 		).toBeNull();
 		expect(comments().queryAllByRole("listitem")).toHaveLength(0);
 		expect(requestsOf("prefetch")).toEqual([
+			"GET /posts success",
 			"GET /posts/1/comments pending",
 			"GET /posts/1 pending",
 		]);
@@ -95,7 +97,9 @@ describe("prefetch, ensure or fetch", () => {
 		expect(
 			screen.getByRole("link", { name: "Why loaders beat effects" }),
 		).toBeTruthy();
+		expect(screen.queryByRole("status", { name: "Loading page" })).toBeNull();
 		expect(requestsOf("ensure")).toEqual([
+			"GET /posts success",
 			"GET /posts/2/comments pending",
 			"GET /posts/2 pending",
 		]);
@@ -119,7 +123,7 @@ describe("prefetch, ensure or fetch", () => {
 		expect(
 			screen.getByRole("heading", { name: "Why loaders beat effects" }),
 		).toBeTruthy();
-		expect(requestsOf("ensure").slice(2)).toEqual([
+		expect(requestsOf("ensure").slice(3)).toEqual([
 			"GET /posts/2/comments pending",
 			"GET /posts/2 pending",
 		]);
@@ -140,7 +144,7 @@ describe("prefetch, ensure or fetch", () => {
 		expect(
 			screen.queryByRole("heading", { name: "Why loaders beat effects" }),
 		).toBeNull();
-		expect(requestsOf("fetch").slice(2)).toEqual([
+		expect(requestsOf("fetch").slice(3)).toEqual([
 			"GET /posts/2/comments pending",
 			"GET /posts/2 pending",
 		]);
@@ -157,10 +161,11 @@ describe("prefetch, ensure or fetch", () => {
 		await selectVariant("ensure");
 
 		expect(
-			screen.getByRole("link", { name: "Render-as-you-fetch, explained" }),
+			await screen.findByRole("link", {
+				name: "Render-as-you-fetch, explained",
+			}),
 		).toBeTruthy();
-		expect(screen.getByText("No requests yet.", { exact: false })).toBeTruthy();
-		expect(requestsOf("ensure")).toEqual([]);
+		expect(requestsOf("ensure")).toEqual(["GET /posts success"]);
 
 		await selectVariant("prefetch");
 
@@ -171,8 +176,9 @@ describe("prefetch, ensure or fetch", () => {
 			within(screen.getByRole("list", { name: "Requests" })).getAllByRole(
 				"listitem",
 			),
-		).toHaveLength(2);
+		).toHaveLength(3);
 		expect(requestsOf("prefetch")).toEqual([
+			"GET /posts success",
 			"GET /posts/1/comments success",
 			"GET /posts/1 success",
 		]);
@@ -204,9 +210,27 @@ describe("prefetch, ensure or fetch", () => {
 			screen.getByRole("heading", { name: "Render-as-you-fetch, explained" }),
 		).toBeTruthy();
 		expect(requestsOf("prefetch")).toEqual([
+			"GET /posts success",
 			"GET /posts/1/comments success",
 			"GET /posts/1 success",
 		]);
+	});
+
+	it("Reload on the list loads it again, with a skeleton", async () => {
+		using _demo = await renderDemo();
+		await selectVariant("ensure");
+		await screen.findByRole("link", { name: "Why loaders beat effects" });
+
+		await click(screen.getByRole("button", { name: "Reload" }));
+
+		expect(screen.getByRole("status", { name: "Loading page" })).toBeTruthy();
+		expect(
+			screen.queryByRole("link", { name: "Why loaders beat effects" }),
+		).toBeNull();
+		expect(requestsOf("ensure")).toEqual(["GET /posts pending"]);
+		await screen.findByRole("link", { name: "Why loaders beat effects" });
+		expect(requestsOf("ensure")).toEqual(["GET /posts success"]);
+		expect(screen.queryByRole("status", { name: "Loading page" })).toBeNull();
 	});
 
 	it("leaves the page's scroll alone", async () => {
@@ -235,16 +259,36 @@ describe("prefetch, ensure or fetch", () => {
 		expect(
 			screen.getByRole<HTMLInputElement>("radio", { name: "ensure" }).checked,
 		).toBe(true);
-		expect(
-			screen.getByRole("link", { name: "Why loaders beat effects" }),
-		).toBeTruthy();
-		expect(requestsOf("ensure")).toEqual([]);
+		expect(requestsOf("ensure")).toEqual(["GET /posts pending"]);
 		expect(requestsOf("prefetch")).toEqual([]);
+		expect(
+			await screen.findByRole("link", { name: "Why loaders beat effects" }),
+		).toBeTruthy();
 
 		await selectVariant("prefetch");
 
 		expect(
-			screen.getByRole("link", { name: "Render-as-you-fetch, explained" }),
+			await screen.findByRole("link", {
+				name: "Render-as-you-fetch, explained",
+			}),
 		).toBeTruthy();
+	});
+
+	it("selects the server's latency in every toolbar", async () => {
+		using _demo = await renderDemo(createFakeServer(() => ({})).latency);
+
+		expect(
+			screen.getByRole("radio", { name: "3G" }).getAttribute("aria-checked"),
+		).toBe("true");
+
+		await click(screen.getByRole("radio", { name: "Slow" }));
+		await click(screen.getByRole("button", { name: "Expand" }));
+
+		expect(
+			within(screen.getByRole("dialog"))
+				.getByRole("radio", { name: "Slow" })
+				.getAttribute("aria-checked"),
+		).toBe("true");
+		expect(serverOf("fetch").latency).toBe(2500);
 	});
 });

@@ -59,6 +59,20 @@ function createBlog() {
 				queryKey: ["posts", input.id],
 				staleTime: 5000,
 			}),
+		postsQuery: () =>
+			queryOptions({
+				queryFn: (context) =>
+					server.respond(
+						"GET /posts",
+						(db) =>
+							db.posts
+								.slice(0, 4)
+								.map((post) => ({ id: post.id, title: post.title })),
+						{ signal: context.signal },
+					),
+				queryKey: ["posts"],
+				staleTime: 5000,
+			}),
 		server,
 	};
 }
@@ -149,23 +163,33 @@ function CommentList(props: { readonly comments: ReadonlyArray<Comment> }) {
 	);
 }
 
-function PostList(): ReactNode {
+type PostSummary = Pick<Post, "id" | "title">;
+
+function PostList(props: { readonly posts: ReadonlyArray<PostSummary> }) {
 	return (
 		<ul className="grid gap-1">
-			{seedPosts()
-				.slice(0, 4)
-				.map((post) => (
-					<li key={post.id}>
-						<BlogLink
-							className="block rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-							params={{ id: String(post.id) }}
-							to="/posts/$id"
-						>
-							{post.title}
-						</BlogLink>
-					</li>
-				))}
+			{props.posts.map((post) => (
+				<li key={post.id}>
+					<BlogLink
+						className="block rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+						params={{ id: String(post.id) }}
+						to="/posts/$id"
+					>
+						{post.title}
+					</BlogLink>
+				</li>
+			))}
 		</ul>
+	);
+}
+
+function PostListSkeleton() {
+	return (
+		<div className="grid gap-1">
+			{[0, 1, 2, 3].map((row) => (
+				<Skeleton className="h-8 w-full" key={row} />
+			))}
+		</div>
 	);
 }
 
@@ -199,11 +223,28 @@ const prefetchPost = createRoute({
 	path: "/posts/$id",
 });
 const prefetchList = createRoute({
-	component: PostList,
+	component: PrefetchedList,
 	getParentRoute: () => prefetchRoot,
+	loader: (args) => args.context.queryClient.prefetch(prefetching.postsQuery),
 	path: "/posts",
 });
 const prefetchTree = prefetchRoot.addChildren([prefetchList, prefetchPost]);
+
+function PromisedList(props: {
+	readonly posts: Thenable<ReadonlyArray<PostSummary>>;
+}) {
+	return <PostList posts={use(props.posts)} />;
+}
+
+function PrefetchedList(): ReactNode {
+	const handle = prefetchList.useLoaderData<PrefetchRouter>();
+	const [postsPromise, postsState] = useQuery(prefetching.postsQuery, handle);
+	return (
+		<Suspense fallback={<PostListSkeleton />} key={postsState.hash}>
+			<PromisedList posts={postsPromise} />
+		</Suspense>
+	);
+}
 
 function PromisedPost(props: { readonly post: Thenable<Post | undefined> }) {
 	return <PostBody post={use(props.post)} />;
@@ -251,11 +292,18 @@ const ensurePost = createRoute({
 	path: "/posts/$id",
 });
 const ensureList = createRoute({
-	component: PostList,
+	component: EnsuredList,
 	getParentRoute: () => ensureRoot,
+	loader: (args) => args.context.queryClient.ensure(ensuring.postsQuery),
 	path: "/posts",
 });
 const ensureTree = ensureRoot.addChildren([ensureList, ensurePost]);
+
+function EnsuredList(): ReactNode {
+	const handle = ensureList.useLoaderData<EnsureRouter>();
+	const [posts] = useQuery(ensuring.postsQuery, handle);
+	return <PostList posts={posts} />;
+}
 
 function EnsuredPost(): ReactNode {
 	const data = ensurePost.useLoaderData<EnsureRouter>();
@@ -287,11 +335,16 @@ const fetchPost = createRoute({
 	path: "/posts/$id",
 });
 const fetchList = createRoute({
-	component: PostList,
+	component: FetchedList,
 	getParentRoute: () => fetchRoot,
+	loader: (args) => args.context.queryClient.fetch(fetching.postsQuery),
 	path: "/posts",
 });
 const fetchTree = fetchRoot.addChildren([fetchList, fetchPost]);
+
+function FetchedList(): ReactNode {
+	return <PostList posts={fetchList.useLoaderData<FetchRouter>()} />;
+}
 
 function FetchedPost(): ReactNode {
 	const data = fetchPost.useLoaderData<FetchRouter>();
@@ -330,5 +383,5 @@ export default defineDemo({
 			server: fetching.server,
 		},
 	],
-	variantsLabel: "Load the post and its comments with",
+	variantsLabel: "Load each page with",
 });
