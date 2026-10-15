@@ -167,9 +167,13 @@ Per-query background refetches after the page has rendered use `controls.isFetch
 
 Use `loaderDeps` to pass validated search params to the loader, so it reruns when they change. See [URL state and pagination](./url-state-and-pagination.md).
 
-## Server functions
+## Server and browser requests
 
-Factories can call server functions (`createServerFn`) directly. The loader runs on the server during SSR, where the call is a function call; in the browser, refetches call the same function over HTTP.
+A loader runs on the server during SSR and in the browser after, so a factory's `queryFn` runs in both.
+
+### Server functions
+
+Factories can call server functions (`createServerFn`) directly, and get both sides for free. During SSR the call is a function call that sees the page request; in the browser, refetches call the same function over HTTP, with the browser's cookies.
 
 ```ts twoslash title="src/queries.ts"
 import { queryOptions } from "@raf-query/react";
@@ -183,9 +187,29 @@ export function postQuery(input: { slug: string }) {
 }
 ```
 
+### Your own API
+
+A factory that calls an API needs the user's cookies on both sides. The browser sends them; during SSR, forward the page request's:
+
+```ts twoslash title="src/forwarded-headers.ts"
+import { createIsomorphicFn } from "@tanstack/react-start";
+import { getRequestHeader } from "@tanstack/react-start/server";
+
+export const forwardedHeaders = createIsomorphicFn()
+	.server((): Record<string, string> => {
+		const cookie = getRequestHeader("cookie");
+		return cookie === undefined ? {} : { cookie };
+	})
+	.client((): Record<string, string> => ({}));
+```
+
+- Send `forwardedHeaders()` with each request: Hono's `hc` and tRPC's and oRPC's links take a `headers` function.
+- Forward only what the API reads (`cookie`, `authorization`), not every header.
+- For an API in the same app, call it in the process during SSR instead of over HTTP to your own origin. [`examples/tanstack-start`](https://github.com/KATT/raf-query/tree/main/examples/tanstack-start) picks an in-process client on the server and an HTTP one in the browser with a `browser` export condition, so the API's code stays out of the browser bundle.
+
 ## Static prerendering
 
-These docs are a TanStack Start app, prerendered to static HTML. Every page's loader `ensure`s its content during the build, the content crosses in the page's HTML, and later navigations load it in the browser. See the [source](https://github.com/KATT/raf-query/tree/main/docs).
+These docs are a TanStack Start app, prerendered to static HTML. Every page's loader `ensure`s its content during the build, the content crosses in the page's HTML, and later navigations load it in the browser. See the [source](https://github.com/KATT/raf-query/tree/main/www).
 
 ## Example
 
