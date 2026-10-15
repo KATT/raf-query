@@ -19,12 +19,15 @@ import { EditTitle } from "~/components/edit-title.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
 import { AssigneeCard } from "~/components/user.tsx";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
-import { IssueNotFound } from "~/rpc.ts";
+import { IssueId, IssueNotFound } from "~/rpc.ts";
 
 export const Route = createFileRoute("/issues/$issueId")({
 	loader: (args) => {
 		const qc = args.context.queryClient;
 		const id = Number(args.params.issueId);
+		if (!Schema.is(IssueId)(id)) {
+			throw notFound();
+		}
 		return {
 			assignee: qc.prefetch(assigneeQuery, { issueId: id }),
 			comments: qc.prefetch(commentsQuery, { issueId: id }),

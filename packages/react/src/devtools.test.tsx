@@ -82,7 +82,8 @@ function setup() {
 		readonly handle: QueryHandle<typeof backend.issueQuery>;
 	}) {
 		const [issuePromise] = useQuery(backend.issueQuery, props.handle);
-		return <p>{use(issuePromise).title}</p>;
+		const issue = use(issuePromise);
+		return <p>{issue.title}</p>;
 	}
 	return { backend, client, Issue };
 }

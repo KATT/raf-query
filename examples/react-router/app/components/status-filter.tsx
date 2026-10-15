@@ -7,8 +7,8 @@ import { type QueryHandle, useQuery } from "@raf-query/react";
 import { statusLabel } from "@examples/kit/components/status-badge";
 import { cn } from "@examples/ui/lib/utils";
 import { use } from "react";
-import { Link } from "react-router";
 
+import { AppLink } from "~/components/app-link.tsx";
 import { issueCountsQuery } from "~/queries.ts";
 
 function issuesSearch(input: IssueListInput) {
@@ -35,7 +35,7 @@ export function StatusFilter(props: {
 		<aside className="grid content-start gap-3 md:gap-6">
 			<nav className="flex flex-wrap gap-1 md:grid">
 				{(["all", ...issueStatuses] as const).map((status) => (
-					<Link
+					<AppLink
 						className={cn(
 							"flex justify-between gap-2 rounded-md px-3 py-1.5 text-sm hover:bg-muted",
 							current.status === status && "bg-muted font-medium",
@@ -45,7 +45,7 @@ export function StatusFilter(props: {
 					>
 						{statusLabel(status)}
 						<span className="text-muted-foreground">{counts[status]}</span>
-					</Link>
+					</AppLink>
 				))}
 			</nav>
 			<nav className="flex flex-wrap items-center gap-1 md:grid">
@@ -53,7 +53,7 @@ export function StatusFilter(props: {
 					Sort
 				</span>
 				{issueSorts.map((sort) => (
-					<Link
+					<AppLink
 						className={cn(
 							"rounded-md px-3 py-1.5 text-sm capitalize hover:bg-muted",
 							current.sort === sort && "bg-muted font-medium",
@@ -62,7 +62,7 @@ export function StatusFilter(props: {
 						to={`/issues${issuesSearch({ ...current, sort })}`}
 					>
 						{sort}
-					</Link>
+					</AppLink>
 				))}
 			</nav>
 		</aside>
