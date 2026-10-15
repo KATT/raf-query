@@ -19,8 +19,8 @@ Most React data fetching starts in a component: it renders, notices it needs dat
 React's own guidance is to start fetching before rendering: in the router's loader, or in a server component. The page knows everything it needs from the URL, so every request can start at once, and components read the results as they arrive. raf-query is a cache shaped around that flow:
 
 - The **loader** (or server component) starts queries with `prefetch`, `ensure` or `fetch`.
-- It passes **handles** to components. A handle is a key and an input, nothing else, so it serializes for free.
-- Components call `useQuery(factory, handle)` and unwrap the promise with `use()`. Suspense boundaries decide what shows while data is on its way.
+- It passes **handles** to components. A handle is a key and an input, plus the data once `ensure` or `fetch` has loaded it, so it serializes for free.
+- Components call `useQuery(factory, handle)`. It returns the data for a handle the loader waited for, and a promise to unwrap with `use()` for one it didn't. Suspense boundaries decide what shows while data is on its way.
 
 ## Principles
 

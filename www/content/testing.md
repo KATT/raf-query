@@ -49,7 +49,7 @@ A component takes a handle as a prop, so a test can start the query itself, the 
 tanstack-start/src/docs/testing.tsx#testing-a-component
 ```
 
-To render with the data already loaded, pass `await queryClient.ensure(...)` instead: the component reads it without suspending.
+For a component that takes a `QueryHandleWithData`, pass `await queryClient.ensure(...)` instead.
 
 ## Seeding the cache
 
