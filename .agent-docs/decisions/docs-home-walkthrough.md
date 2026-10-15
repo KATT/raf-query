@@ -1,6 +1,6 @@
 # Homepage walks through how a route loads its data (human asked)
 
-- Below the hero, "How a route loads its data" explains the hero's example in three numbered steps, modeled on tRPC's homepage quick intro (human): describe the queries, start them in the route loader, read them in components. Each step is prose beside a Twoslash sample, with a link to its guide.
+- Below the hero, "How a route loads its data" explains the hero's example in two numbered steps, modeled on tRPC's homepage quick intro (human): start the queries in the route loader, read them in components. Readers are assumed to know TanStack Query (human), so there's no step defining the factories; the intro says in one sentence that they're `queryOptions` factories of one input and links to Query factories. Each step is prose beside a Twoslash sample, with a link to its guide.
 - The hero sample is the short version (human): the loader `ensure`s the post and the comments in parallel with `allKeyed`, and the component reads both, with both types pinned and the JSX folded ([docs-code-collapse.md](./docs-code-collapse.md)). The walkthrough carries the longer example (`prefetch`, handles, Suspense), so the hero doesn't repeat it.
-- The samples are fragments, `www/content/_home-queries.md`, `_home-loader.md` and `_home-component.md`, so they compile with the docs' Twoslash setup. The prose lives in `www/src/routes/index.tsx`.
+- The samples are fragments, `www/content/_home-loader.md` and `_home-component.md`, so they compile with the docs' Twoslash setup. The prose lives in `www/src/routes/index.tsx`.
 - Lost: folding the long hero sample instead of explaining it (human). Folding hides lines; it doesn't say what the loader does.

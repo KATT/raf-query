@@ -16,7 +16,6 @@ import type { ReactNode } from "react";
 
 import homeComponent from "../../content/_home-component.md";
 import homeLoader from "../../content/_home-loader.md";
-import homeQueries from "../../content/_home-queries.md";
 import home from "../../content/_home.md";
 import { DocBody } from "~/components/doc-body.tsx";
 import { DemoEmbed } from "~/components/demo-embed.tsx";
@@ -112,26 +111,6 @@ const steps: ReadonlyArray<{
 	readonly slug: string;
 	readonly title: string;
 }> = [
-	{
-		body: (
-			<>
-				<p>
-					A query factory is a function of the query’s input. It returns the
-					query’s options: the cache key, the function that fetches, and how
-					long the data stays fresh. The fetch can be anything that returns a
-					promise.
-				</p>
-				<p>
-					Loaders and components call the same factory, so the data’s type
-					follows it from the request to the JSX.
-				</p>
-			</>
-		),
-		code: homeQueries.segments,
-		guide: "Query factories",
-		slug: "query-factories",
-		title: "Describe each query once",
-	},
 	{
 		body: (
 			<>
@@ -258,10 +237,19 @@ function HomePage() {
 				>
 					How a route loads its data
 				</h2>
-				<p className="mb-12 max-w-2xl text-muted-foreground">
+				<p className="mb-12 max-w-2xl text-muted-foreground [&_code]:font-mono [&_code]:text-[0.9em] [&_code]:text-foreground">
 					A page says what it needs before it renders. The route starts every
 					request when the navigation begins, and components read the results as
-					they arrive.
+					they arrive. <code>postQuery</code> and <code>commentsQuery</code> are{" "}
+					<Link
+						className={docLink}
+						params={{ slug: "query-factories" }}
+						to="/docs/$slug"
+					>
+						query factories
+					</Link>
+					: functions of the query’s input that return <code>queryOptions</code>
+					, as in TanStack Query.
 				</p>
 				<ol className="grid gap-16">
 					{steps.map((step, index) => (
