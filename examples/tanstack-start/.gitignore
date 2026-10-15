@@ -1,7 +1,9 @@
 node_modules
 .next
 .output
+.react-router
 .tanstack
+build
 dist
 next-env.d.ts
 *.tsbuildinfo

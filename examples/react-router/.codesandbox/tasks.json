@@ -1,0 +1,27 @@
+{
+	"$schema": "https://codesandbox.io/schemas/tasks.json",
+	"setupTasks": [
+		{
+			"command": "pnpm install",
+			"name": "Install dependencies"
+		}
+	],
+	"tasks": {
+		"build": {
+			"command": "pnpm build",
+			"name": "Production build"
+		},
+		"dev": {
+			"command": "pnpm dev",
+			"name": "Dev server",
+			"preview": {
+				"port": 3006
+			},
+			"runAtStart": true
+		},
+		"typecheck": {
+			"command": "pnpm typecheck",
+			"name": "Type check"
+		}
+	}
+}
