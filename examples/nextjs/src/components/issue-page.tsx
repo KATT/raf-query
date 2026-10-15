@@ -1,6 +1,7 @@
 "use client";
 
-import { Button } from "@examples/ui/components/button";
+import { Button, buttonVariants } from "@examples/ui/components/button";
+import { cn } from "@examples/ui/lib/utils";
 import { Separator } from "@examples/ui/components/separator";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { type QueryHandle, useQuery } from "@raf-query/react";
@@ -65,22 +66,22 @@ export function IssuePage(props: {
 function IssueNav(props: { readonly id: number }) {
 	return (
 		<nav className="flex items-center gap-2">
-			<Button asChild size="sm" variant="ghost">
-				<AppLink href="/issues">
-					<ArrowLeft /> All issues
-				</AppLink>
-			</Button>
+			<AppLink
+				className={cn(buttonVariants({ size: "sm", variant: "ghost" }))}
+				href="/issues"
+			>
+				<ArrowLeft /> All issues
+			</AppLink>
 			<div className="ml-auto flex gap-1">
 				{props.id > 1 ? (
-					<Button asChild size="icon" variant="outline">
-						<AppLink
-							aria-label="Previous issue"
-							href={`/issues/${props.id - 1}`}
-							title="Previous issue"
-						>
-							<ChevronLeft />
-						</AppLink>
-					</Button>
+					<AppLink
+						aria-label="Previous issue"
+						className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
+						href={`/issues/${props.id - 1}`}
+						title="Previous issue"
+					>
+						<ChevronLeft />
+					</AppLink>
 				) : (
 					<Button
 						aria-label="Previous issue"
@@ -92,15 +93,14 @@ function IssueNav(props: { readonly id: number }) {
 						<ChevronLeft />
 					</Button>
 				)}
-				<Button asChild size="icon" variant="outline">
-					<AppLink
-						aria-label="Next issue"
-						href={`/issues/${props.id + 1}`}
-						title="Next issue"
-					>
-						<ChevronRight />
-					</AppLink>
-				</Button>
+				<AppLink
+					aria-label="Next issue"
+					className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
+					href={`/issues/${props.id + 1}`}
+					title="Next issue"
+				>
+					<ChevronRight />
+				</AppLink>
 			</div>
 		</nav>
 	);

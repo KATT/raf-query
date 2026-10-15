@@ -39,13 +39,13 @@ A query sent while pending, that then fails on the server, rejects in the browse
 
 ## Browser-only queries
 
-Some data only exists in the browser: a permission, a service worker, a media query. Mark its query `ssr: false`:
+Some data only the browser can know: a push subscription, a notification permission, a service worker, a media query. That still belongs in the cache — same factory, same handle, same invalidation — just mark the query `ssr: false` so the server never runs it:
 
 ```sample
 tanstack-start/src/docs/ssr-and-hydration.ts#browser-only-queries
 ```
 
-A server client never starts it and never sends it, so loaders and components use it like any query: `prefetch` returns a handle on the server too, and the browser starts the request when the loader or the first read runs there. On the server, readers see it pending:
+A server client never starts it and never sends it. Loaders and components still use it like any query: `prefetch` returns a handle on the server too, and the browser starts the request when the loader or the first read runs there. On the server, readers see it pending:
 
 ```sample
 tanstack-start/src/docs/ssr-and-hydration.tsx#push-state

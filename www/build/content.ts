@@ -31,7 +31,7 @@ export interface ContentOptions extends ContentDirs {
 }
 
 /** The `Accept` header agents send to get markdown instead of HTML. */
-export const acceptsMarkdown = /\btext\/markdown\b/;
+const acceptsMarkdown = /\btext\/markdown\b/;
 
 const Frontmatter = Schema.Struct({
 	description: Schema.String,
@@ -127,9 +127,7 @@ const lastModified = Effect.fn("lastModified")(
 	Effect.orElseSucceed(() => undefined),
 );
 
-export const readSources = Effect.fn("readSources")(function* (
-	dirs: ContentDirs,
-) {
+const readSources = Effect.fn("readSources")(function* (dirs: ContentDirs) {
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path;
 	const names = yield* fs.readDirectory(dirs.contentDir);

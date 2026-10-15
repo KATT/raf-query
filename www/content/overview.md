@@ -65,3 +65,4 @@ starting-queries
 - [Installation](./installation.md) and the [quick start](./quick-start.md) get an app running.
 - [Coming from TanStack Query](./comparison.md) maps what you know onto raf-query.
 - The guides start with [important defaults](./important-defaults.md), and each one has live demos you can poke at.
+- [What belongs in the cache](./client-state.md) covers backend data, browser-only queries, URL state and local UI state.

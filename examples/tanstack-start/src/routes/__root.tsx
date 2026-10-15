@@ -1,8 +1,9 @@
 /// <reference types="vite/client" />
 import type { QueryTimeDefaults } from "@examples/db/types";
-import { Logo } from "@examples/ui/components/logo";
+import { Logo } from "@examples/kit/components/logo";
+import { ThemeProvider } from "@examples/kit/components/theme-provider";
+import { logoUrl } from "@examples/kit/lib/logo";
 import { Toaster } from "@examples/ui/components/sonner";
-import { logoUrl } from "@examples/ui/lib/logo";
 import type { QueryClient } from "@raf-query/react";
 import {
 	createRootRouteWithContext,
@@ -45,52 +46,54 @@ function RootDocument(props: { readonly children: ReactNode }) {
 	const [prefetch, setPrefetch] = useState(readPrefetch);
 
 	return (
-		<html lang="en">
+		<html lang="en" suppressHydrationWarning>
 			<head>
 				<HeadContent />
 			</head>
 			<body className="min-h-screen antialiased">
-				<header className="border-b">
-					<nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
-						<Link
-							className="flex items-center gap-2.5 font-semibold"
-							key={prefetch}
-							to="/issues"
-						>
-							<Logo alt="" />
-							Issues
-						</Link>
-						<span className="text-sm text-muted-foreground">
-							raf-query · TanStack Start
-						</span>
-						<div className="ml-auto">
-							<Settings
-								onPrefetchChange={(next) => {
-									router.update({
-										...router.options,
-										defaultPreload: toDefaultPreload(next),
-									});
-									setPrefetch(next);
-								}}
-								onReset={() => {
-									router.options.context.queryClient.clear();
-									router.clearCache();
-									window.location.reload();
-								}}
-								prefetch={prefetch}
-								queryDefaults={router.options.context.queryDefaults}
-							/>
-						</div>
-					</nav>
-				</header>
-				{/* Remounts the page, so every `Link` picks up a new prefetch setting. */}
-				<main
-					className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8"
-					key={prefetch}
-				>
-					{props.children}
-				</main>
-				<Toaster closeButton position="bottom-right" richColors />
+				<ThemeProvider>
+					<header className="border-b">
+						<nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
+							<Link
+								className="flex items-center gap-2.5 font-semibold"
+								key={prefetch}
+								to="/issues"
+							>
+								<Logo alt="" />
+								Issues
+							</Link>
+							<span className="text-sm text-muted-foreground">
+								raf-query · TanStack Start
+							</span>
+							<div className="ml-auto">
+								<Settings
+									onPrefetchChange={(next) => {
+										router.update({
+											...router.options,
+											defaultPreload: toDefaultPreload(next),
+										});
+										setPrefetch(next);
+									}}
+									onReset={() => {
+										router.options.context.queryClient.clear();
+										router.clearCache();
+										window.location.reload();
+									}}
+									prefetch={prefetch}
+									queryDefaults={router.options.context.queryDefaults}
+								/>
+							</div>
+						</nav>
+					</header>
+					{/* Remounts the page, so every `Link` picks up a new prefetch setting. */}
+					<main
+						className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8"
+						key={prefetch}
+					>
+						{props.children}
+					</main>
+					<Toaster closeButton position="bottom-right" richColors />
+				</ThemeProvider>
 				<Scripts />
 			</body>
 		</html>

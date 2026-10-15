@@ -1,6 +1,6 @@
 import { hashKey, type QueryKey } from "@raf-query/react";
 
-export type RequestStatus = "aborted" | "error" | "pending" | "success";
+type RequestStatus = "aborted" | "error" | "pending" | "success";
 
 export interface NetworkRequest {
 	readonly endedAt: number | undefined;

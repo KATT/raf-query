@@ -33,7 +33,7 @@ import { collapseRegions } from "./collapse.ts";
 import { ContentError, messageOf } from "./content-error.ts";
 import { appOf, sampleApps } from "./sample-apps.ts";
 
-export interface RenderedMarkdown {
+interface RenderedMarkdown {
 	readonly demos: ReadonlyArray<string>;
 	readonly headings: ReadonlyArray<DocHeading>;
 	readonly segments: ReadonlyArray<DocSegment>;

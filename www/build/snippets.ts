@@ -3,7 +3,7 @@ import { Effect, FileSystem, Path } from "effect";
 import { ContentError } from "./content-error.ts";
 import { appOf, sampleApps } from "./sample-apps.ts";
 
-export interface ExpandedSnippets {
+interface ExpandedSnippets {
 	/** Every file the page includes, for the dev server to watch. */
 	readonly files: ReadonlyArray<string>;
 	readonly markdown: string;

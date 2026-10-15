@@ -1,5 +1,6 @@
 import { Badge } from "@examples/ui/components/badge";
-import { Button } from "@examples/ui/components/button";
+import { buttonVariants } from "@examples/ui/components/button";
+import { cn } from "@examples/ui/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
@@ -220,16 +221,22 @@ function HomePage() {
 							’s.
 						</p>
 						<div className="flex flex-wrap gap-3">
-							<Button asChild size="lg">
-								<Link params={{ slug: "quick-start" }} to="/docs/$slug">
-									Get started <ArrowRight />
-								</Link>
-							</Button>
-							<Button asChild size="lg" variant="outline">
-								<Link params={{ slug: firstDoc }} to="/docs/$slug">
-									Read the overview
-								</Link>
-							</Button>
+							<Link
+								className={cn(buttonVariants({ size: "lg" }))}
+								params={{ slug: "quick-start" }}
+								to="/docs/$slug"
+							>
+								Get started <ArrowRight />
+							</Link>
+							<Link
+								className={cn(
+									buttonVariants({ size: "lg", variant: "outline" }),
+								)}
+								params={{ slug: firstDoc }}
+								to="/docs/$slug"
+							>
+								Read the overview
+							</Link>
 						</div>
 						<p className="font-mono text-sm text-muted-foreground">
 							<span className="select-none">$ </span>pnpm add @raf-query/react
@@ -379,16 +386,20 @@ function HomePage() {
 						components read them.
 					</p>
 					<div className="flex flex-wrap gap-3">
-						<Button asChild variant="outline">
-							<Link params={{ slug: "comparison" }} to="/docs/$slug">
-								<FileCode2 /> Compare with TanStack Query
-							</Link>
-						</Button>
-						<Button asChild variant="ghost">
-							<Link params={{ slug: "credits" }} to="/docs/$slug">
-								Credits
-							</Link>
-						</Button>
+						<Link
+							className={cn(buttonVariants({ variant: "outline" }))}
+							params={{ slug: "comparison" }}
+							to="/docs/$slug"
+						>
+							<FileCode2 /> Compare with TanStack Query
+						</Link>
+						<Link
+							className={cn(buttonVariants({ variant: "ghost" }))}
+							params={{ slug: "credits" }}
+							to="/docs/$slug"
+						>
+							Credits
+						</Link>
 					</div>
 				</div>
 				<div className="overflow-x-auto rounded-xl border">

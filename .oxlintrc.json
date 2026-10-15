@@ -564,7 +564,8 @@
 			// Vendored shadcn/ui registry components — not first-party code.
 			"files": [
 				"examples/.shared/ui/src/components/**",
-				"examples/.shared/ui/src/hooks/**"
+				"examples/.shared/ui/src/hooks/**",
+				"examples/.shared/ui/src/lib/highlighter.tsx"
 			],
 			"rules": {
 				"typescript/no-deprecated": "off",
@@ -583,6 +584,7 @@
 				"anti-slop/require-safety-comment-for-type-assertion": "off",
 				"eslint/no-shadow": "off",
 				"eslint/no-underscore-dangle": "off",
+				"workspace/infer-callback-params": "off",
 				"workspace/no-overzealous-destructuring": "off",
 				"workspace/no-use-effect": "off",
 				"workspace/no-manual-memoization": "off",

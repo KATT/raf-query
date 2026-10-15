@@ -227,7 +227,7 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 
 // Reads
 
-export function now(entry: Entry) {
+function now(entry: Entry) {
 	return entry.cache.clock.currentTimeMillisUnsafe();
 }
 

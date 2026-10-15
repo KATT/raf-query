@@ -93,7 +93,7 @@ export function canDehydrate<TFactory extends QueryFactory>(
 	return state.hasData || state.isFetching;
 }
 
-export function dehydrateUnsafe<TFactory extends QueryFactory>(
+function dehydrateUnsafe<TFactory extends QueryFactory>(
 	query: Query.Query<TFactory>,
 	options: DehydrateOptions,
 ): DehydratedQuery {

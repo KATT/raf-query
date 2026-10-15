@@ -28,7 +28,7 @@ export function startsRequests(client: QueryClient<unknown>): boolean {
  * React renders the nearest Suspense fallback, and the browser renders the
  * content.
  */
-export class BrowserRenderError extends Error {
+class BrowserRenderError extends Error {
 	readonly digest = clientRendering;
 	constructor(hash: string) {
 		super(`Query ${hash} loads in the browser: no HydrationBoundary sent it`);

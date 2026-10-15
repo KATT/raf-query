@@ -44,6 +44,7 @@ What changes is the API around the cache. TanStack Query lets any component star
 - **No `select`, no `enabled`, no `placeholderData`.** Shape data in the `queryFn` or the component; start queries only when the route has their input; use `whilePending: "previous"` to keep showing the last page.
 - **Mutations aren't a hook.** Actions, `useOptimistic` and `useActionState` already give you pending, optimistic and error state.
 - **Hydration is a stream.** Handles carry only a key and an input. The server's cache streams to the browser as queries settle, and pending queries cross as promises.
+- **Browser-only queries are first-class.** `ssr: false` skips the server and runs in the browser — push subscriptions, permissions, service workers — with the same factory and handle API. See [Browser-only queries](./ssr-and-hydration.md#browser-only-queries).
 
 ## Why a different API?
 

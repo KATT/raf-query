@@ -1,3 +1,7 @@
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+
 jobs:
   build:
     name: Build
@@ -37,6 +41,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare
+      # Next.js keeps Turbopack compile artifacts in `.next/cache`. Restore the
+      # latest for this lockfile; save under a new key every run (same pattern
+      # as codesandbox.yaml). Vercel already persists this for deploys.
+      - uses: actions/cache@v4
+        with:
+          key: nextjs-build-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.run_id }}
+          path: |
+            examples/nextjs/.next/cache
+            examples/.experimental/tanstack-query-nextjs/.next/cache
+          restore-keys: |
+            nextjs-build-${{ hashFiles('pnpm-lock.yaml') }}-
+            nextjs-build-
       - run: pnpm build:examples
 
   engines_check:
@@ -66,6 +82,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare
       - run: pnpm lint
+
+  knip:
+    name: Knip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - run: pnpm knip
 
   test:
     name: Test
