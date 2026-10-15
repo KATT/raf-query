@@ -316,6 +316,33 @@ const mapping: ReadonlyArray<readonly [string, string]> = [
 	["invalidateQueries(filters)", "qc.invalidate(filter)"],
 ];
 
+/** Homepage excerpts; the full list is /docs/comparison#what-we-leave-out. */
+const leaveOuts: ReadonlyArray<{
+	readonly feature: string;
+	readonly why: string;
+}> = [
+	{
+		feature: "useMutation",
+		why: "Actions, useOptimistic and useActionState already cover pending, optimistic and error state.",
+	},
+	{
+		feature: "enabled / select / placeholderData",
+		why: "The route owns the input; shape data in the queryFn or the component; whilePending keeps the previous page.",
+	},
+	{
+		feature: "refetchOnMount",
+		why: "Mounting a reader never fetches. Loaders re-run on navigation.",
+	},
+	{
+		feature: "Render-starting useQuery",
+		why: "Only useWaterfall may start a request in render — waterfalls stay explicit.",
+	},
+	{
+		feature: "Persistence and other frameworks",
+		why: "A React + Suspense experiment, not a multi-framework ecosystem.",
+	},
+];
+
 function HomePage() {
 	const data = Route.useLoaderData();
 	const search = Route.useSearch();
@@ -533,10 +560,18 @@ function HomePage() {
 						<div className="flex flex-wrap gap-3">
 							<Link
 								className={cn(buttonVariants({ variant: "outline" }))}
+								hash="what-we-leave-out"
 								params={{ slug: "comparison" }}
 								to="/docs/$slug"
 							>
-								<FileCode2 /> Compare with TanStack Query
+								<FileCode2 /> What we leave out
+							</Link>
+							<Link
+								className={cn(buttonVariants({ variant: "ghost" }))}
+								params={{ slug: "comparison" }}
+								to="/docs/$slug"
+							>
+								Full comparison
 							</Link>
 							<Link
 								className={cn(buttonVariants({ variant: "ghost" }))}
@@ -566,6 +601,42 @@ function HomePage() {
 								))}
 							</tbody>
 						</table>
+					</div>
+					<div className="grid gap-4 lg:col-span-2">
+						<h3
+							className="scroll-mt-32 text-lg font-semibold tracking-tight"
+							id="leave-out"
+						>
+							<HashLink id="leave-out">What we leave out</HashLink>
+						</h3>
+						<p className="max-w-3xl text-muted-foreground">
+							TanStack Query is mature and broad. raf-query is narrower: the
+							same cache ideas, shaped so queries start in loaders and RSC.
+							These are deliberate gaps, not unfinished ports.
+						</p>
+						<ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+							{leaveOuts.map((item) => (
+								<li className="grid gap-1" key={item.feature}>
+									<code className="font-mono text-sm text-foreground">
+										{item.feature}
+									</code>
+									<span className="text-sm text-muted-foreground">
+										{item.why}
+									</span>
+								</li>
+							))}
+						</ul>
+						<p>
+							<Link
+								className={`${docLink} w-fit text-sm`}
+								hash="what-we-leave-out"
+								params={{ slug: "comparison" }}
+								to="/docs/$slug"
+							>
+								Everything we leave out, and why{" "}
+								<ArrowRight className="inline size-4" />
+							</Link>
+						</p>
 					</div>
 				</section>
 			</main>
