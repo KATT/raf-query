@@ -78,7 +78,8 @@ type Backend = ReturnType<typeof createBackend>;
 function Issue(props: { readonly backend: Backend; readonly id: number }) {
 	const handle = useWaterfall(props.backend.issueQuery, { id: props.id });
 	const [issuePromise] = useQuery(props.backend.issueQuery, handle);
-	return <p>{use(issuePromise).title}</p>;
+	const issue = use(issuePromise);
+	return <p>{issue.title}</p>;
 }
 
 /** Starts a query during render that nothing on the server reads. */
@@ -370,7 +371,8 @@ describe("RSC QueryProvider", () => {
 		readonly handle: QueryHandle<Backend["issueQuery"]>;
 	}) {
 		const [issuePromise] = useQuery(props.backend.issueQuery, props.handle);
-		return <p>{use(issuePromise).title}</p>;
+		const issue = use(issuePromise);
+		return <p>{issue.title}</p>;
 	}
 
 	it("renders what HydrationBoundary sent, pending entries through their promises, and starts nothing", async () => {

@@ -16,6 +16,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "26.6.4",
+		"oxc-parser": "0.153.0",
 		"oxlint": "1.85.0",
 		"typescript": "7.0.2",
 		"vite-plus": "1.0.0",

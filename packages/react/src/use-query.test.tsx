@@ -325,7 +325,8 @@ describe("useQuery", () => {
 		}) {
 			renders.promiseOnly++;
 			const [issuePromise] = useQuery(test.backend.issueQuery, props.handle);
-			return <p>{use(issuePromise).title}</p>;
+			const issue = use(issuePromise);
+			return <p>{issue.title}</p>;
 		}
 		function ReadsFetching(props: {
 			readonly handle: QueryHandle<typeof test.backend.issueQuery>;
@@ -961,9 +962,8 @@ describe("lists", () => {
 			const [itemsPromise, page] = useQuery(backend.pageQuery, props.handle, {
 				whilePending: "previous",
 			});
-			return (
-				<p data-previous={page.isPrevious}>{use(itemsPromise).join(",")}</p>
-			);
+			const items = use(itemsPromise);
+			return <p data-previous={page.isPrevious}>{items.join(",")}</p>;
 		}
 		function view(page: number) {
 			const handle = client.prefetch(backend.pageQuery, {
