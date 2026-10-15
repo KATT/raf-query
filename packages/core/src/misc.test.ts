@@ -118,7 +118,7 @@ describe("types", () => {
 		>();
 	});
 
-	it("name options by a types bag, defaulting error and services", () => {
+	it("name options by a types bag, defaulting error, services and key", () => {
 		interface Post {
 			readonly slug: string;
 			readonly title: string;
@@ -129,13 +129,21 @@ describe("types", () => {
 				queryKey: ["post"],
 			});
 		expectTypeOf(postQuery({ slug: "a" })).toEqualTypeOf<
-			QueryOptions<{ data: { slug: string; title: string } }>
+			QueryOptions<{
+				data: { slug: string; title: string };
+				key: readonly ["post", string];
+			}>
 		>();
 		expectTypeOf(issueQuery({ id: 1 })).toEqualTypeOf<
-			QueryOptions<{ data: { id: number }; error: NotFound }>
+			QueryOptions<{
+				data: { id: number };
+				error: NotFound;
+				key: readonly ["issue", number];
+			}>
 		>();
 		expectTypeOf(commentsQuery({ slug: "a" })).toEqualTypeOf<
 			InfiniteQueryOptions<{
+				key: readonly ["comments", string];
 				page: { next: number | null };
 				pageParam: number;
 			}>
@@ -145,7 +153,9 @@ describe("types", () => {
 				queryFn: () => Effect.succeed("ok"),
 				queryKey: ["ok"],
 			}),
-		).toEqualTypeOf<QueryOptions<{ data: string; error: never }>>();
+		).toEqualTypeOf<
+			QueryOptions<{ data: string; error: never; key: readonly ["ok"] }>
+		>();
 		function failWith<E>(error: E) {
 			return () =>
 				queryOptions({
@@ -155,7 +165,7 @@ describe("types", () => {
 		}
 		const notFoundQuery = failWith(new NotFound({ id: 1 }));
 		expectTypeOf(notFoundQuery()).toEqualTypeOf<
-			QueryOptions<{ data: never; error: NotFound }>
+			QueryOptions<{ data: never; error: NotFound; key: readonly ["fail"] }>
 		>();
 		expectTypeOf<ErrorOf<typeof notFoundQuery>>().toEqualTypeOf<NotFound>();
 		const issuePagesQuery = (input: { id: number }) =>
@@ -171,6 +181,7 @@ describe("types", () => {
 		expectTypeOf(issuePagesQuery({ id: 1 })).toEqualTypeOf<
 			InfiniteQueryOptions<{
 				error: NotFound;
+				key: readonly ["issue-pages", number];
 				page: { id: number };
 				pageParam: number;
 			}>

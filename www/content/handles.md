@@ -31,6 +31,8 @@ Type a prop with the handle its loader returns:
 tanstack-start/src/docs/handles.handle-props.tsx#handle-props
 ```
 
+A handle's type names its factory, and a factory's type includes its key's shape (`readonly ["post", string]`). So `useQuery(draftQuery, handle)` is a type error when `handle` came from `postQuery`, even when both take the same input and return the same data. Factories whose keys have the same shape read the same entries, so their handles mix. Annotating a factory's return type as `QueryOptions<{ data: Post }>` widens its key to any `QueryKey`, and its handles mix with any factory's of the same input and data.
+
 `QueryHandleWithData` extends `QueryHandle`, so TypeScript lets a handle with data into a `QueryHandle` prop. `useQuery` picks by the handle it gets at runtime, though: there it returns the data while the prop's type says promise, and `use()` on it throws. If you switch a query from `prefetch` to `ensure`, switch the props that receive its handle to `QueryHandleWithData`.
 
 ## The cache is the source of truth
