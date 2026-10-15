@@ -2,7 +2,6 @@
 
 import {
 	type DataOf,
-	type EnsuredQueryHandle,
 	type ErrorOf,
 	fulfilled,
 	type InputArgs,
@@ -17,7 +16,7 @@ import {
 	Query,
 } from "@raf-query/core";
 import { Effect, Result } from "effect";
-import { use, useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { assertSent } from "./browser-requests.ts";
 import type { QueryClient } from "./client.ts";
@@ -115,18 +114,6 @@ export type UseQueryResult<
 			]
 		: readonly [
 				promise: Promise<Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>>,
-				controls: UseQueryControls<TFactory>,
-			];
-
-/** {@link useQuery}'s result for a handle from `ensure`. */
-export type UseEnsuredQueryResult<
-	TFactory extends QueryFactory,
-	TThrow extends boolean | undefined = undefined,
-> =
-	ThrowsOnError<TFactory, TThrow> extends true
-		? readonly [data: DataOf<TFactory>, controls: UseQueryControls<TFactory>]
-		: readonly [
-				result: Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>,
 				controls: UseQueryControls<TFactory>,
 			];
 
@@ -274,25 +261,11 @@ function asResultThenable<A, E>(
  * The component re-renders when the promise changes, and when a control it
  * has read changes; changes to controls it never reads are skipped.
  *
- * A handle from `ensure` had its data loaded before the route rendered, so
- * the hook returns the data (or `Result`) itself:
- *
- * ```tsx
- * const [post, postState] = useQuery(postQuery, loaderData.post);
- * ```
- *
- * If that entry has lost its data since (garbage-collected, `reset`), the
- * hook suspends until it is refetched.
+ * A handle from `ensure` or `fetch` reads the same way: the hook reads the
+ * live entry, not the handle's `data` snapshot, and its promise is already
+ * fulfilled unless the entry has lost its data since (garbage-collected,
+ * `reset`).
  */
-export function useQuery<
-	TFactory extends QueryFactory,
-	const TThrow extends boolean | undefined = undefined,
->(
-	factory: TFactory,
-	handle: EnsuredQueryHandle<TFactory>,
-	options?: UseQueryOptions &
-		UseQueryThrowOptions<TFactory> & { readonly throwOnError?: TThrow },
-): UseEnsuredQueryResult<TFactory, TThrow>;
 export function useQuery<
 	TFactory extends QueryFactory,
 	const TThrow extends boolean | undefined = undefined,
@@ -304,12 +277,9 @@ export function useQuery<
 ): UseQueryResult<TFactory, TThrow>;
 export function useQuery<TFactory extends QueryFactory>(
 	factory: TFactory,
-	handle: EnsuredQueryHandle<TFactory> | QueryHandle<TFactory>,
+	handle: QueryHandle<TFactory>,
 	options: UseQueryOptions & { readonly throwOnError?: boolean } = {},
-	// Overloads name the return; the body picks at runtime.
-):
-	| UseEnsuredQueryResult<TFactory, boolean>
-	| UseQueryResult<TFactory, boolean> {
+): UseQueryResult<TFactory, boolean> {
 	const client = useQueryClient();
 	const query = queryFor(client, factory, handle.input);
 	assertSent(client, query);
@@ -354,23 +324,11 @@ export function useQuery<TFactory extends QueryFactory>(
 		const resultPromise = asResultThenable<DataOf<TFactory>, ErrorOf<TFactory>>(
 			result.promise,
 		);
-		if (handle.ensured === true) {
-			// SAFETY: `use` unwraps to Result when throwOnError is false.
-			return [use(resultPromise), controls] as unknown as UseEnsuredQueryResult<
-				TFactory,
-				false
-			>;
-		}
 		// SAFETY: Result thenable for typed ErrorOf when throwOnError is false.
 		return [resultPromise, controls] as unknown as UseQueryResult<
 			TFactory,
 			false
 		>;
-	}
-	if (handle.ensured === true) {
-		const data = use(result.promise);
-		// SAFETY: as below; `use` unwraps the promise to its data.
-		return [data, controls] as unknown as UseEnsuredQueryResult<TFactory, true>;
 	}
 	// SAFETY: the result's promise is this factory's entry's promise (or an
 	// earlier input's entry of the same factory), and the result has every

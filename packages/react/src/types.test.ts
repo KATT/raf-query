@@ -12,6 +12,7 @@ import {
 	QueryClient,
 	QueryClientProvider,
 	type QueryHandle,
+	type QueryHandleWithData,
 	type QueryOptions,
 	queryOptions,
 	type ServicesOf,
@@ -101,7 +102,15 @@ describe("types", () => {
 		expectTypeOf(qc.prefetch(postQuery, { slug: "a" }).input).toEqualTypeOf<{
 			slug: string;
 		}>();
-		expectTypeOf(qc.fetch(postQuery, { slug: "a" })).resolves.toEqualTypeOf<{
+		expectTypeOf(qc.fetch(postQuery, { slug: "a" })).resolves.toEqualTypeOf<
+			QueryHandleWithData<typeof postQuery>
+		>();
+		expectTypeOf(qc.ensure(postQuery, { slug: "a" })).resolves.toEqualTypeOf<
+			QueryHandleWithData<typeof postQuery>
+		>();
+		expectTypeOf<
+			QueryHandleWithData<typeof postQuery>["data"]
+		>().toEqualTypeOf<{
 			slug: string;
 			title: string;
 		}>();
@@ -216,6 +225,7 @@ describe("types", () => {
 
 		const handle = await qc.ensure(endpointQuery(getPost), { slug: "a" });
 		expectTypeOf(handle.input).toEqualTypeOf<{ slug: string }>();
+		expectTypeOf(handle.data).toEqualTypeOf<{ title: string }>();
 		expectTypeOf(
 			qc.getData(endpointQuery(getPost), { slug: "a" }),
 		).toEqualTypeOf<{ title: string } | undefined>();
@@ -226,14 +236,14 @@ describe("types", () => {
 			DataOf<ReturnType<typeof endpointPagesQuery<{ tag: string }, number>>>
 		>().toEqualTypeOf<InfiniteData<{ page: number; pageParam: number }>>();
 		const withApi = new QueryClient({ isServer: true, layer: apiLayer });
-		expectTypeOf(
-			withApi.fetch(apiQuery<{ id: number }>("user"), { id: 1 }),
-		).resolves.toEqualTypeOf<string>();
+		expectTypeOf(withApi.fetch(apiQuery<{ id: number }>("user"), { id: 1 }))
+			.resolves.toHaveProperty("data")
+			.toEqualTypeOf<string>();
 
 		function useTypeOnly() {
 			void qc.invalidate(endpointQuery(getPost), { slug: "a" });
 			const [post] = useQuery(endpointQuery(getPost), handle);
-			expectTypeOf(post).toEqualTypeOf<{ title: string }>();
+			expectTypeOf(post).toEqualTypeOf<Promise<{ title: string }>>();
 			const pages = useWaterfall(endpointPagesQuery(listPosts), { tag: "a" });
 			expectTypeOf(
 				useQuery(endpointPagesQuery(listPosts), pages)[1],
@@ -243,9 +253,11 @@ describe("types", () => {
 			).resolves.toHaveProperty("input");
 			expectTypeOf(
 				qc.fetch(endpointPagesQuery(listPosts), { tag: "a" }, { pages: 2 }),
-			).resolves.toEqualTypeOf<
-				InfiniteData<{ page: { items: Array<string> }; pageParam: number }>
-			>();
+			)
+				.resolves.toHaveProperty("data")
+				.toEqualTypeOf<
+					InfiniteData<{ page: { items: Array<string> }; pageParam: number }>
+				>();
 			// @ts-expect-error the input is the endpoint's args
 			void qc.ensure(endpointQuery(getPost), { tag: "a" });
 			void qc.ensure(

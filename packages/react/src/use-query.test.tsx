@@ -4,12 +4,12 @@ import { Context, Effect, Layer, Result, Schema } from "effect";
 import { Component, type ReactNode, StrictMode, Suspense, use } from "react";
 
 import {
-	type EnsuredQueryHandle,
 	infiniteQueryOptions,
 	Query,
 	QueryClient,
 	QueryClientProvider,
 	type QueryHandle,
+	type QueryHandleWithData,
 	queryOptions,
 	useQuery,
 	type UseQueryOptions,
@@ -283,9 +283,10 @@ describe("useQuery", () => {
 			});
 		}
 		function Numbers(props: {
-			readonly handle: EnsuredQueryHandle<typeof numbersQuery>;
+			readonly handle: QueryHandleWithData<typeof numbersQuery>;
 		}) {
-			const [data, numbers] = useQuery(numbersQuery, props.handle);
+			const [promise, numbers] = useQuery(numbersQuery, props.handle);
+			const data = use(promise);
 			return (
 				<button
 					disabled={!numbers.hasNextPage}
@@ -383,11 +384,11 @@ describe("useQuery", () => {
 		}
 		const renders = { count: 0 };
 		function Value(props: {
-			readonly handle: EnsuredQueryHandle<typeof flakyQuery>;
+			readonly handle: QueryHandleWithData<typeof flakyQuery>;
 		}) {
 			renders.count++;
 			const [value] = useQuery(flakyQuery, props.handle);
-			return <p>{`Value ${value}`}</p>;
+			return <p>{`Value ${use(value)}`}</p>;
 		}
 		const handle = await client.ensure(flakyQuery);
 		await mount(
@@ -467,20 +468,29 @@ describe("useQuery", () => {
 		});
 	});
 
-	it("returns the data itself for a handle from ensure", async () => {
+	it("reads a handle from ensure from the live entry, not its data", async () => {
 		const test = setup();
-		function EnsuredTitle(props: {
-			readonly handle: EnsuredQueryHandle<typeof test.backend.issueQuery>;
-		}) {
-			const [issue] = useQuery(test.backend.issueQuery, props.handle);
-			return <p>{issue.title}</p>;
-		}
 		const ensuring = test.client.ensure(test.backend.issueQuery, { id: 1 });
 		await test.backend.respond();
 		const handle = await ensuring;
 
-		await mount(test.view(<EnsuredTitle handle={handle} />));
+		await mount(test.view(<test.IssueTitle handle={handle} />));
 		expect(screen.getByText("First")).toBeDefined();
+
+		await act(async () => {
+			test.client.setData(
+				test.backend.issueQuery,
+				{ id: 1 },
+				{
+					assigneeId: 1,
+					id: 1,
+					title: "Renamed",
+				},
+			);
+			await Promise.resolve();
+		});
+		expect(screen.getByText("Renamed")).toBeDefined();
+		expect(handle.data.title).toBe("First");
 
 		// The entry lost its data after the loader ran: the hook suspends.
 		await act(async () => {
@@ -503,10 +513,10 @@ describe("useQuery", () => {
 			});
 		}
 		function Assignee(props: {
-			readonly handle: EnsuredQueryHandle<typeof assigneeQuery>;
+			readonly handle: QueryHandleWithData<typeof assigneeQuery>;
 		}) {
 			const [name] = useQuery(assigneeQuery, props.handle);
-			return <p>{name ?? "Unassigned"}</p>;
+			return <p>{use(name) ?? "Unassigned"}</p>;
 		}
 		const handle = await test.client.ensure(assigneeQuery);
 
@@ -549,22 +559,26 @@ describe("useQuery", () => {
 		});
 	});
 
-	it("types reads of ensured handles as data", () => {
+	it("types handles with data as handles, read as promises", () => {
 		const backend = createBackend();
-		expectTypeOf<EnsuredQueryHandle<typeof backend.issueQuery>>().not.toExtend<
+		expectTypeOf<QueryHandleWithData<typeof backend.issueQuery>>().toExtend<
 			QueryHandle<typeof backend.issueQuery>
+		>();
+		expectTypeOf<QueryHandle<typeof backend.issueQuery>>().not.toExtend<
+			QueryHandleWithData<typeof backend.issueQuery>
 		>();
 		const ensure = (client: QueryClient) =>
 			client.ensure(backend.issueQuery, { id: 1 });
 		expectTypeOf(ensure).returns.resolves.toEqualTypeOf<
-			EnsuredQueryHandle<typeof backend.issueQuery>
+			QueryHandleWithData<typeof backend.issueQuery>
 		>();
 		const useTypes = (
-			ensured: EnsuredQueryHandle<typeof backend.issueQuery>,
+			withData: QueryHandleWithData<typeof backend.issueQuery>,
 			handle: QueryHandle<typeof backend.issueQuery>,
 		) => {
-			const [issue] = useQuery(backend.issueQuery, ensured);
-			expectTypeOf(issue).toEqualTypeOf<Issue>();
+			expectTypeOf(withData.data).toEqualTypeOf<Issue>();
+			const [fromData] = useQuery(backend.issueQuery, withData);
+			expectTypeOf(fromData).toEqualTypeOf<Promise<Issue>>();
 			const [promise] = useQuery(backend.issueQuery, handle);
 			expectTypeOf(promise).toEqualTypeOf<Promise<Issue>>();
 		};

@@ -119,12 +119,12 @@ describe("QueryCache services", () => {
 				),
 			);
 
-			expect(handle.ensured).toBe(true);
+			expect(handle.data.text).toBe("Hi, Ada");
 			const data = yield* cache.getData(greetingQuery, { name: "Ada" });
 			expect(Option.map(data, (greeting) => greeting.text)).toEqual(
 				Option.some("Hi, Ada"),
 			);
-			expect(layered.text).toBe("Hey, Bob");
+			expect(layered.data.text).toBe("Hey, Bob");
 		}),
 	);
 
@@ -177,7 +177,7 @@ describe("QueryCache meta", () => {
 
 			const meta = yield* cache.fetch(metaQuery, { id: 1, label: "one" });
 
-			expect(meta).toEqual({ label: "one" });
+			expect(meta.data).toEqual({ label: "one" });
 		}),
 	);
 
@@ -195,9 +195,12 @@ describe("QueryCache meta", () => {
 				});
 			}
 
-			const data = yield* cache.fetch(pagedQuery, undefined, { pages: 2 });
+			const paged = yield* cache.fetch(pagedQuery, undefined, { pages: 2 });
 
-			expect(data.pages).toEqual([{ label: "paged" }, { label: "paged" }]);
+			expect(paged.data.pages).toEqual([
+				{ label: "paged" },
+				{ label: "paged" },
+			]);
 		}),
 	);
 
@@ -225,7 +228,7 @@ describe("QueryCache meta", () => {
 				});
 			}
 
-			expect(yield* cache.fetch(plainQuery)).toEqual({
+			expect((yield* cache.fetch(plainQuery)).data).toEqual({
 				label: "default",
 				scope: "app",
 			});
@@ -233,9 +236,9 @@ describe("QueryCache meta", () => {
 				label: "default",
 				scope: "app",
 			});
-			expect(yield* cache.fetch(metaQuery, { id: 1, label: "own" })).toEqual({
-				label: "own",
-			});
+			expect(
+				(yield* cache.fetch(metaQuery, { id: 1, label: "own" })).data,
+			).toEqual({ label: "own" });
 		}),
 	);
 
@@ -309,7 +312,35 @@ describe("QueryCache", () => {
 			const [handle, issue] = yield* Fiber.join(fiber);
 
 			expect(handle.key).toEqual(["issue", 1]);
-			expect(issue.title).toBe("First");
+			expect(handle.input).toEqual({ id: 1 });
+			expect(handle.data.title).toBe("First");
+			expect(issue.data.title).toBe("First");
+		}),
+	);
+
+	it.effect("ensure succeeds with stale data, fetch waits for fresh", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: false });
+			yield* cache.setData(
+				backend.issueQuery,
+				{ id: 1 },
+				{
+					id: 1,
+					title: "Cached",
+				},
+			);
+
+			const ensured = yield* cache.ensure(backend.issueQuery, { id: 1 });
+			const fiber = yield* Effect.forkChild(
+				cache.fetch(backend.issueQuery, { id: 1 }),
+			);
+			yield* settle;
+			backend.respondAll();
+			const fetched = yield* Fiber.join(fiber);
+
+			expect(ensured.data.title).toBe("Cached");
+			expect(fetched.data.title).toBe("First");
 		}),
 	);
 
@@ -627,7 +658,7 @@ describe("QueryCache", () => {
 			expect(calls).toBe(1);
 
 			platform.emit("online");
-			expect(yield* Fiber.join(fiber)).toBe("ok");
+			expect((yield* Fiber.join(fiber)).data).toBe("ok");
 			expect(calls).toBe(2);
 		}),
 	);
@@ -675,7 +706,10 @@ describe("QueryCache", () => {
 			);
 			backend.respondAll();
 
-			expect(yield* Fiber.join(fiber)).toEqual({ id: 1, title: "First" });
+			expect((yield* Fiber.join(fiber)).data).toEqual({
+				id: 1,
+				title: "First",
+			});
 			expect(backend.requests).toHaveLength(0);
 		}),
 	);
@@ -855,7 +889,10 @@ describe("QueryCache", () => {
 
 			const cached = yield* browser.getData(backend.issueQuery, { id: 1 });
 			expect(Option.getOrUndefined(cached)?.title).toBe("A");
-			expect(yield* Fiber.join(fetched)).toEqual({ id: 2, title: "Second" });
+			expect((yield* Fiber.join(fetched)).data).toEqual({
+				id: 2,
+				title: "Second",
+			});
 			expect(backend.requests).toHaveLength(0);
 		}),
 	);
