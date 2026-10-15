@@ -14,9 +14,13 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import homeComponent from "../../content/_home-component.md";
+import homeLoader from "../../content/_home-loader.md";
+import homeQueries from "../../content/_home-queries.md";
 import home from "../../content/_home.md";
 import { DocBody } from "~/components/doc-body.tsx";
 import { DemoEmbed } from "~/components/demo-embed.tsx";
+import type { DocSegment } from "~/content/types.ts";
 import { firstDoc } from "~/content/docs.ts";
 import { demoQuery } from "~/demos/registry.ts";
 import { pageHead } from "~/seo.ts";
@@ -99,6 +103,83 @@ const features: ReadonlyArray<{
 	},
 ];
 
+const docLink = "font-medium text-foreground underline underline-offset-4";
+
+const steps: ReadonlyArray<{
+	readonly body: ReactNode;
+	readonly code: ReadonlyArray<DocSegment>;
+	readonly guide: string;
+	readonly slug: string;
+	readonly title: string;
+}> = [
+	{
+		body: (
+			<>
+				<p>
+					A query factory is a function of the query’s input. It returns the
+					query’s options: the cache key, the function that fetches, and how
+					long the data stays fresh. The fetch can be anything that returns a
+					promise.
+				</p>
+				<p>
+					Loaders and components call the same factory, so the data’s type
+					follows it from the request to the JSX.
+				</p>
+			</>
+		),
+		code: homeQueries.segments,
+		guide: "Query factories",
+		slug: "query-factories",
+		title: "Describe each query once",
+	},
+	{
+		body: (
+			<>
+				<p>
+					The router runs the loader as soon as a navigation starts, and with
+					preloading on, when a link is hovered. Every query the page needs
+					starts there, at the same time, before anything renders.
+				</p>
+				<p>
+					The loader also picks what the navigation waits for.{" "}
+					<code>ensure</code> holds the route change until the post is in the
+					cache. <code>prefetch</code> starts the comments and moves on.
+				</p>
+				<p>
+					Both return a <strong className="text-foreground">handle</strong>: the
+					query’s key and input, without the data. During SSR, the cache streams
+					to the browser next to the handles, so nothing is fetched twice.
+				</p>
+			</>
+		),
+		code: homeLoader.segments,
+		guide: "Starting queries",
+		slug: "starting-queries",
+		title: "Start them in the route loader",
+	},
+	{
+		body: (
+			<>
+				<p>
+					<code>useQuery</code> takes the factory and a handle. The route waited
+					for the post, so it returns the post itself. The comments are still on
+					their way, so it returns a promise, and <code>use()</code> suspends{" "}
+					<code>Comments</code> while the skeleton shows.
+				</p>
+				<p>
+					From then on the cache keeps both up to date: it refetches stale data
+					when the window regains focus and after a write invalidates it, and
+					each component re-renders with the new data.
+				</p>
+			</>
+		),
+		code: homeComponent.segments,
+		guide: "Reading queries",
+		slug: "reading-queries",
+		title: "Read them in components",
+	},
+];
+
 const mapping: ReadonlyArray<readonly [string, string]> = [
 	["queryClient.prefetchQuery()", "qc.prefetch(factory, input)"],
 	["queryClient.ensureQueryData()", "qc.ensure(factory, input)"],
@@ -162,6 +243,56 @@ function HomePage() {
 						<DocBody demos={{}} segments={home.segments} />
 					</div>
 				</div>
+			</section>
+
+			<section
+				aria-labelledby="how-it-works"
+				className="mx-auto max-w-7xl border-b px-4 py-16 sm:px-6"
+			>
+				<h2
+					className="mb-2 text-2xl font-semibold tracking-tight"
+					id="how-it-works"
+				>
+					How a route loads its data
+				</h2>
+				<p className="mb-12 max-w-2xl text-muted-foreground">
+					A page says what it needs before it renders. The route starts every
+					request when the navigation begins, and components read the results as
+					they arrive.
+				</p>
+				<ol className="grid gap-16">
+					{steps.map((step, index) => (
+						<li
+							className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-12"
+							key={step.slug}
+						>
+							<div className="grid content-start gap-4 lg:sticky lg:top-24">
+								<h3 className="flex items-center gap-3 text-xl font-semibold tracking-tight">
+									<span
+										aria-hidden="true"
+										className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-sm text-primary-foreground"
+									>
+										{index + 1}
+									</span>
+									{step.title}
+								</h3>
+								<div className="grid gap-3 text-muted-foreground [&_code]:font-mono [&_code]:text-[0.9em] [&_code]:text-foreground">
+									{step.body}
+								</div>
+								<Link
+									className={`${docLink} w-fit text-sm`}
+									params={{ slug: step.slug }}
+									to="/docs/$slug"
+								>
+									{step.guide} <ArrowRight className="inline size-4" />
+								</Link>
+							</div>
+							<div className="min-w-0">
+								<DocBody demos={{}} segments={step.code} />
+							</div>
+						</li>
+					))}
+				</ol>
 			</section>
 
 			<section
