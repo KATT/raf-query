@@ -128,7 +128,7 @@ Both packages are released together and always share a version. The latest git t
 
 Pushing to `main` runs [`.github/workflows/release.yaml`](./workflows/release.yaml), which runs [release-it](https://github.com/release-it/release-it) from the repo root. It skips when nothing under `packages/*` changed since the latest tag (docs, examples, agent docs, and `.experimental/*` alone do not release — same glob as the root `./packages/*` filters):
 
-1. Computes the next version from conventional commits since the latest tag and updates `CHANGELOG.md`. Only commits that touch `packages/core` or `packages/react` are considered (same publishable packages as the gate). Among those, only `feat`, `fix`, and `perf` bump and appear in the notes (`effect: "bump"` in `.release-it.json`); other conventional types are `effect: "hidden"`.
+1. Computes the next version from conventional commits since the latest tag and updates `CHANGELOG.md`. Only commits that touch `packages/*` are considered (same path as the gate). Among those, only `feat`, `fix`, and `perf` bump and appear in the notes (`effect: "bump"` in `.release-it.json`); other conventional types are `effect: "hidden"`.
 2. Writes the version into `packages/core/package.json` and `packages/react/package.json`.
 3. Checks `main` hasn't moved since the run checked it out; if it has, it stops and leaves the release to the run for the newer commit (otherwise it would publish a version whose push gets rejected).
 4. Builds, then publishes `@raf-query/core` and `@raf-query/react` (each `pnpm pack` + `npm publish`, using npm trusted publishing over OIDC — no `NPM_TOKEN`). `pnpm pack` rewrites `workspace:*` and `catalog:` to real versions.
