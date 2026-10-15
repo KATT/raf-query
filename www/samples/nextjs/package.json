@@ -4,12 +4,20 @@
 	"private": true,
 	"description": "The Next.js App Router app the docs' Next.js page is written against",
 	"type": "module",
+	"imports": {
+		"#api-fetch": {
+			"react-server": "./src/api-fetch.server.ts",
+			"default": "./src/api-fetch.ts"
+		}
+	},
 	"scripts": {
 		"typecheck": "tsc"
 	},
 	"dependencies": {
 		"@raf-query/react": "workspace:*",
-		"react": "19.3.0"
+		"next": "16.4.0",
+		"react": "19.3.0",
+		"react-dom": "19.3.0"
 	},
 	"devDependencies": {
 		"@types/node": "26.6.4",

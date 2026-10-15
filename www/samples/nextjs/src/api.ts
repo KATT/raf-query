@@ -10,6 +10,11 @@ export interface PostComment {
 	readonly id: string;
 }
 
+export interface CommentPage {
+	readonly items: ReadonlyArray<PostComment>;
+	readonly nextCursor: number | null;
+}
+
 export interface Issue {
 	readonly id: number;
 	readonly title: string;
@@ -27,8 +32,10 @@ export function getPost(slug: string) {
 	return request<Post>(`/api/posts/${slug}`);
 }
 
-export function listComments(slug: string) {
-	return request<Array<PostComment>>(`/api/posts/${slug}/comments`);
+export function listComments(input: { cursor: number; slug: string }) {
+	return request<CommentPage>(
+		`/api/posts/${input.slug}/comments?cursor=${input.cursor}`,
+	);
 }
 
 export function listIssues(input: { status: "open" | "done" }) {

@@ -5,11 +5,38 @@
 @source "./";
 
 html {
-	scroll-padding-top: 5rem;
+	/* Site header (3.5rem) + homepage framework mode bar (~2.75rem). */
+	scroll-padding-top: 6.5rem;
 }
 
 html[data-announcement-dismissed] .announcement-bar {
 	display: none;
+}
+
+/*
+ * Homepage framework panels: both modes ship in the static HTML; a blocking
+ * script sets data-framework-mode from ?mode= before paint so nextjs never
+ * flashes the prerendered TanStack Start content.
+ */
+[data-framework-panel] {
+	display: none;
+}
+
+:root:not([data-framework-mode]) [data-framework-panel="tanstack-start"],
+[data-framework-mode="tanstack-start"] [data-framework-panel="tanstack-start"],
+[data-framework-mode="nextjs"] [data-framework-panel="nextjs"] {
+	display: contents;
+}
+
+:root:not([data-framework-mode])
+	[data-framework-mode-link="tanstack-start"].framework-mode-link,
+[data-framework-mode="tanstack-start"]
+	[data-framework-mode-link="tanstack-start"].framework-mode-link,
+[data-framework-mode="nextjs"]
+	[data-framework-mode-link="nextjs"].framework-mode-link {
+	background-color: var(--foreground);
+	color: var(--background);
+	font-weight: 500;
 }
 
 .prose {

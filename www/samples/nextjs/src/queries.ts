@@ -1,4 +1,4 @@
-import { queryOptions } from "@raf-query/react";
+import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
 
 import { getPost, listComments, listIssues } from "./api.ts";
 
@@ -10,9 +10,12 @@ export function postQuery(input: { slug: string }) {
 }
 
 export function commentsQuery(input: { slug: string }) {
-	return queryOptions({
+	return infiniteQueryOptions({
 		queryKey: ["comments", input.slug],
-		queryFn: () => listComments(input.slug),
+		queryFn: (context) =>
+			listComments({ cursor: context.pageParam, slug: input.slug }),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
 	});
 }
 
@@ -23,12 +26,14 @@ export function issueListQuery(input: { status: "open" | "done" }) {
 	});
 }
 
-// #region route-handler
+// #region api-fetch
+import { apiFetch } from "#api-fetch";
+
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
 		queryKey: ["issue", input.id],
 		queryFn: (context) =>
-			fetch(`/api/issues/${input.id}`, { signal: context.signal }).then(
+			apiFetch(`/api/issues/${input.id}`, { signal: context.signal }).then(
 				(response) => response.json(),
 			),
 	});

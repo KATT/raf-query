@@ -5,9 +5,9 @@
 	"description": "raf-query issue tracker on Next.js App Router",
 	"type": "module",
 	"imports": {
-		"#latency-cookie": {
-			"browser": "./src/latency-cookie.browser.ts",
-			"default": "./src/latency-cookie.ts"
+		"#forwarded-headers": {
+			"react-server": "./src/forwarded-headers.server.ts",
+			"default": "./src/forwarded-headers.ts"
 		}
 	},
 	"scripts": {
