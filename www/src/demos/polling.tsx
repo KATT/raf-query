@@ -33,7 +33,7 @@ function visitorsQuery() {
 					].slice(-24);
 					return db.history;
 				},
-				{ signal: context.signal },
+				context,
 			),
 		queryKey: ["stats", "visitors"],
 	});

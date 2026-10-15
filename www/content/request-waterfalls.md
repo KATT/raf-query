@@ -23,7 +23,7 @@ instead of one after the other as each component renders and discovers what it n
 3.     |-> Author
 ```
 
-The demo below runs the same page both ways. Open a post with each strategy and compare the waterfall in the network panel:
+The demo below runs the same page both ways. Open a post with each strategy and watch the Queries panel: with the loader, all three requests load at once; in render, they load one after another.
 
 ```demo
 waterfalls

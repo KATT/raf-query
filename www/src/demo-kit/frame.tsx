@@ -15,12 +15,11 @@ import {
 import { cn } from "@examples/ui/lib/utils";
 import { QueryClient, QueryClientProvider } from "@raf-query/react";
 import { QueryDevtoolsPanel } from "@raf-query/react/devtools";
-import { Expand, FlaskConical, RotateCcw } from "lucide-react";
+import { Expand, FlaskConical, Shrink } from "lucide-react";
 import { Activity, type ReactNode, Suspense, useId, useState } from "react";
 
-import { CachePanel } from "./cache-panel.tsx";
 import type { DemoDefinition, DemoVariant } from "./define.ts";
-import { NetworkPanel } from "./network-panel.tsx";
+import { QueriesPanel } from "./queries-panel.tsx";
 import { type FakeServer, latencies } from "./server.ts";
 import { DemoSessionContext } from "./session.ts";
 
@@ -52,6 +51,15 @@ function createSession(
 	return session;
 }
 
+/** Starts every variant of the demo over, as a page load would. */
+export function resetSessions(demo: DemoDefinition): void {
+	for (const variant of demo.variants) {
+		void liveSessions.get(variant)?.client.dispose();
+		liveSessions.delete(variant);
+		variant.server.reset();
+	}
+}
+
 function sessionsFor(demo: DemoDefinition): ReadonlyArray<Session> {
 	return demo.variants.map(
 		(variant) => liveSessions.get(variant) ?? createSession(demo, variant),
@@ -75,50 +83,59 @@ function Inspector(props: {
 	readonly server: FakeServer<unknown>;
 	readonly session: Session;
 }) {
+	const showing = props.label ? (
+		<p className="text-xs text-muted-foreground">
+			Showing{" "}
+			<span className="font-mono font-medium text-foreground">
+				{props.label}
+			</span>
+		</p>
+	) : null;
+	const queries = (
+		<QueriesPanel
+			client={props.session.client}
+			key={props.session.id}
+			server={props.server}
+		/>
+	);
+	if (!props.devtools) {
+		return (
+			<div className={cn("grid gap-2", props.className)}>
+				<div className="flex flex-wrap items-center justify-between gap-2">
+					<p className="text-xs font-medium">Queries</p>
+					{showing}
+				</div>
+				<div className="min-h-28">{queries}</div>
+			</div>
+		);
+	}
 	return (
-		<Tabs className={props.className} defaultValue="network">
+		<Tabs className={props.className} defaultValue="queries">
 			<div className="flex flex-wrap items-center justify-between gap-2">
 				<TabsList className="h-8">
-					<TabsTrigger className="text-xs" value="network">
-						Network
+					<TabsTrigger className="text-xs" value="queries">
+						Queries
 					</TabsTrigger>
-					<TabsTrigger className="text-xs" value="cache">
-						Cache
+					<TabsTrigger className="text-xs" value="devtools">
+						Devtools
 					</TabsTrigger>
-					{props.devtools ? (
-						<TabsTrigger className="text-xs" value="devtools">
-							Devtools
-						</TabsTrigger>
-					) : null}
 				</TabsList>
-				{props.label ? (
-					<p className="text-xs text-muted-foreground">
-						Showing{" "}
-						<span className="font-mono font-medium text-foreground">
-							{props.label}
-						</span>
-					</p>
-				) : null}
+				{showing}
 			</div>
-			<TabsContent className="min-h-28" value="network">
-				<NetworkPanel server={props.server} />
+			<TabsContent className="min-h-28" value="queries">
+				{queries}
 			</TabsContent>
-			<TabsContent className="min-h-28" value="cache">
-				<CachePanel client={props.session.client} />
+			<TabsContent className="min-h-0" value="devtools">
+				<QueryDevtoolsPanel
+					client={props.session.client}
+					style={{ borderRadius: 8, height: "100%", minHeight: 360 }}
+					theme={
+						document.documentElement.classList.contains("dark")
+							? "dark"
+							: "light"
+					}
+				/>
 			</TabsContent>
-			{props.devtools ? (
-				<TabsContent className="min-h-0" value="devtools">
-					<QueryDevtoolsPanel
-						client={props.session.client}
-						style={{ borderRadius: 8, height: "100%", minHeight: 360 }}
-						theme={
-							document.documentElement.classList.contains("dark")
-								? "dark"
-								: "light"
-						}
-					/>
-				</TabsContent>
-			) : null}
 		</Tabs>
 	);
 }
@@ -130,7 +147,7 @@ function VariantSwitch(props: {
 }) {
 	const name = useId();
 	return (
-		<fieldset className="flex flex-col items-start gap-1.5">
+		<fieldset>
 			<legend className="sr-only">{props.demo.variantsLabel}</legend>
 			<div className="inline-flex flex-wrap rounded-md border p-0.5">
 				{props.demo.variants.map((variant, index) => (
@@ -155,9 +172,6 @@ function VariantSwitch(props: {
 					</label>
 				))}
 			</div>
-			<p aria-live="polite" className="text-sm text-muted-foreground">
-				{props.demo.variants[props.selected]?.description}
-			</p>
 		</fieldset>
 	);
 }
@@ -170,7 +184,6 @@ function VariantSwitch(props: {
 function DemoBody(props: {
 	readonly demo: DemoDefinition;
 	readonly onReload: (index: number, location: string) => void;
-	readonly onSelect: (index: number) => void;
 	readonly opened: ReadonlyArray<number>;
 	readonly selected: number;
 	readonly sessions: ReadonlyArray<Session>;
@@ -178,13 +191,6 @@ function DemoBody(props: {
 	const demo = props.demo;
 	return (
 		<div className="flex flex-col gap-3">
-			{demo.variants.length > 1 ? (
-				<VariantSwitch
-					demo={demo}
-					onSelect={props.onSelect}
-					selected={props.selected}
-				/>
-			) : null}
 			{demo.variants.map((variant, index) => {
 				const session = props.sessions[index];
 				if (!session || !props.opened.includes(index)) {
@@ -216,59 +222,117 @@ function DemoBody(props: {
 	);
 }
 
+/** Everything that changes what the demo does, with the variant's description. */
 function Toolbar(props: {
-	readonly children?: ReactNode;
 	readonly demo: DemoDefinition;
 	/** Shared by the frame's toolbar and the expanded dialog's. */
 	readonly latency: number | undefined;
 	readonly onLatency: (ms: number) => void;
-	readonly onReset: () => void;
+	readonly onSelect: (index: number) => void;
+	readonly selected: number;
 }) {
+	const variants = props.demo.variants;
 	return (
-		<div className="flex flex-wrap items-center gap-2">
-			<div
-				aria-label="Server latency"
-				className="inline-flex rounded-md border p-0.5"
-				role="radiogroup"
-			>
-				{latencies.map((option) => (
-					<button
-						aria-checked={props.latency === option.ms}
-						className={cn(
-							"rounded px-2 py-0.5 text-xs text-muted-foreground",
-							props.latency === option.ms &&
-								"bg-accent font-medium text-foreground",
-						)}
-						key={option.ms}
-						onClick={() => {
-							for (const variant of props.demo.variants) {
-								variant.server.latency = option.ms;
-							}
-							props.onLatency(option.ms);
-						}}
-						role="radio"
-						title={`Server responds in about ${option.ms} ms`}
-						type="button"
-					>
-						{option.label}
-					</button>
-				))}
+		<div className="grid gap-1.5">
+			<div className="flex flex-wrap items-center gap-2">
+				{variants.length > 1 ? (
+					<VariantSwitch
+						demo={props.demo}
+						onSelect={props.onSelect}
+						selected={props.selected}
+					/>
+				) : null}
+				<div
+					aria-label="Server latency"
+					className="inline-flex rounded-md border p-0.5"
+					role="radiogroup"
+				>
+					{latencies.map((option) => (
+						<button
+							aria-checked={props.latency === option.ms}
+							className={cn(
+								"rounded px-2 py-0.5 text-xs text-muted-foreground",
+								props.latency === option.ms &&
+									"bg-accent font-medium text-foreground",
+							)}
+							key={option.ms}
+							onClick={() => {
+								for (const variant of props.demo.variants) {
+									variant.server.latency = option.ms;
+								}
+								props.onLatency(option.ms);
+							}}
+							role="radio"
+							title={`Server responds in about ${option.ms} ms`}
+							type="button"
+						>
+							{option.label}
+						</button>
+					))}
+				</div>
 			</div>
-			<Button onClick={props.onReset} size="xs" variant="ghost">
-				<RotateCcw /> Reset
-			</Button>
-			{props.children}
+			{variants.length > 1 ? (
+				<p aria-live="polite" className="text-sm text-muted-foreground">
+					{variants[props.selected]?.description}
+				</p>
+			) : null}
 		</div>
 	);
 }
 
 /**
+ * The demo with its queries underneath, or beside it when the card is wide
+ * enough: inline and in the expanded dialog alike.
+ */
+function DemoCard(props: {
+	/** Expand inline, Close in the dialog. */
+	readonly action: ReactNode;
+	readonly body: ReactNode;
+	readonly className: string;
+	readonly description: ReactNode;
+	readonly devtools?: boolean;
+	readonly inspected: Omit<
+		Parameters<typeof Inspector>[0],
+		"className" | "devtools"
+	>;
+	readonly title: ReactNode;
+	readonly toolbar: ReactNode;
+}) {
+	return (
+		<figure
+			className={cn(
+				"@container flex flex-col bg-card text-card-foreground",
+				props.className,
+			)}
+		>
+			<figcaption className="grid gap-3 border-b px-4 py-3">
+				<div className="grid gap-1.5">
+					<div className="flex items-center justify-between gap-3">
+						{props.title}
+						{props.action}
+					</div>
+					{props.description}
+				</div>
+				{props.toolbar}
+			</figcaption>
+			<div className="grid min-h-0 flex-1 overflow-y-auto @3xl:grid-cols-[minmax(0,1fr)_26rem] @6xl:grid-cols-[minmax(0,1fr)_32rem]">
+				<div className="min-w-0 p-4">{props.body}</div>
+				<Inspector
+					className="min-w-0 content-start border-t bg-muted/30 px-4 py-3 @3xl:border-t-0 @3xl:border-l"
+					devtools={props.devtools ?? false}
+					{...props.inspected}
+				/>
+			</div>
+		</figure>
+	);
+}
+
+/**
  * A live demo in a box: its own query client and fake server, with the
- * server's requests and the cache's entries underneath. Expanding it opens
+ * cache's queries, each with its readers and requests. Expanding it opens
  * the same session in a dialog with the devtools panel. A demo with
- * variants gets a switch, and a session per variant; Reset starts them all
- * over and keeps the switch where it is. A browser's Reload starts only its
- * own variant over, on the URL it was showing.
+ * variants gets a switch, and a session per variant. A browser's Reload
+ * starts its own variant over, on the URL it was showing.
  */
 export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 	const demo = props.demo;
@@ -282,16 +346,6 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 	if (!variant || !session) {
 		throw new Error(`Demo "${demo.title}" has no variant ${selected}`);
 	}
-	const reset = () => {
-		for (const previous of sessions) {
-			void previous.client.dispose();
-		}
-		for (const each of demo.variants) {
-			each.server.reset();
-		}
-		setSessions(demo.variants.map((each) => createSession(demo, each)));
-		setOpened([selected]);
-	};
 	const inspected = {
 		label: demo.variants.length > 1 ? variant.label : undefined,
 		server: variant.server,
@@ -313,80 +367,102 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 					),
 				);
 			}}
-			onSelect={(index) => {
-				setSelected(index);
-				setOpened((previous) =>
-					previous.includes(index) ? previous : [...previous, index],
-				);
-			}}
 			opened={opened}
 			selected={selected}
 			sessions={sessions}
 		/>
 	);
 
+	const icon = (
+		<FlaskConical className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+	);
+	const toolbar = (
+		<Toolbar
+			demo={demo}
+			latency={latency}
+			onLatency={setLatency}
+			onSelect={(index) => {
+				setSelected(index);
+				setOpened((previous) =>
+					previous.includes(index) ? previous : [...previous, index],
+				);
+			}}
+			selected={selected}
+		/>
+	);
+
 	return (
-		<figure className="not-prose my-8 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
-			<figcaption className="grid gap-1.5 border-b px-4 py-3">
-				<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+		<>
+			<DemoCard
+				action={
+					<Button
+						onClick={() => {
+							setExpanded(true);
+						}}
+						size="xs"
+						variant="outline"
+					>
+						<Expand /> Expand
+					</Button>
+				}
+				body={
+					expanded ? (
+						<p className="py-10 text-center text-sm text-muted-foreground">
+							Running in the expanded view.
+						</p>
+					) : (
+						body
+					)
+				}
+				className="not-prose my-8 overflow-hidden rounded-xl border shadow-sm"
+				description={
+					<p className="text-xs text-muted-foreground">{demo.hint}</p>
+				}
+				inspected={inspected}
+				title={
 					<p className="flex items-center gap-2 text-sm font-semibold">
-						<FlaskConical className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+						{icon}
 						{demo.title}
 					</p>
-					<Toolbar
-						demo={demo}
-						latency={latency}
-						onLatency={setLatency}
-						onReset={reset}
-					>
-						<Button
-							onClick={() => {
-								setExpanded(true);
-							}}
-							size="xs"
-							variant="outline"
-						>
-							<Expand /> Expand
-						</Button>
-					</Toolbar>
-				</div>
-				<p className="text-xs text-muted-foreground">{demo.hint}</p>
-			</figcaption>
-			<div className="p-4">
-				{expanded ? (
-					<p className="py-10 text-center text-sm text-muted-foreground">
-						Running in the expanded view.
-					</p>
-				) : (
-					body
-				)}
-			</div>
-			<Inspector className="border-t bg-muted/30 px-4 py-3" {...inspected} />
+				}
+				toolbar={toolbar}
+			/>
 			<Dialog onOpenChange={setExpanded} open={expanded}>
-				<DialogContent className="grid h-[min(56rem,92dvh)] w-[96vw] max-w-none grid-rows-[auto_1fr] gap-4 overflow-hidden p-5 sm:max-w-7xl">
-					<div className="grid gap-2 pr-8">
-						<DialogTitle className="flex items-center gap-2">
-							<FlaskConical className="size-4 text-emerald-600 dark:text-emerald-400" />
-							{demo.title}
-						</DialogTitle>
-						<DialogDescription>{demo.hint}</DialogDescription>
-						<Toolbar
-							demo={demo}
-							latency={latency}
-							onLatency={setLatency}
-							onReset={reset}
-						/>
-					</div>
-					<div className="grid min-h-0 gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)]">
-						<div className="min-w-0">{body}</div>
-						<Inspector
-							className="min-w-0 rounded-lg border bg-muted/30 p-3"
-							devtools
-							{...inspected}
-						/>
-					</div>
+				<DialogContent
+					className="h-[min(56rem,92dvh)] w-[96vw] max-w-none gap-0 overflow-hidden p-0 sm:max-w-7xl"
+					showCloseButton={false}
+				>
+					<DemoCard
+						action={
+							<Button
+								onClick={() => {
+									setExpanded(false);
+								}}
+								size="xs"
+								variant="outline"
+							>
+								<Shrink /> Close
+							</Button>
+						}
+						body={body}
+						className="h-full min-h-0"
+						description={
+							<DialogDescription className="text-xs">
+								{demo.hint}
+							</DialogDescription>
+						}
+						devtools
+						inspected={inspected}
+						title={
+							<DialogTitle className="flex items-center gap-2 text-sm">
+								{icon}
+								{demo.title}
+							</DialogTitle>
+						}
+						toolbar={toolbar}
+					/>
 				</DialogContent>
 			</Dialog>
-		</figure>
+		</>
 	);
 }

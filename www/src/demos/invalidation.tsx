@@ -36,7 +36,7 @@ function todosQuery(input: { readonly status: Status }) {
 					db.todos
 						.filter((todo) => input.status === "all" || todo.done)
 						.map((todo) => todo.text),
-				{ signal: context.signal },
+				context,
 			),
 		queryKey: ["todos", input],
 		staleTime: Infinity,
@@ -46,9 +46,7 @@ function todosQuery(input: { readonly status: Status }) {
 function usersQuery() {
 	return queryOptions({
 		queryFn: (context) =>
-			server.respond("GET /users", (db) => db.users, {
-				signal: context.signal,
-			}),
+			server.respond("GET /users", (db) => db.users, context),
 		queryKey: ["users"],
 		staleTime: Infinity,
 	});

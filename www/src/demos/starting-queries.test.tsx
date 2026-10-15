@@ -8,7 +8,7 @@ import {
 	within,
 } from "@testing-library/react";
 
-import { DemoFrame } from "~/demo-kit/frame.tsx";
+import { DemoFrame, resetSessions } from "~/demo-kit/frame.tsx";
 import { createFakeServer } from "~/demo-kit/server.ts";
 import demo from "./starting-queries.tsx";
 
@@ -33,15 +33,15 @@ async function click(element: HTMLElement) {
 }
 
 async function renderDemo(latency = 40): Promise<Disposable> {
+	// Sessions outlive a render, as on the page, so start each test from
+	// fresh clients and servers.
+	resetSessions(demo);
 	for (const variant of demo.variants) {
 		variant.server.latency = latency;
 	}
 	await act(async () => {
 		render(<DemoFrame demo={demo} />);
 	});
-	// Sessions outlive a render, as on the page, so start each test from
-	// Reset's fresh clients and servers.
-	await click(screen.getByRole("button", { name: "Reset" }));
 	return { [Symbol.dispose]: cleanup };
 }
 
@@ -173,9 +173,9 @@ describe("prefetch, ensure or fetch", () => {
 			screen.getByRole("heading", { name: "Render-as-you-fetch, explained" }),
 		).toBeTruthy();
 		expect(
-			within(screen.getByRole("list", { name: "Requests" })).getAllByRole(
-				"listitem",
-			),
+			within(screen.getByRole("table", { name: "Queries" }))
+				.getAllByRole("row")
+				.slice(1),
 		).toHaveLength(3);
 		expect(requestsOf("prefetch")).toEqual([
 			"GET /posts success",
@@ -245,33 +245,6 @@ describe("prefetch, ensure or fetch", () => {
 		await selectVariant("fetch");
 
 		expect(scrollTo).not.toHaveBeenCalled();
-	});
-
-	it("Reset starts every variant over and keeps the selection", async () => {
-		using _demo = await renderDemo();
-		await openPost("Render-as-you-fetch, explained");
-		await selectVariant("ensure");
-		await openPost("Why loaders beat effects");
-		await screen.findByRole("heading", { name: "Why loaders beat effects" });
-
-		await click(screen.getByRole("button", { name: "Reset" }));
-
-		expect(
-			screen.getByRole<HTMLInputElement>("radio", { name: "ensure" }).checked,
-		).toBe(true);
-		expect(requestsOf("ensure")).toEqual(["GET /posts pending"]);
-		expect(requestsOf("prefetch")).toEqual([]);
-		expect(
-			await screen.findByRole("link", { name: "Why loaders beat effects" }),
-		).toBeTruthy();
-
-		await selectVariant("prefetch");
-
-		expect(
-			await screen.findByRole("link", {
-				name: "Render-as-you-fetch, explained",
-			}),
-		).toBeTruthy();
 	});
 
 	it("selects the server's latency in every toolbar", async () => {

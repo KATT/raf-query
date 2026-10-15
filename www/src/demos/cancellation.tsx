@@ -23,9 +23,7 @@ const server = createFakeServer(() => ({
 function inboxQuery() {
 	return queryOptions({
 		queryFn: (context) =>
-			server.respond("GET /inbox", (db) => db.messages, {
-				signal: context.signal,
-			}),
+			server.respond("GET /inbox", (db) => db.messages, context),
 		queryKey: ["inbox"],
 		staleTime: 60_000,
 	});

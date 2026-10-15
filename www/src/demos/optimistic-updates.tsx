@@ -34,9 +34,7 @@ const server = createFakeServer(() => ({ todos: seedTodos() }));
 function todosQuery() {
 	return queryOptions({
 		queryFn: (context) =>
-			server.respond("GET /todos", (db) => db.todos, {
-				signal: context.signal,
-			}),
+			server.respond("GET /todos", (db) => db.todos, context),
 		queryKey: ["todos"],
 	});
 }

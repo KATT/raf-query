@@ -14,9 +14,12 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import homeComponent from "../../content/_home-component.md";
+import homeLoader from "../../content/_home-loader.md";
 import home from "../../content/_home.md";
 import { DocBody } from "~/components/doc-body.tsx";
 import { DemoEmbed } from "~/components/demo-embed.tsx";
+import type { DocSegment } from "~/content/types.ts";
 import { firstDoc } from "~/content/docs.ts";
 import { demoQuery } from "~/demos/registry.ts";
 import { pageHead } from "~/seo.ts";
@@ -99,6 +102,81 @@ const features: ReadonlyArray<{
 	},
 ];
 
+/** The heading's text, linking to its own id. */
+function HashLink(props: {
+	readonly children: ReactNode;
+	readonly id: string;
+}) {
+	return (
+		<a className="heading-anchor" href={`#${props.id}`}>
+			{props.children}
+		</a>
+	);
+}
+
+const docLink = "font-medium text-foreground underline underline-offset-4";
+
+const steps: ReadonlyArray<{
+	readonly body: ReactNode;
+	readonly code: ReadonlyArray<DocSegment>;
+	readonly guide: string;
+	readonly id: string;
+	readonly slug: string;
+	readonly title: string;
+}> = [
+	{
+		body: (
+			<>
+				<p>
+					The router runs the loader as soon as a navigation starts, and with
+					preloading on, when a link is hovered. Every query the page needs
+					starts there, at the same time, before anything renders.
+				</p>
+				<p>
+					The loader also picks what the navigation waits for.{" "}
+					<code>prefetch</code> never holds it up: the comments load while the
+					page renders. <code>ensure</code> holds it only when the post isn’t
+					cached yet. Either way, cached data shows at once, and stale data
+					refetches in the background.
+				</p>
+				<p>
+					Both return a <strong className="text-foreground">handle</strong>: the
+					query’s key and input, without the data. During SSR, the cache streams
+					to the browser next to the handles, so nothing is fetched twice.
+				</p>
+			</>
+		),
+		code: homeLoader.segments,
+		guide: "Starting queries",
+		id: "start-in-the-loader",
+		slug: "starting-queries",
+		title: "Start them in the route loader",
+	},
+	{
+		body: (
+			<>
+				<p>
+					<code>useQuery</code> takes the factory and a handle. The post is
+					already in the cache, so it returns the post itself. The comments may
+					still be loading, so it returns a promise. If they are,{" "}
+					<code>use()</code> suspends <code>Comments</code> while the skeleton
+					shows.
+				</p>
+				<p>
+					From then on the cache keeps both up to date: it refetches stale data
+					when the window regains focus and after a write invalidates it, and
+					each component re-renders with the new data.
+				</p>
+			</>
+		),
+		code: homeComponent.segments,
+		guide: "Reading queries",
+		id: "read-in-components",
+		slug: "reading-queries",
+		title: "Read them in components",
+	},
+];
+
 const mapping: ReadonlyArray<readonly [string, string]> = [
 	["queryClient.prefetchQuery()", "qc.prefetch(factory, input)"],
 	["queryClient.ensureQueryData()", "qc.ensure(factory, input)"],
@@ -165,14 +243,74 @@ function HomePage() {
 			</section>
 
 			<section
+				aria-labelledby="how-it-works"
+				className="mx-auto max-w-7xl border-b px-4 py-16 sm:px-6"
+			>
+				<h2
+					className="mb-2 scroll-mt-20 text-2xl font-semibold tracking-tight"
+					id="how-it-works"
+				>
+					<HashLink id="how-it-works">How a route loads its data</HashLink>
+				</h2>
+				<p className="mb-12 max-w-2xl text-muted-foreground [&_code]:font-mono [&_code]:text-[0.9em] [&_code]:text-foreground">
+					A page says what it needs before it renders. The route starts every
+					request when the navigation begins, and components read the results as
+					they arrive. <code>postQuery</code> and <code>commentsQuery</code> are{" "}
+					<Link
+						className={docLink}
+						params={{ slug: "query-factories" }}
+						to="/docs/$slug"
+					>
+						query factories
+					</Link>
+					: functions of the query’s input that return <code>queryOptions</code>
+					, as in TanStack Query.
+				</p>
+				<ol className="grid gap-16">
+					{steps.map((step, index) => (
+						<li
+							className="grid scroll-mt-20 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-12"
+							id={step.id}
+							key={step.id}
+						>
+							<div className="grid content-start gap-4 lg:sticky lg:top-24">
+								<h3 className="flex items-center gap-3 text-xl font-semibold tracking-tight">
+									<span
+										aria-hidden="true"
+										className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-sm text-primary-foreground"
+									>
+										{index + 1}
+									</span>
+									<HashLink id={step.id}>{step.title}</HashLink>
+								</h3>
+								<div className="grid gap-3 text-muted-foreground [&_code]:font-mono [&_code]:text-[0.9em] [&_code]:text-foreground">
+									{step.body}
+								</div>
+								<Link
+									className={`${docLink} w-fit text-sm`}
+									params={{ slug: step.slug }}
+									to="/docs/$slug"
+								>
+									{step.guide} <ArrowRight className="inline size-4" />
+								</Link>
+							</div>
+							<div className="min-w-0 [&_.code-block]:my-0!">
+								<DocBody demos={{}} segments={step.code} />
+							</div>
+						</li>
+					))}
+				</ol>
+			</section>
+
+			<section
 				aria-labelledby="principles"
 				className="mx-auto max-w-7xl px-4 py-16 sm:px-6"
 			>
 				<h2
-					className="mb-2 text-2xl font-semibold tracking-tight"
+					className="mb-2 scroll-mt-20 text-2xl font-semibold tracking-tight"
 					id="principles"
 				>
-					Built around how React wants data
+					<HashLink id="principles">Built around how React wants data</HashLink>
 				</h2>
 				<p className="mb-8 max-w-2xl text-muted-foreground">
 					Fetch-on-render is an explicitly named escape hatch, not the default.
@@ -198,16 +336,16 @@ function HomePage() {
 			</section>
 
 			<section aria-labelledby="try-it" className="border-y bg-muted/30 py-16">
-				<div className="mx-auto max-w-5xl px-4 sm:px-6">
+				<div className="mx-auto max-w-7xl px-4 sm:px-6">
 					<h2
-						className="mb-2 text-2xl font-semibold tracking-tight"
+						className="mb-2 scroll-mt-20 text-2xl font-semibold tracking-tight"
 						id="try-it"
 					>
-						Try it: prefetch, ensure or fetch
+						<HashLink id="try-it">Try it: prefetch, ensure or fetch</HashLink>
 					</h2>
 					<p className="max-w-2xl text-muted-foreground">
-						The demo runs in your browser against a fake server, with the
-						requests and the cache shown underneath.
+						The demo runs in your browser against a fake server, with its
+						queries, their requests and the cache shown next to it.
 					</p>
 					<DemoEmbed handle={data.demo} />
 				</div>
@@ -218,8 +356,13 @@ function HomePage() {
 				className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2"
 			>
 				<div className="grid content-start gap-4">
-					<h2 className="text-2xl font-semibold tracking-tight" id="tanstack">
-						Standing on TanStack Query’s shoulders
+					<h2
+						className="scroll-mt-20 text-2xl font-semibold tracking-tight"
+						id="tanstack"
+					>
+						<HashLink id="tanstack">
+							Standing on TanStack Query’s shoulders
+						</HashLink>
 					</h2>
 					<p className="text-muted-foreground">
 						The cache’s mechanics follow{" "}
