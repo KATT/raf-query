@@ -8,24 +8,26 @@ import {
 const base = {
 	// Far enough below the sticky line that parallax progress is still 0.
 	code: { left: 640, top: 420, width: 560 },
+	howItWorksBottom: 2400,
 	isLarge: true,
-	principlesTop: 2000,
+	pillHeight: 40,
 	reducedMotion: false,
 	scrollY: 0,
 	stickyTop: 64,
-	viewportHeight: 900,
 	viewportWidth: 1280,
-} as const;
+};
 
 const codeCenter = base.code.left + base.code.width / 2;
 const viewportCenter = base.viewportWidth / 2;
 
-/** `base` scrolled down by `by` pixels. */
-function scrolled(by: number) {
+/** `base` scrolled down by `by` pixels. Pass viewport rects already scrolled. */
+function scrolled(by: number, extras: Partial<typeof base> = {}) {
 	return {
 		...base,
 		code: { ...base.code, top: base.code.top - by },
+		howItWorksBottom: base.howItWorksBottom - by,
 		scrollY: by,
+		...extras,
 	};
 }
 
@@ -36,7 +38,6 @@ describe("frameworkModeBarLayout", () => {
 		expect(layout.top).toBe(0);
 		expect(layout.left).toBe(base.code.width / 2);
 		expect(layout.progress).toBe(0);
-		expect(layout.visible).toBe(true);
 	});
 
 	it("drifts toward the viewport center as the code approaches the sticky line", () => {
@@ -73,12 +74,6 @@ describe("frameworkModeBarLayout", () => {
 		expect(atLine.top).toBe(base.stickyTop);
 		expect(atLine.left).toBe(viewportCenter);
 		expect(atLine.progress).toBe(1);
-
-		const past = frameworkModeBarLayout(scrolled(1000));
-		expect(past.position).toBe("fixed");
-		expect(past.top).toBe(base.stickyTop);
-		expect(past.left).toBe(viewportCenter);
-		expect(past.visible).toBe(true);
 	});
 
 	it("lands where it was: the last docked frame is next to the stuck spot", () => {
@@ -90,6 +85,18 @@ describe("frameworkModeBarLayout", () => {
 		const beforeViewportTop = base.code.top - (distance - 1) + before.top;
 		expect(beforeViewportTop - after.top).toBe(1);
 		expect(Math.abs(before.left + base.code.left - after.left)).toBeLessThan(2);
+	});
+
+	it("stops at the end of how-it-works instead of fading out", () => {
+		const releaseTop = 40;
+		const released = frameworkModeBarLayout(
+			scrolled(1000, {
+				howItWorksBottom: releaseTop + base.pillHeight,
+			}),
+		);
+		expect(released.position).toBe("fixed");
+		expect(released.top).toBe(releaseTop);
+		expect(released.top).toBeLessThan(base.stickyTop);
 	});
 
 	it("stays on the code center on small viewports, docked and stuck", () => {
@@ -106,26 +113,12 @@ describe("frameworkModeBarLayout", () => {
 		const stuck = frameworkModeBarLayout({
 			...mobile,
 			code: { ...mobile.code, top: 40 },
+			howItWorksBottom: 800,
 			scrollY: 860,
 		});
 		expect(stuck.position).toBe("fixed");
 		expect(stuck.left).toBe(16 + 358 / 2);
 		expect(stuck.top).toBe(base.stickyTop);
-	});
-
-	it("hides once the principles section enters the viewport", () => {
-		const stillShown = frameworkModeBarLayout({
-			...scrolled(1000),
-			principlesTop: base.viewportHeight,
-		});
-		expect(stillShown.visible).toBe(true);
-
-		const hidden = frameworkModeBarLayout({
-			...scrolled(1000),
-			principlesTop: base.viewportHeight - 1,
-		});
-		expect(hidden.position).toBe("fixed");
-		expect(hidden.visible).toBe(false);
 	});
 
 	it("skips parallax when reduced motion is on", () => {
