@@ -188,8 +188,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@raf-query/react':
-        specifier: 0.8.0
-        version: 0.8.0(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(effect@4.0.4)(react@19.3.0)
+        specifier: 0.9.0
+        version: 0.9.0(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(effect@4.0.4)(react@19.3.0)
       '@tanstack/react-router':
         specifier: 1.170.42
         version: 1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -1097,14 +1097,14 @@ packages:
       '@types/react':
         optional: true
 
-  '@raf-query/core@0.8.0':
-    resolution: {integrity: sha512-N3+CUDVwaC9tXNbZvZ+ymJf/upg6tfCx+cDTxxPSbQBO6KS85pxUeqmi1urUdFwv1bh7LlU4FJGJFbN9Py3IPA==}
+  '@raf-query/core@0.9.0':
+    resolution: {integrity: sha512-WOAXpDN3TXMwLuRjJHMl3PomRktuQYhj0kunDUctACYGnBMi6tULzxHxV+s99WapV3tRcaOnsgbFaffYyaMGnA==}
     engines: {node: '>=22'}
     peerDependencies:
       effect: ^4.0.0
 
-  '@raf-query/react@0.8.0':
-    resolution: {integrity: sha512-sA74zf0yn2wroVVwUzXNxkh7UTiMDXzct1D5AWmPB6NurXLpWXdZqjvNZbOIacA+gKnzkfkqFA9nOlpyLyKmqA==}
+  '@raf-query/react@0.9.0':
+    resolution: {integrity: sha512-phP2yn91+2QL1M3p+WddGsoGboh5e8rPN99eF1wHfioY0lG2AePYjZ8Szt1966a0BRTAwV8VVOsMPA+pmuTauA==}
     engines: {node: '>=22'}
     peerDependencies:
       '@tanstack/react-router': ^1.170.0
@@ -4640,13 +4640,13 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  '@raf-query/core@0.8.0(effect@4.0.4)':
+  '@raf-query/core@0.9.0(effect@4.0.4)':
     dependencies:
       effect: 4.0.4
 
-  '@raf-query/react@0.8.0(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(effect@4.0.4)(react@19.3.0)':
+  '@raf-query/react@0.9.0(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(effect@4.0.4)(react@19.3.0)':
     dependencies:
-      '@raf-query/core': 0.8.0(effect@4.0.4)
+      '@raf-query/core': 0.9.0(effect@4.0.4)
       effect: 4.0.4
       react: 19.3.0
     optionalDependencies:
