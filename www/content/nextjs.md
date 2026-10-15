@@ -30,11 +30,15 @@ Mount DevTools only when `process.env.NODE_ENV !== "production"` so Next.js drop
 A server component starts queries, and wraps what it renders in a `HydrationBoundary` that sends the request client's entries to the browser:
 
 ```sample
-nextjs/src/app/posts/[slug]/page.tsx
+nextjs/src/app/(blog)/posts/[slug]/page.tsx
 ```
 
 ```sample
-nextjs/src/components/comments.tsx#component
+nextjs/src/app/(blog)/components/post.tsx#component
+```
+
+```sample
+nextjs/src/app/(blog)/components/comments.tsx#component
 ```
 
 - Render a `HydrationBoundary` in each server component that starts queries for client components. Entries already sent in this request are skipped, so nesting them is fine.

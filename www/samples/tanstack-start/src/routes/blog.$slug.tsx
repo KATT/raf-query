@@ -1,40 +1,59 @@
-import { allKeyed, useQuery } from "@raf-query/react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
+import { Suspense, use } from "react";
 
-import { renderComment } from "~/components/comments.tsx";
+import { CommentsSkeleton, renderComment } from "~/components/comments.tsx";
 import { commentsQuery, postQuery } from "~/queries.ts";
 
-// The homepage's hero: the post page waiting for both queries.
-// `posts.$slug.tsx` is the same page streaming the comments.
+declare function PostSkeleton(): React.ReactNode;
+
+// Homepage sample: one file. `posts.$slug.tsx` keeps ensure+prefetch for the
+// guides that teach that split.
 
 // #region hero
+// #region route
 export const Route = createFileRoute("/blog/$slug")({
 	loader: (args) => {
 		const qc = args.context.queryClient;
 		const { slug } = args.params;
-		// In parallel. The route waits only on a cache miss: cached data
-		// shows at once, and stale data refetches in the background.
-		return allKeyed({
-			post: qc.ensure(postQuery, { slug }),
-			comments: qc.ensure(commentsQuery, { slug }),
-		});
+		// Never waits: both load while the page renders.
+		const comments = qc.prefetch(commentsQuery, { slug });
+		const post = qc.prefetch(postQuery, { slug });
+		return { comments, post };
 	},
 	component: PostPage,
 });
+// #endregion route
 
+// #region component
 function PostPage() {
 	const data = Route.useLoaderData();
-	const [post] = useQuery(postQuery, data.post);
-	//     ^?
-	const [comments] = useQuery(commentsQuery, data.comments);
-	//     ^?
-	// ---collapse---
 	return (
 		<article>
-			<h1>{post.title}</h1>
-			{comments.pages.flatMap((page) => page.items.map(renderComment))}
+			<Suspense fallback={<PostSkeleton />}>
+				<Post handle={data.post} />
+			</Suspense>
+			<Suspense fallback={<CommentsSkeleton />}>
+				<PostComments handle={data.comments} />
+			</Suspense>
 		</article>
 	);
-	// ---/collapse---
 }
+
+function Post(props: { handle: QueryHandle<typeof postQuery> }) {
+	const [post] = useQuery(postQuery, props.handle);
+	//     ^?
+	return <h1>{use(post).title}</h1>;
+}
+
+// ---collapse---
+function PostComments(props: { handle: QueryHandle<typeof commentsQuery> }) {
+	// May still be loading. If so, use() suspends until it lands.
+	const [pages] = useQuery(commentsQuery, props.handle);
+	return use(pages)
+		.pages.flatMap((page) => page.items)
+		.map(renderComment);
+}
+// ---/collapse---
+// #endregion component
 // #endregion hero
