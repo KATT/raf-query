@@ -1,3 +1,4 @@
+import { IssueId } from "@examples/db/types";
 import { CommentsSkeleton } from "@examples/kit/components/comments";
 import {
 	IssueBodySkeleton,
@@ -23,6 +24,9 @@ export const Route = createFileRoute("/issues/$issueId")({
 	loader: (args) => {
 		const qc = args.context.queryClient;
 		const id = Number(args.params.issueId);
+		if (!IssueId.safeParse(id).success) {
+			throw notFound();
+		}
 		return {
 			assignee: qc.prefetch(assigneeQuery, { issueId: id }),
 			comments: qc.prefetch(commentsQuery, { issueId: id }),
