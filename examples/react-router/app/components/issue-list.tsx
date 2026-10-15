@@ -9,11 +9,12 @@ import {
 } from "@examples/kit/components/issue-list";
 import { LoadMore } from "@examples/kit/components/load-more";
 import { cn } from "@examples/ui/lib/utils";
-import { Link } from "react-router";
+
 import { use } from "react";
 
 import { issueListQuery } from "~/queries.ts";
 
+import { AppLink } from "./app-link.tsx";
 import { StatusSelect } from "./status-select.tsx";
 
 export function IssueList(props: {
@@ -47,7 +48,7 @@ export function IssueList(props: {
 						key={pages.pageParams[index]}
 					>
 						{page.issues.map((issue) => (
-							<Link
+							<AppLink
 								className={issueRowClassName}
 								key={issue.id}
 								to={`/issues/${issue.id}`}
@@ -55,7 +56,7 @@ export function IssueList(props: {
 								<IssueRow issue={issue}>
 									<StatusSelect issueId={issue.id} status={issue.status} />
 								</IssueRow>
-							</Link>
+							</AppLink>
 						))}
 					</div>
 				))}
