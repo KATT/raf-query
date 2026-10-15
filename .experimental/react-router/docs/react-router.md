@@ -7,7 +7,7 @@ order: 4
 
 > Draft guide stashed with the [`.experimental/react-router`](../) experiment. Not linked from `www` yet.
 
-React Router's loaders are where raf-query wants queries to start. There is no streaming patch of the router: the loader dehydrates the request's cache, and `HydrationBoundary` from `@raf-query/react/react-router` writes it into the browser client.
+React Router's loaders are where raf-query wants queries to start. There is no streaming patch of the router: the loader dehydrates the request's cache, and `HydrationBoundary` from `@raf-query/experimental-react-router` writes it into the browser client.
 
 ## Setup
 
@@ -46,7 +46,7 @@ import {
 	QueryClient,
 	useQuery,
 } from "@raf-query/react";
-import { HydrationBoundary } from "@raf-query/react/react-router";
+import { HydrationBoundary } from "@raf-query/experimental-react-router";
 import { commentsQuery, postQuery } from "./_twoslash.ts";
 // ---cut---
 export async function loader(args: { params: { slug: string } }) {
@@ -90,7 +90,7 @@ function Post(props: {
 
 ## What the integration is
 
-`@raf-query/react/react-router` exports a state-based `HydrationBoundary`. The cache verbs, handles and `useQuery` are the same as everywhere else. There is no `setupRouterIntegration`: React Router has no dehydrate/hydrate hooks on the router itself, so the loader returns the snapshot explicitly.
+`@raf-query/experimental-react-router` exports a state-based `HydrationBoundary`. The cache verbs, handles and `useQuery` are the same as everywhere else. There is no `setupRouterIntegration`: React Router has no dehydrate/hydrate hooks on the router itself, so the loader returns the snapshot explicitly.
 
 ## Pending UI
 

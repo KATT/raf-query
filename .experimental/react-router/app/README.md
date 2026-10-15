@@ -12,7 +12,7 @@ A small issue tracker built with [raf-query](https://github.com/KATT/raf-query#r
 | Assignee card                                           | The loader `prefetch`es the assignee by issue id beside the issue, so neither waits on the other | `app/routes/issues.$issueId.tsx`, `app/components/user.tsx`                                                                        |
 | Inline-edit title and body; change status from the list | Form actions / transitions, `useOptimistic`, `await qc.invalidate`                               | `app/components/edit-title.tsx`, `app/components/edit-body.tsx`, `app/components/status-select.tsx`, `app/components/comments.tsx` |
 
-Query factories are in `app/queries.ts`. Loaders create a request-scoped `QueryClient`, dehydrate it, and the route wraps its tree in `HydrationBoundary` from `@raf-query/react/react-router`.
+Query factories are in `app/queries.ts`. Loaders create a request-scoped `QueryClient`, dehydrate it, and the route wraps its tree in `HydrationBoundary` from `@raf-query/experimental-react-router`.
 
 ## Run it
 
