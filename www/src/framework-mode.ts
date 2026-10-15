@@ -81,3 +81,4 @@ export function syncFrameworkModeAttribute(mode: FrameworkMode) {
 		// No document during SSR; frameworkModeScript handles first paint.
 	}
 }
+// vercel-ignore test (www)
