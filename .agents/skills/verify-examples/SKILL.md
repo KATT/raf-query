@@ -1,18 +1,18 @@
 ---
 name: verify-examples
-description: Launch and drive the raf-query example issue tracker (examples/tanstack-start, nextjs, react-router, tanstack-start-effect) in headless Chrome and with curl, the way a user does, and prove a change works in every app. Use when a change touches examples/, examples/.shared/, or packages/ behavior the examples show, or when checking the four apps still match.
+description: Launch and drive the raf-query example issue tracker (TanStack Start, Next.js, React Router, TanStack Start Effect) in headless Chrome and with curl, the way a user does, and prove a change works in every app. Use when a change touches an example app, examples/.shared/, or packages/ behavior the examples show, or when checking the four apps still match.
 ---
 
 # Verify the example apps
 
 The four example apps are the same issue tracker on four stacks, so one feature map ([`features/README.md`](features/README.md)) covers all of them. A change to one app is proven in that app; a change to `examples/.shared/` or `packages/` is proven in all four.
 
-| App                     | Package                           | Port | Data layer                      |
-| ----------------------- | --------------------------------- | ---- | ------------------------------- |
-| `tanstack-start`        | `@examples/tanstack-start`        | 3000 | REST API at `/api/*` (Hono)     |
-| `nextjs`                | `@examples/nextjs`                | 3001 | REST API at `/api/*` (Hono)     |
-| `tanstack-start-effect` | `@examples/tanstack-start-effect` | 3005 | Effect RPC at `/rpc`, no `/api` |
-| `react-router`          | `@examples/react-router`          | 3006 | REST API at `/api/*` (Hono)     |
+| App                     | Start                   | Port | Data layer                      |
+| ----------------------- | ----------------------- | ---- | ------------------------------- |
+| `tanstack-start`        | `pnpm dev:start`        | 3000 | REST API at `/api/*` (Hono)     |
+| `nextjs`                | `pnpm dev:next`         | 3001 | REST API at `/api/*` (Hono)     |
+| `tanstack-start-effect` | `pnpm dev:effect`       | 3005 | Effect RPC at `/rpc`, no `/api` |
+| `react-router`          | `pnpm dev:react-router` | 3006 | REST API at `/api/*` (Hono)     |
 
 The helper below is `CE`:
 
@@ -31,7 +31,7 @@ tmux -f /exec-daemon/tmux.portal.conf new-session -d -s example-react-router -c 
 tmux -f /exec-daemon/tmux.portal.conf send-keys -t example-react-router:0.0 'eval "$(fnm env)" && fnm use && pnpm dev:react-router' C-m
 ```
 
-The root scripts are `pnpm dev:start` (3000), `pnpm dev:next` (3001), `pnpm dev:effect` (3005), `pnpm dev:react-router` (3006). No env vars, no database: data is an in-memory mock seeded when the server process starts.
+The table's `Start` column has each app's root script. No env vars, no database: data is an in-memory mock seeded when the server process starts.
 
 Ready means `curl -s localhost:<port>/issues` returns issue rows (`Change status` is in the HTML). TanStack Start answers `/issues` with a 307 to `/issues?sort=newest&status=all`; follow redirects. The first request after a start compiles routes and can take 10-20 s.
 

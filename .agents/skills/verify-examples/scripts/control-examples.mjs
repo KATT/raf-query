@@ -15,13 +15,10 @@ const STATE_DIR = process.env.VERIFY_EXAMPLES_DIR ?? "/tmp/verify-examples";
 const PID_FILE = `${STATE_DIR}/chrome.pid`;
 
 const apps = {
-	nextjs: { filter: "@examples/nextjs", port: 3001 },
-	"react-router": { filter: "@examples/react-router", port: 3006 },
-	"tanstack-start": { filter: "@examples/tanstack-start", port: 3000 },
-	"tanstack-start-effect": {
-		filter: "@examples/tanstack-start-effect",
-		port: 3005,
-	},
+	nextjs: { port: 3001, script: "dev:next" },
+	"react-router": { port: 3006, script: "dev:react-router" },
+	"tanstack-start": { port: 3000, script: "dev:start" },
+	"tanstack-start-effect": { port: 3005, script: "dev:effect" },
 };
 
 const usage = `control-examples <command> [options]
@@ -401,7 +398,7 @@ const commands = {
 			} catch (error) {
 				healthy = false;
 				console.log(
-					`FAIL ${name} ${url}: ${error.message}. Start it: pnpm --filter ${app.filter} dev`,
+					`FAIL ${name} ${url}: ${error.message}. Start it: pnpm ${app.script}`,
 				);
 			}
 		}
