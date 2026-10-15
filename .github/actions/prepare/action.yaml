@@ -4,7 +4,13 @@ name: Setup
 
 runs:
   steps:
-    - uses: pnpm/action-setup@v4
+    # Downloads pnpm's native binary directly (faster than pnpm/action-setup's
+    # self-installer). Skip its Node/install steps — setup-node below already
+    # gets Node from the runner tool cache and restores the pnpm store.
+    - uses: pnpm/setup@v3
+      with:
+        install: false
+        node-version-file: false
     - uses: actions/setup-node@v4
       with:
         cache: pnpm
