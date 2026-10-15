@@ -1,11 +1,14 @@
 "use client";
 
 import { CommentsSkeleton } from "@examples/kit/components/comments";
+import {
+	IssueBodySkeleton,
+	StatusSkeleton,
+} from "@examples/kit/components/issue-page";
 import { AssigneeCardSkeleton } from "@examples/kit/components/user";
 import { Button, buttonVariants } from "@examples/ui/components/button";
 import { cn } from "@examples/ui/lib/utils";
 import { Separator } from "@examples/ui/components/separator";
-import { Skeleton } from "@examples/ui/components/skeleton";
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { notFound } from "next/navigation";
@@ -131,28 +134,9 @@ function IssueBody(props: { readonly handle: QueryHandle<typeof issueQuery> }) {
 	);
 }
 
-function IssueBodySkeleton(props: { readonly id: number }) {
-	return (
-		<div className="grid gap-6">
-			<div className="flex items-baseline gap-2">
-				<Skeleton className="h-9 min-w-0 flex-1" />
-				<span className="shrink-0 text-lg text-muted-foreground">
-					#{props.id}
-				</span>
-			</div>
-			<Skeleton className="h-5 w-40" />
-			<Skeleton className="h-28" />
-		</div>
-	);
-}
-
 function IssueStatus(props: {
 	readonly handle: QueryHandle<typeof issueQuery>;
 }) {
 	const issue = useIssue(props.handle);
 	return <StatusSelect align="end" issueId={issue.id} status={issue.status} />;
-}
-
-function StatusSkeleton() {
-	return <Skeleton className="h-6 w-24 rounded-full" />;
 }
