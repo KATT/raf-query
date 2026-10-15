@@ -35,11 +35,14 @@ function PostPage() {
 	const [post] = useQuery(postQuery, data.post);
 	//     ^?
 	const [comments] = useQuery(commentsQuery, data.comments);
+	//     ^?
+	// ---collapse---
 	return (
 		<article>
 			<h1>{post.title}</h1>
 			{comments.pages.flatMap((page) => page.items.map(renderComment))}
 		</article>
 	);
+	// ---/collapse---
 }
 ```
