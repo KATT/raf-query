@@ -76,6 +76,7 @@ function IssueNav(props: { readonly id: number }) {
 						<AppLink
 							aria-label="Previous issue"
 							href={`/issues/${props.id - 1}`}
+							title="Previous issue"
 						>
 							<ChevronLeft />
 						</AppLink>
@@ -85,13 +86,18 @@ function IssueNav(props: { readonly id: number }) {
 						aria-label="Previous issue"
 						disabled
 						size="icon"
+						title="Previous issue"
 						variant="outline"
 					>
 						<ChevronLeft />
 					</Button>
 				)}
 				<Button asChild size="icon" variant="outline">
-					<AppLink aria-label="Next issue" href={`/issues/${props.id + 1}`}>
+					<AppLink
+						aria-label="Next issue"
+						href={`/issues/${props.id + 1}`}
+						title="Next issue"
+					>
 						<ChevronRight />
 					</AppLink>
 				</Button>
