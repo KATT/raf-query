@@ -20,25 +20,26 @@ export function PostPage(props: {
 	return (
 		<article>
 			<Suspense fallback={<PostSkeleton />}>
-				<PostTitle handle={props.post} />
+				<Post handle={props.post} />
 			</Suspense>
 			<Suspense fallback={<CommentsSkeleton />}>
-				<Comments handle={props.comments} />
+				<PostComments handle={props.comments} />
 			</Suspense>
 		</article>
 	);
 }
 
-function PostTitle(props: { handle: QueryHandle<typeof postQuery> }) {
+function Post(props: { handle: QueryHandle<typeof postQuery> }) {
 	const [post] = useQuery(postQuery, props.handle);
 	//     ^?
 	return <h1>{use(post).title}</h1>;
 }
 
-function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
+function PostComments(props: { handle: QueryHandle<typeof commentsQuery> }) {
+	// ---collapse---
 	// May still be loading. If so, use() suspends until it lands.
 	const [comments] = useQuery(commentsQuery, props.handle);
-	//     ^?
 	return use(comments).map(renderComment);
+	// ---/collapse---
 }
 // #endregion component

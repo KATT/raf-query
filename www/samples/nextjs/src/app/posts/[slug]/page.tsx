@@ -1,28 +1,22 @@
 import { HydrationBoundary } from "@raf-query/react/rsc";
-import { Suspense } from "react";
 
-import { Comments } from "~/components/comments.tsx";
-import { CommentsSkeleton } from "~/components/comments-skeleton.tsx";
+import { PostPage } from "./post.tsx";
 import { commentsQuery, postQuery } from "~/queries.ts";
 import { getQueryClient } from "~/query-client.ts";
 
+// #region page
 export default async function Page(props: {
 	params: Promise<{ slug: string }>;
 }) {
-	const params = await props.params;
+	const { slug } = await props.params;
 	const qc = getQueryClient();
-
-	const comments = qc.prefetch(commentsQuery, { slug: params.slug });
-	const post = await qc.fetch(postQuery, { slug: params.slug });
-
+	// Never waits: both load while the page streams.
+	const comments = qc.prefetch(commentsQuery, { slug });
+	const post = qc.prefetch(postQuery, { slug });
 	return (
 		<HydrationBoundary client={qc}>
-			<article>
-				<h1>{post.title}</h1>
-				<Suspense fallback={<CommentsSkeleton />}>
-					<Comments handle={comments} />
-				</Suspense>
-			</article>
+			<PostPage comments={comments} post={post} />
 		</HydrationBoundary>
 	);
 }
+// #endregion page

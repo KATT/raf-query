@@ -1,16 +1,15 @@
 import { describe, expect, it } from "@effect/vitest";
-import { renderHook } from "@testing-library/react";
-import { act } from "react";
 
 import {
+	applyFrameworkMode,
 	defaultFrameworkMode,
-	type FrameworkMode,
+	frameworkModeAttribute,
+	frameworkModeScript,
 	frameworkModeSearch,
 	homeSearchDefaults,
 	homeSearchSchema,
 	parseFrameworkMode,
 } from "./framework-mode.ts";
-import { useFrameworkMode } from "./use-framework-mode.ts";
 
 describe("framework mode", () => {
 	it("defaults to TanStack Start when the URL omits mode", () => {
@@ -31,19 +30,35 @@ describe("framework mode", () => {
 		expect(frameworkModeSearch("nextjs")).toEqual({ mode: "nextjs" });
 	});
 
-	it("follows the URL after mount and on later changes", () => {
-		const hook = renderHook<FrameworkMode, { mode: FrameworkMode }>(
-			(props) => useFrameworkMode(props.mode),
-			{ initialProps: { mode: "tanstack-start" } },
+	it("ships a before-paint script that applies the mode from ?mode=", () => {
+		expect(frameworkModeScript).toContain("data-framework-panel");
+		expect(frameworkModeScript).toContain(frameworkModeAttribute);
+		expect(frameworkModeScript).toContain("nextjs");
+		expect(frameworkModeScript).toContain(defaultFrameworkMode);
+	});
+
+	it("moves shared step ids onto the visible panel", () => {
+		document.body.innerHTML = `
+			<div data-framework-panel="tanstack-start">
+				<li data-step-id="start-in-the-loader" id="start-in-the-loader"></li>
+			</div>
+			<div data-framework-panel="nextjs">
+				<li data-step-id="start-in-the-loader"></li>
+			</div>
+		`;
+		applyFrameworkMode("nextjs");
+		expect(document.documentElement.getAttribute(frameworkModeAttribute)).toBe(
+			"nextjs",
 		);
-		expect(hook.result.current).toBe("tanstack-start");
-		act(() => {
-			hook.rerender({ mode: "nextjs" });
-		});
-		expect(hook.result.current).toBe("nextjs");
-		act(() => {
-			hook.rerender({ mode: "tanstack-start" });
-		});
-		expect(hook.result.current).toBe("tanstack-start");
+		const panels = document.querySelectorAll("[data-framework-panel]");
+		expect(panels[0]?.querySelector("[data-step-id]")?.id).toBe("");
+		expect(panels[1]?.querySelector("[data-step-id]")?.id).toBe(
+			"start-in-the-loader",
+		);
+		applyFrameworkMode("tanstack-start");
+		expect(panels[0]?.querySelector("[data-step-id]")?.id).toBe(
+			"start-in-the-loader",
+		);
+		expect(panels[1]?.querySelector("[data-step-id]")?.id).toBe("");
 	});
 });

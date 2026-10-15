@@ -35,6 +35,9 @@ function sameStyle(a: BarStyle, b: BarStyle) {
  * (`#hero-code`), drifts toward the viewport center as you scroll (desktop),
  * snaps to `fixed` under the site header, and stops at the bottom of
  * `#how-it-works` so it scrolls away with that section instead of fading.
+ *
+ * Active styles come from `html[data-framework-mode]` CSS so a `?mode=`
+ * deep link never flashes the wrong pill before hydration.
  */
 export function FrameworkModeBar(props: { readonly mode: FrameworkMode }) {
 	const [style, setStyle] = useState<BarStyle>(dockedStyle);
@@ -116,11 +119,9 @@ export function FrameworkModeBar(props: { readonly mode: FrameworkMode }) {
 							activeOptions={{ exact: true, includeSearch: true }}
 							aria-current={active ? "true" : undefined}
 							className={cn(
-								"rounded-full px-3.5 py-1.5 text-sm transition-colors outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50",
-								active
-									? "bg-foreground font-medium text-background"
-									: "text-muted-foreground",
+								"framework-mode-link rounded-full px-3.5 py-1.5 text-sm text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50",
 							)}
+							data-framework-mode-link={mode}
 							key={mode}
 							replace
 							resetScroll={false}

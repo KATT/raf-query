@@ -19,11 +19,10 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import homeComponentNext from "sample:nextjs/src/components/post-page.tsx#component";
-import homeLoaderNext from "sample:nextjs/src/docs/home.page.tsx#page";
-import homeComponent from "sample:tanstack-start/src/routes/posts.$slug.tsx#component";
-import homeLoader from "sample:tanstack-start/src/routes/posts.$slug.tsx#route";
-import home from "sample:tanstack-start/src/routes/blog.$slug.tsx#hero";
+import homeComponentNext from "sample:nextjs/src/app/posts/[slug]/post.tsx#component";
+import homeLoaderNext from "sample:nextjs/src/app/posts/[slug]/page.tsx#page";
+import homeComponent from "sample:tanstack-start/src/routes/blog.$slug.tsx#component";
+import homeLoader from "sample:tanstack-start/src/routes/blog.$slug.tsx#route";
 import { DocBody } from "~/components/doc-body.tsx";
 import { DemoEmbed } from "~/components/demo-embed.tsx";
 import { FrameworkModeBar } from "~/components/framework-mode-bar.tsx";
@@ -31,13 +30,15 @@ import type { DocSegment } from "~/content/types.ts";
 import { firstDoc } from "~/content/docs.ts";
 import { demoQuery } from "~/demos/registry.ts";
 import {
+	defaultFrameworkMode,
 	type FrameworkMode,
+	frameworkModes,
 	homeSearchDefaults,
 	homeSearchSchema,
+	syncFrameworkModeAttribute,
 } from "~/framework-mode.ts";
 import { pageHead } from "~/seo.ts";
 import { site } from "~/site.ts";
-import { useFrameworkMode } from "~/use-framework-mode.ts";
 
 export const Route = createFileRoute("/")({
 	validateSearch: homeSearchSchema,
@@ -136,7 +137,7 @@ const docLink = "font-medium text-foreground underline underline-offset-4";
 
 const heroByMode = {
 	nextjs: [...homeLoaderNext.segments, ...homeComponentNext.segments],
-	"tanstack-start": home.segments,
+	"tanstack-start": [...homeLoader.segments, ...homeComponent.segments],
 } as const satisfies Record<FrameworkMode, ReadonlyArray<DocSegment>>;
 
 const stepsByMode = {
@@ -205,17 +206,17 @@ const stepsByMode = {
 						starts there, at the same time, before anything renders.
 					</p>
 					<p>
-						The loader also picks what the navigation waits for.{" "}
-						<code>prefetch</code> never holds it up: the comments load while the
-						page renders. <code>ensure</code> holds it only when the post isn’t
-						cached yet. Either way, cached data shows at once, and stale data
-						refetches in the background.
+						<code>prefetch</code> never holds the navigation: the page renders
+						while the post and comments load. Each call returns a{" "}
+						<strong className="text-foreground">handle</strong> — the query’s
+						key and input, without the data. During SSR, the cache streams to
+						the browser next to those handles, so nothing is fetched twice.
 					</p>
 					<p>
-						Both return a <strong className="text-foreground">handle</strong>:
-						the query’s key and input, without the data. During SSR, the cache
-						streams to the browser next to the handles, so nothing is fetched
-						twice.
+						Use <code>ensure</code> when the route can’t lay out without the
+						data. Prefer <code>prefetch</code> when a component will read it
+						under Suspense — the usual shape, and what the example app does for
+						streamed parts of the page.
 					</p>
 				</>
 			),
@@ -229,11 +230,9 @@ const stepsByMode = {
 			body: (
 				<>
 					<p>
-						<code>useQuery</code> takes the factory and a handle. The post is
-						already in the cache, so it returns the post itself. The comments
-						may still be loading, so it returns a promise. If they are,{" "}
-						<code>use()</code> suspends <code>Comments</code> while the skeleton
-						shows.
+						<code>useQuery</code> takes the factory and a handle and returns a
+						promise. <code>use()</code> suspends that subtree while its skeleton
+						shows, so the rest of the page can stream in around it.
 					</p>
 					<p>
 						From then on the cache keeps both up to date: it refetches stale
@@ -311,8 +310,8 @@ const mapping: ReadonlyArray<readonly [string, string]> = [
 function HomePage() {
 	const data = Route.useLoaderData();
 	const search = Route.useSearch();
-	const mode = useFrameworkMode(search.mode);
-	const steps = stepsByMode[mode];
+	// Client navigations (and hydration) — first paint uses frameworkModeScript.
+	syncFrameworkModeAttribute(search.mode);
 	return (
 		<>
 			<main>
@@ -369,13 +368,18 @@ function HomePage() {
 								effect
 							</p>
 						</div>
-						{/* pt-14 is the room the framework pill docks in, above the code. */}
+						{/* pt-14 is the room the framework pill docks in, above the code.
+						    Both modes ship in the HTML; CSS + frameworkModeScript pick. */}
 						<div
 							className="relative min-w-0 pt-14 [&_.code-block:first-child]:mt-0"
 							id="hero-code"
 						>
-							<FrameworkModeBar mode={mode} />
-							<DocBody demos={{}} segments={heroByMode[mode]} />
+							<FrameworkModeBar mode={search.mode} />
+							{frameworkModes.map((mode) => (
+								<div data-framework-panel={mode} key={mode}>
+									<DocBody demos={{}} segments={heroByMode[mode]} />
+								</div>
+							))}
 						</div>
 					</div>
 				</section>
@@ -390,43 +394,50 @@ function HomePage() {
 					>
 						<HashLink id="how-it-works">How a route loads its data</HashLink>
 					</h2>
-					<p className="mb-12 max-w-2xl text-muted-foreground [&_code]:font-mono [&_code]:text-[0.9em] [&_code]:text-foreground">
-						{howItWorksByMode[mode]}
-					</p>
-					<ol className="grid gap-16">
-						{steps.map((step, index) => (
-							<li
-								className="grid scroll-mt-32 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-12"
-								id={step.id}
-								key={step.id}
-							>
-								<div className="grid content-start gap-4 lg:sticky lg:top-36">
-									<h3 className="flex items-center gap-3 text-xl font-semibold tracking-tight">
-										<span
-											aria-hidden="true"
-											className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-sm text-primary-foreground"
-										>
-											{index + 1}
-										</span>
-										<HashLink id={step.id}>{step.title}</HashLink>
-									</h3>
-									<div className="grid gap-3 text-muted-foreground [&_code]:font-mono [&_code]:text-[0.9em] [&_code]:text-foreground">
-										{step.body}
-									</div>
-									<Link
-										className={`${docLink} w-fit text-sm`}
-										params={{ slug: step.slug }}
-										to="/docs/$slug"
+					{/* Both modes in static HTML. Shared step ids are applied to the
+					    visible panel only by frameworkModeScript / applyFrameworkMode. */}
+					{frameworkModes.map((mode) => (
+						<div data-framework-panel={mode} key={mode}>
+							<p className="mb-12 max-w-2xl text-muted-foreground [&_code]:font-mono [&_code]:text-[0.9em] [&_code]:text-foreground">
+								{howItWorksByMode[mode]}
+							</p>
+							<ol className="grid gap-16">
+								{stepsByMode[mode].map((step, index) => (
+									<li
+										className="grid scroll-mt-32 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-12"
+										data-step-id={step.id}
+										id={mode === defaultFrameworkMode ? step.id : undefined}
+										key={step.id}
 									>
-										{step.guide} <ArrowRight className="inline size-4" />
-									</Link>
-								</div>
-								<div className="min-w-0 [&_.code-block]:my-0!">
-									<DocBody demos={{}} segments={step.code} />
-								</div>
-							</li>
-						))}
-					</ol>
+										<div className="grid content-start gap-4 lg:sticky lg:top-36">
+											<h3 className="flex items-center gap-3 text-xl font-semibold tracking-tight">
+												<span
+													aria-hidden="true"
+													className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-sm text-primary-foreground"
+												>
+													{index + 1}
+												</span>
+												<HashLink id={step.id}>{step.title}</HashLink>
+											</h3>
+											<div className="grid gap-3 text-muted-foreground [&_code]:font-mono [&_code]:text-[0.9em] [&_code]:text-foreground">
+												{step.body}
+											</div>
+											<Link
+												className={`${docLink} w-fit text-sm`}
+												params={{ slug: step.slug }}
+												to="/docs/$slug"
+											>
+												{step.guide} <ArrowRight className="inline size-4" />
+											</Link>
+										</div>
+										<div className="min-w-0 [&_.code-block]:my-0!">
+											<DocBody demos={{}} segments={step.code} />
+										</div>
+									</li>
+								))}
+							</ol>
+						</div>
+					))}
 				</section>
 
 				<section
