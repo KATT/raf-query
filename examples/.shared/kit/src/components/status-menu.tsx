@@ -1,3 +1,5 @@
+"use client";
+
 import { type IssueStatus, issueStatuses } from "@examples/db/types";
 import {
 	StatusBadge,

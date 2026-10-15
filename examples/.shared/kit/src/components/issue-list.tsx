@@ -1,3 +1,5 @@
+"use client";
+
 import type { Issue } from "@examples/db/types";
 import { Card } from "@examples/ui/components/card";
 import { Skeleton } from "@examples/ui/components/skeleton";
