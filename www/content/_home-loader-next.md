@@ -11,7 +11,7 @@ import { commentsQuery, postQuery } from "./_twoslash.ts";
 declare function getQueryClient(): import("@raf-query/react").QueryClient;
 declare function PostPage(props: {
 	comments: import("@raf-query/react").QueryHandle<typeof commentsQuery>;
-	post: import("@raf-query/react").EnsuredQueryHandle<typeof postQuery>;
+	post: import("@raf-query/react").QueryHandle<typeof postQuery>;
 }): null;
 // ---cut---
 export default async function Page(props: {
@@ -19,10 +19,9 @@ export default async function Page(props: {
 }) {
 	const { slug } = await props.params;
 	const qc = getQueryClient();
-	// Never waits: the comments load while the page streams.
+	// Never waits: both load while the page streams.
 	const comments = qc.prefetch(commentsQuery, { slug });
-	// Waits only if the post isn't in the cache yet.
-	const post = await qc.ensure(postQuery, { slug });
+	const post = qc.prefetch(postQuery, { slug });
 	return (
 		<HydrationBoundary client={qc}>
 			<PostPage comments={comments} post={post} />

@@ -6,37 +6,35 @@ order: 0
 ---
 
 ```tsx twoslash title="src/components/post-page.tsx"
-import {
-	type EnsuredQueryHandle,
-	type QueryHandle,
-	useQuery,
-} from "@raf-query/react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
 import { Suspense, use } from "react";
-import {
-	commentsQuery,
-	type PostComment,
-	postQuery,
-} from "./_twoslash.ts";
+import { commentsQuery, type PostComment, postQuery } from "./_twoslash.ts";
 declare function CommentsSkeleton(): React.ReactNode;
+declare function PostSkeleton(): React.ReactNode;
 declare function renderComment(comment: PostComment): React.ReactNode;
 // ---cut---
 ("use client");
 
 export function PostPage(props: {
 	comments: QueryHandle<typeof commentsQuery>;
-	post: EnsuredQueryHandle<typeof postQuery>;
+	post: QueryHandle<typeof postQuery>;
 }) {
-	// ensure put the post in the cache, so this is the post itself.
-	const [post] = useQuery(postQuery, props.post);
-	//     ^?
 	return (
 		<article>
-			<h1>{post.title}</h1>
+			<Suspense fallback={<PostSkeleton />}>
+				<PostTitle handle={props.post} />
+			</Suspense>
 			<Suspense fallback={<CommentsSkeleton />}>
 				<Comments handle={props.comments} />
 			</Suspense>
 		</article>
 	);
+}
+
+function PostTitle(props: { handle: QueryHandle<typeof postQuery> }) {
+	const [post] = useQuery(postQuery, props.handle);
+	//     ^?
+	return <h1>{use(post).title}</h1>;
 }
 
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {

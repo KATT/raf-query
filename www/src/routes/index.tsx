@@ -27,10 +27,7 @@ import { FrameworkModeBar } from "~/components/framework-mode-bar.tsx";
 import type { DocSegment } from "~/content/types.ts";
 import { firstDoc } from "~/content/docs.ts";
 import { demoQuery } from "~/demos/registry.ts";
-import {
-	type FrameworkMode,
-	homeSearchSchema,
-} from "~/framework-mode.ts";
+import { type FrameworkMode, homeSearchSchema } from "~/framework-mode.ts";
 import { pageHead } from "~/seo.ts";
 import { site } from "~/site.ts";
 import { useFrameworkMode } from "~/use-framework-mode.ts";
@@ -132,38 +129,29 @@ const heroByMode = {
 	"tanstack-start": home.segments,
 } as const satisfies Record<FrameworkMode, ReadonlyArray<DocSegment>>;
 
-const stepsByMode: Record<
-	FrameworkMode,
-	ReadonlyArray<{
-		readonly body: ReactNode;
-		readonly code: ReadonlyArray<DocSegment>;
-		readonly guide: string;
-		readonly id: string;
-		readonly slug: string;
-		readonly title: string;
-	}>
-> = {
+const stepsByMode = {
 	nextjs: [
 		{
 			body: (
 				<>
 					<p>
 						A server component runs as soon as the App Router starts rendering
-						the page. Every query the page needs starts there, at the same
-						time, before client components render.
+						the page. Every query the page needs starts there, at the same time,
+						before client components render.
 					</p>
 					<p>
-						The page also picks what the response waits for.{" "}
-						<code>prefetch</code> never holds it up: the comments load while
-						the page streams. <code>ensure</code> holds it only when the post
-						isn’t cached yet. Either way, cached data shows at once, and stale
-						data refetches in the browser.
+						<code>prefetch</code> never holds the response: the page streams
+						while the post and comments load. Each call returns a{" "}
+						<strong className="text-foreground">handle</strong> — the query’s
+						key and input, without the data. <code>HydrationBoundary</code>{" "}
+						streams the cache to the browser next to those handles, so nothing
+						is fetched twice.
 					</p>
 					<p>
-						Both return a <strong className="text-foreground">handle</strong>:
-						the query’s key and input, without the data.{" "}
-						<code>HydrationBoundary</code> streams the cache to the browser next
-						to the handles, so nothing is fetched twice.
+						Use <code>fetch</code> when the server component itself renders the
+						data. Prefer <code>prefetch</code> when a client component will read
+						it under Suspense — the usual App Router shape, and what the example
+						app does.
 					</p>
 				</>
 			),
@@ -177,11 +165,11 @@ const stepsByMode: Record<
 			body: (
 				<>
 					<p>
-						<code>useQuery</code> takes the factory and a handle. The post is
-						already in the cache, so it returns the post itself. The comments
-						may still be loading, so it returns a promise. If they are,{" "}
-						<code>use()</code> suspends <code>Comments</code> while the skeleton
-						shows.
+						Client components live in their own files, marked with a{" "}
+						<code>use client</code> directive. <code>useQuery</code> takes the
+						factory and a handle and returns a promise. <code>use()</code>{" "}
+						suspends that subtree while its skeleton shows, so the rest of the
+						page can stream in around it.
 					</p>
 					<p>
 						From then on the cache keeps both up to date: it refetches stale
@@ -232,15 +220,15 @@ const stepsByMode: Record<
 				<>
 					<p>
 						<code>useQuery</code> takes the factory and a handle. The post is
-						already in the cache, so it returns the post itself. The comments may
-						still be loading, so it returns a promise. If they are,{" "}
+						already in the cache, so it returns the post itself. The comments
+						may still be loading, so it returns a promise. If they are,{" "}
 						<code>use()</code> suspends <code>Comments</code> while the skeleton
 						shows.
 					</p>
 					<p>
-						From then on the cache keeps both up to date: it refetches stale data
-						when the window regains focus and after a write invalidates it, and
-						each component re-renders with the new data.
+						From then on the cache keeps both up to date: it refetches stale
+						data when the window regains focus and after a write invalidates it,
+						and each component re-renders with the new data.
 					</p>
 				</>
 			),
@@ -251,7 +239,17 @@ const stepsByMode: Record<
 			title: "Read them in components",
 		},
 	],
-};
+} as const satisfies Record<
+	FrameworkMode,
+	ReadonlyArray<{
+		readonly body: ReactNode;
+		readonly code: ReadonlyArray<DocSegment>;
+		readonly guide: string;
+		readonly id: string;
+		readonly slug: string;
+		readonly title: string;
+	}>
+>;
 
 const howItWorksByMode = {
 	nextjs: (
@@ -302,8 +300,8 @@ const mapping: ReadonlyArray<readonly [string, string]> = [
 
 function HomePage() {
 	const data = Route.useLoaderData();
-	const { mode: modeFromUrl } = Route.useSearch();
-	const mode = useFrameworkMode(modeFromUrl);
+	const search = Route.useSearch();
+	const mode = useFrameworkMode(search.mode);
 	const steps = stepsByMode[mode];
 	return (
 		<>
@@ -323,8 +321,8 @@ function HomePage() {
 								Render-as-you-fetch data fetching for React
 							</h1>
 							<p className="max-w-xl text-lg text-pretty text-muted-foreground">
-								Queries start in route loaders and React Server Components, travel
-								to components as small serializable{" "}
+								Queries start in route loaders and React Server Components,
+								travel to components as small serializable{" "}
 								<strong className="text-foreground">handles</strong>, and are
 								read with React’s{" "}
 								<code className="font-mono text-base">use()</code> under
@@ -423,11 +421,13 @@ function HomePage() {
 						className="mb-2 scroll-mt-32 text-2xl font-semibold tracking-tight"
 						id="principles"
 					>
-						<HashLink id="principles">Built around how React wants data</HashLink>
+						<HashLink id="principles">
+							Built around how React wants data
+						</HashLink>
 					</h2>
 					<p className="mb-8 max-w-2xl text-muted-foreground">
-						Fetch-on-render is an explicitly named escape hatch, not the default.
-						Every page starts its queries before it renders.
+						Fetch-on-render is an explicitly named escape hatch, not the
+						default. Every page starts its queries before it renders.
 					</p>
 					<ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 						{features.map((feature) => (
@@ -448,7 +448,10 @@ function HomePage() {
 					</ul>
 				</section>
 
-				<section aria-labelledby="try-it" className="border-y bg-muted/30 py-16">
+				<section
+					aria-labelledby="try-it"
+					className="border-y bg-muted/30 py-16"
+				>
 					<div className="mx-auto max-w-7xl px-4 sm:px-6">
 						<h2
 							className="mb-2 scroll-mt-32 text-2xl font-semibold tracking-tight"
