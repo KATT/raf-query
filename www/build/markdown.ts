@@ -288,7 +288,7 @@ function twoslashTransformer(root: string) {
 	});
 	const transformer = createTransformerFactory(
 		twoslasher,
-		rendererRich({ queryRendering: "line" }),
+		rendererRich({ jsdoc: false, queryRendering: "line" }),
 	)({ explicitTrigger: true });
 	twoslashTransformers.set(root, transformer);
 	return transformer;
