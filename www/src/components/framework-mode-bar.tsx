@@ -83,11 +83,11 @@ export function FrameworkModeBar(props: { readonly mode: FrameworkMode }) {
 					const layout = frameworkModeBarLayout({
 						code: code.getBoundingClientRect(),
 						isLarge: window.matchMedia(largeQuery).matches,
-						pillHeight: shell.offsetHeight,
 						principlesTop: principles.getBoundingClientRect().top,
 						reducedMotion: window.matchMedia(reducedMotionQuery).matches,
 						scrollY: window.scrollY,
 						stickyTop: header.getBoundingClientRect().bottom + 8,
+						viewportHeight: window.innerHeight,
 						viewportWidth: window.innerWidth,
 					});
 

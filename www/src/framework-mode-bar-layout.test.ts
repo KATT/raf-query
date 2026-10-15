@@ -1,7 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 
 import {
-	FRAMEWORK_MODE_BAR_HIDE_GAP,
 	FRAMEWORK_MODE_BAR_PARALLAX_TRAVEL,
 	frameworkModeBarLayout,
 } from "./framework-mode-bar-layout.ts";
@@ -10,11 +9,11 @@ const base = {
 	// Far enough below the sticky line that parallax progress is still 0.
 	code: { left: 640, top: 420, width: 560 },
 	isLarge: true,
-	pillHeight: 40,
 	principlesTop: 2000,
 	reducedMotion: false,
 	scrollY: 0,
 	stickyTop: 64,
+	viewportHeight: 900,
 	viewportWidth: 1280,
 } as const;
 
@@ -114,11 +113,16 @@ describe("frameworkModeBarLayout", () => {
 		expect(stuck.top).toBe(base.stickyTop);
 	});
 
-	it("hides before the principles section reaches the sticky band", () => {
+	it("hides once the principles section enters the viewport", () => {
+		const stillShown = frameworkModeBarLayout({
+			...scrolled(1000),
+			principlesTop: base.viewportHeight,
+		});
+		expect(stillShown.visible).toBe(true);
+
 		const hidden = frameworkModeBarLayout({
 			...scrolled(1000),
-			principlesTop:
-				base.stickyTop + base.pillHeight + FRAMEWORK_MODE_BAR_HIDE_GAP - 1,
+			principlesTop: base.viewportHeight - 1,
 		});
 		expect(hidden.position).toBe("fixed");
 		expect(hidden.visible).toBe(false);

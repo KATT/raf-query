@@ -1,6 +1,3 @@
-/** Vertical gap below the sticky top before the pill fades out for `#principles`. */
-export const FRAMEWORK_MODE_BAR_HIDE_GAP = 32;
-
 /**
  * Most pixels of scroll (code top approaching the sticky line) that map to a
  * full code-center → viewport-center parallax. Shorter = snappier drift.
@@ -18,11 +15,11 @@ export type FrameworkModeBarLayoutInput = {
 		readonly width: number;
 	};
 	readonly isLarge: boolean;
-	readonly pillHeight: number;
 	readonly principlesTop: number;
 	readonly reducedMotion: boolean;
 	readonly scrollY: number;
 	readonly stickyTop: number;
+	readonly viewportHeight: number;
 	readonly viewportWidth: number;
 };
 
@@ -79,9 +76,9 @@ export function frameworkModeBarLayout(
 		x = lerp(codeCenterX, viewportCenterX, progress);
 	}
 
-	const visible =
-		input.principlesTop >
-		input.stickyTop + input.pillHeight + FRAMEWORK_MODE_BAR_HIDE_GAP;
+	// Gone once `#principles` enters the viewport — the samples stop mattering
+	// there, so the pill should not still be stuck under the header.
+	const visible = input.principlesTop >= input.viewportHeight;
 
 	return stuck
 		? { left: x, position: "fixed", progress, top: input.stickyTop, visible }
