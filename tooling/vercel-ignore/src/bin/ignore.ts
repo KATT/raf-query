@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * Vercel's "Ignored Build Step" for every project's `vercel.json`, run from
- * the project's root directory: exit 0 skips the deployment, exit 1 builds it.
- * Any failure builds: Vercel fails the deployment on other exit codes.
+ * Vercel's "Ignored Build Step", run by `../../ignore.sh` from the project's
+ * root directory once this package is installed: exit 0 skips the deployment,
+ * exit 1 builds it. Any failure builds: Vercel fails the deployment on other
+ * exit codes.
  */
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
 import { Cause, Console, Effect, Exit } from "effect";

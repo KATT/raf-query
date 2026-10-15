@@ -2,6 +2,6 @@
 	"$schema": "https://openapi.vercel.sh/vercel.json",
 	"buildCommand": "pnpm build",
 	"framework": "tanstack-start",
-	"ignoreCommand": "pnpm install --frozen-lockfile --prod --ignore-scripts --filter @tooling/vercel-ignore || exit 1; node ../../tooling/vercel-ignore/src/bin/ignore.ts",
+	"ignoreCommand": "sh ../../tooling/vercel-ignore/ignore.sh",
 	"installCommand": "pnpm install --frozen-lockfile"
 }
