@@ -53,10 +53,11 @@ function PostPage() {
 
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	// Still loading. use() suspends until the pages stream in.
-	const [pages] = useQuery(commentsQuery, props.handle);
+	const [pagesPromise] = useQuery(commentsQuery, props.handle);
 	//     ^?
-	return use(pages)
-		.pages.flatMap((page) => page.items)
+	const pages = use(pagesPromise);
+	return pages.pages
+		.flatMap((page) => page.items)
 		.map((comment) => <Comment key={comment.id} {...comment} />);
 }
 ```

@@ -1,6 +1,7 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	allKeyed,
+	infiniteQueryOptions,
 	type QueryClient,
 	queryOptions,
 	useQuery,
@@ -36,12 +37,18 @@ function createBlog() {
 	}));
 	return {
 		commentsQuery: (input: { postId: number }) =>
-			queryOptions({
+			infiniteQueryOptions({
+				getNextPageParam: (lastPage) => lastPage.nextCursor,
+				initialPageParam: 0,
 				queryFn: (context) =>
 					server.respond(
 						`GET /posts/${input.postId}/comments`,
-						(db) =>
-							db.comments.filter((comment) => comment.postId === input.postId),
+						(db): CommentPage => ({
+							items: db.comments.filter(
+								(comment) => comment.postId === input.postId,
+							),
+							nextCursor: null,
+						}),
 						context,
 					),
 				queryKey: ["posts", input.postId, "comments"],
@@ -59,14 +66,18 @@ function createBlog() {
 				staleTime: 5000,
 			}),
 		postsQuery: () =>
-			queryOptions({
+			infiniteQueryOptions({
+				getNextPageParam: (lastPage) => lastPage.nextCursor,
+				initialPageParam: 0,
 				queryFn: (context) =>
 					server.respond(
 						"GET /posts",
-						(db) =>
-							db.posts
+						(db) => ({
+							items: db.posts
 								.slice(0, 4)
 								.map((post) => ({ id: post.id, title: post.title })),
+							nextCursor: null,
+						}),
 						context,
 					),
 				queryKey: ["posts"],
@@ -74,6 +85,11 @@ function createBlog() {
 			}),
 		server,
 	};
+}
+
+interface CommentPage {
+	readonly items: ReadonlyArray<Comment>;
+	readonly nextCursor: number | null;
 }
 
 interface RouterContext {
@@ -139,6 +155,10 @@ function CommentsSkeleton() {
 			))}
 		</div>
 	);
+}
+
+function commentItems(data: { readonly pages: ReadonlyArray<CommentPage> }) {
+	return data.pages.flatMap((page) => page.items);
 }
 
 function CommentList(props: { readonly comments: ReadonlyArray<Comment> }) {
@@ -230,9 +250,14 @@ const prefetchList = createRoute({
 const prefetchTree = prefetchRoot.addChildren([prefetchList, prefetchPost]);
 
 function PromisedList(props: {
-	readonly posts: Promise<ReadonlyArray<PostSummary>>;
+	readonly posts: Promise<{
+		readonly pages: ReadonlyArray<{
+			readonly items: ReadonlyArray<PostSummary>;
+		}>;
+	}>;
 }) {
-	return <PostList posts={use(props.posts)} />;
+	const pages = use(props.posts);
+	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
 }
 
 function PrefetchedList(): ReactNode {
@@ -252,7 +277,8 @@ function PromisedPost(props: { readonly post: Promise<Post | undefined> }) {
 function PrefetchedComments(): ReactNode {
 	const data = prefetchPost.useLoaderData<PrefetchRouter>();
 	const [commentsPromise] = useQuery(prefetching.commentsQuery, data.comments);
-	return <CommentList comments={use(commentsPromise)} />;
+	const pages = use(commentsPromise);
+	return <CommentList comments={commentItems(pages)} />;
 }
 
 function PrefetchedPost(): ReactNode {
@@ -300,19 +326,19 @@ const ensureTree = ensureRoot.addChildren([ensureList, ensurePost]);
 
 function EnsuredList(): ReactNode {
 	const handle = ensureList.useLoaderData<EnsureRouter>();
-	const [posts] = useQuery(ensuring.postsQuery, handle);
-	return <PostList posts={posts} />;
+	const [pages] = useQuery(ensuring.postsQuery, handle);
+	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
 }
 
 function EnsuredPost(): ReactNode {
 	const data = ensurePost.useLoaderData<EnsureRouter>();
 	const [post] = useQuery(ensuring.postQuery, data.post);
-	const [comments] = useQuery(ensuring.commentsQuery, data.comments);
+	const [pages] = useQuery(ensuring.commentsQuery, data.comments);
 	return (
 		<PostPage>
 			<PostBody post={post} />
 			<CommentsSection>
-				<CommentList comments={comments} />
+				<CommentList comments={commentItems(pages)} />
 			</CommentsSection>
 		</PostPage>
 	);
@@ -342,7 +368,8 @@ const fetchList = createRoute({
 const fetchTree = fetchRoot.addChildren([fetchList, fetchPost]);
 
 function FetchedList(): ReactNode {
-	return <PostList posts={fetchList.useLoaderData<FetchRouter>()} />;
+	const pages = fetchList.useLoaderData<FetchRouter>();
+	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
 }
 
 function FetchedPost(): ReactNode {
@@ -351,7 +378,7 @@ function FetchedPost(): ReactNode {
 		<PostPage>
 			<PostBody post={data.post} />
 			<CommentsSection>
-				<CommentList comments={data.comments} />
+				<CommentList comments={commentItems(data.comments)} />
 			</CommentsSection>
 		</PostPage>
 	);

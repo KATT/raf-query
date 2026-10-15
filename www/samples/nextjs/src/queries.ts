@@ -20,9 +20,14 @@ export function commentsQuery(input: { slug: string }) {
 }
 
 export function issueListQuery(input: { status: "open" | "done" }) {
-	return queryOptions({
+	return infiniteQueryOptions({
 		queryKey: ["issues", input],
-		queryFn: () => listIssues(input),
+		queryFn: async () => ({
+			items: await listIssues(input),
+			nextCursor: null,
+		}),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
 	});
 }
 

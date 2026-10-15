@@ -3,8 +3,8 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
 	type QueryCache,
+	infiniteQueryOptions,
 	type QueryHandle,
-	queryOptions,
 	useQuery,
 	useQueryClient,
 } from "@raf-query/react";
@@ -28,14 +28,18 @@ const server = createFakeServer(() => ({
 }));
 
 function todosQuery(input: { readonly status: Status }) {
-	return queryOptions({
+	return infiniteQueryOptions({
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		initialPageParam: 0,
 		queryFn: (context) =>
 			server.respond(
 				`GET /todos?status=${input.status}`,
-				(db) =>
-					db.todos
+				(db) => ({
+					items: db.todos
 						.filter((todo) => input.status === "all" || todo.done)
 						.map((todo) => todo.text),
+					nextCursor: null,
+				}),
 				context,
 			),
 		queryKey: ["todos", input],
@@ -44,9 +48,15 @@ function todosQuery(input: { readonly status: Status }) {
 }
 
 function usersQuery() {
-	return queryOptions({
+	return infiniteQueryOptions({
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		initialPageParam: 0,
 		queryFn: (context) =>
-			server.respond("GET /users", (db) => db.users, context),
+			server.respond(
+				"GET /users",
+				(db) => ({ items: db.users, nextCursor: null }),
+				context,
+			),
 		queryKey: ["users"],
 		staleTime: Infinity,
 	});
@@ -58,21 +68,30 @@ interface PageData {
 	readonly users: QueryHandle<typeof usersQuery>;
 }
 
-function ListCard(props: { readonly items: Promise<ReadonlyArray<string>> }) {
+function ListCard(props: {
+	readonly items: Promise<{
+		readonly pages: ReadonlyArray<{ readonly items: ReadonlyArray<string> }>;
+	}>;
+}) {
+	const pages = use(props.items);
 	return (
 		<ul className="grid gap-1 text-sm">
-			{use(props.items).map((item) => (
-				<li className="truncate" key={item}>
-					{item}
-				</li>
-			))}
+			{pages.pages
+				.flatMap((page) => page.items)
+				.map((item) => (
+					<li className="truncate" key={item}>
+						{item}
+					</li>
+				))}
 		</ul>
 	);
 }
 
 function Card(props: {
 	readonly fetching: boolean;
-	readonly items: Promise<ReadonlyArray<string>>;
+	readonly items: Promise<{
+		readonly pages: ReadonlyArray<{ readonly items: ReadonlyArray<string> }>;
+	}>;
 	readonly label: string;
 	readonly updatedAt: number;
 }) {

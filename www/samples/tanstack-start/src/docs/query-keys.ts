@@ -1,4 +1,4 @@
-import { queryOptions } from "@raf-query/react";
+import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
 import { listTodos } from "~/api.ts";
 import { getTodo } from "~/api.ts";
 import { QueryClient } from "@raf-query/react";
@@ -7,7 +7,15 @@ declare function getSpecial(): Promise<unknown>;
 
 // #region simple-keys
 // A list of todos
-queryOptions({ queryKey: ["todos"], queryFn: () => listTodos() });
+infiniteQueryOptions({
+	queryKey: ["todos"],
+	queryFn: async () => ({
+		items: await listTodos(),
+		nextCursor: null,
+	}),
+	initialPageParam: 0,
+	getNextPageParam: (lastPage) => lastPage.nextCursor,
+});
 
 // Something else, whatever!
 queryOptions({
@@ -26,7 +34,15 @@ queryOptions({ queryKey: ["todo", 5], queryFn: () => getTodo(5) });
 queryOptions({ queryKey: ["todo", 5, { preview: true }], queryFn });
 
 // A list of todos that are "done"
-queryOptions({ queryKey: ["todos", { status: "done" }], queryFn });
+infiniteQueryOptions({
+	queryKey: ["todos", { status: "done" }],
+	queryFn: async () => ({
+		items: await queryFn(),
+		nextCursor: null,
+	}),
+	initialPageParam: 0,
+	getNextPageParam: (lastPage) => lastPage.nextCursor,
+});
 // #endregion
 
 declare const status: string;

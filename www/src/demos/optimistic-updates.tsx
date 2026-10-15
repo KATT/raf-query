@@ -4,7 +4,7 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
 	type EnsuredQueryHandle,
-	queryOptions,
+	infiniteQueryOptions,
 	useQuery,
 	useQueryClient,
 } from "@raf-query/react";
@@ -32,9 +32,15 @@ function seedTodos(): Array<Todo> {
 const server = createFakeServer(() => ({ todos: seedTodos() }));
 
 function todosQuery() {
-	return queryOptions({
+	return infiniteQueryOptions({
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		initialPageParam: 0,
 		queryFn: (context) =>
-			server.respond("GET /todos", (db) => db.todos, context),
+			server.respond(
+				"GET /todos",
+				(db) => ({ items: db.todos, nextCursor: null }),
+				context,
+			),
 		queryKey: ["todos"],
 	});
 }
@@ -68,7 +74,8 @@ function TodoList(props: {
 	readonly handle: EnsuredQueryHandle<typeof todosQuery>;
 }) {
 	const qc = useQueryClient();
-	const [serverTodos] = useQuery(todosQuery, props.handle);
+	const [pages] = useQuery(todosQuery, props.handle);
+	const serverTodos = pages.pages.flatMap((page) => page.items);
 	const [todos, addOptimistic] = useOptimistic<ReadonlyArray<Todo>, string>(
 		serverTodos,
 		(current, text) => [

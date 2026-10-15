@@ -2,7 +2,7 @@ import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	type EnsuredQueryHandle,
-	queryOptions,
+	infiniteQueryOptions,
 	useQuery,
 } from "@raf-query/react";
 import { RefreshCw } from "lucide-react";
@@ -21,9 +21,15 @@ const server = createFakeServer(() => ({
 }));
 
 function inboxQuery() {
-	return queryOptions({
+	return infiniteQueryOptions({
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		initialPageParam: 0,
 		queryFn: (context) =>
-			server.respond("GET /inbox", (db) => db.messages, context),
+			server.respond(
+				"GET /inbox",
+				(db) => ({ items: db.messages, nextCursor: null }),
+				context,
+			),
 		queryKey: ["inbox"],
 		staleTime: 60_000,
 	});
@@ -39,7 +45,8 @@ type PageData =
 function Inbox(props: {
 	readonly handle: EnsuredQueryHandle<typeof inboxQuery>;
 }) {
-	const [messages, inbox] = useQuery(inboxQuery, props.handle);
+	const [pages, inbox] = useQuery(inboxQuery, props.handle);
+	const messages = pages.pages.flatMap((page) => page.items);
 	return (
 		<div aria-busy={inbox.isFetching} className="grid gap-3">
 			<ul className="grid gap-1.5">

@@ -17,10 +17,10 @@ Apps never import `effect` unless they write Effect code. Requires React 19.2 or
 
 ## Usage
 
-A query is a factory. The loader and the component call the same one.
+A query is a factory. The loader and the component call the same one. A paged list, such as comments, uses `infiniteQueryOptions`.
 
 ```tsx
-import { queryOptions } from "@raf-query/react";
+import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
 
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
@@ -28,12 +28,22 @@ export function postQuery(input: { slug: string }) {
 		queryFn: () => getPost(input.slug),
 	});
 }
+
+export function commentsQuery(input: { slug: string }) {
+	return infiniteQueryOptions({
+		queryKey: ["comments", input.slug],
+		queryFn: (context) =>
+			listComments({ cursor: context.pageParam, slug: input.slug }),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+	});
+}
 ```
 
 **`prefetch`** starts the request and returns a handle at once. The page renders now; `use()` suspends whatever is still loading, under its Suspense fallback.
 
 ```tsx
-import { useQuery } from "@raf-query/react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
 import { Suspense, use } from "react";
 
 export const Route = createFileRoute("/posts/$slug")({
@@ -50,19 +60,28 @@ export const Route = createFileRoute("/posts/$slug")({
 
 function PostPage() {
 	const data = Route.useLoaderData();
-	const [post] = useQuery(postQuery, data.post);
+	const [postPromise] = useQuery(postQuery, data.post);
+	const post = use(postPromise);
 	return (
 		<article>
-			<h1>{use(post).title}</h1>
+			<h1>{post.title}</h1>
 			<Suspense fallback={<CommentsSkeleton />}>
 				<Comments handle={data.comments} />
 			</Suspense>
 		</article>
 	);
 }
+
+function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
+	const [pagesPromise] = useQuery(commentsQuery, props.handle);
+	const pages = use(pagesPromise);
+	return pages.pages
+		.flatMap((page) => page.items)
+		.map((comment) => <Comment key={comment.id} {...comment} />);
+}
 ```
 
-**`ensure`** waits until the data is cached, so the navigation holds and `useQuery` returns the data itself. Await several with [`allKeyed`](https://raf-query.katt.dev/docs/starting-queries#awaiting-several-queries) — a record of promises in, the same record out — so one wait never delays the others.
+**`ensure`** waits until the data is cached, so the navigation holds and `useQuery` returns the data itself. Await the post and its comments together with [`allKeyed`](https://raf-query.katt.dev/docs/starting-queries#awaiting-several-queries) — a record of promises in, the same record out — so one wait never delays the other.
 
 ```tsx
 import { allKeyed, useQuery } from "@raf-query/react";
@@ -72,7 +91,7 @@ export const Route = createFileRoute("/posts/$slug")({
 		const qc = args.context.queryClient;
 		const { slug } = args.params;
 		return allKeyed({
-			author: qc.ensure(authorQuery, { id: slug }),
+			comments: qc.ensure(commentsQuery, { slug }),
 			post: qc.ensure(postQuery, { slug }),
 		});
 	},
@@ -81,9 +100,19 @@ export const Route = createFileRoute("/posts/$slug")({
 
 function PostPage() {
 	const data = Route.useLoaderData();
-	// ensure put the post in the cache, so this is the post itself.
+	// Both are cached, so these are the values themselves.
 	const [post] = useQuery(postQuery, data.post);
-	return <h1>{post.title}</h1>;
+	const [pages] = useQuery(commentsQuery, data.comments);
+	return (
+		<article>
+			<h1>{post.title}</h1>
+			{pages.pages
+				.flatMap((page) => page.items)
+				.map((comment) => (
+					<Comment key={comment.id} {...comment} />
+				))}
+		</article>
+	);
 }
 ```
 
