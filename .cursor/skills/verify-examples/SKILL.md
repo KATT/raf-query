@@ -56,13 +56,15 @@ Each line is `ok` or `FAIL` with the reason. Drive nothing until the apps you ne
 
 `$CE` with no arguments prints the full command list. The ones recipes use:
 
-- `$CE open <url>`: navigate, wait for load and network idle, print the URL, title, and any console errors or exceptions during load. An exception here is a finding.
+- `$CE open <url>`: navigate, wait for load and network idle, print the URL, title, and any console errors or exceptions during load. An exception here is a finding. `--color-scheme dark|light` emulates the OS theme for that load and prints the page's theme class and `color-scheme`.
 - `$CE snapshot`: visible headings and controls as `role "accessible name" [state]`. Start here to find handles.
-- `$CE click --role <role> --name <name>`: real mouse events at the element's center. `--name` is a case-insensitive substring; `--exact` for an exact match, `--nth <i>` for the i-th.
+- `$CE click --role <role> --name <name>`: real mouse events at the element's center. `--name` is a case-insensitive substring; `--exact` for an exact match, `--nth <i>` for the i-th, `'/regex/'` for a pattern (`'/^Open \d+$/'`). It fails if something else covers the element (the devtools panel).
+- `$CE hover --role <role> --name <name>`: move the mouse onto an element (link prefetch on intent).
 - `$CE fill --role textbox --name <name> --value <v>`: click, select all, type.
 - `$CE select --name <label> --value <value or label>`: choose an option of a native `<select>`.
-- `$CE press Enter|Escape|Tab|...`
-- `$CE wait --text <t>` / `$CE wait --gone <t>`, with `--timeout <ms>` (default 10 s). Wait on text, never sleep blindly before asserting.
+- `$CE press Enter|Escape|Tab|ArrowDown|...`
+- `$CE scroll bottom|top|<px>`: mouse-wheel scrolling; `bottom` keeps going while an infinite list grows.
+- `$CE wait --text <t>` / `--gone <t>` / `--role <r> --name <n>`, with `--timeout <ms>` (default 10 s). Text includes what's typed in inputs. Wait on something, never sleep blindly before asserting.
 - `$CE text`, `$CE eval '<expression>'`, `$CE screenshot --path <file>`.
 
 Server-rendered HTML is checked with `curl` (see [server-rendering](features/server-rendering.md)). Persistence is checked with `curl` against `/api/*` in the three REST apps, and by reloading the page in `tanstack-start-effect`.

@@ -37,6 +37,7 @@ const usage = `control-examples <command> [options]
   snapshot                     List visible headings and controls by role and name
   text                         Print the page's visible text
   click --role <r> --name <n>  Click an element (real mouse events)
+  hover --role <r> --name <n>  Move the mouse onto an element
   fill --role <r> --name <n> --value <v>
                                Focus, select all, type the value
   select --name <n> --value <v>
@@ -44,8 +45,9 @@ const usage = `control-examples <command> [options]
   press <key>                  Enter, Escape, Tab, ArrowDown, ...
   scroll [bottom|top|<px>]     Scroll with the mouse wheel; bottom/top keep
                                going until the page stops moving
-  wait --text <t> | --gone <t> [--timeout <ms>]
-                               Wait until text appears / disappears
+  wait --text <t> | --gone <t> | --role <r> --name <n> | --eval <expr>
+       [--timeout <ms>]        Wait until text (or a typed value) appears /
+                               disappears, a control exists, or <expr> is true
   eval <expression>            Evaluate in the page, print JSON
   screenshot --path <file>     Save a PNG of the viewport
 
@@ -147,7 +149,7 @@ const finder = String.raw`
 		textbox: 'input:not([type]), input[type="text"], input[type="search"], input[type="email"], textarea, [role="textbox"], [contenteditable="true"]',
 		any: '*',
 	};
-	const clean = (text) => (text ?? "").replace(/\s+/g, " ").trim();
+	const clean = (text) => String(text ?? "").replace(/\s+/g, " ").trim();
 	const nameOf = (el) => {
 		const label = el.getAttribute("aria-label");
 		if (label) return clean(label);
@@ -428,6 +430,15 @@ const commands = {
 		await cdp.send("Input.insertText", { text: args.values.value });
 	},
 
+	async hover(args, cdp) {
+		const point = await find(cdp, args.values);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: point.x,
+			y: point.y,
+		});
+	},
+
 	async open(args, cdp) {
 		const [url] = args.positionals;
 		if (!url) {
@@ -581,6 +592,21 @@ const commands = {
 				timeout,
 				`"${args.values.text}"`,
 			);
+		} else if (args.values.eval !== undefined) {
+			await waitFor(
+				cdp,
+				`Boolean(${args.values.eval})`,
+				timeout,
+				`\`${args.values.eval}\``,
+			);
+		} else if (args.values.role !== undefined) {
+			await evaluate(cdp, finder);
+			await waitFor(
+				cdp,
+				`window.__verifyFind(${JSON.stringify(args.values.role)}, ${JSON.stringify(args.values.name ?? "")}, ${Boolean(args.values.exact)}).count > 0`,
+				timeout,
+				`a ${args.values.role} named "${args.values.name}"`,
+			);
 		} else if (args.values.gone !== undefined) {
 			await waitFor(
 				cdp,
@@ -589,7 +615,7 @@ const commands = {
 				`"${args.values.gone}" to disappear`,
 			);
 		} else {
-			fail("wait needs --text or --gone");
+			fail("wait needs --text, --gone, --eval, or --role with --name");
 		}
 	},
 };
@@ -605,6 +631,7 @@ const args = parseArgs({
 	options: {
 		app: { type: "string" },
 		"color-scheme": { type: "string" },
+		eval: { type: "string" },
 		exact: { type: "boolean" },
 		gone: { type: "string" },
 		name: { type: "string" },

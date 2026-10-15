@@ -43,4 +43,5 @@ Walk the list top to bottom for a broad regression, then finish with [cross-app 
 - [Devtools](devtools.md): the raf-query devtools panel.
 - [Not found](not-found.md): unknown URLs and missing issues.
 - [Demo write warning](demo-write-toast.md): the toast deployed demos show on writes.
+- [Theme](theme.md): light and dark follow the system.
 - [Cross-app journeys](cross-app-journeys.md): one journey through all four apps, and where they differ.
