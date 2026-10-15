@@ -37,10 +37,9 @@ export const Route = createFileRoute("/issues/$issueId")({
 function IssuePage() {
 	const loaderData = Route.useLoaderData();
 	// Loader handled IssueNotFound; throw any other failure to errorComponent.
-	const [issuePromise] = useQuery(issueQuery, loaderData.issue, {
+	const [issue] = useQuery(issueQuery, loaderData.issue, {
 		throwOnError: true,
 	});
-	const issue = use(issuePromise);
 	return (
 		<article>
 			<h1>{issue.title}</h1>

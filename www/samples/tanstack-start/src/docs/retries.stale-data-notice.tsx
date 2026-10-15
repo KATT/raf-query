@@ -1,12 +1,12 @@
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import { type QueryHandleWithData, useQuery } from "@raf-query/react";
 import { postQuery } from "~/queries.ts";
 
-declare const loaderData: { post: QueryHandle<typeof postQuery> };
+declare const loaderData: { post: QueryHandleWithData<typeof postQuery> };
 
 declare function formatTime(value: number): string;
 
 // #region stale-data-notice
-const [postPromise, postState] = useQuery(postQuery, loaderData.post);
+const [post, postState] = useQuery(postQuery, loaderData.post);
 
 {
 	postState.error ? (

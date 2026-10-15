@@ -7,7 +7,6 @@ import {
 	useQuery,
 } from "@raf-query/react";
 import { act, render } from "@testing-library/react";
-import { use } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToReadableStream } from "react-dom/server.edge";
 import { describe, expect, it } from "vitest";
@@ -46,7 +45,7 @@ describe("HydrationBoundary", () => {
 
 		function Show() {
 			const [issue] = useQuery(backend.issueQuery, handle);
-			return <p>{use(issue).title}</p>;
+			return <p>{issue.title}</p>;
 		}
 
 		const stream = await renderToReadableStream(
@@ -103,8 +102,7 @@ describe("HydrationBoundary", () => {
 
 		const rendered: Array<string> = [];
 		function Show() {
-			const [issuePromise] = useQuery(backend.issueQuery, handle);
-			const issue = use(issuePromise);
+			const [issue] = useQuery(backend.issueQuery, handle);
 			rendered.push(issue.title);
 			return <p>{issue.title}</p>;
 		}
