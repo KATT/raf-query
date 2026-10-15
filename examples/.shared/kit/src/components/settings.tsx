@@ -1,3 +1,5 @@
+"use client";
+
 import { latencyOptions, staleTimeOptions } from "@examples/db/types";
 import { Button } from "@examples/ui/components/button";
 import {
