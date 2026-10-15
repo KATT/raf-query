@@ -36,7 +36,9 @@ function internalHref(target: EventTarget | null, root: HTMLElement) {
  * Expressive Code's lines are elements with no newline between them.
  */
 function codeText(pre: Element) {
-	const lines = [...pre.querySelectorAll(".ec-line")];
+	const lines = [...pre.querySelectorAll(".ec-line")].filter(
+		(line) => !line.closest("summary"),
+	);
 	if (lines.length === 0) {
 		return pre.textContent.trimEnd();
 	}
@@ -85,6 +87,7 @@ function placePopup(target: EventTarget | null) {
 /**
  * A page's prerendered HTML, with its demos in between. Links between pages
  * navigate client-side and preload on hover, like the router's `<Link>`.
+ * Folded code is a `<details>` element, so the browser opens and closes it.
  */
 export function DocBody(props: {
 	readonly demos: Readonly<Record<string, QueryHandle<typeof demoQuery>>>;

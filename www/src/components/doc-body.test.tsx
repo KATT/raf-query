@@ -1,7 +1,13 @@
 import path from "node:path";
 
 import { describe, expect, it, vi } from "@effect/vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+	act,
+	cleanup,
+	fireEvent,
+	render,
+	screen,
+} from "@testing-library/react";
 import {
 	createMemoryHistory,
 	createRootRoute,
@@ -52,6 +58,7 @@ async function click(element: Element) {
 }
 
 async function renderPage(next: ReadonlyArray<DocSegment>) {
+	cleanup();
 	segments = next;
 	const router = createRouter({
 		history: createMemoryHistory({ initialEntries: ["/"] }),
@@ -86,6 +93,40 @@ describe("DocBody code blocks", () => {
 		await click(screen.getByRole("button", { name: "Copy code" }));
 		expect(copied.writeText).toHaveBeenCalledWith(
 			"const shown = 1;\nconst next = shown;",
+		);
+	});
+
+	it("opens a folded range, closes it, and copies the hidden lines", async () => {
+		using copied = clipboard();
+		const rendered = await renderMarkdown(
+			[
+				"```ts collapse={2-2}",
+				"const shown = 1;",
+				"const hidden = 2;",
+				"```",
+			].join("\n"),
+			{ twoslashRoot: contentDir },
+		);
+		const html = rendered.segments[0];
+		if (html?.kind !== "html") {
+			throw new Error("expected html");
+		}
+		await renderPage([html]);
+
+		const fold = screen.getByText("1 collapsed line").closest("summary");
+		if (!fold) {
+			throw new Error("expected a summary");
+		}
+		const details = fold.closest("details");
+		expect(details?.open).toBe(false);
+		await click(fold);
+		expect(details?.open).toBe(true);
+		await click(fold);
+		expect(details?.open).toBe(false);
+
+		await click(screen.getByRole("button", { name: "Copy code" }));
+		expect(copied.writeText).toHaveBeenCalledWith(
+			"const shown = 1;\nconst hidden = 2;",
 		);
 	});
 });

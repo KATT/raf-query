@@ -5,7 +5,7 @@ section: Project
 order: 0
 ---
 
-```tsx twoslash title="src/routes/posts.$slug.tsx"
+```tsx twoslash title="src/routes/posts.$slug.tsx" collapse={18-23,27-33}
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { Suspense, use } from "react";
 import {

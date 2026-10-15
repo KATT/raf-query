@@ -289,6 +289,25 @@ html[data-announcement-dismissed] .announcement-bar {
 	font-weight: 600;
 }
 
+/* The fold is Expressive Code's `<details>`, nested in `.prose`. The prose
+   box and Tailwind's `.collapse { visibility: collapse }` utility would hide
+   the icon that closes an open range. */
+.prose .expressive-code details {
+	margin-block: 0;
+	border: 0;
+	border-radius: 0;
+	padding: 0;
+}
+
+.prose .expressive-code summary {
+	font-weight: inherit;
+}
+
+.expressive-code .expand,
+.expressive-code .collapse {
+	visibility: visible;
+}
+
 @keyframes indeterminate {
 	from {
 		transform: translateX(-100%);

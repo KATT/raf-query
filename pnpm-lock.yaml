@@ -898,6 +898,9 @@ importers:
       '@effect/vitest':
         specifier: 'catalog:'
         version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
+      '@expressive-code/plugin-collapsible-sections':
+        specifier: 0.44.2
+        version: 0.44.2
       '@rolldown/plugin-babel':
         specifier: 0.2.4
         version: 0.2.4(@babel/core@7.29.7)(@babel/runtime@7.29.10)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(rolldown@1.2.13)
@@ -1159,6 +1162,9 @@ packages:
 
   '@expressive-code/core@0.44.2':
     resolution: {integrity: sha512-Yw5KonQCD1HoOO2P89y4wifqS9qrJcGVY0LkVMUsVZjhi++bhz4WwQ37inenKFNOEVo50P7cjoVsCdaVnUbq8w==}
+
+  '@expressive-code/plugin-collapsible-sections@0.44.2':
+    resolution: {integrity: sha512-iT8PPitb32Te5tGd1LiIlVeZve/HDZUtygwLjqg3f47aHR3AeUreDXDZUis5qMHr+/Vrt8tKfQSWtT7qm8Fkng==}
 
   '@expressive-code/plugin-frames@0.44.2':
     resolution: {integrity: sha512-gVLm6TQMNIRWIaM7o+mCtxkGNjLZY5/2faSTLoXeo9wv/Pkj/0QAtZyXPVPrRsPARqiipATNFmfvQFLJudxPHQ==}
@@ -5943,6 +5949,10 @@ snapshots:
       postcss-nested: 6.2.0(postcss@8.5.29)
       unist-util-visit: 5.1.0
       unist-util-visit-parents: 6.0.2
+
+  '@expressive-code/plugin-collapsible-sections@0.44.2':
+    dependencies:
+      '@expressive-code/core': 0.44.2
 
   '@expressive-code/plugin-frames@0.44.2':
     dependencies:

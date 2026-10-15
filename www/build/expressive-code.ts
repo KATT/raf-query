@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
+import { pluginCollapsibleSections } from "@expressive-code/plugin-collapsible-sections";
 import type { Element, ElementContent, Text } from "hast";
 import rehypeExpressiveCode, {
 	ExpressiveCodeBlock,
@@ -21,6 +22,10 @@ import ts from "typescript6";
  *
  * The card, the title, and the copy button stay ours (`frames: false`). The
  * themes follow the site's `.dark` class.
+ *
+ * A fence folds lines with `collapse={4-9}` (comma-separated ranges). The
+ * numbers are the highlighted lines, after `// ---cut---` and `// ^?`.
+ * `collapsible-start` keeps a summary, so a second click closes the lines.
  */
 
 const twoslashers = new Map<
@@ -422,8 +427,9 @@ export function docsHighlighter() {
 			const file = args.file as unknown as DocsCodeFile;
 			return createDocsBlock(args.input, file);
 		},
+		defaultProps: { collapseStyle: "collapsible-start" },
 		frames: false,
-		plugins: [docsTwoslashPlugin()],
+		plugins: [docsTwoslashPlugin(), pluginCollapsibleSections()],
 		tabWidth: 2,
 		themeCssSelector: (theme) => (theme.type === "dark" ? ".dark" : ":root"),
 		themes: ["github-light", "github-dark"],

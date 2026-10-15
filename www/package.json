@@ -25,6 +25,7 @@
 	"devDependencies": {
 		"@babel/core": "7.29.7",
 		"@effect/vitest": "catalog:",
+		"@expressive-code/plugin-collapsible-sections": "0.44.2",
 		"@rolldown/plugin-babel": "0.2.4",
 		"@shikijs/twoslash": "4.5.0",
 		"@tailwindcss/typography": "0.5.20",
