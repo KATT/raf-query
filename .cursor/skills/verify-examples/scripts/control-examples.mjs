@@ -29,8 +29,11 @@ const usage = `control-examples <command> [options]
   chrome start                 Start headless Chrome (DevTools on :${DEVTOOLS_PORT})
   chrome stop                  Stop the Chrome this script started
   doctor [--app <name>]        Check Chrome and the app(s) are up
-  open <url> [--wait <ms>]     Navigate, wait for load and network idle,
-                               print console errors and exceptions
+  open <url> [--wait <ms>] [--color-scheme dark|light]
+                               Navigate, wait for load and network idle,
+                               print console errors and exceptions; with
+                               --color-scheme, emulate the OS theme and
+                               print the page's theme class and background
   snapshot                     List visible headings and controls by role and name
   text                         Print the page's visible text
   click --role <r> --name <n>  Click an element (real mouse events)
@@ -454,6 +457,14 @@ const commands = {
 		await cdp.send("Runtime.enable");
 		await cdp.send("Network.enable");
 		await cdp.send("Page.enable");
+		const scheme = args.values["color-scheme"];
+		if (scheme) {
+			// The override ends with this command's DevTools session, so check
+			// what it changed before returning.
+			await cdp.send("Emulation.setEmulatedMedia", {
+				features: [{ name: "prefers-color-scheme", value: scheme }],
+			});
+		}
 		const idle = networkIdle(cdp, 500, 30_000);
 		const loaded = new Promise((resolve) =>
 			cdp.on((message) => {
@@ -470,6 +481,15 @@ const commands = {
 		const location = await evaluate(cdp, "location.href");
 		const title = await evaluate(cdp, "document.title");
 		console.log(`${location} "${title}"`);
+		if (scheme) {
+			const html = await evaluate(
+				cdp,
+				`({ background: getComputedStyle(document.body).backgroundColor, className: document.documentElement.className, colorScheme: getComputedStyle(document.documentElement).colorScheme })`,
+			);
+			console.log(
+				`prefers-color-scheme ${scheme}: <html class="${html.className}">, color-scheme ${html.colorScheme}, body background ${html.background}`,
+			);
+		}
 		for (const problem of problems) {
 			console.log(problem);
 		}
@@ -552,17 +572,19 @@ const commands = {
 
 	async wait(args, cdp) {
 		const timeout = Number(args.values.timeout ?? 10_000);
+		// What the user can read: the text, plus what's typed in form fields.
+		const shown = `[document.body.innerText, ...[...document.querySelectorAll("input, textarea")].map((el) => el.value)].join("\\n")`;
 		if (args.values.text !== undefined) {
 			await waitFor(
 				cdp,
-				`document.body.innerText.includes(${JSON.stringify(args.values.text)})`,
+				`${shown}.includes(${JSON.stringify(args.values.text)})`,
 				timeout,
 				`"${args.values.text}"`,
 			);
 		} else if (args.values.gone !== undefined) {
 			await waitFor(
 				cdp,
-				`!document.body.innerText.includes(${JSON.stringify(args.values.gone)})`,
+				`!${shown}.includes(${JSON.stringify(args.values.gone)})`,
 				timeout,
 				`"${args.values.gone}" to disappear`,
 			);
@@ -582,6 +604,7 @@ const args = parseArgs({
 	args: rest,
 	options: {
 		app: { type: "string" },
+		"color-scheme": { type: "string" },
 		exact: { type: "boolean" },
 		gone: { type: "string" },
 		name: { type: "string" },
