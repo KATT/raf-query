@@ -27,6 +27,7 @@ function PostsPage() {
 	const [postsPromise, postsState] = useQuery(postsQuery, loaderData.posts, {
 		whilePending: "previous",
 	});
+	const posts = use(postsPromise);
 
 	return (
 		<>
@@ -38,7 +39,7 @@ function PostsPage() {
 					Oldest
 				</Link>
 			</nav>
-			<PostList posts={use(postsPromise)} dimmed={postsState.isPrevious} />
+			<PostList posts={posts} dimmed={postsState.isPrevious} />
 		</>
 	);
 }

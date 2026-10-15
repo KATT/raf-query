@@ -1,4 +1,4 @@
-import { queryOptions } from "@raf-query/react";
+import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
 import type { Todo } from "~/api.ts";
 
 declare function fetchAllTodos(): Promise<ReadonlyArray<Todo>>;
@@ -8,7 +8,15 @@ declare function fetchTodoById(id: number): Promise<Todo>;
 declare const id: number;
 
 // #region intro
-queryOptions({ queryKey: ["todos"], queryFn: fetchAllTodos });
+infiniteQueryOptions({
+	getNextPageParam: (lastPage: {
+		readonly items: ReadonlyArray<Todo>;
+		readonly nextCursor: number | null;
+	}) => lastPage.nextCursor,
+	initialPageParam: 0,
+	queryFn: async () => ({ items: await fetchAllTodos(), nextCursor: null }),
+	queryKey: ["todos"],
+});
 queryOptions({ queryKey: ["todos", id], queryFn: () => fetchTodoById(id) });
 queryOptions({
 	queryKey: ["todos", id],

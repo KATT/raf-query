@@ -20,9 +20,22 @@ const server = createFakeServer(() => ({
 	],
 }));
 
+interface MessagePage {
+	readonly items: ReadonlyArray<{
+		readonly from: string;
+		readonly id: number;
+		readonly subject: string;
+	}>;
+	readonly nextCursor: number | null;
+}
+
+function messageNext(lastPage: MessagePage) {
+	return lastPage.nextCursor;
+}
+
 function inboxQuery() {
 	return infiniteQueryOptions({
-		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		getNextPageParam: messageNext,
 		initialPageParam: 0,
 		queryFn: (context) =>
 			server.respond(

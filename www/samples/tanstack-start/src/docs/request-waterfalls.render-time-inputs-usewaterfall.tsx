@@ -9,8 +9,9 @@ declare function AuthorCard(props: {
 
 // #region render-time-inputs-usewaterfall
 function PostAuthor(props: { post: Post }) {
-	const author = useWaterfall(authorQuery, { id: props.post.authorId });
-	const [authorPromise] = useQuery(authorQuery, author);
-	return <AuthorCard author={use(authorPromise)} />;
+	const handle = useWaterfall(authorQuery, { id: props.post.authorId });
+	const [authorPromise] = useQuery(authorQuery, handle);
+	const author = use(authorPromise);
+	return <AuthorCard author={author} />;
 }
 // #endregion

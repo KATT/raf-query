@@ -31,9 +31,18 @@ function seedTodos(): Array<Todo> {
 
 const server = createFakeServer(() => ({ todos: seedTodos() }));
 
+interface TodoPage {
+	readonly items: ReadonlyArray<Todo>;
+	readonly nextCursor: number | null;
+}
+
+function todoNext(lastPage: TodoPage) {
+	return lastPage.nextCursor;
+}
+
 function todosQuery() {
 	return infiniteQueryOptions({
-		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		getNextPageParam: todoNext,
 		initialPageParam: 0,
 		queryFn: (context) =>
 			server.respond(

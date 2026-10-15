@@ -41,18 +41,18 @@ function PostPage() {
 }
 
 function Post(props: { handle: QueryHandle<typeof postQuery> }) {
-	const [post] = useQuery(postQuery, props.handle);
+	const [postPromise] = useQuery(postQuery, props.handle);
 	//     ^?
-	return <h1>{use(post).title}</h1>;
+	const post = use(postPromise);
+	return <h1>{post.title}</h1>;
 }
 
 // ---collapse---
 function PostComments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	// May still be loading. If so, use() suspends until it lands.
-	const [pages] = useQuery(commentsQuery, props.handle);
-	return use(pages)
-		.pages.flatMap((page) => page.items)
-		.map(renderComment);
+	const [pagesPromise] = useQuery(commentsQuery, props.handle);
+	const pages = use(pagesPromise);
+	return pages.pages.flatMap((page) => page.items).map(renderComment);
 }
 // ---/collapse---
 // #endregion component

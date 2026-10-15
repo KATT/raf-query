@@ -38,7 +38,7 @@ function createBlog() {
 	return {
 		commentsQuery: (input: { postId: number }) =>
 			infiniteQueryOptions({
-				getNextPageParam: (lastPage) => lastPage.nextCursor,
+				getNextPageParam: commentNext,
 				initialPageParam: 0,
 				queryFn: (context) =>
 					server.respond(
@@ -67,7 +67,7 @@ function createBlog() {
 			}),
 		postsQuery: () =>
 			infiniteQueryOptions({
-				getNextPageParam: (lastPage) => lastPage.nextCursor,
+				getNextPageParam: postNext,
 				initialPageParam: 0,
 				queryFn: (context) =>
 					server.respond(
@@ -90,6 +90,19 @@ function createBlog() {
 interface CommentPage {
 	readonly items: ReadonlyArray<Comment>;
 	readonly nextCursor: number | null;
+}
+
+interface PostListPage {
+	readonly items: ReadonlyArray<PostSummary>;
+	readonly nextCursor: number | null;
+}
+
+function commentNext(lastPage: CommentPage) {
+	return lastPage.nextCursor;
+}
+
+function postNext(lastPage: PostListPage) {
+	return lastPage.nextCursor;
 }
 
 interface RouterContext {
@@ -271,7 +284,8 @@ function PrefetchedList(): ReactNode {
 }
 
 function PromisedPost(props: { readonly post: Promise<Post | undefined> }) {
-	return <PostBody post={use(props.post)} />;
+	const post = use(props.post);
+	return <PostBody post={post} />;
 }
 
 function PrefetchedComments(): ReactNode {

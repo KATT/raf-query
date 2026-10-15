@@ -43,6 +43,7 @@ interface Details {
 // #region details
 function Details(props: { open: boolean; details: Promise<Details> }) {
 	if (!props.open) return null;
-	return <DetailsTable details={use(props.details)} />;
+	const details = use(props.details);
+	return <DetailsTable details={details} />;
 }
 // #endregion

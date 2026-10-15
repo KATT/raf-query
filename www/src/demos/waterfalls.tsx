@@ -73,9 +73,13 @@ interface CommentPage {
 	readonly nextCursor: number | null;
 }
 
+function commentNext(lastPage: CommentPage) {
+	return lastPage.nextCursor;
+}
+
 function commentsQuery(input: { readonly postId: number }) {
 	return infiniteQueryOptions({
-		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		getNextPageParam: commentNext,
 		initialPageParam: 0,
 		queryFn: (context) =>
 			server.respond(
@@ -129,8 +133,9 @@ function LineSkeleton(props: { readonly className: string }) {
 }
 
 function Title(props: { readonly handle: QueryHandle<typeof postQuery> }) {
-	const [post] = useQuery(postQuery, props.handle);
-	return <h3 className="text-lg font-semibold">{use(post)?.title}</h3>;
+	const [postPromise] = useQuery(postQuery, props.handle);
+	const post = use(postPromise);
+	return <h3 className="text-lg font-semibold">{post?.title}</h3>;
 }
 
 function Byline(props: { readonly name: string | undefined }) {
@@ -162,8 +167,9 @@ function CommentList(props: {
 function LoaderAuthor(props: {
 	readonly handle: QueryHandle<typeof postAuthorQuery>;
 }) {
-	const [author] = useQuery(postAuthorQuery, props.handle);
-	return <Byline name={use(author)} />;
+	const [authorPromise] = useQuery(postAuthorQuery, props.handle);
+	const author = use(authorPromise);
+	return <Byline name={author} />;
 }
 
 /** Everything was started by the loader; each part fills in as its data lands. */
@@ -218,10 +224,11 @@ function RenderAuthor(props: {
 	readonly postId: number;
 }) {
 	const handle = useWaterfall(authorQuery, { id: props.authorId });
-	const [author] = useQuery(authorQuery, handle);
+	const [authorPromise] = useQuery(authorQuery, handle);
+	const author = use(authorPromise);
 	return (
 		<>
-			<Byline name={use(author)} />
+			<Byline name={author} />
 			<Suspense fallback={<LineSkeleton className="mt-3 h-20 w-full" />}>
 				<RenderComments postId={props.postId} />
 			</Suspense>

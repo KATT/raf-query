@@ -27,9 +27,18 @@ const server = createFakeServer(() => ({
 	users: ["Ada", "Grace", "Linus"],
 }));
 
+interface StringPage {
+	readonly items: ReadonlyArray<string>;
+	readonly nextCursor: number | null;
+}
+
+function pageNext(lastPage: StringPage) {
+	return lastPage.nextCursor;
+}
+
 function todosQuery(input: { readonly status: Status }) {
 	return infiniteQueryOptions({
-		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		getNextPageParam: pageNext,
 		initialPageParam: 0,
 		queryFn: (context) =>
 			server.respond(
@@ -49,7 +58,7 @@ function todosQuery(input: { readonly status: Status }) {
 
 function usersQuery() {
 	return infiniteQueryOptions({
-		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		getNextPageParam: pageNext,
 		initialPageParam: 0,
 		queryFn: (context) =>
 			server.respond(
