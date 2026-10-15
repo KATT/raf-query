@@ -19,7 +19,7 @@ const dataStyles = {
 } satisfies Record<DataStatus, string>;
 
 const columns =
-	"grid grid-cols-[minmax(0,1fr)_4.5rem_5.5rem_7.5rem] items-center gap-x-2";
+	"grid grid-cols-[minmax(0,1fr)_4rem_5rem_4.5rem] items-center gap-x-2";
 
 /** How long a row that finished loading keeps its place at the top. */
 const holdMs = 1500;
@@ -122,7 +122,7 @@ function RequestsCell(props: { readonly row: Row }) {
 	}
 	const failures = props.row.entry?.failureCount ?? 0;
 	return (
-		<span className="flex items-center gap-1.5">
+		<span className="flex flex-wrap items-center gap-x-1.5">
 			<span
 				className="text-muted-foreground tabular-nums"
 				title={`${props.row.requests.length} ${props.row.requests.length === 1 ? "request" : "requests"}`}

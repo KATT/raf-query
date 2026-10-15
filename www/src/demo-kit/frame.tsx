@@ -15,7 +15,7 @@ import {
 import { cn } from "@examples/ui/lib/utils";
 import { QueryClient, QueryClientProvider } from "@raf-query/react";
 import { QueryDevtoolsPanel } from "@raf-query/react/devtools";
-import { Expand, FlaskConical, RotateCcw } from "lucide-react";
+import { Expand, FlaskConical, RotateCcw, Shrink } from "lucide-react";
 import { Activity, type ReactNode, Suspense, useId, useState } from "react";
 
 import type { DemoDefinition, DemoVariant } from "./define.ts";
@@ -271,8 +271,50 @@ function Toolbar(props: {
 }
 
 /**
+ * The demo with its queries underneath, or beside it when the card is wide
+ * enough: inline and in the expanded dialog alike.
+ */
+function DemoCard(props: {
+	readonly body: ReactNode;
+	readonly className: string;
+	readonly description: ReactNode;
+	readonly devtools?: boolean;
+	readonly inspected: Omit<
+		Parameters<typeof Inspector>[0],
+		"className" | "devtools"
+	>;
+	readonly title: ReactNode;
+	readonly toolbar: ReactNode;
+}) {
+	return (
+		<figure
+			className={cn(
+				"@container flex flex-col bg-card text-card-foreground",
+				props.className,
+			)}
+		>
+			<figcaption className="grid gap-1.5 border-b px-4 py-3">
+				<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+					{props.title}
+					{props.toolbar}
+				</div>
+				{props.description}
+			</figcaption>
+			<div className="grid min-h-0 flex-1 overflow-y-auto @3xl:grid-cols-[minmax(0,1fr)_26rem] @6xl:grid-cols-[minmax(0,1fr)_32rem]">
+				<div className="min-w-0 p-4">{props.body}</div>
+				<Inspector
+					className="min-w-0 content-start border-t bg-muted/30 px-4 py-3 @3xl:border-t-0 @3xl:border-l"
+					devtools={props.devtools ?? false}
+					{...props.inspected}
+				/>
+			</div>
+		</figure>
+	);
+}
+
+/**
  * A live demo in a box: its own query client and fake server, with the
- * cache's queries underneath, each with its readers and requests. Expanding it opens
+ * cache's queries, each with its readers and requests. Expanding it opens
  * the same session in a dialog with the devtools panel. A demo with
  * variants gets a switch, and a session per variant; Reset starts them all
  * over and keeps the switch where it is. A browser's Reload starts only its
@@ -290,16 +332,6 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 	if (!variant || !session) {
 		throw new Error(`Demo "${demo.title}" has no variant ${selected}`);
 	}
-	const reset = () => {
-		for (const previous of sessions) {
-			void previous.client.dispose();
-		}
-		for (const each of demo.variants) {
-			each.server.reset();
-		}
-		setSessions(demo.variants.map((each) => createSession(demo, each)));
-		setOpened([selected]);
-	};
 	const inspected = {
 		label: demo.variants.length > 1 ? variant.label : undefined,
 		server: variant.server,
@@ -333,68 +365,99 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 		/>
 	);
 
+	const icon = (
+		<FlaskConical className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+	);
+	const toolbar = (button: ReactNode) => (
+		<Toolbar
+			demo={demo}
+			latency={latency}
+			onLatency={setLatency}
+			onReset={() => {
+				for (const previous of sessions) {
+					void previous.client.dispose();
+				}
+				for (const each of demo.variants) {
+					each.server.reset();
+				}
+				setSessions(demo.variants.map((each) => createSession(demo, each)));
+				setOpened([selected]);
+			}}
+		>
+			{button}
+		</Toolbar>
+	);
+
 	return (
-		<figure className="not-prose my-8 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
-			<figcaption className="grid gap-1.5 border-b px-4 py-3">
-				<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+		<>
+			<DemoCard
+				body={
+					expanded ? (
+						<p className="py-10 text-center text-sm text-muted-foreground">
+							Running in the expanded view.
+						</p>
+					) : (
+						body
+					)
+				}
+				className="not-prose my-8 overflow-hidden rounded-xl border shadow-sm"
+				description={
+					<p className="text-xs text-muted-foreground">{demo.hint}</p>
+				}
+				inspected={inspected}
+				title={
 					<p className="flex items-center gap-2 text-sm font-semibold">
-						<FlaskConical className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+						{icon}
 						{demo.title}
 					</p>
-					<Toolbar
-						demo={demo}
-						latency={latency}
-						onLatency={setLatency}
-						onReset={reset}
+				}
+				toolbar={toolbar(
+					<Button
+						onClick={() => {
+							setExpanded(true);
+						}}
+						size="xs"
+						variant="outline"
 					>
-						<Button
-							onClick={() => {
-								setExpanded(true);
-							}}
-							size="xs"
-							variant="outline"
-						>
-							<Expand /> Expand
-						</Button>
-					</Toolbar>
-				</div>
-				<p className="text-xs text-muted-foreground">{demo.hint}</p>
-			</figcaption>
-			<div className="p-4">
-				{expanded ? (
-					<p className="py-10 text-center text-sm text-muted-foreground">
-						Running in the expanded view.
-					</p>
-				) : (
-					body
+						<Expand /> Expand
+					</Button>,
 				)}
-			</div>
-			<Inspector className="border-t bg-muted/30 px-4 py-3" {...inspected} />
+			/>
 			<Dialog onOpenChange={setExpanded} open={expanded}>
-				<DialogContent className="grid h-[min(56rem,92dvh)] w-[96vw] max-w-none grid-rows-[auto_1fr] gap-4 overflow-hidden p-5 sm:max-w-7xl">
-					<div className="grid gap-2 pr-8">
-						<DialogTitle className="flex items-center gap-2">
-							<FlaskConical className="size-4 text-emerald-600 dark:text-emerald-400" />
-							{demo.title}
-						</DialogTitle>
-						<DialogDescription>{demo.hint}</DialogDescription>
-						<Toolbar
-							demo={demo}
-							latency={latency}
-							onLatency={setLatency}
-							onReset={reset}
-						/>
-					</div>
-					<div className="grid min-h-0 gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)]">
-						<div className="min-w-0">{body}</div>
-						<Inspector
-							className="min-w-0 rounded-lg border bg-muted/30 p-3"
-							devtools
-							{...inspected}
-						/>
-					</div>
+				<DialogContent
+					className="h-[min(56rem,92dvh)] w-[96vw] max-w-none gap-0 overflow-hidden p-0 sm:max-w-7xl"
+					showCloseButton={false}
+				>
+					<DemoCard
+						body={body}
+						className="h-full min-h-0"
+						description={
+							<DialogDescription className="text-xs">
+								{demo.hint}
+							</DialogDescription>
+						}
+						devtools
+						inspected={inspected}
+						title={
+							<DialogTitle className="flex items-center gap-2 text-sm">
+								{icon}
+								{demo.title}
+							</DialogTitle>
+						}
+						toolbar={toolbar(
+							<Button
+								onClick={() => {
+									setExpanded(false);
+								}}
+								size="xs"
+								variant="outline"
+							>
+								<Shrink /> Close
+							</Button>,
+						)}
+					/>
 				</DialogContent>
 			</Dialog>
-		</figure>
+		</>
 	);
 }

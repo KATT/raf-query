@@ -336,7 +336,7 @@ function HomePage() {
 			</section>
 
 			<section aria-labelledby="try-it" className="border-y bg-muted/30 py-16">
-				<div className="mx-auto max-w-5xl px-4 sm:px-6">
+				<div className="mx-auto max-w-7xl px-4 sm:px-6">
 					<h2
 						className="mb-2 scroll-mt-20 text-2xl font-semibold tracking-tight"
 						id="try-it"
@@ -344,8 +344,8 @@ function HomePage() {
 						<HashLink id="try-it">Try it: prefetch, ensure or fetch</HashLink>
 					</h2>
 					<p className="max-w-2xl text-muted-foreground">
-						The demo runs in your browser against a fake server, with the
-						requests and the cache shown underneath.
+						The demo runs in your browser against a fake server, with its
+						queries, their requests and the cache shown next to it.
 					</p>
 					<DemoEmbed handle={data.demo} />
 				</div>

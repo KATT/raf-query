@@ -34,7 +34,7 @@ Assume the default `gcTime` of **5 minutes** and the default `staleTime` of `0`.
 6. **The last reader unmounts again, and nothing reads `["todos"]` for 5 minutes.**
    - The entry and its data are deleted.
 
-Try it. The demo's `todosQuery` has a `staleTime` of 5 seconds and a `gcTime` of 10, so you can watch the whole lifecycle in the Queries panel under it:
+Try it. The demo's `todosQuery` has a `staleTime` of 5 seconds and a `gcTime` of 10, so you can watch the whole lifecycle in its Queries panel:
 
 ```demo
 caching
