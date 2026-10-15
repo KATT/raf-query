@@ -125,7 +125,7 @@
 			// Docs samples are imported from markdown fences, which Knip does
 			// not parse. `check-twoslash.mjs` is the manual checker.
 			"entry": ["content/**/*.ts", "scripts/**/*.mjs"],
-			"ignoreDependencies": ["@raf-query/core", "zod"],
+			"ignoreDependencies": ["@raf-query/core"],
 			"ignoreIssues": {
 				"content/**": [
 					"exports",

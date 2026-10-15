@@ -323,8 +323,8 @@ function HomePage() {
 						aria-hidden="true"
 						className="pointer-events-none absolute inset-0 [background-image:radial-gradient(circle_at_1px_1px,var(--border)_1px,transparent_0)] [background-size:24px_24px] [mask-image:linear-gradient(to_bottom,black,transparent)]"
 					/>
-					<div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:py-24">
-						<div className="grid gap-6">
+					<div className="relative mx-auto grid max-w-7xl items-start gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:py-24">
+						<div className="grid gap-6 lg:sticky lg:top-36">
 							<Badge className="w-fit" variant="outline">
 								<Sparkles /> Early · 0.x on npm
 							</Badge>
