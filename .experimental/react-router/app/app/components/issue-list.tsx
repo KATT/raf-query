@@ -3,12 +3,12 @@ import { Card } from "@examples/ui/components/card";
 import { LoadMore } from "@examples/kit/components/load-more";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
-import { Link } from "react-router";
 import { MessageSquare } from "lucide-react";
 import { use } from "react";
 
 import { issueListQuery } from "~/queries.ts";
 
+import { AppLink } from "./app-link.tsx";
 import { StatusSelect } from "./status-select.tsx";
 
 const dateFormat = new Intl.DateTimeFormat("en", {
@@ -55,7 +55,7 @@ export function IssueList(props: {
 						key={pages.pageParams[index]}
 					>
 						{page.issues.map((issue) => (
-							<Link
+							<AppLink
 								className={cn(rowClassName, "group hover:bg-muted/50")}
 								key={issue.id}
 								to={`/issues/${issue.id}`}
@@ -86,7 +86,7 @@ export function IssueList(props: {
 								>
 									<StatusSelect issueId={issue.id} status={issue.status} />
 								</span>
-							</Link>
+							</AppLink>
 						))}
 					</div>
 				))}
