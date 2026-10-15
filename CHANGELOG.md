@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.7.12](https://github.com/KATT/raf-query/compare/0.7.11...0.7.12) (2026-10-15)
+
+- add knip with every issue type as an error ([#129](https://github.com/KATT/raf-query/issues/129)) ([603719d](https://github.com/KATT/raf-query/commit/603719dcb834312d4a813ecae865df7d56faf8c5))
+- cache Next.js Turbopack builds ([#128](https://github.com/KATT/raf-query/issues/128)) ([667b38f](https://github.com/KATT/raf-query/commit/667b38ff5728dad3fdad6d90445aea480cfbd063))
+- explain how a route loads its data on the homepage ([#121](https://github.com/KATT/raf-query/issues/121)) ([ec1d6ef](https://github.com/KATT/raf-query/commit/ec1d6efdad75ea2d05dd56790e5e980756afea13))
+- frame the cache as async data, not server-state-only ([#126](https://github.com/KATT/raf-query/issues/126)) ([db9ba02](https://github.com/KATT/raf-query/commit/db9ba02995aa01cadacb2739fd258de3c920d440))
+
+### Features
+
+- **examples:** reinstall shadcn on Base UI without Radix ([#125](https://github.com/KATT/raf-query/issues/125)) ([7c13ef3](https://github.com/KATT/raf-query/commit/7c13ef379dc297edbbe160516b26916d465a48d1))
+
 ## [0.7.11](https://github.com/KATT/raf-query/compare/0.7.10...0.7.11) (2026-10-14)
 
 ### Features
