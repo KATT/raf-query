@@ -106,3 +106,4 @@ export type Api = typeof routes;
 
 /** Serves the API under `/api`. Mount it on the framework's `/api/*` route. */
 export const app = new Hono().route("/api", routes);
+// vercel-ignore test (api)
