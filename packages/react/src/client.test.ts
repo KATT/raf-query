@@ -128,17 +128,28 @@ describe("ensure and fetch", () => {
 		const backend = createBackend();
 		const qc = new QueryClient({ isServer: false });
 
-		const handle = qc.ensure(backend.issueQuery, { id: 1 });
-		const data = qc.fetch(backend.issueQuery, { id: 1 });
+		const ensured = qc.ensure(backend.issueQuery, { id: 1 });
+		const fetched = qc.fetch(backend.issueQuery, { id: 1 });
 		backend.respondAll();
 
-		expect(await handle).toEqual({
-			ensured: true,
+		const handle = {
+			data: { id: 1, title: "First" },
 			input: { id: 1 },
 			key: ["issue", 1],
-		});
-		expect(await data).toEqual({ id: 1, title: "First" });
+		};
+		expect(await ensured).toEqual(handle);
+		expect(await fetched).toEqual(handle);
 		expect(backend.requests).toHaveLength(0);
+	});
+
+	it("hand out the cached data itself, not a copy", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "Cached" });
+
+		const handle = await qc.ensure(backend.issueQuery, { id: 1 });
+
+		expect(handle.data).toBe(qc.getData(backend.issueQuery, { id: 1 }));
 	});
 
 	it("ensure resolves immediately with stale data and revalidates", async () => {
@@ -146,7 +157,9 @@ describe("ensure and fetch", () => {
 		const qc = new QueryClient({ isServer: false });
 		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "Cached" });
 
-		await qc.ensure(backend.issueQuery, { id: 1 });
+		const handle = await qc.ensure(backend.issueQuery, { id: 1 });
+
+		expect(handle.data.title).toBe("Cached");
 
 		expect(qc.getData(backend.issueQuery, { id: 1 })?.title).toBe("Cached");
 		expect(backend.requests).toHaveLength(1);
@@ -162,8 +175,8 @@ describe("ensure and fetch", () => {
 		expect(backend.requests).toHaveLength(1);
 		backend.respondAll();
 
-		expect((await issue).title).toBe("First");
-		expect((await again).title).toBe("First");
+		expect((await issue).data.title).toBe("First");
+		expect((await again).data.title).toBe("First");
 	});
 
 	it("fetch resolves immediately with fresh data", async () => {
@@ -176,7 +189,7 @@ describe("ensure and fetch", () => {
 
 		const issue = await qc.fetch(backend.issueQuery, { id: 1 });
 
-		expect(issue.title).toBe("Cached");
+		expect(issue.data.title).toBe("Cached");
 		expect(backend.requests).toHaveLength(0);
 	});
 
@@ -190,7 +203,7 @@ describe("ensure and fetch", () => {
 		expect(backend.requests).toHaveLength(1);
 		backend.respondAll();
 
-		expect((await issue).title).toBe("First");
+		expect((await issue).data.title).toBe("First");
 	});
 
 	it("reject when the request fails", async () => {
@@ -209,7 +222,7 @@ describe("ensure and fetch", () => {
 			return queryOptions({ queryFn: () => 42, queryKey: ["count"] });
 		}
 
-		expect(await qc.fetch(countQuery)).toBe(42);
+		expect((await qc.fetch(countQuery)).data).toBe(42);
 		expect(qc.prefetch(countQuery)).toEqual({
 			input: undefined,
 			key: ["count"],
@@ -233,10 +246,14 @@ describe("undefined data", () => {
 			return queryOptions({ queryFn, queryKey: ["none"], staleTime: Infinity });
 		}
 
-		await expect(qc.fetch(noneQuery)).resolves.toBeUndefined();
-		await expect(qc.ensure(noneQuery)).resolves.toMatchObject({
-			ensured: true,
-		});
+		await expect(qc.fetch(noneQuery)).resolves.toHaveProperty(
+			"data",
+			undefined,
+		);
+		await expect(qc.ensure(noneQuery)).resolves.toHaveProperty(
+			"data",
+			undefined,
+		);
 		await expect(
 			Query.readUnsafe(qc.getQuery(noneQuery)),
 		).resolves.toBeUndefined();
@@ -257,11 +274,15 @@ describe("undefined data", () => {
 
 		expect(qc.getData(maybeQuery)).toBeUndefined();
 		expect(Query.getUnsafe(qc.getQuery(maybeQuery)).hasData).toBe(true);
-		await expect(qc.fetch(maybeQuery)).resolves.toBeUndefined();
+		await expect(qc.fetch(maybeQuery)).resolves.toHaveProperty(
+			"data",
+			undefined,
+		);
 	});
 
 	it("types data from the queryFn, including undefined", () => {
-		const fetchMaybe = (qc: QueryClient) => qc.fetch(maybeQuery);
+		const fetchMaybe = async (qc: QueryClient) =>
+			(await qc.fetch(maybeQuery)).data;
 		expectTypeOf(fetchMaybe).returns.resolves.toEqualTypeOf<
 			number | undefined
 		>();
@@ -275,19 +296,19 @@ describe("on the server", () => {
 
 		const data = qc.fetch(backend.issueQuery, { id: 1 });
 		backend.respondAll();
-		expect(await data).toEqual({ id: 1, title: "First" });
+		expect((await data).data).toEqual({ id: 1, title: "First" });
 		expect(
 			Query.isStaleUnsafe(qc.getQuery(backend.issueQuery, { id: 1 })),
 		).toBe(true);
 
 		const handle = await qc.ensure(backend.issueQuery, { id: 1 });
 		qc.prefetch(backend.issueQuery, { id: 1 });
-		expect(await qc.fetch(backend.issueQuery, { id: 1 })).toEqual({
+		expect((await qc.fetch(backend.issueQuery, { id: 1 })).data).toEqual({
 			id: 1,
 			title: "First",
 		});
 
-		expect(handle.ensured).toBe(true);
+		expect(handle.data.title).toBe("First");
 		expect(backend.requests).toHaveLength(0);
 	});
 
@@ -366,7 +387,10 @@ describe("ssr: false", () => {
 		const capability = capabilityQuery({ id: 1 });
 		const qc = new QueryClient({ isServer: false });
 
-		await expect(qc.fetch(capability.query)).resolves.toBe("granted");
+		await expect(qc.fetch(capability.query)).resolves.toHaveProperty(
+			"data",
+			"granted",
+		);
 		expect(capability.calls).toEqual([1]);
 	});
 });
@@ -462,7 +486,7 @@ describe("structural sharing", () => {
 	it("reuses unchanged parts of new data", async () => {
 		const qc = new QueryClient({ isServer: false });
 		const factory = listQuery();
-		const data = await qc.fetch(factory);
+		const { data } = await qc.fetch(factory);
 		const promise = Query.getUnsafe(qc.getQuery(factory)).promise;
 
 		qc.setData(factory, undefined, [
@@ -803,7 +827,7 @@ describe("retry", () => {
 		await vi.advanceTimersByTimeAsync(1);
 		expect(calls).toBe(2);
 		await vi.advanceTimersByTimeAsync(2000);
-		expect(await result).toBe("ok");
+		expect((await result).data).toBe("ok");
 	});
 
 	it("waits retryDelay(failureCount, error) between attempts", async () => {
@@ -827,7 +851,7 @@ describe("retry", () => {
 		await vi.advanceTimersByTimeAsync(1);
 		expect(calls).toBe(2);
 		await vi.advanceTimersByTimeAsync(200);
-		expect(await result).toBe("ok");
+		expect((await result).data).toBe("ok");
 		expect(retryDelay.mock.calls).toEqual([
 			[1, new Error("down")],
 			[2, new Error("down")],
@@ -926,7 +950,7 @@ describe("retry", () => {
 			expect(queryFn).toHaveBeenCalledOnce();
 			await vi.advanceTimersByTimeAsync(1);
 
-			expect(await result).toBe("ok");
+			expect((await result).data).toBe("ok");
 		});
 
 		it("pauses Schedule retries too", async () => {
@@ -947,7 +971,7 @@ describe("retry", () => {
 
 			browser.goOnline();
 
-			expect(await result).toBe("ok");
+			expect((await result).data).toBe("ok");
 		});
 
 		it("stops waiting when the query is removed", async () => {
@@ -1041,7 +1065,7 @@ describe("Effect queryFn", () => {
 			});
 		}
 
-		expect(await qc.fetch(fastQuery)).toBe("fast");
+		expect((await qc.fetch(fastQuery)).data).toBe("fast");
 		const slow = qc.fetch(slowQuery);
 		await flush();
 		qc.clear();
@@ -1175,7 +1199,7 @@ describe("layer", () => {
 	it("provides services to queryFn Effects", async () => {
 		const qc = new QueryClient({ isServer: false, layer: apiLayer([]) });
 
-		expect(await qc.fetch(userQuery, { id: 1 })).toBe("#1");
+		expect((await qc.fetch(userQuery, { id: 1 })).data).toBe("#1");
 		const query = qc.getQuery(userQuery, { id: 2 });
 		expect(await Query.readUnsafe(query)).toBe("#2");
 	});

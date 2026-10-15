@@ -43,7 +43,7 @@ nextjs/src/app/(blog)/components/comments.tsx#component
 
 - Render a `HydrationBoundary` in each server component that starts queries for client components. Entries already sent in this request are skipped, so nesting them is fine.
 - Pending entries stream as promises through the RSC payload: the page's shell renders while `comments` loads.
-- `fetch` and `ensure` wait for the same thing on the server. `await qc.fetch(...)` the data the server component renders itself. When it also hands the query to a client component, pass `await qc.ensure(...)`, so the client component gets the data from `useQuery` without a promise.
+- `await qc.fetch(...)` (or `ensure`, which waits for the same thing on the server) returns a handle with the `data`: render `post.data` in the server component, and pass `post` to client components that read the query. The data crosses once: the RSC payload references the `HydrationBoundary`'s copy.
 
 ## Pending UI
 

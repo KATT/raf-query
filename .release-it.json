@@ -43,32 +43,39 @@
 						"type": "perf"
 					},
 					{
-						"effect": "hidden",
-						"type": "build"
-					},
-					{
-						"effect": "hidden",
-						"type": "chore"
-					},
-					{
-						"effect": "hidden",
-						"type": "ci"
-					},
-					{
-						"effect": "hidden",
-						"type": "docs"
-					},
-					{
-						"effect": "hidden",
+						"effect": "changelog",
+						"section": "Code Refactoring",
 						"type": "refactor"
 					},
 					{
-						"effect": "hidden",
+						"effect": "changelog",
+						"section": "Documentation",
+						"type": "docs"
+					},
+					{
+						"effect": "changelog",
+						"section": "Tests",
+						"type": "test"
+					},
+					{
+						"effect": "changelog",
+						"section": "Build System",
+						"type": "build"
+					},
+					{
+						"effect": "changelog",
+						"section": "Continuous Integration",
+						"type": "ci"
+					},
+					{
+						"effect": "changelog",
+						"section": "Styles",
 						"type": "style"
 					},
 					{
-						"effect": "hidden",
-						"type": "test"
+						"effect": "changelog",
+						"section": "Miscellaneous Chores",
+						"type": "chore"
 					}
 				]
 			}

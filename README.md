@@ -38,9 +38,10 @@ export const Route = createFileRoute("/posts/$slug")({
 
 function PostPage() {
 	const data = Route.useLoaderData();
-	// The route already waited for this, so it's the post itself.
-	const [post] = useQuery(postQuery, data.post);
-	//     ^?
+	// The route already waited for this, so use() doesn't suspend.
+	const [postPromise] = useQuery(postQuery, data.post);
+	const post = use(postPromise);
+	//    ^?
 	return (
 		<article>
 			<h1>{post.title}</h1>

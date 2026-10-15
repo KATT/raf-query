@@ -37,7 +37,6 @@ import { hashKey, matchesKey, type QueryKey } from "./key.ts";
 import { listen } from "./listen.ts";
 import {
 	type DataOf,
-	type EnsuredQueryHandle,
 	type ErrorOf,
 	type InputArgs,
 	type InputOf,
@@ -47,6 +46,7 @@ import {
 	type QueryBehavior,
 	type QueryFactory,
 	type QueryHandle,
+	type QueryHandleWithData,
 	type ServicesOf,
 } from "./options.ts";
 import { Platform } from "./platform.ts";
@@ -110,14 +110,8 @@ export type Target<TFactory extends QueryFactory> =
  */
 export type Updater<TData> = TData | ((previous: TData | undefined) => TData);
 
-type Ensured<TFactory extends QueryFactory> = Effect.Effect<
-	EnsuredQueryHandle<TFactory>,
-	ErrorOf<TFactory> | Query.CancelledError,
-	ServicesOf<TFactory>
->;
-
-type Fetched<TFactory extends QueryFactory> = Effect.Effect<
-	DataOf<TFactory>,
+type Loaded<TFactory extends QueryFactory> = Effect.Effect<
+	QueryHandleWithData<TFactory>,
 	ErrorOf<TFactory> | Query.CancelledError,
 	ServicesOf<TFactory>
 >;
@@ -139,38 +133,37 @@ export interface QueryCache {
 		options?: DehydrateOptions,
 	): Effect.Effect<DehydratedStream, never, Scope.Scope>;
 	/**
-	 * Start a query and wait for it on a cache miss. Fails if that request
-	 * fails. Stale cached data succeeds immediately and revalidates in the
-	 * browser. The handle is marked `ensured`, so `useQuery` returns its data
-	 * directly.
+	 * {@link fetch} without waiting on stale data: start a query and wait for
+	 * it on a cache miss. Stale cached data succeeds immediately and
+	 * revalidates in the browser. Fails if that request fails.
 	 */
 	ensure<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
-	): Ensured<TFactory>;
+	): Loaded<TFactory>;
 	/** {@link ensure}, loading `options.pages` pages of a paged query. */
 	ensure<TFactory extends PagedQueryFactory>(
 		factory: TFactory,
 		input: InputOf<TFactory>,
 		options: LoadOptions,
-	): Ensured<TFactory>;
+	): Loaded<TFactory>;
 	/** Cache events from the moment the stream starts. */
 	readonly events: Stream.Stream<Event>;
 	/**
-	 * Start a query and succeed with its data. Waits on a cache miss and on
-	 * stale data (on the server, only invalidated data), so the data is fresh.
-	 * Fails if that request fails.
+	 * Start a query and succeed with a handle holding its data. Waits on a
+	 * cache miss and on stale data (on the server, only invalidated data), so
+	 * the data is fresh. Fails if that request fails.
 	 */
 	fetch<TFactory extends QueryFactory>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
-	): Fetched<TFactory>;
+	): Loaded<TFactory>;
 	/** {@link fetch}, loading `options.pages` pages of a paged query. */
 	fetch<TFactory extends PagedQueryFactory>(
 		factory: TFactory,
 		input: InputOf<TFactory>,
 		options: LoadOptions,
-	): Fetched<TFactory>;
+	): Loaded<TFactory>;
 	/**
 	 * Cached data for a factory call. `Some(undefined)` when the data itself
 	 * is `undefined`.
@@ -341,6 +334,21 @@ function load<TFactory extends QueryFactory>(
 	return Effect.succeed(dataOf<TFactory>(entry));
 }
 
+/** The entry's handle as of this call, with the data `loaded` succeeds with. */
+function withData<TFactory extends QueryFactory>(
+	entry: Entry.Entry,
+	loaded: Effect.Effect<
+		DataOf<TFactory>,
+		ErrorOf<TFactory> | Query.CancelledError
+	>,
+): Effect.Effect<
+	QueryHandleWithData<TFactory>,
+	ErrorOf<TFactory> | Query.CancelledError
+> {
+	const handle = handleOf<TFactory>(entry);
+	return Effect.map(loaded, (data) => ({ ...handle, data }));
+}
+
 /** Settles every effect, started together. */
 function settleAll(effects: ReadonlyArray<Effect.Effect<void>>) {
 	return Effect.all(effects, { concurrency: "unbounded", discard: true });
@@ -456,20 +464,18 @@ export const make: (
 				factory: TFactory,
 				input?: InputOf<TFactory>,
 				options?: LoadOptions,
-			): Ensured<TFactory> =>
+			): Loaded<TFactory> =>
 				Effect.flatMap(buildFor(factory, input), (entry) =>
-					load<TFactory>(entry, options?.pages, false).pipe(
-						Effect.as({ ...handleOf<TFactory>(entry), ensured: true }),
-					),
+					withData(entry, load<TFactory>(entry, options?.pages, false)),
 				),
 			events: listen(subscribeUnsafe),
 			fetch: <TFactory extends QueryFactory>(
 				factory: TFactory,
 				input?: InputOf<TFactory>,
 				options?: LoadOptions,
-			): Fetched<TFactory> =>
+			): Loaded<TFactory> =>
 				Effect.flatMap(buildFor(factory, input), (entry) =>
-					load<TFactory>(entry, options?.pages, true),
+					withData(entry, load<TFactory>(entry, options?.pages, true)),
 				),
 			getData: (factory, ...args) =>
 				Effect.sync(() => {

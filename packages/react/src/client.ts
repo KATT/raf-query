@@ -2,7 +2,6 @@ import {
 	type DataOf,
 	type DehydratedState,
 	type DehydrateOptions,
-	type EnsuredQueryHandle,
 	type HydrateOptions,
 	type InputArgs,
 	type InputOf,
@@ -12,6 +11,7 @@ import {
 	QueryCache,
 	type QueryFactory,
 	type QueryHandle,
+	type QueryHandleWithData,
 } from "@raf-query/core";
 import { Context, Effect, Exit, Layer, Option, Predicate, Scope } from "effect";
 
@@ -144,26 +144,25 @@ export class QueryClient<TServices = never> {
 	}
 
 	/**
-	 * Start a query and wait for it on a cache miss. Rejects if that request
-	 * fails. Stale cached data resolves immediately and revalidates in the
-	 * browser. The handle is marked `ensured`, so `useQuery` returns its data
-	 * directly.
+	 * {@link fetch} without waiting on stale data: start a query and wait for
+	 * it on a cache miss. Stale cached data resolves immediately and
+	 * revalidates in the browser. Rejects if that request fails.
 	 */
 	ensure<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
-	): Promise<EnsuredQueryHandle<TFactory>>;
+	): Promise<QueryHandleWithData<TFactory>>;
 	/** {@link ensure}, loading `options.pages` pages of a paged query. */
 	ensure<TFactory extends PagedQueryFactory<TServices>>(
 		factory: TFactory,
 		input: InputOf<TFactory>,
 		options: LoadOptions,
-	): Promise<EnsuredQueryHandle<TFactory>>;
+	): Promise<QueryHandleWithData<TFactory>>;
 	ensure<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
 		input?: InputOf<TFactory>,
 		options?: LoadOptions,
-	): Promise<EnsuredQueryHandle<TFactory>> {
+	): Promise<QueryHandleWithData<TFactory>> {
 		return runLoad(
 			provided(
 				this.effect.ensure(factory, ...loadArgs<TFactory>(input, options)),
@@ -172,25 +171,25 @@ export class QueryClient<TServices = never> {
 	}
 
 	/**
-	 * Start a query and resolve to its data. Waits on a cache miss and on
-	 * stale data (on the server, only invalidated data), so the data is fresh.
-	 * Rejects if that request fails.
+	 * Start a query and resolve to a handle holding its data. Waits on a cache
+	 * miss and on stale data (on the server, only invalidated data), so the
+	 * data is fresh. Rejects if that request fails.
 	 */
 	fetch<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
 		...args: InputArgs<TFactory>
-	): Promise<DataOf<TFactory>>;
+	): Promise<QueryHandleWithData<TFactory>>;
 	/** {@link fetch}, loading `options.pages` pages of a paged query. */
 	fetch<TFactory extends PagedQueryFactory<TServices>>(
 		factory: TFactory,
 		input: InputOf<TFactory>,
 		options: LoadOptions,
-	): Promise<DataOf<TFactory>>;
+	): Promise<QueryHandleWithData<TFactory>>;
 	fetch<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,
 		input?: InputOf<TFactory>,
 		options?: LoadOptions,
-	): Promise<DataOf<TFactory>> {
+	): Promise<QueryHandleWithData<TFactory>> {
 		return runLoad(
 			provided(
 				this.effect.fetch(factory, ...loadArgs<TFactory>(input, options)),

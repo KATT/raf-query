@@ -40,7 +40,7 @@ export async function actionsApp() {
 	const comments = queryClient.prefetch(commentsQuery, { issueId: 1 });
 	return (
 		<QueryClientProvider client={queryClient}>
-			<EditTitle issue={issue} />
+			<EditTitle issue={issue.data} />
 			<Suspense fallback="Loading">
 				<Comments handle={comments} />
 			</Suspense>

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.0](https://github.com/KATT/raf-query/compare/0.7.12...0.8.0) (2026-10-15)
+
+### ⚠ BREAKING CHANGES
+
+- ensure and fetch return a QueryHandleWithData ([#142](https://github.com/KATT/raf-query/issues/142))
+
+### Features
+
+- ensure and fetch return a QueryHandleWithData ([#142](https://github.com/KATT/raf-query/issues/142)) ([504cd2a](https://github.com/KATT/raf-query/commit/504cd2a19e04b614eb648f02b256128c4eb31d38))
+
+### Miscellaneous Chores
+
+- group experiments under `.experimental/<topic>/` ([#137](https://github.com/KATT/raf-query/issues/137)) ([52ce752](https://github.com/KATT/raf-query/commit/52ce7522223346e82687338d6ac6d34f793b6fcf))
+
 ## [0.7.12](https://github.com/KATT/raf-query/compare/0.7.11...0.7.12) (2026-10-15)
 
 - add knip with every issue type as an error ([#129](https://github.com/KATT/raf-query/issues/129)) ([603719d](https://github.com/KATT/raf-query/commit/603719dcb834312d4a813ecae865df7d56faf8c5))

@@ -31,8 +31,8 @@ describe("Thenable", () => {
 			const countQuery = () =>
 				queryOptions({ queryFn: async () => 2, queryKey: ["count"] });
 
-			expect(yield* qc.fetch(countQuery)).toBe(2);
-			expect(yield* qc.fetch(countQuery)).toBe(2);
+			expect((yield* qc.fetch(countQuery)).data).toBe(2);
+			expect((yield* qc.fetch(countQuery)).data).toBe(2);
 		}),
 	);
 });
