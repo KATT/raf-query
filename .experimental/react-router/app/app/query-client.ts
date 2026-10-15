@@ -2,7 +2,6 @@ import {
 	applyStaleTime,
 	DEFAULT_STALE_TIME,
 	queryTimeDefaults,
-	type QueryTimeDefaults,
 } from "@examples/db/types";
 import { QueryClient } from "@raf-query/react";
 
@@ -19,5 +18,3 @@ export function createAppQueryClient() {
 	}
 	return { queryClient, queryDefaults };
 }
-
-export type { QueryTimeDefaults };

@@ -44,7 +44,7 @@ function parseCookieHeader(header: string | null) {
 }
 
 /** The request's cookies on the server, the document's in the browser. */
-export function readCookies() {
+function readCookies() {
 	const request = requestStack.at(-1);
 	if (request) {
 		return parseCookieHeader(request.headers.get("cookie"));
