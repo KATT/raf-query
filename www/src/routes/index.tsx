@@ -369,7 +369,7 @@ function HomePage() {
 								effect
 							</p>
 						</div>
-						<div className="min-w-0">
+						<div className="min-w-0" id="hero-code">
 							<DocBody demos={{}} segments={heroByMode[mode]} />
 						</div>
 					</div>
