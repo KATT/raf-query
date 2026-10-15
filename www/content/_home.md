@@ -20,7 +20,8 @@ export const Route = createFileRoute("/posts/$slug")({
 	loader: (args) => {
 		const qc = args.context.queryClient;
 		const input = { slug: args.params.slug };
-		// Both requests start at once, and the route waits for both.
+		// In parallel. The route waits only on a cache miss: cached data
+		// shows at once, and stale data refetches in the background.
 		return allKeyed({
 			post: qc.ensure(postQuery, input),
 			comments: qc.ensure(commentsQuery, input),

@@ -142,8 +142,10 @@ const steps: ReadonlyArray<{
 				</p>
 				<p>
 					The loader also picks what the navigation waits for.{" "}
-					<code>ensure</code> holds the route change until the post is in the
-					cache. <code>prefetch</code> starts the comments and moves on.
+					<code>prefetch</code> never holds it up: the comments load while the
+					page renders. <code>ensure</code> holds it only when the post isn’t
+					cached yet. Either way, cached data shows at once, and stale data
+					refetches in the background.
 				</p>
 				<p>
 					Both return a <strong className="text-foreground">handle</strong>: the
@@ -161,10 +163,11 @@ const steps: ReadonlyArray<{
 		body: (
 			<>
 				<p>
-					<code>useQuery</code> takes the factory and a handle. The route waited
-					for the post, so it returns the post itself. The comments are still on
-					their way, so it returns a promise, and <code>use()</code> suspends{" "}
-					<code>Comments</code> while the skeleton shows.
+					<code>useQuery</code> takes the factory and a handle. The post is
+					already in the cache, so it returns the post itself. The comments may
+					still be loading, so it returns a promise. If they are,{" "}
+					<code>use()</code> suspends <code>Comments</code> while the skeleton
+					shows.
 				</p>
 				<p>
 					From then on the cache keeps both up to date: it refetches stale data

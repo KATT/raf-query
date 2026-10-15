@@ -29,7 +29,7 @@ export const Route = createFileRoute("/posts/$slug")({
 // ---cut---
 function PostPage() {
 	const data = Route.useLoaderData();
-	// The route waited for this one, so it's the post itself.
+	// ensure put the post in the cache, so this is the post itself.
 	const [post] = useQuery(postQuery, data.post);
 	//     ^?
 	return (
@@ -43,7 +43,7 @@ function PostPage() {
 }
 
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
-	// Still on its way: use() suspends until the first page lands.
+	// May still be loading. If so, use() suspends until it lands.
 	const [pages] = useQuery(commentsQuery, props.handle);
 	//     ^?
 	return use(pages)

@@ -13,9 +13,9 @@ export const Route = createFileRoute("/posts/$slug")({
 	loader: async (args) => {
 		const qc = args.context.queryClient;
 		const input = { slug: args.params.slug };
-		// Starts the request and moves on.
+		// Never waits: the comments load while the page renders.
 		const comments = qc.prefetch(commentsQuery, input);
-		// Starts the request, and the route change waits for it.
+		// Waits only if the post isn't in the cache yet.
 		const post = await qc.ensure(postQuery, input);
 		return { comments, post };
 	},
