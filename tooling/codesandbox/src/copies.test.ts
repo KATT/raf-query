@@ -243,6 +243,7 @@ describe("writeCopies", () => {
 				);
 				assert.strictEqual(pkg.dependencies["@raf-query/react"], react.version);
 				assert.strictEqual(pkg.dependencies["@examples/ui"], "workspace:*");
+				assert.strictEqual(pkg.dependencies["@examples/kit"], "workspace:*");
 				assert.strictEqual(pkg.dependencies["@examples/db"], "workspace:*");
 				assert.deepStrictEqual(pkg.scripts, source.scripts);
 				const rootPkg = yield* readJson(path.join(target, "package.json"));

@@ -1,7 +1,7 @@
 import { api, parseResponse } from "@examples/api/client";
 import { type Comment, currentUser } from "@examples/db/types";
 import { Button } from "@examples/ui/components/button";
-import { LoadMore } from "@examples/ui/components/load-more";
+import { LoadMore } from "@examples/kit/components/load-more";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { Textarea } from "@examples/ui/components/textarea";
 import { cn } from "@examples/ui/lib/utils";

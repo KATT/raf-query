@@ -1,6 +1,6 @@
 import { api, parseResponse } from "~/api.ts";
 import type { Issue } from "@examples/db/types";
-import { warnMockDbWrite } from "@examples/ui/lib/mock-db-toast";
+import { warnMockDbWrite } from "@examples/kit/lib/mock-db-toast";
 import { cn } from "@examples/ui/lib/utils";
 import { useQueryClient } from "@raf-query/react";
 import { useActionState, useOptimistic } from "react";

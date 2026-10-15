@@ -7,6 +7,7 @@ export default {
 	transpilePackages: [
 		"@examples/api",
 		"@examples/db",
+		"@examples/kit",
 		"@examples/ui",
 		"@raf-query/core",
 		"@raf-query/react",

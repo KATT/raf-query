@@ -1,4 +1,5 @@
-import { Button } from "@examples/ui/components/button";
+import { Button, buttonVariants } from "@examples/ui/components/button";
+import { cn } from "@examples/ui/lib/utils";
 import { Separator } from "@examples/ui/components/separator";
 import {
 	ensure,
@@ -36,36 +37,42 @@ function IssuePage() {
 	return (
 		<div className="grid gap-6">
 			<nav className="flex items-center gap-2">
-				<Button asChild size="sm" variant="ghost">
-					<Link to="/issues">
-						<ArrowLeft /> All issues
-					</Link>
-				</Button>
+				<Link
+					className={cn(buttonVariants({ size: "sm", variant: "ghost" }))}
+					to="/issues"
+				>
+					<ArrowLeft /> All issues
+				</Link>
 				<div className="ml-auto flex gap-1">
-					<Button
-						asChild
-						disabled={issue.id <= 1}
-						size="icon"
-						variant="outline"
-					>
+					{issue.id > 1 ? (
 						<Link
 							aria-label="Previous issue"
-							disabled={issue.id <= 1}
+							className={cn(
+								buttonVariants({ size: "icon", variant: "outline" }),
+							)}
 							params={{ issueId: String(issue.id - 1) }}
 							to="/issues/$issueId"
 						>
 							<ChevronLeft />
 						</Link>
-					</Button>
-					<Button asChild size="icon" variant="outline">
-						<Link
-							aria-label="Next issue"
-							params={{ issueId: String(issue.id + 1) }}
-							to="/issues/$issueId"
+					) : (
+						<Button
+							aria-label="Previous issue"
+							disabled
+							size="icon"
+							variant="outline"
 						>
-							<ChevronRight />
-						</Link>
-					</Button>
+							<ChevronLeft />
+						</Button>
+					)}
+					<Link
+						aria-label="Next issue"
+						className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
+						params={{ issueId: String(issue.id + 1) }}
+						to="/issues/$issueId"
+					>
+						<ChevronRight />
+					</Link>
 				</div>
 			</nav>
 			<div className="grid gap-8 md:grid-cols-[1fr_240px]">
