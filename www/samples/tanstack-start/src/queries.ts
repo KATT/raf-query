@@ -1,19 +1,17 @@
 // #region todos
+// #region home
 import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
 
+// #endregion home
 import { getTodo, listTodos } from "./api.ts";
 
-// #endregion
-import {
-	type CommentPage,
-	getAuthor,
-	getBuild,
-	getMe,
-	getSettings,
-	listComments,
-	listPosts,
-} from "./api.ts";
+// #endregion todos
+// #region home
+import { type CommentPage, listComments } from "./api.ts";
 import { getPost } from "./posts.functions.ts";
+
+// #endregion home
+import { getAuthor, getBuild, getMe, getSettings, listPosts } from "./api.ts";
 
 // #region todos
 export function todosQuery() {
@@ -35,8 +33,9 @@ export function todoQuery(input: { id: number }) {
 		staleTime: 30_000,
 	});
 }
-// #endregion
+// #endregion todos
 
+// #region home
 // #region post-query
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
@@ -44,14 +43,7 @@ export function postQuery(input: { slug: string }) {
 		queryFn: () => getPost({ data: input }),
 	});
 }
-// #endregion
-
-export function postsQuery(input: { page: number; sort: "newest" | "oldest" }) {
-	return queryOptions({
-		queryKey: ["posts", input],
-		queryFn: () => listPosts(input),
-	});
-}
+// #endregion post-query
 
 export function commentsQuery(input: { slug: string }) {
 	return infiniteQueryOptions({
@@ -60,6 +52,14 @@ export function commentsQuery(input: { slug: string }) {
 			listComments({ cursor: context.pageParam, slug: input.slug }),
 		initialPageParam: 0,
 		getNextPageParam: (lastPage: CommentPage) => lastPage.nextCursor,
+	});
+}
+// #endregion home
+
+export function postsQuery(input: { page: number; sort: "newest" | "oldest" }) {
+	return queryOptions({
+		queryKey: ["posts", input],
+		queryFn: () => listPosts(input),
 	});
 }
 
