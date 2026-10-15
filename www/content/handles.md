@@ -15,25 +15,29 @@ tanstack-start/src/docs/handles.ts#intro
 
 `prefetch` doesn't wait, so its handle is the query's key and input. `ensure` and `fetch` waited for the data, so they return a `QueryHandleWithData`: the same handle plus `data`, for the code that called them. A loader can branch on it or build another query's input from it, and a server component can render it.
 
-`QueryHandleWithData` extends `QueryHandle`, so it goes anywhere a handle does. Type a prop with `QueryHandle` and it takes a handle from any verb:
+`data` is the cache entry's own object, not a copy. Data reaches the browser's cache through the [hydration stream](./ssr-and-hydration.md), and the TanStack Router serializer and React's RSC payload both send an object once, however many handles and entries point at it.
+
+## Typed by what the loader did
+
+The loader's return value lists exactly which queries a route started, and its types show which ones the route waited for. `useQuery` returns **the data** for a `QueryHandleWithData` and **a promise** for a `QueryHandle`:
+
+```sample
+tanstack-start/src/docs/handles.tsx#typed-by-what-the-loader-did
+```
+
+Type a prop with the handle its loader returns:
 
 ```sample
 tanstack-start/src/docs/handles.handle-props.tsx#handle-props
 ```
 
-`data` is the cache entry's own object, not a copy. Data reaches the browser's cache through the [hydration stream](./ssr-and-hydration.md), and the TanStack Router serializer and React's RSC payload both send an object once, however many handles and entries point at it.
+`QueryHandleWithData` extends `QueryHandle`, so TypeScript lets a handle with data into a `QueryHandle` prop. `useQuery` picks by the handle it gets at runtime, though: there it returns the data while the prop's type says promise, and `use()` on it throws. If you switch a query from `prefetch` to `ensure`, switch the props that receive its handle to `QueryHandleWithData`.
 
 ## The cache is the source of truth
 
-`data` is what the cache held when the verb resolved. Components read the query with `useQuery`, which reads the entry's current data: after a refetch, an invalidation or a `setData`, every reader updates, which a value frozen into loader data couldn't do.
+`data` is what the cache held when the verb resolved. `useQuery` reads the entry's current data instead: after a refetch, an invalidation or a `setData`, every reader updates, which a value frozen into loader data couldn't do.
 
-`useQuery` returns a promise for every handle. For a handle from `ensure` or `fetch` it is already fulfilled, so `use()` returns without suspending:
-
-```sample
-tanstack-start/src/docs/handles.tsx#reading
-```
-
-If the entry has lost its data since — it was garbage-collected while the router kept the loader data, or something called `reset` — the promise is pending again and `use()` suspends until it's refetched.
+If the entry has lost its data since — it was garbage-collected while the router kept the loader data, or something called `reset` — `useQuery` suspends until it's refetched instead of returning `undefined`.
 
 ## Where handles come from
 

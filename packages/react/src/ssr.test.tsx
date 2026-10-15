@@ -289,7 +289,7 @@ describe("TanStack Router setupRouterIntegration", () => {
 					component: function IssueTitle() {
 						const context = indexRoute.useRouteContext();
 						const [issue] = useQuery(backend.issueQuery, context.issue);
-						return <p>{use(issue).title}</p>;
+						return <p>{issue.title}</p>;
 					},
 					getParentRoute: () => rootRoute,
 					loader: async (args) => {
@@ -474,7 +474,7 @@ describe("React Router HydrationBoundary", () => {
 
 		function Show() {
 			const [issue] = useQuery(backend.issueQuery, handle);
-			return <p>{use(issue).title}</p>;
+			return <p>{issue.title}</p>;
 		}
 
 		const stream = await renderToReadableStream(

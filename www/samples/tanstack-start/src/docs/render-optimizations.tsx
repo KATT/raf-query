@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import { type QueryHandleWithData, useQuery } from "@raf-query/react";
 import { postQuery } from "~/queries.ts";
 import type { ReactNode } from "react";
 import { Route } from "~/routes/posts.$slug.tsx";
@@ -25,7 +25,9 @@ function PostPage() {
 	);
 }
 
-function RefreshButton(props: { handle: QueryHandle<typeof postQuery> }) {
+function RefreshButton(props: {
+	handle: QueryHandleWithData<typeof postQuery>;
+}) {
 	// Reads isFetching: re-renders when a request starts and ends.
 	const [, post] = useQuery(postQuery, props.handle);
 	return (
