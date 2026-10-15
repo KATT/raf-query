@@ -55,7 +55,7 @@ TypeScript infers the data type from `queryFn`. For paged queries it infers the 
 tanstack-start/src/docs/query-factories.one-input-serializable.ts#type-inference
 ```
 
-The options' types take a bag of named types rather than a list of type arguments. A promise or plain `queryFn` leaves `error` out of that bag (`ErrorOf` is `unknown`) and leaves `services` out when it needs none. An [Effect](./effect.md) `queryFn` adds the error it infers, and `services` when it needs any:
+The options' types take a bag of named types rather than a list of type arguments. A promise or plain `queryFn` leaves `error` out of that bag (`ErrorOf` is `unknown`) and leaves `services` out when it needs none. An [Effect](./effect.md) `queryFn` adds the error it infers, and `services` when it needs any. The bag also keeps the key's shape as `key` (`readonly ["post", string]`), which keeps [handles](./handles.md#typed-by-what-the-loader-did) of two factories with the same input and data apart. Annotating options with a bag that has no `key`, as here, accepts any key:
 
 ```sample
 tanstack-start/src/docs/query-factories.annotated-options.ts#annotated-options
