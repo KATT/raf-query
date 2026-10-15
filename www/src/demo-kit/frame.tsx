@@ -15,7 +15,7 @@ import {
 import { cn } from "@examples/ui/lib/utils";
 import { QueryClient, QueryClientProvider } from "@raf-query/react";
 import { QueryDevtoolsPanel } from "@raf-query/react/devtools";
-import { Expand, FlaskConical, RotateCcw, Shrink } from "lucide-react";
+import { Expand, FlaskConical, Shrink } from "lucide-react";
 import { Activity, type ReactNode, Suspense, useId, useState } from "react";
 
 import type { DemoDefinition, DemoVariant } from "./define.ts";
@@ -49,6 +49,15 @@ function createSession(
 	};
 	liveSessions.set(variant, session);
 	return session;
+}
+
+/** Starts every variant of the demo over, as a page load would. */
+export function resetSessions(demo: DemoDefinition): void {
+	for (const variant of demo.variants) {
+		void liveSessions.get(variant)?.client.dispose();
+		liveSessions.delete(variant);
+		variant.server.reset();
+	}
 }
 
 function sessionsFor(demo: DemoDefinition): ReadonlyArray<Session> {
@@ -219,7 +228,6 @@ function Toolbar(props: {
 	/** Shared by the frame's toolbar and the expanded dialog's. */
 	readonly latency: number | undefined;
 	readonly onLatency: (ms: number) => void;
-	readonly onReset: () => void;
 	readonly onSelect: (index: number) => void;
 	readonly selected: number;
 }) {
@@ -262,9 +270,6 @@ function Toolbar(props: {
 						</button>
 					))}
 				</div>
-				<Button onClick={props.onReset} size="xs" variant="ghost">
-					<RotateCcw /> Reset
-				</Button>
 			</div>
 			{variants.length > 1 ? (
 				<p aria-live="polite" className="text-sm text-muted-foreground">
@@ -326,9 +331,8 @@ function DemoCard(props: {
  * A live demo in a box: its own query client and fake server, with the
  * cache's queries, each with its readers and requests. Expanding it opens
  * the same session in a dialog with the devtools panel. A demo with
- * variants gets a switch, and a session per variant; Reset starts them all
- * over and keeps the switch where it is. A browser's Reload starts only its
- * own variant over, on the URL it was showing.
+ * variants gets a switch, and a session per variant. A browser's Reload
+ * starts its own variant over, on the URL it was showing.
  */
 export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 	const demo = props.demo;
@@ -377,16 +381,6 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 			demo={demo}
 			latency={latency}
 			onLatency={setLatency}
-			onReset={() => {
-				for (const previous of sessions) {
-					void previous.client.dispose();
-				}
-				for (const each of demo.variants) {
-					each.server.reset();
-				}
-				setSessions(demo.variants.map((each) => createSession(demo, each)));
-				setOpened([selected]);
-			}}
 			onSelect={(index) => {
 				setSelected(index);
 				setOpened((previous) =>

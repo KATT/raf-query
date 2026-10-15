@@ -146,6 +146,7 @@ export function BrowserWindow(props: {
 					className="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent disabled:opacity-40"
 					disabled={!props.canGoBack}
 					onClick={props.onBack}
+					title="Back"
 					type="button"
 				>
 					<ArrowLeft className="size-4" />
@@ -154,6 +155,7 @@ export function BrowserWindow(props: {
 					aria-label="Reload"
 					className="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent"
 					onClick={props.onReload}
+					title="Reload"
 					type="button"
 				>
 					<RotateCw

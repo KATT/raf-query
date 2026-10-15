@@ -20,6 +20,7 @@ export function MobileNav() {
 					aria-label="Open navigation"
 					className="md:hidden"
 					size="icon-sm"
+					title="Open navigation"
 					variant="ghost"
 				>
 					<Menu />

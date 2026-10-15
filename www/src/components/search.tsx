@@ -86,6 +86,7 @@ export function SearchButton() {
 					};
 				}}
 				size="sm"
+				title="Search docs (⌘K)"
 				variant="outline"
 			>
 				<Search className="mx-auto sm:mx-0" />

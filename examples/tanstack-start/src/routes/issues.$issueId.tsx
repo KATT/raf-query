@@ -84,6 +84,7 @@ function IssueNav(props: { readonly id: number }) {
 						aria-label="Previous issue"
 						disabled={props.id <= 1}
 						params={{ issueId: String(props.id - 1) }}
+						title="Previous issue"
 						to="/issues/$issueId"
 					>
 						<ChevronLeft />
@@ -93,6 +94,7 @@ function IssueNav(props: { readonly id: number }) {
 					<Link
 						aria-label="Next issue"
 						params={{ issueId: String(props.id + 1) }}
+						title="Next issue"
 						to="/issues/$issueId"
 					>
 						<ChevronRight />
