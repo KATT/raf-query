@@ -142,8 +142,9 @@ const steps: ReadonlyArray<{
 				</p>
 				<p>
 					Both return a <strong className="text-foreground">handle</strong>: the
-					query’s key and input, without the data. During SSR, the cache streams
-					to the browser next to the handles, so nothing is fetched twice.
+					query’s key and input, and with <code>ensure</code> the data it waited
+					for. During SSR, the cache streams to the browser next to the handles,
+					so nothing is fetched or sent twice.
 				</p>
 			</>
 		),
@@ -157,9 +158,9 @@ const steps: ReadonlyArray<{
 		body: (
 			<>
 				<p>
-					<code>useQuery</code> takes the factory and a handle. The post is
-					already in the cache, so it returns the post itself. The comments may
-					still be loading, so it returns a promise. If they are,{" "}
+					<code>useQuery</code> takes the factory and a handle, and returns a
+					promise. The post is already in the cache, so <code>use()</code>{" "}
+					returns it at once. The comments may still be loading. If they are,{" "}
 					<code>use()</code> suspends <code>Comments</code> while the skeleton
 					shows.
 				</p>

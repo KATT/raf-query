@@ -1,4 +1,5 @@
 import { useQuery } from "@raf-query/react";
+import { use } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Pencil } from "lucide-react";
 
@@ -76,7 +77,8 @@ export const Route = createFileRoute("/docs/$slug")({
 
 function DocPage() {
 	const data = Route.useLoaderData();
-	const [doc] = useQuery(docQuery, data.doc);
+	const [docPromise] = useQuery(docQuery, data.doc);
+	const doc = use(docPromise);
 	const around = neighbours(doc.slug);
 
 	return (

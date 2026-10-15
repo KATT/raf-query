@@ -31,7 +31,7 @@ export function issueQuery(input: { id: number }) {
 
 const program = Effect.gen(function* () {
 	const cache = yield* QueryCache.QueryCache;
-	const issue = yield* cache.fetch(issueQuery, { id: 1 }); // fails with IssueNotFound
+	yield* cache.fetch(issueQuery, { id: 1 }); // fails with IssueNotFound
 	yield* cache.watch(issueQuery, { id: 1 }).pipe(
 		Stream.map((state) => state.data?.title),
 		Stream.runForEach((title) => Effect.log(title)),

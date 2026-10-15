@@ -18,7 +18,7 @@ export default async function Page(props: {
 	return (
 		<HydrationBoundary client={qc}>
 			<article>
-				<h1>{post.title}</h1>
+				<h1>{post.data.title}</h1>
 				<Suspense fallback={<CommentsSkeleton />}>
 					<Comments handle={comments} />
 				</Suspense>
