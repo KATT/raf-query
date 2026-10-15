@@ -23,7 +23,9 @@ import homeCommentsHeroNext from "sample:nextjs/src/app/(blog)/components/commen
 import homeCommentsNext from "sample:nextjs/src/app/(blog)/components/comments.tsx#component";
 import homePostNext from "sample:nextjs/src/app/(blog)/components/post.tsx#component";
 import homeLoaderNext from "sample:nextjs/src/app/(blog)/posts/[slug]/page.tsx#page";
+import homeFactoriesNext from "sample:nextjs/src/queries.ts#home";
 import home from "sample:tanstack-start/src/routes/blog.$slug.tsx#hero";
+import homeFactories from "sample:tanstack-start/src/queries.ts#home";
 import homeComponent from "sample:tanstack-start/src/routes/blog.$slug.tsx#component";
 import homeLoader from "sample:tanstack-start/src/routes/blog.$slug.tsx#route";
 import { DocBody } from "~/components/doc-body.tsx";
@@ -149,8 +151,44 @@ const heroByMode = {
 	"tanstack-start": home.segments,
 } as const satisfies Record<FrameworkMode, ReadonlyArray<DocSegment>>;
 
+const factoryStep = {
+	guide: "Query factories",
+	id: "define-query-factories",
+	slug: "query-factories",
+	title: "Define query factories",
+} as const;
+
+/** Step 1's prose; only TanStack Start's server function differs by mode. */
+const factoryStepBody = (modeNote?: ReactNode) => (
+	<>
+		<p>
+			A query factory is a function of the query’s input that returns{" "}
+			<code>queryOptions</code>, as in TanStack Query: a key, a{" "}
+			<code>queryFn</code>, and options like <code>staleTime</code>. Comments
+			load a page at a time, so <code>commentsQuery</code> uses{" "}
+			<code>infiniteQueryOptions</code>.
+		</p>
+		{modeNote}
+		<p>
+			Every API takes the factory and its input instead of a key: starting a
+			query, reading it, invalidating it. The key and the request are written
+			once, and the data’s type flows from <code>queryFn</code> to the component
+			that reads it.
+		</p>
+		<p>
+			The input has to be serializable: it’s what a handle carries from the
+			server to the browser.
+		</p>
+	</>
+);
+
 const stepsByMode = {
 	nextjs: [
+		{
+			...factoryStep,
+			body: factoryStepBody(),
+			code: homeFactoriesNext.segments,
+		},
 		{
 			body: (
 				<>
@@ -206,6 +244,16 @@ const stepsByMode = {
 		},
 	],
 	"tanstack-start": [
+		{
+			...factoryStep,
+			body: factoryStepBody(
+				<p>
+					<code>getPost</code> is a server function: during SSR it runs in the
+					process, and refetches in the browser call it over HTTP.
+				</p>,
+			),
+			code: homeFactories.segments,
+		},
 		{
 			body: (
 				<>
@@ -272,35 +320,16 @@ const stepsByMode = {
 const howItWorksByMode = {
 	nextjs: (
 		<>
-			A page says what it needs before it renders. The server component starts
-			every request when the route renders, and client components read the
-			results as they arrive. <code>postQuery</code> and{" "}
-			<code>commentsQuery</code> are{" "}
-			<Link
-				className={docLink}
-				params={{ slug: "query-factories" }}
-				to="/docs/$slug"
-			>
-				query factories
-			</Link>
-			: functions of the query’s input that return <code>queryOptions</code>, as
-			in TanStack Query.
+			A page says what it needs before it renders. Each query is defined once,
+			the server component starts every request when the route renders, and
+			client components read the results as they arrive.
 		</>
 	),
 	"tanstack-start": (
 		<>
-			A page says what it needs before it renders. The route starts every
-			request when the navigation begins, and components read the results as
-			they arrive. <code>postQuery</code> and <code>commentsQuery</code> are{" "}
-			<Link
-				className={docLink}
-				params={{ slug: "query-factories" }}
-				to="/docs/$slug"
-			>
-				query factories
-			</Link>
-			: functions of the query’s input that return <code>queryOptions</code>, as
-			in TanStack Query.
+			A page says what it needs before it renders. Each query is defined once,
+			the route starts every request when the navigation begins, and components
+			read the results as they arrive.
 		</>
 	),
 } as const satisfies Record<FrameworkMode, ReactNode>;

@@ -98,6 +98,8 @@
 		"workspace/no-custom-test-timeout": "error",
 		// Destructure only fields read three or more times: `const post = use(p)`.
 		"workspace/no-overzealous-destructuring": "error",
+		// `use()` on its own line: `const post = use(p)`, not `use(p).title`.
+		"workspace/no-use-member-access": "error",
 		// `anti-slop/require-safety-comment-for-type-assertion` covers assertions.
 		"typescript/consistent-type-assertions": "off",
 		// JSDoc `@deprecated` is not a TypeScript error; fail the lint instead.

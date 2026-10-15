@@ -1,7 +1,12 @@
+// #region home
 import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
 
-import { getPost, listComments, listIssues } from "./api.ts";
+import { getPost, listComments } from "./api.ts";
 
+// #endregion home
+import { listIssues } from "./api.ts";
+
+// #region home
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
 		queryKey: ["post", input.slug],
@@ -18,6 +23,7 @@ export function commentsQuery(input: { slug: string }) {
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
 	});
 }
+// #endregion home
 
 export function issueListQuery(input: { status: "open" | "done" }) {
 	return infiniteQueryOptions({
