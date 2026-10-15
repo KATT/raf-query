@@ -73,16 +73,17 @@ The factory is the only place a query is declared, including whether it's paged.
 
 Options set in the factory override the client's `config.defaults`:
 
-| Option                                       | What it does                                                                           |
-| -------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `queryKey`                                   | The cache key; include the input. See [Query keys](./query-keys.md)                    |
-| `queryFn`                                    | Loads the data. See [Query functions](./query-functions.md)                            |
-| `staleTime`                                  | How long data counts as fresh, in ms                                                   |
-| `gcTime`                                     | How long an unread entry stays cached, in ms                                           |
-| `retry`, `retryDelay`                        | See [Retries](./retries.md)                                                            |
-| `refetchOnWindowFocus`, `refetchOnReconnect` | See [Window focus refetching](./window-focus-refetching.md)                            |
-| `structuralSharing`                          | See [Render optimizations](./render-optimizations.md)                                  |
-| `meta`                                       | Anything you want to know about the query elsewhere. See [Query meta](./query-meta.md) |
+| Option                                       | What it does                                                                                              |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `queryKey`                                   | The cache key; include the input. See [Query keys](./query-keys.md)                                       |
+| `queryFn`                                    | Loads the data. See [Query functions](./query-functions.md)                                               |
+| `staleTime`                                  | How long data counts as fresh, in ms                                                                      |
+| `gcTime`                                     | How long an unread entry stays cached, in ms                                                              |
+| `retry`, `retryDelay`                        | See [Retries](./retries.md)                                                                               |
+| `refetchOnWindowFocus`, `refetchOnReconnect` | See [Window focus refetching](./window-focus-refetching.md)                                               |
+| `structuralSharing`                          | See [Render optimizations](./render-optimizations.md)                                                     |
+| `ssr`                                        | `false` runs the query [only in the browser](./ssr-and-hydration.md#browser-only-queries). Default `true` |
+| `meta`                                       | Anything you want to know about the query elsewhere. See [Query meta](./query-meta.md)                    |
 
 `infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam` and `maxPages`. See [Infinite queries](./infinite-queries.md).
 
