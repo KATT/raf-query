@@ -14,6 +14,7 @@ export const issueSorts = ["newest", "oldest"] as const;
 const IssueSort = Schema.Literals(issueSorts);
 
 const Id = Schema.Int.check(Schema.isGreaterThan(0));
+export const IssueId = Id;
 
 /** Index of a page's first item. */
 const Cursor = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));

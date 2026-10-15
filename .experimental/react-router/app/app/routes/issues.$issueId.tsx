@@ -1,3 +1,4 @@
+import { IssueId } from "@examples/db/types";
 import { CommentsSkeleton } from "@examples/kit/components/comments";
 import {
 	IssueBodySkeleton,
@@ -11,11 +12,13 @@ import { dehydrate, type QueryHandle, useQuery } from "@raf-query/react";
 import { HydrationBoundary } from "@raf-query/experimental-react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Suspense, use } from "react";
-import { Link } from "react-router";
+import { isRouteErrorResponse } from "react-router";
 
+import { AppLink } from "~/components/app-link.tsx";
 import { Comments } from "~/components/comments.tsx";
 import { EditBody } from "~/components/edit-body.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
+import { NotFound } from "~/components/not-found.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
 import { AssigneeCard } from "~/components/user.tsx";
 import { createAppQueryClient } from "~/query-client.ts";
@@ -27,6 +30,9 @@ import type { Route } from "./+types/issues.$issueId";
 export async function loader(args: Route.LoaderArgs) {
 	return withRequest(args.request, () => {
 		const id = Number(args.params.issueId);
+		if (!IssueId.safeParse(id).success) {
+			throw new Response("Not Found", { status: 404 });
+		}
 		const { queryClient } = createAppQueryClient();
 		const assignee = queryClient.prefetch(assigneeQuery, { issueId: id });
 		const comments = queryClient.prefetch(commentsQuery, { issueId: id });
@@ -46,7 +52,8 @@ export default function IssuePage(props: Route.ComponentProps) {
 
 	return (
 		<HydrationBoundary state={data.dehydratedState}>
-			<div className="grid gap-6">
+			{/* Previous and next stay on this route, so a new id mounts a fresh page. */}
+			<div className="grid gap-6" key={data.id}>
 				<IssueNav id={data.id} />
 				<div className="grid gap-x-8 gap-y-6 md:grid-cols-[1fr_240px]">
 					<article className="grid content-start gap-6 md:col-start-1">
@@ -82,25 +89,36 @@ export default function IssuePage(props: Route.ComponentProps) {
 	);
 }
 
+/** A missing issue shows the not-found page; other errors go to the root's. */
+export function ErrorBoundary(props: Route.ErrorBoundaryProps) {
+	if (
+		props.error === issueNotFound ||
+		(isRouteErrorResponse(props.error) && props.error.status === 404)
+	) {
+		return <NotFound />;
+	}
+	throw props.error;
+}
+
 function IssueNav(props: { readonly id: number }) {
 	return (
 		<nav className="flex items-center gap-2">
-			<Link
+			<AppLink
 				className={cn(buttonVariants({ size: "sm", variant: "ghost" }))}
 				to="/issues"
 			>
 				<ArrowLeft /> All issues
-			</Link>
+			</AppLink>
 			<div className="ml-auto flex gap-1">
 				{props.id > 1 ? (
-					<Link
+					<AppLink
 						aria-label="Previous issue"
 						className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
 						title="Previous issue"
 						to={`/issues/${props.id - 1}`}
 					>
 						<ChevronLeft />
-					</Link>
+					</AppLink>
 				) : (
 					<Button
 						aria-label="Previous issue"
@@ -112,24 +130,31 @@ function IssueNav(props: { readonly id: number }) {
 						<ChevronLeft />
 					</Button>
 				)}
-				<Link
+				<AppLink
 					aria-label="Next issue"
 					className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
 					title="Next issue"
 					to={`/issues/${props.id + 1}`}
 				>
 					<ChevronRight />
-				</Link>
+				</AppLink>
 			</div>
 		</nav>
 	);
 }
 
+/**
+ * What `useIssue` throws for a missing issue. Thrown while rendering, it reaches
+ * the error boundary as is, not as the route error response a loader's thrown
+ * Response becomes, so the boundary looks for this one.
+ */
+const issueNotFound = new Response("Not Found", { status: 404 });
+
 function useIssue(handle: QueryHandle<typeof issueQuery>) {
 	const [issuePromise] = useQuery(issueQuery, handle);
 	const issue = use(issuePromise);
 	if (!issue) {
-		throw new Response("Not Found", { status: 404 });
+		throw issueNotFound;
 	}
 	return issue;
 }

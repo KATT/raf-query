@@ -9,13 +9,18 @@ import {
 export const PREFETCH_COOKIE = "link-prefetch";
 
 export const prefetchOptions = [
-	{ label: "Off", value: "none" },
+	{ label: "Off", value: "off" },
 	{ label: "On intent", value: "intent" },
+	{ label: "In viewport", value: "viewport" },
 	{ label: "On render", value: "render" },
-	{ label: "On viewport", value: "viewport" },
 ] as const;
 export type Prefetch = (typeof prefetchOptions)[number]["value"];
-export const DEFAULT_PREFETCH: Prefetch = "none";
+export const DEFAULT_PREFETCH: Prefetch = "off";
+
+/** `<Link prefetch>` for a setting. React Router calls "off" `none`. */
+export function toLinkPrefetch(prefetch: Prefetch) {
+	return prefetch === "off" ? "none" : prefetch;
+}
 
 /**
  * The request in scope for the current loader. Nested withRequest calls stack.
