@@ -1,8 +1,11 @@
 import { createApi } from "@examples/api/client";
 
-import { latencyHeaders } from "./settings.ts";
+import { forwardedHeaders } from "./settings.ts";
 
 export { parseFound, parseResponse } from "@examples/api/client";
 
-/** The API client, sending the settings menu's latency with every request. */
-export const api = createApi(latencyHeaders);
+/**
+ * The API client. Loaders call the API in this process with the page request's
+ * cookies; the browser calls it over HTTP and sends its own.
+ */
+export const api = createApi(forwardedHeaders);

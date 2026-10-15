@@ -1,6 +1,5 @@
 import {
 	LATENCY_COOKIE,
-	LATENCY_HEADER,
 	parseLatency,
 	parseStaleTime,
 	STALE_TIME_COOKIE,
@@ -85,10 +84,12 @@ export function readStaleTime() {
 }
 
 /**
- * Sends the chosen latency with each API request. Loaders call the API on the
- * server during SSR and in the browser after, and both read the cookie.
+ * Headers for API calls. During SSR, the page request's cookies (via
+ * {@link withRequest}), so the API reads the same session as when the browser
+ * calls it. The browser sends its own cookies.
  */
-export function latencyHeaders(): Record<string, string> {
-	const latency = readLatency();
-	return latency === undefined ? {} : { [LATENCY_HEADER]: String(latency) };
+export function forwardedHeaders(): Record<string, string> {
+	const request = requestStack.at(-1);
+	const cookie = request?.headers.get("cookie");
+	return cookie ? { cookie } : {};
 }
