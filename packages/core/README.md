@@ -4,8 +4,8 @@ The framework-agnostic cache behind [raf-query](https://raf-query.katt.dev), wri
 
 **[Documentation](https://raf-query.katt.dev/docs/effect)** · [API reference](https://raf-query.katt.dev/docs/api-reference#raf-querycore) · [GitHub](https://github.com/KATT/raf-query)
 
-> [!WARNING]
-> raf-query is early. The API can still change between patch releases, and you use it at your own risk.
+> [!NOTE]
+> raf-query is early. The API can still change between minor releases, and you use it at your own risk.
 
 React apps install [`@raf-query/react`](https://www.npmjs.com/package/@raf-query/react) instead: it re-exports this package, so you never import core directly. Install core on its own for Effect programs and for bindings to other frameworks.
 

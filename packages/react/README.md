@@ -4,8 +4,8 @@ Render-as-you-fetch data fetching for React: start queries in route loaders and 
 
 **[Documentation](https://raf-query.katt.dev)** · [Quick start](https://raf-query.katt.dev/docs/quick-start) · [API reference](https://raf-query.katt.dev/docs/api-reference) · [GitHub](https://github.com/KATT/raf-query)
 
-> [!WARNING]
-> raf-query is early. The API can still change between patch releases, and you use it at your own risk.
+> [!NOTE]
+> raf-query is early. The API can still change between minor releases, and you use it at your own risk.
 
 ## Install
 

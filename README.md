@@ -10,8 +10,8 @@ Queries start in route loaders and React Server Components, travel to components
 
 The cache's mechanics (dedupe, staleness, retries, infinite paging, SSR hydration) follow [TanStack Query](https://tanstack.com/query); the public API is built around loaders, RSC and `use()` instead of `useQuery`-in-render. The cache is written in [Effect](https://effect.website), but apps don't have to use Effect: `queryFn`s return promises, and the client, hooks and integrations speak promises.
 
-> [!WARNING]
-> raf-query is early. Both packages are on npm at `0.x`, the API can still change between patch releases, and you use it at your own risk.
+> [!NOTE]
+> raf-query is early. Both packages are on npm at `0.x`, the API can still change between minor releases, and you use it at your own risk.
 
 ## A taste
 
