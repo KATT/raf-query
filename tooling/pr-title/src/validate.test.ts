@@ -9,18 +9,42 @@ import { formatError, validatePrTitle } from "./validate.ts";
 const repoRoot = join(import.meta.dirname, "../../..");
 
 describe("validatePrTitle", () => {
-	it("matches the types listed in .release-it.json", () => {
+	it("matches the types and package paths in .release-it.json", () => {
 		const releaseIt: {
+			git: { commitsPath: string };
 			plugins: {
 				"@release-it/conventional-changelog": {
-					preset: { types: Array<{ type: string }> };
+					commitsOpts: { path: string };
+					gitRawCommitsOpts: { path: string };
+					preset: {
+						types: Array<{
+							effect: "bump" | "hidden";
+							section?: string;
+							type: string;
+						}>;
+					};
 				};
 			};
 		} = JSON.parse(readFileSync(join(repoRoot, ".release-it.json"), "utf8"));
-		const fromRelease = releaseIt.plugins[
-			"@release-it/conventional-changelog"
-		].preset.types.map((entry) => entry.type);
-		expect(releaseTypes.toSorted()).toEqual(fromRelease.toSorted());
+		const changelog = releaseIt.plugins["@release-it/conventional-changelog"];
+		const types = changelog.preset.types;
+		expect(releaseTypes.toSorted()).toEqual(
+			types.map((entry) => entry.type).toSorted(),
+		);
+		// Same packages/* as the release gate (git.commitsPath).
+		expect(changelog.commitsOpts.path).toBe("packages/*");
+		expect(changelog.gitRawCommitsOpts.path).toBe("packages/*");
+		expect(releaseIt.git.commitsPath).toBe("packages/*");
+		// conventional-changelog v10+ uses effect, not the old hidden: true.
+		for (const entry of types) {
+			expect(entry.effect === "bump" || entry.effect === "hidden").toBe(true);
+			if (entry.effect === "bump") {
+				expect(entry.section).toBeTruthy();
+			} else {
+				expect(entry.section).toBeUndefined();
+			}
+			expect(Object.keys(entry).includes("hidden")).toBe(false);
+		}
 	});
 
 	it.each([

@@ -17,48 +17,57 @@
 	"plugins": {
 		"@release-it/conventional-changelog": {
 			"infile": "CHANGELOG.md",
+			"commitsOpts": {
+				"path": "packages/*"
+			},
+			"gitRawCommitsOpts": {
+				"path": "packages/*"
+			},
 			"preset": {
 				"name": "conventionalcommits",
 				"preMajor": true,
 				"types": [
 					{
+						"effect": "bump",
 						"section": "Features",
 						"type": "feat"
 					},
 					{
+						"effect": "bump",
 						"section": "Bug Fixes",
 						"type": "fix"
 					},
 					{
+						"effect": "bump",
 						"section": "Performance Improvements",
 						"type": "perf"
 					},
 					{
-						"hidden": true,
+						"effect": "hidden",
 						"type": "build"
 					},
 					{
-						"hidden": true,
+						"effect": "hidden",
 						"type": "chore"
 					},
 					{
-						"hidden": true,
+						"effect": "hidden",
 						"type": "ci"
 					},
 					{
-						"hidden": true,
+						"effect": "hidden",
 						"type": "docs"
 					},
 					{
-						"hidden": true,
+						"effect": "hidden",
 						"type": "refactor"
 					},
 					{
-						"hidden": true,
+						"effect": "hidden",
 						"type": "style"
 					},
 					{
-						"hidden": true,
+						"effect": "hidden",
 						"type": "test"
 					}
 				]
