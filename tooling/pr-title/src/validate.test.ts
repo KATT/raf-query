@@ -9,10 +9,13 @@ import { formatError, validatePrTitle } from "./validate.ts";
 const repoRoot = join(import.meta.dirname, "../../..");
 
 describe("validatePrTitle", () => {
-	it("matches the types listed in .release-it.json", () => {
+	it("matches the types and package paths in .release-it.json", () => {
 		const releaseIt: {
+			git: { commitsPath: string };
 			plugins: {
 				"@release-it/conventional-changelog": {
+					commitsOpts: { path: Array<string> };
+					gitRawCommitsOpts: { path: Array<string> };
 					preset: {
 						types: Array<{
 							effect: "bump" | "hidden";
@@ -23,13 +26,18 @@ describe("validatePrTitle", () => {
 				};
 			};
 		} = JSON.parse(readFileSync(join(repoRoot, ".release-it.json"), "utf8"));
-		const types =
-			releaseIt.plugins["@release-it/conventional-changelog"].preset.types;
+		const changelog = releaseIt.plugins["@release-it/conventional-changelog"];
+		const types = changelog.preset.types;
 		expect(releaseTypes.toSorted()).toEqual(
 			types.map((entry) => entry.type).toSorted(),
 		);
+		// Changelog / bump only read commits that touch publishable packages.
+		// Explicit dirs (not packages/*): a git pathspec would include .experimental.
+		const packagePaths = ["packages/core", "packages/react"];
+		expect(changelog.commitsOpts.path).toEqual(packagePaths);
+		expect(changelog.gitRawCommitsOpts.path).toEqual(packagePaths);
+		expect(releaseIt.git.commitsPath).toBe("packages/*");
 		// conventional-changelog v10+ uses effect, not the old hidden: true.
-		// Without effect: "hidden", docs/chore/ci leak into GitHub Releases.
 		for (const entry of types) {
 			expect(entry.effect === "bump" || entry.effect === "hidden").toBe(true);
 			if (entry.effect === "bump") {

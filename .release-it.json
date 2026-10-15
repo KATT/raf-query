@@ -17,6 +17,12 @@
 	"plugins": {
 		"@release-it/conventional-changelog": {
 			"infile": "CHANGELOG.md",
+			"commitsOpts": {
+				"path": ["packages/core", "packages/react"]
+			},
+			"gitRawCommitsOpts": {
+				"path": ["packages/core", "packages/react"]
+			},
 			"preset": {
 				"name": "conventionalcommits",
 				"preMajor": true,

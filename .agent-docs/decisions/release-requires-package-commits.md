@@ -5,3 +5,4 @@
 - Docs, examples, agent docs, tooling, and `.experimental/*` alone must not publish a new npm version. That is why [0142c6ef](https://github.com/KATT/raf-query/commit/0142c6ef9448631c6239fff4a4ddf16db02b35de) (`chore(examples)` placeholder) cut 0.7.7 with no library change.
 - Workflow `paths:` filters lost: if a package-changing run stops because `main` moved, the newer commit's run has to release it, and that newer commit may only be docs.
 - Lives in `.release-it.json` (`git.commitsPath`), `.github/workflows/release.yaml` (gate job before install/build; release job still treats "no commits since the latest tag" as success), and `.github/DEVELOPMENT.md`.
+- The changelog and recommended bump use the same publishable paths via `commitsOpts.path` / `gitRawCommitsOpts.path` (`packages/core`, `packages/react` listed explicitly — see [changelog-commit-effects.md](./changelog-commit-effects.md)).
