@@ -8,7 +8,6 @@ import { removeTwoslashNotations } from "twoslash/fallback";
 import { parse as parseYaml } from "yaml";
 
 import type { Doc, DocMeta, DocSection } from "../src/content/types.ts";
-import { stripCollapseMarkers } from "./collapse.ts";
 import { renderMarkdown } from "./markdown.ts";
 
 export interface ContentOptions {
@@ -207,7 +206,7 @@ export function docsContent(options: ContentOptions): Plugin {
 		const url = `${options.siteUrl}/docs/${source.slug}`;
 		const types = typeQueries.get(source.file) ?? [];
 		let blockIndex = 0;
-		const body = stripCollapseMarkers(source.markdown)
+		const body = source.markdown
 			.replaceAll(
 				/^```(\w+)([^\n]*)\btwoslash\b([^\n]*)\n([\s\S]*?)^```$/gm,
 				(fence, lang, before, after, code) => {

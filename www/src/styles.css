@@ -153,58 +153,6 @@ html[data-announcement-dismissed] .announcement-bar {
 	opacity: 1;
 }
 
-/* Folded lines: “N collapsed lines”, opened from `DocBody`. A tab in the
-   indent is two columns, the same as `tab-size` on `pre` above. */
-.code-collapse {
-	display: block;
-}
-
-.code-collapse-toggle {
-	display: flex;
-	align-items: center;
-	gap: 0.45em;
-	width: 100%;
-	margin: 0;
-	border: 0;
-	border-radius: 0.25rem;
-	background: color-mix(in oklch, var(--foreground) 7%, transparent);
-	padding: 0 0.45em;
-	padding-inline-start: calc(var(--collapse-indent, 0) * 1ch + 0.45em);
-	color: var(--muted-foreground);
-	font: inherit;
-	line-height: inherit;
-	text-align: start;
-	cursor: pointer;
-	user-select: none;
-}
-
-.code-collapse-toggle:hover {
-	background: color-mix(in oklch, var(--foreground) 12%, transparent);
-	color: var(--foreground);
-}
-
-.code-collapse-toggle:focus-visible {
-	outline: 2px solid var(--ring);
-	outline-offset: 1px;
-}
-
-.code-collapse-chevron {
-	flex: none;
-	width: 0.4em;
-	height: 0.4em;
-	border-right: 1.5px solid currentColor;
-	border-bottom: 1.5px solid currentColor;
-	transform: translateY(-0.05em) rotate(-45deg);
-}
-
-.code-collapse-toggle[aria-expanded="true"] .code-collapse-chevron {
-	transform: translateY(0.05em) rotate(45deg);
-}
-
-.code-collapse-body {
-	display: block;
-}
-
 @media (hover: none) {
 	.code-copy {
 		opacity: 1;

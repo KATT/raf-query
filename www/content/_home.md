@@ -35,18 +35,15 @@ function PostPage() {
 	const [post] = useQuery(postQuery, data.post);
 	//     ^?
 	return (
-		// ---collapse---
 		<article>
 			<h1>{post.title}</h1>
 			<Suspense fallback={<CommentsSkeleton />}>
 				<Comments handle={data.comments} />
 			</Suspense>
 		</article>
-		// ---/collapse---
 	);
 }
 
-// ---collapse---
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	// Still loading. use() suspends until the pages stream in.
 	const [pages] = useQuery(commentsQuery, props.handle);
@@ -55,5 +52,4 @@ function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 		.pages.flatMap((page) => page.items)
 		.map(renderComment);
 }
-// ---/collapse---
 ```

@@ -8,7 +8,7 @@ export default defineConfig({
 	},
 	test: {
 		environment: "happy-dom",
-		include: ["src/**/*.test.{ts,tsx}", "build/**/*.test.ts"],
+		include: ["src/**/*.test.{ts,tsx}"],
 		unstubGlobals: true,
 	},
 });

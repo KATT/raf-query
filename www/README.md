@@ -41,7 +41,6 @@ const [post] = useQuery(postQuery, handle);
 ````
 
 - Code above `// ---cut---` compiles but isn't shown. Import what the block needs from `content/_twoslash.ts` there: an app's API (`getPost`, `listComments`) and factories the guides share (`postQuery`, `commentsQuery`).
-- `// ---collapse---` and `// ---/collapse---`, each on its own line, fold the lines between them. The page shows “N collapsed lines”; a click opens the lines and another click closes them. Copy still copies those lines, and a page's markdown for agents includes them without the markers.
 - `// ^?` pins the type of the name above it under the line.
 - `// @errors: 2345` shows an expected compiler error. Any error a block doesn't expect fails the build, so the samples stay correct as the API changes.
 - In a page's markdown for agents, the hidden setup and markers are removed, and each `// ^?` becomes a comment with its type.
