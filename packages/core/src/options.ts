@@ -50,32 +50,35 @@ type KeyIn<TTypes> = TTypes extends {
 	: QueryKey;
 
 /**
- * The bag's optional members, each left out at its default: `error` when the
- * `queryFn` doesn't name one (`unknown`: a promise or a plain value),
- * `services` when it needs none (`never`), `key` when it is any `QueryKey`.
- * An Effect's error, including `never` when it can't fail, stays.
+ * The bag `queryOptions` returns. `error` is left out when the `queryFn`
+ * doesn't name one (`unknown`: a promise or a plain value). `services` is
+ * left out when the `queryFn` needs none (`never`). An Effect's error,
+ * including `never` when it can't fail, stays. `key` is always there, so two
+ * factories with different key shapes have different types.
  */
-type OptionalTypes<TError, TServices, TKey> = (unknown extends TError
-	? unknown
-	: { error: TError }) &
-	([TServices] extends [never] ? unknown : { services: TServices }) &
-	(QueryKey extends TKey ? unknown : { key: TKey });
-
-type Flatten<T> = { [K in keyof T]: T[K] };
-
-/** The bag `queryOptions` returns. */
-type QueryTypesOf<TData, TError, TServices, TKey> = Flatten<
-	{ data: TData } & OptionalTypes<TError, TServices, TKey>
->;
+type QueryTypesOf<TData, TError, TServices, TKey> = unknown extends TError
+	? [TServices] extends [never]
+		? { data: TData; key: TKey }
+		: { data: TData; key: TKey; services: TServices }
+	: [TServices] extends [never]
+		? { data: TData; error: TError; key: TKey }
+		: { data: TData; error: TError; key: TKey; services: TServices };
 
 /** As {@link QueryTypesOf}, for a paged query. */
-type InfiniteQueryTypesOf<TPage, TPageParam, TError, TServices, TKey> = Flatten<
-	{ page: TPage; pageParam: TPageParam } & OptionalTypes<
-		TError,
-		TServices,
-		TKey
-	>
->;
+type InfiniteQueryTypesOf<TPage, TPageParam, TError, TServices, TKey> =
+	unknown extends TError
+		? [TServices] extends [never]
+			? { key: TKey; page: TPage; pageParam: TPageParam }
+			: { key: TKey; page: TPage; pageParam: TPageParam; services: TServices }
+		: [TServices] extends [never]
+			? { error: TError; key: TKey; page: TPage; pageParam: TPageParam }
+			: {
+					error: TError;
+					key: TKey;
+					page: TPage;
+					pageParam: TPageParam;
+					services: TServices;
+				};
 
 /**
  * What a `queryFn` may return: a value, a promise, or an `Effect`. An
@@ -295,11 +298,10 @@ export function queryOptions<
 		"kind"
 	>,
 ): QueryOptions<QueryTypesOf<TData, TError, TServices, TKey>> {
-	// SAFETY: `QueryTypesOf` only drops `error` when it is `unknown`,
-	// `services` when it is `never` and `key` when it is `QueryKey`, which is
-	// what `ErrorIn` / `ServicesIn` / `KeyIn` fill in for a bag that lacks
-	// them. The `queryFn`, the key and the services phantom are the same type
-	// either way.
+	// SAFETY: `QueryTypesOf` only drops `error` when it is `unknown` and
+	// `services` when it is `never`, which is what `ErrorIn` / `ServicesIn`
+	// fill in for a bag that lacks them. The `queryFn`, the key and the
+	// services phantom are the same type either way.
 	return {
 		...options,
 		kind: "query",
@@ -332,8 +334,8 @@ export function infiniteQueryOptions<
 ): InfiniteQueryOptions<
 	InfiniteQueryTypesOf<TPage, TPageParam, TError, TServices, TKey>
 > {
-	// SAFETY: as in `queryOptions`. Dropping a default `error` / `services` /
-	// `key` doesn't change `queryFn`, the key or the services phantom.
+	// SAFETY: as in `queryOptions`. Dropping a default `error` / `services`
+	// doesn't change `queryFn`, the key or the services phantom.
 	return {
 		...options,
 		kind: "infinite",
