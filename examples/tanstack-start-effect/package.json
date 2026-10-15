@@ -18,6 +18,7 @@
 	},
 	"dependencies": {
 		"@examples/db": "workspace:*",
+		"@examples/kit": "workspace:*",
 		"@examples/ui": "workspace:*",
 		"@raf-query/react": "workspace:*",
 		"@tanstack/react-router": "1.170.42",

@@ -1,5 +1,6 @@
-import { Button } from "@examples/ui/components/button";
-import { Logo } from "@examples/ui/components/logo";
+import { buttonVariants } from "@examples/ui/components/button";
+import { cn } from "@examples/ui/lib/utils";
+import { Logo } from "@examples/kit/components/logo";
 import { Link } from "@tanstack/react-router";
 
 import { firstDoc } from "~/content/docs.ts";
@@ -27,46 +28,50 @@ export function SiteHeader() {
 					aria-label="Main"
 					className="hidden items-center gap-1 text-sm md:flex"
 				>
-					<Button asChild size="sm" variant="ghost">
-						<Link
-							activeProps={{ className: "text-foreground" }}
-							className="text-muted-foreground"
-							params={{ slug: firstDoc }}
-							to="/docs/$slug"
-						>
-							Docs
-						</Link>
-					</Button>
-					<Button asChild size="sm" variant="ghost">
-						<Link
-							className="text-muted-foreground"
-							params={{ slug: "examples" }}
-							to="/docs/$slug"
-						>
-							Examples
-						</Link>
-					</Button>
-					<Button asChild size="sm" variant="ghost">
-						<Link
-							className="text-muted-foreground"
-							params={{ slug: "api-reference" }}
-							to="/docs/$slug"
-						>
-							API
-						</Link>
-					</Button>
+					<Link
+						activeProps={{ className: "text-foreground" }}
+						className={cn(
+							buttonVariants({ size: "sm", variant: "ghost" }),
+							"text-muted-foreground",
+						)}
+						params={{ slug: firstDoc }}
+						to="/docs/$slug"
+					>
+						Docs
+					</Link>
+					<Link
+						className={cn(
+							buttonVariants({ size: "sm", variant: "ghost" }),
+							"text-muted-foreground",
+						)}
+						params={{ slug: "examples" }}
+						to="/docs/$slug"
+					>
+						Examples
+					</Link>
+					<Link
+						className={cn(
+							buttonVariants({ size: "sm", variant: "ghost" }),
+							"text-muted-foreground",
+						)}
+						params={{ slug: "api-reference" }}
+						to="/docs/$slug"
+					>
+						API
+					</Link>
 				</nav>
 				<div className="ml-auto flex items-center gap-1">
 					<SearchButton />
-					<Button asChild size="icon-sm" variant="ghost">
-						<a
-							aria-label="raf-query on GitHub"
-							href={site.github}
-							title="raf-query on GitHub"
-						>
-							<GitHubIcon />
-						</a>
-					</Button>
+					<a
+						aria-label="raf-query on GitHub"
+						className={cn(
+							buttonVariants({ size: "icon-sm", variant: "ghost" }),
+						)}
+						href={site.github}
+						title="raf-query on GitHub"
+					>
+						<GitHubIcon />
+					</a>
 					<ThemeToggle />
 				</div>
 			</div>

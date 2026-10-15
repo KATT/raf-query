@@ -1,4 +1,5 @@
-import { Button } from "@examples/ui/components/button";
+import { buttonVariants } from "@examples/ui/components/button";
+import { cn } from "@examples/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 
 import { firstDoc } from "~/content/docs.ts";
@@ -14,14 +15,16 @@ export function NotFound() {
 				Or anywhere else. It may have moved; the docs are a search away.
 			</p>
 			<div className="flex gap-2">
-				<Button asChild>
-					<Link params={{ slug: firstDoc }} to="/docs/$slug">
-						Read the docs
-					</Link>
-				</Button>
-				<Button asChild variant="outline">
-					<Link to="/">Home</Link>
-				</Button>
+				<Link
+					className={cn(buttonVariants())}
+					params={{ slug: firstDoc }}
+					to="/docs/$slug"
+				>
+					Read the docs
+				</Link>
+				<Link className={cn(buttonVariants({ variant: "outline" }))} to="/">
+					Home
+				</Link>
 			</div>
 		</main>
 	);

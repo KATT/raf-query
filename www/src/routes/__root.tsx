@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import { ThemeProvider } from "@examples/kit/components/theme-provider";
 import type { QueryClient } from "@raf-query/react";
 import {
 	createRootRouteWithContext,
@@ -62,18 +63,20 @@ function RootDocument(props: { readonly children: ReactNode }) {
 				<HeadContent />
 			</head>
 			<body className="flex min-h-screen flex-col antialiased">
-				<a
-					className="sr-only z-50 rounded-md bg-background px-3 py-2 focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
-					href="#content"
-				>
-					Skip to content
-				</a>
-				<AnnouncementBar />
-				<SiteHeader />
-				<div className="flex-1" id="content">
-					{props.children}
-				</div>
-				<SiteFooter />
+				<ThemeProvider storageKey="raf-query-docs:theme">
+					<a
+						className="sr-only z-50 rounded-md bg-background px-3 py-2 focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+						href="#content"
+					>
+						Skip to content
+					</a>
+					<AnnouncementBar />
+					<SiteHeader />
+					<div className="flex-1" id="content">
+						{props.children}
+					</div>
+					<SiteFooter />
+				</ThemeProvider>
 				<Scripts />
 			</body>
 		</html>

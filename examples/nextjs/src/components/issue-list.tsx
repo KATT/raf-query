@@ -1,7 +1,7 @@
 "use client";
 
 import { Card } from "@examples/ui/components/card";
-import { LoadMore } from "@examples/ui/components/load-more";
+import { LoadMore } from "@examples/kit/components/load-more";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import { type QueryHandle, useQuery } from "@raf-query/react";

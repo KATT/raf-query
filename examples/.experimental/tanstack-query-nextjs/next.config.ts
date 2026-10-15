@@ -5,6 +5,7 @@ export default {
 	transpilePackages: [
 		"@examples/api",
 		"@examples/db",
+		"@examples/kit",
 		"@examples/ui",
 		"@raf-query/experimental-tanstack-react-query",
 	],

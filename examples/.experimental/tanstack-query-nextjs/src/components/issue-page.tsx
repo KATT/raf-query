@@ -1,6 +1,7 @@
 "use client";
 
-import { Button } from "@examples/ui/components/button";
+import { Button, buttonVariants } from "@examples/ui/components/button";
+import { cn } from "@examples/ui/lib/utils";
 import { Separator } from "@examples/ui/components/separator";
 import {
 	type QueryHandle,
@@ -28,21 +29,23 @@ export function IssuePage(props: {
 	return (
 		<div className="grid gap-6">
 			<nav className="flex items-center gap-2">
-				<Button asChild size="sm" variant="ghost">
-					<Link href="/issues">
-						<ArrowLeft /> All issues
-					</Link>
-				</Button>
+				<Link
+					className={cn(buttonVariants({ size: "sm", variant: "ghost" }))}
+					href="/issues"
+				>
+					<ArrowLeft /> All issues
+				</Link>
 				<div className="ml-auto flex gap-1">
 					{issue.id > 1 ? (
-						<Button asChild size="icon" variant="outline">
-							<Link
-								aria-label="Previous issue"
-								href={`/issues/${issue.id - 1}`}
-							>
-								<ChevronLeft />
-							</Link>
-						</Button>
+						<Link
+							aria-label="Previous issue"
+							className={cn(
+								buttonVariants({ size: "icon", variant: "outline" }),
+							)}
+							href={`/issues/${issue.id - 1}`}
+						>
+							<ChevronLeft />
+						</Link>
 					) : (
 						<Button
 							aria-label="Previous issue"
@@ -53,11 +56,13 @@ export function IssuePage(props: {
 							<ChevronLeft />
 						</Button>
 					)}
-					<Button asChild size="icon" variant="outline">
-						<Link aria-label="Next issue" href={`/issues/${issue.id + 1}`}>
-							<ChevronRight />
-						</Link>
-					</Button>
+					<Link
+						aria-label="Next issue"
+						className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
+						href={`/issues/${issue.id + 1}`}
+					>
+						<ChevronRight />
+					</Link>
 				</div>
 			</nav>
 			<div className="grid gap-8 md:grid-cols-[1fr_240px]">

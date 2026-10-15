@@ -1,4 +1,5 @@
-import { Button } from "@examples/ui/components/button";
+import { Button, buttonVariants } from "@examples/ui/components/button";
+import { cn } from "@examples/ui/lib/utils";
 import { Check, Copy, ExternalLink, FileText } from "lucide-react";
 import { useState } from "react";
 
@@ -50,29 +51,28 @@ export function PageActions(props: { readonly slug: string }) {
 				{status === "Copied" ? <Check /> : <Copy />}
 				{status}
 			</Button>
-			<Button asChild size="xs" variant="ghost">
-				<a href={markdownPath}>
-					<FileText /> Markdown
-				</a>
-			</Button>
-			<Button asChild size="xs" variant="ghost">
-				<a
-					href={`https://chatgpt.com/?hints=search&q=${encodeURIComponent(prompt)}`}
-					rel="noopener"
-					target="_blank"
-				>
-					Ask ChatGPT <ExternalLink />
-				</a>
-			</Button>
-			<Button asChild size="xs" variant="ghost">
-				<a
-					href={`https://claude.ai/new?q=${encodeURIComponent(prompt)}`}
-					rel="noopener"
-					target="_blank"
-				>
-					Ask Claude <ExternalLink />
-				</a>
-			</Button>
+			<a
+				className={cn(buttonVariants({ size: "xs", variant: "ghost" }))}
+				href={markdownPath}
+			>
+				<FileText /> Markdown
+			</a>
+			<a
+				className={cn(buttonVariants({ size: "xs", variant: "ghost" }))}
+				href={`https://chatgpt.com/?hints=search&q=${encodeURIComponent(prompt)}`}
+				rel="noopener"
+				target="_blank"
+			>
+				Ask ChatGPT <ExternalLink />
+			</a>
+			<a
+				className={cn(buttonVariants({ size: "xs", variant: "ghost" }))}
+				href={`https://claude.ai/new?q=${encodeURIComponent(prompt)}`}
+				rel="noopener"
+				target="_blank"
+			>
+				Ask Claude <ExternalLink />
+			</a>
 		</div>
 	);
 }
