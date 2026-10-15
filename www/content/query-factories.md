@@ -44,6 +44,7 @@ Options set in the factory override the client's `config.defaults`:
 | `structuralSharing`                          | See [Render optimizations](./render-optimizations.md)                                                     |
 | `ssr`                                        | `false` runs the query [only in the browser](./ssr-and-hydration.md#browser-only-queries). Default `true` |
 | `meta`                                       | Anything you want to know about the query elsewhere. See [Query meta](./query-meta.md)                    |
+| `brand`                                      | A `unique symbol` that gives the factory a type of its own. See [Branded factories](#branded-factories)   |
 
 `infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam` and `maxPages`. See [Infinite queries](./infinite-queries.md).
 
@@ -55,7 +56,7 @@ TypeScript infers the data type from `queryFn`. For paged queries it infers the 
 tanstack-start/src/docs/query-factories.one-input-serializable.ts#type-inference
 ```
 
-The options' types take a bag of named types rather than a list of type arguments. A promise or plain `queryFn` leaves `error` out of that bag (`ErrorOf` is `unknown`) and leaves `services` out when it needs none. An [Effect](./effect.md) `queryFn` adds the error it infers, and `services` when it needs any:
+The options' types take a bag of named types rather than a list of type arguments. A promise or plain `queryFn` leaves `error` out of that bag (`ErrorOf` is `unknown`) and leaves `services` out when it needs none. An [Effect](./effect.md) `queryFn` adds the error it infers, and `services` when it needs any. `brand` is the factory's [brand](#branded-factories), `undefined` without one. A bag you write without `brand`, as here, takes options of any brand:
 
 ```sample
 tanstack-start/src/docs/query-factories.annotated-options.ts#annotated-options
@@ -66,6 +67,16 @@ To name a factory's types elsewhere:
 ```sample
 tanstack-start/src/docs/query-factories.one-input-serializable.ts#type-helpers
 ```
+
+## Branded factories
+
+A handle's type names its factory, but TypeScript compares functions by shape: two factories with the same input and data have the same type, so a handle of one type-checks where the other's goes, and `useQuery` reads the wrong query. Give each such factory a `brand`, a symbol declared next to it, and the types tell them apart:
+
+```sample
+tanstack-start/src/docs/query-factories.brand.tsx#brand
+```
+
+TypeScript gives each `const` declaration of `Symbol()` a type of its own, so the brand has to be declared outside `queryOptions`, once per factory: a symbol created inside a function has the same type on every call. An unbranded factory's handles don't type-check with a branded factory either, in both directions. A factory whose return type is annotated with a bag that has no `brand` takes any brand's handles.
 
 ## Factory makers
 

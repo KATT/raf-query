@@ -31,6 +31,8 @@ Type a prop with the handle its loader returns:
 tanstack-start/src/docs/handles.handle-props.tsx#handle-props
 ```
 
+A handle's type names its factory, but two factories with the same input and data have the same type, so their handles mix. Give them a [`brand`](./query-factories.md#branded-factories) to keep them apart.
+
 `QueryHandleWithData` extends `QueryHandle`, so TypeScript lets a handle with data into a `QueryHandle` prop. `useQuery` picks by the handle it gets at runtime, though: there it returns the data while the prop's type says promise, and `use()` on it throws. If you switch a query from `prefetch` to `ensure`, switch the props that receive its handle to `QueryHandleWithData`.
 
 ## The cache is the source of truth
