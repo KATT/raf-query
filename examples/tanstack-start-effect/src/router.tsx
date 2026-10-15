@@ -8,14 +8,10 @@ import { QueryDevtools } from "@raf-query/react/devtools";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import { createRouter } from "@tanstack/react-router";
 
+import { forwardedHeaders } from "./forwarded-headers.ts";
 import { Issues } from "./issues.ts";
 import { routeTree } from "./routeTree.gen.ts";
-import {
-	latencyHeaders,
-	readPrefetch,
-	readStaleTime,
-	toDefaultPreload,
-} from "./settings.ts";
+import { readPrefetch, readStaleTime, toDefaultPreload } from "./settings.ts";
 
 export function getRouter() {
 	const staleTime = readStaleTime() ?? DEFAULT_STALE_TIME;
@@ -23,7 +19,7 @@ export function getRouter() {
 	// `QueryClient<Issues>`: queries' Effects get the RPC client from the layer.
 	const queryClient = new QueryClient({
 		defaults: queryDefaults,
-		layer: Issues.layer(latencyHeaders),
+		layer: Issues.layer(forwardedHeaders),
 	});
 	// The cache reads this object live. A server client leaves `gcTime` unset.
 	if (!queryClient.isServer) {

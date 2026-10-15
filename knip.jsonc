@@ -84,9 +84,11 @@
 			// The Tailwind plugin resolves this from the app root while
 			// compiling `@import "tailwindcss"` in `@examples/ui`.
 			"ignoreDependencies": ["tailwindcss"],
-			// `#latency-cookie` imports bind to the server file.
+			// `#forwarded-headers` imports bind to the `default` file.
+			// `forwarded-headers.server.ts` is the same surface for the
+			// `react-server` build.
 			"ignoreIssues": {
-				"src/latency-cookie.browser.ts": ["exports", "types"],
+				"src/forwarded-headers.server.ts": ["exports", "types"],
 			},
 		},
 		"examples/tanstack-start": {
