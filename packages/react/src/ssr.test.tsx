@@ -31,10 +31,12 @@ import {
 	useQuery,
 	useWaterfall,
 } from "./index.ts";
+import { HydrationBoundary as ReactRouterHydrationBoundary } from "./react-router.tsx";
 import { HydrationBoundary, QueryProvider } from "./rsc.tsx";
 import type { DehydratedRouterQueries } from "./tanstack-router-shared.ts";
 import { setupRouterIntegration } from "./tanstack-router.ts";
 import { flush } from "./test-utils.ts";
+import { dehydrate } from "./client.ts";
 
 declare global {
 	/** Set by TanStack Router's inline scripts. */
@@ -451,6 +453,56 @@ describe("RSC QueryProvider", () => {
 		expect(recoverable).toMatchObject([
 			{ digest: "BAILOUT_TO_CLIENT_SIDE_RENDERING" },
 		]);
+		act(() => root.unmount());
+		container.remove();
+	});
+});
+
+describe("React Router HydrationBoundary", () => {
+	it("hydrates a loader's dehydrated state into the browser client", async () => {
+		const backend = createBackend();
+		const loader = new QueryClient({ isServer: true });
+		const handle = await loader.ensure(backend.issueQuery, { id: 1 });
+		const state = dehydrate(loader);
+
+		function Show() {
+			const [issue] = useQuery(backend.issueQuery, handle);
+			return <p>{issue.title}</p>;
+		}
+
+		const stream = await renderToReadableStream(
+			<QueryClientProvider client={new QueryClient({ isServer: true })}>
+				<ReactRouterHydrationBoundary state={state}>
+					<Show />
+				</ReactRouterHydrationBoundary>
+			</QueryClientProvider>,
+		);
+		await stream.allReady;
+		const html = await new Response(stream).text();
+		expect(html).toContain("Issue 1</p>");
+		expect(backend.calls).toEqual([1]);
+
+		const container = document.createElement("div");
+		container.innerHTML = html;
+		document.body.append(container);
+		const browser = new QueryClient({ isServer: false });
+		const root = await act(async () =>
+			hydrateRoot(
+				container,
+				<QueryClientProvider client={browser}>
+					<ReactRouterHydrationBoundary state={state}>
+						<Show />
+					</ReactRouterHydrationBoundary>
+				</QueryClientProvider>,
+			),
+		);
+		await act(flush);
+
+		expect(container.textContent).toBe("Issue 1");
+		expect(backend.calls).toEqual([1]);
+		expect(
+			Query.getUnsafe(browser.getQuery(backend.issueQuery, { id: 1 })).hasData,
+		).toBe(true);
 		act(() => root.unmount());
 		container.remove();
 	});
