@@ -7,9 +7,10 @@ import { commentsQuery, postQuery } from "~/queries.ts";
 
 declare function PostSkeleton(): React.ReactNode;
 
-// Homepage samples use this route. `posts.$slug.tsx` keeps ensure+prefetch for
-// the guides that teach that split.
+// Homepage sample: one file. `posts.$slug.tsx` keeps ensure+prefetch for the
+// guides that teach that split.
 
+// #region hero
 // #region route
 export const Route = createFileRoute("/blog/$slug")({
 	loader: (args) => {
@@ -55,3 +56,4 @@ function PostComments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	// ---/collapse---
 }
 // #endregion component
+// #endregion hero

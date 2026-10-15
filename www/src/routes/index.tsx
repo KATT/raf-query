@@ -21,6 +21,7 @@ import type { ReactNode } from "react";
 
 import homeComponentNext from "sample:nextjs/src/app/posts/[slug]/post.tsx#component";
 import homeLoaderNext from "sample:nextjs/src/app/posts/[slug]/page.tsx#page";
+import home from "sample:tanstack-start/src/routes/blog.$slug.tsx#hero";
 import homeComponent from "sample:tanstack-start/src/routes/blog.$slug.tsx#component";
 import homeLoader from "sample:tanstack-start/src/routes/blog.$slug.tsx#route";
 import { DocBody } from "~/components/doc-body.tsx";
@@ -137,7 +138,8 @@ const docLink = "font-medium text-foreground underline underline-offset-4";
 
 const heroByMode = {
 	nextjs: [...homeLoaderNext.segments, ...homeComponentNext.segments],
-	"tanstack-start": [...homeLoader.segments, ...homeComponent.segments],
+	// Start keeps loader + components in one file; Next.js needs the App Router split.
+	"tanstack-start": home.segments,
 } as const satisfies Record<FrameworkMode, ReadonlyArray<DocSegment>>;
 
 const stepsByMode = {
