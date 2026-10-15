@@ -41,47 +41,14 @@ A query sent while pending, that then fails on the server, rejects in the browse
 
 Some data only the browser can know: a push subscription, a notification permission, a service worker, a media query. That still belongs in the cache — same factory, same handle, same invalidation — just mark the query `ssr: false` so the server never runs it:
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-declare function detectPushState(channel: string): Promise<"on" | "off">;
-// ---cut---
-export function pushStateQuery(input: { channel: string }) {
-	return queryOptions({
-		queryKey: ["pushState", input.channel],
-		queryFn: () => detectPushState(input.channel),
-		ssr: false,
-	});
-}
+```sample
+tanstack-start/src/docs/ssr-and-hydration.ts#browser-only-queries
 ```
 
 A server client never starts it and never sends it. Loaders and components still use it like any query: `prefetch` returns a handle on the server too, and the browser starts the request when the loader or the first read runs there. On the server, readers see it pending:
 
-```tsx twoslash
-import { useQuery } from "@raf-query/react";
-import { queryOptions } from "@raf-query/react";
-import { use, type ReactNode } from "react";
-declare function detectPushState(channel: string): Promise<"on" | "off">;
-function pushStateQuery(input: { channel: string }) {
-	return queryOptions({
-		queryKey: ["pushState", input.channel],
-		queryFn: () => detectPushState(input.channel),
-		ssr: false,
-	});
-}
-declare const loaderData: {
-	push: import("@raf-query/react").QueryHandle<typeof pushStateQuery>;
-};
-declare function PushSwitch(props: {
-	readonly state: "on" | "off" | "unknown";
-}): ReactNode;
-// ---cut---
-function PushState() {
-	const [pushPromise, push] = useQuery(pushStateQuery, loaderData.push);
-	if (push.isPending) {
-		return <PushSwitch state="unknown" />;
-	}
-	return <PushSwitch state={use(pushPromise)} />;
-}
+```sample
+tanstack-start/src/docs/ssr-and-hydration.tsx#push-state
 ```
 
 The browser hydrates the same pending state, then renders the result. A reader that calls `use()` on the promise instead needs a Suspense boundary: on the server the promise rejects with `Query.BrowserOnlyError`, so React sends the fallback and renders the boundary in the browser. React reports that boundary to `onRecoverableError` while hydrating.
@@ -102,19 +69,8 @@ Data, keys, inputs and `meta` cross the wire, so they must be serializable by th
 
 Only send what's serializable. These docs, for instance, cache each demo's code module as a query, and a module full of components can't cross the wire. The router integration's `filter` option keeps those entries out of the stream. A `filter` replaces the default one, `canDehydrate` (entries with data or a request in flight), so combine the two:
 
-```ts twoslash
-import { canDehydrate, QueryClient } from "@raf-query/react";
-import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
-declare const queryClient: QueryClient;
-declare const router: Parameters<typeof setupRouterIntegration>[0]["router"];
-// ---cut---
-setupRouterIntegration({
-	dehydrateOptions: {
-		filter: (query) => query.key[0] === "doc" && canDehydrate(query),
-	},
-	queryClient,
-	router,
-});
+```sample
+tanstack-start/src/docs/ssr-and-hydration.ts#serialization
 ```
 
 ## Framework guides

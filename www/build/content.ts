@@ -1,19 +1,25 @@
-import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import path from "node:path";
-
-import { Schema } from "effect";
+import { NodeServices } from "@effect/platform-node";
+import { Effect, FileSystem, Path, Schema } from "effect";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import type { Connect, Plugin } from "vite";
 import { removeTwoslashNotations } from "twoslash/fallback";
 import { parse as parseYaml } from "yaml";
 
-import type { Doc, DocMeta, DocSection } from "../src/content/types.ts";
+import type { Doc, DocMeta, DocSection, Sample } from "../src/content/types.ts";
 import { stripCollapseMarkers } from "./collapse.ts";
+import { ContentError, messageOf } from "./content-error.ts";
+import { generateRouteTrees } from "./sample-apps.ts";
 import { renderMarkdown } from "./markdown.ts";
+import { expandSnippets } from "./snippets.ts";
 
-export interface ContentOptions {
-	/** Directory of the `.md` pages. */
+export interface ContentDirs {
+	/** Directory of the `.md` pages, as an absolute path. */
 	readonly contentDir: string;
+	/** Directory of the sample apps the pages' code blocks compile in. */
+	readonly samplesDir: string;
+}
+
+export interface ContentOptions extends ContentDirs {
 	/** Directory with one `<id>.tsx` per demo. */
 	readonly demosDir: string;
 	/** Where `demosDir` is browsable, for the markdown pages' demo links. */
@@ -36,13 +42,16 @@ const Frontmatter = Schema.Struct({
 
 type Frontmatter = typeof Frontmatter.Type;
 
-const decodeFrontmatter = Schema.decodeUnknownSync(Frontmatter);
+const decodeFrontmatter = Schema.decodeUnknownEffect(Frontmatter);
 
 interface Source {
 	readonly file: string;
 	readonly frontmatter: Frontmatter;
+	/** With `sample` fences expanded into `twoslash` blocks. */
 	readonly markdown: string;
 	readonly slug: string;
+	/** The files the page includes. */
+	readonly snippets: ReadonlyArray<string>;
 }
 
 /** Replaces each `// ^?` in a Twoslash block with the type it shows, as a comment. */
@@ -61,59 +70,95 @@ function withTypes(code: string, types: ReadonlyArray<string>) {
 const manifestId = "virtual:docs-manifest";
 const resolvedManifestId = `\0${manifestId}`;
 
-function parseFrontmatter(file: string, raw: string) {
+/**
+ * `import hero from "sample:<app>/<path>#region"` renders that region of a
+ * sample app's file, as a `sample` fence does, for code outside the pages.
+ */
+const samplePrefix = "sample:";
+const resolvedSamplePrefix = `\0${samplePrefix}`;
+
+const parseSource = Effect.fn("parseSource")(function* (
+	dirs: ContentDirs,
+	file: string,
+	raw: string,
+) {
+	const path = yield* Path.Path;
 	const match = /^---\n([\s\S]*?)\n---\n/.exec(raw);
 	if (!match?.[1]) {
-		throw new Error(`${file}: missing frontmatter`);
+		return yield* new ContentError({ message: `${file}: missing frontmatter` });
 	}
-	let frontmatter: Frontmatter;
-	try {
-		frontmatter = decodeFrontmatter(parseYaml(match[1]));
-	} catch (error) {
-		throw new Error(`${file}: invalid frontmatter`, { cause: error });
-	}
-	return { frontmatter, markdown: raw.slice(match[0].length) };
-}
-
-function lastModified(file: string) {
-	try {
-		const date = execFileSync(
-			"git",
-			["log", "-1", "--format=%cI", "--", file],
-			{
-				cwd: path.dirname(file),
-				encoding: "utf8",
-				stdio: ["ignore", "pipe", "ignore"],
-			},
-		).trim();
-		return date || undefined;
-	} catch {
-		return undefined;
-	}
-}
-
-function readSources(contentDir: string): ReadonlyArray<Source> {
-	return (
-		readdirSync(contentDir)
-			// `_name.md` files are page fragments (the home page's code), not pages.
-			.filter((name) => name.endsWith(".md") && !name.startsWith("_"))
-			.map((name) => {
-				const file = path.join(contentDir, name);
-				return {
-					file,
-					slug: name.slice(0, -".md".length),
-					...parseFrontmatter(file, readFileSync(file, "utf8")),
-				};
-			})
+	const yaml = match[1];
+	const frontmatter = yield* Effect.try(() => parseYaml(yaml)).pipe(
+		Effect.flatMap(decodeFrontmatter),
+		Effect.mapError(
+			(cause) =>
+				new ContentError({
+					cause,
+					message: `${file}: invalid frontmatter: ${messageOf(cause)}`,
+				}),
+		),
 	);
-}
+	const expanded = yield* expandSnippets(raw.slice(match[0].length), {
+		file,
+		samplesDir: dirs.samplesDir,
+	});
+	return {
+		file,
+		frontmatter,
+		markdown: expanded.markdown,
+		slug: path.basename(file, ".md"),
+		snippets: expanded.files,
+	} satisfies Source;
+});
+
+/** When `file` last changed in git, if it's committed. */
+const lastModified = Effect.fn("lastModified")(
+	function* (file: string) {
+		const path = yield* Path.Path;
+		const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+		const date = yield* spawner.string(
+			ChildProcess.make("git", ["log", "-1", "--format=%cI", "--", file], {
+				cwd: path.dirname(file),
+				stderr: "ignore",
+			}),
+		);
+		return date.trim() || undefined;
+	},
+	Effect.orElseSucceed(() => undefined),
+);
+
+const readSources = Effect.fn("readSources")(function* (dirs: ContentDirs) {
+	const fs = yield* FileSystem.FileSystem;
+	const path = yield* Path.Path;
+	const names = yield* fs.readDirectory(dirs.contentDir);
+	return yield* Effect.forEach(
+		names.filter((name) => name.endsWith(".md")),
+		(name) => {
+			const file = path.join(dirs.contentDir, name);
+			return Effect.flatMap(fs.readFileString(file), (raw) =>
+				parseSource(dirs, file, raw),
+			);
+		},
+		{ concurrency: "unbounded" },
+	);
+});
 
 /** Page paths for prerendering and the sitemap. */
-export function docPages(contentDir: string) {
-	return readSources(contentDir).map((source) => ({
-		lastModified: lastModified(source.file),
-		path: `/docs/${source.slug}`,
-	}));
+export const docPages = Effect.fn("docPages")(function* (dirs: ContentDirs) {
+	return yield* Effect.forEach(
+		yield* readSources(dirs),
+		(source) =>
+			Effect.map(lastModified(source.file), (date) => ({
+				lastModified: date,
+				path: `/docs/${source.slug}`,
+			})),
+		{ concurrency: "unbounded" },
+	);
+});
+
+/** Runs a build step from one of Vite's hooks. */
+function run<A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) {
+	return Effect.runPromise(Effect.provide(effect, NodeServices.layer));
 }
 
 /**
@@ -124,42 +169,78 @@ export function docPages(contentDir: string) {
  * markdown source at `/docs/<slug>.md`.
  */
 export function docsContent(options: ContentOptions): Plugin {
-	const contentDir = path.resolve(options.contentDir);
+	const { samplesDir } = options;
 	const rendered = new Map<string, Promise<Doc>>();
 	/** Each page's `twoslash` types, by file, for its markdown. */
 	const typeQueries = new Map<string, ReadonlyArray<ReadonlyArray<string>>>();
+
+	const renderDoc = Effect.fn("renderDoc")(function* (source: Source) {
+		const fs = yield* FileSystem.FileSystem;
+		const path = yield* Path.Path;
+		const result = yield* renderMarkdown(source.markdown, { samplesDir }).pipe(
+			Effect.mapError(
+				(error) =>
+					new ContentError({
+						cause: error,
+						message: `${source.file}: ${error.message}`,
+					}),
+			),
+		);
+		for (const id of result.demos) {
+			if (!(yield* fs.exists(path.join(options.demosDir, `${id}.tsx`)))) {
+				return yield* new ContentError({
+					message: `${source.file}: unknown demo "${id}"`,
+				});
+			}
+		}
+		typeQueries.set(source.file, result.typeQueries);
+		return {
+			demos: result.demos,
+			description: source.frontmatter.description,
+			headings: result.headings,
+			lastModified: yield* lastModified(source.file),
+			section: source.frontmatter.section,
+			segments: result.segments,
+			slug: source.slug,
+			title: source.frontmatter.title,
+		} satisfies Doc;
+	});
+
+	const renderSample = Effect.fn("renderSample")(function* (spec: string) {
+		const file = `${samplePrefix}${spec}`;
+		const expanded = yield* expandSnippets(`\`\`\`sample\n${spec}\n\`\`\``, {
+			file,
+			samplesDir,
+		});
+		const result = yield* renderMarkdown(expanded.markdown, {
+			samplesDir,
+		}).pipe(
+			Effect.mapError(
+				(error) =>
+					new ContentError({
+						cause: error,
+						message: `${file}: ${error.message}`,
+					}),
+			),
+		);
+		return {
+			files: expanded.files,
+			sample: { segments: result.segments } satisfies Sample,
+		};
+	});
 
 	function render(source: Source): Promise<Doc> {
 		const cached = rendered.get(source.file);
 		if (cached) {
 			return cached;
 		}
-		const doc = renderMarkdown(source.markdown, {
-			twoslashRoot: contentDir,
-		}).then((result) => {
-			for (const id of result.demos) {
-				if (!existsSync(path.join(options.demosDir, `${id}.tsx`))) {
-					throw new Error(`${source.file}: unknown demo "${id}"`);
-				}
-			}
-			typeQueries.set(source.file, result.typeQueries);
-			return {
-				demos: result.demos,
-				description: source.frontmatter.description,
-				headings: result.headings,
-				lastModified: lastModified(source.file),
-				section: source.frontmatter.section,
-				segments: result.segments,
-				slug: source.slug,
-				title: source.frontmatter.title,
-			};
-		});
+		const doc = run(renderDoc(source));
 		rendered.set(source.file, doc);
 		return doc;
 	}
 
 	async function manifest(): Promise<ReadonlyArray<DocSection>> {
-		const sources = readSources(contentDir);
+		const sources = await run(readSources(options));
 		for (const source of sources) {
 			if (!options.sections.includes(source.frontmatter.section)) {
 				throw new Error(
@@ -213,7 +294,7 @@ export function docsContent(options: ContentOptions): Plugin {
 				(fence, lang, before, after, code) => {
 					const queries = types[blockIndex] ?? [];
 					blockIndex++;
-					return `\`\`\`${lang}${`${before}${after}`.trimEnd()}\n${removeTwoslashNotations(withTypes(code, queries))}\`\`\``;
+					return `\`\`\`${lang}${`${before.trimEnd()}${after}`.trimEnd()}\n${removeTwoslashNotations(withTypes(code, queries))}\`\`\``;
 				},
 			)
 			.replaceAll(
@@ -269,7 +350,7 @@ export function docsContent(options: ContentOptions): Plugin {
 	async function agentFiles() {
 		const sections = await manifest();
 		const sources = new Map(
-			readSources(contentDir).map((source) => [source.slug, source]),
+			(await run(readSources(options))).map((source) => [source.slug, source]),
 		);
 		const pages = sections
 			.flatMap((section) => section.docs)
@@ -336,7 +417,13 @@ export function docsContent(options: ContentOptions): Plugin {
 		});
 	}
 
+	let routeTrees: Promise<void> | undefined;
+
 	return {
+		async buildStart() {
+			routeTrees ??= run(generateRouteTrees(samplesDir));
+			await routeTrees;
+		},
 		configurePreviewServer: serveAgentFiles,
 		configureServer: serveAgentFiles,
 		async generateBundle() {
@@ -348,19 +435,36 @@ export function docsContent(options: ContentOptions): Plugin {
 			}
 		},
 		hotUpdate(context) {
-			if (!context.file.startsWith(contentDir)) {
+			if (
+				!context.file.startsWith(options.contentDir) &&
+				!context.file.startsWith(samplesDir)
+			) {
 				return undefined;
 			}
 			rendered.delete(context.file);
-			const module =
-				this.environment.moduleGraph.getModuleById(resolvedManifestId);
-			if (module) {
-				this.environment.moduleGraph.invalidateModule(module);
-				return [...context.modules, module];
+			const graph = this.environment.moduleGraph;
+			const stale = [...graph.idToModuleMap].flatMap(([id, module]) =>
+				id === resolvedManifestId ||
+				(context.file.startsWith(samplesDir) &&
+					id.startsWith(resolvedSamplePrefix))
+					? [module]
+					: [],
+			);
+			for (const module of stale) {
+				graph.invalidateModule(module);
 			}
-			return undefined;
+			return stale.length ? [...context.modules, ...stale] : undefined;
 		},
 		async load(id) {
+			if (id.startsWith(resolvedSamplePrefix)) {
+				const output = await run(
+					renderSample(id.slice(resolvedSamplePrefix.length)),
+				);
+				for (const file of output.files) {
+					this.addWatchFile(file);
+				}
+				return `export default ${JSON.stringify(output.sample)};`;
+			}
 			if (id !== resolvedManifestId) {
 				return undefined;
 			}
@@ -369,20 +473,29 @@ export function docsContent(options: ContentOptions): Plugin {
 		},
 		name: "raf-query-docs:content",
 		resolveId(id) {
+			if (id.startsWith(samplePrefix)) {
+				return `\0${id}`;
+			}
 			return id === manifestId ? resolvedManifestId : undefined;
 		},
+		// One plugin instance across client/SSR so `rendered` is shared; without
+		// this each environment re-runs Twoslash for every page.
+		sharedDuringBuild: true,
 		async transform(code, id) {
 			const file = id.split("?")[0] ?? id;
-			if (!file.startsWith(contentDir) || !file.endsWith(".md")) {
+			if (!file.startsWith(options.contentDir) || !file.endsWith(".md")) {
 				return undefined;
 			}
-			const name = path.basename(file);
-			const source = {
-				file,
-				slug: name.slice(0, -".md".length),
-				...parseFrontmatter(file, code),
-			};
-			rendered.delete(file);
+			const source = await run(parseSource(options, file, code));
+			for (const snippet of source.snippets) {
+				this.addWatchFile(snippet);
+			}
+			// Drop the cache only in dev: during build, client and SSR both
+			// transform the same files and must reuse the shared render.
+			// (Snippet edits re-run transform with unchanged markdown.)
+			if (this.environment.mode === "dev") {
+				rendered.delete(file);
+			}
 			const doc = await render(source);
 			return { code: `export default ${JSON.stringify(doc)};`, map: null };
 		},

@@ -124,21 +124,23 @@
 			"includeEntryExports": false,
 		},
 		"www": {
-			// Docs samples are imported from markdown fences, which Knip does
-			// not parse. `check-twoslash.mjs` is the manual checker.
-			"entry": ["content/**/*.ts", "scripts/**/*.mjs"],
-			"ignoreDependencies": ["@raf-query/core", "zod"],
-			"ignoreIssues": {
-				"content/**": [
-					"exports",
-					"types",
-					"nsExports",
-					"nsTypes",
-					"duplicates",
-					"enumMembers",
-					"namespaceMembers",
-				],
-			},
+			// The build reads the sample apps from disk and Twoslash resolves
+			// their imports from each app's `node_modules`, so www installs
+			// them. `sample:…` imports are a virtual module of
+			// `build/content.ts`.
+			"ignoreDependencies": [
+				"@samples/nextjs",
+				"@samples/tanstack-start",
+				"@samples/tanstack-start-effect",
+				"sample",
+			],
+		},
+		"www/samples/*": {
+			// The docs show these files through `sample` fences in markdown,
+			// which Knip does not parse: every file is an entry, and its
+			// exports are what the pages import.
+			"entry": ["src/**/*.{ts,tsx}"],
+			"includeEntryExports": false,
 		},
 	},
 }

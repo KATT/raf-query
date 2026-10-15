@@ -7,43 +7,8 @@ order: 2
 
 A `queryFn`'s Effect can require services. They're part of the factory's type, `ServicesOf<TFactory>`, and every verb that can start the query requires them:
 
-```ts twoslash
-import { QueryCache, queryOptions } from "@raf-query/core";
-import { Context, Effect, Layer } from "effect";
-
-declare class IssueNotFound {
-	readonly _tag: "IssueNotFound";
-}
-declare interface Issue {
-	readonly id: number;
-	readonly title: string;
-}
-declare const IssueRepo: {
-	get(id: number): Effect.Effect<Issue, IssueNotFound>;
-};
-// ---cut---
-class IssueApi extends Context.Service<
-	IssueApi,
-	{ readonly get: (id: number) => Effect.Effect<Issue, IssueNotFound> }
->()("app/IssueApi") {}
-
-const IssueApiLive = Layer.succeed(IssueApi, { get: IssueRepo.get });
-
-export function issueQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: ["issue", input.id],
-		queryFn: () => IssueApi.use((api) => api.get(input.id)),
-	});
-}
-
-// Effect<Issue, IssueNotFound | Query.CancelledError, QueryCache | IssueApi>
-const issue = QueryCache.QueryCache.use((cache) =>
-	cache.fetch(issueQuery, { id: 1 }),
-);
-
-Effect.runFork(
-	issue.pipe(Effect.provide(QueryCache.layer()), Effect.provide(IssueApiLive)),
-);
+```sample
+tanstack-start-effect/src/docs/effect-services.ts#intro
 ```
 
 ## Which services a request runs with
@@ -61,34 +26,16 @@ Each request runs in a `raf-query.request` span with a `raf_query.hash` attribut
 
 `QueryClient` gets its services from a `layer`. It's built into the client's scope along with the cache, so it must build synchronously:
 
-```ts twoslash
-import { QueryClient } from "@raf-query/react";
-import { IssueApiLive, issueQuery } from "./_effect.ts";
-// ---cut---
-const queryClient = new QueryClient({ layer: IssueApiLive }); // QueryClient<IssueApi>
-const handle = queryClient.prefetch(issueQuery, { id: 1 });
-
-await queryClient.dispose();
+```sample
+tanstack-start-effect/src/docs/effect-services.services-in-queryclient.ts#services-in-queryclient
 ```
 
 The client's type is `QueryClient<TServices>`, and its verbs accept only factories whose services the layer provides. Any other factory is a type error. `dispose()` interrupts every request and runs the layer's finalizers.
 
 `queryClient.runPromise(effect)` runs an app's own Effect (a loader, a form action) with the cache and the layer's services, so it can `yield*` both:
 
-```ts twoslash
-import { QueryCache, QueryClient } from "@raf-query/react";
-import { Effect } from "effect";
-import { IssueApi, IssueApiLive } from "./_effect.ts";
-const queryClient = new QueryClient({ layer: IssueApiLive });
-// ---cut---
-await queryClient.runPromise(
-	Effect.gen(function* () {
-		const api = yield* IssueApi;
-		const cache = yield* QueryCache.QueryCache;
-		yield* api.rename({ id: 1, title: "Renamed" });
-		yield* cache.invalidate({ queryKey: ["issue", 1] });
-	}),
-);
+```sample
+tanstack-start-effect/src/docs/effect-services.run-promise.ts#run-promise
 ```
 
 Like `Effect.runPromise`, it rejects with the Effect's failure or defect. An Effect that needs a service the layer doesn't provide is a type error. [Typed errors](./effect-errors.md) covers catching the failures first.
@@ -99,77 +46,20 @@ Like `Effect.runPromise`, it rejects with the Effect's failure or defect. An Eff
 
 Components rarely need the services anyway. `useQuery` reads what a loader started, and the cache runs every request with the layer's services: the loader's, a render's, a refetch, an invalidation. So keep the check where Effects start: type the router context with the client's services, and loaders and actions get the typed client from it.
 
-```tsx twoslash title="src/routes/__root.tsx"
-import type { QueryClient } from "@raf-query/react";
-import { createRootRouteWithContext } from "./_twoslash.ts";
-import type { IssueApi } from "./_effect.ts";
-// ---cut---
-export const Route = createRootRouteWithContext<{
-	queryClient: QueryClient<IssueApi>;
-}>()({});
+```sample
+tanstack-start-effect/src/routes/__root.tsx
 ```
 
 Loaders start queries through the typed client, so a factory that needs a service the layer doesn't provide is a type error there. Components read the handles with `useQuery`, which needs no services:
 
-```tsx twoslash title="src/routes/issues.$issueId.tsx"
-import { type QueryHandle, useQuery } from "@raf-query/react";
-import { Suspense, use } from "react";
-import { createFileRoute, issueQuery } from "./_effect.ts";
-// ---cut---
-export const Route = createFileRoute("/issues/$issueId")({
-	loader: (args) => {
-		const qc = args.context.queryClient;
-		//    ^?
-		return {
-			issue: qc.prefetch(issueQuery, { id: Number(args.params.issueId) }),
-		};
-	},
-	component: IssuePage,
-});
-
-function IssuePage() {
-	const loaderData = Route.useLoaderData();
-	return (
-		<Suspense fallback={<p>Loading…</p>}>
-			<IssueTitle handle={loaderData.issue} />
-		</Suspense>
-	);
-}
-
-function IssueTitle(props: { handle: QueryHandle<typeof issueQuery> }) {
-	const [issuePromise] = useQuery(issueQuery, props.handle, {
-		throwOnError: true,
-	});
-	return <h1>{use(issuePromise).title}</h1>;
-}
+```sample
+tanstack-start-effect/src/routes/issues.$issueId.tsx#services
 ```
 
 A component that starts an Effect itself, like a form action, gets the client from the route's context too, so `runPromise` keeps the check:
 
-```tsx twoslash title="src/components/rename-form.tsx"
-import { Effect } from "effect";
-import { type Issue, IssueApi, IssueRoute } from "./_effect.ts";
-const Route = IssueRoute;
-// ---cut---
-export function RenameForm(props: { issue: Issue }) {
-	const queryClient = Route.useRouteContext().queryClient; // not useQueryClient()
-	return (
-		<form
-			action={(formData) =>
-				queryClient.runPromise(
-					IssueApi.use((api) =>
-						api.rename({
-							id: props.issue.id,
-							title: String(formData.get("title")),
-						}),
-					).pipe(Effect.ignore),
-				)
-			}
-		>
-			<input defaultValue={props.issue.title} name="title" />
-		</form>
-	);
-}
+```sample title="src/components/rename-form.tsx"
+tanstack-start-effect/src/docs/effect-services.tsx#in-react
 ```
 
 [Using Effect](./effect.md#the-whole-picture) has the whole app: service, queries, client, loader, components and action.
