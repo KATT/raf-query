@@ -139,15 +139,62 @@ describe("types", () => {
 		expect(typeOnly).toBeTypeOf("function");
 	});
 
+	it("keep handles of factories with the same signature apart", () => {
+		function draftQuery(input: { slug: string }) {
+			return queryOptions({
+				queryFn: () => ({ slug: input.slug, title: "Draft" }),
+				queryKey: ["draft", input.slug],
+			});
+		}
+		function draftCommentsQuery(input: { slug: string }) {
+			return infiniteQueryOptions({
+				getNextPageParam: (lastPage: { next: number | null }) => lastPage.next,
+				initialPageParam: 0,
+				queryFn: (context) => ({ next: context.pageParam + 1 }),
+				queryKey: ["draft-comments", input.slug],
+			});
+		}
+		const qc = new QueryClient({ isServer: true });
+		const post = qc.prefetch(postQuery, { slug: "a" });
+		const comments = qc.prefetch(commentsQuery, { slug: "a" });
+		expectTypeOf(post).not.toExtend<QueryHandle<typeof draftQuery>>();
+		expectTypeOf(comments).not.toExtend<
+			QueryHandle<typeof draftCommentsQuery>
+		>();
+		expectTypeOf(post).toExtend<QueryHandle>();
+
+		function useTypeOnly() {
+			// @ts-expect-error the handle is `postQuery`'s
+			useQuery(draftQuery, post);
+			// @ts-expect-error the handle is `commentsQuery`'s
+			useQuery(draftCommentsQuery, comments);
+			useQuery(postQuery, post);
+		}
+		expect(useTypeOnly).toBeTypeOf("function");
+	});
+
 	it("infer a queryFn Effect's services and error", () => {
 		expectTypeOf(userQuery({ id: 1 })).toEqualTypeOf<
-			QueryOptions<{ data: string; error: NotFound; services: Api }>
+			QueryOptions<{
+				data: string;
+				error: NotFound;
+				key: readonly ["user", number];
+				services: Api;
+			}>
 		>();
 		expectTypeOf(otherQuery()).toEqualTypeOf<
-			QueryOptions<{ data: string; error: never; services: Other }>
+			QueryOptions<{
+				data: string;
+				error: never;
+				key: readonly ["other"];
+				services: Other;
+			}>
 		>();
 		expectTypeOf(postQuery({ slug: "a" })).toEqualTypeOf<
-			QueryOptions<{ data: { slug: string; title: string } }>
+			QueryOptions<{
+				data: { slug: string; title: string };
+				key: readonly ["post", string];
+			}>
 		>();
 		expectTypeOf<ServicesOf<typeof userQuery>>().toEqualTypeOf<Api>();
 		expectTypeOf<ErrorOf<typeof userQuery>>().toEqualTypeOf<NotFound>();
