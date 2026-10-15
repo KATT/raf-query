@@ -243,7 +243,7 @@ describe("types", () => {
 		function useTypeOnly() {
 			void qc.invalidate(endpointQuery(getPost), { slug: "a" });
 			const [post] = useQuery(endpointQuery(getPost), handle);
-			expectTypeOf(post).toEqualTypeOf<Promise<{ title: string }>>();
+			expectTypeOf(post).toEqualTypeOf<{ title: string }>();
 			const pages = useWaterfall(endpointPagesQuery(listPosts), { tag: "a" });
 			expectTypeOf(
 				useQuery(endpointPagesQuery(listPosts), pages)[1],
