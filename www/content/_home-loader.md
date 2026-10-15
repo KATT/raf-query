@@ -12,11 +12,11 @@ declare function PostPage(): null;
 export const Route = createFileRoute("/posts/$slug")({
 	loader: async (args) => {
 		const qc = args.context.queryClient;
-		const input = { slug: args.params.slug };
+		const { slug } = args.params;
 		// Never waits: the comments load while the page renders.
-		const comments = qc.prefetch(commentsQuery, input);
+		const comments = qc.prefetch(commentsQuery, { slug });
 		// Waits only if the post isn't in the cache yet.
-		const post = await qc.ensure(postQuery, input);
+		const post = await qc.ensure(postQuery, { slug });
 		return { comments, post };
 	},
 	component: PostPage,

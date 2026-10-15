@@ -19,9 +19,9 @@ declare function renderComment(comment: PostComment): React.ReactNode;
 export const Route = createFileRoute("/posts/$slug")({
 	loader: async (args) => {
 		const qc = args.context.queryClient;
-		const input = { slug: args.params.slug };
-		const comments = qc.prefetch(commentsQuery, input);
-		const post = await qc.ensure(postQuery, input);
+		const { slug } = args.params;
+		const comments = qc.prefetch(commentsQuery, { slug });
+		const post = await qc.ensure(postQuery, { slug });
 		return { comments, post };
 	},
 	component: PostPage,
