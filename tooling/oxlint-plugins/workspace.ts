@@ -4,6 +4,7 @@ import { inferCallbackParams } from "./infer-callback-params.ts";
 import { inlineJsxCallback } from "./inline-jsx-callback.ts";
 import { noBannedReactReexport } from "./no-banned-react-reexport.ts";
 import { noCustomTestTimeout } from "./no-custom-test-timeout.ts";
+import { noExplicitResourceManagement } from "./no-explicit-resource-management.ts";
 import { noManualMemoization } from "./no-manual-memoization.ts";
 import { noMock } from "./no-mock.ts";
 import { noOverzealousDestructuring } from "./no-overzealous-destructuring.ts";
@@ -19,6 +20,7 @@ const plugin = eslintCompatPlugin({
 		"inline-jsx-callback": inlineJsxCallback,
 		"no-banned-react-reexport": noBannedReactReexport,
 		"no-custom-test-timeout": noCustomTestTimeout,
+		"no-explicit-resource-management": noExplicitResourceManagement,
 		"no-manual-memoization": noManualMemoization,
 		"no-mock": noMock,
 		"no-overzealous-destructuring": noOverzealousDestructuring,
