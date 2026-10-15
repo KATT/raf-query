@@ -75,6 +75,8 @@ In both kinds, `// ---collapse---` and `// ---/collapse---`, each on its own lin
 
 In both kinds, the page's markdown for agents drops the hidden code and markers, and each `// ^?` becomes a comment with its type. Twoslash needs TypeScript's JavaScript API, which TypeScript 7 doesn't have, so it runs on `typescript6` (TypeScript 6).
 
+Code outside the pages imports a region instead of writing a fence: `import hero from "sample:tanstack-start-home/src/routes/posts.$slug.tsx#hero"` gives `hero.segments`, the region rendered as a `sample` fence renders it (the homepage's walkthrough does this).
+
 The sample apps are workspace packages in `samples/`: `tanstack-start` (`@samples/tanstack-start`) for the pages built on TanStack Start, `tanstack-start-effect` (`@samples/tanstack-start-effect`) for the Effect pages, `nextjs` (`@samples/nextjs`) for the Next.js page, and `tanstack-start-home` (`@samples/tanstack-start-home`) for the homepage's hero, whose post route loads differently from `tanstack-start`'s. Each declares the dependencies its files import, `pnpm typecheck` runs its `tsc`, and `pnpm lint` lints it (`src/docs/` files are page fragments, so some app rules are off there). The build regenerates their route trees.
 
 ## Demos

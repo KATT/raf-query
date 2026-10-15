@@ -10,3 +10,10 @@ declare module "*.md" {
 	const doc: Doc;
 	export default doc;
 }
+
+declare module "sample:*" {
+	import type { Sample } from "~/content/types.ts";
+
+	const sample: Sample;
+	export default sample;
+}

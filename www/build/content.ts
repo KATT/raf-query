@@ -5,7 +5,7 @@ import type { Connect, Plugin } from "vite";
 import { removeTwoslashNotations } from "twoslash/fallback";
 import { parse as parseYaml } from "yaml";
 
-import type { Doc, DocMeta, DocSection } from "../src/content/types.ts";
+import type { Doc, DocMeta, DocSection, Sample } from "../src/content/types.ts";
 import { stripCollapseMarkers } from "./collapse.ts";
 import { ContentError, messageOf } from "./content-error.ts";
 import { generateRouteTrees } from "./sample-apps.ts";
@@ -70,6 +70,13 @@ function withTypes(code: string, types: ReadonlyArray<string>) {
 const manifestId = "virtual:docs-manifest";
 const resolvedManifestId = `\0${manifestId}`;
 
+/**
+ * `import hero from "sample:<app>/<path>#region"` renders that region of a
+ * sample app's file, as a `sample` fence does, for code outside the pages.
+ */
+const samplePrefix = "sample:";
+const resolvedSamplePrefix = `\0${samplePrefix}`;
+
 const parseSource = Effect.fn("parseSource")(function* (
 	dirs: ContentDirs,
 	file: string,
@@ -127,9 +134,7 @@ export const readSources = Effect.fn("readSources")(function* (
 	const path = yield* Path.Path;
 	const names = yield* fs.readDirectory(dirs.contentDir);
 	return yield* Effect.forEach(
-		names
-			// `_name.md` files are page fragments (the home page's code), not pages.
-			.filter((name) => name.endsWith(".md") && !name.startsWith("_")),
+		names.filter((name) => name.endsWith(".md")),
 		(name) => {
 			const file = path.join(dirs.contentDir, name);
 			return Effect.flatMap(fs.readFileString(file), (raw) =>
@@ -201,6 +206,29 @@ export function docsContent(options: ContentOptions): Plugin {
 			slug: source.slug,
 			title: source.frontmatter.title,
 		} satisfies Doc;
+	});
+
+	const renderSample = Effect.fn("renderSample")(function* (spec: string) {
+		const file = `${samplePrefix}${spec}`;
+		const expanded = yield* expandSnippets(`\`\`\`sample\n${spec}\n\`\`\``, {
+			file,
+			samplesDir,
+		});
+		const result = yield* renderMarkdown(expanded.markdown, {
+			samplesDir,
+		}).pipe(
+			Effect.mapError(
+				(error) =>
+					new ContentError({
+						cause: error,
+						message: `${file}: ${error.message}`,
+					}),
+			),
+		);
+		return {
+			files: expanded.files,
+			sample: { segments: result.segments } satisfies Sample,
+		};
 	});
 
 	function render(source: Source): Promise<Doc> {
@@ -416,15 +444,29 @@ export function docsContent(options: ContentOptions): Plugin {
 				return undefined;
 			}
 			rendered.delete(context.file);
-			const module =
-				this.environment.moduleGraph.getModuleById(resolvedManifestId);
-			if (module) {
-				this.environment.moduleGraph.invalidateModule(module);
-				return [...context.modules, module];
+			const graph = this.environment.moduleGraph;
+			const stale = [...graph.idToModuleMap].flatMap(([id, module]) =>
+				id === resolvedManifestId ||
+				(context.file.startsWith(samplesDir) &&
+					id.startsWith(resolvedSamplePrefix))
+					? [module]
+					: [],
+			);
+			for (const module of stale) {
+				graph.invalidateModule(module);
 			}
-			return undefined;
+			return stale.length ? [...context.modules, ...stale] : undefined;
 		},
 		async load(id) {
+			if (id.startsWith(resolvedSamplePrefix)) {
+				const output = await run(
+					renderSample(id.slice(resolvedSamplePrefix.length)),
+				);
+				for (const file of output.files) {
+					this.addWatchFile(file);
+				}
+				return `export default ${JSON.stringify(output.sample)};`;
+			}
 			if (id !== resolvedManifestId) {
 				return undefined;
 			}
@@ -433,6 +475,9 @@ export function docsContent(options: ContentOptions): Plugin {
 		},
 		name: "raf-query-docs:content",
 		resolveId(id) {
+			if (id.startsWith(samplePrefix)) {
+				return `\0${id}`;
+			}
 			return id === manifestId ? resolvedManifestId : undefined;
 		},
 		async transform(code, id) {
