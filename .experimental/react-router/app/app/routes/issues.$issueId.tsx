@@ -3,7 +3,7 @@ import { Separator } from "@examples/ui/components/separator";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import { dehydrate, type QueryHandle, useQuery } from "@raf-query/react";
-import { HydrationBoundary } from "@raf-query/experimental-react-router";
+import { HydrationBoundary } from "@raf-query/react/react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Suspense, use } from "react";
 import { Link } from "react-router";

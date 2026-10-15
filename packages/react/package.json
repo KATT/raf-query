@@ -35,6 +35,7 @@
 		".": "./src/index.ts",
 		"./devtools": "./src/devtools.tsx",
 		"./rsc": "./src/rsc.tsx",
+		"./react-router": "./src/react-router.tsx",
 		"./tanstack-router": {
 			"workerd": "./src/tanstack-router.ts",
 			"worker": "./src/tanstack-router.ts",
@@ -86,6 +87,7 @@
 			".": "./dist/index.mjs",
 			"./devtools": "./dist/devtools.mjs",
 			"./rsc": "./dist/rsc.mjs",
+			"./react-router": "./dist/react-router.mjs",
 			"./tanstack-router": {
 				"workerd": "./dist/tanstack-router.mjs",
 				"worker": "./dist/tanstack-router.mjs",

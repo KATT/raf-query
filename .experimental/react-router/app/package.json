@@ -15,7 +15,6 @@
 		"@examples/db": "workspace:*",
 		"@examples/kit": "workspace:*",
 		"@examples/ui": "workspace:*",
-		"@raf-query/experimental-react-router": "workspace:*",
 		"@raf-query/react": "workspace:*",
 		"@react-router/node": "8.4.0",
 		"@react-router/serve": "8.4.0",
