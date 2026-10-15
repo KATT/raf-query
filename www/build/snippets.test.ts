@@ -231,6 +231,19 @@ describe("expandSnippets", () => {
 		}).pipe(Effect.provide(NodeServices.layer)),
 	);
 
+	it.effect("gives no title to a page's own samples in an app/ app", () =>
+		Effect.gen(function* () {
+			const page = yield* setup({
+				...app("page"),
+				"page/app/docs/react-router.ts": "export const a = 1;\n",
+			});
+			const expanded = yield* page.expand(
+				sample("page/app/docs/react-router.ts"),
+			);
+			expect(expanded.markdown).toContain("```ts twoslash\n");
+		}).pipe(Effect.provide(NodeServices.layer)),
+	);
+
 	it.effect("shows an expected error as Twoslash's @errors", () =>
 		Effect.gen(function* () {
 			const page = yield* setup({

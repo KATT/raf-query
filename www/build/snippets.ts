@@ -137,8 +137,8 @@ function twoslashCode(lines: ReadonlyArray<Line>, filename: string) {
  * The rest of the file is still compiled, hidden, in the file's folder, so
  * its imports resolve like they do in the editor, and the block compiles in
  * that app's project. Its title is the file's path inside the app, unless
- * the file is in `src/docs/` (a page's own samples, not a file of the app)
- * or the fence sets `title="…"` (`title=""` for none).
+ * the file is in `src/docs/` or `app/docs/` (a page's own samples, not a
+ * file of the app) or the fence sets `title="…"` (`title=""` for none).
  */
 export const expandSnippets = Effect.fn("expandSnippets")(function* (
 	markdown: string,
@@ -180,7 +180,7 @@ export const expandSnippets = Effect.fn("expandSnippets")(function* (
 		const inApp = toPosix(path.relative(app, file));
 		const title =
 			/\btitle="([^"]*)"/.exec(meta)?.[1] ??
-			(inApp.startsWith("src/docs/") ? "" : inApp);
+			(/^(?:src|app)\/docs\//.test(inApp) ? "" : inApp);
 		// Twoslash empties a block's files once it's done, so the block gets a
 		// name of its own next to the file: other blocks importing the file
 		// still read it from disk.

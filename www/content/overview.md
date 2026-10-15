@@ -58,6 +58,7 @@ starting-queries
 | ---------------------------------- | ------------------------------------------------------------------- |
 | `@raf-query/react/tanstack-router` | Streams the router's query cache to the client during SSR           |
 | `@raf-query/react/rsc`             | `QueryProvider` and `HydrationBoundary` for React Server Components |
+| `@raf-query/react/react-router`    | `HydrationBoundary` for React Router Framework Mode loaders         |
 | `@raf-query/react/devtools`        | [Devtools](./devtools.md) panel for inspecting the cache            |
 
 ## Where next

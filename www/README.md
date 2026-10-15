@@ -77,7 +77,7 @@ In both kinds, the page's markdown for agents drops the hidden code and markers,
 
 Code outside the pages imports a region instead of writing a fence: `import hero from "sample:tanstack-start/src/routes/blog.$slug.tsx#hero"` gives `hero.segments`, the region rendered as a `sample` fence renders it (the homepage's walkthrough does this).
 
-The sample apps are workspace packages in `samples/`: `tanstack-start` (`@samples/tanstack-start`) for the pages built on TanStack Start, `tanstack-start-effect` (`@samples/tanstack-start-effect`) for the Effect pages, and `nextjs` (`@samples/nextjs`) for the Next.js page. Each declares the dependencies its files import, `pnpm typecheck` runs its `tsc`, and `pnpm lint` lints it (`src/docs/` files are page fragments, so some app rules are off there). The build regenerates their route trees.
+The sample apps are workspace packages in `samples/`: `tanstack-start` (`@samples/tanstack-start`) for the pages built on TanStack Start, `tanstack-start-effect` (`@samples/tanstack-start-effect`) for the Effect pages, `nextjs` (`@samples/nextjs`) for the Next.js page, and `react-router` (`@samples/react-router`, with `app/` in place of `src/`) for the React Router page. Each declares the dependencies its files import, `pnpm typecheck` runs its `tsc`, and `pnpm lint` lints it (`src/docs/` files are page fragments, so some app rules are off there). The build regenerates their route trees and React Router's route types (`react-router typegen`).
 
 ## Demos
 

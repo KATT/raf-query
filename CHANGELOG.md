@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.9.1](https://github.com/KATT/raf-query/compare/0.9.0...0.9.1) (2026-10-15)
+
+### Features
+
+- **react:** add @raf-query/react/react-router for React Router Framework Mode ([#146](https://github.com/KATT/raf-query/issues/146)) ([4e02c80](https://github.com/KATT/raf-query/commit/4e02c809d8be1eea33935c9f0b6abc38cbdce25c)), references [#130](https://github.com/KATT/raf-query/issues/130) [#148](https://github.com/KATT/raf-query/issues/148) [#148](https://github.com/KATT/raf-query/issues/148)
+
+### Miscellaneous Chores
+
+- **lint:** ban member access on use(), in code and Markdown fences ([#155](https://github.com/KATT/raf-query/issues/155)) ([b7b37b4](https://github.com/KATT/raf-query/commit/b7b37b4f6d83c0a232697d05b177c33bdea11df1)), references [#140](https://github.com/KATT/raf-query/issues/140)
+
 ## [0.9.0](https://github.com/KATT/raf-query/compare/0.8.0...0.9.0) (2026-10-15)
 
 ### ⚠ BREAKING CHANGES

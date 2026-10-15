@@ -11,7 +11,7 @@ This walks through the three core concepts of raf-query on [TanStack Start](http
 - **Starting queries** in a loader, which hands components a handle
 - **Reading queries** with `useQuery` and `use()`
 
-For the Next.js App Router, the same steps apply with a server component in place of the loader: see [React Server Components](./nextjs.md).
+For the Next.js App Router, the same steps apply with a server component in place of the loader: see [React Server Components](./nextjs.md). For React Router Framework Mode, see [React Router](./react-router.md).
 
 ## 1. Create the client
 
