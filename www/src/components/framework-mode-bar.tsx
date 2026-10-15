@@ -123,6 +123,7 @@ export function FrameworkModeBar(props: { readonly mode: FrameworkMode }) {
 							)}
 							key={mode}
 							replace
+							resetScroll={false}
 							search={frameworkModeSearch(mode)}
 							to="/"
 						>
