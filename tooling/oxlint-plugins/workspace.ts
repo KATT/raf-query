@@ -8,6 +8,7 @@ import { noManualMemoization } from "./no-manual-memoization.ts";
 import { noMock } from "./no-mock.ts";
 import { noOverzealousDestructuring } from "./no-overzealous-destructuring.ts";
 import { noUseEffect } from "./no-use-effect.ts";
+import { noUseMemberAccess } from "./no-use-member-access.ts";
 
 const plugin = eslintCompatPlugin({
 	meta: {
@@ -22,6 +23,7 @@ const plugin = eslintCompatPlugin({
 		"no-mock": noMock,
 		"no-overzealous-destructuring": noOverzealousDestructuring,
 		"no-use-effect": noUseEffect,
+		"no-use-member-access": noUseMemberAccess,
 	},
 });
 

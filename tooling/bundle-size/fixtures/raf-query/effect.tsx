@@ -32,7 +32,8 @@ function IssueTitle(props: {
 	const [issuePromise] = useQuery(effectIssueQuery, props.handle, {
 		throwOnError: true,
 	});
-	return <h1>{use(issuePromise).title}</h1>;
+	const issue = use(issuePromise);
+	return <h1>{issue.title}</h1>;
 }
 
 /** `queryApp` with an Effect `queryFn` and `Schedule` retries. */

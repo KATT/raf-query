@@ -219,7 +219,8 @@ describe("useQuery", () => {
 		function Probe(props: { readonly tick: number }) {
 			const [promise] = useQuery(test.backend.issueQuery, handle);
 			seen.add(promise);
-			return <p>{`${use(promise).title} ${props.tick}`}</p>;
+			const issue = use(promise);
+			return <p>{`${issue.title} ${props.tick}`}</p>;
 		}
 		const result = await mount(test.view(<Probe tick={1} />));
 		await result.rerender(test.view(<Probe tick={2} />));
