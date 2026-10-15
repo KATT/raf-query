@@ -11,6 +11,10 @@
 - Don't record video demos or screen recordings. They are slow and cost a lot of tokens. Instead, fill the Links table in [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md): deep-link the Vercel previews of the docs page and the example route this change shows (exact page or route, with an anchor when it helps — not just the site root).
 - **Never invent or guess a preview hostname.** Copy the base URL from the Vercel bot's PR comment after that project's deployment is Ready (`Preview` column). Projects: `www` → `raf-query`, `examples/nextjs` → `raf-query-nextjs`, `examples/tanstack-start` → `raf-query-tanstack-start`, `examples/tanstack-start-effect` → `raf-query-tanstack-start-effect`. Hostnames include a team suffix (today `-trpc.vercel.app`) and long branch names can be truncated — guessing `-katt`, production, or a hand-built slug will 404. If the deploy isn't Ready yet, omit the links (or say "pending") and add them in a follow-up edit once the bot posts Ready URLs.
 
+## Code
+
+- Write all the logic you can in Effect: libraries, build steps, CI and deploy scripts, tooling. Files, processes, HTTP and env go through Effect's services (`FileSystem`, `Path`, `ChildProcessSpawner`, `HttpClient`, `Config`), provided by `NodeServices.layer` at the edge, not `node:fs` / `node:child_process` / `process.env`. Plain code only where Effect can't run, such as a sync React render path. Read `.repos/effect` (start with `LLMS.md`) for the idioms. See [`.agent-docs/decisions/effect-everywhere.md`](.agent-docs/decisions/effect-everywhere.md).
+
 ## Commits and pull requests
 
 - Open PRs ready for review, not as drafts. Use a draft only for experiments and prototypes that aren't meant to merge as they are.
