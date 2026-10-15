@@ -1,6 +1,7 @@
 "use client";
 
 import { CommentsSkeleton } from "@examples/kit/components/comments";
+import { AssigneeCardSkeleton } from "@examples/kit/components/user";
 import { Button, buttonVariants } from "@examples/ui/components/button";
 import { cn } from "@examples/ui/lib/utils";
 import { Separator } from "@examples/ui/components/separator";
@@ -17,7 +18,7 @@ import { Comments } from "./comments.tsx";
 import { EditBody } from "./edit-body.tsx";
 import { EditTitle } from "./edit-title.tsx";
 import { StatusSelect } from "./status-select.tsx";
-import { AssigneeCard, AssigneeCardSkeleton } from "./user.tsx";
+import { AssigneeCard } from "./user.tsx";
 
 export function IssuePage(props: {
 	readonly assignee: QueryHandle<typeof assigneeQuery>;
