@@ -82,6 +82,7 @@ In a browser loader, prefer `ensure`: a stale `fetch` blocks the navigation on t
 - Every verb dedupes against the cache: a request already in flight for the entry is joined, not repeated.
 - Loaders run on every navigation (TanStack Router reruns them when its own `staleTime` has passed, `0` by default), so returning to a page shows what's cached at once and then fresh data. With `defaultPreload: "intent"`, also set `defaultPreloadStaleTime: 0`: otherwise the router reuses a hover's preload for 30 seconds instead of running the loader on click, and the query cache never hears about the navigation.
 - On the server, cached data is always reused, whatever `staleTime` says. Entries marked by `invalidate` still refetch.
+- A query with [`ssr: false`](./ssr-and-hydration.md#browser-only-queries) never runs on the server: use `prefetch` there, not `ensure` or `fetch`.
 - A failed `prefetch` never throws out of the loader. The error surfaces where the data is read, and is reported to the client's `onError`.
 - A failed `ensure` or `fetch` rejects, so it reaches the route's error boundary.
 
