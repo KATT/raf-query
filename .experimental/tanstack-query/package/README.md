@@ -1,6 +1,6 @@
 # @raf-query/experimental-tanstack-react-query
 
-> **Experiment. Private, and not published to npm.** It lives in this repo to compare two ways of building raf-query. Its API can change or go away at any time. It stays at version `0.0.0`, and releases skip it.
+> **Experiment. Private, and not published to npm.** It lives under [`.experimental/tanstack-query/`](../) to compare two ways of building raf-query. Its API can change or go away at any time. It stays at version `0.0.0`, and releases skip it.
 
 This package gives you raf-query's render-as-you-fetch API on top of [TanStack Query](https://tanstack.com/query). The published packages, `@raf-query/core` and `@raf-query/react`, run on raf-query's own engine instead. The [root README](../../../README.md) explains the API in full: handles, `use()`, `whilePending`, mutations with Actions. This page covers what is different here.
 
@@ -245,9 +245,9 @@ export default async function Page(props: {
 
 Both run the same issue tracker as the main examples, on this package:
 
-| App                                                                                    | Run                                                              | URL                     |
-| -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------- |
-| [`.experimental/examples/tanstack-query-start`](../../examples/tanstack-query-start)   | `pnpm --filter @examples/experimental-tanstack-query-start dev`  | <http://localhost:3002> |
-| [`.experimental/examples/tanstack-query-nextjs`](../../examples/tanstack-query-nextjs) | `pnpm --filter @examples/experimental-tanstack-query-nextjs dev` | <http://localhost:3003> |
+| App                      | Run                                                              | URL                     |
+| ------------------------ | ---------------------------------------------------------------- | ----------------------- |
+| [`../start`](../start)   | `pnpm --filter @examples/experimental-tanstack-query-start dev`  | <http://localhost:3002> |
+| [`../nextjs`](../nextjs) | `pnpm --filter @examples/experimental-tanstack-query-nextjs dev` | <http://localhost:3003> |
 
 Compare them with `examples/tanstack-start` and `examples/nextjs`, which run on `@raf-query/react`.

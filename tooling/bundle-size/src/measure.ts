@@ -75,7 +75,7 @@ const scenarios: ReadonlyArray<Scenario> = [
 
 const exampleApps = [
 	{
-		dir: ".experimental/examples/tanstack-query-start",
+		dir: ".experimental/tanstack-query/start",
 		library: "raf-on-tanstack",
 	},
 	{ dir: "examples/tanstack-start", library: "raf-query" },
