@@ -1,7 +1,12 @@
 import { IssueId } from "@examples/db/types";
+import { CommentsSkeleton } from "@examples/kit/components/comments";
+import {
+	IssueBodySkeleton,
+	StatusSkeleton,
+} from "@examples/kit/components/issue-page";
+import { AssigneeCardSkeleton } from "@examples/kit/components/user";
 import { Button, buttonVariants } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
-import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import { dehydrate, type QueryHandle, useQuery } from "@raf-query/react";
 import { HydrationBoundary } from "@raf-query/experimental-react-router";
@@ -10,12 +15,12 @@ import { Suspense, use } from "react";
 import { isRouteErrorResponse } from "react-router";
 
 import { AppLink } from "~/components/app-link.tsx";
-import { Comments, CommentsSkeleton } from "~/components/comments.tsx";
+import { Comments } from "~/components/comments.tsx";
 import { EditBody } from "~/components/edit-body.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
 import { NotFound } from "~/components/not-found.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
-import { AssigneeCard, AssigneeCardSkeleton } from "~/components/user.tsx";
+import { AssigneeCard } from "~/components/user.tsx";
 import { createAppQueryClient } from "~/query-client.ts";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 import { withRequest } from "~/settings.ts";
@@ -168,28 +173,9 @@ function IssueBody(props: { readonly handle: QueryHandle<typeof issueQuery> }) {
 	);
 }
 
-function IssueBodySkeleton(props: { readonly id: number }) {
-	return (
-		<div className="grid gap-6">
-			<div className="flex items-baseline gap-2">
-				<Skeleton className="h-9 min-w-0 flex-1" />
-				<span className="shrink-0 text-lg text-muted-foreground">
-					#{props.id}
-				</span>
-			</div>
-			<Skeleton className="h-5 w-40" />
-			<Skeleton className="h-28" />
-		</div>
-	);
-}
-
 function IssueStatus(props: {
 	readonly handle: QueryHandle<typeof issueQuery>;
 }) {
 	const issue = useIssue(props.handle);
 	return <StatusSelect align="end" issueId={issue.id} status={issue.status} />;
-}
-
-function StatusSkeleton() {
-	return <Skeleton className="h-6 w-24 rounded-full" />;
 }

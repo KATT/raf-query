@@ -1,19 +1,10 @@
-import { Avatar, AvatarFallback } from "@examples/ui/components/avatar";
-import { Card, CardContent } from "@examples/ui/components/card";
-import { Skeleton } from "@examples/ui/components/skeleton";
+import { AssigneeCardView } from "@examples/kit/components/user";
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { Result, Schema } from "effect";
 import { use } from "react";
 
 import { assigneeQuery } from "~/queries.ts";
 import { IssueNotFound } from "~/rpc.ts";
-
-function initials(name: string) {
-	return name
-		.split(" ")
-		.map((part) => part[0])
-		.join("");
-}
 
 /**
  * Reads the assignee as `Result<User, …>`. The client's `layer` defaults
@@ -42,25 +33,6 @@ export function AssigneeCard(props: {
 					</button>
 				</div>
 			),
-		onSuccess: (assignee) => (
-			<Card className="py-4">
-				<CardContent className="flex items-center gap-3 px-4">
-					<Avatar>
-						<AvatarFallback>{initials(assignee.name)}</AvatarFallback>
-					</Avatar>
-					<div className="grid">
-						<span className="text-xs text-muted-foreground">Assignee</span>
-						<span className="font-medium">{assignee.name}</span>
-						<span className="text-xs text-muted-foreground">
-							{assignee.title}
-						</span>
-					</div>
-				</CardContent>
-			</Card>
-		),
+		onSuccess: (assignee) => <AssigneeCardView user={assignee} />,
 	});
-}
-
-export function AssigneeCardSkeleton() {
-	return <Skeleton className="h-[74px]" />;
 }
