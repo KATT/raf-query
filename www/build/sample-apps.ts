@@ -1,5 +1,6 @@
 import { Generator, getConfig } from "@tanstack/router-generator";
 import { Effect, FileSystem, Path } from "effect";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
 import { ContentError } from "./content-error.ts";
 
@@ -60,6 +61,46 @@ export const generateRouteTrees = Effect.fn("generateRouteTrees")(function* (
 						root: app,
 					}).run(),
 			}),
+		{ concurrency: "unbounded", discard: true },
+	);
+});
+
+/** Writes `.react-router/types` for each sample app with `react-router.config.ts`, like `react-router typegen`. */
+export const generateRouteTypes = Effect.fn("generateRouteTypes")(function* (
+	samplesDir: string,
+) {
+	const fs = yield* FileSystem.FileSystem;
+	const path = yield* Path.Path;
+	const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+	const apps = yield* Effect.filter(yield* sampleApps(samplesDir), (app) =>
+		fs.exists(path.join(app, "react-router.config.ts")),
+	);
+	yield* Effect.forEach(
+		apps,
+		Effect.fnUntraced(function* (app) {
+			const exitCode = yield* spawner
+				.exitCode(
+					ChildProcess.make(
+						path.join(app, "node_modules/.bin/react-router"),
+						["typegen"],
+						{ cwd: app, stderr: "inherit", stdout: "ignore" },
+					),
+				)
+				.pipe(
+					Effect.mapError(
+						(cause) =>
+							new ContentError({
+								cause,
+								message: `${app}: couldn't run react-router typegen`,
+							}),
+					),
+				);
+			if (exitCode !== 0) {
+				return yield* new ContentError({
+					message: `${app}: react-router typegen exited with ${exitCode}`,
+				});
+			}
+		}),
 		{ concurrency: "unbounded", discard: true },
 	);
 });
