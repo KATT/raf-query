@@ -54,12 +54,12 @@ html[data-announcement-dismissed] .announcement-bar {
 	letter-spacing: -0.01em;
 }
 
-.prose .heading-anchor {
+.heading-anchor {
 	color: inherit;
 	text-decoration: none;
 }
 
-.prose .heading-anchor::after {
+.heading-anchor::after {
 	content: "#";
 	margin-left: 0.4em;
 	color: var(--muted-foreground);
@@ -67,8 +67,8 @@ html[data-announcement-dismissed] .announcement-bar {
 	transition: opacity 120ms;
 }
 
-.prose :where(h2, h3):hover .heading-anchor::after,
-.prose .heading-anchor:focus-visible::after {
+:where(h2, h3):hover .heading-anchor::after,
+.heading-anchor:focus-visible::after {
 	opacity: 1;
 }
 

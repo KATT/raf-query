@@ -102,12 +102,25 @@ const features: ReadonlyArray<{
 	},
 ];
 
+/** The heading's text, linking to its own id. */
+function HashLink(props: {
+	readonly children: ReactNode;
+	readonly id: string;
+}) {
+	return (
+		<a className="heading-anchor" href={`#${props.id}`}>
+			{props.children}
+		</a>
+	);
+}
+
 const docLink = "font-medium text-foreground underline underline-offset-4";
 
 const steps: ReadonlyArray<{
 	readonly body: ReactNode;
 	readonly code: ReadonlyArray<DocSegment>;
 	readonly guide: string;
+	readonly id: string;
 	readonly slug: string;
 	readonly title: string;
 }> = [
@@ -135,6 +148,7 @@ const steps: ReadonlyArray<{
 		),
 		code: homeLoader.segments,
 		guide: "Starting queries",
+		id: "start-in-the-loader",
 		slug: "starting-queries",
 		title: "Start them in the route loader",
 	},
@@ -157,6 +171,7 @@ const steps: ReadonlyArray<{
 		),
 		code: homeComponent.segments,
 		guide: "Reading queries",
+		id: "read-in-components",
 		slug: "reading-queries",
 		title: "Read them in components",
 	},
@@ -232,10 +247,10 @@ function HomePage() {
 				className="mx-auto max-w-7xl border-b px-4 py-16 sm:px-6"
 			>
 				<h2
-					className="mb-2 text-2xl font-semibold tracking-tight"
+					className="mb-2 scroll-mt-20 text-2xl font-semibold tracking-tight"
 					id="how-it-works"
 				>
-					How a route loads its data
+					<HashLink id="how-it-works">How a route loads its data</HashLink>
 				</h2>
 				<p className="mb-12 max-w-2xl text-muted-foreground [&_code]:font-mono [&_code]:text-[0.9em] [&_code]:text-foreground">
 					A page says what it needs before it renders. The route starts every
@@ -254,8 +269,9 @@ function HomePage() {
 				<ol className="grid gap-16">
 					{steps.map((step, index) => (
 						<li
-							className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-12"
-							key={step.slug}
+							className="grid scroll-mt-20 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-12"
+							id={step.id}
+							key={step.id}
 						>
 							<div className="grid content-start gap-4 lg:sticky lg:top-24">
 								<h3 className="flex items-center gap-3 text-xl font-semibold tracking-tight">
@@ -265,7 +281,7 @@ function HomePage() {
 									>
 										{index + 1}
 									</span>
-									{step.title}
+									<HashLink id={step.id}>{step.title}</HashLink>
 								</h3>
 								<div className="grid gap-3 text-muted-foreground [&_code]:font-mono [&_code]:text-[0.9em] [&_code]:text-foreground">
 									{step.body}
@@ -291,10 +307,10 @@ function HomePage() {
 				className="mx-auto max-w-7xl px-4 py-16 sm:px-6"
 			>
 				<h2
-					className="mb-2 text-2xl font-semibold tracking-tight"
+					className="mb-2 scroll-mt-20 text-2xl font-semibold tracking-tight"
 					id="principles"
 				>
-					Built around how React wants data
+					<HashLink id="principles">Built around how React wants data</HashLink>
 				</h2>
 				<p className="mb-8 max-w-2xl text-muted-foreground">
 					Fetch-on-render is an explicitly named escape hatch, not the default.
@@ -322,10 +338,10 @@ function HomePage() {
 			<section aria-labelledby="try-it" className="border-y bg-muted/30 py-16">
 				<div className="mx-auto max-w-5xl px-4 sm:px-6">
 					<h2
-						className="mb-2 text-2xl font-semibold tracking-tight"
+						className="mb-2 scroll-mt-20 text-2xl font-semibold tracking-tight"
 						id="try-it"
 					>
-						Try it: prefetch, ensure or fetch
+						<HashLink id="try-it">Try it: prefetch, ensure or fetch</HashLink>
 					</h2>
 					<p className="max-w-2xl text-muted-foreground">
 						The demo runs in your browser against a fake server, with the
@@ -340,8 +356,13 @@ function HomePage() {
 				className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2"
 			>
 				<div className="grid content-start gap-4">
-					<h2 className="text-2xl font-semibold tracking-tight" id="tanstack">
-						Standing on TanStack Query’s shoulders
+					<h2
+						className="scroll-mt-20 text-2xl font-semibold tracking-tight"
+						id="tanstack"
+					>
+						<HashLink id="tanstack">
+							Standing on TanStack Query’s shoulders
+						</HashLink>
 					</h2>
 					<p className="text-muted-foreground">
 						The cache’s mechanics follow{" "}

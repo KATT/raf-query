@@ -272,18 +272,23 @@ function Toolbar(props: {
 
 /**
  * A live demo in a box: its own query client and fake server, with the
- * cache's queries underneath, each with its readers and requests. Expanding it opens
- * the same session in a dialog with the devtools panel. A demo with
+ * cache's queries underneath, each with its readers and requests. Expanding it
+ * opens the same session in a dialog with the devtools panel; the caller owns
+ * whether it's open, so the URL can. A demo with
  * variants gets a switch, and a session per variant; Reset starts them all
  * over and keeps the switch where it is. A browser's Reload starts only its
  * own variant over, on the URL it was showing.
  */
-export function DemoFrame(props: { readonly demo: DemoDefinition }) {
+export function DemoFrame(props: {
+	readonly demo: DemoDefinition;
+	readonly expanded: boolean;
+	readonly onExpandedChange: (expanded: boolean) => void;
+}) {
 	const demo = props.demo;
+	const expanded = props.expanded;
 	const [sessions, setSessions] = useState(() => sessionsFor(demo));
 	const [selected, setSelected] = useState(0);
 	const [opened, setOpened] = useState<ReadonlyArray<number>>([0]);
-	const [expanded, setExpanded] = useState(false);
 	const [latency, setLatency] = useState(demo.variants[0]?.server.latency);
 	const variant = demo.variants[selected];
 	const session = sessions[selected];
@@ -349,7 +354,7 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 					>
 						<Button
 							onClick={() => {
-								setExpanded(true);
+								props.onExpandedChange(true);
 							}}
 							size="xs"
 							variant="outline"
@@ -370,7 +375,7 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 				)}
 			</div>
 			<Inspector className="border-t bg-muted/30 px-4 py-3" {...inspected} />
-			<Dialog onOpenChange={setExpanded} open={expanded}>
+			<Dialog onOpenChange={props.onExpandedChange} open={expanded}>
 				<DialogContent className="grid h-[min(56rem,92dvh)] w-[96vw] max-w-none grid-rows-[auto_1fr] gap-4 overflow-hidden p-5 sm:max-w-7xl">
 					<div className="grid gap-2 pr-8">
 						<DialogTitle className="flex items-center gap-2">
