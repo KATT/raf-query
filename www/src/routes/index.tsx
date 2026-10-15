@@ -19,8 +19,10 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import homeComponentNext from "sample:nextjs/src/app/posts/[slug]/post.tsx#component";
-import homeLoaderNext from "sample:nextjs/src/app/posts/[slug]/page.tsx#page";
+import homeCommentsHeroNext from "sample:nextjs/src/app/(blog)/components/comments.tsx#hero";
+import homeCommentsNext from "sample:nextjs/src/app/(blog)/components/comments.tsx#component";
+import homePostNext from "sample:nextjs/src/app/(blog)/components/post.tsx#component";
+import homeLoaderNext from "sample:nextjs/src/app/(blog)/posts/[slug]/page.tsx#page";
 import home from "sample:tanstack-start/src/routes/blog.$slug.tsx#hero";
 import homeComponent from "sample:tanstack-start/src/routes/blog.$slug.tsx#component";
 import homeLoader from "sample:tanstack-start/src/routes/blog.$slug.tsx#route";
@@ -137,8 +139,13 @@ function HashLink(props: {
 const docLink = "font-medium text-foreground underline underline-offset-4";
 
 const heroByMode = {
-	nextjs: [...homeLoaderNext.segments, ...homeComponentNext.segments],
-	// Start keeps loader + components in one file; Next.js needs the App Router split.
+	nextjs: [
+		...homeLoaderNext.segments,
+		...homePostNext.segments,
+		...homeCommentsHeroNext.segments,
+	],
+	// Start keeps loader + components in one file; Next.js splits the server
+	// page from the client components it renders.
 	"tanstack-start": home.segments,
 } as const satisfies Record<FrameworkMode, ReadonlyArray<DocSegment>>;
 
@@ -191,7 +198,7 @@ const stepsByMode = {
 					</p>
 				</>
 			),
-			code: homeComponentNext.segments,
+			code: [...homePostNext.segments, ...homeCommentsNext.segments],
 			guide: "Reading queries",
 			id: "read-in-components",
 			slug: "reading-queries",

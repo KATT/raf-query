@@ -46,14 +46,14 @@ function Post(props: { handle: QueryHandle<typeof postQuery> }) {
 	return <h1>{use(post).title}</h1>;
 }
 
+// ---collapse---
 function PostComments(props: { handle: QueryHandle<typeof commentsQuery> }) {
-	// ---collapse---
 	// May still be loading. If so, use() suspends until it lands.
 	const [pages] = useQuery(commentsQuery, props.handle);
 	return use(pages)
 		.pages.flatMap((page) => page.items)
 		.map(renderComment);
-	// ---/collapse---
 }
+// ---/collapse---
 // #endregion component
 // #endregion hero

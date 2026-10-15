@@ -1,8 +1,13 @@
 import { HydrationBoundary } from "@raf-query/react/rsc";
+import { Suspense } from "react";
 
-import { PostPage } from "./post.tsx";
+import { Comments } from "../../components/comments.tsx";
+import { CommentsSkeleton } from "../../components/comments-skeleton.tsx";
+import { Post } from "../../components/post.tsx";
 import { commentsQuery, postQuery } from "~/queries.ts";
 import { getQueryClient } from "~/query-client.ts";
+
+declare function PostSkeleton(): React.ReactNode;
 
 // #region page
 export default async function Page(props: {
@@ -15,7 +20,14 @@ export default async function Page(props: {
 	const post = qc.prefetch(postQuery, { slug });
 	return (
 		<HydrationBoundary client={qc}>
-			<PostPage comments={comments} post={post} />
+			<article>
+				<Suspense fallback={<PostSkeleton />}>
+					<Post handle={post} />
+				</Suspense>
+				<Suspense fallback={<CommentsSkeleton />}>
+					<Comments handle={comments} />
+				</Suspense>
+			</article>
 		</HydrationBoundary>
 	);
 }
