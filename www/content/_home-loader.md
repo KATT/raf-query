@@ -15,10 +15,8 @@ export const Route = createFileRoute("/posts/$slug")({
 		const input = { slug: args.params.slug };
 		// Starts the request and moves on.
 		const comments = qc.prefetch(commentsQuery, input);
-		//    ^?
 		// Starts the request, and the route change waits for it.
 		const post = await qc.ensure(postQuery, input);
-		//    ^?
 		return { comments, post };
 	},
 	component: PostPage,

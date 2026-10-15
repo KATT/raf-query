@@ -287,7 +287,7 @@ function HomePage() {
 									{step.guide} <ArrowRight className="inline size-4" />
 								</Link>
 							</div>
-							<div className="min-w-0">
+							<div className="min-w-0 [&_.code-block]:my-0!">
 								<DocBody demos={{}} segments={step.code} />
 							</div>
 						</li>
