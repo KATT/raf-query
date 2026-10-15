@@ -1,6 +1,6 @@
 ---
 title: Coming from TanStack Query
-description: How TanStack Query's APIs map onto raf-query, what stays the same, and what changes about where queries start.
+description: How TanStack Query's APIs map onto raf-query, what stays the same, what changes about where queries start, and what we leave out on purpose.
 section: Getting started
 order: 4
 ---
@@ -45,6 +45,56 @@ What changes is the API around the cache. TanStack Query lets any component star
 - **Mutations aren't a hook.** Actions, `useOptimistic` and `useActionState` already give you pending, optimistic and error state.
 - **Hydration is a stream.** Handles carry only a key and an input. The server's cache streams to the browser as queries settle, and pending queries cross as promises.
 - **Browser-only queries are first-class.** `ssr: false` skips the server and runs in the browser — push subscriptions, permissions, service workers — with the same factory and handle API. See [Browser-only queries](./ssr-and-hydration.md#browser-only-queries).
+
+## What we leave out
+
+TanStack Query is mature and broad. raf-query is a narrower experiment: what that cache looks like when queries start in loaders and server components, and components only read them. The gaps below are intentional, thinned, or outside that scope — not unfinished ports of the same API.
+
+### Intentional
+
+Things that would undo the render-as-you-fetch shape:
+
+| TanStack Query                                                    | Why raf-query leaves it out                                                                                                                                  | Closest substitute                                                               |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| `useQuery` that starts a request in render                        | Starting in render is what causes request waterfalls                                                                                                         | Loader / RSC `prefetch` · [`useWaterfall`](./request-waterfalls.md) escape hatch |
+| `enabled` / `skipToken`                                           | The route owns the input; if it isn't there yet, don't start the query                                                                                       | URL / `loaderDeps` gate the start                                                |
+| `refetchOnMount` / `retryOnMount`                                 | Mounting a reader must never fetch; whoever started the query decides                                                                                        | Loader revalidate · invalidate · focus / reconnect · `refetch()`                 |
+| Changing input at the read site                                   | Anything that changes what a query fetches lives in the URL so the loader starts the right one                                                               | Search params → loader → new handle                                              |
+| Dependent queries as a normal pattern                             | `await`-then-start chains create waterfalls; reshape the route or backend instead                                                                            | Route input · backend join · `useWaterfall` last resort                          |
+| `select`                                                          | Keep one cached shape; derive in the `queryFn` or the component                                                                                              | `queryFn` mapping · component derive                                             |
+| Arbitrary `placeholderData`                                       | Only the keep-previous-page case is needed for URL-driven list switches                                                                                      | `whilePending: "previous"` + `isPrevious`                                        |
+| `useMutation` / MutationCache / mutation keys / offline mutations | React Actions, `useOptimistic` and `useActionState` already cover pending, optimistic UI and errors; the cache only invalidates or `setData` after the write | Form action · `startTransition` · `qc.invalidate` / `setData`                    |
+| Non-suspense status model (`isLoading`, `status`, `fetchStatus`)  | The API is promise-first: `use()` under Suspense; controls stay thin (`isPending`, `isFetching`, `isStale`, `error`)                                         | `use(promise)` · Suspense · error boundary                                       |
+| `useQueries` / `useSuspenseQueries` / `combine`                   | Parallelism belongs in the loader (start every query before awaiting any), not a multi-observer hook                                                         | Multiple `prefetch` / `ensure` · [`allKeyed`](./starting-queries.md)             |
+| Manual `HydrationBoundary` + `dehydrate` as the default path      | Handles carry key + input only; the cache streams. RSC still uses a boundary where needed                                                                    | Router stream · [`/rsc` HydrationBoundary](./ssr-and-hydration.md)               |
+| Separate `useInfiniteQuery` / `prefetchInfinite*` verbs           | Paged vs plain is decided only by the factory                                                                                                                | `infiniteQueryOptions` + `useQuery`                                              |
+
+### Thinned
+
+Same problem space, fewer knobs:
+
+| TanStack Query                                                      | What raf-query does instead                                                                           |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `networkMode` (`offlineFirst` / `always`) + `fetchStatus: "paused"` | Retries pause while offline; the first attempt always runs (`navigator.onLine` is unreliable)         |
+| `refetchOnWindowFocus` / `Reconnect`: `'always'` or a function      | Boolean only: refetch read + stale queries, or don't                                                  |
+| `refetchIntervalInBackground`                                       | Polling is per-read and pauses while the tab is hidden                                                |
+| `initialData` / `initialDataUpdatedAt`                              | Seed with `setData` / hydrate, or let the loader fetch                                                |
+| Custom `structuralSharing` merge function                           | Boolean on / off; deep equality on plain objects and arrays                                           |
+| Query filter `type` / `stale` / `fetchStatus` fields                | Filter is `{ queryKey?, exact?, predicate? }`; `predicate` covers the rest                            |
+| `cancelQueries` as its own verb                                     | `remove` cancels; unread background refetches abort when the last reader leaves                       |
+| Manual `notifyOnChangeProps` allowlist                              | Automatic tracked results, like TanStack's default path                                               |
+| `throwOnError` as a function / for promise `queryFn`s               | Promise `queryFn`s always throw; Effect `queryFn`s can return a `Result` when `throwOnError` is false |
+
+### Out of scope
+
+| TanStack Query                                                  | Why                                                                            |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Multi-framework adapters (Vue, Solid, Svelte, Angular, …)       | A React + Suspense / RSC / loader experiment, not a framework-agnostic product |
+| `PersistQueryClient` / storage persisters / per-query persister | No offline persistence story; the cache is in-memory plus the SSR stream       |
+| Default `queryFn` / `setQueryDefaults` / `getQueryDefaults`     | Every query is an explicit factory; no key → defaultFn registry                |
+| Custom `queryKeyHashFn` / precomputed `queryHash`               | One hashing function (`hashKey`); keys stay plain arrays                       |
+| `@tanstack/eslint-plugin-query`                                 | Factories and handles carry the constraint instead of lint rules               |
+| `isMutating` / mutation filters / dehydrating mutations         | No mutation subsystem                                                          |
 
 ## Why a different API?
 

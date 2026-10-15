@@ -17,6 +17,7 @@ export {
 	type UseQueryControls,
 	type UseQueryOptions,
 	type UseQueryResult,
+	type UseQueryResultWithData,
 	type UseQueryThrowOptions,
 } from "./use-query.ts";
 export { useWaterfall } from "./use-waterfall.ts";

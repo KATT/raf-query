@@ -3,14 +3,14 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
 	allKeyed,
-	type QueryHandle,
+	type QueryHandleWithData,
 	queryOptions,
 	useIsFetching,
 	useQuery,
 	useQueryClient,
 } from "@raf-query/react";
 import { RefreshCw } from "lucide-react";
-import { startTransition, use } from "react";
+import { startTransition } from "react";
 
 import { DemoBrowser } from "~/demo-kit/browser.tsx";
 import { Spinner } from "~/demo-kit/controls.tsx";
@@ -38,7 +38,7 @@ function statQuery(input: { readonly stat: Stat }) {
 	});
 }
 
-type PageData = Readonly<Record<Stat, QueryHandle<typeof statQuery>>>;
+type PageData = Readonly<Record<Stat, QueryHandleWithData<typeof statQuery>>>;
 
 function GlobalIndicator() {
 	const fetching = useIsFetching();
@@ -62,11 +62,10 @@ function GlobalIndicator() {
 }
 
 function StatCard(props: {
-	readonly handle: QueryHandle<typeof statQuery>;
+	readonly handle: QueryHandleWithData<typeof statQuery>;
 	readonly stat: Stat;
 }) {
-	const [valuePromise, stat] = useQuery(statQuery, props.handle);
-	const value = use(valuePromise);
+	const [value, stat] = useQuery(statQuery, props.handle);
 	return (
 		<section
 			aria-busy={stat.isFetching}

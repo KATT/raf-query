@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.9.0](https://github.com/KATT/raf-query/compare/0.8.0...0.9.0) (2026-10-15)
+
+### ⚠ BREAKING CHANGES
+
+- useQuery returns the data for a handle from ensure or fetch ([#144](https://github.com/KATT/raf-query/issues/144))
+
+### Features
+
+- useQuery returns the data for a handle from ensure or fetch ([#144](https://github.com/KATT/raf-query/issues/144)) ([1845244](https://github.com/KATT/raf-query/commit/18452443ba61c205a53c4f71d60ec99a9b8620a7)), references [#142](https://github.com/KATT/raf-query/issues/142)
+
+### Documentation
+
+- call the early API a note about minor releases ([#143](https://github.com/KATT/raf-query/issues/143)) ([2d79eed](https://github.com/KATT/raf-query/commit/2d79eed7b107b6d16898ebb203a9bdfcfb3856c4))
+- show prefetch and ensure, and make list queries infinite ([#140](https://github.com/KATT/raf-query/issues/140)) ([25cfaa0](https://github.com/KATT/raf-query/commit/25cfaa08f9f192af7efded1269f4ae8a9e5f1026))
+
 ## [0.8.0](https://github.com/KATT/raf-query/compare/0.7.12...0.8.0) (2026-10-15)
 
 ### ⚠ BREAKING CHANGES
