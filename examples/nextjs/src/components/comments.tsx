@@ -2,27 +2,17 @@
 
 import { api, parseResponse } from "~/api.ts";
 import { type Comment, currentUser } from "@examples/db/types";
-import { Button } from "@examples/ui/components/button";
+import {
+	CommentComposer,
+	CommentItem,
+	CommentSkeletons,
+} from "@examples/kit/components/comments";
 import { LoadMore } from "@examples/kit/components/load-more";
-import { Skeleton } from "@examples/ui/components/skeleton";
-import { Textarea } from "@examples/ui/components/textarea";
 import { warnMockDbWrite } from "@examples/kit/lib/mock-db-toast";
-import { cn } from "@examples/ui/lib/utils";
 import { type QueryHandle, useQuery, useQueryClient } from "@raf-query/react";
-import { Loader2 } from "lucide-react";
 import { use, useOptimistic, useRef } from "react";
-import { useFormStatus } from "react-dom";
 
 import { commentsQuery } from "~/queries.ts";
-
-const commentClassName = "rounded-lg border p-3";
-
-const timeFormat = new Intl.DateTimeFormat("en", {
-	day: "numeric",
-	hour: "numeric",
-	minute: "2-digit",
-	month: "short",
-});
 
 export function Comments(props: {
 	readonly handle: QueryHandle<typeof commentsQuery>;
@@ -86,39 +76,14 @@ export function Comments(props: {
 				<CommentComposer />
 			</form>
 			<ol className="grid gap-3">
-				{shown.map((comment) => {
-					const pending = !confirmedIds.has(comment.id);
-					return (
-						<li
-							aria-busy={pending || undefined}
-							className={cn(
-								commentClassName,
-								pending
-									? "animate-pulse border-dashed bg-muted/40 text-muted-foreground"
-									: !firstPage.has(comment.id) &&
-											"animate-in duration-500 fade-in",
-							)}
-							key={comment.id}
-						>
-							<div className="mb-1 flex gap-2 text-xs text-muted-foreground">
-								<span
-									className={cn(
-										"font-medium",
-										pending ? "text-muted-foreground" : "text-foreground",
-									)}
-								>
-									{comment.author.name}
-								</span>
-								<time dateTime={comment.createdAt}>
-									{pending
-										? "Posting…"
-										: timeFormat.format(new Date(comment.createdAt))}
-								</time>
-							</div>
-							<p className="text-sm">{comment.body}</p>
-						</li>
-					);
-				})}
+				{shown.map((comment) => (
+					<CommentItem
+						comment={comment}
+						fadeIn={!firstPage.has(comment.id)}
+						key={comment.id}
+						pending={!confirmedIds.has(comment.id)}
+					/>
+				))}
 				{comments.isFetchingNextPage ? (
 					<CommentSkeletons
 						count={Math.min(
@@ -136,47 +101,5 @@ export function Comments(props: {
 				/>
 			) : null}
 		</section>
-	);
-}
-
-function CommentComposer() {
-	const { pending } = useFormStatus();
-	return (
-		<>
-			<Textarea
-				disabled={pending}
-				name="body"
-				placeholder="Add a comment"
-				required
-			/>
-			<Button
-				className="justify-self-end"
-				disabled={pending}
-				type="submit"
-				variant={pending ? "secondary" : "default"}
-			>
-				{pending ? <Loader2 className="animate-spin" /> : null}
-				{pending ? "Posting…" : "Comment"}
-			</Button>
-		</>
-	);
-}
-
-function CommentSkeletons(props: { readonly count: number }) {
-	return Array.from({ length: props.count }, (_, index) => (
-		<li className={commentClassName} key={index}>
-			<Skeleton className="mb-1 h-4 w-32" />
-			<Skeleton className="h-5 w-full" />
-		</li>
-	));
-}
-
-export function CommentsSkeleton() {
-	return (
-		<div className="grid gap-3">
-			<Skeleton className="h-6 w-32" />
-			<Skeleton className="h-16" />
-			<Skeleton className="h-16" />
-		</div>
 	);
 }

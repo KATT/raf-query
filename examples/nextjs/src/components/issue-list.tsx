@@ -1,26 +1,22 @@
 "use client";
 
 import { Card } from "@examples/ui/components/card";
+import {
+	IssueListSummary,
+	IssueRow,
+	issueRowClassName,
+	IssueRowSkeletons,
+	NoIssues,
+} from "@examples/kit/components/issue-list";
 import { LoadMore } from "@examples/kit/components/load-more";
-import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { MessageSquare } from "lucide-react";
 import { AppLink } from "./settings.tsx";
 import { use } from "react";
 
 import { issueListQuery } from "~/queries.ts";
 
 import { StatusSelect } from "./status-select.tsx";
-
-const dateFormat = new Intl.DateTimeFormat("en", {
-	day: "numeric",
-	month: "short",
-});
-
-// Rows and their skeletons share one fixed height, so a loaded page takes
-// exactly the space its skeletons held and nothing below it moves.
-const rowClassName = "flex h-12 items-center gap-3 px-4";
 
 export function IssueList(props: {
 	readonly handle: QueryHandle<typeof issueListQuery>;
@@ -41,13 +37,9 @@ export function IssueList(props: {
 				list.isPrevious && "opacity-50",
 			)}
 		>
-			<p className="text-sm text-muted-foreground">
-				Showing {shown} of {total} issues
-			</p>
+			<IssueListSummary shown={shown} total={total} />
 			<Card className="gap-0 divide-y py-0">
-				{shown === 0 ? (
-					<p className="p-6 text-sm text-muted-foreground">No issues.</p>
-				) : null}
+				{shown === 0 ? <NoIssues /> : null}
 				{pages.pages.map((page, index) => (
 					<div
 						className={cn(
@@ -58,36 +50,13 @@ export function IssueList(props: {
 					>
 						{page.issues.map((issue) => (
 							<AppLink
-								className={cn(rowClassName, "group hover:bg-muted/50")}
+								className={issueRowClassName}
 								href={`/issues/${issue.id}`}
 								key={issue.id}
 							>
-								<span className="w-10 shrink-0 text-sm text-muted-foreground">
-									#{issue.id}
-								</span>
-								{/* `w-0`: the full title must not set the row's minimum width on phones. */}
-								<span className="w-0 flex-1 truncate font-medium">
-									{issue.title}
-								</span>
-								<span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground max-sm:hidden">
-									<MessageSquare className="size-3" />
-									{issue.commentCount}
-								</span>
-								<span className="w-14 shrink-0 text-right text-xs text-muted-foreground max-sm:hidden">
-									{dateFormat.format(new Date(issue.createdAt))}
-								</span>
-								{/* The menu sits in the row link. Cancel the click so it doesn't navigate. */}
-								<span
-									className="shrink-0"
-									onAuxClick={(event) => {
-										event.preventDefault();
-									}}
-									onClick={(event) => {
-										event.preventDefault();
-									}}
-								>
+								<IssueRow issue={issue}>
 									<StatusSelect issueId={issue.id} status={issue.status} />
-								</span>
+								</IssueRow>
 							</AppLink>
 						))}
 					</div>
@@ -106,27 +75,5 @@ export function IssueList(props: {
 				/>
 			) : null}
 		</div>
-	);
-}
-
-function IssueRowSkeletons(props: { readonly count: number }) {
-	return (
-		<div className="divide-y">
-			{Array.from({ length: props.count }, (_, index) => (
-				<div className={rowClassName} key={index}>
-					<Skeleton className="h-4 w-10" />
-					<Skeleton className="h-4 flex-1" />
-					<Skeleton className="h-5 w-20 rounded-full" />
-				</div>
-			))}
-		</div>
-	);
-}
-
-export function IssueListSkeleton() {
-	return (
-		<Card className="gap-0 py-0">
-			<IssueRowSkeletons count={10} />
-		</Card>
 	);
 }

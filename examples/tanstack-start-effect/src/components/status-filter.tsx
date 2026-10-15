@@ -1,12 +1,11 @@
 import { type QueryHandle, useQuery } from "@raf-query/react";
+import { statusLabel } from "@examples/kit/components/status-badge";
 import { cn } from "@examples/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { use } from "react";
 
 import { issueCountsQuery } from "~/queries.ts";
 import { type IssueListInput, issueSorts, issueStatuses } from "~/rpc.ts";
-
-import { statusLabel } from "./status-badge.tsx";
 
 export function StatusFilter(props: {
 	readonly counts: QueryHandle<typeof issueCountsQuery>;
