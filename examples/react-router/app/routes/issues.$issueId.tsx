@@ -1,3 +1,4 @@
+import { IssueId } from "@examples/db/types";
 import { CommentsSkeleton } from "@examples/kit/components/comments";
 import {
 	IssueBodySkeleton,
@@ -11,6 +12,7 @@ import { dehydrate, type QueryHandle, useQuery } from "@raf-query/react";
 import { HydrationBoundary } from "@raf-query/react/react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Suspense, use } from "react";
+import { isRouteErrorResponse } from "react-router";
 
 import { AppLink } from "~/components/app-link.tsx";
 import { Comments } from "~/components/comments.tsx";
@@ -28,6 +30,9 @@ import type { Route } from "./+types/issues.$issueId";
 export async function loader(args: Route.LoaderArgs) {
 	return withRequest(args.request, () => {
 		const id = Number(args.params.issueId);
+		if (!IssueId.safeParse(id).success) {
+			throw new Response("Not Found", { status: 404 });
+		}
 		const { queryClient } = createAppQueryClient();
 		const assignee = queryClient.prefetch(assigneeQuery, { issueId: id });
 		const comments = queryClient.prefetch(commentsQuery, { issueId: id });
@@ -86,7 +91,10 @@ export default function IssuePage(props: Route.ComponentProps) {
 
 /** A missing issue shows the not-found page; other errors go to the root's. */
 export function ErrorBoundary(props: Route.ErrorBoundaryProps) {
-	if (props.error === issueNotFound) {
+	if (
+		props.error === issueNotFound ||
+		(isRouteErrorResponse(props.error) && props.error.status === 404)
+	) {
 		return <NotFound />;
 	}
 	throw props.error;
