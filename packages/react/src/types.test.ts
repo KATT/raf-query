@@ -139,15 +139,100 @@ describe("types", () => {
 		expect(typeOnly).toBeTypeOf("function");
 	});
 
+	it("keep handles of branded factories with the same signature apart", () => {
+		const article = Symbol("article");
+		const draft = Symbol("draft");
+		const articleComments = Symbol("article comments");
+		const draftComments = Symbol("draft comments");
+		function articleQuery(input: { slug: string }) {
+			return queryOptions({
+				brand: article,
+				queryFn: () => ({ slug: input.slug, title: "Hello" }),
+				queryKey: ["article", input.slug],
+			});
+		}
+		function draftQuery(input: { slug: string }) {
+			return queryOptions({
+				brand: draft,
+				queryFn: () => ({ slug: input.slug, title: "Draft" }),
+				queryKey: ["draft", input.slug],
+			});
+		}
+		function articleCommentsQuery(input: { slug: string }) {
+			return infiniteQueryOptions({
+				brand: articleComments,
+				getNextPageParam: (lastPage: { next: number | null }) => lastPage.next,
+				initialPageParam: 0,
+				queryFn: (context) => ({ next: context.pageParam + 1 }),
+				queryKey: ["article-comments", input.slug],
+			});
+		}
+		function draftCommentsQuery(input: { slug: string }) {
+			return infiniteQueryOptions({
+				brand: draftComments,
+				getNextPageParam: (lastPage: { next: number | null }) => lastPage.next,
+				initialPageParam: 0,
+				queryFn: (context) => ({ next: context.pageParam + 1 }),
+				queryKey: ["draft-comments", input.slug],
+			});
+		}
+		expectTypeOf(articleQuery({ slug: "a" })).toEqualTypeOf<
+			QueryOptions<{
+				brand: typeof article;
+				data: { slug: string; title: string };
+			}>
+		>();
+		const qc = new QueryClient({ isServer: true });
+		const articleHandle = qc.prefetch(articleQuery, { slug: "a" });
+		const commentsHandle = qc.prefetch(articleCommentsQuery, { slug: "a" });
+		const unbrandedHandle = qc.prefetch(postQuery, { slug: "a" });
+		expectTypeOf(articleHandle).not.toExtend<QueryHandle<typeof draftQuery>>();
+		expectTypeOf(articleHandle).not.toExtend<QueryHandle<typeof postQuery>>();
+		expectTypeOf(unbrandedHandle).not.toExtend<
+			QueryHandle<typeof articleQuery>
+		>();
+		expectTypeOf(commentsHandle).not.toExtend<
+			QueryHandle<typeof draftCommentsQuery>
+		>();
+		expectTypeOf(articleHandle).toExtend<QueryHandle>();
+
+		function useTypeOnly() {
+			// @ts-expect-error the handle is `articleQuery`'s
+			useQuery(draftQuery, articleHandle);
+			// @ts-expect-error the handle is `articleQuery`'s
+			useQuery(postQuery, articleHandle);
+			// @ts-expect-error the handle is the unbranded `postQuery`'s
+			useQuery(articleQuery, unbrandedHandle);
+			// @ts-expect-error the handle is `articleCommentsQuery`'s
+			useQuery(draftCommentsQuery, commentsHandle);
+			const [data] = useQuery(articleQuery, articleHandle);
+			expectTypeOf(data).resolves.toEqualTypeOf<{
+				slug: string;
+				title: string;
+			}>();
+		}
+		expect(useTypeOnly).toBeTypeOf("function");
+	});
+
 	it("infer a queryFn Effect's services and error", () => {
 		expectTypeOf(userQuery({ id: 1 })).toEqualTypeOf<
-			QueryOptions<{ data: string; error: NotFound; services: Api }>
+			QueryOptions<{
+				brand: undefined;
+				data: string;
+				error: NotFound;
+				services: Api;
+			}>
 		>();
 		expectTypeOf(otherQuery()).toEqualTypeOf<
-			QueryOptions<{ data: string; error: never; services: Other }>
+			QueryOptions<{
+				brand: undefined;
+				data: string;
+				error: never;
+				services: Other;
+			}>
 		>();
 		expectTypeOf(postQuery({ slug: "a" })).toEqualTypeOf<
-			QueryOptions<{ data: { slug: string; title: string } }>
+			QueryOptions<{ brand: undefined; data: { slug: string; title: string } }>
 		>();
 		expectTypeOf<ServicesOf<typeof userQuery>>().toEqualTypeOf<Api>();
 		expectTypeOf<ErrorOf<typeof userQuery>>().toEqualTypeOf<NotFound>();

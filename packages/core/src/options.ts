@@ -3,16 +3,17 @@ import type { Effect, Schedule } from "effect";
 import type { QueryKey } from "./key.ts";
 
 /**
- * The types of a plain query: what its `queryFn` resolves to, and for an
- * Effect `queryFn`, its error and the services it needs. Leave `error` out
- * and it is `unknown` (promises reject with anything); leave `services` out
- * and it is `never`.
+ * The types of a plain query: what its `queryFn` resolves to, for an Effect
+ * `queryFn` its error and the services it needs, and its `brand`. Leave
+ * `error` out and it is `unknown` (promises reject with anything); leave
+ * `services` out and it is `never`; leave `brand` out for an unbranded query.
  *
  * ```ts
  * type PostOptions = QueryOptions<{ data: Post }>;
  * ```
  */
 export interface QueryTypes {
+	readonly brand?: symbol | undefined;
 	readonly data: unknown;
 	readonly error?: unknown;
 	readonly services?: unknown;
@@ -20,9 +21,10 @@ export interface QueryTypes {
 
 /**
  * The types of a paged query: one page, the param that loads it, and as in
- * {@link QueryTypes}, an Effect `queryFn`'s error and services.
+ * {@link QueryTypes}, an Effect `queryFn`'s error and services and the brand.
  */
 export interface InfiniteQueryTypes {
+	readonly brand?: symbol | undefined;
 	readonly error?: unknown;
 	readonly page: unknown;
 	readonly pageParam: unknown;
@@ -39,34 +41,42 @@ type ServicesIn<TTypes> = TTypes extends { readonly services: infer TServices }
 	? TServices
 	: never;
 
+/** `brand` of a types bag; any brand, or none, when it has no `brand`. */
+type BrandIn<TTypes> = TTypes extends { readonly brand: infer TBrand }
+	? TBrand
+	: symbol | undefined;
+
 /**
- * The bag `queryOptions` returns. `error` is left out when the `queryFn`
- * doesn't name one (`unknown`: a promise or a plain value). `services` is
- * left out when the `queryFn` needs none (`never`). An Effect's error,
- * including `never` when it can't fail, stays.
+ * The bag's optional members. `error` is left out when the `queryFn` doesn't
+ * name one (`unknown`: a promise or a plain value), and `services` when it
+ * needs none (`never`). An Effect's error, including `never` when it can't
+ * fail, stays. `brand` always stays, `undefined` for an unbranded query: a
+ * bag without it accepts every brand, which would let an unbranded factory
+ * take a branded factory's handles.
  */
-type QueryTypesOf<TData, TError, TServices> = unknown extends TError
-	? [TServices] extends [never]
-		? { data: TData }
-		: { data: TData; services: TServices }
-	: [TServices] extends [never]
-		? { data: TData; error: TError }
-		: { data: TData; error: TError; services: TServices };
+type OptionalTypes<TError, TServices, TBrand> = (unknown extends TError
+	? unknown
+	: { error: TError }) &
+	([TServices] extends [never] ? unknown : { services: TServices }) & {
+		brand: TBrand;
+	};
+
+type Flatten<T> = { [K in keyof T]: T[K] };
+
+/** The bag `queryOptions` returns. */
+type QueryTypesOf<TData, TError, TServices, TBrand> = Flatten<
+	{ data: TData } & OptionalTypes<TError, TServices, TBrand>
+>;
 
 /** As {@link QueryTypesOf}, for a paged query. */
-type InfiniteQueryTypesOf<TPage, TPageParam, TError, TServices> =
-	unknown extends TError
-		? [TServices] extends [never]
-			? { page: TPage; pageParam: TPageParam }
-			: { page: TPage; pageParam: TPageParam; services: TServices }
-		: [TServices] extends [never]
-			? { error: TError; page: TPage; pageParam: TPageParam }
-			: {
-					error: TError;
-					page: TPage;
-					pageParam: TPageParam;
-					services: TServices;
-				};
+type InfiniteQueryTypesOf<TPage, TPageParam, TError, TServices, TBrand> =
+	Flatten<
+		{ page: TPage; pageParam: TPageParam } & OptionalTypes<
+			TError,
+			TServices,
+			TBrand
+		>
+	>;
 
 /**
  * What a `queryFn` may return: a value, a promise, or an `Effect`. An
@@ -167,6 +177,18 @@ export interface QueryBehavior {
 	readonly structuralSharing?: boolean;
 }
 
+interface BrandField<TBrand> {
+	/**
+	 * A `unique symbol` that makes the factory's type its own: a handle of a
+	 * factory with another brand, or with none, doesn't type-check where this
+	 * factory's goes, even when both take the same input and return the same
+	 * data. Declare one `const` symbol per factory, next to it. `undefined`
+	 * (absent) for an unbranded query. Only types read it. Options typed by a
+	 * bag without `brand` take any brand.
+	 */
+	readonly brand: TBrand;
+}
+
 declare const servicesType: unique symbol;
 
 interface ServicesField<TServices> {
@@ -179,7 +201,10 @@ interface ServicesField<TServices> {
 }
 
 export interface QueryOptions<TTypes extends QueryTypes>
-	extends QueryBehavior, ServicesField<ServicesIn<TTypes>> {
+	extends
+		BrandField<BrandIn<TTypes>>,
+		QueryBehavior,
+		ServicesField<ServicesIn<TTypes>> {
 	readonly kind: "query";
 	queryFn(context: QueryFunctionContext): QueryFnResult<TTypes>;
 	readonly queryKey: QueryKey;
@@ -211,6 +236,7 @@ interface PageFunctions<TPage, TPageParam, TResult> {
 
 export interface InfiniteQueryOptions<TTypes extends InfiniteQueryTypes>
 	extends
+		BrandField<BrandIn<TTypes>>,
 		PageFunctions<
 			TTypes["page"],
 			TTypes["pageParam"],
@@ -263,35 +289,53 @@ export type AnyQueryOptions =
  * type. A promise or a plain value has no error to infer, so the type leaves
  * `error` out (`ErrorOf` is `unknown`).
  *
+ * Two factories with the same input and data have the same type, so their
+ * handles mix. Pass a `brand` to give the factory a type of its own:
+ *
+ * ```ts
+ * const post = Symbol("post");
+ * export function postQuery(input: { slug: string }) {
+ *   return queryOptions({ brand: post, queryKey: …, queryFn: … });
+ * }
+ * ```
+ *
  * The type parameters are only there for TypeScript to infer the types bag
- * from `queryFn`; it can't infer a bag's members.
+ * from `queryFn` and `brand`; it can't infer a bag's members.
  */
-export function queryOptions<TData, TError = unknown, TServices = never>(
+export function queryOptions<
+	TData,
+	TError = unknown,
+	TServices = never,
+	TBrand extends symbol | undefined = undefined,
+>(
 	options: Omit<
 		QueryOptions<{ data: TData; error: TError; services: TServices }>,
-		"kind"
-	>,
-): QueryOptions<QueryTypesOf<TData, TError, TServices>> {
+		"brand" | "kind"
+	> & { readonly brand?: TBrand },
+): QueryOptions<QueryTypesOf<TData, TError, TServices, TBrand>> {
 	// SAFETY: `QueryTypesOf` only drops `error` when it is `unknown` and
 	// `services` when it is `never`, which is what `ErrorIn` / `ServicesIn`
-	// fill in for a bag that lacks them. The `queryFn` and the services
-	// phantom are the same type either way.
+	// fill in for a bag that lacks them. `brand` is the option itself, absent
+	// (`undefined`) when not given. The `queryFn` and the services phantom are
+	// the same type either way.
 	return {
 		...options,
 		kind: "query",
-	} as QueryOptions<QueryTypesOf<TData, TError, TServices>>;
+	} as unknown as QueryOptions<QueryTypesOf<TData, TError, TServices, TBrand>>;
 }
 
 /**
  * Typed options for a paged query factory. The page type is inferred from
  * `queryFn`, as in {@link queryOptions}. So is an Effect `queryFn`'s error;
- * a promise or a plain value leaves `error` out.
+ * a promise or a plain value leaves `error` out. `brand` works as in
+ * {@link queryOptions}.
  */
 export function infiniteQueryOptions<
 	TPage,
 	TPageParam,
 	TError = unknown,
 	TServices = never,
+	TBrand extends symbol | undefined = undefined,
 >(
 	options: Omit<
 		InfiniteQueryOptions<{
@@ -300,18 +344,18 @@ export function infiniteQueryOptions<
 			pageParam: TPageParam;
 			services: TServices;
 		}>,
-		"kind"
-	>,
+		"brand" | "kind"
+	> & { readonly brand?: TBrand },
 ): InfiniteQueryOptions<
-	InfiniteQueryTypesOf<TPage, TPageParam, TError, TServices>
+	InfiniteQueryTypesOf<TPage, TPageParam, TError, TServices, TBrand>
 > {
 	// SAFETY: as in `queryOptions`. Dropping a default `error` / `services`
 	// doesn't change `queryFn` or the services phantom.
 	return {
 		...options,
 		kind: "infinite",
-	} as InfiniteQueryOptions<
-		InfiniteQueryTypesOf<TPage, TPageParam, TError, TServices>
+	} as unknown as InfiniteQueryOptions<
+		InfiniteQueryTypesOf<TPage, TPageParam, TError, TServices, TBrand>
 	>;
 }
 
