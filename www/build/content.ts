@@ -8,7 +8,7 @@ import { parse as parseYaml } from "yaml";
 import type { Doc, DocMeta, DocSection, Sample } from "../src/content/types.ts";
 import { stripCollapseMarkers } from "./collapse.ts";
 import { ContentError, messageOf } from "./content-error.ts";
-import { generateRouteTrees } from "./sample-apps.ts";
+import { generateRouteTrees, generateRouteTypes } from "./sample-apps.ts";
 import { renderMarkdown } from "./markdown.ts";
 import { expandSnippets } from "./snippets.ts";
 
@@ -417,12 +417,17 @@ export function docsContent(options: ContentOptions): Plugin {
 		});
 	}
 
-	let routeTrees: Promise<void> | undefined;
+	let generated: Promise<unknown> | undefined;
 
 	return {
 		async buildStart() {
-			routeTrees ??= run(generateRouteTrees(samplesDir));
-			await routeTrees;
+			generated ??= run(
+				Effect.all(
+					[generateRouteTrees(samplesDir), generateRouteTypes(samplesDir)],
+					{ concurrency: "unbounded" },
+				),
+			);
+			await generated;
 		},
 		configurePreviewServer: serveAgentFiles,
 		configureServer: serveAgentFiles,

@@ -96,6 +96,7 @@ Subpath entries:
 | ---------------------------------- | ---------------------------------------------------------------- |
 | `@raf-query/react/tanstack-router` | `setupRouterIntegration`. [TanStack Start](./tanstack-start.md)  |
 | `@raf-query/react/rsc`             | `QueryProvider` and `HydrationBoundary`. [Next.js](./nextjs.md)  |
+| `@raf-query/react/react-router`    | `HydrationBoundary`. [React Router](./react-router.md)           |
 | `@raf-query/react/devtools`        | `QueryDevtools`, `QueryDevtoolsPanel`. [Devtools](./devtools.md) |
 
 ## @raf-query/core
