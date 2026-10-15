@@ -34,7 +34,7 @@ Assume the default `gcTime` of **5 minutes** and the default `staleTime` of `0`.
 6. **The last reader unmounts again, and nothing reads `["todos"]` for 5 minutes.**
    - The entry and its data are deleted.
 
-Try it. The demo's `todosQuery` has a `staleTime` of 5 seconds and a `gcTime` of 10, so you can watch the whole lifecycle in the cache panel:
+Try it. The demo's `todosQuery` has a `staleTime` of 5 seconds and a `gcTime` of 10, so you can watch the whole lifecycle in the Queries panel under it:
 
 ```demo
 caching
@@ -42,7 +42,7 @@ caching
 
 ## Fresh, stale and inactive
 
-The devtools and the demo's cache panel label each entry:
+The devtools label each entry with one of these statuses:
 
 | Status     | Meaning                                    |
 | ---------- | ------------------------------------------ |
@@ -51,6 +51,8 @@ The devtools and the demo's cache panel label each entry:
 | `stale`    | Read, and older than `staleTime`           |
 | `fresh`    | Read, and within `staleTime`               |
 | `inactive` | Nothing reads it; it's removed at `gcTime` |
+
+The demo's Queries panel shows the same states side by side: the data (fresh, stale or error), the readers (inactive at zero), and whether a request is loading.
 
 Only **read** entries refetch on window focus and reconnect. An inactive entry waits for whatever starts it next.
 

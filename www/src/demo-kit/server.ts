@@ -1,7 +1,11 @@
+import { hashKey, type QueryKey } from "@raf-query/react";
+
 export type RequestStatus = "aborted" | "error" | "pending" | "success";
 
 export interface NetworkRequest {
 	readonly endedAt: number | undefined;
+	/** The hash of the query that sent it, or `undefined` for a write. */
+	readonly hash: string | undefined;
 	readonly id: number;
 	readonly label: string;
 	readonly startedAt: number;
@@ -20,13 +24,16 @@ export interface FakeServer<TDb> {
 	reset(): void;
 	/**
 	 * Answer a request after `latency` ms (± 25%). The result is cloned, as a
-	 * response body parsed from JSON would be. Pass the `queryFn`'s `signal`
-	 * to see aborted requests in the log.
+	 * response body parsed from JSON would be. A `queryFn` passes its context,
+	 * so the log shows which query sent the request and when it was aborted.
 	 */
 	respond<T>(
 		label: string,
 		handler: (db: TDb) => T,
-		options?: { readonly signal?: AbortSignal },
+		options?: {
+			readonly queryKey?: QueryKey;
+			readonly signal?: AbortSignal;
+		},
 	): Promise<T>;
 	subscribe(listener: () => void): () => void;
 }
@@ -104,6 +111,7 @@ export function createFakeServer<TDb>(seed: () => TDb): FakeServer<TDb> {
 				...requests.slice(-11),
 				{
 					endedAt: undefined,
+					hash: options?.queryKey ? hashKey(options.queryKey) : undefined,
 					id,
 					label,
 					startedAt: Date.now(),

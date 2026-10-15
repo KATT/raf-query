@@ -22,7 +22,7 @@ function postQuery(input: { readonly id: number }) {
 			server.respond(
 				`GET /posts/${input.id}`,
 				(db) => db.posts.find((post) => post.id === input.id),
-				{ signal: context.signal },
+				context,
 			),
 		queryKey: ["posts", input.id],
 		retry: 2,

@@ -27,7 +27,7 @@ import { createFakeServer } from "~/demo-kit/server.ts";
 
 /**
  * A blog's server and the factories that query it. Each variant gets its
- * own, so its network panel shows only its requests.
+ * own, so its Queries panel shows only its requests.
  */
 function createBlog() {
 	const server = createFakeServer(() => ({
@@ -42,7 +42,7 @@ function createBlog() {
 						`GET /posts/${input.postId}/comments`,
 						(db) =>
 							db.comments.filter((comment) => comment.postId === input.postId),
-						{ signal: context.signal },
+						context,
 					),
 				queryKey: ["posts", input.postId, "comments"],
 				staleTime: 5000,
@@ -53,7 +53,7 @@ function createBlog() {
 					server.respond(
 						`GET /posts/${input.id}`,
 						(db) => db.posts.find((post) => post.id === input.id),
-						{ signal: context.signal },
+						context,
 					),
 				queryKey: ["posts", input.id],
 				staleTime: 5000,
@@ -67,7 +67,7 @@ function createBlog() {
 							db.posts
 								.slice(0, 4)
 								.map((post) => ({ id: post.id, title: post.title })),
-						{ signal: context.signal },
+						context,
 					),
 				queryKey: ["posts"],
 				staleTime: 5000,
@@ -358,7 +358,7 @@ function FetchedPost(): ReactNode {
 }
 
 export default defineDemo({
-	hint: "Open a post with each, then switch back and forth: each keeps its own page and network log. The requests start at the same moment every time. Go back and reopen the post after 5 seconds, once its cache is stale, to see ensure and fetch differ.",
+	hint: "Open a post with each, then switch back and forth: each keeps its own page and queries. The requests start at the same moment every time. Go back and reopen the post after 5 seconds, once its cache is stale, to see ensure and fetch differ.",
 	title: "prefetch, ensure or fetch",
 	variants: [
 		{

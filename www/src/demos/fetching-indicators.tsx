@@ -31,7 +31,7 @@ function statQuery(input: { readonly stat: Stat }) {
 					db.requests++;
 					return 40 + ((db.requests * 37 + input.stat.length * 11) % 60);
 				},
-				{ signal: context.signal },
+				context,
 			),
 		queryKey: ["stats", input.stat],
 		staleTime: Infinity,

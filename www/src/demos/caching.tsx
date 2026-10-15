@@ -26,9 +26,7 @@ function todosQuery() {
 	return queryOptions({
 		gcTime: 10_000,
 		queryFn: (context) =>
-			server.respond("GET /todos", (db) => db.todos, {
-				signal: context.signal,
-			}),
+			server.respond("GET /todos", (db) => db.todos, context),
 		queryKey: ["todos"],
 		staleTime: 5000,
 	});
@@ -128,7 +126,7 @@ function Caching() {
 
 export default defineDemo({
 	Component: Caching,
-	hint: "staleTime is 5 s and gcTime 10 s. Switch pages and watch the entry in the cache panel go from fresh to stale to inactive, and disappear.",
+	hint: "staleTime is 5 s and gcTime 10 s. Switch pages and watch the entry in the Queries panel go from fresh to stale, then inactive, and get removed.",
 	server,
 	title: "The life of a cache entry",
 });

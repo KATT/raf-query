@@ -173,9 +173,9 @@ describe("prefetch, ensure or fetch", () => {
 			screen.getByRole("heading", { name: "Render-as-you-fetch, explained" }),
 		).toBeTruthy();
 		expect(
-			within(screen.getByRole("list", { name: "Requests" })).getAllByRole(
-				"listitem",
-			),
+			within(screen.getByRole("table", { name: "Queries" }))
+				.getAllByRole("row")
+				.slice(1),
 		).toHaveLength(3);
 		expect(requestsOf("prefetch")).toEqual([
 			"GET /posts success",

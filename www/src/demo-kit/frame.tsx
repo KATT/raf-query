@@ -18,9 +18,8 @@ import { QueryDevtoolsPanel } from "@raf-query/react/devtools";
 import { Expand, FlaskConical, RotateCcw } from "lucide-react";
 import { Activity, type ReactNode, Suspense, useId, useState } from "react";
 
-import { CachePanel } from "./cache-panel.tsx";
 import type { DemoDefinition, DemoVariant } from "./define.ts";
-import { NetworkPanel } from "./network-panel.tsx";
+import { QueriesPanel } from "./queries-panel.tsx";
 import { type FakeServer, latencies } from "./server.ts";
 import { DemoSessionContext } from "./session.ts";
 
@@ -75,50 +74,55 @@ function Inspector(props: {
 	readonly server: FakeServer<unknown>;
 	readonly session: Session;
 }) {
+	const showing = props.label ? (
+		<p className="text-xs text-muted-foreground">
+			Showing{" "}
+			<span className="font-mono font-medium text-foreground">
+				{props.label}
+			</span>
+		</p>
+	) : null;
+	const queries = (
+		<QueriesPanel client={props.session.client} server={props.server} />
+	);
+	if (!props.devtools) {
+		return (
+			<div className={cn("grid gap-2", props.className)}>
+				<div className="flex flex-wrap items-center justify-between gap-2">
+					<p className="text-xs font-medium">Queries</p>
+					{showing}
+				</div>
+				<div className="min-h-28">{queries}</div>
+			</div>
+		);
+	}
 	return (
-		<Tabs className={props.className} defaultValue="network">
+		<Tabs className={props.className} defaultValue="queries">
 			<div className="flex flex-wrap items-center justify-between gap-2">
 				<TabsList className="h-8">
-					<TabsTrigger className="text-xs" value="network">
-						Network
+					<TabsTrigger className="text-xs" value="queries">
+						Queries
 					</TabsTrigger>
-					<TabsTrigger className="text-xs" value="cache">
-						Cache
+					<TabsTrigger className="text-xs" value="devtools">
+						Devtools
 					</TabsTrigger>
-					{props.devtools ? (
-						<TabsTrigger className="text-xs" value="devtools">
-							Devtools
-						</TabsTrigger>
-					) : null}
 				</TabsList>
-				{props.label ? (
-					<p className="text-xs text-muted-foreground">
-						Showing{" "}
-						<span className="font-mono font-medium text-foreground">
-							{props.label}
-						</span>
-					</p>
-				) : null}
+				{showing}
 			</div>
-			<TabsContent className="min-h-28" value="network">
-				<NetworkPanel server={props.server} />
+			<TabsContent className="min-h-28" value="queries">
+				{queries}
 			</TabsContent>
-			<TabsContent className="min-h-28" value="cache">
-				<CachePanel client={props.session.client} />
+			<TabsContent className="min-h-0" value="devtools">
+				<QueryDevtoolsPanel
+					client={props.session.client}
+					style={{ borderRadius: 8, height: "100%", minHeight: 360 }}
+					theme={
+						document.documentElement.classList.contains("dark")
+							? "dark"
+							: "light"
+					}
+				/>
 			</TabsContent>
-			{props.devtools ? (
-				<TabsContent className="min-h-0" value="devtools">
-					<QueryDevtoolsPanel
-						client={props.session.client}
-						style={{ borderRadius: 8, height: "100%", minHeight: 360 }}
-						theme={
-							document.documentElement.classList.contains("dark")
-								? "dark"
-								: "light"
-						}
-					/>
-				</TabsContent>
-			) : null}
 		</Tabs>
 	);
 }
@@ -264,7 +268,7 @@ function Toolbar(props: {
 
 /**
  * A live demo in a box: its own query client and fake server, with the
- * server's requests and the cache's entries underneath. Expanding it opens
+ * cache's queries underneath, each with its readers and requests. Expanding it opens
  * the same session in a dialog with the devtools panel. A demo with
  * variants gets a switch, and a session per variant; Reset starts them all
  * over and keeps the switch where it is. A browser's Reload starts only its
