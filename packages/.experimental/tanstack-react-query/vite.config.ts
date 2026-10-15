@@ -1,4 +1,4 @@
-import { defineConfig } from "vite-plus";
+import { configDefaults, defineConfig } from "vite-plus";
 
 export default defineConfig({
 	pack: {
@@ -13,6 +13,11 @@ export default defineConfig({
 		},
 		environment: "happy-dom",
 		exclude: ["dist", "node_modules"],
+		forceRerunTriggers: [
+			...configDefaults.forceRerunTriggers,
+			"**/pnpm-lock.yaml",
+			"**/pnpm-workspace.yaml",
+		],
 		unstubGlobals: true,
 	},
 });

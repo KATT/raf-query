@@ -96,9 +96,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # pull_request checkouts are a merge commit; HEAD^1 is the base tip.
+          # Depth 2 is enough for `vitest --changed HEAD^1`.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
       - uses: ./.github/actions/prepare
-      - run: pnpm test --coverage
-      - if: always()
+      - name: Test
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "Tests affected since $(git rev-parse --short HEAD^1):"
+            git diff --name-only HEAD^1...HEAD || true
+            pnpm test --changed HEAD^1 --passWithNoTests
+          else
+            pnpm test --coverage
+          fi
+      - if: github.event_name != 'pull_request' && always()
         uses: codecov/codecov-action@v3
 
   type_check:

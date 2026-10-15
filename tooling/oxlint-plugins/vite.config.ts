@@ -1,4 +1,4 @@
-import { defineConfig } from "vite-plus";
+import { configDefaults, defineConfig } from "vite-plus";
 
 export default defineConfig({
 	pack: {
@@ -12,7 +12,12 @@ export default defineConfig({
 		outExtensions: () => ({ js: ".js" }),
 	},
 	test: {
-		include: ["**/*.test.ts"],
 		exclude: ["dist", "node_modules"],
+		forceRerunTriggers: [
+			...configDefaults.forceRerunTriggers,
+			"**/pnpm-lock.yaml",
+			"**/pnpm-workspace.yaml",
+		],
+		include: ["**/*.test.ts"],
 	},
 });
