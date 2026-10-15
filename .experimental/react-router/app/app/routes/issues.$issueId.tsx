@@ -1,6 +1,7 @@
-import { Button } from "@examples/ui/components/button";
+import { Button, buttonVariants } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
 import { Skeleton } from "@examples/ui/components/skeleton";
+import { cn } from "@examples/ui/lib/utils";
 import { dehydrate, type QueryHandle, useQuery } from "@raf-query/react";
 import { HydrationBoundary } from "@raf-query/react/react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
@@ -79,30 +80,41 @@ export default function IssuePage(props: Route.ComponentProps) {
 function IssueNav(props: { readonly id: number }) {
 	return (
 		<nav className="flex items-center gap-2">
-			<Button asChild size="sm" variant="ghost">
-				<Link to="/issues">
-					<ArrowLeft /> All issues
-				</Link>
-			</Button>
+			<Link
+				className={cn(buttonVariants({ size: "sm", variant: "ghost" }))}
+				to="/issues"
+			>
+				<ArrowLeft /> All issues
+			</Link>
 			<div className="ml-auto flex gap-1">
-				<Button asChild disabled={props.id <= 1} size="icon" variant="outline">
+				{props.id > 1 ? (
 					<Link
 						aria-label="Previous issue"
+						className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
 						title="Previous issue"
-						to={props.id <= 1 ? "." : `/issues/${props.id - 1}`}
+						to={`/issues/${props.id - 1}`}
 					>
 						<ChevronLeft />
 					</Link>
-				</Button>
-				<Button asChild size="icon" variant="outline">
-					<Link
-						aria-label="Next issue"
-						title="Next issue"
-						to={`/issues/${props.id + 1}`}
+				) : (
+					<Button
+						aria-label="Previous issue"
+						disabled
+						size="icon"
+						title="Previous issue"
+						variant="outline"
 					>
-						<ChevronRight />
-					</Link>
-				</Button>
+						<ChevronLeft />
+					</Button>
+				)}
+				<Link
+					aria-label="Next issue"
+					className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
+					title="Next issue"
+					to={`/issues/${props.id + 1}`}
+				>
+					<ChevronRight />
+				</Link>
 			</div>
 		</nav>
 	);

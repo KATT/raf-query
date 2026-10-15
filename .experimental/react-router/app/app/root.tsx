@@ -4,9 +4,9 @@ import {
 	queryTimeDefaults,
 	type QueryTimeDefaults,
 } from "@examples/db/types";
-import { Logo } from "@examples/ui/components/logo";
+import { Logo } from "@examples/kit/components/logo";
 import { Toaster } from "@examples/ui/components/sonner";
-import { logoUrl } from "@examples/ui/lib/logo";
+import { logoUrl } from "@examples/kit/lib/logo";
 import {
 	QueryClient,
 	QueryClientProvider,

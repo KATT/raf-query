@@ -1,8 +1,8 @@
 {
-	"name": "@examples/react-router",
+	"name": "@examples/experimental-react-router",
 	"version": "0.0.0",
 	"private": true,
-	"description": "raf-query issue tracker on React Router Framework Mode",
+	"description": "Experimental: raf-query issue tracker on React Router Framework Mode",
 	"type": "module",
 	"scripts": {
 		"build": "react-router build",
@@ -13,6 +13,7 @@
 	"dependencies": {
 		"@examples/api": "workspace:*",
 		"@examples/db": "workspace:*",
+		"@examples/kit": "workspace:*",
 		"@examples/ui": "workspace:*",
 		"@raf-query/react": "workspace:*",
 		"@react-router/node": "8.4.0",
