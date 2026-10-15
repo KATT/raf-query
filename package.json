@@ -11,7 +11,7 @@
 		"dev": "pnpm --parallel --filter \"./examples/*\" --filter \"./www\" dev",
 		"dev:start": "pnpm --filter @examples/tanstack-start dev",
 		"dev:next": "pnpm --filter @examples/nextjs dev",
-		"dev:react-router": "pnpm --filter @examples/experimental-react-router dev",
+		"dev:react-router": "pnpm --filter @examples/react-router dev",
 		"dev:effect": "pnpm --filter @examples/tanstack-start-effect dev",
 		"dev:www": "pnpm --filter @raf-query/www dev",
 		"dev:experimental": "pnpm --parallel --filter \"@examples/experimental-*\" dev",

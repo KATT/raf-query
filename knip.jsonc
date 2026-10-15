@@ -108,7 +108,7 @@
 		".experimental/tanstack-query/start": {
 			"ignoreDependencies": ["tailwindcss"],
 		},
-		".experimental/react-router/app": {
+		"examples/react-router": {
 			// Tailwind resolves from the app root while compiling
 			// `@import "tailwindcss"` in `@examples/ui`.
 			"ignoreDependencies": ["tailwindcss"],
