@@ -41,7 +41,10 @@ export default defineConfig({
 				crawlLinks: true,
 				enabled: true,
 				failOnError: true,
-				filter: (page) => page.path !== "/docs",
+				// `/` already renders every framework mode from `?mode=`; the
+				// crawler finds those links but they aren't separate pages.
+				filter: (page) =>
+					page.path !== "/docs" && !page.path.includes("?"),
 			},
 			sitemap: { enabled: true, host: site.url },
 		}),

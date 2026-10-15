@@ -5,7 +5,8 @@
 @source "./";
 
 html {
-	scroll-padding-top: 5rem;
+	/* Site header (3.5rem) + homepage framework mode bar (~2.75rem). */
+	scroll-padding-top: 6.5rem;
 }
 
 html[data-announcement-dismissed] .announcement-bar {
