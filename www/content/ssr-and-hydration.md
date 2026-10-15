@@ -57,7 +57,7 @@ The browser hydrates the same pending state, then renders the result. A reader t
 
 ## When the browser already has data
 
-On client-side navigations in Next.js, server components render again and send their cache entries with the RSC payload, while the browser may already have the same entries. The browser takes whichever copy is newer, by when it was fetched (`updatedAt`; server and browser clocks should agree):
+On client-side navigations in Next.js, server components render again and send their cache entries with the RSC payload, and React Router's loaders return a new snapshot, while the browser may already have the same entries. The browser takes whichever copy is newer, by when it was fetched (`updatedAt`; server and browser clocks should agree):
 
 - No data, no request of its own: it resumes the server's pending request.
 - Data, or its own request in flight: it waits for the server's copy and takes it if newer.
@@ -65,7 +65,7 @@ On client-side navigations in Next.js, server components render again and send t
 
 ## Serialization
 
-Data, keys, inputs and `meta` cross the wire, so they must be serializable by the framework's serializer. TanStack Start uses [Seroval](https://github.com/lxsmnsyc/seroval), and Next.js uses React's RSC serialization: both handle `Date`, `Map`, `Set`, `BigInt` and promises. The integration's `serializeData` and `deserializeData` options transform data on the way, for anything else.
+Data, keys, inputs and `meta` cross the wire, so they must be serializable by the framework's serializer. TanStack Start uses [Seroval](https://github.com/lxsmnsyc/seroval), Next.js uses React's RSC serialization, and React Router uses [turbo-stream](https://github.com/jacob-ebey/turbo-stream): all three handle `Date`, `Map`, `Set`, `BigInt` and promises. The integration's `serializeData` and `deserializeData` options transform data on the way, for anything else. With React Router, pass them to `dehydrate` and to `HydrationBoundary`'s `options`.
 
 Only send what's serializable. These docs, for instance, cache each demo's code module as a query, and a module full of components can't cross the wire. The router integration's `filter` option keeps those entries out of the stream. A `filter` replaces the default one, `canDehydrate` (entries with data or a request in flight), so combine the two:
 
@@ -77,3 +77,4 @@ tanstack-start/src/docs/ssr-and-hydration.ts#serialization
 
 - [TanStack Start](./tanstack-start.md): `setupRouterIntegration` streams the router's query client.
 - [Next.js App Router](./nextjs.md): `QueryProvider` and `HydrationBoundary` for React Server Components.
+- [React Router](./react-router.md): `HydrationBoundary` for the snapshot each Framework Mode loader returns.
