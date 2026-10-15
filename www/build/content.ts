@@ -371,6 +371,9 @@ export function docsContent(options: ContentOptions): Plugin {
 		resolveId(id) {
 			return id === manifestId ? resolvedManifestId : undefined;
 		},
+		// One plugin instance across client/SSR so `rendered` is shared; without
+		// this each environment re-runs Twoslash for every page.
+		sharedDuringBuild: true,
 		async transform(code, id) {
 			const file = id.split("?")[0] ?? id;
 			if (!file.startsWith(contentDir) || !file.endsWith(".md")) {
@@ -382,7 +385,11 @@ export function docsContent(options: ContentOptions): Plugin {
 				slug: name.slice(0, -".md".length),
 				...parseFrontmatter(file, code),
 			};
-			rendered.delete(file);
+			// Drop the cache only in dev: during build, client and SSR both
+			// transform the same files and must reuse the shared render.
+			if (this.environment.mode === "dev") {
+				rendered.delete(file);
+			}
 			const doc = await render(source);
 			return { code: `export default ${JSON.stringify(doc)};`, map: null };
 		},
