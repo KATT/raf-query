@@ -14,7 +14,7 @@ A small issue tracker built with [raf-query](https://github.com/KATT/raf-query#r
 
 The markup all four example apps share (issue rows, the status menu, comments, skeletons, the settings controls) is in [`examples/.shared/kit`](https://github.com/KATT/raf-query/tree/main/examples/.shared/kit). Every query, loader, and save stays in this app.
 
-Query factories are in `app/queries.ts`. Loaders create a request-scoped `QueryClient`, dehydrate it, and the route wraps its tree in `HydrationBoundary` from `@raf-query/experimental-react-router`.
+Query factories are in `app/queries.ts`. Loaders create a request-scoped `QueryClient`, dehydrate it, and the route wraps its tree in `HydrationBoundary` from `@raf-query/react/react-router`.
 
 ## Run it
 

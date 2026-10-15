@@ -9,7 +9,7 @@ import { Button, buttonVariants } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
 import { cn } from "@examples/ui/lib/utils";
 import { dehydrate, type QueryHandle, useQuery } from "@raf-query/react";
-import { HydrationBoundary } from "@raf-query/experimental-react-router";
+import { HydrationBoundary } from "@raf-query/react/react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Suspense, use } from "react";
 import { isRouteErrorResponse } from "react-router";
