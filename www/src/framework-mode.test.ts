@@ -6,6 +6,7 @@ import {
 	defaultFrameworkMode,
 	type FrameworkMode,
 	frameworkModeSearch,
+	homeSearchDefaults,
 	homeSearchSchema,
 	parseFrameworkMode,
 } from "./framework-mode.ts";
@@ -13,9 +14,7 @@ import { useFrameworkMode } from "./use-framework-mode.ts";
 
 describe("framework mode", () => {
 	it("defaults to TanStack Start when the URL omits mode", () => {
-		expect(homeSearchSchema.parse({})).toEqual({
-			mode: defaultFrameworkMode,
-		});
+		expect(homeSearchSchema.parse({})).toEqual(homeSearchDefaults);
 		expect(parseFrameworkMode(undefined)).toBe("tanstack-start");
 	});
 
@@ -27,13 +26,14 @@ describe("framework mode", () => {
 	});
 
 	it("drops the default from the URL", () => {
+		expect(homeSearchDefaults).toEqual({ mode: defaultFrameworkMode });
 		expect(frameworkModeSearch("tanstack-start")).toEqual({});
 		expect(frameworkModeSearch("nextjs")).toEqual({ mode: "nextjs" });
 	});
 
 	it("follows the URL after mount and on later changes", () => {
-		const hook = renderHook(
-			({ mode }: { mode: FrameworkMode }) => useFrameworkMode(mode),
+		const hook = renderHook<FrameworkMode, { mode: FrameworkMode }>(
+			(props) => useFrameworkMode(props.mode),
 			{ initialProps: { mode: "tanstack-start" } },
 		);
 		expect(hook.result.current).toBe("tanstack-start");

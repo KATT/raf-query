@@ -9,15 +9,15 @@ import {
 } from "~/framework-mode.ts";
 
 /**
- * Floating control under the site header. Switches which framework the
- * homepage examples show; the choice lives in `?mode=` on `/`.
+ * Sticky under the site header. A centered floating pill switches which
+ * framework the homepage examples show; the choice lives in `?mode=` on `/`.
  */
 export function FrameworkModeBar(props: { readonly mode: FrameworkMode }) {
 	return (
-		<div className="pointer-events-none fixed inset-x-0 top-[4.25rem] z-30 flex justify-center px-4">
+		<div className="sticky top-14 z-30 flex justify-center px-4 py-2">
 			<div
 				aria-label="Framework for homepage examples"
-				className="pointer-events-auto flex items-center gap-0.5 rounded-full border bg-background/90 p-1 shadow-md backdrop-blur supports-[backdrop-filter]:bg-background/75"
+				className="flex items-center gap-0.5 rounded-full border bg-background/90 p-1 shadow-md backdrop-blur supports-[backdrop-filter]:bg-background/75"
 				role="group"
 			>
 				{frameworkModes.map((mode) => {

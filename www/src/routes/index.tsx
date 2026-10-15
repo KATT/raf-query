@@ -1,7 +1,11 @@
 import { Badge } from "@examples/ui/components/badge";
 import { buttonVariants } from "@examples/ui/components/button";
 import { cn } from "@examples/ui/lib/utils";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	Link,
+	stripSearchParams,
+} from "@tanstack/react-router";
 import {
 	ArrowRight,
 	Cable,
@@ -27,13 +31,20 @@ import { FrameworkModeBar } from "~/components/framework-mode-bar.tsx";
 import type { DocSegment } from "~/content/types.ts";
 import { firstDoc } from "~/content/docs.ts";
 import { demoQuery } from "~/demos/registry.ts";
-import { type FrameworkMode, homeSearchSchema } from "~/framework-mode.ts";
+import {
+	type FrameworkMode,
+	homeSearchDefaults,
+	homeSearchSchema,
+} from "~/framework-mode.ts";
 import { pageHead } from "~/seo.ts";
 import { site } from "~/site.ts";
 import { useFrameworkMode } from "~/use-framework-mode.ts";
 
 export const Route = createFileRoute("/")({
 	validateSearch: homeSearchSchema,
+	search: {
+		middlewares: [stripSearchParams(homeSearchDefaults)],
+	},
 	loader: (args) => ({
 		demo: args.context.queryClient.prefetch(demoQuery, {
 			id: "starting-queries",
