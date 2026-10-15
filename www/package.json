@@ -30,7 +30,6 @@
 		"@samples/nextjs": "workspace:*",
 		"@samples/tanstack-start": "workspace:*",
 		"@samples/tanstack-start-effect": "workspace:*",
-		"@samples/tanstack-start-home": "workspace:*",
 		"@shikijs/rehype": "4.5.0",
 		"@shikijs/twoslash": "4.5.0",
 		"@tailwindcss/typography": "0.5.20",

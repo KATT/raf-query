@@ -130,7 +130,6 @@
 				"@samples/nextjs",
 				"@samples/tanstack-start",
 				"@samples/tanstack-start-effect",
-				"@samples/tanstack-start-home",
 				"sample",
 			],
 		},
@@ -140,12 +139,6 @@
 			// exports are what the pages import.
 			"entry": ["src/**/*.{ts,tsx}"],
 			"includeEntryExports": false,
-		},
-		"www/samples/tanstack-start-home": {
-			"entry": ["src/**/*.{ts,tsx}"],
-			"includeEntryExports": false,
-			// `src/register.ts` augments its `Register`; nothing imports it.
-			"ignoreDependencies": ["@tanstack/react-start"],
 		},
 	},
 }

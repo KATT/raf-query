@@ -4,8 +4,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { renderComment } from "~/components/comments.tsx";
 import { commentsQuery, postQuery } from "~/queries.ts";
 
+// The homepage's hero: the post page waiting for both queries.
+// `posts.$slug.tsx` is the same page streaming the comments.
+
 // #region hero
-export const Route = createFileRoute("/posts/$slug")({
+export const Route = createFileRoute("/blog/$slug")({
 	loader: (args) => {
 		const qc = args.context.queryClient;
 		const { slug } = args.params;

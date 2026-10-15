@@ -17,7 +17,7 @@ import type { ReactNode } from "react";
 
 import homeComponent from "sample:tanstack-start/src/routes/posts.$slug.tsx#component";
 import homeLoader from "sample:tanstack-start/src/routes/posts.$slug.tsx#route";
-import home from "sample:tanstack-start-home/src/routes/posts.$slug.tsx#hero";
+import home from "sample:tanstack-start/src/routes/blog.$slug.tsx#hero";
 import { DocBody } from "~/components/doc-body.tsx";
 import { DemoEmbed } from "~/components/demo-embed.tsx";
 import type { DocSegment } from "~/content/types.ts";
