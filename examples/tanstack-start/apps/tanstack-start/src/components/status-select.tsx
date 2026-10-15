@@ -6,7 +6,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@examples/ui/components/dropdown-menu";
-import { warnMockDbWrite } from "@examples/ui/lib/mock-db-toast";
+import { warnMockDbWrite } from "@examples/kit/lib/mock-db-toast";
 import { cn } from "@examples/ui/lib/utils";
 import { useQueryClient } from "@raf-query/react";
 import { Check } from "lucide-react";
@@ -60,7 +60,7 @@ export function StatusSelect(props: {
 					<DropdownMenuItem
 						className="gap-2"
 						key={option}
-						onSelect={() => {
+						onClick={() => {
 							select(option);
 						}}
 					>

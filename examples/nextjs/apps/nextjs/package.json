@@ -19,6 +19,7 @@
 	"dependencies": {
 		"@examples/api": "workspace:*",
 		"@examples/db": "workspace:*",
+		"@examples/kit": "workspace:*",
 		"@examples/ui": "workspace:*",
 		"@raf-query/react": "0.7.11",
 		"lucide-react": "1.55.0",

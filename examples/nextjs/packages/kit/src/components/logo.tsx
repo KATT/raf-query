@@ -1,5 +1,5 @@
 import * as React from "react";
-import { logoUrl } from "@examples/ui/lib/logo";
+import { logoUrl } from "@examples/kit/lib/logo";
 import { cn } from "@examples/ui/lib/utils";
 
 function Logo({

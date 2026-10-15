@@ -1,4 +1,5 @@
-import { Button } from "@examples/ui/components/button";
+import { Button, buttonVariants } from "@examples/ui/components/button";
+import { cn } from "@examples/ui/lib/utils";
 import { Separator } from "@examples/ui/components/separator";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { type QueryHandle, useQuery } from "@raf-query/react";
@@ -75,33 +76,43 @@ function IssuePage() {
 function IssueNav(props: { readonly id: number }) {
 	return (
 		<nav className="flex items-center gap-2">
-			<Button asChild size="sm" variant="ghost">
-				<Link to="/issues">
-					<ArrowLeft /> All issues
-				</Link>
-			</Button>
+			<Link
+				className={cn(buttonVariants({ size: "sm", variant: "ghost" }))}
+				to="/issues"
+			>
+				<ArrowLeft /> All issues
+			</Link>
 			<div className="ml-auto flex gap-1">
-				<Button asChild disabled={props.id <= 1} size="icon" variant="outline">
+				{props.id > 1 ? (
 					<Link
 						aria-label="Previous issue"
-						disabled={props.id <= 1}
+						className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
 						params={{ issueId: String(props.id - 1) }}
 						title="Previous issue"
 						to="/issues/$issueId"
 					>
 						<ChevronLeft />
 					</Link>
-				</Button>
-				<Button asChild size="icon" variant="outline">
-					<Link
-						aria-label="Next issue"
-						params={{ issueId: String(props.id + 1) }}
-						title="Next issue"
-						to="/issues/$issueId"
+				) : (
+					<Button
+						aria-label="Previous issue"
+						disabled
+						size="icon"
+						title="Previous issue"
+						variant="outline"
 					>
-						<ChevronRight />
-					</Link>
-				</Button>
+						<ChevronLeft />
+					</Button>
+				)}
+				<Link
+					aria-label="Next issue"
+					className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
+					params={{ issueId: String(props.id + 1) }}
+					title="Next issue"
+					to="/issues/$issueId"
+				>
+					<ChevronRight />
+				</Link>
 			</div>
 		</nav>
 	);
