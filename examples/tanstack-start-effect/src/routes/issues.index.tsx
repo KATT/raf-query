@@ -1,9 +1,10 @@
+import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { createFileRoute } from "@tanstack/react-router";
 import { Schema } from "effect";
 import { Suspense } from "react";
 
-import { IssueList, IssueListSkeleton } from "~/components/issue-list.tsx";
+import { IssueList } from "~/components/issue-list.tsx";
 import { StatusFilter } from "~/components/status-filter.tsx";
 import { issueCountsQuery, issueListQuery } from "~/queries.ts";
 import { IssueListInput } from "~/rpc.ts";
