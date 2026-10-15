@@ -60,7 +60,7 @@ export function StatusSelect(props: {
 					<DropdownMenuItem
 						className="gap-2"
 						key={option}
-						onSelect={() => {
+						onClick={() => {
 							select(option);
 						}}
 					>
