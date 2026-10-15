@@ -9,12 +9,17 @@ declare module "@raf-query/react" {
 }
 
 // #region intro
-import { Query, QueryClient, queryOptions } from "@raf-query/react";
+import { infiniteQueryOptions, Query, QueryClient } from "@raf-query/react";
 
 export function issuesQuery() {
-	return queryOptions({
+	return infiniteQueryOptions({
 		queryKey: ["issues"],
-		queryFn: () => listIssues(),
+		queryFn: async () => ({
+			items: await listIssues(),
+			nextCursor: null,
+		}),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
 		meta: { errorMessage: "Couldn't load issues" },
 	});
 }

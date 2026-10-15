@@ -1,12 +1,19 @@
-import { QueryClient, queryOptions } from "@raf-query/react";
+import { infiniteQueryOptions, QueryClient } from "@raf-query/react";
 import { postQuery } from "~/queries.ts";
-import { infiniteQueryOptions } from "@raf-query/react";
 import { type CommentPage, listComments } from "~/api.ts";
 
 const qc = new QueryClient();
 
 function issuesQuery() {
-	return queryOptions({ queryKey: ["issues"], queryFn: async () => [] });
+	return infiniteQueryOptions({
+		queryKey: ["issues"],
+		queryFn: async () => ({
+			items: [] as Array<never>,
+			nextCursor: null,
+		}),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+	});
 }
 
 // #region one-input-serializable

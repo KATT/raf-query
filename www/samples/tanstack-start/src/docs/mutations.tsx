@@ -4,7 +4,7 @@ import { type Post, updatePost } from "~/api.ts";
 import { postQuery } from "~/queries.ts";
 import { useTransition } from "react";
 import { QueryClient } from "@raf-query/react";
-import { queryOptions } from "@raf-query/react";
+import { infiniteQueryOptions } from "@raf-query/react";
 
 // #region intro
 function EditTitle(props: { post: Post }) {
@@ -33,9 +33,14 @@ declare function deletePost(slug: string): Promise<void>;
 declare const props: { slug: string };
 
 function postsQuery() {
-	return queryOptions({
+	return infiniteQueryOptions({
 		queryKey: ["posts"],
-		queryFn: async () => [] as Array<{ slug: string }>,
+		queryFn: async () => ({
+			items: [] as Array<{ slug: string }>,
+			nextCursor: null,
+		}),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
 	});
 }
 

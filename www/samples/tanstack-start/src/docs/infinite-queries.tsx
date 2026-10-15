@@ -1,9 +1,11 @@
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { use } from "react";
-import type { PostComment } from "~/api.ts";
 import { commentsQuery } from "~/queries.ts";
 
-declare function Comment(props: PostComment): React.ReactNode;
+declare function Comment(props: {
+	readonly author: string;
+	readonly body: string;
+}): React.ReactNode;
 
 // #region reading-pages
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
@@ -16,7 +18,11 @@ function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 			{data.pages
 				.flatMap((page) => page.items)
 				.map((comment) => (
-					<Comment key={comment.id} {...comment} />
+					<Comment
+						key={comment.id}
+						author={comment.author}
+						body={comment.body}
+					/>
 				))}
 			<button
 				disabled={!comments.hasNextPage || comments.isFetchingNextPage}

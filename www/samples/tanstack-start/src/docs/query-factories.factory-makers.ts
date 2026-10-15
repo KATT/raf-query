@@ -29,5 +29,5 @@ function endpointQuery<TArgs, TData>(endpoint: Endpoint<TArgs, TData>) {
 }
 
 const post = await qc.ensure(endpointQuery(api.posts.get), { slug });
-const [data] = useQuery(endpointQuery(api.posts.get), post);
+const [postPromise] = useQuery(endpointQuery(api.posts.get), post);
 // #endregion

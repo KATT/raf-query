@@ -1,6 +1,10 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
-import { type QueryHandle, queryOptions, useQuery } from "@raf-query/react";
+import {
+	infiniteQueryOptions,
+	type QueryHandle,
+	useQuery,
+} from "@raf-query/react";
 import { use } from "react";
 
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
@@ -22,11 +26,26 @@ const server = createFakeServer(() => ({
 	] satisfies ReadonlyArray<Todo>,
 }));
 
+interface TodoPage {
+	readonly items: ReadonlyArray<Todo>;
+	readonly nextCursor: number | null;
+}
+
+function todoNext(lastPage: TodoPage) {
+	return lastPage.nextCursor;
+}
+
 function todosQuery() {
-	return queryOptions({
+	return infiniteQueryOptions({
 		gcTime: 10_000,
+		getNextPageParam: todoNext,
+		initialPageParam: 0,
 		queryFn: (context) =>
-			server.respond("GET /todos", (db) => db.todos, context),
+			server.respond(
+				"GET /todos",
+				(db) => ({ items: db.todos, nextCursor: null }),
+				context,
+			),
 		queryKey: ["todos"],
 		staleTime: 5000,
 	});
@@ -48,8 +67,9 @@ function TodosSkeleton() {
 }
 
 function Todos(props: { readonly handle: QueryHandle<typeof todosQuery> }) {
-	const [todosPromise, todos] = useQuery(todosQuery, props.handle);
-	const list = use(todosPromise);
+	const [pagesPromise, todos] = useQuery(todosQuery, props.handle);
+	const pages = use(pagesPromise);
+	const list = pages.pages.flatMap((page) => page.items);
 	return (
 		<div aria-busy={todos.isFetching} className="grid gap-2">
 			<p className="flex items-center gap-2 text-xs text-muted-foreground">

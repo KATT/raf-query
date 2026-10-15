@@ -23,7 +23,7 @@ export const Route = createFileRoute("/posts/$slug")({
 // #region component
 function PostPage() {
 	const data = Route.useLoaderData();
-	// ensure put the post in the cache, so use() returns it without suspending.
+	// The route already waited for this, so use() doesn't suspend.
 	const [postPromise] = useQuery(postQuery, data.post);
 	const post = use(postPromise);
 	//    ^?
@@ -39,10 +39,9 @@ function PostPage() {
 
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	// May still be loading. If so, use() suspends until it lands.
-	const [pages] = useQuery(commentsQuery, props.handle);
+	const [pagesPromise] = useQuery(commentsQuery, props.handle);
 	//     ^?
-	return use(pages)
-		.pages.flatMap((page) => page.items)
-		.map(renderComment);
+	const pages = use(pagesPromise);
+	return pages.pages.flatMap((page) => page.items).map(renderComment);
 }
 // #endregion component

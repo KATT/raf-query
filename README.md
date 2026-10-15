@@ -54,11 +54,16 @@ function PostPage() {
 
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	// Still loading. use() suspends until the pages stream in.
-	const [pages] = useQuery(commentsQuery, props.handle);
+	const [pagesPromise] = useQuery(commentsQuery, props.handle);
 	//     ^?
-	return use(pages)
-		.pages.flatMap((page) => page.items)
-		.map((comment) => <Comment key={comment.id} {...comment} />);
+	const pages = use(pagesPromise);
+	return pages.pages
+		.flatMap((page) => page.items)
+		.map((comment) => (
+			<p key={comment.id}>
+				<strong>{comment.author}</strong> {comment.body}
+			</p>
+		));
 }
 ```
 
@@ -67,10 +72,10 @@ The loader decides when each request starts and whether the navigation waits for
 ## Install
 
 ```bash
-npm install @raf-query/react
+npm install @raf-query/react effect
 ```
 
-With Yarn, also add `effect`, a peer dependency the other package managers install for you. See [installation](https://raf-query.katt.dev/docs/installation) for requirements, then set it up for [TanStack Start](https://raf-query.katt.dev/docs/tanstack-start) or [Next.js](https://raf-query.katt.dev/docs/nextjs).
+See [installation](https://raf-query.katt.dev/docs/installation) for requirements, then set it up for [TanStack Start](https://raf-query.katt.dev/docs/tanstack-start) or [Next.js](https://raf-query.katt.dev/docs/nextjs).
 
 ## Packages
 

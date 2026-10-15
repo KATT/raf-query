@@ -1,6 +1,10 @@
 import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { type QueryHandle, queryOptions, useQuery } from "@raf-query/react";
+import {
+	type QueryHandle,
+	infiniteQueryOptions,
+	useQuery,
+} from "@raf-query/react";
 import { use } from "react";
 import { RefreshCw } from "lucide-react";
 
@@ -17,10 +21,29 @@ const server = createFakeServer(() => ({
 	],
 }));
 
+interface MessagePage {
+	readonly items: ReadonlyArray<{
+		readonly from: string;
+		readonly id: number;
+		readonly subject: string;
+	}>;
+	readonly nextCursor: number | null;
+}
+
+function messageNext(lastPage: MessagePage) {
+	return lastPage.nextCursor;
+}
+
 function inboxQuery() {
-	return queryOptions({
+	return infiniteQueryOptions({
+		getNextPageParam: messageNext,
+		initialPageParam: 0,
 		queryFn: (context) =>
-			server.respond("GET /inbox", (db) => db.messages, context),
+			server.respond(
+				"GET /inbox",
+				(db) => ({ items: db.messages, nextCursor: null }),
+				context,
+			),
 		queryKey: ["inbox"],
 		staleTime: 60_000,
 	});
@@ -34,8 +57,9 @@ type PageData =
 	| { readonly page: "settings" };
 
 function Inbox(props: { readonly handle: QueryHandle<typeof inboxQuery> }) {
-	const [messagesPromise, inbox] = useQuery(inboxQuery, props.handle);
-	const messages = use(messagesPromise);
+	const [pagesPromise, inbox] = useQuery(inboxQuery, props.handle);
+	const pages = use(pagesPromise);
+	const messages = pages.pages.flatMap((page) => page.items);
 	return (
 		<div aria-busy={inbox.isFetching} className="grid gap-3">
 			<ul className="grid gap-1.5">
