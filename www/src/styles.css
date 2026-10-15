@@ -14,9 +14,9 @@ html[data-announcement-dismissed] .announcement-bar {
 }
 
 /*
- * Homepage framework panels: both modes ship in the static HTML; a blocking
- * script sets data-framework-mode from ?mode= before paint so nextjs never
- * flashes the prerendered TanStack Start content.
+ * Homepage framework panels: every mode ships in the static HTML; a blocking
+ * script sets data-framework-mode from ?mode= before paint so the other modes
+ * never flash the prerendered TanStack Start content.
  */
 [data-framework-panel] {
 	display: none;
@@ -24,7 +24,8 @@ html[data-announcement-dismissed] .announcement-bar {
 
 :root:not([data-framework-mode]) [data-framework-panel="tanstack-start"],
 [data-framework-mode="tanstack-start"] [data-framework-panel="tanstack-start"],
-[data-framework-mode="nextjs"] [data-framework-panel="nextjs"] {
+[data-framework-mode="nextjs"] [data-framework-panel="nextjs"],
+[data-framework-mode="react-router"] [data-framework-panel="react-router"] {
 	display: contents;
 }
 
@@ -33,7 +34,9 @@ html[data-announcement-dismissed] .announcement-bar {
 [data-framework-mode="tanstack-start"]
 	[data-framework-mode-link="tanstack-start"].framework-mode-link,
 [data-framework-mode="nextjs"]
-	[data-framework-mode-link="nextjs"].framework-mode-link {
+	[data-framework-mode-link="nextjs"].framework-mode-link,
+[data-framework-mode="react-router"]
+	[data-framework-mode-link="react-router"].framework-mode-link {
 	background-color: var(--foreground);
 	color: var(--background);
 	font-weight: 500;
