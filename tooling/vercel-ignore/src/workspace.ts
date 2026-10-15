@@ -14,7 +14,7 @@ const Manifest = Schema.fromJsonString(
 	}),
 );
 
-export class WorkspaceError extends Data.TaggedError("WorkspaceError")<{
+class WorkspaceError extends Data.TaggedError("WorkspaceError")<{
 	readonly message: string;
 }> {}
 
@@ -38,9 +38,7 @@ export const workspaceGlobs = (yaml: string): ReadonlyArray<string> => {
  * The workspace packages' directories, relative to `root`. Globs only use `*`
  * segments, which, as in pnpm, don't match dot directories.
  */
-export const workspaceDirs = Effect.fn("workspaceDirs")(function* (
-	root: string,
-) {
+const workspaceDirs = Effect.fn("workspaceDirs")(function* (root: string) {
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path;
 	const globs = workspaceGlobs(

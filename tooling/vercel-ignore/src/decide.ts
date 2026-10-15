@@ -12,7 +12,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import { dependencyDirs } from "./workspace.ts";
 
 /** Root files whose changes can change any project's install. */
-export const installInputs = [
+const installInputs = [
 	"package.json",
 	"pnpm-lock.yaml",
 	"pnpm-workspace.yaml",
@@ -20,7 +20,7 @@ export const installInputs = [
 	"patches",
 ];
 
-export class GitError extends Data.TaggedError("GitError")<{
+class GitError extends Data.TaggedError("GitError")<{
 	readonly args: ReadonlyArray<string>;
 	readonly exitCode: number;
 }> {
@@ -47,11 +47,6 @@ export const git = Effect.fn("git")(function* (
 	}
 	return Str.trim(stdout);
 }, Effect.scoped);
-
-export interface Decision {
-	readonly build: boolean;
-	readonly reason: string;
-}
 
 /**
  * The commit to diff from: the project's last deployment on this branch, or,
