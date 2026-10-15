@@ -7,7 +7,7 @@ This is a Vite+ / pnpm monorepo. The publishable packages live in `packages/`:
 | `packages/core`  | `@raf-query/core`  |
 | `packages/react` | `@raf-query/react` |
 
-Experiments live under top-level `.experimental/<topic>/`, each with a README and its package/apps underneath. The release and the root `./packages/*` / `./examples/*` globs don't reach them. `.experimental/tanstack-query/` is raf-query's API on TanStack Query (`package/`, plus `start/` and `nextjs/` apps). `.experimental/react-router/` is the React Router Framework Mode app (`app/` on port 3006) with a draft guide under `docs/`. Private, not published, version `0.0.0`. See [the experiment READMEs](../.experimental/).
+Experiments live under top-level `.experimental/<topic>/`, each with a README and its package/apps underneath. The release and the root `./packages/*` / `./examples/*` globs don't reach them. `.experimental/tanstack-query/` is raf-query's API on TanStack Query (`package/`, plus `start/` and `nextjs/` apps). Private, not published, version `0.0.0`. See [the experiment READMEs](../.experimental/).
 
 Each package has its own `README.md`, shown on npm. Root `LICENSE.md` / `CHANGELOG.md` are shared: each package's `prepack` runs [`scripts/sync-package-docs.ts`](../scripts/sync-package-docs.ts), which copies them into the package so the npm tarball includes them without a second copy in git.
 
@@ -31,16 +31,16 @@ pnpm build
 
 ## Example apps
 
-`examples/` holds the same issue tracker three times: on TanStack Start, on Next.js, and on TanStack Start written with Effect and Effect RPC. The packages they share live in `examples/.shared/`. `.experimental/tanstack-query/` runs the same app on the experimental TanStack Query package:
+`examples/` holds the same issue tracker four times: on TanStack Start, on Next.js, on React Router Framework Mode, and on TanStack Start written with Effect and Effect RPC. The packages they share live in `examples/.shared/`. `.experimental/tanstack-query/` runs the same app on the experimental TanStack Query package:
 
 | Directory                             | What                                                                               |
 | ------------------------------------- | ---------------------------------------------------------------------------------- |
 | `examples/tanstack-start`             | TanStack Start app, <http://localhost:3000>                                        |
 | `examples/nextjs`                     | Next.js App Router app, <http://localhost:3001>                                    |
+| `examples/react-router`               | React Router Framework Mode app, <http://localhost:3006>                           |
 | `examples/tanstack-start-effect`      | TanStack Start app written with Effect and Effect RPC, <http://localhost:3005>     |
 | `.experimental/tanstack-query/start`  | TanStack Start app on TanStack Query, <http://localhost:3002>                      |
 | `.experimental/tanstack-query/nextjs` | Next.js App Router app on TanStack Query, <http://localhost:3003>                  |
-| `.experimental/react-router/app`      | React Router Framework Mode app, <http://localhost:3006>                           |
 | `examples/.shared/ui`                 | Vanilla shadcn/ui (Base UI) and the Tailwind theme (`@examples/ui`)                |
 | `examples/.shared/kit`                | App-specific UI helpers: logo, load-more, toasts, theme provider (`@examples/kit`) |
 | `examples/.shared/db`                 | In-memory fake database with latency (`@examples/db`), and its schemas             |
