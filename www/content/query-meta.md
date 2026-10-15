@@ -13,32 +13,8 @@ order: 20
 
 A common use is a per-query message for one global error handler:
 
-```ts twoslash
-declare function listIssues(): Promise<unknown>;
-declare const toast: { error(message: string): void };
-declare module "@raf-query/react" {
-	interface Register {
-		queryMeta: { errorMessage?: string };
-	}
-}
-// ---cut---
-import { Query, QueryClient, queryOptions } from "@raf-query/react";
-
-export function issuesQuery() {
-	return queryOptions({
-		queryKey: ["issues"],
-		queryFn: () => listIssues(),
-		meta: { errorMessage: "Couldn't load issues" },
-	});
-}
-
-const queryClient = new QueryClient({
-	onError: (error, query) => {
-		toast.error(
-			Query.metaUnsafe(query)?.errorMessage ?? "Something went wrong",
-		);
-	},
-});
+```sample
+tanstack-start/src/docs/query-meta.ts#intro
 ```
 
 ## Typing meta
@@ -74,13 +50,8 @@ const queryClient = new QueryClient({
 
 Filters receive the `Query`, so `meta` can select queries to invalidate:
 
-```ts twoslash
-import { Query, QueryClient } from "@raf-query/react";
-const qc = new QueryClient();
-// ---cut---
-await qc.invalidate({
-	predicate: (query) => Query.metaUnsafe(query)?.scope === "billing",
-});
+```sample
+tanstack-start/src/docs/query-meta.selecting-queries-by-meta.ts#selecting-queries-by-meta
 ```
 
 ## Serialization

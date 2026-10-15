@@ -1,8 +1,10 @@
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-
 import rehypeShiki from "@shikijs/rehype";
-import { createTransformerFactory, rendererRich } from "@shikijs/twoslash/core";
+import {
+	createTransformerFactory,
+	rendererRich,
+	type TwoslashShikiFunction,
+} from "@shikijs/twoslash/core";
+import { Effect, FileSystem, Path } from "effect";
 import GithubSlugger from "github-slugger";
 import type { Element, ElementContent, Root as HastRoot } from "hast";
 import { toHtml } from "hast-util-to-html";
@@ -28,8 +30,10 @@ import { visit } from "unist-util-visit";
 
 import type { DocHeading, DocSegment } from "../src/content/types.ts";
 import { collapseRegions } from "./collapse.ts";
+import { ContentError, messageOf } from "./content-error.ts";
+import { appOf, sampleApps } from "./sample-apps.ts";
 
-export interface RenderedMarkdown {
+interface RenderedMarkdown {
 	readonly demos: ReadonlyArray<string>;
 	readonly headings: ReadonlyArray<DocHeading>;
 	readonly segments: ReadonlyArray<DocSegment>;
@@ -249,60 +253,177 @@ function toSegments(tree: HastRoot): Array<DocSegment> {
 	return segments;
 }
 
-const twoslashTransformers = new Map<string, ShikiTransformer>();
+interface Project {
+	readonly compilerOptions: ts.CompilerOptions;
+	/**
+	 * Every file of a sample app, by path from its root, so a block's
+	 * program has what `tsc` has, like the route tree's `declare module`.
+	 */
+	readonly extraFiles: Record<string, string>;
+}
+
+function flatten(diagnostic: ts.Diagnostic) {
+	return ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
+}
+
+/**
+ * A sample app's `tsconfig.json` and the files it includes, read for each
+ * render, so a block sees edits to the rest of its app.
+ */
+const loadProject = Effect.fn("loadProject")(function* (app: string) {
+	const fs = yield* FileSystem.FileSystem;
+	const path = yield* Path.Path;
+	const file = path.join(app, "tsconfig.json");
+	// TypeScript resolves `extends` and `include` itself, through `ts.sys`.
+	const parsed = yield* Effect.try({
+		catch: (cause) =>
+			new ContentError({ cause, message: `${file}: ${messageOf(cause)}` }),
+		try: () =>
+			ts.getParsedCommandLineOfConfigFile(file, undefined, {
+				...ts.sys,
+				onUnRecoverableConfigFileDiagnostic: (diagnostic) => {
+					throw new Error(flatten(diagnostic));
+				},
+			}),
+	});
+	if (!parsed || parsed.errors.length) {
+		return yield* new ContentError({
+			message: `${file}: ${parsed?.errors.map(flatten).join("\n") ?? "invalid tsconfig"}`,
+		});
+	}
+	const extraFiles = yield* Effect.forEach(
+		parsed.fileNames,
+		(name) =>
+			Effect.map(
+				fs.readFileString(name),
+				(contents) =>
+					[
+						path.relative(app, name).split(path.sep).join("/"),
+						contents,
+					] as const,
+			),
+		{ concurrency: "unbounded" },
+	);
+	return {
+		compilerOptions: parsed.options,
+		extraFiles: Object.fromEntries(extraFiles),
+	} satisfies Project;
+});
+
+/** A twoslasher per project root; each keeps a TypeScript environment per set of compiler options. */
+const twoslashers = new Map<string, TwoslashShikiFunction>();
+
+function twoslasherFor(root: string, tsLibDirectory: string) {
+	let twoslasher = twoslashers.get(root);
+	if (!twoslasher) {
+		twoslasher = createTwoslasher({
+			tsLibDirectory,
+			// @ts-expect-error -- twoslash types `tsModule` as the `typescript` package, which here is TypeScript 7's, with no JavaScript API
+			tsModule: ts,
+			vfsRoot: root,
+		});
+		twoslashers.set(root, twoslasher);
+	}
+	return twoslasher;
+}
+
+const blockFilename = /^\/\/ @filename: (.+)$/gm;
+
+/** The app whose `node_modules` inline blocks import from. */
+const inlineApp = "tanstack-start";
+
+/** An import of a file rather than a package. */
+const fileImport = /\bfrom\s+["'](?:~\/|\.{1,2}\/)/;
 
 /**
  * Fences with `twoslash` in their meta are compiled, so hovering a name shows
  * its type, `// ^?` pins a type under the line, and `// @errors: 2345` shows
  * an expected error. A compile error the block doesn't expect fails the
- * build. Blocks resolve imports from `root`, so a hidden setup above
- * `// ---cut---` can import from `content/_twoslash.ts`.
+ * build.
+ *
+ * A `sample` fence's block (`expandSnippets`) is a file of a sample app
+ * (`samples/<app>/`), named by its `// @filename`, a path from the samples
+ * dir. It compiles in that app's project, with every file of the app, so it
+ * sees what `tsc` sees: the route tree, the router context, the app's
+ * `Register`.
+ *
+ * A block written inline stands alone: it imports packages only, and
+ * compiles with `tanstack-start`'s compiler options and `node_modules` but
+ * none of its files. A block that needs the app is a sample.
  */
-function twoslashTransformer(root: string) {
-	const cached = twoslashTransformers.get(root);
-	if (cached) {
-		return cached;
-	}
-	const twoslasher = createTwoslasher({
-		compilerOptions: {
-			allowImportingTsExtensions: true,
-			baseUrl: root,
-			jsx: ts.JsxEmit.ReactJSX,
-			lib: ["lib.es2024.d.ts", "lib.dom.d.ts", "lib.dom.iterable.d.ts"],
-			module: ts.ModuleKind.ESNext,
-			moduleResolution: ts.ModuleResolutionKind.Bundler,
-			noEmit: true,
-			// Next.js samples import `~/query-client.ts`; stubs live next to the pages.
-			paths: { "~/*": ["./*"] },
-			skipLibCheck: true,
-			strict: true,
-			target: ts.ScriptTarget.ES2024,
-			types: [],
-		},
-		tsLibDirectory: path.dirname(
-			fileURLToPath(import.meta.resolve("typescript6")),
+const twoslashTransformer = Effect.fn("twoslashTransformer")(function* (
+	markdown: string,
+	samplesDir: string,
+) {
+	const path = yield* Path.Path;
+	const apps = yield* sampleApps(samplesDir);
+	const appOfFile = (filename: string) =>
+		appOf(path, path.join(samplesDir, filename), apps);
+	const inline = path.join(samplesDir, inlineApp);
+	const used = new Set([
+		inline,
+		...Array.from(markdown.matchAll(blockFilename), (match) =>
+			appOfFile(match[1] ?? ""),
+		).filter((app) => app !== undefined),
+	]);
+	const projects = new Map(
+		yield* Effect.forEach(
+			used,
+			(app) =>
+				Effect.map(loadProject(app), (project) => [app, project] as const),
+			{ concurrency: "unbounded" },
 		),
-		// @ts-expect-error -- twoslash types `tsModule` as the `typescript` package, which here is TypeScript 7's, with no JavaScript API
-		tsModule: ts,
-		vfsRoot: root,
-	});
-	const transformer = createTransformerFactory(
+	);
+	const tsLibDirectory = path.dirname(
+		yield* path.fromFileUrl(new URL(import.meta.resolve("typescript6"))),
+	);
+	const twoslasher: TwoslashShikiFunction = (code, lang, twoslashOptions) => {
+		const filename = new RegExp(blockFilename.source, "m").exec(code)?.[1];
+		if (filename === undefined) {
+			if (fileImport.test(code)) {
+				throw new Error(
+					"An inline twoslash block imports a file. A block that needs the app's files is a `sample` fence of a file in samples/.",
+				);
+			}
+			const project = projects.get(inline);
+			return twoslasherFor(inline, tsLibDirectory)(code, lang, {
+				...twoslashOptions,
+				...(project && { compilerOptions: project.compilerOptions }),
+			});
+		}
+		const app = appOfFile(filename);
+		const project = app && projects.get(app);
+		if (!app || !project) {
+			throw new Error(`"// @filename: ${filename}" isn't in a sample app`);
+		}
+		const inApp = code.replaceAll(
+			blockFilename,
+			(_line, name: string) =>
+				`// @filename: ${path
+					.relative(app, path.join(samplesDir, name))
+					.split(path.sep)
+					.join("/")}`,
+		);
+		return twoslasherFor(app, tsLibDirectory)(inApp, lang, {
+			...twoslashOptions,
+			...project,
+		});
+	};
+	return createTransformerFactory(
 		twoslasher,
 		rendererRich({ jsdoc: false, queryRendering: "line" }),
 	)({ explicitTrigger: true });
-	twoslashTransformers.set(root, transformer);
-	return transformer;
-}
+});
 
 export interface RenderOptions {
-	/** Where `twoslash` blocks resolve imports from. */
-	readonly twoslashRoot: string;
+	/** The dir of the sample apps the code blocks compile in. */
+	readonly samplesDir: string;
 }
 
-export async function renderMarkdown(
+export const renderMarkdown = Effect.fn("renderMarkdown")(function* (
 	markdown: string,
 	options: RenderOptions,
-): Promise<RenderedMarkdown> {
+) {
 	const headings: Array<DocHeading> = [];
 	const demos: Array<string> = [];
 	const typeQueries: Array<ReadonlyArray<string>> = [];
@@ -321,7 +442,7 @@ export async function renderMarkdown(
 			defaultColor: false,
 			themes: { dark: "github-dark", light: "github-light" },
 			transformers: [
-				twoslashTransformer(options.twoslashRoot),
+				yield* twoslashTransformer(markdown, options.samplesDir),
 				collapseRegions(() => {
 					collapseId += 1;
 					return `code-collapse-${collapseId}`;
@@ -343,12 +464,15 @@ export async function renderMarkdown(
 			],
 		})
 		.use(rehypeCodeBlocks);
-	const tree = await processor.run(processor.parse(markdown));
+	const tree = yield* Effect.tryPromise({
+		catch: (cause) => new ContentError({ cause, message: messageOf(cause) }),
+		try: async () => processor.run(processor.parse(markdown)),
+	});
 	return {
 		demos,
 		headings,
 		segments: toSegments(tree),
 		text: toString(tree),
 		typeQueries,
-	};
-}
+	} satisfies RenderedMarkdown;
+});
