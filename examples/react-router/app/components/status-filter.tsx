@@ -4,13 +4,12 @@ import {
 	issueStatuses,
 } from "@examples/db/types";
 import { type QueryHandle, useQuery } from "@raf-query/react";
+import { statusLabel } from "@examples/kit/components/status-badge";
 import { cn } from "@examples/ui/lib/utils";
 import { use } from "react";
 import { Link } from "react-router";
 
 import { issueCountsQuery } from "~/queries.ts";
-
-import { statusLabel } from "./status-badge.tsx";
 
 function issuesSearch(input: IssueListInput) {
 	const params = new URLSearchParams();
