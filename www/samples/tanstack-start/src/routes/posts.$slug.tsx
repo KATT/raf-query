@@ -23,10 +23,9 @@ export const Route = createFileRoute("/posts/$slug")({
 // #region component
 function PostPage() {
 	const data = Route.useLoaderData();
-	// The route already waited for this, so use() doesn't suspend.
-	const [postPromise] = useQuery(postQuery, data.post);
-	const post = use(postPromise);
-	//    ^?
+	// The route already waited for this, so this is the post itself.
+	const [post] = useQuery(postQuery, data.post);
+	//     ^?
 	return (
 		<article>
 			<h1>{post.title}</h1>

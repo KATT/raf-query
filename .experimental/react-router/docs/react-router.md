@@ -46,7 +46,6 @@ import {
 	QueryClient,
 	useQuery,
 } from "@raf-query/react";
-import { use } from "react";
 import { HydrationBoundary } from "@raf-query/react/react-router";
 import { commentsQuery, postQuery } from "./_twoslash.ts";
 // ---cut---
@@ -80,9 +79,9 @@ function Post(props: {
 	comments: QueryHandle<typeof commentsQuery>;
 	post: QueryHandleWithData<typeof postQuery>;
 }) {
-	// ensure put the post in the cache, so use() returns it without suspending.
+	// ensure put the post in the cache, so this is the post itself.
 	const [post] = useQuery(postQuery, props.post);
-	return <h1>{use(post).title}</h1>;
+	return <h1>{post.title}</h1>;
 }
 ```
 

@@ -340,17 +340,14 @@ const ensureTree = ensureRoot.addChildren([ensureList, ensurePost]);
 
 function EnsuredList(): ReactNode {
 	const handle = ensureList.useLoaderData<EnsureRouter>();
-	const [postsPromise] = useQuery(ensuring.postsQuery, handle);
-	const pages = use(postsPromise);
+	const [pages] = useQuery(ensuring.postsQuery, handle);
 	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
 }
 
 function EnsuredPost(): ReactNode {
 	const data = ensurePost.useLoaderData<EnsureRouter>();
-	const [postPromise] = useQuery(ensuring.postQuery, data.post);
-	const post = use(postPromise);
-	const [commentsPromise] = useQuery(ensuring.commentsQuery, data.comments);
-	const pages = use(commentsPromise);
+	const [post] = useQuery(ensuring.postQuery, data.post);
+	const [pages] = useQuery(ensuring.commentsQuery, data.comments);
 	return (
 		<PostPage>
 			<PostBody post={post} />
@@ -386,17 +383,14 @@ const fetchTree = fetchRoot.addChildren([fetchList, fetchPost]);
 
 function FetchedList(): ReactNode {
 	const handle = fetchList.useLoaderData<FetchRouter>();
-	const [postsPromise] = useQuery(fetching.postsQuery, handle);
-	const pages = use(postsPromise);
+	const [pages] = useQuery(fetching.postsQuery, handle);
 	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
 }
 
 function FetchedPost(): ReactNode {
 	const data = fetchPost.useLoaderData<FetchRouter>();
-	const [postPromise] = useQuery(fetching.postQuery, data.post);
-	const post = use(postPromise);
-	const [commentsPromise] = useQuery(fetching.commentsQuery, data.comments);
-	const pages = use(commentsPromise);
+	const [post] = useQuery(fetching.postQuery, data.post);
+	const [pages] = useQuery(fetching.commentsQuery, data.comments);
 	return (
 		<PostPage>
 			<PostBody post={post} />

@@ -285,8 +285,7 @@ describe("useQuery", () => {
 		function Numbers(props: {
 			readonly handle: QueryHandleWithData<typeof numbersQuery>;
 		}) {
-			const [promise, numbers] = useQuery(numbersQuery, props.handle);
-			const data = use(promise);
+			const [data, numbers] = useQuery(numbersQuery, props.handle);
 			return (
 				<button
 					disabled={!numbers.hasNextPage}
@@ -388,7 +387,7 @@ describe("useQuery", () => {
 		}) {
 			renders.count++;
 			const [value] = useQuery(flakyQuery, props.handle);
-			return <p>{`Value ${use(value)}`}</p>;
+			return <p>{`Value ${value}`}</p>;
 		}
 		const handle = await client.ensure(flakyQuery);
 		await mount(
@@ -468,13 +467,19 @@ describe("useQuery", () => {
 		});
 	});
 
-	it("reads a handle from ensure from the live entry, not its data", async () => {
+	it("returns the live entry's data for a handle from ensure", async () => {
 		const test = setup();
+		function EnsuredTitle(props: {
+			readonly handle: QueryHandleWithData<typeof test.backend.issueQuery>;
+		}) {
+			const [issue] = useQuery(test.backend.issueQuery, props.handle);
+			return <p>{issue.title}</p>;
+		}
 		const ensuring = test.client.ensure(test.backend.issueQuery, { id: 1 });
 		await test.backend.respond();
 		const handle = await ensuring;
 
-		await mount(test.view(<test.IssueTitle handle={handle} />));
+		await mount(test.view(<EnsuredTitle handle={handle} />));
 		expect(screen.getByText("First")).toBeDefined();
 
 		await act(async () => {
@@ -516,7 +521,7 @@ describe("useQuery", () => {
 			readonly handle: QueryHandleWithData<typeof assigneeQuery>;
 		}) {
 			const [name] = useQuery(assigneeQuery, props.handle);
-			return <p>{use(name) ?? "Unassigned"}</p>;
+			return <p>{name ?? "Unassigned"}</p>;
 		}
 		const handle = await test.client.ensure(assigneeQuery);
 
@@ -559,7 +564,7 @@ describe("useQuery", () => {
 		});
 	});
 
-	it("types handles with data as handles, read as promises", () => {
+	it("types reads of handles with data as data", () => {
 		const backend = createBackend();
 		expectTypeOf<QueryHandleWithData<typeof backend.issueQuery>>().toExtend<
 			QueryHandle<typeof backend.issueQuery>
@@ -577,8 +582,8 @@ describe("useQuery", () => {
 			handle: QueryHandle<typeof backend.issueQuery>,
 		) => {
 			expectTypeOf(withData.data).toEqualTypeOf<Issue>();
-			const [fromData] = useQuery(backend.issueQuery, withData);
-			expectTypeOf(fromData).toEqualTypeOf<Promise<Issue>>();
+			const [issue] = useQuery(backend.issueQuery, withData);
+			expectTypeOf(issue).toEqualTypeOf<Issue>();
 			const [promise] = useQuery(backend.issueQuery, handle);
 			expectTypeOf(promise).toEqualTypeOf<Promise<Issue>>();
 		};
@@ -701,6 +706,30 @@ describe("useQuery", () => {
 			</QueryClientProvider>,
 		);
 		await waitFor(() => screen.getByText("missing 404"));
+		cleanup();
+	});
+
+	it("returns the Result itself for a handle from ensure when throwOnError is false", async () => {
+		const client = new QueryClient({
+			isServer: false,
+			layer: Layer.succeed(Greeting, "Hello"),
+		});
+		function Greet(props: {
+			readonly handle: QueryHandleWithData<typeof greetingQuery>;
+		}) {
+			const [greeting] = useQuery(greetingQuery, props.handle);
+			expectTypeOf(greeting).toEqualTypeOf<Result.Result<string, never>>();
+			return <p>{Result.getOrThrow(greeting)}</p>;
+		}
+		const handle = await client.ensure(greetingQuery, { name: "Ada" });
+
+		await mount(
+			<QueryClientProvider client={client}>
+				<Greet handle={handle} />
+			</QueryClientProvider>,
+		);
+
+		expect(screen.getByText("Hello, Ada")).toBeDefined();
 		cleanup();
 	});
 

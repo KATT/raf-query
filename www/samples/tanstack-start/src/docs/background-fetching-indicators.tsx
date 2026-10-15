@@ -1,14 +1,12 @@
-import { type QueryHandle, useQuery } from "@raf-query/react";
-import { use } from "react";
+import { type QueryHandleWithData, useQuery } from "@raf-query/react";
 import { postQuery } from "~/queries.ts";
 import { useIsFetching } from "@raf-query/react";
 
 declare function Spinner(props: { readonly label: string }): React.ReactNode;
 
 // #region one-query-isfetching
-function Post(props: { handle: QueryHandle<typeof postQuery> }) {
-	const [postPromise, postState] = useQuery(postQuery, props.handle);
-	const post = use(postPromise);
+function Post(props: { handle: QueryHandleWithData<typeof postQuery> }) {
+	const [post, postState] = useQuery(postQuery, props.handle);
 	return (
 		<article aria-busy={postState.isFetching}>
 			<h1>
