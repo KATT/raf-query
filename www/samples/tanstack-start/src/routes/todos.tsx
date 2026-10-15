@@ -24,13 +24,15 @@ function TodosPage() {
 }
 
 function TodoList(props: { handle: QueryHandle<typeof todosQuery> }) {
-	const [todosPromise, todosState] = useQuery(todosQuery, props.handle);
-	const todos = use(todosPromise);
+	const [pagesPromise, todosState] = useQuery(todosQuery, props.handle);
+	const pages = use(pagesPromise);
 	return (
 		<ul aria-busy={todosState.isFetching}>
-			{todos.map((todo) => (
-				<li key={todo.id}>{todo.title}</li>
-			))}
+			{pages.pages
+				.flatMap((page) => page.items)
+				.map((todo) => (
+					<li key={todo.id}>{todo.title}</li>
+				))}
 		</ul>
 	);
 }

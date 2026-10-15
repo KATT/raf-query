@@ -1,11 +1,9 @@
 // #region todos
-import { queryOptions } from "@raf-query/react";
+import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
 
 import { getTodo, listTodos } from "./api.ts";
 
 // #endregion
-import { infiniteQueryOptions } from "@raf-query/react";
-
 import {
 	type CommentPage,
 	getAuthor,
@@ -19,9 +17,14 @@ import { getPost } from "./posts.functions.ts";
 
 // #region todos
 export function todosQuery() {
-	return queryOptions({
+	return infiniteQueryOptions({
 		queryKey: ["todos"],
-		queryFn: () => listTodos(),
+		queryFn: async () => ({
+			items: await listTodos(),
+			nextCursor: null,
+		}),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
 	});
 }
 

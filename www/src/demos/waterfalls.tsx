@@ -1,5 +1,6 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
+	infiniteQueryOptions,
 	type QueryHandle,
 	queryOptions,
 	useQuery,
@@ -67,13 +68,28 @@ function postAuthorQuery(input: { readonly postId: number }) {
 	});
 }
 
+interface CommentPage {
+	readonly items: ReturnType<typeof seedComments>;
+	readonly nextCursor: number | null;
+}
+
+function commentNext(lastPage: CommentPage) {
+	return lastPage.nextCursor;
+}
+
 function commentsQuery(input: { readonly postId: number }) {
-	return queryOptions({
+	return infiniteQueryOptions({
+		getNextPageParam: commentNext,
+		initialPageParam: 0,
 		queryFn: (context) =>
 			server.respond(
 				`GET /posts/${input.postId}/comments`,
-				(db) =>
-					db.comments.filter((comment) => comment.postId === input.postId),
+				(db): CommentPage => ({
+					items: db.comments.filter(
+						(comment) => comment.postId === input.postId,
+					),
+					nextCursor: null,
+				}),
 				context,
 			),
 		queryKey: ["posts", input.postId, "comments"],
@@ -117,8 +133,9 @@ function LineSkeleton(props: { readonly className: string }) {
 }
 
 function Title(props: { readonly handle: QueryHandle<typeof postQuery> }) {
-	const [post] = useQuery(postQuery, props.handle);
-	return <h3 className="text-lg font-semibold">{use(post)?.title}</h3>;
+	const [postPromise] = useQuery(postQuery, props.handle);
+	const post = use(postPromise);
+	return <h3 className="text-lg font-semibold">{post?.title}</h3>;
 }
 
 function Byline(props: { readonly name: string | undefined }) {
@@ -128,15 +145,21 @@ function Byline(props: { readonly name: string | undefined }) {
 function CommentList(props: {
 	readonly handle: QueryHandle<typeof commentsQuery>;
 }) {
-	const [comments] = useQuery(commentsQuery, props.handle);
+	const [pagesPromise] = useQuery(commentsQuery, props.handle);
+	const pages = use(pagesPromise);
 	return (
 		<ul className="grid gap-1.5">
-			{use(comments).map((comment) => (
-				<li className="rounded-md border px-3 py-1.5 text-sm" key={comment.id}>
-					<span className="mr-2 font-medium">{comment.author}</span>
-					{comment.body}
-				</li>
-			))}
+			{pages.pages
+				.flatMap((page) => page.items)
+				.map((comment) => (
+					<li
+						className="rounded-md border px-3 py-1.5 text-sm"
+						key={comment.id}
+					>
+						<span className="mr-2 font-medium">{comment.author}</span>
+						{comment.body}
+					</li>
+				))}
 		</ul>
 	);
 }
@@ -144,8 +167,9 @@ function CommentList(props: {
 function LoaderAuthor(props: {
 	readonly handle: QueryHandle<typeof postAuthorQuery>;
 }) {
-	const [author] = useQuery(postAuthorQuery, props.handle);
-	return <Byline name={use(author)} />;
+	const [authorPromise] = useQuery(postAuthorQuery, props.handle);
+	const author = use(authorPromise);
+	return <Byline name={author} />;
 }
 
 /** Everything was started by the loader; each part fills in as its data lands. */
@@ -200,10 +224,11 @@ function RenderAuthor(props: {
 	readonly postId: number;
 }) {
 	const handle = useWaterfall(authorQuery, { id: props.authorId });
-	const [author] = useQuery(authorQuery, handle);
+	const [authorPromise] = useQuery(authorQuery, handle);
+	const author = use(authorPromise);
 	return (
 		<>
-			<Byline name={use(author)} />
+			<Byline name={author} />
 			<Suspense fallback={<LineSkeleton className="mt-3 h-20 w-full" />}>
 				<RenderComments postId={props.postId} />
 			</Suspense>

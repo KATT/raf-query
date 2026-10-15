@@ -26,6 +26,7 @@ function PushState() {
 	if (push.isPending) {
 		return <PushSwitch state="unknown" />;
 	}
-	return <PushSwitch state={use(pushPromise)} />;
+	const state = use(pushPromise);
+	return <PushSwitch state={state} />;
 }
 // #endregion

@@ -10,16 +10,17 @@ Render-as-you-fetch data fetching for React: start queries in route loaders and 
 ## Install
 
 ```bash
-npm install @raf-query/react
+npm install @raf-query/react effect
 ```
 
-`effect` is a peer dependency. npm, pnpm and Bun install it for you; with Yarn, run `yarn add @raf-query/react effect`. Apps never import it unless they write Effect code. Requires React 19.2 or newer.
+Apps never import `effect` unless they write Effect code. Requires React 19.2 or newer.
 
 ## Usage
 
+A query is a factory. The loader and the component call the same one. A paged list, such as comments, uses `infiniteQueryOptions`.
+
 ```tsx
-import { queryOptions, useQuery } from "@raf-query/react";
-import { use } from "react";
+import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
 
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
@@ -28,20 +29,99 @@ export function postQuery(input: { slug: string }) {
 	});
 }
 
-// The loader starts the query and passes a handle on…
+export function commentsQuery(input: { slug: string }) {
+	return infiniteQueryOptions({
+		queryKey: ["comments", input.slug],
+		queryFn: (context) =>
+			listComments({ cursor: context.pageParam, slug: input.slug }),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+	});
+}
+```
+
+**`prefetch`** starts the request and returns a handle at once. The page renders now; `use()` suspends whatever is still loading, under its Suspense fallback.
+
+```tsx
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { Suspense, use } from "react";
+
 export const Route = createFileRoute("/posts/$slug")({
-	loader: async (args) => ({
-		post: await args.context.queryClient.ensure(postQuery, {
-			slug: args.params.slug,
-		}),
-	}),
+	loader: (args) => {
+		const qc = args.context.queryClient;
+		const { slug } = args.params;
+		return {
+			comments: qc.prefetch(commentsQuery, { slug }),
+			post: qc.prefetch(postQuery, { slug }),
+		};
+	},
 	component: PostPage,
 });
 
-// …and the component reads it.
 function PostPage() {
-	const [post] = useQuery(postQuery, Route.useLoaderData().post);
-	return <h1>{use(post).title}</h1>;
+	const data = Route.useLoaderData();
+	const [postPromise] = useQuery(postQuery, data.post);
+	const post = use(postPromise);
+	return (
+		<article>
+			<h1>{post.title}</h1>
+			<Suspense fallback={<CommentsSkeleton />}>
+				<Comments handle={data.comments} />
+			</Suspense>
+		</article>
+	);
+}
+
+function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
+	const [pagesPromise] = useQuery(commentsQuery, props.handle);
+	const pages = use(pagesPromise);
+	return pages.pages
+		.flatMap((page) => page.items)
+		.map((comment) => (
+			<p key={comment.id}>
+				<strong>{comment.author}</strong> {comment.body}
+			</p>
+		));
+}
+```
+
+**`ensure`** waits until the data is cached, so the navigation holds. `useQuery` still returns a promise for that handle; it's already fulfilled, so `use()` doesn't suspend. Await the post and its comments together with [`allKeyed`](https://raf-query.katt.dev/docs/starting-queries#awaiting-several-queries) — a record of promises in, the same record out — so one wait never delays the other.
+
+```tsx
+import { allKeyed, useQuery } from "@raf-query/react";
+import { use } from "react";
+
+export const Route = createFileRoute("/posts/$slug")({
+	loader: (args) => {
+		const qc = args.context.queryClient;
+		const { slug } = args.params;
+		return allKeyed({
+			comments: qc.ensure(commentsQuery, { slug }),
+			post: qc.ensure(postQuery, { slug }),
+		});
+	},
+	component: PostPage,
+});
+
+function PostPage() {
+	const data = Route.useLoaderData();
+	// Both already waited, so use() doesn't suspend.
+	const [postPromise] = useQuery(postQuery, data.post);
+	const post = use(postPromise);
+	const [pagesPromise] = useQuery(commentsQuery, data.comments);
+	const pages = use(pagesPromise);
+	return (
+		<article>
+			<h1>{post.title}</h1>
+			{pages.pages
+				.flatMap((page) => page.items)
+				.map((comment) => (
+					<p key={comment.id}>
+						<strong>{comment.author}</strong> {comment.body}
+					</p>
+				))}
+		</article>
+	);
 }
 ```
 

@@ -11,7 +11,8 @@ export const Route = createFileRoute("/_auth/dashboard")({
 // #region dashboard
 function Dashboard() {
 	const context = Route.useRouteContext();
-	const [me] = useQuery(meQuery, context.me);
-	return <p>{use(me).name}</p>;
+	const [mePromise] = useQuery(meQuery, context.me);
+	const me = use(mePromise);
+	return <p>{me.name}</p>;
 }
 // #endregion

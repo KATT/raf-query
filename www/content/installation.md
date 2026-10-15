@@ -1,6 +1,6 @@
 ---
 title: Installation
-description: Install @raf-query/react and its Effect peer dependency with npm, pnpm, Yarn or Bun.
+description: Install @raf-query/react and effect with npm, pnpm, Yarn or Bun.
 section: Getting started
 order: 2
 ---
@@ -8,23 +8,19 @@ order: 2
 Apps install one package, `@raf-query/react`. It re-exports everything from `@raf-query/core`, so you never import core directly.
 
 ```bash
-npm install @raf-query/react
+npm install @raf-query/react effect
 # or
-pnpm add @raf-query/react
+pnpm add @raf-query/react effect
 # or
-bun add @raf-query/react
-```
-
-With Yarn, also add `effect`, because Yarn doesn't install peer dependencies on its own:
-
-```bash
 yarn add @raf-query/react effect
+# or
+bun add @raf-query/react effect
 ```
 
 ## Requirements
 
 - **React 19.2 or newer.** raf-query reads data with `use()` and relies on transitions, Actions and `useOptimistic`.
-- **`effect` 4.x** as a peer dependency. The cache is written in [Effect](https://effect.website), but an app that doesn't use Effect never imports it: `queryFn`s return promises, and the client, hooks and integrations speak promises. npm, pnpm and Bun install the peer automatically. An app that does use Effect shares one copy with raf-query.
+- **`effect` 4.x** as a peer dependency. The cache is written in [Effect](https://effect.website), but an app that doesn't use Effect never imports it: `queryFn`s return promises, and the client, hooks and integrations speak promises. An app that does use Effect shares one copy with raf-query.
 - **Node.js 22 or newer** for server rendering.
 
 ## Framework integrations

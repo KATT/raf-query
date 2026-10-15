@@ -4,7 +4,7 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
 	type QueryHandle,
-	queryOptions,
+	infiniteQueryOptions,
 	useQuery,
 	useQueryClient,
 } from "@raf-query/react";
@@ -31,10 +31,25 @@ function seedTodos(): Array<Todo> {
 
 const server = createFakeServer(() => ({ todos: seedTodos() }));
 
+interface TodoPage {
+	readonly items: ReadonlyArray<Todo>;
+	readonly nextCursor: number | null;
+}
+
+function todoNext(lastPage: TodoPage) {
+	return lastPage.nextCursor;
+}
+
 function todosQuery() {
-	return queryOptions({
+	return infiniteQueryOptions({
+		getNextPageParam: todoNext,
+		initialPageParam: 0,
 		queryFn: (context) =>
-			server.respond("GET /todos", (db) => db.todos, context),
+			server.respond(
+				"GET /todos",
+				(db) => ({ items: db.todos, nextCursor: null }),
+				context,
+			),
 		queryKey: ["todos"],
 	});
 }
@@ -66,8 +81,9 @@ function SubmitButton() {
 
 function TodoList(props: { readonly handle: QueryHandle<typeof todosQuery> }) {
 	const qc = useQueryClient();
-	const [serverTodosPromise] = useQuery(todosQuery, props.handle);
-	const serverTodos = use(serverTodosPromise);
+	const [pagesPromise] = useQuery(todosQuery, props.handle);
+	const pages = use(pagesPromise);
+	const serverTodos = pages.pages.flatMap((page) => page.items);
 	const [todos, addOptimistic] = useOptimistic<ReadonlyArray<Todo>, string>(
 		serverTodos,
 		(current, text) => [
