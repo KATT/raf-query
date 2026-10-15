@@ -14,7 +14,8 @@ declare function Comments(props: {
 function PostPage() {
 	const loaderData = Route.useLoaderData();
 	// `post` came from `qc.ensure`, `comments` from `qc.prefetch`.
-	const [post, postState] = useQuery(postQuery, loaderData.post);
+	const [postPromise, postState] = useQuery(postQuery, loaderData.post);
+	const post = use(postPromise);
 
 	return (
 		<article>

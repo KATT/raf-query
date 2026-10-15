@@ -79,4 +79,4 @@ Each call returns a new function, but entries are found by `queryKey`, so every 
 
 ## Server-only factories
 
-A factory whose `queryFn` imports server-only code (a database client) can't be imported by a client component, so it can't be read with `useQuery` in the browser. Render its data in a server component, or call the database through a server function or an API route so the browser can refetch it. See [React Server Components](./nextjs.md#server-only-queries).
+A factory whose `queryFn` imports server-only code (a database client) can't be imported by a client component, so it can't be read with `useQuery` in the browser. Render its data in a server component, or call the database through a server function or an API route so the browser can refetch it. See [Next.js: server and browser requests](./nextjs.md#server-and-browser-requests) and [TanStack Start: server and browser requests](./tanstack-start.md#server-and-browser-requests).

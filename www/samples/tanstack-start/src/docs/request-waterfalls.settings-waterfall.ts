@@ -24,8 +24,8 @@ export const Route = createFileRoute("/settings")({
 		const qc = args.context.queryClient;
 		const user = await qc.fetch(currentUserQuery);
 		return {
-			org: qc.prefetch(orgQuery, { orgId: user.orgId }),
-			user: qc.prefetch(currentUserQuery),
+			org: qc.prefetch(orgQuery, { orgId: user.data.orgId }),
+			user,
 		};
 	},
 });

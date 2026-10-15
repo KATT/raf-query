@@ -21,12 +21,12 @@ import { renderToReadableStream } from "react-dom/server.edge";
 
 import {
 	type DehydratedState,
-	type EnsuredQueryHandle,
 	hydrate,
 	Query,
 	QueryClient,
 	QueryClientProvider,
 	type QueryHandle,
+	type QueryHandleWithData,
 	queryOptions,
 	useQuery,
 	useWaterfall,
@@ -259,7 +259,7 @@ describe("TanStack Router setupRouterIntegration", () => {
 
 	it("carries handles in beforeLoad context to child routes and the browser", async () => {
 		expectTypeOf<
-			EnsuredQueryHandle<Backend["issueQuery"]>
+			QueryHandleWithData<Backend["issueQuery"]>
 		>().toExtend<Serializable>();
 		expectTypeOf<QueryHandle<Backend["issueQuery"]>>().toExtend<Serializable>();
 
@@ -287,7 +287,7 @@ describe("TanStack Router setupRouterIntegration", () => {
 					component: function IssueTitle() {
 						const context = indexRoute.useRouteContext();
 						const [issue] = useQuery(backend.issueQuery, context.issue);
-						return <p>{issue.title}</p>;
+						return <p>{use(issue).title}</p>;
 					},
 					getParentRoute: () => rootRoute,
 					loader: async (args) => {
@@ -319,10 +319,17 @@ describe("TanStack Router setupRouterIntegration", () => {
 		const received = receiveRouter(html);
 		const handle = received.matches[0]?.b?.issue;
 		expect(handle).toEqual({
-			ensured: true,
+			data: { createdAt: new Date(1), title: "Issue 1" },
 			input: { id: 1 },
 			key: ["issue", 1],
 		});
+		// The handles' data is the cache entry's object, which the router's
+		// serializer sends once and references from the context, the loader
+		// data and the dehydrated cache.
+		const payload = inlineScripts(html, (source) =>
+			source.includes("Issue 1"),
+		).join("");
+		expect(payload.split("Issue 1")).toHaveLength(2);
 
 		const browser = new QueryClient({ isServer: false });
 		hydrate(browser, received.dehydratedData.raf.initial);

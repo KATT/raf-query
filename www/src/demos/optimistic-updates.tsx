@@ -3,12 +3,12 @@ import { Input } from "@examples/ui/components/input";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
-	type EnsuredQueryHandle,
+	type QueryHandle,
 	infiniteQueryOptions,
 	useQuery,
 	useQueryClient,
 } from "@raf-query/react";
-import { useActionState, useOptimistic } from "react";
+import { use, useActionState, useOptimistic } from "react";
 import { useFormStatus } from "react-dom";
 
 import { DemoBrowser } from "~/demo-kit/browser.tsx";
@@ -66,7 +66,7 @@ function addTodo(text: string) {
 }
 
 interface PageData {
-	readonly todos: EnsuredQueryHandle<typeof todosQuery>;
+	readonly todos: QueryHandle<typeof todosQuery>;
 }
 
 function SubmitButton() {
@@ -79,11 +79,10 @@ function SubmitButton() {
 	);
 }
 
-function TodoList(props: {
-	readonly handle: EnsuredQueryHandle<typeof todosQuery>;
-}) {
+function TodoList(props: { readonly handle: QueryHandle<typeof todosQuery> }) {
 	const qc = useQueryClient();
-	const [pages] = useQuery(todosQuery, props.handle);
+	const [pagesPromise] = useQuery(todosQuery, props.handle);
+	const pages = use(pagesPromise);
 	const serverTodos = pages.pages.flatMap((page) => page.items);
 	const [todos, addOptimistic] = useOptimistic<ReadonlyArray<Todo>, string>(
 		serverTodos,

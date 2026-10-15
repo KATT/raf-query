@@ -1,7 +1,6 @@
 import type {
 	DehydratedState,
 	DehydrateOptions,
-	EnsuredQueryHandle,
 	HydrateOptions,
 	QueryHandle,
 } from "@raf-query/core";
@@ -13,12 +12,13 @@ import { hydrate, type QueryClient } from "./client.ts";
 declare module "@tanstack/react-router" {
 	interface SerializableExtensions {
 		/**
-		 * Handles are `{ key, input, ensured? }`, which the router's serializer
-		 * sends as is. Its type check can't see that on its own: keys are
+		 * Handles are `{ key, input, data? }`, which the router's serializer
+		 * sends as is (`data` is dehydrated anyway, so it is serializable). Its
+		 * type check can't see that on its own: keys are
 		 * `ReadonlyArray<unknown>`, and the handle type names its factory.
 		 * So `beforeLoad` can put handles in route context.
 		 */
-		rafQueryHandle: EnsuredQueryHandle | QueryHandle;
+		rafQueryHandle: QueryHandle;
 	}
 }
 

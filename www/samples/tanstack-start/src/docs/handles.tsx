@@ -1,11 +1,11 @@
 import { useQuery } from "@raf-query/react";
+import { use } from "react";
 import { commentsQuery, postQuery } from "~/queries.ts";
 import { Route } from "~/routes/posts.$slug.tsx";
 
-// #region typed-by-what-the-loader-did
+// #region reading
 const loaderData = Route.useLoaderData();
-const [post] = useQuery(postQuery, loaderData.post); // ensured
-//     ^?
+const [postPromise] = useQuery(postQuery, loaderData.post); // ensured: fulfilled
+const post = use(postPromise); // doesn't suspend
 const [commentsPromise] = useQuery(commentsQuery, loaderData.comments); // prefetched
-//     ^?
 // #endregion

@@ -6,7 +6,7 @@ import {
 	createRouter,
 	Outlet,
 } from "@tanstack/react-router";
-import { Suspense } from "react";
+import { Suspense, use } from "react";
 
 import { Comments } from "./comments.tsx";
 import { EditTitle } from "./issue.tsx";
@@ -31,7 +31,8 @@ const issueRoute = createRoute({
 
 function IssuePage() {
 	const data = issueRoute.useLoaderData();
-	const [issue] = useQuery(issueQuery, data.issue);
+	const [issuePromise] = useQuery(issueQuery, data.issue);
+	const issue = use(issuePromise);
 	return (
 		<article>
 			<EditTitle issue={issue} />

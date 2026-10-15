@@ -13,6 +13,7 @@ import {
 	Query,
 	type QueryFunctionContext,
 	type QueryHandle,
+	type QueryHandleWithData,
 	type QueryMeta,
 	type QueryOptions,
 	queryOptions,
@@ -76,8 +77,17 @@ describe("types", () => {
 			Effect.Effect<QueryHandle<typeof postQuery>>
 		>();
 		expectTypeOf(cache.fetch(postQuery, { slug: "a" })).toEqualTypeOf<
-			Effect.Effect<{ slug: string; title: string }, unknown>
+			Effect.Effect<QueryHandleWithData<typeof postQuery>, unknown>
 		>();
+		expectTypeOf<QueryHandleWithData<typeof postQuery>>().toExtend<
+			QueryHandle<typeof postQuery>
+		>();
+		expectTypeOf<
+			QueryHandleWithData<typeof postQuery>["data"]
+		>().toEqualTypeOf<{
+			slug: string;
+			title: string;
+		}>();
 		expectTypeOf(cache.getData(postQuery, { slug: "a" })).toEqualTypeOf<
 			Effect.Effect<Option.Option<{ slug: string; title: string }>>
 		>();
@@ -96,7 +106,10 @@ describe("types", () => {
 		expectTypeOf<ErrorOf<typeof issueQuery>>().toEqualTypeOf<NotFound>();
 		expectTypeOf<ErrorOf<typeof postQuery>>().toEqualTypeOf<unknown>();
 		expectTypeOf(cache.fetch(issueQuery, { id: 1 })).toEqualTypeOf<
-			Effect.Effect<{ id: number }, NotFound | Query.CancelledError>
+			Effect.Effect<
+				QueryHandleWithData<typeof issueQuery>,
+				NotFound | Query.CancelledError
+			>
 		>();
 		expectTypeOf(
 			Query.fetch(cache.getQueryUnsafe(issueQuery, { id: 1 })),

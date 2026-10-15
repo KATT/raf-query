@@ -93,7 +93,7 @@ Either way, both requests start together, and the page is ready after one round 
 
 When the data really can't be reshaped (a third-party API you don't control), you have two options, and both pay the extra round trip:
 
-- **In the loader**: `await qc.fetch(...)` the parent and build the input from its data. The navigation waits for both.
+- **In the loader**: `await qc.fetch(...)` the parent and build the input from its `data`. The navigation waits for both.
 - **In a component**: start the child with `useWaterfall`, below. The rest of the page renders first.
 
 ## Render-time inputs: useWaterfall

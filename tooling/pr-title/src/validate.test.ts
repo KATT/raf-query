@@ -18,8 +18,8 @@ describe("validatePrTitle", () => {
 					gitRawCommitsOpts: { path: string };
 					preset: {
 						types: Array<{
-							effect: "bump" | "hidden";
-							section?: string;
+							effect: "bump" | "changelog";
+							section: string;
 							type: string;
 						}>;
 					};
@@ -35,14 +35,18 @@ describe("validatePrTitle", () => {
 		expect(changelog.commitsOpts.path).toBe("packages/*");
 		expect(changelog.gitRawCommitsOpts.path).toBe("packages/*");
 		expect(releaseIt.git.commitsPath).toBe("packages/*");
-		// conventional-changelog v10+ uses effect, not the old hidden: true.
+		// The path decides what's in the notes, so no type is hidden.
+		// conventional-changelog v10+ reads effect, not the old hidden: true.
+		expect(
+			types
+				.filter((entry) => entry.effect === "bump")
+				.map((entry) => entry.type),
+		).toEqual(["feat", "fix", "perf"]);
 		for (const entry of types) {
-			expect(entry.effect === "bump" || entry.effect === "hidden").toBe(true);
-			if (entry.effect === "bump") {
-				expect(entry.section).toBeTruthy();
-			} else {
-				expect(entry.section).toBeUndefined();
-			}
+			expect(entry.effect === "bump" || entry.effect === "changelog").toBe(
+				true,
+			);
+			expect(entry.section).toBeTruthy();
 			expect(Object.keys(entry).includes("hidden")).toBe(false);
 		}
 	});

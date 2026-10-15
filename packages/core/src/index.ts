@@ -17,7 +17,6 @@ export { hashKey, matchesKey, type QueryKey } from "./key.ts";
 export {
 	type AnyQueryOptions,
 	type DataOf,
-	type EnsuredQueryHandle,
 	type ErrorOf,
 	type InfiniteData,
 	type InfiniteQueryOptions,
@@ -35,6 +34,7 @@ export {
 	type QueryFnResult,
 	type QueryFunctionContext,
 	type QueryHandle,
+	type QueryHandleWithData,
 	type QueryMeta,
 	type QueryOptions,
 	queryOptions,

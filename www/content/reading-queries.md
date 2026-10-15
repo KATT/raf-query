@@ -13,7 +13,7 @@ tanstack-start/src/docs/reading-queries.ts#intro
 
 `promise` is a stable `Promise<Data>` owned by the cache. Unwrap it with `use()`. When the cache already has data, the promise is pre-resolved and `use()` returns synchronously without suspending.
 
-A handle from `ensure` had its data loaded before the route rendered, so `useQuery` returns the data itself.
+A handle from `ensure` or `fetch` reads the same way. Its data was loaded before the route rendered, so the promise is already fulfilled and `use()` doesn't suspend.
 
 ```sample
 tanstack-start/src/docs/reading-queries.tsx#post-page

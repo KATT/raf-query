@@ -1,11 +1,7 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
-import {
-	type EnsuredQueryHandle,
-	queryOptions,
-	useQuery,
-} from "@raf-query/react";
-import { useState } from "react";
+import { type QueryHandle, queryOptions, useQuery } from "@raf-query/react";
+import { use, useState } from "react";
 
 import { DemoBrowser } from "~/demo-kit/browser.tsx";
 import { formatTime, Segmented, Spinner } from "~/demo-kit/controls.tsx";
@@ -40,19 +36,20 @@ function visitorsQuery() {
 }
 
 interface PageData {
-	readonly visitors: EnsuredQueryHandle<typeof visitorsQuery>;
+	readonly visitors: QueryHandle<typeof visitorsQuery>;
 }
 
 type Interval = "1000" | "3000" | "off";
 
 function Visitors(props: {
-	readonly handle: EnsuredQueryHandle<typeof visitorsQuery>;
+	readonly handle: QueryHandle<typeof visitorsQuery>;
 	readonly interval: Interval;
 }) {
-	const [history, visitors] = useQuery(visitorsQuery, props.handle, {
+	const [historyPromise, visitors] = useQuery(visitorsQuery, props.handle, {
 		refetchInterval:
 			props.interval === "off" ? undefined : Number(props.interval),
 	});
+	const history = use(historyPromise);
 	const max = Math.max(...history, 1);
 	return (
 		<div className="grid gap-3">

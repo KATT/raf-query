@@ -81,10 +81,11 @@ function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 }
 ```
 
-**`ensure`** waits until the data is cached, so the navigation holds and `useQuery` returns the data itself. Await the post and its comments together with [`allKeyed`](https://raf-query.katt.dev/docs/starting-queries#awaiting-several-queries) — a record of promises in, the same record out — so one wait never delays the other.
+**`ensure`** waits until the data is cached, so the navigation holds. `useQuery` still returns a promise for that handle; it's already fulfilled, so `use()` doesn't suspend. Await the post and its comments together with [`allKeyed`](https://raf-query.katt.dev/docs/starting-queries#awaiting-several-queries) — a record of promises in, the same record out — so one wait never delays the other.
 
 ```tsx
 import { allKeyed, useQuery } from "@raf-query/react";
+import { use } from "react";
 
 export const Route = createFileRoute("/posts/$slug")({
 	loader: (args) => {
@@ -100,9 +101,11 @@ export const Route = createFileRoute("/posts/$slug")({
 
 function PostPage() {
 	const data = Route.useLoaderData();
-	// Both are cached, so these are the values themselves.
-	const [post] = useQuery(postQuery, data.post);
-	const [pages] = useQuery(commentsQuery, data.comments);
+	// Both already waited, so use() doesn't suspend.
+	const [postPromise] = useQuery(postQuery, data.post);
+	const post = use(postPromise);
+	const [pagesPromise] = useQuery(commentsQuery, data.comments);
+	const pages = use(pagesPromise);
 	return (
 		<article>
 			<h1>{post.title}</h1>

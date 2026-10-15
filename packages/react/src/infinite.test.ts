@@ -64,19 +64,19 @@ describe("paged queries", () => {
 		const qc = new QueryClient({ isServer: true });
 
 		const one = await qc.fetch(numbersQuery, {});
-		expect(one.pageParams).toEqual([4]);
+		expect(one.data.pageParams).toEqual([4]);
 
 		const fresh = new QueryClient({ isServer: true });
 		const three = await fresh.fetch(numbersQuery, {}, { pages: 3 });
-		expect(itemsOf(three)).toEqual([4, 5, 6, 7, 8, 9]);
+		expect(itemsOf(three.data)).toEqual([4, 5, 6, 7, 8, 9]);
 	});
 
 	it("stop loading up front at the last page", async () => {
 		const qc = new QueryClient({ isServer: true });
 
-		const data = await qc.fetch(numbersQuery, {}, { pages: 10 });
+		const ten = await qc.fetch(numbersQuery, {}, { pages: 10 });
 
-		expect(data.pageParams).toEqual([4, 6, 8]);
+		expect(ten.data.pageParams).toEqual([4, 6, 8]);
 	});
 
 	it("page forward and backward until the ends", async () => {

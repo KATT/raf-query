@@ -1,7 +1,7 @@
 import type {
-	EnsuredQueryHandle,
 	InputOf,
 	QueryHandle,
+	QueryHandleWithData,
 	QueryKey,
 } from "@raf-query/react";
 import { postQuery } from "~/queries.ts";
@@ -9,11 +9,11 @@ import { postQuery } from "~/queries.ts";
 // #region intro
 type Handle = QueryHandle<typeof postQuery>;
 //   ^?
-// { key: QueryKey; input: { slug: string }; ensured: false }
+// { key: QueryKey; input: { slug: string } }
 
-type Ensured = EnsuredQueryHandle<typeof postQuery>;
+type WithData = QueryHandleWithData<typeof postQuery>;
 //   ^?
-// { key: QueryKey; input: { slug: string }; ensured: true }
+// { key: QueryKey; input: { slug: string }; data: Post }
 
 type PostInput = InputOf<typeof postQuery>; // { slug: string }
 type PostKey = QueryKey; // readonly unknown[]

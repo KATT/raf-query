@@ -43,7 +43,7 @@ nextjs/src/app/(blog)/components/comments.tsx#component
 
 - Render a `HydrationBoundary` in each server component that starts queries for client components. Entries already sent in this request are skipped, so nesting them is fine.
 - Pending entries stream as promises through the RSC payload: the page's shell renders while `comments` loads.
-- `fetch` and `ensure` wait for the same thing on the server. `await qc.fetch(...)` the data the server component renders itself. When it also hands the query to a client component, pass `await qc.ensure(...)`, so the client component gets the data from `useQuery` without a promise.
+- `await qc.fetch(...)` (or `ensure`, which waits for the same thing on the server) returns a handle with the `data`: render `post.data` in the server component, and pass `post` to client components that read the query. The data crosses once: the RSC payload references the `HydrationBoundary`'s copy.
 
 ## Pending UI
 
@@ -69,15 +69,64 @@ Changing search params with `<Link>` or `router.push` renders the page again on 
 
 `QueryProvider`'s server render starts no requests. A client component reading a query that no `HydrationBoundary` sent renders its Suspense fallback on the server, and the query loads in the browser. This is what happens with [`useWaterfall`](./request-waterfalls.md#render-time-inputs-usewaterfall) in a client component. That boundary renders in the browser through React's error recovery, with the digest Next.js uses for `ssr: false`, so Next.js doesn't report it.
 
-## Server actions and route handlers
+## Server and browser requests
 
-Factories can call server actions: server components call them directly, and the browser calls them on refetch. Validate their arguments, since anyone can call them.
+A factory's `queryFn` runs in two places, and has to reach the same data as the same user in both:
 
-The browser runs a page's server actions one at a time, so refetches wait for each other and for any pending mutation. For parallel requests, have the `queryFn` call a [Route Handler](https://nextjs.org/docs/app/api-reference/file-conventions/route) instead, as [`examples/nextjs`](https://github.com/KATT/raf-query/tree/main/examples/nextjs) does:
+|                     | Server components                            | Browser                   |
+| ------------------- | -------------------------------------------- | ------------------------- |
+| When                | The page request                             | Refetches and later pages |
+| `fetch("/api/...")` | Fails: there is no page origin to resolve it | Works                     |
+| The user's cookies  | Yours to forward, from `headers()`           | Sent by the browser       |
+
+Client components' server render starts no request, so it isn't a third place.
+
+### An API in the same app
+
+Have the API read the session from the request's cookies, and give factories one `apiFetch` with two files behind it: on the server it calls the API's handler in the process with the page request's cookies, and in the browser it's `fetch`. A [subpath import](https://nodejs.org/api/packages.html#subpath-imports) picks the file. Next.js resolves the `react-server` condition in server components, so the server file can import `next/headers` and your API, and neither reaches the browser bundle:
+
+```json title="package.json"
+{
+	"imports": {
+		"#api-fetch": {
+			"react-server": "./src/api-fetch.server.ts",
+			"default": "./src/api-fetch.ts"
+		}
+	}
+}
+```
 
 ```sample
-nextjs/src/queries.ts#route-handler
+nextjs/src/api-fetch.server.ts
 ```
+
+```sample
+nextjs/src/api-fetch.ts
+```
+
+```sample
+nextjs/src/queries.ts#api-fetch
+```
+
+- The API sees the same request from both sides, so it authenticates the same way. Forward only what it reads (`cookie`, `authorization`), not every header.
+- Nothing needs the app's own origin, and server rendering doesn't open a second connection to itself.
+- A typed client works the same way. [`examples/nextjs`](https://github.com/KATT/raf-query/tree/main/examples/nextjs) gives a Hono client the page request's cookies in `src/forwarded-headers.server.ts`.
+- Reading `headers()` renders the page per request, as a page with per-user data must.
+
+### An API on another origin
+
+The server can call the same URL as the browser, but the browser's cookies belong to your origin, not the API's:
+
+- **In server components**, forward the credentials it needs: read your session with `cookies()` and send, for example, an `Authorization` header.
+- **In the browser**, either proxy it through a [Route Handler](https://nextjs.org/docs/app/api-reference/file-conventions/route), so the request carries your cookies and the handler adds the same credentials, or send `credentials: "include"` to an API that allows your origin with CORS and sets its own cookies.
+
+Pick the two implementations with the same `react-server` condition.
+
+### Server actions
+
+Factories can call server actions, and get both sides for free: server components call the function in the page request, and the browser posts to it with its cookies. Validate their arguments, since anyone can call them.
+
+The browser runs a page's server actions one at a time, so refetches wait for each other and for any pending mutation. For parallel requests, call your API instead.
 
 ## Mutations
 
@@ -92,6 +141,8 @@ If the action also calls `revalidatePath` or `refresh()`, server components rend
 ## Server-only queries
 
 A factory that imports server-only code (a database client) can't be imported by a client component, so it can't be read with `useQuery`. Render its data in a server component, or pass a plain promise prop and `use()` it on the client. Refresh it with `router.refresh()`.
+
+To read it from client components too, put the server-only code behind an API, and reach that from the factory as in [An API in the same app](#an-api-in-the-same-app).
 
 ## Example
 
