@@ -5,8 +5,7 @@ export const IssueStatus = z.enum(issueStatuses);
 export type IssueStatus = z.infer<typeof IssueStatus>;
 
 export const issueSorts = ["newest", "oldest"] as const;
-export const IssueSort = z.enum(issueSorts);
-export type IssueSort = z.infer<typeof IssueSort>;
+const IssueSort = z.enum(issueSorts);
 
 /** The cookie the apps' settings menu stores the database latency in, in ms. */
 export const LATENCY_COOKIE = "db-latency";
@@ -58,7 +57,7 @@ export function parseStaleTime(value: string | undefined) {
  * has them after they go stale. Forever keeps them for the session: collecting
  * them would drop data that never goes stale.
  */
-export function gcTimeFor(staleTime: number) {
+function gcTimeFor(staleTime: number) {
 	return Number.isFinite(staleTime)
 		? Math.max(staleTime * 2, 5 * 60_000)
 		: Number.POSITIVE_INFINITY;
@@ -105,9 +104,6 @@ export type IssuePageInput = z.infer<typeof IssuePageInput>;
 
 export const IssueId = Id;
 
-export const CommentsInput = z.object({ cursor: Cursor, issueId: Id });
-export type CommentsInput = z.infer<typeof CommentsInput>;
-
 /** Fields a client may PATCH on an issue. At least one is required. */
 export const UpdateIssueFields = z
 	.object({
@@ -123,9 +119,6 @@ export const UpdateIssueFields = z
 		{ message: "Nothing to update" },
 	);
 export type UpdateIssueFields = z.infer<typeof UpdateIssueFields>;
-
-export const UpdateIssueInput = UpdateIssueFields.and(z.object({ id: Id }));
-export type UpdateIssueInput = z.infer<typeof UpdateIssueInput>;
 
 /** The client picks `id`, so its optimistic entry and the saved comment match. */
 export const AddCommentInput = z.object({

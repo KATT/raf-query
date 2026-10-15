@@ -15,8 +15,8 @@ import {
 
 export * from "./types.ts";
 
-export const ISSUES_PER_PAGE = 10;
-export const COMMENTS_PER_PAGE = 4;
+const ISSUES_PER_PAGE = 10;
+const COMMENTS_PER_PAGE = 4;
 
 /** Per-call options, which the API reads from each request. */
 export interface CallOptions {

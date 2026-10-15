@@ -1,9 +1,7 @@
 import {
-	type ErrorOf,
 	infiniteQueryOptions,
 	QueryCache,
 	queryOptions,
-	type ServicesOf,
 } from "@raf-query/react";
 import { Schedule, Schema } from "effect";
 
@@ -49,8 +47,8 @@ export function issueCountsQuery() {
 }
 
 /**
- * Fails with {@link IssueQueryError}. The issue page turns `IssueNotFound`
- * into the router's `notFound()` when it reads the issue.
+ * Fails with the error of `Issues.GetIssue`. The issue page turns
+ * `IssueNotFound` into the router's `notFound()` when it reads the issue.
  */
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
@@ -59,9 +57,6 @@ export function issueQuery(input: { id: number }) {
 		retry: retryUnlessNotFound,
 	});
 }
-
-export type IssueQueryError = ErrorOf<typeof issueQuery>;
-export type IssueQueryServices = ServicesOf<typeof issueQuery>;
 
 export function commentsQuery(input: { issueId: number }) {
 	return infiniteQueryOptions({
@@ -79,7 +74,10 @@ export function commentsQuery(input: { issueId: number }) {
 	});
 }
 
-/** Fails with {@link AssigneeQueryError}; React narrows with `Schema.is`. */
+/**
+ * Fails with the error of `Issues.GetIssueAssignee`. React narrows with
+ * `Schema.is`.
+ */
 export function assigneeQuery(input: { issueId: number }) {
 	return queryOptions({
 		queryFn: () => Issues.use((issues) => issues.GetIssueAssignee(input)),
@@ -87,5 +85,3 @@ export function assigneeQuery(input: { issueId: number }) {
 		retry: retryUnlessNotFound,
 	});
 }
-
-export type AssigneeQueryError = ErrorOf<typeof assigneeQuery>;
