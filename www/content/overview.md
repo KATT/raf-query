@@ -10,7 +10,7 @@ raf-query is a data-fetching library for React built around **render-as-you-fetc
 The cache's mechanics (dedupe, staleness, retries, infinite paging, SSR hydration) follow [TanStack Query](https://tanstack.com/query). The public API is built around loaders, RSC and `use()` instead of `useQuery`-in-render.
 
 > [!NOTE]
-> raf-query is early. Both packages are on npm at `0.x`, and the API can still change between patch releases.
+> raf-query is early. Both packages are on npm at `0.x`, and the API can still change between minor releases.
 
 ## Motivation
 
