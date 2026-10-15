@@ -513,6 +513,79 @@
 			}
 		},
 		{
+			// The example apps show raf-query to people who don't use Effect, and
+			// don't teach the `useWaterfall` escape hatch. Repeats the root
+			// `no-restricted-imports` paths: an override replaces them.
+			"files": [
+				"examples/**",
+				".experimental/tanstack-query/start/**",
+				".experimental/tanstack-query/nextjs/**",
+				".experimental/react-router/app/**"
+			],
+			"rules": {
+				"no-restricted-imports": [
+					"error",
+					{
+						"paths": [
+							{
+								"importNames": ["onTestFinished"],
+								"message": "Return a Disposable and `using` it instead.",
+								"name": "@effect/vitest"
+							},
+							{
+								"importNames": ["onTestFinished"],
+								"message": "Return a Disposable and `using` it instead.",
+								"name": "vitest"
+							},
+							{
+								"importNames": ["useWaterfall"],
+								"message": "Start the query in the loader or server component once its input is in.",
+								"name": "@raf-query/react"
+							},
+							{
+								"importNames": ["useWaterfall"],
+								"message": "Start the query in the loader or server component once its input is in.",
+								"name": "@raf-query/experimental-tanstack-react-query"
+							}
+						],
+						"patterns": [
+							{
+								"group": ["effect", "effect/*", "@effect/*"],
+								"message": "Example apps don't use Effect; use Zod for schemas. Only examples/tanstack-start-effect does."
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"files": ["examples/tanstack-start-effect/**"],
+			"rules": {
+				"no-restricted-imports": [
+					"error",
+					{
+						"paths": [
+							{
+								"importNames": ["onTestFinished"],
+								"message": "Return a Disposable and `using` it instead.",
+								"name": "@effect/vitest"
+							},
+							{
+								"importNames": ["onTestFinished"],
+								"message": "Return a Disposable and `using` it instead.",
+								"name": "vitest"
+							},
+							{
+								"importNames": ["useWaterfall"],
+								"message": "Start the query in the loader or server component once its input is in.",
+								"name": "@raf-query/react"
+							}
+						]
+					}
+				]
+			}
+		},
+		{
 			// TanStack Router infers loader/search/context types from option key
 			// order (`validateSearch` before `loader`, `loader` before `head`).
 			"files": [
