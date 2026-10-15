@@ -5,6 +5,7 @@ import {
 	type QueryTimeDefaults,
 } from "@examples/db/types";
 import { Logo } from "@examples/kit/components/logo";
+import { ThemeProvider } from "@examples/kit/components/theme-provider";
 import { Toaster } from "@examples/ui/components/sonner";
 import { logoUrl } from "@examples/kit/lib/logo";
 import {
@@ -16,7 +17,6 @@ import { QueryDevtools } from "@raf-query/react/devtools";
 import { useState } from "react";
 import {
 	isRouteErrorResponse,
-	Link,
 	Links,
 	Meta,
 	Outlet,
@@ -24,6 +24,7 @@ import {
 	ScrollRestoration,
 } from "react-router";
 
+import { AppLink, PrefetchContext } from "~/components/app-link.tsx";
 import { Settings } from "~/components/settings.tsx";
 import {
 	DEFAULT_PREFETCH,
@@ -49,7 +50,7 @@ export function loader(args: Route.LoaderArgs) {
 
 export function Layout(props: { readonly children: React.ReactNode }) {
 	return (
-		<html lang="en">
+		<html lang="en" suppressHydrationWarning>
 			<head>
 				<meta charSet="utf-8" />
 				<meta content="width=device-width, initial-scale=1" name="viewport" />
@@ -58,7 +59,7 @@ export function Layout(props: { readonly children: React.ReactNode }) {
 				<Links />
 			</head>
 			<body className="min-h-screen antialiased">
-				{props.children}
+				<ThemeProvider>{props.children}</ThemeProvider>
 				<ScrollRestoration />
 				<Scripts />
 			</body>
@@ -82,34 +83,32 @@ export default function App(props: Route.ComponentProps) {
 
 	return (
 		<QueryClientProvider client={queryClient}>
-			<header className="border-b">
-				<nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
-					<Link
-						className="flex items-center gap-2.5 font-semibold"
-						prefetch={prefetch}
-						to="/issues"
-					>
-						<Logo alt="" />
-						Issues
-					</Link>
-					<span className="text-sm text-muted-foreground">
-						raf-query · React Router
-					</span>
-					<div className="ml-auto">
-						<AppSettings
-							onPrefetchChange={setPrefetch}
-							prefetch={prefetch}
-							queryDefaults={queryDefaults}
-						/>
-					</div>
-				</nav>
-			</header>
-			<main
-				className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8"
-				key={prefetch}
-			>
-				<Outlet />
-			</main>
+			<PrefetchContext value={prefetch}>
+				<header className="border-b">
+					<nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
+						<AppLink
+							className="flex items-center gap-2.5 font-semibold"
+							to="/issues"
+						>
+							<Logo alt="" />
+							Issues
+						</AppLink>
+						<span className="text-sm text-muted-foreground">
+							raf-query · React Router
+						</span>
+						<div className="ml-auto">
+							<AppSettings
+								onPrefetchChange={setPrefetch}
+								prefetch={prefetch}
+								queryDefaults={queryDefaults}
+							/>
+						</div>
+					</nav>
+				</header>
+				<main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+					<Outlet />
+				</main>
+			</PrefetchContext>
 			<QueryDevtools />
 			<Toaster closeButton position="bottom-right" richColors />
 		</QueryClientProvider>

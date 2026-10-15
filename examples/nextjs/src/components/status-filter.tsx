@@ -5,14 +5,13 @@ import {
 	issueSorts,
 	issueStatuses,
 } from "@examples/db/types";
+import { statusLabel } from "@examples/kit/components/status-badge";
 import { cn } from "@examples/ui/lib/utils";
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { AppLink } from "./settings.tsx";
 import { use } from "react";
 
 import { issueCountsQuery } from "~/queries.ts";
-
-import { statusLabel } from "./status-badge.tsx";
 
 export function StatusFilter(props: {
 	readonly counts: QueryHandle<typeof issueCountsQuery>;
