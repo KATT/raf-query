@@ -1,5 +1,5 @@
 /**
- * Commit types release-it puts in the changelog or accepts as hidden. Keep in
+ * Commit types release-it accepts (`effect: "bump"` or `"hidden"`). Keep in
  * sync with `.release-it.json` → `plugins["@release-it/conventional-changelog"].preset.types`.
  */
 export const releaseTypes = [

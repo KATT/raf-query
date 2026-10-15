@@ -13,14 +13,32 @@ describe("validatePrTitle", () => {
 		const releaseIt: {
 			plugins: {
 				"@release-it/conventional-changelog": {
-					preset: { types: Array<{ type: string }> };
+					preset: {
+						types: Array<{
+							effect: "bump" | "hidden";
+							section?: string;
+							type: string;
+						}>;
+					};
 				};
 			};
 		} = JSON.parse(readFileSync(join(repoRoot, ".release-it.json"), "utf8"));
-		const fromRelease = releaseIt.plugins[
-			"@release-it/conventional-changelog"
-		].preset.types.map((entry) => entry.type);
-		expect(releaseTypes.toSorted()).toEqual(fromRelease.toSorted());
+		const types =
+			releaseIt.plugins["@release-it/conventional-changelog"].preset.types;
+		expect(releaseTypes.toSorted()).toEqual(
+			types.map((entry) => entry.type).toSorted(),
+		);
+		// conventional-changelog v10+ uses effect, not the old hidden: true.
+		// Without effect: "hidden", docs/chore/ci leak into GitHub Releases.
+		for (const entry of types) {
+			expect(entry.effect === "bump" || entry.effect === "hidden").toBe(true);
+			if (entry.effect === "bump") {
+				expect(entry.section).toBeTruthy();
+			} else {
+				expect(entry.section).toBeUndefined();
+			}
+			expect(Object.keys(entry).includes("hidden")).toBe(false);
+		}
 	});
 
 	it.each([
