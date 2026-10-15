@@ -93,7 +93,7 @@ const features: ReadonlyArray<{
 		title: "Fetch where React recommends",
 	},
 	{
-		body: "A handle is just a key and an input. It crosses the loader, the server and the client without carrying data.",
+		body: "A handle is a key and an input, plus the data once ensure or fetch has loaded it. It crosses the loader, the server and the client.",
 		icon: <Link2 />,
 		slug: "handles",
 		title: "Small, serializable handles",

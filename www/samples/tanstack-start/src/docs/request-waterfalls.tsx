@@ -31,5 +31,5 @@ declare const slug: string;
 
 // #region fetch-then-prefetch
 const post = await qc.fetch(postQuery, { slug });
-const author = qc.prefetch(authorQuery, { id: post.authorId });
+const author = qc.prefetch(authorQuery, { id: post.data.authorId });
 // #endregion

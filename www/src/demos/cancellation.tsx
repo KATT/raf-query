@@ -1,10 +1,7 @@
 import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import {
-	type EnsuredQueryHandle,
-	queryOptions,
-	useQuery,
-} from "@raf-query/react";
+import { type QueryHandle, queryOptions, useQuery } from "@raf-query/react";
+import { use } from "react";
 import { RefreshCw } from "lucide-react";
 
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
@@ -31,15 +28,14 @@ function inboxQuery() {
 
 type PageData =
 	| {
-			readonly inbox: EnsuredQueryHandle<typeof inboxQuery>;
+			readonly inbox: QueryHandle<typeof inboxQuery>;
 			readonly page: "inbox";
 	  }
 	| { readonly page: "settings" };
 
-function Inbox(props: {
-	readonly handle: EnsuredQueryHandle<typeof inboxQuery>;
-}) {
-	const [messages, inbox] = useQuery(inboxQuery, props.handle);
+function Inbox(props: { readonly handle: QueryHandle<typeof inboxQuery> }) {
+	const [messagesPromise, inbox] = useQuery(inboxQuery, props.handle);
+	const messages = use(messagesPromise);
 	return (
 		<div aria-busy={inbox.isFetching} className="grid gap-3">
 			<ul className="grid gap-1.5">

@@ -23,9 +23,10 @@ export const Route = createFileRoute("/posts/$slug")({
 // #region component
 function PostPage() {
 	const data = Route.useLoaderData();
-	// ensure put the post in the cache, so this is the post itself.
-	const [post] = useQuery(postQuery, data.post);
-	//     ^?
+	// ensure put the post in the cache, so use() returns it without suspending.
+	const [postPromise] = useQuery(postQuery, data.post);
+	const post = use(postPromise);
+	//    ^?
 	return (
 		<article>
 			<h1>{post.title}</h1>

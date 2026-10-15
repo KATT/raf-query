@@ -19,6 +19,7 @@ npm install @raf-query/react
 
 ```tsx
 import { queryOptions, useQuery } from "@raf-query/react";
+import { use } from "react";
 
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
@@ -40,7 +41,7 @@ export const Route = createFileRoute("/posts/$slug")({
 // …and the component reads it.
 function PostPage() {
 	const [post] = useQuery(postQuery, Route.useLoaderData().post);
-	return <h1>{post.title}</h1>;
+	return <h1>{use(post).title}</h1>;
 }
 ```
 

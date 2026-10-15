@@ -300,19 +300,19 @@ const ensureTree = ensureRoot.addChildren([ensureList, ensurePost]);
 
 function EnsuredList(): ReactNode {
 	const handle = ensureList.useLoaderData<EnsureRouter>();
-	const [posts] = useQuery(ensuring.postsQuery, handle);
-	return <PostList posts={posts} />;
+	const [postsPromise] = useQuery(ensuring.postsQuery, handle);
+	return <PostList posts={use(postsPromise)} />;
 }
 
 function EnsuredPost(): ReactNode {
 	const data = ensurePost.useLoaderData<EnsureRouter>();
-	const [post] = useQuery(ensuring.postQuery, data.post);
-	const [comments] = useQuery(ensuring.commentsQuery, data.comments);
+	const [postPromise] = useQuery(ensuring.postQuery, data.post);
+	const [commentsPromise] = useQuery(ensuring.commentsQuery, data.comments);
 	return (
 		<PostPage>
-			<PostBody post={post} />
+			<PostBody post={use(postPromise)} />
 			<CommentsSection>
-				<CommentList comments={comments} />
+				<CommentList comments={use(commentsPromise)} />
 			</CommentsSection>
 		</PostPage>
 	);
@@ -342,16 +342,20 @@ const fetchList = createRoute({
 const fetchTree = fetchRoot.addChildren([fetchList, fetchPost]);
 
 function FetchedList(): ReactNode {
-	return <PostList posts={fetchList.useLoaderData<FetchRouter>()} />;
+	const handle = fetchList.useLoaderData<FetchRouter>();
+	const [postsPromise] = useQuery(fetching.postsQuery, handle);
+	return <PostList posts={use(postsPromise)} />;
 }
 
 function FetchedPost(): ReactNode {
 	const data = fetchPost.useLoaderData<FetchRouter>();
+	const [postPromise] = useQuery(fetching.postQuery, data.post);
+	const [commentsPromise] = useQuery(fetching.commentsQuery, data.comments);
 	return (
 		<PostPage>
-			<PostBody post={data.post} />
+			<PostBody post={use(postPromise)} />
 			<CommentsSection>
-				<CommentList comments={data.comments} />
+				<CommentList comments={use(commentsPromise)} />
 			</CommentsSection>
 		</PostPage>
 	);
