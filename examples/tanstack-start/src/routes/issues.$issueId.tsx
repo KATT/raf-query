@@ -1,3 +1,4 @@
+import { CommentsSkeleton } from "@examples/kit/components/comments";
 import { Button, buttonVariants } from "@examples/ui/components/button";
 import { cn } from "@examples/ui/lib/utils";
 import { Separator } from "@examples/ui/components/separator";
@@ -7,7 +8,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Suspense, use } from "react";
 
-import { Comments, CommentsSkeleton } from "~/components/comments.tsx";
+import { Comments } from "~/components/comments.tsx";
 import { EditBody } from "~/components/edit-body.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";

@@ -1,5 +1,6 @@
 "use client";
 
+import { CommentsSkeleton } from "@examples/kit/components/comments";
 import { Button, buttonVariants } from "@examples/ui/components/button";
 import { cn } from "@examples/ui/lib/utils";
 import { Separator } from "@examples/ui/components/separator";
@@ -12,7 +13,7 @@ import { Suspense, use } from "react";
 
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 
-import { Comments, CommentsSkeleton } from "./comments.tsx";
+import { Comments } from "./comments.tsx";
 import { EditBody } from "./edit-body.tsx";
 import { EditTitle } from "./edit-title.tsx";
 import { StatusSelect } from "./status-select.tsx";
