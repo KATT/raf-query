@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.9.2](https://github.com/KATT/raf-query/compare/0.9.1...0.9.2) (2026-10-15)
+
+### Bug Fixes
+
+- **core:** keep handles of factories with the same signature apart ([#167](https://github.com/KATT/raf-query/issues/167)) ([5894bcb](https://github.com/KATT/raf-query/commit/5894bcbcc382c60e9c04768c0e178bf0996f4b45))
+
 ## [0.9.1](https://github.com/KATT/raf-query/compare/0.9.0...0.9.1) (2026-10-15)
 
 ### Features
