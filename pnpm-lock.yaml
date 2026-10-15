@@ -1014,6 +1014,9 @@ importers:
       '@types/node':
         specifier: 26.6.4
         version: 26.6.4
+      oxc-parser:
+        specifier: 0.153.0
+        version: 0.153.0
       oxlint:
         specifier: 1.85.0
         version: 1.85.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))
