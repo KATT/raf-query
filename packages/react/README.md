@@ -77,7 +77,11 @@ function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	const pages = use(pagesPromise);
 	return pages.pages
 		.flatMap((page) => page.items)
-		.map((comment) => <Comment key={comment.id} {...comment} />);
+		.map((comment) => (
+			<p key={comment.id}>
+				<strong>{comment.author}</strong> {comment.body}
+			</p>
+		));
 }
 ```
 
@@ -112,7 +116,9 @@ function PostPage() {
 			{pages.pages
 				.flatMap((page) => page.items)
 				.map((comment) => (
-					<Comment key={comment.id} {...comment} />
+					<p key={comment.id}>
+						<strong>{comment.author}</strong> {comment.body}
+					</p>
 				))}
 		</article>
 	);
