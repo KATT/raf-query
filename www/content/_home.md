@@ -6,21 +6,39 @@ order: 0
 ---
 
 ```tsx twoslash title="src/routes/posts.$slug.tsx"
-import { useQuery } from "@raf-query/react";
-import { createFileRoute, postQuery } from "./_twoslash.ts";
+import { allKeyed, useQuery } from "@raf-query/react";
+import type { ReactNode } from "react";
+import {
+	commentsQuery,
+	createFileRoute,
+	type PostComment,
+	postQuery,
+} from "./_twoslash.ts";
+declare function renderComment(comment: PostComment): ReactNode;
 // ---cut---
 export const Route = createFileRoute("/posts/$slug")({
-	loader: async (args) => ({
-		post: await args.context.queryClient.ensure(postQuery, {
-			slug: args.params.slug,
-		}),
-	}),
+	loader: (args) => {
+		const qc = args.context.queryClient;
+		const input = { slug: args.params.slug };
+		// Both requests start at once, and the route waits for both.
+		return allKeyed({
+			post: qc.ensure(postQuery, input),
+			comments: qc.ensure(commentsQuery, input),
+		});
+	},
 	component: PostPage,
 });
 
 function PostPage() {
-	const [post] = useQuery(postQuery, Route.useLoaderData().post);
+	const data = Route.useLoaderData();
+	const [post] = useQuery(postQuery, data.post);
 	//     ^?
-	return <h1>{post.title}</h1>;
+	const [comments] = useQuery(commentsQuery, data.comments);
+	return (
+		<article>
+			<h1>{post.title}</h1>
+			{comments.pages.flatMap((page) => page.items.map(renderComment))}
+		</article>
+	);
 }
 ```
