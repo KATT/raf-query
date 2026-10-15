@@ -7,7 +7,6 @@ import {
 	screen,
 	within,
 } from "@testing-library/react";
-import { useState } from "react";
 
 import { DemoFrame } from "~/demo-kit/frame.tsx";
 import { createFakeServer } from "~/demo-kit/server.ts";
@@ -33,19 +32,12 @@ async function click(element: HTMLElement) {
 	});
 }
 
-function Demo() {
-	const [expanded, setExpanded] = useState(false);
-	return (
-		<DemoFrame demo={demo} expanded={expanded} onExpandedChange={setExpanded} />
-	);
-}
-
 async function renderDemo(latency = 40): Promise<Disposable> {
 	for (const variant of demo.variants) {
 		variant.server.latency = latency;
 	}
 	await act(async () => {
-		render(<Demo />);
+		render(<DemoFrame demo={demo} />);
 	});
 	// Sessions outlive a render, as on the page, so start each test from
 	// Reset's fresh clients and servers.

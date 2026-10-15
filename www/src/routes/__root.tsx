@@ -7,7 +7,6 @@ import {
 	Scripts,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { z } from "zod";
 
 import {
 	AnnouncementBar,
@@ -19,15 +18,9 @@ import { themeScript } from "~/components/theme-toggle.tsx";
 import { site } from "~/site.ts";
 import appCss from "~/styles.css?url";
 
-const RootSearch = z.object({
-	/** Opens the demo with this id expanded. */
-	demo: z.string().optional(),
-});
-
 export const Route = createRootRouteWithContext<{
 	queryClient: QueryClient;
 }>()({
-	validateSearch: RootSearch,
 	head: () => ({
 		links: [
 			{ href: appCss, rel: "stylesheet" },

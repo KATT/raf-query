@@ -1,6 +1,6 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { ClientOnly, useNavigate, useSearch } from "@tanstack/react-router";
+import { ClientOnly } from "@tanstack/react-router";
 import { Suspense, use } from "react";
 
 import { DemoFrame } from "~/demo-kit/frame.tsx";
@@ -22,26 +22,7 @@ function DemoPlaceholder() {
 
 function LoadedDemo(props: { readonly handle: QueryHandle<typeof demoQuery> }) {
 	const [demoPromise] = useQuery(demoQuery, props.handle);
-	const id = props.handle.input.id;
-	const search = useSearch({ strict: false });
-	const navigate = useNavigate();
-	return (
-		<DemoFrame
-			demo={use(demoPromise)}
-			expanded={search.demo === id}
-			onExpandedChange={(expanded) => {
-				void navigate({
-					hash: true,
-					resetScroll: false,
-					search: (previous) => ({
-						...previous,
-						demo: expanded ? id : undefined,
-					}),
-					to: ".",
-				});
-			}}
-		/>
-	);
+	return <DemoFrame demo={use(demoPromise)} />;
 }
 
 /**
