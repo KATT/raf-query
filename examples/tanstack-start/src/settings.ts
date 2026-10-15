@@ -1,6 +1,5 @@
 import {
 	LATENCY_COOKIE,
-	LATENCY_HEADER,
 	parseLatency,
 	parseStaleTime,
 	STALE_TIME_COOKIE,
@@ -60,15 +59,6 @@ export function readLatency() {
 /** The chosen stale time, or `undefined` for the app's default. */
 export function readStaleTime() {
 	return parseStaleTime(readCookies()[STALE_TIME_COOKIE]);
-}
-
-/**
- * Sends the chosen latency with each API request. Loaders call the API on the
- * server during SSR and in the browser after, and both read the cookie.
- */
-export function latencyHeaders(): Record<string, string> {
-	const latency = readLatency();
-	return latency === undefined ? {} : { [LATENCY_HEADER]: String(latency) };
 }
 
 /** `Link` reads it while rendering, so links pick it up when they next render. */

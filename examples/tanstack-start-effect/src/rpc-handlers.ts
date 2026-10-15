@@ -11,20 +11,23 @@ import {
 	listIssues,
 	updateIssue,
 } from "@examples/db";
-import { LATENCY_HEADER, parseLatency } from "@examples/db/types";
+import { LATENCY_COOKIE, parseLatency } from "@examples/db/types";
 import { Effect, Layer, Option } from "effect";
-import { Headers, HttpRouter } from "effect/http";
+import { Cookies, Headers, HttpRouter } from "effect/http";
 import { RpcSerialization, RpcServer } from "effect/rpc";
 
 import { EmptyBody, EmptyTitle, IssueNotFound, IssueRpcs } from "./rpc.ts";
 
-/** The database options a request asked for in its headers. */
+/**
+ * The database options a request asked for in its cookies, the way a real
+ * server reads its session: the browser sends them, and SSR forwards the page
+ * request's `cookie` header.
+ */
 function options(request: { readonly headers: Headers.Headers }) {
-	return {
-		latencyMs: parseLatency(
-			Option.getOrUndefined(Headers.get(request.headers, LATENCY_HEADER)),
-		),
-	};
+	const cookies = Cookies.parseHeader(
+		Option.getOrElse(Headers.get(request.headers, "cookie"), () => ""),
+	);
+	return { latencyMs: parseLatency(cookies[LATENCY_COOKIE]) };
 }
 
 const IssueHandlers = IssueRpcs.toLayer({

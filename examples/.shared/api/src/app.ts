@@ -12,12 +12,13 @@ import {
 	Cursor,
 	IssueId,
 	IssueListInput,
-	LATENCY_HEADER,
+	LATENCY_COOKIE,
 	parseLatency,
 	UpdateIssueFields,
 } from "@examples/db/types";
 import { sValidator } from "@hono/standard-validator";
 import { type Context, Hono } from "hono";
+import { getCookie } from "hono/cookie";
 import { z } from "zod";
 
 // Path and query values arrive as strings: coerce them, then check them with
@@ -26,9 +27,13 @@ const numeric = z.coerce.number<string>();
 const IssueParam = z.object({ id: numeric.pipe(IssueId) });
 const QueryCursor = numeric.pipe(Cursor);
 
-/** The database options a request asked for in its headers. */
+/**
+ * The database options a request asked for in its cookies, the way a real
+ * API reads its session: the browser sends them, and server rendering
+ * forwards the page request's `cookie` header.
+ */
 function options(c: Context) {
-	return { latencyMs: parseLatency(c.req.header(LATENCY_HEADER)) };
+	return { latencyMs: parseLatency(getCookie(c, LATENCY_COOKIE)) };
 }
 
 const routes = new Hono()

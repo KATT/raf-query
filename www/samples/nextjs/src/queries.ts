@@ -26,12 +26,14 @@ export function issueListQuery(input: { status: "open" | "done" }) {
 	});
 }
 
-// #region route-handler
+// #region api-fetch
+import { apiFetch } from "#api-fetch";
+
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
 		queryKey: ["issue", input.id],
 		queryFn: (context) =>
-			fetch(`/api/issues/${input.id}`, { signal: context.signal }).then(
+			apiFetch(`/api/issues/${input.id}`, { signal: context.signal }).then(
 				(response) => response.json(),
 			),
 	});
