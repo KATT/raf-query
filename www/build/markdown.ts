@@ -1,8 +1,3 @@
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-
-import rehypeShiki from "@shikijs/rehype";
-import { createTransformerFactory, rendererRich } from "@shikijs/twoslash/core";
 import GithubSlugger from "github-slugger";
 import type { Element, ElementContent, Root as HastRoot } from "hast";
 import { toHtml } from "hast-util-to-html";
@@ -18,15 +13,11 @@ import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
-import type { ShikiTransformer } from "shiki";
-import { createTwoslasher } from "twoslash/core";
-// Twoslash runs the compiler through its JavaScript API, which TypeScript 7
-// doesn't have.
-import ts from "typescript6";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
 
 import type { DocHeading, DocSegment } from "../src/content/types.ts";
+import { docsHighlighter } from "./expressive-code.ts";
 
 export interface RenderedMarkdown {
 	readonly demos: ReadonlyArray<string>;
@@ -128,7 +119,7 @@ function remarkDemos(demos: Array<string>) {
 
 /**
  * A fence's meta (`twoslash title="src/queries.ts"`) is `data` on the hast
- * `<code>`, which `rehype-raw` drops. Shiki also reads it from the
+ * `<code>`, which `rehype-raw` drops. Expressive Code reads it from the
  * `metastring` property, which survives.
  */
 function remarkCodeMeta() {
@@ -167,21 +158,6 @@ function rehypeHeadings(headings: Array<DocHeading>) {
 		});
 	};
 }
-
-/** Keeps a fence's `title="…"` and language on the highlighted `<pre>`. */
-const codeMeta: ShikiTransformer = {
-	name: "raf-query-docs:code-meta",
-	pre(node) {
-		// oxlint-disable-next-line eslint/no-underscore-dangle -- Shiki's name for the fence's meta string
-		const raw = this.options.meta?.__raw ?? "";
-		const title = /title="([^"]+)"/.exec(raw)?.[1];
-		if (title) {
-			node.properties["data-title"] = title;
-		}
-		node.properties["data-language"] = this.options.lang;
-		node.properties.tabindex = "0";
-	},
-};
 
 /** Wraps each highlighted block with its title and a copy button. */
 function rehypeCodeBlocks() {
@@ -248,50 +224,8 @@ function toSegments(tree: HastRoot): Array<DocSegment> {
 	return segments;
 }
 
-const twoslashTransformers = new Map<string, ShikiTransformer>();
-
-/**
- * Fences with `twoslash` in their meta are compiled, so hovering a name shows
- * its type, `// ^?` pins a type under the line, and `// @errors: 2345` shows
- * an expected error. A compile error the block doesn't expect fails the
- * build. Blocks resolve imports from `root`, so a hidden setup above
- * `// ---cut---` can import from `content/_twoslash.ts`.
- */
-function twoslashTransformer(root: string) {
-	const cached = twoslashTransformers.get(root);
-	if (cached) {
-		return cached;
-	}
-	const twoslasher = createTwoslasher({
-		compilerOptions: {
-			allowImportingTsExtensions: true,
-			baseUrl: root,
-			jsx: ts.JsxEmit.ReactJSX,
-			lib: ["lib.es2024.d.ts", "lib.dom.d.ts", "lib.dom.iterable.d.ts"],
-			module: ts.ModuleKind.ESNext,
-			moduleResolution: ts.ModuleResolutionKind.Bundler,
-			noEmit: true,
-			// Next.js samples import `~/query-client.ts`; stubs live next to the pages.
-			paths: { "~/*": ["./*"] },
-			skipLibCheck: true,
-			strict: true,
-			target: ts.ScriptTarget.ES2024,
-			types: [],
-		},
-		tsLibDirectory: path.dirname(
-			fileURLToPath(import.meta.resolve("typescript6")),
-		),
-		// @ts-expect-error -- twoslash types `tsModule` as the `typescript` package, which here is TypeScript 7's, with no JavaScript API
-		tsModule: ts,
-		vfsRoot: root,
-	});
-	const transformer = createTransformerFactory(
-		twoslasher,
-		rendererRich({ queryRendering: "line" }),
-	)({ explicitTrigger: true });
-	twoslashTransformers.set(root, transformer);
-	return transformer;
-}
+/** One engine for every page, so theme CSS is built once. */
+const highlight = docsHighlighter();
 
 export interface RenderOptions {
 	/** Where `twoslash` blocks resolve imports from. */
@@ -315,29 +249,12 @@ export async function renderMarkdown(
 		.use(remarkRehype, { allowDangerousHtml: true })
 		.use(rehypeRaw)
 		.use(rehypeHeadings(headings))
-		.use(rehypeShiki, {
-			defaultColor: false,
-			themes: { dark: "github-dark", light: "github-light" },
-			transformers: [
-				twoslashTransformer(options.twoslashRoot),
-				codeMeta,
-				{
-					name: "raf-query-docs:type-queries",
-					pre() {
-						const twoslash = this.meta.twoslash;
-						if (twoslash) {
-							typeQueries.push(
-								twoslash.nodes.flatMap((node) =>
-									node.type === "query" ? [node.text] : [],
-								),
-							);
-						}
-					},
-				},
-			],
-		})
+		.use(highlight)
 		.use(rehypeCodeBlocks);
-	const tree = await processor.run(processor.parse(markdown));
+	const tree = await processor.run(processor.parse(markdown), {
+		data: { twoslashRoot: options.twoslashRoot, typeQueries },
+		value: markdown,
+	});
 	return {
 		demos,
 		headings,

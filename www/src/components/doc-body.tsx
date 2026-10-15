@@ -31,21 +31,30 @@ function internalHref(target: EventTarget | null, root: HTMLElement) {
 	return url.pathname + url.hash;
 }
 
-/** The code a block shows, without Twoslash's types and error messages. */
+/**
+ * The code a block shows, without Twoslash's types and error messages.
+ * Expressive Code's lines are elements with no newline between them.
+ */
 function codeText(pre: Element) {
-	const copy = pre.cloneNode(true);
-	if (!isElement(copy)) {
-		return "";
+	const lines = [...pre.querySelectorAll(".ec-line")];
+	if (lines.length === 0) {
+		return pre.textContent.trimEnd();
 	}
-	// A pinned type or an error is a line of its own, in place of the newline
-	// after the code line it belongs to.
-	for (const metaLine of copy.querySelectorAll(".twoslash-meta-line")) {
-		metaLine.replaceWith("\n");
-	}
-	for (const popup of copy.querySelectorAll(".twoslash-popup-container")) {
-		popup.remove();
-	}
-	return copy.textContent.trimEnd();
+	return lines
+		.map((line) => {
+			const copy = line.cloneNode(true);
+			if (!isElement(copy)) {
+				return "";
+			}
+			for (const extra of copy.querySelectorAll(
+				".twoslash-meta-line, .twoslash-popup-container",
+			)) {
+				extra.remove();
+			}
+			return copy.textContent ?? "";
+		})
+		.join("\n")
+		.trimEnd();
 }
 
 /**

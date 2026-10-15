@@ -23,7 +23,7 @@ order: 16 # position in the section
 
 - Link other pages as `./slug.md` or `./slug.md#heading`. The build fails on a link to a page or heading that doesn't exist.
 - `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]` and friends render as callouts.
-- A code fence can take a title: ` ```ts title="src/queries.ts" `.
+- A code fence can take a title: ` ```ts title="src/queries.ts" `. Fences are rendered with [Expressive Code](https://expressive-code.com).
 
 ### Types in code blocks
 

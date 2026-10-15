@@ -22,7 +22,7 @@ TanStack Query is [MIT licensed](https://github.com/TanStack/query/blob/main/LIC
 
 ## These docs
 
-This site is a TanStack Start app that loads its own pages with raf-query: each page is a query with `staleTime: Infinity`, preloaded when you hover a link. Pages are markdown, compiled at build time with [unified](https://unifiedjs.com) and highlighted with [Shiki](https://shiki.style). The UI is built with [shadcn/ui](https://ui.shadcn.com) components and [Tailwind CSS](https://tailwindcss.com).
+This site is a TanStack Start app that loads its own pages with raf-query: each page is a query with `staleTime: Infinity`, preloaded when you hover a link. Pages are markdown, compiled at build time with [unified](https://unifiedjs.com) and highlighted with [Expressive Code](https://expressive-code.com) (which uses [Shiki](https://shiki.style)). The UI is built with [shadcn/ui](https://ui.shadcn.com) components and [Tailwind CSS](https://tailwindcss.com).
 
 The demos run against a pretend server inside the page, so they work offline and you can change its latency and make it fail.
 
