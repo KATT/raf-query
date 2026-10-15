@@ -138,7 +138,7 @@ function VariantSwitch(props: {
 }) {
 	const name = useId();
 	return (
-		<fieldset className="flex flex-col items-start gap-1.5">
+		<fieldset>
 			<legend className="sr-only">{props.demo.variantsLabel}</legend>
 			<div className="inline-flex flex-wrap rounded-md border p-0.5">
 				{props.demo.variants.map((variant, index) => (
@@ -163,9 +163,6 @@ function VariantSwitch(props: {
 					</label>
 				))}
 			</div>
-			<p aria-live="polite" className="text-sm text-muted-foreground">
-				{props.demo.variants[props.selected]?.description}
-			</p>
 		</fieldset>
 	);
 }
@@ -178,7 +175,6 @@ function VariantSwitch(props: {
 function DemoBody(props: {
 	readonly demo: DemoDefinition;
 	readonly onReload: (index: number, location: string) => void;
-	readonly onSelect: (index: number) => void;
 	readonly opened: ReadonlyArray<number>;
 	readonly selected: number;
 	readonly sessions: ReadonlyArray<Session>;
@@ -186,13 +182,6 @@ function DemoBody(props: {
 	const demo = props.demo;
 	return (
 		<div className="flex flex-col gap-3">
-			{demo.variants.length > 1 ? (
-				<VariantSwitch
-					demo={demo}
-					onSelect={props.onSelect}
-					selected={props.selected}
-				/>
-			) : null}
 			{demo.variants.map((variant, index) => {
 				const session = props.sessions[index];
 				if (!session || !props.opened.includes(index)) {
@@ -224,48 +213,64 @@ function DemoBody(props: {
 	);
 }
 
+/** Everything that changes what the demo does, with the variant's description. */
 function Toolbar(props: {
-	readonly children?: ReactNode;
 	readonly demo: DemoDefinition;
 	/** Shared by the frame's toolbar and the expanded dialog's. */
 	readonly latency: number | undefined;
 	readonly onLatency: (ms: number) => void;
 	readonly onReset: () => void;
+	readonly onSelect: (index: number) => void;
+	readonly selected: number;
 }) {
+	const variants = props.demo.variants;
 	return (
-		<div className="flex flex-wrap items-center gap-2">
-			<div
-				aria-label="Server latency"
-				className="inline-flex rounded-md border p-0.5"
-				role="radiogroup"
-			>
-				{latencies.map((option) => (
-					<button
-						aria-checked={props.latency === option.ms}
-						className={cn(
-							"rounded px-2 py-0.5 text-xs text-muted-foreground",
-							props.latency === option.ms &&
-								"bg-accent font-medium text-foreground",
-						)}
-						key={option.ms}
-						onClick={() => {
-							for (const variant of props.demo.variants) {
-								variant.server.latency = option.ms;
-							}
-							props.onLatency(option.ms);
-						}}
-						role="radio"
-						title={`Server responds in about ${option.ms} ms`}
-						type="button"
-					>
-						{option.label}
-					</button>
-				))}
+		<div className="grid gap-1.5">
+			<div className="flex flex-wrap items-center gap-2">
+				{variants.length > 1 ? (
+					<VariantSwitch
+						demo={props.demo}
+						onSelect={props.onSelect}
+						selected={props.selected}
+					/>
+				) : null}
+				<div
+					aria-label="Server latency"
+					className="inline-flex rounded-md border p-0.5"
+					role="radiogroup"
+				>
+					{latencies.map((option) => (
+						<button
+							aria-checked={props.latency === option.ms}
+							className={cn(
+								"rounded px-2 py-0.5 text-xs text-muted-foreground",
+								props.latency === option.ms &&
+									"bg-accent font-medium text-foreground",
+							)}
+							key={option.ms}
+							onClick={() => {
+								for (const variant of props.demo.variants) {
+									variant.server.latency = option.ms;
+								}
+								props.onLatency(option.ms);
+							}}
+							role="radio"
+							title={`Server responds in about ${option.ms} ms`}
+							type="button"
+						>
+							{option.label}
+						</button>
+					))}
+				</div>
+				<Button onClick={props.onReset} size="xs" variant="ghost">
+					<RotateCcw /> Reset
+				</Button>
 			</div>
-			<Button onClick={props.onReset} size="xs" variant="ghost">
-				<RotateCcw /> Reset
-			</Button>
-			{props.children}
+			{variants.length > 1 ? (
+				<p aria-live="polite" className="text-sm text-muted-foreground">
+					{variants[props.selected]?.description}
+				</p>
+			) : null}
 		</div>
 	);
 }
@@ -275,6 +280,8 @@ function Toolbar(props: {
  * enough: inline and in the expanded dialog alike.
  */
 function DemoCard(props: {
+	/** Expand inline, Close in the dialog. */
+	readonly action: ReactNode;
 	readonly body: ReactNode;
 	readonly className: string;
 	readonly description: ReactNode;
@@ -293,12 +300,15 @@ function DemoCard(props: {
 				props.className,
 			)}
 		>
-			<figcaption className="grid gap-1.5 border-b px-4 py-3">
-				<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-					{props.title}
-					{props.toolbar}
+			<figcaption className="grid gap-3 border-b px-4 py-3">
+				<div className="grid gap-1.5">
+					<div className="flex items-center justify-between gap-3">
+						{props.title}
+						{props.action}
+					</div>
+					{props.description}
 				</div>
-				{props.description}
+				{props.toolbar}
 			</figcaption>
 			<div className="grid min-h-0 flex-1 overflow-y-auto @3xl:grid-cols-[minmax(0,1fr)_26rem] @6xl:grid-cols-[minmax(0,1fr)_32rem]">
 				<div className="min-w-0 p-4">{props.body}</div>
@@ -353,12 +363,6 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 					),
 				);
 			}}
-			onSelect={(index) => {
-				setSelected(index);
-				setOpened((previous) =>
-					previous.includes(index) ? previous : [...previous, index],
-				);
-			}}
 			opened={opened}
 			selected={selected}
 			sessions={sessions}
@@ -368,7 +372,7 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 	const icon = (
 		<FlaskConical className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
 	);
-	const toolbar = (button: ReactNode) => (
+	const toolbar = (
 		<Toolbar
 			demo={demo}
 			latency={latency}
@@ -383,14 +387,30 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 				setSessions(demo.variants.map((each) => createSession(demo, each)));
 				setOpened([selected]);
 			}}
-		>
-			{button}
-		</Toolbar>
+			onSelect={(index) => {
+				setSelected(index);
+				setOpened((previous) =>
+					previous.includes(index) ? previous : [...previous, index],
+				);
+			}}
+			selected={selected}
+		/>
 	);
 
 	return (
 		<>
 			<DemoCard
+				action={
+					<Button
+						onClick={() => {
+							setExpanded(true);
+						}}
+						size="xs"
+						variant="outline"
+					>
+						<Expand /> Expand
+					</Button>
+				}
 				body={
 					expanded ? (
 						<p className="py-10 text-center text-sm text-muted-foreground">
@@ -411,17 +431,7 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 						{demo.title}
 					</p>
 				}
-				toolbar={toolbar(
-					<Button
-						onClick={() => {
-							setExpanded(true);
-						}}
-						size="xs"
-						variant="outline"
-					>
-						<Expand /> Expand
-					</Button>,
-				)}
+				toolbar={toolbar}
 			/>
 			<Dialog onOpenChange={setExpanded} open={expanded}>
 				<DialogContent
@@ -429,6 +439,17 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 					showCloseButton={false}
 				>
 					<DemoCard
+						action={
+							<Button
+								onClick={() => {
+									setExpanded(false);
+								}}
+								size="xs"
+								variant="outline"
+							>
+								<Shrink /> Close
+							</Button>
+						}
 						body={body}
 						className="h-full min-h-0"
 						description={
@@ -444,17 +465,7 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 								{demo.title}
 							</DialogTitle>
 						}
-						toolbar={toolbar(
-							<Button
-								onClick={() => {
-									setExpanded(false);
-								}}
-								size="xs"
-								variant="outline"
-							>
-								<Shrink /> Close
-							</Button>,
-						)}
+						toolbar={toolbar}
 					/>
 				</DialogContent>
 			</Dialog>
