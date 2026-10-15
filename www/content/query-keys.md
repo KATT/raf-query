@@ -16,18 +16,8 @@ The simplest key is an array of constants. It suits:
 - generic list or index resources
 - non-hierarchical resources
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-import { getSpecial, listTodos } from "./_twoslash.ts";
-// ---cut---
-// A list of todos
-queryOptions({ queryKey: ["todos"], queryFn: () => listTodos() });
-
-// Something else, whatever!
-queryOptions({
-	queryKey: ["something", "special"],
-	queryFn: () => getSpecial(),
-});
+```sample
+tanstack-start/src/docs/query-keys.ts#simple-keys
 ```
 
 ## Keys with variables
@@ -37,43 +27,22 @@ When a query needs more information to describe its data, add it to the array: a
 - hierarchical or nested resources, usually identified by an id
 - queries with parameters, usually passed as an object
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-import { getTodo } from "./_twoslash.ts";
-declare function queryFn(): Promise<unknown>;
-// ---cut---
-// An individual todo
-queryOptions({ queryKey: ["todo", 5], queryFn: () => getTodo(5) });
-
-// An individual todo in a "preview" format
-queryOptions({ queryKey: ["todo", 5, { preview: true }], queryFn });
-
-// A list of todos that are "done"
-queryOptions({ queryKey: ["todos", { status: "done" }], queryFn });
+```sample
+tanstack-start/src/docs/query-keys.ts#keys-with-variables
 ```
 
 ## Keys are hashed deterministically
 
 Object keys are sorted before hashing, and `undefined` fields are dropped, so all of these name the same entry:
 
-```ts twoslash
-declare const status: string;
-declare const page: number;
-// ---cut---
-["todos", { status, page }];
-["todos", { page, status }];
-["todos", { page, status, other: undefined }];
+```sample
+tanstack-start/src/docs/query-keys.ts#keys-are-hashed-deterministically
 ```
 
 Array order does matter. These are three different entries:
 
-```ts twoslash
-declare const status: string;
-declare const page: number;
-// ---cut---
-["todos", status, page];
-["todos", page, status];
-["todos", undefined, page, status];
+```sample
+tanstack-start/src/docs/query-keys.ts#array-order-matters
 ```
 
 `hashKey(key)` returns the string form, and `useQuery`'s controls expose it as `hash`, which makes a good `key` prop for a Suspense boundary.
@@ -82,16 +51,8 @@ declare const page: number;
 
 A query's key must change whenever its data would. In raf-query that's natural: a factory's single argument is its **input**, and the key is built from it.
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-import { listTodos } from "./_twoslash.ts";
-// ---cut---
-export function todosQuery(input: { status: "open" | "done"; page: number }) {
-	return queryOptions({
-		queryKey: ["todos", "list", input],
-		queryFn: () => listTodos(input),
-	});
-}
+```sample
+tanstack-start/src/docs/query-keys.ts#put-the-input-in-the-key
 ```
 
 Each distinct input gets its own entry, cached independently. Because the input comes from the URL (see [URL state and pagination](./url-state-and-pagination.md)), a new search param means a new key, and the loader starts it.
@@ -100,16 +61,8 @@ Each distinct input gets its own entry, cached independently. Because the input 
 
 Filters match keys by **prefix**, and object segments match partially. Ordering a key from general to specific lets one call reach a whole group:
 
-```ts twoslash
-import { QueryClient } from "@raf-query/react";
-const qc = new QueryClient();
-// ---cut---
-["issues", "list", { projectId: 3, status: "open" }];
-["issues", "detail", 42];
-["issues", "comments", 42];
-
-await qc.invalidate({ queryKey: ["issues"] }); // all three
-await qc.invalidate({ queryKey: ["issues", "list", { projectId: 3 }] }); // every list in project 3
+```sample
+tanstack-start/src/docs/query-keys.ts#design-keys-for-invalidation
 ```
 
 See [Query invalidation](./query-invalidation.md) for every filter option.

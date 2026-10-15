@@ -7,74 +7,8 @@ order: 9
 
 Filters, sort order and pagination are search params. The loader turns them into the query's input, so every navigation starts the right query and the component only ever reads the handle it was given:
 
-```tsx twoslash title="src/routes/posts.tsx"
-import { use, type ReactNode } from "react";
-import { type QueryClient, queryOptions, useQuery } from "@raf-query/react";
-import type { Post } from "./_twoslash.ts";
-function postsQuery(input: { page: number; sort: "newest" | "oldest" }) {
-	return queryOptions({
-		queryFn: async (): Promise<ReadonlyArray<Post>> => [],
-		queryKey: ["posts", input],
-	});
-}
-type Search = { page: number; sort: "newest" | "oldest" };
-declare function createFileRoute(path: string): <TLoaderData>(options: {
-	readonly component: () => ReactNode;
-	readonly loader: (args: {
-		readonly context: { readonly queryClient: QueryClient };
-		readonly deps: Search;
-	}) => TLoaderData;
-	readonly loaderDeps: (args: { readonly search: Search }) => Search;
-	readonly validateSearch: { parse(input: unknown): Search };
-}) => {
-	useLoaderData(): TLoaderData;
-};
-declare function Link(props: {
-	readonly children?: ReactNode;
-	readonly search: (prev: Search) => Search;
-	readonly to: string;
-}): ReactNode;
-declare function PostList(props: {
-	readonly dimmed: boolean;
-	readonly posts: ReadonlyArray<Post>;
-}): ReactNode;
-// ---cut---
-import { z } from "zod";
-
-const PostsSearch = z.object({
-	sort: z.enum(["newest", "oldest"]).default("newest"),
-	page: z.int().positive().default(1),
-});
-
-export const Route = createFileRoute("/posts")({
-	validateSearch: PostsSearch,
-	loaderDeps: (args) => args.search,
-	loader: (args) => ({
-		posts: args.context.queryClient.prefetch(postsQuery, args.deps),
-	}),
-	component: PostsPage,
-});
-
-function PostsPage() {
-	const loaderData = Route.useLoaderData();
-	const [postsPromise, postsState] = useQuery(postsQuery, loaderData.posts, {
-		whilePending: "previous",
-	});
-
-	return (
-		<>
-			<nav aria-busy={postsState.isPrevious}>
-				<Link to="." search={(prev) => ({ ...prev, sort: "newest" })}>
-					Newest
-				</Link>
-				<Link to="." search={(prev) => ({ ...prev, sort: "oldest" })}>
-					Oldest
-				</Link>
-			</nav>
-			<PostList posts={use(postsPromise)} dimmed={postsState.isPrevious} />
-		</>
-	);
-}
+```sample
+tanstack-start/src/routes/posts.tsx#route
 ```
 
 Clicking a link navigates, the loader prefetches `{ sort: "oldest", page: 1 }` without blocking, and the component receives a new handle.
@@ -102,27 +36,8 @@ This replaces TanStack Query's `placeholderData: keepPreviousData` and `isPlaceh
 
 To show a skeleton instead, for instance when moving between unrelated posts, give the Suspense boundary the query's key. React treats it as new content and shows its fallback, even inside a transition:
 
-```tsx twoslash
-import { Suspense, type ReactNode } from "react";
-import { type QueryHandle, useQuery } from "@raf-query/react";
-import { postQuery } from "./_twoslash.ts";
-declare const loaderData: { post: QueryHandle<typeof postQuery> };
-declare function PostBody(props: {
-	readonly post: Promise<unknown>;
-}): ReactNode;
-declare function PostSkeleton(): ReactNode;
-function PostPage() {
-	// ---cut---
-	// This loader prefetches the post instead of ensuring it.
-	const [postPromise, postState] = useQuery(postQuery, loaderData.post);
-
-	return (
-		<Suspense key={postState.hash} fallback={<PostSkeleton />}>
-			<PostBody post={postPromise} />
-		</Suspense>
-	);
-	// ---cut-after---
-}
+```sample
+tanstack-start/src/docs/url-state-and-pagination.tsx#skeletons-for-unrelated-content
 ```
 
 `hash` is the stable string form of the handle's key.

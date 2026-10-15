@@ -494,7 +494,7 @@
 			// rules-of-hooks matches any call whose property is named `use`.
 			"files": [
 				"examples/tanstack-start-effect/src/**/*.{ts,tsx}",
-				"www/content/_effect.ts"
+				"www/samples/tanstack-start-effect/src/**/*.{ts,tsx}"
 			],
 			"rules": {
 				"react-hooks/rules-of-hooks": "off",
@@ -513,6 +513,51 @@
 			],
 			"rules": {
 				"perfectionist/sort-objects": "off"
+			}
+		},
+		{
+			// The docs' example files are what readers copy: keys and props in the
+			// order the guides explain them (`queryKey` before `queryFn`, `to`
+			// before `params`), a query's input built at the call
+			// (`const { slug } = args.params`), and no ceremony a sample doesn't
+			// need.
+			"files": ["www/samples/*/src/**/*.{ts,tsx}"],
+			"rules": {
+				"anti-slop/require-safety-comment-for-type-assertion": "off",
+				"curly": "off",
+				"eslint/no-underscore-dangle": [
+					"error",
+					{ "allow": ["_exhaustive", "_tag"] }
+				],
+				"perfectionist/sort-jsx-props": "off",
+				"perfectionist/sort-object-types": "off",
+				"perfectionist/sort-objects": "off",
+				"react/button-has-type": "off",
+				"react/no-unescaped-entities": "off",
+				"typescript/consistent-type-assertions": "off",
+				"workspace/no-overzealous-destructuring": "off"
+			}
+		},
+		{
+			// A page's own samples (`src/docs/<page>`) are its code blocks, shown
+			// one region at a time: fragments with hooks at the top level, bindings
+			// the next block reads, bare expressions to pin with `^?`, and the
+			// `unknown`s and shortcuts the prose is about. Typecheck them; the app
+			// code rules don't fit.
+			"files": ["www/samples/*/src/docs/**/*.{ts,tsx}"],
+			"rules": {
+				"anti-slop/no-runtime-typeof": "off",
+				"anti-slop/no-shape-in-symbol-names": "off",
+				"anti-slop/no-unknown-parameters": "off",
+				"anti-slop/no-unknown-returns": "off",
+				"eslint/no-shadow": "off",
+				"eslint/no-unused-expressions": "off",
+				"eslint/no-unused-vars": "off",
+				"react-hooks/rules-of-hooks": "off",
+				"react/no-unstable-nested-components": "off",
+				"react/rules-of-hooks": "off",
+				"typescript/array-type": "off",
+				"unicorn/no-useless-promise-resolve-reject": "off"
 			}
 		},
 		{

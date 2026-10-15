@@ -19,12 +19,11 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import homeComponentNext from "../../content/_home-component-next.md";
-import homeComponent from "../../content/_home-component.md";
-import homeLoaderNext from "../../content/_home-loader-next.md";
-import homeLoader from "../../content/_home-loader.md";
-import homeNext from "../../content/_home-next.md";
-import home from "../../content/_home.md";
+import homeComponentNext from "sample:nextjs/src/components/post-page.tsx#component";
+import homeLoaderNext from "sample:nextjs/src/docs/home.page.tsx#page";
+import homeComponent from "sample:tanstack-start/src/routes/posts.$slug.tsx#component";
+import homeLoader from "sample:tanstack-start/src/routes/posts.$slug.tsx#route";
+import home from "sample:tanstack-start/src/routes/blog.$slug.tsx#hero";
 import { DocBody } from "~/components/doc-body.tsx";
 import { DemoEmbed } from "~/components/demo-embed.tsx";
 import { FrameworkModeBar } from "~/components/framework-mode-bar.tsx";
@@ -136,7 +135,7 @@ function HashLink(props: {
 const docLink = "font-medium text-foreground underline underline-offset-4";
 
 const heroByMode = {
-	nextjs: homeNext.segments,
+	nextjs: [...homeLoaderNext.segments, ...homeComponentNext.segments],
 	"tanstack-start": home.segments,
 } as const satisfies Record<FrameworkMode, ReadonlyArray<DocSegment>>;
 
@@ -316,7 +315,6 @@ function HomePage() {
 	const steps = stepsByMode[mode];
 	return (
 		<>
-			<FrameworkModeBar mode={mode} />
 			<main>
 				<section className="relative overflow-hidden border-b">
 					<div
@@ -369,7 +367,12 @@ function HomePage() {
 								effect
 							</p>
 						</div>
-						<div className="min-w-0" id="hero-code">
+						{/* pt-14 is the room the framework pill docks in, above the code. */}
+						<div
+							className="relative min-w-0 pt-14 [&_.code-block:first-child]:mt-0"
+							id="hero-code"
+						>
+							<FrameworkModeBar mode={mode} />
 							<DocBody demos={{}} segments={heroByMode[mode]} />
 						</div>
 					</div>

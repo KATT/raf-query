@@ -1,39 +1,43 @@
-/** Inset from the hero code block's top edge while the pill rides with it. */
-export const FRAMEWORK_MODE_BAR_OVERLAY_INSET = 12;
-
 /** Vertical gap below the sticky top before the pill fades out for `#principles`. */
 export const FRAMEWORK_MODE_BAR_HIDE_GAP = 32;
 
 /**
- * How many pixels of travel (code top approaching the sticky line) map to a
- * full left→center parallax. Shorter = snappier drift.
+ * Most pixels of scroll (code top approaching the sticky line) that map to a
+ * full code-center → viewport-center parallax. Shorter = snappier drift.
  */
 export const FRAMEWORK_MODE_BAR_PARALLAX_TRAVEL = 280;
 
 export type FrameworkModeBarLayoutInput = {
+	/**
+	 * Viewport rect of `#hero-code`. The pill docks at its top edge, in the
+	 * padding reserved above the code.
+	 */
 	readonly code: {
-		readonly bottom: number;
 		readonly left: number;
 		readonly top: number;
 		readonly width: number;
 	};
 	readonly isLarge: boolean;
 	readonly pillHeight: number;
-	readonly pillWidth: number;
 	readonly principlesTop: number;
 	readonly reducedMotion: boolean;
+	readonly scrollY: number;
 	readonly stickyTop: number;
 	readonly viewportWidth: number;
 };
 
 export type FrameworkModeBarLayout = {
-	/** 0 over the code, 1 fully drifted to the viewport center / stuck. */
+	/**
+	 * Pill center X, in the containing block's coordinates: `#hero-code`'s
+	 * box while `absolute`, the viewport while `fixed`.
+	 */
+	readonly left: number;
+	readonly position: "absolute" | "fixed";
+	/** 0 centered on the code, 1 fully drifted to the viewport center / stuck. */
 	readonly progress: number;
+	/** Pill top edge, in the same coordinates as `left`. */
+	readonly top: number;
 	readonly visible: boolean;
-	/** Viewport X of the pill's center. */
-	readonly x: number;
-	/** Viewport Y of the pill's top edge. */
-	readonly y: number;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -46,28 +50,28 @@ function lerp(from: number, to: number, t: number) {
 
 /**
  * Where the homepage framework pill sits for a given scroll / layout snapshot.
- * Pure so tests can pin the parallax and hide rules without a browser.
+ * Docked (`absolute`) above the hero code until that spot would scroll under
+ * the header, then stuck (`fixed`) at `stickyTop`. Pure so tests can pin the
+ * snap, parallax and hide rules without a browser.
  */
 export function frameworkModeBarLayout(
 	input: FrameworkModeBarLayoutInput,
 ): FrameworkModeBarLayout {
-	const naturalY = input.code.top + FRAMEWORK_MODE_BAR_OVERLAY_INSET;
-	const y = Math.max(input.stickyTop, naturalY);
-	const stuck = naturalY <= input.stickyTop;
-	const progress = stuck
-		? 1
-		: clamp(
-				1 - (naturalY - input.stickyTop) / FRAMEWORK_MODE_BAR_PARALLAX_TRAVEL,
-				0,
-				1,
-			);
+	const distance = input.code.top - input.stickyTop;
+	const stuck = distance <= 0;
+	// Never longer than the distance at the top of the page, so the pill
+	// starts on the code center even when the hero sits close to the header.
+	const travel = Math.max(
+		1,
+		Math.min(FRAMEWORK_MODE_BAR_PARALLAX_TRAVEL, distance + input.scrollY),
+	);
+	const progress = stuck ? 1 : clamp(1 - distance / travel, 0, 1);
 
 	const codeCenterX = input.code.left + input.code.width / 2;
 	const viewportCenterX = input.viewportWidth / 2;
 
 	let x: number;
 	if (!input.isLarge) {
-		// Mobile: stay over the code (full-width ≈ viewport center) the whole time.
 		x = codeCenterX;
 	} else if (input.reducedMotion) {
 		x = stuck ? viewportCenterX : codeCenterX;
@@ -79,5 +83,13 @@ export function frameworkModeBarLayout(
 		input.principlesTop >
 		input.stickyTop + input.pillHeight + FRAMEWORK_MODE_BAR_HIDE_GAP;
 
-	return { progress, visible, x, y };
+	return stuck
+		? { left: x, position: "fixed", progress, top: input.stickyTop, visible }
+		: {
+				left: x - input.code.left,
+				position: "absolute",
+				progress,
+				top: 0,
+				visible,
+			};
 }
