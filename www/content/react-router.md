@@ -38,7 +38,7 @@ react-router/app/components/comments.tsx#component
 - Create a **new `QueryClient` in each loader**. A module-level client would share data between requests and users.
 - **`dehydrate(qc)`** takes entries with data and entries still loading. [Single Fetch](https://reactrouter.com/explanation/single-fetch) streams promises, so a `prefetch` that is still loading resolves in the browser when the server's request does, and the browser doesn't fetch it again.
 - **`HydrationBoundary`** writes the entries into the provider's client: entries the browser doesn't have yet while it renders, so its children read them, and the rest once it commits. The browser keeps whichever copy of an entry is newer. See [SSR and hydration](./ssr-and-hydration.md#when-the-browser-already-has-data).
-- `await qc.ensure(...)` returns a handle with the `data`, for rendering it or deciding on a redirect in the loader. Components still read it with `useQuery`, so they see later refetches.
+- `await qc.ensure(...)` returns a handle with the `data`, for deciding on a redirect or building another query's input in the loader. Pass it to components as a `QueryHandleWithData`: `useQuery` returns the data without a promise, and follows later refetches. See [Handles](./handles.md).
 
 ## What the integration is
 

@@ -1,11 +1,11 @@
 import {
 	dehydrate,
 	QueryClient,
-	type QueryHandle,
+	type QueryHandleWithData,
 	useQuery,
 } from "@raf-query/react";
 import { HydrationBoundary } from "@raf-query/react/react-router";
-import { Suspense, use } from "react";
+import { Suspense } from "react";
 
 import { Comments, CommentsSkeleton } from "~/components/comments.tsx";
 import { commentsQuery, postQuery } from "~/queries.ts";
@@ -43,10 +43,9 @@ export default function PostPage(props: Route.ComponentProps) {
 	);
 }
 
-function Post(props: { handle: QueryHandle<typeof postQuery> }) {
-	// The loader's ensure put the post in the cache, so use() doesn't suspend.
-	const [postPromise] = useQuery(postQuery, props.handle);
-	const post = use(postPromise);
+function Post(props: { handle: QueryHandleWithData<typeof postQuery> }) {
+	// The loader waited for the post, so this is the post, not a promise.
+	const [post] = useQuery(postQuery, props.handle);
 	//     ^?
 	return <h1>{post.title}</h1>;
 }
