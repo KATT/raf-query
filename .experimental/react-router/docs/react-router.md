@@ -41,11 +41,12 @@ Each loader creates its own `QueryClient` for that request, starts every query t
 ```tsx twoslash title="app/routes/posts.$slug.tsx"
 import {
 	dehydrate,
-	type EnsuredQueryHandle,
 	type QueryHandle,
+	type QueryHandleWithData,
 	QueryClient,
 	useQuery,
 } from "@raf-query/react";
+import { use } from "react";
 import { HydrationBoundary } from "@raf-query/experimental-react-router";
 import { commentsQuery, postQuery } from "./_twoslash.ts";
 // ---cut---
@@ -64,7 +65,7 @@ export default function PostPage(props: {
 	loaderData: {
 		comments: QueryHandle<typeof commentsQuery>;
 		dehydratedState: import("@raf-query/core").DehydratedState;
-		post: EnsuredQueryHandle<typeof postQuery>;
+		post: QueryHandleWithData<typeof postQuery>;
 	};
 }) {
 	const { comments, dehydratedState, post } = props.loaderData;
@@ -77,10 +78,11 @@ export default function PostPage(props: {
 
 function Post(props: {
 	comments: QueryHandle<typeof commentsQuery>;
-	post: EnsuredQueryHandle<typeof postQuery>;
+	post: QueryHandleWithData<typeof postQuery>;
 }) {
+	// ensure put the post in the cache, so use() returns it without suspending.
 	const [post] = useQuery(postQuery, props.post);
-	return <h1>{post.title}</h1>;
+	return <h1>{use(post).title}</h1>;
 }
 ```
 
