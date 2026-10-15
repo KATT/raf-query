@@ -1,8 +1,7 @@
+import type { IssueStatus } from "@examples/db/types";
 import { Badge } from "@examples/ui/components/badge";
 import { cn } from "@examples/ui/lib/utils";
 import { ChevronDown } from "lucide-react";
-
-import type { IssueStatus } from "~/rpc.ts";
 
 const labels = {
 	closed: "Closed",
