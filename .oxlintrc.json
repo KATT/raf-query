@@ -434,7 +434,7 @@
 			// so it memoizes by hand.
 			"files": [
 				"packages/react/src/**/*.{ts,tsx}",
-				"packages/.experimental/tanstack-react-query/src/**/*.{ts,tsx}"
+				".experimental/*/package/src/**/*.{ts,tsx}"
 			],
 			"rules": {
 				"workspace/no-use-effect": "off",
@@ -468,7 +468,7 @@
 			// Library internals are type-erased on purpose: the cache stores any
 			// query's data and errors, and factory generics restore the types at
 			// the public boundary.
-			"files": ["packages/*/src/**", "packages/.experimental/*/src/**"],
+			"files": ["packages/*/src/**", ".experimental/*/package/src/**"],
 			"rules": {
 				"anti-slop/no-unknown-parameters": "off",
 				"anti-slop/no-unknown-returns": "off",
@@ -479,13 +479,22 @@
 			"files": [
 				"examples/*/src/**/*.{ts,tsx}",
 				"examples/*/app/**/*.{ts,tsx}",
-				"examples/.experimental/*/src/**/*.{ts,tsx}",
+				".experimental/*/*/src/**/*.{ts,tsx}",
 				"examples/.shared/*/src/**/*.{ts,tsx}",
 				"www/src/**/*.{ts,tsx}"
 			],
 			"rules": {
 				"workspace/infer-callback-params": "error",
 				"workspace/inline-jsx-callback": "error"
+			}
+		},
+		{
+			// Experiment libraries (always `package/`) are not app code; the
+			// callback-inference rules above are for examples.
+			"files": [".experimental/*/package/src/**/*.{ts,tsx}"],
+			"rules": {
+				"workspace/infer-callback-params": "off",
+				"workspace/inline-jsx-callback": "off"
 			}
 		},
 		{
@@ -508,7 +517,7 @@
 			// order (`validateSearch` before `loader`, `loader` before `head`).
 			"files": [
 				"examples/*/src/routes/**/*.{ts,tsx}",
-				"examples/.experimental/*/src/routes/**/*.{ts,tsx}",
+				".experimental/*/*/src/routes/**/*.{ts,tsx}",
 				"www/src/routes/**/*.{ts,tsx}"
 			],
 			"rules": {

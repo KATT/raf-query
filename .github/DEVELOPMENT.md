@@ -7,7 +7,7 @@ This is a Vite+ / pnpm monorepo. The publishable packages live in `packages/`:
 | `packages/core`  | `@raf-query/core`  |
 | `packages/react` | `@raf-query/react` |
 
-Experiments live in `.experimental/` folders, which the release and the root `./packages/*` / `./examples/*` globs don't reach. `packages/.experimental/tanstack-react-query` (`@raf-query/experimental-tanstack-react-query`) is the same API built on TanStack Query instead of raf-query's own engine. It's private, isn't published, and stays at version `0.0.0`. See [its README](../packages/.experimental/tanstack-react-query/README.md).
+Experiments live under top-level `.experimental/<topic>/`, each with a README and its package/apps underneath. The release and the root `./packages/*` / `./examples/*` globs don't reach them. `.experimental/tanstack-query/` is raf-query's API on TanStack Query (`package/`, plus `start/` and `nextjs/` apps). Private, not published, version `0.0.0`. See [the experiment README](../.experimental/tanstack-query/README.md).
 
 Each package has its own `README.md`, shown on npm. Root `LICENSE.md` / `CHANGELOG.md` are shared: each package's `prepack` runs [`scripts/sync-package-docs.ts`](../scripts/sync-package-docs.ts), which copies them into the package so the npm tarball includes them without a second copy in git.
 
@@ -31,18 +31,18 @@ pnpm build
 
 ## Example apps
 
-`examples/` holds the same issue tracker three times: on TanStack Start, on Next.js, and on TanStack Start written with Effect and Effect RPC. The packages they share live in `examples/.shared/`. The copies in `examples/.experimental/` run the same app on the experimental `@raf-query/experimental-tanstack-react-query`:
+`examples/` holds the same issue tracker three times: on TanStack Start, on Next.js, and on TanStack Start written with Effect and Effect RPC. The packages they share live in `examples/.shared/`. `.experimental/tanstack-query/` runs the same app on the experimental TanStack Query package:
 
-| Directory                                      | What                                                                               |
-| ---------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `examples/tanstack-start`                      | TanStack Start app, <http://localhost:3000>                                        |
-| `examples/nextjs`                              | Next.js App Router app, <http://localhost:3001>                                    |
-| `examples/tanstack-start-effect`               | TanStack Start app written with Effect and Effect RPC, <http://localhost:3005>     |
-| `examples/.experimental/tanstack-query-start`  | TanStack Start app on TanStack Query, <http://localhost:3002>                      |
-| `examples/.experimental/tanstack-query-nextjs` | Next.js App Router app on TanStack Query, <http://localhost:3003>                  |
-| `examples/.shared/ui`                          | Vanilla shadcn/ui (Base UI) and the Tailwind theme (`@examples/ui`)                |
-| `examples/.shared/kit`                         | App-specific UI helpers: logo, load-more, toasts, theme provider (`@examples/kit`) |
-| `examples/.shared/db`                          | In-memory fake database with latency (`@examples/db`), and its schemas             |
+| Directory                             | What                                                                               |
+| ------------------------------------- | ---------------------------------------------------------------------------------- |
+| `examples/tanstack-start`             | TanStack Start app, <http://localhost:3000>                                        |
+| `examples/nextjs`                     | Next.js App Router app, <http://localhost:3001>                                    |
+| `examples/tanstack-start-effect`      | TanStack Start app written with Effect and Effect RPC, <http://localhost:3005>     |
+| `.experimental/tanstack-query/start`  | TanStack Start app on TanStack Query, <http://localhost:3002>                      |
+| `.experimental/tanstack-query/nextjs` | Next.js App Router app on TanStack Query, <http://localhost:3003>                  |
+| `examples/.shared/ui`                 | Vanilla shadcn/ui (Base UI) and the Tailwind theme (`@examples/ui`)                |
+| `examples/.shared/kit`                | App-specific UI helpers: logo, load-more, toasts, theme provider (`@examples/kit`) |
+| `examples/.shared/db`                 | In-memory fake database with latency (`@examples/db`), and its schemas             |
 
 They import the libraries' source, so there is nothing to build first. Run them from the root; `pnpm` installs first when `node_modules` is out of date (`verifyDepsBeforeRun` in `pnpm-workspace.yaml`):
 
@@ -63,7 +63,7 @@ Every database call waits the latency picked in the app's top bar, or `DB_LATENC
 
 CodeSandbox opens one folder of a GitHub repo, but the apps import `@examples/*` and `@raf-query/*` from the workspace. So the `codesandbox` branch holds a standalone copy of each app, and the READMEs link to `codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/<app>`. [`tooling/codesandbox`](../tooling/codesandbox) writes the copies. Each copy is its own pnpm workspace: the app in `apps/<app>` and `examples/.shared/*` copied as-is into `packages/`, so `@examples/*` stay `workspace:*`. `@raf-query/*` become the version in this repo's `packages/*/package.json`. The copy's `pnpm-workspace.yaml` is this repo's with the copy's packages, so it keeps the Vite+ override, and its root `package.json` has this repo's `packageManager` and runs the app's scripts unchanged. CodeSandbox runs the copies on a Linux VM, so `vp` and Turbopack work as they do locally. Each copy has `.devcontainer/devcontainer.json` (CodeSandbox's Node 24 image) and `.codesandbox/tasks.json`, which runs `pnpm install` and then `pnpm dev` with a preview on the app's port. The apps allow CodeSandbox's preview hosts (`*.csb.app`) in `next.config.ts` and `vite.config.ts`.
 
-[`.github/workflows/codesandbox.yaml`](./workflows/codesandbox.yaml) runs `pnpm --filter @tooling/codesandbox sync` after each Release run on `main`. It waits until npm serves the version just published, then installs and builds each copy. It commits the lockfiles and pushes the branch, so a copy that doesn't build isn't pushed. The copies install from the store `actions/setup-node` restores for this repo, and the Next.js copy's Turbopack build cache (`.next/cache`) is kept in the Actions cache between runs. CI's Build Examples job does the same for `examples/nextjs` and `examples/.experimental/tanstack-query-nextjs`. To check the copies locally:
+[`.github/workflows/codesandbox.yaml`](./workflows/codesandbox.yaml) runs `pnpm --filter @tooling/codesandbox sync` after each Release run on `main`. It waits until npm serves the version just published, then installs and builds each copy. It commits the lockfiles and pushes the branch, so a copy that doesn't build isn't pushed. The copies install from the store `actions/setup-node` restores for this repo, and the Next.js copy's Turbopack build cache (`.next/cache`) is kept in the Actions cache between runs. CI's Build Examples job does the same for `examples/nextjs` and `.experimental/tanstack-query/nextjs`. To check the copies locally:
 
 ```shell
 pnpm --filter @tooling/codesandbox generate /tmp/codesandbox
@@ -126,7 +126,7 @@ pnpm knip
 
 Both packages are released together and always share a version. The latest git tag is the version source.
 
-Pushing to `main` runs [`.github/workflows/release.yaml`](./workflows/release.yaml), which runs [release-it](https://github.com/release-it/release-it) from the repo root. It skips when nothing under `packages/*` changed since the latest tag (docs, examples, agent docs, and `packages/.experimental/*` alone do not release — same glob as the root `./packages/*` filters):
+Pushing to `main` runs [`.github/workflows/release.yaml`](./workflows/release.yaml), which runs [release-it](https://github.com/release-it/release-it) from the repo root. It skips when nothing under `packages/*` changed since the latest tag (docs, examples, agent docs, and `.experimental/*` alone do not release — same glob as the root `./packages/*` filters):
 
 1. Computes the next version from conventional commits since the latest tag and updates `CHANGELOG.md`.
 2. Writes the version into `packages/core/package.json` and `packages/react/package.json`.
