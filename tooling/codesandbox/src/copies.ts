@@ -6,7 +6,7 @@
  */
 import { Effect, FileSystem, Path, type PlatformError } from "effect";
 
-export const repo = "KATT/raf-query";
+const repo = "KATT/raf-query";
 export const branch = "codesandbox";
 export const apps = [
 	"nextjs",
@@ -179,7 +179,7 @@ export function standaloneReadme(app: App, readme: string, port: number) {
 }
 
 /** `.codesandbox/tasks.json`: install, then start the dev server. */
-export function tasksJson(port: number) {
+function tasksJson(port: number) {
 	return {
 		$schema: "https://codesandbox.io/schemas/tasks.json",
 		setupTasks: [{ command: "pnpm install", name: "Install dependencies" }],
@@ -197,7 +197,7 @@ export function tasksJson(port: number) {
 }
 
 /** `.codesandbox/template.json`: the name CodeSandbox shows for the copy. */
-export function templateJson(readme: string, pkg: PackageJson) {
+function templateJson(readme: string, pkg: PackageJson) {
 	return {
 		description: pkg.description,
 		title: readme.split("\n")[0]?.replace(/^# /, ""),
@@ -208,14 +208,14 @@ export function templateJson(readme: string, pkg: PackageJson) {
  * `.devcontainer/devcontainer.json`. CodeSandbox's Node image, whose pnpm
  * switches itself to the root `packageManager`.
  */
-export function devcontainerJson(app: string) {
+function devcontainerJson(app: string) {
 	return {
 		image: "ghcr.io/codesandbox/devcontainers/typescript-node:24",
 		name: `raf-query-${app}-example`,
 	};
 }
 
-export const gitignore = [
+const gitignore = [
 	"node_modules",
 	".next",
 	".output",
@@ -226,7 +226,7 @@ export const gitignore = [
 	"",
 ].join("\n");
 
-export const branchReadme = [
+const branchReadme = [
 	"# raf-query examples for CodeSandbox",
 	"",
 	`Generated from [\`examples/\`](https://github.com/${repo}/tree/main/examples) by [\`tooling/codesandbox\`](https://github.com/${repo}/tree/main/tooling/codesandbox) after every release. Don't edit this branch: the next release overwrites it.`,

@@ -1,6 +1,6 @@
 import { type ReleaseType, releaseTypes } from "./types.ts";
 
-export interface ValidPrTitle {
+interface ValidPrTitle {
 	readonly breaking: boolean;
 	readonly scope: string | undefined;
 	readonly subject: string;

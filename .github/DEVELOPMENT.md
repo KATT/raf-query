@@ -114,6 +114,14 @@ pnpm typecheck
 pnpm lint
 ```
 
+## Unused code
+
+[Knip](https://knip.dev) fails when a file, dependency, export, or catalog entry has no use. Configuration is [`knip.jsonc`](../knip.jsonc).
+
+```shell
+pnpm knip
+```
+
 ## Releasing / npm publish
 
 Both packages are released together and always share a version. The latest git tag is the version source.

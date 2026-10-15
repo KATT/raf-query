@@ -11,7 +11,7 @@ export const IssueStatus = Schema.Literals(issueStatuses);
 export type IssueStatus = typeof IssueStatus.Type;
 
 export const issueSorts = ["newest", "oldest"] as const;
-export const IssueSort = Schema.Literals(issueSorts);
+const IssueSort = Schema.Literals(issueSorts);
 
 const Id = Schema.Int.check(Schema.isGreaterThan(0));
 
@@ -30,12 +30,11 @@ export const IssueListInput = Schema.Struct({
 });
 export type IssueListInput = typeof IssueListInput.Type;
 
-export const User = Schema.Struct({
+const User = Schema.Struct({
 	id: Schema.String,
 	name: Schema.String,
 	title: Schema.String,
 });
-export type User = typeof User.Type;
 
 export const Issue = Schema.Struct({
 	assigneeId: Schema.String,
@@ -61,7 +60,7 @@ export type Comment = typeof Comment.Type;
 
 const Page = { nextCursor: Schema.NullOr(Schema.Int), total: Schema.Int };
 
-export const IssueCounts = Schema.Struct({
+const IssueCounts = Schema.Struct({
 	all: Schema.Int,
 	closed: Schema.Int,
 	in_progress: Schema.Int,

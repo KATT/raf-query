@@ -130,7 +130,7 @@ export type UseEnsuredQueryResult<
 				controls: UseQueryControls<TFactory>,
 			];
 
-export function queryFor<TFactory extends QueryFactory>(
+function queryFor<TFactory extends QueryFactory>(
 	client: QueryClient<unknown>,
 	factory: TFactory,
 	input: unknown,

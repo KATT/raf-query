@@ -15,7 +15,7 @@ export interface DemoLocation {
 	readonly search?: Readonly<Record<string, number | string>>;
 }
 
-export function href(location: DemoLocation) {
+function href(location: DemoLocation) {
 	const search = new URLSearchParams(
 		Object.entries(location.search ?? {}).map(([key, value]) => [
 			key,

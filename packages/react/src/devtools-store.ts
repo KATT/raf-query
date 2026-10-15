@@ -39,7 +39,7 @@ interface CacheStore {
 
 const stores = new WeakMap<QueryClient, CacheStore>();
 
-export function statusOf(query: Query.Query): DevtoolsStatus {
+function statusOf(query: Query.Query): DevtoolsStatus {
 	const state = Query.getUnsafe(query);
 	if (state.isFetching) {
 		return "fetching";

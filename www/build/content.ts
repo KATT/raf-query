@@ -25,7 +25,7 @@ export interface ContentOptions {
 }
 
 /** The `Accept` header agents send to get markdown instead of HTML. */
-export const acceptsMarkdown = /\btext\/markdown\b/;
+const acceptsMarkdown = /\btext\/markdown\b/;
 
 const Frontmatter = Schema.Struct({
 	description: Schema.String,
@@ -92,7 +92,7 @@ function lastModified(file: string) {
 	}
 }
 
-export function readSources(contentDir: string): ReadonlyArray<Source> {
+function readSources(contentDir: string): ReadonlyArray<Source> {
 	return (
 		readdirSync(contentDir)
 			// `_name.md` files are page fragments (the home page's code), not pages.
