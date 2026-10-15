@@ -11,39 +11,14 @@ In the App Router, server components play the part of loaders: they start querie
 
 A query client per request for server components, scoped by React's `cache()`:
 
-```ts twoslash title="src/query-client.ts"
-import { QueryClient, type QueryClientConfig } from "@raf-query/react";
-import { cache } from "react";
-// ---cut---
-export const queryClientConfig = {
-	defaults: { staleTime: 5000 },
-} as const satisfies QueryClientConfig;
-
-export const getQueryClient = cache(() => new QueryClient(queryClientConfig));
+```sample
+nextjs/src/query-client.ts
 ```
 
 `QueryProvider` in the root layout, for client components:
 
-```tsx twoslash title="src/app/layout.tsx"
-import type { ReactNode } from "react";
-declare const process: { env: { NODE_ENV?: string } };
-// ---cut---
-import { QueryDevtools } from "@raf-query/react/devtools";
-import { QueryProvider } from "@raf-query/react/rsc";
-import { queryClientConfig } from "~/query-client.ts";
-
-export default function RootLayout(props: { children: ReactNode }) {
-	return (
-		<html lang="en">
-			<body>
-				<QueryProvider config={queryClientConfig}>
-					{props.children}
-					{process.env.NODE_ENV !== "production" ? <QueryDevtools /> : null}
-				</QueryProvider>
-			</body>
-		</html>
-	);
-}
+```sample
+nextjs/src/app/layout.tsx
 ```
 
 `QueryProvider` creates one client per server render and one per browser tab. Its `config` must be serializable, since it crosses from the server component layout to the client.
@@ -54,48 +29,12 @@ Mount DevTools only when `process.env.NODE_ENV !== "production"` so Next.js drop
 
 A server component starts queries, and wraps what it renders in a `HydrationBoundary` that sends the request client's entries to the browser:
 
-```tsx twoslash title="src/app/posts/[slug]/page.tsx"
-import { HydrationBoundary } from "@raf-query/react/rsc";
-import { Suspense } from "react";
-import { commentsQuery, postQuery } from "./_twoslash.ts";
-declare function getQueryClient(): import("@raf-query/react").QueryClient;
-declare function CommentsSkeleton(): React.ReactNode;
-declare function Comments(props: {
-	handle: import("@raf-query/react").QueryHandle<typeof commentsQuery>;
-}): React.ReactNode;
-// ---cut---
-export default async function Page(props: {
-	params: Promise<{ slug: string }>;
-}) {
-	const params = await props.params;
-	const qc = getQueryClient();
-
-	const comments = qc.prefetch(commentsQuery, { slug: params.slug });
-	const post = await qc.fetch(postQuery, { slug: params.slug });
-
-	return (
-		<HydrationBoundary client={qc}>
-			<article>
-				<h1>{post.title}</h1>
-				<Suspense fallback={<CommentsSkeleton />}>
-					<Comments handle={comments} />
-				</Suspense>
-			</article>
-		</HydrationBoundary>
-	);
-}
+```sample
+nextjs/src/app/posts/[slug]/page.tsx
 ```
 
-```tsx twoslash title="src/components/comments.tsx"
-import { type QueryHandle, useQuery } from "@raf-query/react";
-import { commentsQuery } from "./_twoslash.ts";
-// ---cut---
-("use client");
-
-export function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
-	const [commentsPromise] = useQuery(commentsQuery, props.handle);
-	// ...
-}
+```sample
+nextjs/src/components/comments.tsx#component
 ```
 
 - Render a `HydrationBoundary` in each server component that starts queries for client components. Entries already sent in this request are skipped, so nesting them is fine.
@@ -106,26 +45,8 @@ export function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 
 While a link navigation is loading the next RSC payload, show pending state with Next.js — not [`useIsFetching`](./background-fetching-indicators.md#useisfetching). Render [`useLinkStatus`](https://nextjs.org/docs/app/api-reference/functions/use-link-status) as a child of the `Link` it tracks:
 
-```tsx twoslash
-import type { ReactNode } from "react";
-declare function Link(props: {
-	readonly children?: ReactNode;
-	readonly href: string;
-}): ReactNode;
-declare function useLinkStatus(): { readonly pending: boolean };
-declare function Spinner(): ReactNode;
-// ---cut---
-("use client");
-
-function PendingHint() {
-	const { pending } = useLinkStatus();
-	return pending ? <Spinner /> : null;
-}
-
-<Link href="/issues">
-	Issues
-	<PendingHint />
-</Link>;
+```sample
+nextjs/src/docs/nextjs.tsx#pending-ui
 ```
 
 Per-query background refetches after the page has rendered use `controls.isFetching`. See [Background fetching indicators](./background-fetching-indicators.md).
@@ -134,29 +55,8 @@ Per-query background refetches after the page has rendered use `controls.isFetch
 
 Read `searchParams` in the page, validate them, and pass them as the input:
 
-```tsx twoslash
-import { queryOptions } from "@raf-query/react";
-declare function getQueryClient(): import("@raf-query/react").QueryClient;
-declare const IssueListInput: {
-	parse: (value: Record<string, string | string[]>) => {
-		status: "open" | "done";
-	};
-};
-function issueListQuery(input: { status: "open" | "done" }) {
-	return queryOptions({
-		queryKey: ["issues", input],
-		queryFn: async () => [] as Array<{ id: number }>,
-	});
-}
-// ---cut---
-export default async function IssuesPage(props: {
-	searchParams: Promise<Record<string, string | string[]>>;
-}) {
-	const input = IssueListInput.parse(await props.searchParams);
-	const qc = getQueryClient();
-	const issues = qc.prefetch(issueListQuery, input);
-	// ...
-}
+```sample
+nextjs/src/app/issues/page.tsx#page
 ```
 
 Changing search params with `<Link>` or `router.push` renders the page again on the server with the new input. See [URL state and pagination](./url-state-and-pagination.md) for what to show while it loads.
@@ -171,42 +71,16 @@ Factories can call server actions: server components call them directly, and the
 
 The browser runs a page's server actions one at a time, so refetches wait for each other and for any pending mutation. For parallel requests, have the `queryFn` call a [Route Handler](https://nextjs.org/docs/app/api-reference/file-conventions/route) instead, as [`examples/nextjs`](https://github.com/KATT/raf-query/tree/main/examples/nextjs) does:
 
-```ts twoslash
-import { queryOptions } from "@raf-query/react";
-// ---cut---
-export function issueQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: ["issue", input.id],
-		queryFn: (context) =>
-			fetch(`/api/issues/${input.id}`, { signal: context.signal }).then(
-				(response) => response.json(),
-			),
-	});
-}
+```sample
+nextjs/src/queries.ts#route-handler
 ```
 
 ## Mutations
 
 Write with a server action, then invalidate in the browser:
 
-```tsx twoslash
-import { QueryClient, queryOptions } from "@raf-query/react";
-declare function updateIssue(formData: FormData): Promise<void>;
-declare const id: number;
-const qc = new QueryClient();
-function issueQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: ["issue", input.id],
-		queryFn: async () => ({ id: input.id, title: "" }),
-	});
-}
-// ---cut---
-<form
-	action={async (formData) => {
-		await updateIssue(formData);
-		await qc.invalidate(issueQuery, { id });
-	}}
-/>;
+```sample
+nextjs/src/components/update-issue-form.tsx#form
 ```
 
 If the action also calls `revalidatePath` or `refresh()`, server components render again and send their entries, and the browser keeps whichever copy is newest.

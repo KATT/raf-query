@@ -25,6 +25,11 @@ export interface Doc extends DocMeta {
 	readonly segments: ReadonlyArray<DocSegment>;
 }
 
+/** A region of a sample app's file, from a `sample:` import. */
+export interface Sample {
+	readonly segments: ReadonlyArray<DocSegment>;
+}
+
 export interface DocSection {
 	readonly docs: ReadonlyArray<DocMeta>;
 	readonly title: string;
