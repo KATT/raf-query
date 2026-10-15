@@ -66,10 +66,10 @@ The loader decides when each request starts and whether the navigation waits for
 ## Install
 
 ```bash
-npm install @raf-query/react
+npm install @raf-query/react effect
 ```
 
-With Yarn, also add `effect`, a peer dependency the other package managers install for you. See [installation](https://raf-query.katt.dev/docs/installation) for requirements, then set it up for [TanStack Start](https://raf-query.katt.dev/docs/tanstack-start) or [Next.js](https://raf-query.katt.dev/docs/nextjs).
+See [installation](https://raf-query.katt.dev/docs/installation) for requirements, then set it up for [TanStack Start](https://raf-query.katt.dev/docs/tanstack-start) or [Next.js](https://raf-query.katt.dev/docs/nextjs).
 
 ## Packages
 

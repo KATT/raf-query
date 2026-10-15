@@ -10,15 +10,17 @@ Render-as-you-fetch data fetching for React: start queries in route loaders and 
 ## Install
 
 ```bash
-npm install @raf-query/react
+npm install @raf-query/react effect
 ```
 
-`effect` is a peer dependency. npm, pnpm and Bun install it for you; with Yarn, run `yarn add @raf-query/react effect`. Apps never import it unless they write Effect code. Requires React 19.2 or newer.
+Apps never import `effect` unless they write Effect code. Requires React 19.2 or newer.
 
 ## Usage
 
+A query is a factory. The loader and the component call the same one.
+
 ```tsx
-import { queryOptions, useQuery } from "@raf-query/react";
+import { queryOptions } from "@raf-query/react";
 
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
@@ -26,20 +28,61 @@ export function postQuery(input: { slug: string }) {
 		queryFn: () => getPost(input.slug),
 	});
 }
+```
 
-// The loader starts the query and passes a handle on…
+**`prefetch`** starts the request and returns a handle at once. The page renders now; `use()` suspends whatever is still loading, under its Suspense fallback.
+
+```tsx
+import { useQuery } from "@raf-query/react";
+import { Suspense, use } from "react";
+
 export const Route = createFileRoute("/posts/$slug")({
-	loader: async (args) => ({
-		post: await args.context.queryClient.ensure(postQuery, {
-			slug: args.params.slug,
-		}),
-	}),
+	loader: (args) => {
+		const qc = args.context.queryClient;
+		const { slug } = args.params;
+		return {
+			comments: qc.prefetch(commentsQuery, { slug }),
+			post: qc.prefetch(postQuery, { slug }),
+		};
+	},
 	component: PostPage,
 });
 
-// …and the component reads it.
 function PostPage() {
-	const [post] = useQuery(postQuery, Route.useLoaderData().post);
+	const data = Route.useLoaderData();
+	const [post] = useQuery(postQuery, data.post);
+	return (
+		<article>
+			<h1>{use(post).title}</h1>
+			<Suspense fallback={<CommentsSkeleton />}>
+				<Comments handle={data.comments} />
+			</Suspense>
+		</article>
+	);
+}
+```
+
+**`ensure`** waits until the data is cached, so the navigation holds and `useQuery` returns the data itself. Await several with [`allKeyed`](https://raf-query.katt.dev/docs/starting-queries#awaiting-several-queries) — a record of promises in, the same record out — so one wait never delays the others.
+
+```tsx
+import { allKeyed, useQuery } from "@raf-query/react";
+
+export const Route = createFileRoute("/posts/$slug")({
+	loader: (args) => {
+		const qc = args.context.queryClient;
+		const { slug } = args.params;
+		return allKeyed({
+			author: qc.ensure(authorQuery, { id: slug }),
+			post: qc.ensure(postQuery, { slug }),
+		});
+	},
+	component: PostPage,
+});
+
+function PostPage() {
+	const data = Route.useLoaderData();
+	// ensure put the post in the cache, so this is the post itself.
+	const [post] = useQuery(postQuery, data.post);
 	return <h1>{post.title}</h1>;
 }
 ```
