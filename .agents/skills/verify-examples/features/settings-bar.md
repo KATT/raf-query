@@ -42,3 +42,4 @@ Commands:
 - In `nextjs` and `react-router` a navigation always runs the server's page code (an RSC or `.data` fetch), whatever the stale time. Stale time shows in the browser's own requests: `/api/issues/counts` after the back navigation only with `0 ms`. `tanstack-start-effect`'s `/rpc/` calls all share one path; compare how many there are (more with `0 ms`).
 - The `Stale time` values are milliseconds, and `Forever` is `Infinity`. `$CE select --value` takes the value or the label.
 - A server restart doesn't clear cookies; Reset does.
+- Reset doesn't touch the database: edits stay until the dev server restarts. The TanStack apps also call `router.clearCache()`, but every app reloads the page right after, so the four behave the same.
