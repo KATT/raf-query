@@ -2,7 +2,7 @@
 	"name": "@examples/kit",
 	"version": "0.0.0",
 	"private": true,
-	"description": "App-specific UI helpers shared by the example apps (not shadcn)",
+	"description": "Markup and UI helpers shared by the example apps (not shadcn, no data code)",
 	"type": "module",
 	"exports": {
 		"./components/*": "./src/components/*.tsx",
