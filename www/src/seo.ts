@@ -9,7 +9,7 @@ type JsonValue =
 	| string;
 
 /** A Schema.org JSON-LD node. */
-export interface JsonObject {
+interface JsonObject {
 	readonly [key: string]: JsonValue | undefined;
 }
 

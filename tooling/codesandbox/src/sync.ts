@@ -54,11 +54,8 @@ export const read = (
 ) => spawn(cwd, command, args, "pipe");
 
 /** Runs `command` in `cwd` with its output on this process's. */
-export const run = (
-	cwd: string,
-	command: string,
-	args: ReadonlyArray<string>,
-) => spawn(cwd, command, args, "inherit").pipe(Effect.asVoid);
+const run = (cwd: string, command: string, args: ReadonlyArray<string>) =>
+	spawn(cwd, command, args, "inherit").pipe(Effect.asVoid);
 
 /**
  * Each app's Next.js build cache in the copy at `dir`, paired with where it's
@@ -167,7 +164,7 @@ export const committer = {
  * A worktree of `remote`'s `branch` at `dir`, or of a new orphan branch if the
  * remote has none. Removed when the scope closes.
  */
-export const checkoutBranch = Effect.fn("checkoutBranch")(function* (
+const checkoutBranch = Effect.fn("checkoutBranch")(function* (
 	root: string,
 	remote: string,
 	branch: string,
@@ -206,7 +203,7 @@ export const checkoutBranch = Effect.fn("checkoutBranch")(function* (
  * Commits everything in the worktree at `dir` and pushes it to `remote`'s
  * `branch`. Returns the commit, or `undefined` if nothing changed.
  */
-export const commitAndPush = Effect.fn("commitAndPush")(function* (
+const commitAndPush = Effect.fn("commitAndPush")(function* (
 	dir: string,
 	remote: string,
 	branch: string,
