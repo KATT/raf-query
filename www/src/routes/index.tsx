@@ -24,6 +24,10 @@ import homeCommentsNext from "sample:nextjs/src/app/(blog)/components/comments.t
 import homePostNext from "sample:nextjs/src/app/(blog)/components/post.tsx#component";
 import homeLoaderNext from "sample:nextjs/src/app/(blog)/posts/[slug]/page.tsx#page";
 import homeFactoriesNext from "sample:nextjs/src/queries.ts#home";
+import homeRouter from "sample:react-router/app/routes/blog.$slug.tsx#hero";
+import homeComponentRouter from "sample:react-router/app/routes/blog.$slug.tsx#component";
+import homeLoaderRouter from "sample:react-router/app/routes/blog.$slug.tsx#loader";
+import homeFactoriesRouter from "sample:react-router/app/queries.ts#home";
 import home from "sample:tanstack-start/src/routes/blog.$slug.tsx#hero";
 import homeFactories from "sample:tanstack-start/src/queries.ts#home";
 import homeComponent from "sample:tanstack-start/src/routes/blog.$slug.tsx#component";
@@ -119,7 +123,7 @@ const features: ReadonlyArray<{
 		title: "Actions for writes",
 	},
 	{
-		body: "The server's cache streams to the browser as queries settle, in TanStack Start and in Next.js App Router.",
+		body: "The server's cache streams to the browser as queries settle, in TanStack Start, React Router and Next.js App Router.",
 		icon: <Server />,
 		slug: "ssr-and-hydration",
 		title: "Streaming SSR and RSC",
@@ -146,8 +150,9 @@ const heroByMode = {
 		...homePostNext.segments,
 		...homeCommentsHeroNext.segments,
 	],
-	// Start keeps loader + components in one file; Next.js splits the server
-	// page from the client components it renders.
+	// Start and React Router keep loader + components in one file; Next.js
+	// splits the server page from the client components it renders.
+	"react-router": homeRouter.segments,
 	"tanstack-start": home.segments,
 } as const satisfies Record<FrameworkMode, ReadonlyArray<DocSegment>>;
 
@@ -243,6 +248,68 @@ const stepsByMode = {
 			title: "Read them in client components",
 		},
 	],
+	"react-router": [
+		{
+			...factoryStep,
+			body: factoryStepBody(),
+			code: homeFactoriesRouter.segments,
+		},
+		{
+			body: (
+				<>
+					<p>
+						React Router runs the loader as soon as a navigation starts, and
+						with <code>{'prefetch="intent"'}</code>, when a link is hovered.
+						Every query the page needs starts there, at the same time, before
+						anything renders. Each loader creates its own client, so requests
+						never share data.
+					</p>
+					<p>
+						<code>prefetch</code> never holds the navigation: the page renders
+						while the post and comments load. Each call returns a{" "}
+						<strong className="text-foreground">handle</strong> — the query’s
+						key and input, without the data. The loader returns the handles with{" "}
+						<code>dehydrate(qc)</code>, and React Router streams the queries
+						still loading to the browser, so nothing is fetched twice.
+					</p>
+					<p>
+						Use <code>ensure</code> when the route can’t lay out without the
+						data. Prefer <code>prefetch</code> when a component will read it
+						under Suspense — the usual shape, and what the example app does for
+						streamed parts of the page.
+					</p>
+				</>
+			),
+			code: homeLoaderRouter.segments,
+			guide: "React Router",
+			id: "start-in-the-loader",
+			slug: "react-router",
+			title: "Start them in the route loader",
+		},
+		{
+			body: (
+				<>
+					<p>
+						The route component wraps the page in <code>HydrationBoundary</code>
+						, which writes the loader’s snapshot into the browser’s cache.{" "}
+						<code>useQuery</code> takes the factory and a handle and returns a
+						promise. <code>use()</code> suspends that subtree while its skeleton
+						shows, so the rest of the page can stream in around it.
+					</p>
+					<p>
+						From then on the cache keeps both up to date: it refetches stale
+						data when the window regains focus and after a write invalidates it,
+						and each component re-renders with the new data.
+					</p>
+				</>
+			),
+			code: homeComponentRouter.segments,
+			guide: "Reading queries",
+			id: "read-in-components",
+			slug: "reading-queries",
+			title: "Read them in components",
+		},
+	],
 	"tanstack-start": [
 		{
 			...factoryStep,
@@ -323,6 +390,13 @@ const howItWorksByMode = {
 			A page says what it needs before it renders. Each query is defined once,
 			the server component starts every request when the route renders, and
 			client components read the results as they arrive.
+		</>
+	),
+	"react-router": (
+		<>
+			A page says what it needs before it renders. Each query is defined once,
+			the route’s loader starts every request when the navigation begins, and
+			components read the results as they arrive.
 		</>
 	),
 	"tanstack-start": (
@@ -434,7 +508,7 @@ function HomePage() {
 							</p>
 						</div>
 						{/* pt-14 is the room the framework pill docks in, above the code.
-						    Both modes ship in the HTML; CSS + frameworkModeScript pick. */}
+						    Every mode ships in the HTML; CSS + frameworkModeScript pick. */}
 						<div
 							className="relative min-w-0 pt-14 [&_.code-block:first-child]:mt-0"
 							id="hero-code"
@@ -459,7 +533,7 @@ function HomePage() {
 					>
 						<HashLink id="how-it-works">How a route loads its data</HashLink>
 					</h2>
-					{/* Both modes in static HTML. Shared step ids are applied to the
+					{/* Every mode in static HTML. Shared step ids are applied to the
 					    visible panel only by frameworkModeScript / applyFrameworkMode. */}
 					{frameworkModes.map((mode) => (
 						<div data-framework-panel={mode} key={mode}>

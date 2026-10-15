@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 /** Homepage (and later docs) examples: which framework the samples show. */
-export const frameworkModes = ["tanstack-start", "nextjs"] as const;
+export const frameworkModes = [
+	"tanstack-start",
+	"nextjs",
+	"react-router",
+] as const;
 
 export type FrameworkMode = (typeof frameworkModes)[number];
 
@@ -17,10 +21,11 @@ export const homeSearchDefaults = {
 
 export const frameworkModeLabels = {
 	nextjs: "Next.js",
+	"react-router": "React Router",
 	"tanstack-start": "TanStack Start",
 } as const satisfies Record<FrameworkMode, string>;
 
-/** Search on `/`: `?mode=nextjs`, or omitted for TanStack Start. */
+/** Search on `/`: `?mode=nextjs`, `?mode=react-router`, or omitted for TanStack Start. */
 export const homeSearchSchema = z.object({
 	mode: z.enum(frameworkModes).default(homeSearchDefaults.mode),
 });
@@ -28,7 +33,7 @@ export const homeSearchSchema = z.object({
 export type HomeSearch = z.infer<typeof homeSearchSchema>;
 
 export function parseFrameworkMode(value: string | undefined): FrameworkMode {
-	return value === "nextjs" ? "nextjs" : defaultFrameworkMode;
+	return frameworkModes.find((mode) => mode === value) ?? defaultFrameworkMode;
 }
 
 /** Drop the default from the URL so `/` stays clean. */
@@ -40,11 +45,11 @@ export function frameworkModeSearch(
 
 /**
  * Apply `data-framework-mode` and move shared step `id`s onto the visible
- * panel only (both modes ship in the static HTML). Stringified into
+ * panel only (every mode ships in the static HTML). Stringified into
  * `frameworkModeScript`, so it can't close over module bindings — and it
  * assumes a browser document (the script only runs there).
  */
-export function applyFrameworkMode(mode: "tanstack-start" | "nextjs") {
+export function applyFrameworkMode(mode: FrameworkMode) {
 	document.documentElement.setAttribute("data-framework-mode", mode);
 	for (const panel of document.querySelectorAll("[data-framework-panel]")) {
 		const on = panel.getAttribute("data-framework-panel") === mode;
@@ -66,7 +71,7 @@ export function applyFrameworkMode(mode: "tanstack-start" | "nextjs") {
  * Runs before first paint so `/?mode=nextjs` never flashes the prerendered
  * TanStack Start panels. Pairs with `[data-framework-panel]` CSS.
  */
-export const frameworkModeScript = `(${applyFrameworkMode.toString()})(new URLSearchParams(location.search).get("mode")==="nextjs"?"nextjs":${JSON.stringify(defaultFrameworkMode)});`;
+export const frameworkModeScript = `(${applyFrameworkMode.toString()})(((m)=>${JSON.stringify(frameworkModes)}.includes(m)?m:${JSON.stringify(defaultFrameworkMode)})(new URLSearchParams(location.search).get("mode")));`;
 
 /** Keep `<html data-framework-mode>` in sync after client navigations. */
 export function syncFrameworkModeAttribute(mode: FrameworkMode) {

@@ -1,3 +1,4 @@
+// #region home
 import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
 
 import { getPost, listComments } from "./api.ts";
@@ -18,3 +19,4 @@ export function commentsQuery(input: { slug: string }) {
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
 	});
 }
+// #endregion home
