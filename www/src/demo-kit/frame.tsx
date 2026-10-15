@@ -83,7 +83,11 @@ function Inspector(props: {
 		</p>
 	) : null;
 	const queries = (
-		<QueriesPanel client={props.session.client} server={props.server} />
+		<QueriesPanel
+			client={props.session.client}
+			key={props.session.id}
+			server={props.server}
+		/>
 	);
 	if (!props.devtools) {
 		return (
