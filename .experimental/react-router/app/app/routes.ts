@@ -5,4 +5,5 @@ export default [
 	route("issues", "routes/issues.tsx"),
 	route("issues/:issueId", "routes/issues.$issueId.tsx"),
 	route("api/*", "routes/api.$.ts"),
+	route("*", "routes/not-found.tsx"),
 ] satisfies RouteConfig;

@@ -22,8 +22,9 @@ describe("HydrationBoundary", () => {
 		function IssueTitle(props: {
 			readonly handle: QueryHandle<typeof backend.issueQuery>;
 		}) {
-			const [issue] = useQuery(backend.issueQuery, props.handle);
-			return <p>{use(issue).title}</p>;
+			const [issuePromise] = useQuery(backend.issueQuery, props.handle);
+			const issue = use(issuePromise);
+			return <p>{issue.title}</p>;
 		}
 
 		await mount(
