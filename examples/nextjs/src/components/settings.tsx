@@ -5,17 +5,11 @@ import {
 	DEFAULT_LATENCY_MS,
 	DEFAULT_STALE_TIME,
 	LATENCY_COOKIE,
-	latencyOptions,
 	parseLatency,
 	parseStaleTime,
 	STALE_TIME_COOKIE,
-	staleTimeOptions,
 } from "@examples/db/types";
-import { Button } from "@examples/ui/components/button";
-import {
-	NativeSelect,
-	NativeSelectOption,
-} from "@examples/ui/components/native-select";
+import { SettingsControls } from "@examples/kit/components/settings";
 import { useQueryClient } from "@raf-query/react";
 import Link from "next/link";
 import {
@@ -67,83 +61,38 @@ export function Settings(props: {
 	const [staleTime, setStaleTime] = useState(props.staleTime);
 
 	return (
-		<div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-			<label className="flex items-center gap-2">
-				<span className="text-muted-foreground whitespace-nowrap">
-					Prefetch links
-				</span>
-				<NativeSelect
-					onChange={(event) => {
-						const next = parsePrefetch(event.target.value);
-						writeCookie(PREFETCH_COOKIE, next);
-						settings.setPrefetch(next);
-					}}
-					size="sm"
-					value={settings.prefetch}
-				>
-					{prefetchOptions.map((option) => (
-						<NativeSelectOption key={option.value} value={option.value}>
-							{option.label}
-						</NativeSelectOption>
-					))}
-				</NativeSelect>
-			</label>
-			<label className="flex items-center gap-2">
-				<span className="text-muted-foreground whitespace-nowrap">
-					Stale time
-				</span>
-				<NativeSelect
-					onChange={(event) => {
-						const next = parseStaleTime(event.target.value);
-						if (next === undefined) {
-							return;
-						}
-						writeCookie(STALE_TIME_COOKIE, event.target.value);
-						applyStaleTime(defaults, next);
-						setStaleTime(next);
-					}}
-					size="sm"
-					value={staleTime ?? DEFAULT_STALE_TIME}
-				>
-					{staleTimeOptions.map((option) => (
-						<NativeSelectOption key={option.label} value={option.ms}>
-							{option.label}
-						</NativeSelectOption>
-					))}
-				</NativeSelect>
-			</label>
-			<label className="flex items-center gap-2">
-				<span className="text-muted-foreground">Latency</span>
-				<NativeSelect
-					onChange={(event) => {
-						writeCookie(LATENCY_COOKIE, event.target.value);
-						setLatency(parseLatency(event.target.value));
-					}}
-					size="sm"
-					value={latency ?? DEFAULT_LATENCY_MS}
-				>
-					{latencyOptions.map((option) => (
-						<NativeSelectOption key={option.ms} value={option.ms}>
-							{option.label}
-						</NativeSelectOption>
-					))}
-				</NativeSelect>
-			</label>
-			<Button
-				onClick={() => {
-					clearCookie(PREFETCH_COOKIE);
-					clearCookie(LATENCY_COOKIE);
-					clearCookie(STALE_TIME_COOKIE);
-					applyStaleTime(defaults, DEFAULT_STALE_TIME);
-					queryClient.clear();
-					window.location.reload();
-				}}
-				size="sm"
-				variant="ghost"
-			>
-				Reset
-			</Button>
-		</div>
+		<SettingsControls
+			latency={latency ?? DEFAULT_LATENCY_MS}
+			onLatencyChange={(value) => {
+				writeCookie(LATENCY_COOKIE, value);
+				setLatency(parseLatency(value));
+			}}
+			onPrefetchChange={(value) => {
+				const next = parsePrefetch(value);
+				writeCookie(PREFETCH_COOKIE, next);
+				settings.setPrefetch(next);
+			}}
+			onReset={() => {
+				clearCookie(PREFETCH_COOKIE);
+				clearCookie(LATENCY_COOKIE);
+				clearCookie(STALE_TIME_COOKIE);
+				applyStaleTime(defaults, DEFAULT_STALE_TIME);
+				queryClient.clear();
+				window.location.reload();
+			}}
+			onStaleTimeChange={(value) => {
+				const next = parseStaleTime(value);
+				if (next === undefined) {
+					return;
+				}
+				writeCookie(STALE_TIME_COOKIE, value);
+				applyStaleTime(defaults, next);
+				setStaleTime(next);
+			}}
+			prefetch={settings.prefetch}
+			prefetchOptions={prefetchOptions}
+			staleTime={staleTime ?? DEFAULT_STALE_TIME}
+		/>
 	);
 }
 

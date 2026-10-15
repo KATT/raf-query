@@ -1,9 +1,10 @@
 import { IssueListInput } from "@examples/db/types";
+import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { HydrationBoundary } from "@raf-query/react/rsc";
 import { Suspense } from "react";
 
-import { IssueList, IssueListSkeleton } from "~/components/issue-list.tsx";
+import { IssueList } from "~/components/issue-list.tsx";
 import { StatusFilter } from "~/components/status-filter.tsx";
 import { issueCountsQuery, issueListQuery } from "~/queries.ts";
 import { getQueryClient } from "~/query-client.ts";
