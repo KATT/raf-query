@@ -6,5 +6,5 @@ order: 0
 ---
 
 ```sample
-tanstack-start/src/routes/posts.$slug.tsx#home
+tanstack-start-home/src/routes/posts.$slug.tsx#hero
 ```

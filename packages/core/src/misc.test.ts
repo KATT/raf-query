@@ -115,6 +115,53 @@ describe("types", () => {
 				queryFn: () => Promise.resolve({ slug: "a", title: "A" }),
 				queryKey: ["post"],
 			});
+		expectTypeOf(postQuery({ slug: "a" })).toEqualTypeOf<
+			QueryOptions<{ data: { slug: string; title: string } }>
+		>();
+		expectTypeOf(issueQuery({ id: 1 })).toEqualTypeOf<
+			QueryOptions<{ data: { id: number }; error: NotFound }>
+		>();
+		expectTypeOf(commentsQuery({ slug: "a" })).toEqualTypeOf<
+			InfiniteQueryOptions<{
+				page: { next: number | null };
+				pageParam: number;
+			}>
+		>();
+		expectTypeOf(
+			queryOptions({
+				queryFn: () => Effect.succeed("ok"),
+				queryKey: ["ok"],
+			}),
+		).toEqualTypeOf<QueryOptions<{ data: string; error: never }>>();
+		function failWith<E>(error: E) {
+			return () =>
+				queryOptions({
+					queryFn: () => Effect.fail(error),
+					queryKey: ["fail"],
+				});
+		}
+		const notFoundQuery = failWith(new NotFound({ id: 1 }));
+		expectTypeOf(notFoundQuery()).toEqualTypeOf<
+			QueryOptions<{ data: never; error: NotFound }>
+		>();
+		expectTypeOf<ErrorOf<typeof notFoundQuery>>().toEqualTypeOf<NotFound>();
+		const issuePagesQuery = (input: { id: number }) =>
+			infiniteQueryOptions({
+				getNextPageParam: () => null,
+				initialPageParam: 0,
+				queryFn: () =>
+					input.id > 0
+						? Effect.succeed({ id: input.id })
+						: Effect.fail(new NotFound({ id: input.id })),
+				queryKey: ["issue-pages", input.id],
+			});
+		expectTypeOf(issuePagesQuery({ id: 1 })).toEqualTypeOf<
+			InfiniteQueryOptions<{
+				error: NotFound;
+				page: { id: number };
+				pageParam: number;
+			}>
+		>();
 		const effectFactory = (): QueryOptions<{
 			data: { id: number };
 			error: NotFound;

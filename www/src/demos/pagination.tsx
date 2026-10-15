@@ -30,7 +30,7 @@ function projectsQuery(input: { readonly page: number }) {
 						input.page * pageSize,
 					),
 				}),
-				{ signal: context.signal },
+				context,
 			),
 		queryKey: ["projects", input],
 		staleTime: 5000,

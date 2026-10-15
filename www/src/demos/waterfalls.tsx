@@ -30,7 +30,7 @@ function postQuery(input: { readonly id: number }) {
 			server.respond(
 				`GET /posts/${input.id}`,
 				(db) => db.posts.find((post) => post.id === input.id),
-				{ signal: context.signal },
+				context,
 			),
 		queryKey: ["posts", input.id],
 		staleTime: 30_000,
@@ -40,9 +40,11 @@ function postQuery(input: { readonly id: number }) {
 function authorQuery(input: { readonly id: number }) {
 	return queryOptions({
 		queryFn: (context) =>
-			server.respond(`GET /authors/${input.id}`, () => authors[input.id], {
-				signal: context.signal,
-			}),
+			server.respond(
+				`GET /authors/${input.id}`,
+				() => authors[input.id],
+				context,
+			),
 		queryKey: ["authors", input.id],
 		staleTime: 30_000,
 	});
@@ -58,7 +60,7 @@ function postAuthorQuery(input: { readonly postId: number }) {
 					authors[
 						db.posts.find((post) => post.id === input.postId)?.authorId ?? 0
 					],
-				{ signal: context.signal },
+				context,
 			),
 		queryKey: ["posts", input.postId, "author"],
 		staleTime: 30_000,
@@ -72,7 +74,7 @@ function commentsQuery(input: { readonly postId: number }) {
 				`GET /posts/${input.postId}/comments`,
 				(db) =>
 					db.comments.filter((comment) => comment.postId === input.postId),
-				{ signal: context.signal },
+				context,
 			),
 		queryKey: ["posts", input.postId, "comments"],
 		staleTime: 30_000,
@@ -301,7 +303,7 @@ function Waterfalls() {
 
 export default defineDemo({
 	Component: Waterfalls,
-	hint: "Open a post with each strategy and compare the network panel. The loader starts all three requests at once; starting them in render makes each wait for the one before.",
+	hint: "Open a post with each strategy and watch the Queries panel. The loader starts all three requests at once; starting them in render makes each wait for the one before.",
 	server,
 	title: "One round trip or three",
 });

@@ -59,7 +59,11 @@ export function SiteHeader() {
 				<div className="ml-auto flex items-center gap-1">
 					<SearchButton />
 					<Button asChild size="icon-sm" variant="ghost">
-						<a aria-label="raf-query on GitHub" href={site.github}>
+						<a
+							aria-label="raf-query on GitHub"
+							href={site.github}
+							title="raf-query on GitHub"
+						>
 							<GitHubIcon />
 						</a>
 					</Button>

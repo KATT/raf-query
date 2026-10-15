@@ -42,7 +42,7 @@ Some requests are never aborted for losing their readers:
 
 These finish so their result is cached, but don't retry on failure unless a reader comes back.
 
-Try it below. The inbox's `queryFn` passes its signal to the server, so aborted requests show up in the network panel:
+Try it below. The inbox's `queryFn` passes its signal to the server, so aborted requests show up in the Queries panel:
 
 ```demo
 cancellation

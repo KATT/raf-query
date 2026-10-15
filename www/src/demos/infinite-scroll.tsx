@@ -59,7 +59,7 @@ function messagesQuery(input: { readonly filter: Filter }) {
 						nextCursor: end < matching.length ? end : null,
 					};
 				},
-				{ signal: context.signal },
+				context,
 			),
 		// After `queryFn`: TypeScript infers the page type from it.
 		getNextPageParam: (lastPage) => lastPage.nextCursor,

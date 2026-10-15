@@ -71,9 +71,11 @@ const savingComments = useIsFetching({ queryKey: ["comments"] });
 - Code above `// ---cut---` compiles but isn't shown.
 - `// ^?` and `// @errors: 2345` work as in Twoslash.
 
+In both kinds, `// ---collapse---` and `// ---/collapse---`, each on its own line, fold the lines between them. The page shows “N collapsed lines”; a click opens the lines and another click closes them. Copy still copies those lines, and a page's markdown for agents includes them without the markers.
+
 In both kinds, the page's markdown for agents drops the hidden code and markers, and each `// ^?` becomes a comment with its type. Twoslash needs TypeScript's JavaScript API, which TypeScript 7 doesn't have, so it runs on `typescript6` (TypeScript 6).
 
-The sample apps are workspace packages in `samples/`: `tanstack-start` (`@samples/tanstack-start`) for the pages built on TanStack Start, `tanstack-start-effect` (`@samples/tanstack-start-effect`) for the Effect pages, and `nextjs` (`@samples/nextjs`) for the Next.js page. Each declares the dependencies its files import, `pnpm typecheck` runs its `tsc`, and `pnpm lint` lints it (`src/docs/` files are page fragments, so some app rules are off there). The build regenerates their route trees.
+The sample apps are workspace packages in `samples/`: `tanstack-start` (`@samples/tanstack-start`) for the pages built on TanStack Start, `tanstack-start-effect` (`@samples/tanstack-start-effect`) for the Effect pages, `nextjs` (`@samples/nextjs`) for the Next.js page, and `tanstack-start-home` (`@samples/tanstack-start-home`) for the homepage's hero, whose post route loads differently from `tanstack-start`'s. Each declares the dependencies its files import, `pnpm typecheck` runs its `tsc`, and `pnpm lint` lints it (`src/docs/` files are page fragments, so some app rules are off there). The build regenerates their route trees.
 
 ## Demos
 

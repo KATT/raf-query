@@ -12,6 +12,7 @@ import {
 	QueryClient,
 	QueryClientProvider,
 	type QueryHandle,
+	type QueryOptions,
 	queryOptions,
 	type ServicesOf,
 	useQuery,
@@ -130,6 +131,15 @@ describe("types", () => {
 	});
 
 	it("infer a queryFn Effect's services and error", () => {
+		expectTypeOf(userQuery({ id: 1 })).toEqualTypeOf<
+			QueryOptions<{ data: string; error: NotFound; services: Api }>
+		>();
+		expectTypeOf(otherQuery()).toEqualTypeOf<
+			QueryOptions<{ data: string; error: never; services: Other }>
+		>();
+		expectTypeOf(postQuery({ slug: "a" })).toEqualTypeOf<
+			QueryOptions<{ data: { slug: string; title: string } }>
+		>();
 		expectTypeOf<ServicesOf<typeof userQuery>>().toEqualTypeOf<Api>();
 		expectTypeOf<ErrorOf<typeof userQuery>>().toEqualTypeOf<NotFound>();
 		expectTypeOf<DataOf<typeof userQuery>>().toEqualTypeOf<string>();

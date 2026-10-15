@@ -36,6 +36,7 @@ export function AnnouncementBar() {
 						localStorage.setItem(storageKey, announcementId);
 					}}
 					size="icon-xs"
+					title="Dismiss announcement"
 					variant="ghost"
 				>
 					<X />

@@ -54,12 +54,12 @@ html[data-announcement-dismissed] .announcement-bar {
 	letter-spacing: -0.01em;
 }
 
-.prose .heading-anchor {
+.heading-anchor {
 	color: inherit;
 	text-decoration: none;
 }
 
-.prose .heading-anchor::after {
+.heading-anchor::after {
 	content: "#";
 	margin-left: 0.4em;
 	color: var(--muted-foreground);
@@ -67,8 +67,8 @@ html[data-announcement-dismissed] .announcement-bar {
 	transition: opacity 120ms;
 }
 
-.prose :where(h2, h3):hover .heading-anchor::after,
-.prose .heading-anchor:focus-visible::after {
+:where(h2, h3):hover .heading-anchor::after,
+.heading-anchor:focus-visible::after {
 	opacity: 1;
 }
 
@@ -153,6 +153,58 @@ html[data-announcement-dismissed] .announcement-bar {
 	opacity: 1;
 }
 
+/* Folded lines: “N collapsed lines”, opened from `DocBody`. A tab in the
+   indent is two columns, the same as `tab-size` on `pre` above. */
+.code-collapse {
+	display: block;
+}
+
+.code-collapse-toggle {
+	display: flex;
+	align-items: center;
+	gap: 0.45em;
+	width: 100%;
+	margin: 0;
+	border: 0;
+	border-radius: 0.25rem;
+	background: color-mix(in oklch, var(--foreground) 7%, transparent);
+	padding: 0 0.45em;
+	padding-inline-start: calc(var(--collapse-indent, 0) * 1ch + 0.45em);
+	color: var(--muted-foreground);
+	font: inherit;
+	line-height: inherit;
+	text-align: start;
+	cursor: pointer;
+	user-select: none;
+}
+
+.code-collapse-toggle:hover {
+	background: color-mix(in oklch, var(--foreground) 12%, transparent);
+	color: var(--foreground);
+}
+
+.code-collapse-toggle:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 1px;
+}
+
+.code-collapse-chevron {
+	flex: none;
+	width: 0.4em;
+	height: 0.4em;
+	border-right: 1.5px solid currentColor;
+	border-bottom: 1.5px solid currentColor;
+	transform: translateY(-0.05em) rotate(-45deg);
+}
+
+.code-collapse-toggle[aria-expanded="true"] .code-collapse-chevron {
+	transform: translateY(0.05em) rotate(45deg);
+}
+
+.code-collapse-body {
+	display: block;
+}
+
 @media (hover: none) {
 	.code-copy {
 		opacity: 1;
@@ -200,13 +252,13 @@ html[data-announcement-dismissed] .announcement-bar {
 }
 
 /* Tables scroll instead of overflowing the page */
-.prose table {
+.prose table:not(:where(.not-prose *)) {
 	display: block;
 	overflow-x: auto;
 	font-size: 0.875em;
 }
 
-.prose :where(thead th) {
+.prose :where(thead th):not(:where(.not-prose *)) {
 	white-space: nowrap;
 }
 

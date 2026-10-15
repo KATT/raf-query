@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"allowImportingTsExtensions": true,
+		"jsx": "react-jsx",
+		"lib": ["ES2024", "DOM", "DOM.Iterable"],
+		"module": "preserve",
+		"moduleResolution": "bundler",
+		"noEmit": true,
+		// The route's queries and components are the TanStack Start sample
+		// app's: `~/…` falls back to its files.
+		"paths": {
+			"~/*": ["./src/*", "../tanstack-start/src/*"]
+		},
+		"skipLibCheck": true,
+		"strict": true,
+		"target": "ES2024"
+	},
+	"include": ["src"]
+}

@@ -59,32 +59,37 @@ export function useRequests(
 	);
 }
 
-export type EntryStatus = "error" | "fetching" | "fresh" | "inactive" | "stale";
+/** What an entry holds: nothing yet, a failure, or data within or past `staleTime`. */
+export type DataStatus = "error" | "fresh" | "pending" | "stale";
 
 export interface CacheRow {
+	readonly data: DataStatus;
 	readonly failureCount: number;
 	readonly hash: string;
+	readonly isFetching: boolean;
 	readonly observers: number;
-	readonly status: EntryStatus;
 	readonly updatedAt: number;
+}
+
+function dataStatusOf(query: Query.Query): DataStatus {
+	const state = Query.getUnsafe(query);
+	if (state.status === "error") {
+		return "error";
+	}
+	if (state.updatedAt === 0) {
+		return "pending";
+	}
+	return Query.isStaleUnsafe(query) ? "stale" : "fresh";
 }
 
 function rowOf(query: Query.Query): CacheRow {
 	const state = Query.getUnsafe(query);
-	const observers = Query.observerCountUnsafe(query);
-	let status: EntryStatus = Query.isStaleUnsafe(query) ? "stale" : "fresh";
-	if (state.isFetching) {
-		status = "fetching";
-	} else if (state.status === "error") {
-		status = "error";
-	} else if (observers === 0) {
-		status = "inactive";
-	}
 	return {
+		data: dataStatusOf(query),
 		failureCount: state.failureCount,
 		hash: query.hash,
-		observers,
-		status,
+		isFetching: state.isFetching,
+		observers: Query.observerCountUnsafe(query),
 		updatedAt: state.updatedAt,
 	};
 }
@@ -97,7 +102,8 @@ function sameRows(a: ReadonlyArray<CacheRow>, b: ReadonlyArray<CacheRow>) {
 			return (
 				other !== undefined &&
 				row.hash === other.hash &&
-				row.status === other.status &&
+				row.data === other.data &&
+				row.isFetching === other.isFetching &&
 				row.observers === other.observers &&
 				row.updatedAt === other.updatedAt &&
 				row.failureCount === other.failureCount

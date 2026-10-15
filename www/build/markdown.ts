@@ -29,6 +29,7 @@ import { unified } from "unified";
 import { visit } from "unist-util-visit";
 
 import type { DocHeading, DocSegment } from "../src/content/types.ts";
+import { collapseRegions } from "./collapse.ts";
 import { ContentError, messageOf } from "./content-error.ts";
 import { appOf, sampleApps } from "./sample-apps.ts";
 
@@ -410,7 +411,7 @@ const twoslashTransformer = Effect.fn("twoslashTransformer")(function* (
 	};
 	return createTransformerFactory(
 		twoslasher,
-		rendererRich({ queryRendering: "line" }),
+		rendererRich({ jsdoc: false, queryRendering: "line" }),
 	)({ explicitTrigger: true });
 });
 
@@ -426,6 +427,7 @@ export const renderMarkdown = Effect.fn("renderMarkdown")(function* (
 	const headings: Array<DocHeading> = [];
 	const demos: Array<string> = [];
 	const typeQueries: Array<ReadonlyArray<string>> = [];
+	let collapseId = 0;
 	const processor = unified()
 		.use(remarkParse)
 		.use(remarkGfm)
@@ -441,6 +443,10 @@ export const renderMarkdown = Effect.fn("renderMarkdown")(function* (
 			themes: { dark: "github-dark", light: "github-light" },
 			transformers: [
 				yield* twoslashTransformer(markdown, options.samplesDir),
+				collapseRegions(() => {
+					collapseId += 1;
+					return `code-collapse-${collapseId}`;
+				}),
 				codeMeta,
 				{
 					name: "raf-query-docs:type-queries",

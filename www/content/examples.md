@@ -25,7 +25,7 @@ Every feature in these docs appears somewhere in the app:
 | Assignee card                                           | The loader or server component prefetches the assignee by issue id, next to the issue, so nothing waits      |
 | Inline-edit title and body; change status from the list | Form Actions / transitions, `useOptimistic` and `await qc.invalidate(...)`                                   |
 
-Data comes from an in-memory database with artificial latency (400 ms ± 50% per call), behind a small REST API the TanStack Start and Next.js apps share. The Effect app serves it as an Effect RPC group instead: its `queryFn`s, loaders and form actions are Effects, and they catch its [typed errors](./effect-errors.md) with `Effect.catchTag`. Data the server loads for the first render streams in with the HTML; later loads show up in the browser's network tab.
+Data comes from an in-memory database with artificial latency (400 ms ± 50% per call), behind a small REST API the TanStack Start and Next.js apps share. The top bar sets that latency, how links prefetch, and how long cached data stays fresh. **Reset** clears those choices and the query cache, then reloads. The Effect app serves it as an Effect RPC group instead: its `queryFn`s, loaders and form actions are Effects, and they catch its [typed errors](./effect-errors.md) with `Effect.catchTag`. Data the server loads for the first render streams in with the HTML; later loads show up in the browser's network tab.
 
 ## Run them locally
 

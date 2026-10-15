@@ -1,0 +1,20 @@
+{
+	"name": "@samples/tanstack-start-home",
+	"version": "0.0.0",
+	"private": true,
+	"description": "The homepage's hero route: the TanStack Start sample app's post page, with a loader that ensures both queries",
+	"type": "module",
+	"scripts": {
+		"typecheck": "tsc"
+	},
+	"dependencies": {
+		"@raf-query/react": "workspace:*",
+		"@tanstack/react-router": "1.170.42",
+		"@tanstack/react-start": "1.168.61",
+		"react": "19.3.0"
+	},
+	"devDependencies": {
+		"@types/react": "19.3.0",
+		"typescript": "7.0.2"
+	}
+}
