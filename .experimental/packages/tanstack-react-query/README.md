@@ -245,9 +245,9 @@ export default async function Page(props: {
 
 Both run the same issue tracker as the main examples, on this package:
 
-| App                                                                                                     | Run                                                              | URL                     |
-| ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------- |
-| [`examples/.experimental/tanstack-query-start`](../../../examples/.experimental/tanstack-query-start)   | `pnpm --filter @examples/experimental-tanstack-query-start dev`  | <http://localhost:3002> |
-| [`examples/.experimental/tanstack-query-nextjs`](../../../examples/.experimental/tanstack-query-nextjs) | `pnpm --filter @examples/experimental-tanstack-query-nextjs dev` | <http://localhost:3003> |
+| App                                                                                    | Run                                                              | URL                     |
+| -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------- |
+| [`.experimental/examples/tanstack-query-start`](../../examples/tanstack-query-start)   | `pnpm --filter @examples/experimental-tanstack-query-start dev`  | <http://localhost:3002> |
+| [`.experimental/examples/tanstack-query-nextjs`](../../examples/tanstack-query-nextjs) | `pnpm --filter @examples/experimental-tanstack-query-nextjs dev` | <http://localhost:3003> |
 
 Compare them with `examples/tanstack-start` and `examples/nextjs`, which run on `@raf-query/react`.

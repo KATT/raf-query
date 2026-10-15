@@ -3,9 +3,9 @@ packages:
   - "www/samples/*"
   - "examples/*"
   - "examples/.shared/*"
-  - "examples/.experimental/*"
   - "packages/*"
-  - "packages/.experimental/*"
+  - ".experimental/examples/*"
+  - ".experimental/packages/*"
   - "tooling/*"
 
 # `pnpm <script>` installs first when node_modules is out of date with the lockfile.

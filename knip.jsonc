@@ -63,7 +63,7 @@
 		"packages/react": {
 			"includeEntryExports": false,
 		},
-		"packages/.experimental/tanstack-react-query": {
+		".experimental/packages/tanstack-react-query": {
 			// Same surface as `@raf-query/react`, kept for the comparison even
 			// where the experimental apps don't call every export.
 			"includeEntryExports": false,
@@ -99,10 +99,10 @@
 				"src/rpc-transport.browser.ts": ["exports", "types"],
 			},
 		},
-		"examples/.experimental/tanstack-query-nextjs": {
+		".experimental/examples/tanstack-query-nextjs": {
 			"ignoreDependencies": ["tailwindcss"],
 		},
-		"examples/.experimental/tanstack-query-start": {
+		".experimental/examples/tanstack-query-start": {
 			"ignoreDependencies": ["tailwindcss"],
 		},
 		"tooling/bundle-size": {
