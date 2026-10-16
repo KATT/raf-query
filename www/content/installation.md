@@ -5,7 +5,7 @@ section: Getting started
 order: 2
 ---
 
-Apps install one package, `@raf-query/react`. It re-exports everything from `@raf-query/core`, so you never import core directly. Vue apps install `@raf-query/vue` instead: see [Vue](./vue.md).
+Apps install one package, `@raf-query/react`. It re-exports everything from `@raf-query/core`, so you never import core directly. Vue apps install the experimental `@raf-query/vue` instead: see [Vue](./vue.md).
 
 ```bash
 npm install @raf-query/react effect

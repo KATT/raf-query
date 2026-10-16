@@ -98,7 +98,7 @@ Subpath entries:
 
 ## @raf-query/vue
 
-Everything from `@raf-query/core`, plus composables and components. See [Vue](./vue.md).
+Experimental. Everything from `@raf-query/core`, plus composables and components. See [Vue](./vue.md).
 
 | Export                                              | Use                                                                                                                                                                                               |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
