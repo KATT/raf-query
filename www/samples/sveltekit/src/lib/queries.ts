@@ -19,7 +19,6 @@ export function commentsQuery(input: { slug: string }) {
 		getNextPageParam: (lastPage: CommentPage) => lastPage.nextCursor,
 	});
 }
-// #endregion queries
 
 export function authorQuery(input: { id: number }) {
 	return queryOptions({
@@ -27,3 +26,4 @@ export function authorQuery(input: { id: number }) {
 		queryFn: () => getAuthor(input.id),
 	});
 }
+// #endregion queries

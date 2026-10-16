@@ -29,14 +29,14 @@ export function appOf(
 	return apps.find((app) => file.startsWith(`${app}${path.sep}`));
 }
 
-/** Writes `src/routeTree.gen.ts` for each sample app with `src/routes`, like TanStack Start's plugin does. */
+/** Writes `src/routeTree.gen.ts` for each sample app with `src/routes/__root.tsx`, like TanStack Start's plugin does. */
 export const generateRouteTrees = Effect.fn("generateRouteTrees")(function* (
 	samplesDir: string,
 ) {
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path;
 	const apps = yield* Effect.filter(yield* sampleApps(samplesDir), (app) =>
-		fs.exists(path.join(app, "src/routes")),
+		fs.exists(path.join(app, "src/routes/__root.tsx")),
 	);
 	yield* Effect.forEach(
 		apps,

@@ -110,6 +110,19 @@ Everything from `@raf-query/core`, plus composables and components. See [Vue](./
 | `useIsFetching(filter?)`                            | Read-only ref of the global in-flight count; `0` on the server                                                                                                                                    |
 | `HydrationBoundary`                                 | Hydrates its `state` into the provided client before its slot renders                                                                                                                             |
 
+## @raf-query/svelte
+
+Everything from `@raf-query/core`, plus runes and components for Svelte 5. See [Svelte](./svelte.md).
+
+| Export                                            | Use                                                                                                                               |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `QueryClientProvider`, `setQueryClient(client)`   | Provide a client to the components below                                                                                          |
+| `useQueryClient()`                                | Read the client                                                                                                                   |
+| `useQuery(factory, () => handle, () => options?)` | Reactive controls plus `data` (`undefined` until there is data, except for a `QueryHandleWithData`) and `promise`, for `{#await}` |
+| `useWaterfall(factory, () => input)`              | Start a query from a component and return a getter of its handle                                                                  |
+| `useIsFetching(() => filter?)`                    | `{ current }`: the global in-flight count; `0` on the server                                                                      |
+| `HydrationBoundary`                               | Hydrates its `state` into the provided client before its children render, and again when `state` changes                          |
+
 ## @raf-query/core
 
 Framework-agnostic: the Promise `QueryClient` and the Effect cache behind it.
