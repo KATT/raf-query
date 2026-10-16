@@ -27,6 +27,7 @@ import {
 	Query,
 	QueryClient,
 	QueryClientProvider,
+	QueryProvider,
 	type QueryHandle,
 	type QueryHandleWithData,
 	queryOptions,
@@ -34,7 +35,6 @@ import {
 	useWaterfall,
 } from "./index.ts";
 import { HydrationBoundary as ServerHydrationBoundary } from "./index-react-server.ts";
-import { QueryProvider } from "./rsc.ts";
 import type { DehydratedRouterQueries } from "./tanstack-router-shared.ts";
 import { setupRouterIntegration } from "./tanstack-router.ts";
 import { flush } from "./test-utils.ts";
