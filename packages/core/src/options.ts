@@ -190,8 +190,28 @@ interface ServicesField<TServices> {
 	readonly [servicesType]?: () => TServices;
 }
 
+/**
+ * Data a new entry starts with, before any request. Types only check it
+ * against the `queryFn`'s data, never infer from it.
+ */
+interface InitialDataField<TData> {
+	/**
+	 * Data for an entry the cache doesn't have yet, cached as if fetched at
+	 * `initialDataUpdatedAt`: readers don't suspend, `ensure` resolves at
+	 * once, and it's refetched once stale. Hydrated or fetched data replaces
+	 * it, and it never replaces an entry's data. `undefined` is data: leave
+	 * the option out to seed nothing. A function is called once per new entry.
+	 */
+	readonly initialData?: NoInfer<TData> | (() => NoInfer<TData>);
+	/** When `initialData` was fetched (ms since epoch). Default: when it's seeded. */
+	readonly initialDataUpdatedAt?: number | (() => number | undefined);
+}
+
 export interface QueryOptions<TTypes extends QueryTypes>
-	extends QueryBehavior, ServicesField<ServicesIn<TTypes>> {
+	extends
+		InitialDataField<TTypes["data"]>,
+		QueryBehavior,
+		ServicesField<ServicesIn<TTypes>> {
 	readonly kind: "query";
 	queryFn(context: QueryFunctionContext): QueryFnResult<TTypes>;
 	readonly queryKey: KeyIn<TTypes>;
@@ -223,6 +243,9 @@ interface PageFunctions<TPage, TPageParam, TResult> {
 
 export interface InfiniteQueryOptions<TTypes extends InfiniteQueryTypes>
 	extends
+		InitialDataField<
+			InfiniteData<{ page: TTypes["page"]; pageParam: TTypes["pageParam"] }>
+		>,
 		PageFunctions<
 			TTypes["page"],
 			TTypes["pageParam"],

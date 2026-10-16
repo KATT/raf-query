@@ -69,3 +69,19 @@ These docs load each page's content as a query with `staleTime: Infinity`: conte
 ## Choosing gcTime
 
 `gcTime` is memory versus revisits. Entries are small, so the default five minutes rarely needs changing. Raise it for data that's expensive to load and likely to be revisited; set it to `Infinity` for data you want to keep for the whole session. On the server it's always `Infinity`: a request's cache lives only as long as the request.
+
+## Initial data
+
+`initialData` gives a new entry data before any request: a default, data bundled with the app, or a value computed from the input. The entry caches it as if a request had returned it:
+
+```sample
+tanstack-start/src/docs/caching.ts#initial-data
+```
+
+- **Readers don't suspend**, and `ensure` resolves with it at once.
+- **It ages like fetched data.** It counts as fetched at `initialDataUpdatedAt`, by default the moment the entry got it, so it's fresh for `staleTime`, then refetched by whatever asks for it next. Set `initialDataUpdatedAt` to when the value was last current, or to `0` to refetch it at the first chance.
+- **It only fills new entries.** The first factory call for a key the cache doesn't have seeds it. It never replaces data the entry has, fetched, written with `setData` or hydrated, and [`reset`](./api-reference.md#queryclient) goes back to it.
+- **A function is called once per new entry**, so an expensive value is only computed when it's used.
+- **`undefined` is data**, here as everywhere: `initialData: undefined` caches `undefined`. Leave the option out to seed nothing, for instance with `...(value !== undefined && { initialData: value })`. TypeScript doesn't catch an `undefined` passed to an optional option.
+
+On the server, `initialData` is cached data too: the server renders it, and since a server client [doesn't refetch cached data](./ssr-and-hydration.md#server-clients), it doesn't run the query unless `invalidate` marked it. An entry that still holds its initial data isn't sent to the browser: the browser's call to the same factory seeds the same value, so `initialData` must give the same result on both sides, as a render must. Data the server fetched or wrote does cross, and replaces the browser's initial data whenever it was fetched.

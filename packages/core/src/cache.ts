@@ -242,8 +242,9 @@ export interface QueryCache {
 		...target: Target<TFactory>
 	): Effect.Effect<void>;
 	/**
-	 * Drop queries' data and errors, as if they were never fetched. Read ones
-	 * suspend and refetch; succeeds once those refetches settle.
+	 * Drop queries' data and errors, as if they were never fetched: back to
+	 * their `initialData`, if any. Read ones suspend (or show that) and
+	 * refetch; succeeds once those refetches settle.
 	 */
 	reset<TFactory extends QueryFactory>(
 		...target: Target<TFactory>

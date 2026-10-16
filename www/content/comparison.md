@@ -26,6 +26,7 @@ What changes is the API around the cache. TanStack Query lets any component star
 | `useMutation()`                                      | Form Actions + `qc.invalidate()`                             | React provides pending and [optimistic](./mutations.md) state                                                                        |
 | `queryClient.invalidateQueries(filters)`             | `qc.invalidate(filter)` or `qc.invalidate(factory, input)`   | Resolves when read queries have refetched                                                                                            |
 | `queryClient.resetQueries` / `removeQueries`         | `qc.reset(...)` / `qc.remove(...)`                           | Same [filters](./query-invalidation.md#query-filters)                                                                                |
+| `initialData` / `initialDataUpdatedAt`               | The same `queryOptions` options                              | `initialData: undefined` caches `undefined`; the server doesn't send it. [Initial data](./caching.md#initial-data)                   |
 | `queryClient.setQueryData` / `getQueryData`          | `qc.setData(factory, input, updater)` / `qc.getData(...)`    |                                                                                                                                      |
 | `useIsFetching()`                                    | `useIsFetching()`                                            | Kept for compatibility; prefer router pending + per-query `isFetching`. [Background indicators](./background-fetching-indicators.md) |
 | `HydrationBoundary` + `dehydrate()`                  | Automatic streaming                                          | [SSR and hydration](./ssr-and-hydration.md)                                                                                          |
@@ -131,7 +132,6 @@ Same problem space, fewer knobs:
 | `networkMode` (`offlineFirst` / `always`) + `fetchStatus: "paused"` | Retries pause while offline; the first attempt always runs (`navigator.onLine` is unreliable)         |
 | `refetchOnWindowFocus` / `Reconnect`: `'always'` or a function      | Boolean only: refetch read + stale queries, or don't                                                  |
 | `refetchIntervalInBackground`                                       | Polling is per-read and pauses while the tab is hidden                                                |
-| `initialData` / `initialDataUpdatedAt`                              | Seed with `setData` / hydrate, or let the loader fetch                                                |
 | Custom `structuralSharing` merge function                           | Boolean on / off; deep equality on plain objects and arrays                                           |
 | Query filter `type` / `stale` / `fetchStatus` fields                | Filter is `{ queryKey?, exact?, predicate? }`; `predicate` covers the rest                            |
 | `cancelQueries` as its own verb                                     | `remove` cancels; unread background refetches abort when the last reader leaves                       |

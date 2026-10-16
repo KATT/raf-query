@@ -20,7 +20,7 @@ tanstack-start/src/docs/api-reference.ts#queryclient
 | `invalidate(factory, input)` / `invalidate(filter)` | Mark stale and refetch read queries. [Query invalidation](./query-invalidation.md)                                                                                                |
 | `setData(factory, input, updater)`                  | Write data. [Mutations](./mutations.md)                                                                                                                                           |
 | `getData(factory, input)`                           | Cached data, or `undefined`. [Query functions](./query-functions.md)                                                                                                              |
-| `reset(factory, input)` / `reset(filter)`           | Drop data and errors; read queries suspend and refetch. Resolves when they settle                                                                                                 |
+| `reset(factory, input)` / `reset(filter)`           | Drop data and errors, back to `initialData` if any; read queries suspend and refetch. Resolves when they settle                                                                   |
 | `remove(factory, input)` / `remove(filter)`         | Remove entries and abort their requests                                                                                                                                           |
 | `effect`                                            | The [Effect](./effect.md) `QueryCache` behind the client                                                                                                                          |
 | `runPromise(effect)`                                | Run an Effect with `QueryCache` and the layer's services, for loaders and actions. [Typed errors](./effect-errors.md)                                                             |
@@ -38,20 +38,22 @@ tanstack-start/src/docs/api-reference.ts#queryclient
 
 Accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
 
-| Option                                                                                   | Default                                           |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `queryKey`                                                                               | Required. [Query keys](./query-keys.md)           |
-| `queryFn`                                                                                | Required. [Query functions](./query-functions.md) |
-| `staleTime`                                                                              | `0` ms                                            |
-| `gcTime`                                                                                 | 5 minutes; `Infinity` on the server               |
-| `retry` (count, `boolean`, predicate, `Schedule`)                                        | `3`; `0` on the server                            |
-| `retryDelay` (ms, or a function of the failure count)                                    | Doubling from 1 s, at most 30 s                   |
-| `refetchOnWindowFocus`, `refetchOnReconnect`                                             | `true` (only read, stale queries refetch)         |
-| `structuralSharing` (keep deeply equal parts of data)                                    | `true`                                            |
-| `ssr` (`false`: [only the browser runs it](./ssr-and-hydration.md#browser-only-queries)) | `true`                                            |
-| [`meta`](./query-meta.md)                                                                | None                                              |
+| Option                                                                                     | Default                                           |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| `queryKey`                                                                                 | Required. [Query keys](./query-keys.md)           |
+| `queryFn`                                                                                  | Required. [Query functions](./query-functions.md) |
+| `staleTime`                                                                                | `0` ms                                            |
+| `gcTime`                                                                                   | 5 minutes; `Infinity` on the server               |
+| `retry` (count, `boolean`, predicate, `Schedule`)                                          | `3`; `0` on the server                            |
+| `retryDelay` (ms, or a function of the failure count)                                      | Doubling from 1 s, at most 30 s                   |
+| `refetchOnWindowFocus`, `refetchOnReconnect`                                               | `true` (only read, stale queries refetch)         |
+| `structuralSharing` (keep deeply equal parts of data)                                      | `true`                                            |
+| `ssr` (`false`: [only the browser runs it](./ssr-and-hydration.md#browser-only-queries))   | `true`                                            |
+| [`meta`](./query-meta.md)                                                                  | None                                              |
+| [`initialData`](./caching.md#initial-data) (data, or a function called once per new entry) | None                                              |
+| `initialDataUpdatedAt` (ms since epoch, or a function returning it)                        | When `initialData` is seeded                      |
 
-`infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam` and `maxPages`. [Infinite queries](./infinite-queries.md)
+`initialData` and `initialDataUpdatedAt` are per query: `config.defaults` doesn't take them. A paged factory's `initialData` is `{ pages, pageParams }`. `infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam` and `maxPages`. [Infinite queries](./infinite-queries.md)
 
 ## useQuery
 

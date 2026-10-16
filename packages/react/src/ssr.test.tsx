@@ -681,3 +681,71 @@ describe("ssr: false", () => {
 		container.remove();
 	});
 });
+
+describe("initialData", () => {
+	it("renders on the server and hydrates without a request, then takes the server's data", async () => {
+		const calls: Array<string> = [];
+		function settingsQuery() {
+			return queryOptions({
+				initialData: { theme: "light" },
+				queryFn: async () => {
+					calls.push("settings");
+					return { theme: "dark" };
+				},
+				queryKey: ["settings"],
+				staleTime: Infinity,
+			});
+		}
+		const loader = new QueryClient({ isServer: true });
+		const handle = await loader.ensure(settingsQuery);
+		const state = dehydrate(loader);
+		expect(state.queries).toEqual([]);
+		function Theme() {
+			const [settings] = useQuery(settingsQuery, handle);
+			return <p>{settings.theme}</p>;
+		}
+		function Page(props: { readonly client: QueryClient }) {
+			return (
+				<QueryClientProvider client={props.client}>
+					<HydrationBoundary state={state}>
+						<Theme />
+					</HydrationBoundary>
+				</QueryClientProvider>
+			);
+		}
+
+		const stream = await renderToReadableStream(
+			<Page client={new QueryClient({ isServer: true })} />,
+		);
+		await stream.allReady;
+		const html = await new Response(stream).text();
+		expect(html).toContain("<p>light</p>");
+
+		const container = document.createElement("div");
+		container.innerHTML = html;
+		document.body.append(container);
+		const browser = new QueryClient({ isServer: false });
+		const recoverable: Array<unknown> = [];
+		const root = await act(async () =>
+			hydrateRoot(container, <Page client={browser} />, {
+				onRecoverableError: (error) => recoverable.push(error),
+			}),
+		);
+		await act(flush);
+
+		expect(container.textContent).toBe("light");
+		expect(recoverable).toEqual([]);
+		expect(calls).toEqual([]);
+
+		await act(async () => {
+			hydrate(browser, {
+				queries: [{ data: { theme: "dark" }, key: ["settings"], updatedAt: 1 }],
+			});
+			await flush();
+		});
+		expect(container.textContent).toBe("dark");
+		expect(calls).toEqual([]);
+		act(() => root.unmount());
+		container.remove();
+	});
+});

@@ -207,6 +207,88 @@ describe("hydrate", () => {
 		expect(browser.getData(backend.issueQuery, { id: 2 })?.title).toBe("Newer");
 	});
 
+	describe("initialData", () => {
+		function seededQuery(backend: ReturnType<typeof createBackend>) {
+			return (input: { id: number }) => ({
+				...backend.issueQuery(input),
+				initialData: { id: input.id, title: "Seeded" },
+				staleTime: Infinity,
+			});
+		}
+
+		it("isn't seeded into an entry hydration filled first", async () => {
+			const backend = createBackend();
+			const browser = new QueryClient({ isServer: false });
+			hydrate(browser, {
+				queries: [
+					{ data: { id: 1, title: "Server" }, key: ["issue", 1], updatedAt: 1 },
+				],
+			});
+
+			const handle = await browser.ensure(seededQuery(backend), { id: 1 });
+
+			expect(handle.data.title).toBe("Server");
+		});
+
+		it("is replaced by hydrated data, even older data", async () => {
+			const backend = createBackend();
+			const browser = new QueryClient({ isServer: false });
+			const issueQuery = seededQuery(backend);
+			browser.prefetch(issueQuery, { id: 1 });
+
+			hydrate(browser, {
+				queries: [
+					{ data: { id: 1, title: "Server" }, key: ["issue", 1], updatedAt: 1 },
+				],
+			});
+
+			expect(browser.getData(issueQuery, { id: 1 })?.title).toBe("Server");
+			expect(
+				Query.getUnsafe(browser.getQuery(issueQuery, { id: 1 })).updatedAt,
+			).toBe(1);
+		});
+
+		it("is replaced by a pending query's result, resumed instead of fetched", async () => {
+			const backend = createBackend();
+			const browser = new QueryClient({ isServer: false });
+			const issueQuery = seededQuery(backend);
+			const query = browser.getQuery(issueQuery, { id: 1 });
+			const server = Promise.withResolvers<DehydratedResult>();
+
+			hydrate(browser, {
+				queries: [{ key: ["issue", 1], promise: server.promise, updatedAt: 0 }],
+			});
+			expect(Query.getUnsafe(query)).toMatchObject({
+				data: { title: "Seeded" },
+				isFetching: true,
+			});
+			server.resolve({ data: { id: 1, title: "Server" }, updatedAt: 1 });
+
+			await vi.waitFor(() =>
+				expect(Query.getUnsafe(query)).toMatchObject({
+					data: { title: "Server" },
+					isFetching: false,
+				}),
+			);
+			expect(backend.requests).toHaveLength(0);
+		});
+
+		it("isn't sent: the receiver's factory seeds its own", async () => {
+			const backend = createBackend();
+			const server = new QueryClient({ isServer: true });
+			const browser = new QueryClient({ isServer: false });
+			const issueQuery = seededQuery(backend);
+			await server.ensure(issueQuery, { id: 1 });
+
+			hydrate(browser, dehydrate(server));
+
+			expect(browser.getAll()).toHaveLength(0);
+			expect((await browser.ensure(issueQuery, { id: 1 })).data.title).toBe(
+				"Seeded",
+			);
+		});
+	});
+
 	describe("data the browser keeps", () => {
 		function setup(staleTime: number) {
 			const backend = createBackend();
