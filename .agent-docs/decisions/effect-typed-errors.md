@@ -6,4 +6,4 @@
 - **Promise `queryFn`s**: `ErrorOf` is `unknown`, so Result would not help. Types always treat them as throwing; `throwOnError` is not a meaningful option for them.
 - **No effect-query-style wrapper** (`EffectQueryFailure | EffectQueryDefect` with `error.match`): `state.error` is `Cause.squash`ed, SSR errors arrive as `RedactedError` (unless `keepErrors`), and class instances don't survive serialization. `controls.error` stays `unknown`; narrow with `Schema.is`. Success stays success in the success channel — don't showcase `User | null` / `Option<User>` for typed failures.
 - Lost: a typed `controls.error` / error-boundary error (can't be sound across SSR and shared defaults); inferring the omit-`throwOnError` return type from the live client's flag (types default typed factories to Result when the flag is omitted, matching the `layer` default; pass `throwOnError: true` when the client throws).
-- Lives in `www/content/effect-errors.md`, `packages/react/src/use-query.ts`, `packages/react/src/client.ts`.
+- Lives in `www/content/effect-errors.md`, `packages/react/src/use-query.ts`, `packages/core/src/controls.ts`, `packages/core/src/client.ts`.
