@@ -75,6 +75,8 @@ Options: `whilePending` (`"suspend"` or `"previous"`), `refetchInterval`, `refet
 
 Paged factories add `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage` and `isFetchingPreviousPage`. See [Reading queries](./reading-queries.md).
 
+The promise is a `Thenable<Data>`: read its `status`, `value` and `reason` to render without Suspense, like TanStack Query's `data`. See [Reading without Suspense](./comparison.md#reading-without-suspense).
+
 ## @raf-query/react
 
 Everything from `@raf-query/core`, plus:
@@ -118,7 +120,7 @@ Framework-agnostic: the Promise `QueryClient` and the Effect cache behind it.
 | `RedactedError`                                              | What a streamed pending query rejects with when its server request failed                                                   |
 | `QueryHandle<TFactory>`                                      | Handle type for props fed by `prefetch`: `{ key, input }`                                                                   |
 | `QueryHandleWithData<TFactory>`                              | What `ensure` and `fetch` return: a `QueryHandle` plus the `data` they waited for                                           |
-| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()`                                                                 |
+| `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()` or [without Suspense](./comparison.md#reading-without-suspense) |
 | `QueryOptions`, `InfiniteQueryOptions`, `InfiniteData`       | Typed by a bag: `QueryOptions<{ data: Post }>`. Effect `queryFn`s add `error` and `services`; `key` is the key's shape      |
 | `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                                                                     |
 | `ServicesOf<TFactory>`                                       | The services a factory's `queryFn` Effect needs; `never` for promises                                                       |
