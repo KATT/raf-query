@@ -16,7 +16,7 @@ import type { Route } from "./+types/blog.$slug";
 declare function Comment(props: { comment: PostComment }): React.ReactNode;
 declare function PostSkeleton(): React.ReactNode;
 
-// Homepage sample: both queries stream. `posts.$slug.tsx` keeps ensure +
+// Homepage sample: both queries stream. `posts.$slug.tsx` keeps fetch +
 // prefetch for the guide that teaches that split.
 
 // #region hero
