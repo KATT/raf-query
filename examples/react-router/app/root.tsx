@@ -7,6 +7,7 @@ import {
 } from "@examples/db/types";
 import { AppHeader } from "@examples/kit/components/app-header";
 import { Logo } from "@examples/kit/components/logo";
+import { NavigationProgress } from "@examples/kit/components/navigation-progress";
 import { loaderVerbOf } from "@examples/kit/lib/loader-verb";
 import { ThemeProvider } from "@examples/kit/components/theme-provider";
 import { Toaster } from "@examples/ui/components/sonner";
@@ -26,6 +27,7 @@ import {
 	Scripts,
 	ScrollRestoration,
 	useLocation,
+	useNavigation,
 } from "react-router";
 
 import { AppLink, PrefetchContext } from "~/components/app-link.tsx";
@@ -82,6 +84,7 @@ export default function App(props: Route.ComponentProps) {
 		return { queryClient: client, queryDefaults: defaults };
 	});
 	const verb = loaderVerbOf(useLocation().pathname);
+	const navigating = useNavigation().state !== "idle";
 	const [prefetch, setPrefetch] = useState(
 		() => props.loaderData.prefetch ?? DEFAULT_PREFETCH,
 	);
@@ -89,6 +92,7 @@ export default function App(props: Route.ComponentProps) {
 	return (
 		<QueryClientProvider client={queryClient}>
 			<PrefetchContext value={prefetch}>
+				{navigating ? <NavigationProgress /> : null}
 				<AppHeader
 					brand={
 						<AppLink
