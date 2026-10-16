@@ -147,6 +147,7 @@
 			"ignoreDependencies": [
 				"@samples/nextjs",
 				"@samples/react-router",
+				"@samples/react-router-spa",
 				"@samples/tanstack-start",
 				"@samples/tanstack-start-effect",
 				"sample",
@@ -168,6 +169,14 @@
 				"app/routes/*.tsx": ["unresolved"],
 				// The app is only type-checked, never built, so it doesn't
 				// install what React Router's default server entry imports.
+				"react-router.config.ts": ["unlisted"],
+			},
+		},
+		"www/samples/react-router-spa": {
+			"entry": ["app/**/*.{ts,tsx}"],
+			"includeEntryExports": false,
+			"ignoreIssues": {
+				"app/routes/*.tsx": ["unresolved"],
 				"react-router.config.ts": ["unlisted"],
 			},
 		},

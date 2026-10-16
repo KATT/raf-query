@@ -13,7 +13,7 @@ Queries start where the page's inputs are known: a route loader, a server compon
 | `qc.ensure(factory, input)`   | `Promise<QueryHandleWithData>` | Waits for the request | Resolves at once, refetches in the background | `ensureQueryData({ revalidateIfStale: true })` |
 | `qc.fetch(factory, input)`    | `Promise<QueryHandleWithData>` | Waits for the request | Waits for the refetch                         | `fetchQuery`                                   |
 
-Fresh cached data is reused by all three, without a request. So `prefetch` never holds anything up, `ensure` holds up only the first visit (returning to a page shows the cached data at once, then fresh data), and `fetch` always returns fresh data, at the cost of a round trip whenever the cache is stale. That difference needs a client that keeps its cache between navigations, as a TanStack Router loader's does. Code that only runs on the server has none: see [Server-only code](#server-only-code).
+Fresh cached data is reused by all three, without a request. So `prefetch` never holds anything up, `ensure` holds up only the first visit (returning to a page shows the cached data at once, then fresh data), and `fetch` always returns fresh data, at the cost of a round trip whenever the cache is stale. That difference needs a client that keeps its cache between navigations, as a TanStack Router loader's or a client-only React Router `clientLoader`'s does. Code that only runs on the server has none: see [Server-only code](#server-only-code).
 
 `ensure` and `fetch` return the same thing: the handle `prefetch` returns, plus the `data` they waited for. See [Handles](./handles.md).
 
@@ -58,9 +58,9 @@ In a browser loader, prefer `ensure`: a stale `fetch` blocks the navigation on t
 
 React server components and React Router's `loader` run only on the server, for every navigation, and each request gets a new client. Its cache starts empty, so every query is a cache miss, and a server client never refetches data it already has (see [Behavior](#behavior)). There, `ensure` and `fetch` wait for the same request every time, and returning to a page waits again.
 
-Use `prefetch` and `fetch` in that code, not `ensure`: `prefetch` for what can stream in behind a Suspense fallback, `fetch` for what the page can't lay out without or the code needs to branch on. See [React Server Components](./react-server-components.md#pages) and [React Router](./react-router.md#loaders).
+Use `prefetch` and `fetch` in that code, not `ensure`: `prefetch` for what can stream in behind a Suspense fallback, `fetch` for what the page can't lay out without or the code needs to branch on. See [React Server Components](./react-server-components.md#pages) and [React Router](./react-router.md#server-loaders).
 
-React Router's `clientLoader` runs in the browser instead. One that starts queries on the tab's client keeps that cache between navigations, so there `ensure` holds up only the first visit, as in TanStack Router.
+A client-only React Router app is different: its `clientLoader`s run in the browser on the tab's client, which keeps its cache between navigations, so there `ensure` holds up only the first visit, as in TanStack Router. See [React Router](./react-router.md#client-loaders).
 
 ## Behavior
 
