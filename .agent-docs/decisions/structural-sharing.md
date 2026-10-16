@@ -1,3 +1,4 @@
 # Structural sharing (agent)
 
-- **Structural sharing** (`share.ts`, a port of TanStack's `replaceEqualDeep`) runs in `succeed` (`entry.ts`), so fetch results, `setData` and hydration all share. Equal data keeps the old promise too, so readers see no change. Option is `structuralSharing: boolean` only; TanStack's function form wasn't needed yet.
+- **Structural sharing** (`share.ts`, a port of TanStack's `replaceEqualDeep`) runs in `share` (`entry.ts`), which `settle` and `setData` call, so fetch results, `setData` and hydration all share. Equal data keeps the old promise too, so readers see no change. Option is `structuralSharing: boolean | ((oldData, newData) => unknown)`, TanStack's shape.
+- **The function form** runs only when data replaces data, so `oldData` is never a missing-data `undefined` (`undefined` is valid data here; TanStack calls it on first loads with `undefined`). Returning `oldData` itself keeps the promise, as an equal response does. A throwing function fails the request as a defect (TanStack turns it into a fetch error too) and throws from `setData`. `replaceEqualDeep` isn't exported for functions to delegate to; export it if apps ask.

@@ -3,6 +3,7 @@ import { Context, Effect, Layer, Schedule } from "effect";
 
 import {
 	dehydrate,
+	infiniteQueryOptions,
 	Query,
 	QueryCache,
 	QueryClient,
@@ -512,6 +513,113 @@ describe("structural sharing", () => {
 
 		expect(Query.getUnsafe(query).data).not.toBe(before.data);
 		expect(Query.getUnsafe(query).promise).not.toBe(before.promise);
+	});
+
+	describe("with a function", () => {
+		function eventQuery() {
+			const calls: Array<readonly [unknown, unknown]> = [];
+			let at = new Date(0);
+			function factory() {
+				return queryOptions({
+					queryFn: () => ({ at: new Date(at), id: 1 }),
+					queryKey: ["event"],
+					structuralSharing: (oldData, newData) => {
+						calls.push([oldData, newData]);
+						return JSON.stringify(oldData) === JSON.stringify(newData)
+							? oldData
+							: newData;
+					},
+				});
+			}
+			return {
+				calls,
+				factory,
+				move: (time: number) => {
+					at = new Date(time);
+				},
+			};
+		}
+
+		it("merges data that replaces data, keeping the promise for the old data", async () => {
+			const test = eventQuery();
+			const qc = new QueryClient({ isServer: false });
+			const query = qc.getQuery(test.factory);
+			await Effect.runPromise(Query.fetch(query));
+			expect(test.calls).toEqual([]);
+			const before = Query.getUnsafe(query);
+
+			await Effect.runPromise(Query.refetch(query));
+			expect(test.calls).toEqual([[before.data, { at: new Date(0), id: 1 }]]);
+			expect(Query.getUnsafe(query).data).toBe(before.data);
+			expect(Query.getUnsafe(query).promise).toBe(before.promise);
+
+			test.move(1000);
+			await Effect.runPromise(Query.refetch(query));
+			expect(Query.getUnsafe(query).data).toEqual({
+				at: new Date(1000),
+				id: 1,
+			});
+			expect(Query.getUnsafe(query).promise).not.toBe(before.promise);
+
+			qc.setData(test.factory, undefined, { at: new Date(1000), id: 1 });
+			expect(test.calls).toHaveLength(3);
+		});
+
+		it("fails the request, or throws from setData, when it throws", async () => {
+			const error = new Error("can't merge");
+			let shouldThrow = false;
+			function factory() {
+				return queryOptions({
+					queryFn: () => "fresh",
+					queryKey: ["throwing-merge"],
+					structuralSharing: (_oldData, newData) => {
+						if (shouldThrow) {
+							throw error;
+						}
+						return newData;
+					},
+				});
+			}
+			const qc = new QueryClient({ isServer: false });
+			const query = qc.getQuery(factory);
+			await Effect.runPromise(Query.fetch(query));
+			shouldThrow = true;
+
+			const exit = await Effect.runPromiseExit(Query.fetch(query));
+			expect(exit._tag).toBe("Failure");
+			expect(Query.getUnsafe(query)).toMatchObject({
+				data: "fresh",
+				error,
+				isFetching: false,
+			});
+			expect(() => qc.setData(factory, undefined, "written")).toThrow(
+				"can't merge",
+			);
+		});
+
+		it("gets a paged query's pages", async () => {
+			const seen: Array<unknown> = [];
+			function pagedQuery() {
+				return infiniteQueryOptions({
+					getNextPageParam: () => undefined,
+					initialPageParam: 0,
+					queryFn: () => ["a"],
+					queryKey: ["paged-merge"],
+					structuralSharing: (oldData, newData) => {
+						seen.push(newData);
+						return oldData;
+					},
+				});
+			}
+			const qc = new QueryClient({ isServer: false });
+			const query = qc.getQuery(pagedQuery);
+			await Effect.runPromise(Query.fetch(query));
+			const before = Query.getUnsafe(query);
+
+			await Effect.runPromise(Query.refetch(query));
+			expect(seen).toEqual([{ pageParams: [0], pages: [["a"]] }]);
+			expect(Query.getUnsafe(query).promise).toBe(before.promise);
+		});
 	});
 });
 
