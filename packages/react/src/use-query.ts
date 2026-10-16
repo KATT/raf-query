@@ -3,9 +3,8 @@
 import {
 	type DataOf,
 	type ErrorOf,
-	type InputArgs,
 	promiseControls,
-	type QueryClient,
+	QueryBinding,
 	type QueryFactory,
 	type QueryHandle,
 	type QueryHandleWithData,
@@ -14,6 +13,7 @@ import {
 	resultThenable,
 	type Thenable,
 	type ThrowsOnError,
+	throwsOnError,
 	type UseQueryControls,
 	type UseQueryOptions,
 	type UseQueryThrowOptions,
@@ -49,17 +49,6 @@ export type UseQueryResultWithData<
 				result: Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>,
 				controls: UseQueryControls<TFactory>,
 			];
-
-function queryFor<TFactory extends QueryFactory>(
-	client: QueryClient<unknown>,
-	factory: TFactory,
-	input: unknown,
-): Query.Query<TFactory> {
-	// SAFETY: `input` is a handle's input, and handles are typed to the
-	// factory they were created through (`QueryHandle<TFactory>`).
-	const args = [input] as InputArgs<TFactory>;
-	return client.getQuery(factory, ...args);
-}
 
 /** An observer, with the stable callbacks `useSyncExternalStore` needs. */
 interface ObserverStore<TFactory extends QueryFactory> {
@@ -155,7 +144,7 @@ export function useQuery<TFactory extends QueryFactory>(
 	| UseQueryResult<TFactory, boolean>
 	| UseQueryResultWithData<TFactory, boolean> {
 	const client = useQueryClient();
-	const query = queryFor(client, factory, handle.input);
+	const query = QueryBinding.queryFor(client, factory, handle);
 	assertSent(client, query);
 	Query.readUnsafe(query);
 
@@ -191,7 +180,10 @@ export function useQuery<TFactory extends QueryFactory>(
 	// be seen, so it always counts as read.
 	QueryObserver.trackProp(observer, "promise");
 	const controls = promiseControls(QueryObserver.trackResult(observer, result));
-	const throwOnError = options.throwOnError ?? client.throwOnError;
+	const throwOnError = throwsOnError(
+		query,
+		options.throwOnError ?? client.throwOnError,
+	);
 	const withData = "data" in handle;
 	if (!throwOnError) {
 		const resultPromise = resultThenable<DataOf<TFactory>, ErrorOf<TFactory>>(

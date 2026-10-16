@@ -180,6 +180,52 @@ describe("paged queries", () => {
 		expect(itemsOf(qc.getData(numbers.query))).toEqual([2, 3, 40, 50, 40, 50]);
 	});
 
+	it("keep a page written during a refetch, after the refetch read it", async () => {
+		const numbers = heldNumbers();
+		const qc = new QueryClient({ isServer: false });
+		await qc.fetch(numbers.query, undefined, { pages: 2 });
+
+		const release = numbers.hold(6);
+		const refetch = Effect.runPromise(
+			Query.refetch(qc.getQuery(numbers.query)),
+		);
+		qc.setData(numbers.query, undefined, (data) => ({
+			pageParams: data?.pageParams ?? [],
+			pages: (data?.pages ?? []).with(0, {
+				items: [40, 50],
+				next: 6,
+				previous: 2,
+			}),
+		}));
+		release();
+		await refetch;
+
+		expect(itemsOf(qc.getData(numbers.query))).toEqual([40, 50, 6, 7]);
+	});
+
+	it("replace a page written during a refetch before the refetch read it", async () => {
+		const numbers = heldNumbers();
+		const qc = new QueryClient({ isServer: false });
+		await qc.fetch(numbers.query, undefined, { pages: 2 });
+
+		const release = numbers.hold(4);
+		const refetch = Effect.runPromise(
+			Query.refetch(qc.getQuery(numbers.query)),
+		);
+		qc.setData(numbers.query, undefined, (data) => ({
+			pageParams: data?.pageParams ?? [],
+			pages: (data?.pages ?? []).with(1, {
+				items: [60, 70],
+				next: 8,
+				previous: 4,
+			}),
+		}));
+		release();
+		await refetch;
+
+		expect(itemsOf(qc.getData(numbers.query))).toEqual([4, 5, 6, 7]);
+	});
+
 	it("drop a loaded page when data written meanwhile ends elsewhere", async () => {
 		const numbers = heldNumbers();
 		const qc = new QueryClient({ isServer: false });

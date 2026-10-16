@@ -555,17 +555,19 @@ describe("HydrationBoundary with a loader's state (React Router)", () => {
 	});
 });
 
-describe("ssr: false", () => {
+describe("enabled: false on the server", () => {
 	it("renders pending on the server, then runs once in the browser", async () => {
+		// Stands in for `typeof window !== "undefined"`, which happy-dom sets on both sides.
+		let browser = false;
 		const calls: Array<string> = [];
 		function permissionQuery() {
 			return queryOptions({
+				enabled: browser,
 				queryFn: async () => {
 					calls.push("permission");
 					return "granted";
 				},
 				queryKey: ["permission"],
-				ssr: false,
 				staleTime: Infinity,
 			});
 		}
@@ -600,12 +602,13 @@ describe("ssr: false", () => {
 		expect(html).toContain("<p>Detecting</p>");
 		expect(html).toContain("<p>Waiting</p>");
 		expect(errors).toHaveLength(1);
-		expect(errors[0]).toBeInstanceOf(Query.BrowserOnlyError);
+		expect(errors[0]).toBeInstanceOf(Query.DisabledError);
 		expect(calls).toEqual([]);
 
 		const container = document.createElement("div");
 		container.innerHTML = html;
 		document.body.append(container);
+		browser = true;
 		const recoverable: Array<unknown> = [];
 		const root = await act(async () =>
 			hydrateRoot(
@@ -627,11 +630,12 @@ describe("ssr: false", () => {
 	});
 
 	it("re-renders a reader of the promise's status once the browser loads it", async () => {
+		let browser = false;
 		function tagQuery() {
 			return queryOptions({
+				enabled: browser,
 				queryFn: async () => "beta",
 				queryKey: ["tag"],
-				ssr: false,
 			});
 		}
 		const loader = new QueryClient({ isServer: true });
@@ -660,6 +664,7 @@ describe("ssr: false", () => {
 		const html = await new Response(stream).text();
 		expect(html).toContain("<span>…</span>");
 
+		browser = true;
 		const container = document.createElement("div");
 		container.innerHTML = html;
 		document.body.append(container);

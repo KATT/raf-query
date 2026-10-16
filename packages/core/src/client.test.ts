@@ -3,6 +3,7 @@ import { Context, Effect, Layer, Schedule } from "effect";
 
 import {
 	dehydrate,
+	hydrate,
 	Query,
 	QueryCache,
 	QueryClient,
@@ -442,25 +443,25 @@ describe("on the server", () => {
 	});
 });
 
-describe("ssr: false", () => {
-	function capabilityQuery(input: { id: number }) {
+describe("enabled", () => {
+	function capabilityQuery(input: { enabled: boolean; id: number }) {
 		const calls: Array<number> = [];
 		return {
 			calls,
 			query: () =>
 				queryOptions({
+					enabled: input.enabled,
 					queryFn: () => {
 						calls.push(input.id);
 						return "granted";
 					},
 					queryKey: ["capability", input.id],
-					ssr: false,
 				}),
 		};
 	}
 
-	it("never runs or sends the query on the server", async () => {
-		const capability = capabilityQuery({ id: 1 });
+	it("never runs or sends a disabled query on the server, and rejects its readers", async () => {
+		const capability = capabilityQuery({ enabled: false, id: 1 });
 		const qc = new QueryClient({ isServer: true });
 
 		const handle = qc.prefetch(capability.query);
@@ -470,10 +471,10 @@ describe("ssr: false", () => {
 		await qc.invalidate(capability.query);
 		await Effect.runPromise(Query.refetch(query));
 		await expect(qc.ensure(capability.query)).rejects.toBeInstanceOf(
-			Query.BrowserOnlyError,
+			Query.DisabledError,
 		);
 		await expect(qc.fetch(capability.query)).rejects.toThrow(
-			'Query ["capability",1] runs in the browser only (ssr: false)',
+			'Query ["capability",1] is disabled (enabled: false)',
 		);
 
 		expect(capability.calls).toEqual([]);
@@ -483,15 +484,81 @@ describe("ssr: false", () => {
 		expect(dehydrate(qc, { filter: () => true }).queries).toEqual([]);
 	});
 
-	it("runs the query in the browser", async () => {
-		const capability = capabilityQuery({ id: 1 });
+	it("never runs a disabled query in the browser, and keeps its readers pending", async () => {
+		const capability = capabilityQuery({ enabled: false, id: 1 });
 		const qc = new QueryClient({ isServer: false });
 
-		await expect(qc.fetch(capability.query)).resolves.toHaveProperty(
-			"data",
-			"granted",
+		qc.prefetch(capability.query);
+		const query = qc.getQuery(capability.query);
+		const promise = Query.readUnsafe(query);
+		const unsubscribe = Query.subscribeUnsafe(query, () => {});
+		await qc.invalidate(capability.query);
+		await Effect.runPromise(Query.refetch(query));
+		await expect(qc.fetch(capability.query)).rejects.toThrow(
+			'Query ["capability",1] is disabled (enabled: false)',
 		);
-		expect(capability.calls).toEqual([1]);
+		unsubscribe();
+
+		expect(capability.calls).toEqual([]);
+		expect(promise.status).toBe("pending");
+		expect(Query.getUnsafe(query)).toMatchObject({
+			hasData: false,
+			isFetching: false,
+			status: "pending",
+		});
+	});
+
+	it("settles the pending promise once a factory call enables the query", async () => {
+		let enabled = false;
+		const calls: Array<string> = [];
+		function permissionQuery() {
+			return queryOptions({
+				enabled,
+				queryFn: async () => {
+					calls.push("permission");
+					return "granted";
+				},
+				queryKey: ["permission"],
+			});
+		}
+		const qc = new QueryClient({ isServer: false });
+		qc.prefetch(permissionQuery);
+		const disabled = Query.readUnsafe(qc.getQuery(permissionQuery));
+
+		enabled = true;
+		qc.prefetch(permissionQuery);
+		const query = qc.getQuery(permissionQuery);
+
+		expect(Query.readUnsafe(query)).toBe(disabled);
+		await expect(disabled).resolves.toBe("granted");
+		expect(Query.getUnsafe(query)).toMatchObject({ data: "granted" });
+		expect(calls).toEqual(["permission"]);
+	});
+
+	it("runs a query enabled by a browser-only check in the browser only", async () => {
+		let browser = false;
+		const calls: Array<string> = [];
+		function tagQuery() {
+			return queryOptions({
+				enabled: browser,
+				queryFn: async () => {
+					calls.push(browser ? "browser" : "server");
+					return "beta";
+				},
+				queryKey: ["tag"],
+			});
+		}
+		const server = new QueryClient({ isServer: true });
+		server.prefetch(tagQuery);
+		const state = dehydrate(server, { filter: () => true });
+
+		browser = true;
+		const qc = new QueryClient({ isServer: false });
+		hydrate(qc, state);
+		await expect(qc.ensure(tagQuery)).resolves.toHaveProperty("data", "beta");
+
+		expect(state.queries).toEqual([]);
+		expect(calls).toEqual(["browser"]);
 	});
 });
 
