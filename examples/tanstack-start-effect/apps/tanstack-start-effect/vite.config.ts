@@ -5,7 +5,7 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 
-export default defineConfig({
+export default defineConfig((env) => ({
 	plugins: [
 		tailwindcss(),
 		tanstackStart(),
@@ -20,4 +20,10 @@ export default defineConfig({
 		// CodeSandbox serves the dev server at `<id>-<port>.csb.app`.
 		allowedHosts: [".csb.app"],
 	},
-});
+	// Bundle every dependency into the server build. Vite would keep the ones
+	// it can resolve from here (`react`) external and inline the ones it can't
+	// (Base UI's `use-sync-external-store`, CommonJS), leaving its
+	// `require("react")` as `createRequire`, which Nitro's bundle can't follow:
+	// on Vercel, with no `node_modules`, every request failed.
+	ssr: env.command === "build" ? { noExternal: true } : {},
+}));
