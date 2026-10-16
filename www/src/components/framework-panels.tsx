@@ -1,6 +1,7 @@
 import {
 	type ReactNode,
 	useDeferredValue,
+	useState,
 	useSyncExternalStore,
 	ViewTransition,
 } from "react";
@@ -18,6 +19,12 @@ import {
  * commits synchronously, and view transitions only run for transition-lane
  * commits. Deferring the mode moves the switch into one.
  *
+ * React names every boundary near a transition's changes to measure layout,
+ * which starts a document view transition (and swallows clicks while it runs)
+ * for unrelated updates such as the homepage demo. So the boundary is `"none"`
+ * except in the one commit where the mode flips: `settled` catches up from
+ * the ref once that commit lands.
+ *
  * Which panel shows is still CSS on `html[data-framework-mode]` (see
  * `frameworkModeScript`). React only animates a boundary whose DOM it mutated
  * itself, so the wrapper also mirrors the mode — after hydration only, since
@@ -27,10 +34,10 @@ import {
  */
 export function FrameworkPanels(props: {
 	readonly children: ReactNode;
-	readonly className?: string;
 	readonly mode: FrameworkMode;
 }) {
 	const mode = useDeferredValue(props.mode);
+	const [settled, setSettled] = useState(mode);
 	const hydrated = useSyncExternalStore(
 		() => () => {},
 		() => true,
@@ -38,13 +45,13 @@ export function FrameworkPanels(props: {
 	);
 
 	return (
-		<ViewTransition default="framework-panels">
+		<ViewTransition default={mode === settled ? "none" : "framework-panels"}>
 			<div
-				className={props.className}
 				data-framework-panels={hydrated ? mode : undefined}
 				ref={(element) => {
 					if (element) {
 						syncFrameworkModeAttribute(mode);
+						setSettled(mode);
 					}
 				}}
 			>
