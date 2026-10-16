@@ -68,6 +68,20 @@ html[data-announcement-dismissed] .announcement-bar {
 	display: none;
 }
 
+/*
+ * A snapshot is painted on its own, so its `backdrop-blur` has nothing to
+ * blur and the content scrolled under it shows through sharp. Blur again in
+ * the overlay, where the fading panels sit behind the group.
+ */
+::view-transition-group(site-header),
+::view-transition-group(framework-mode-bar) {
+	backdrop-filter: blur(8px);
+}
+
+::view-transition-group(framework-mode-bar) {
+	border-radius: 9999px;
+}
+
 /* Panels differ in height; keep the outgoing one from spilling past the box. */
 ::view-transition-group(.framework-panels) {
 	overflow: clip;
