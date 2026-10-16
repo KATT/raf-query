@@ -50,7 +50,7 @@ export type UseQueryResultWithData<
 				controls: UseQueryControls<TFactory>,
 			];
 
-function queryFor<TFactory extends QueryFactory>(
+export function queryFor<TFactory extends QueryFactory>(
 	client: QueryClient<unknown>,
 	factory: TFactory,
 	input: unknown,

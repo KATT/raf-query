@@ -63,6 +63,31 @@ Because `use()` can be called conditionally, a component can also decide **wheth
 tanstack-start/src/docs/reading-queries.tsx#details
 ```
 
+## Reading a list of handles
+
+A loader can start one query per item it knows about, such as each slug in the URL, and return the handles as an array:
+
+```sample
+tanstack-start/src/docs/reading-queries.lists.tsx#list-loader
+```
+
+When each item renders on its own, give each one a component that calls `useQuery`. Each row suspends behind its own boundary, so a post shows as soon as it loads:
+
+```sample
+tanstack-start/src/docs/reading-queries.lists.tsx#list-rows
+```
+
+When one component needs all of them at once, for a total or a side-by-side comparison, `useQueries` reads the whole list. It returns one promise of every query's data, in the handles' order, and each query's controls:
+
+```sample
+tanstack-start/src/docs/reading-queries.lists.tsx#list-all
+```
+
+- The promise suspends until every query has data, and rejects when a first load fails, like [`Promise.all`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all). It's the same promise until one query's data changes, so an update renders without suspending.
+- It's a `Thenable` too: a component can read its `status` and `value` instead of calling `use()`, and re-renders when every load has settled. See [Reading without Suspense](./comparison.md#reading-without-suspense).
+- The list can change length between renders. `whilePending: "previous"` keeps each position's last data while its new input loads.
+- It takes the same options as `useQuery`, and like it, [never refetches on mount](#no-refetch-on-mount). There is no `combine` option: derive what you need from the data after `use()`.
+
 ## No refetch on mount
 
 `useQuery` never refetches on mount: whatever started the query decides. Stale data refetches when a loader or server component starts the query again, when `useWaterfall` mounts, when invalidated, on window focus or reconnect, on `refetch()`, or on `refetchInterval`.
