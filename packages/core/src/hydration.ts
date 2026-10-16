@@ -99,19 +99,21 @@ function dehydrateUnsafe<TFactory extends QueryFactory>(
 	query: Query.Query<TFactory>,
 	options: DehydrateOptions,
 ): DehydratedQuery {
+	const sent = dehydrateState(query, options);
+	const effect = Query.returnsEffectUnsafe(query);
+	return effect === undefined ? sent : { ...sent, effect };
+}
+
+/** {@link dehydrateUnsafe} without `effect`. */
+function dehydrateState<TFactory extends QueryFactory>(
+	query: Query.Query<TFactory>,
+	options: DehydrateOptions,
+): DehydratedQuery {
 	const state = Query.getUnsafe(query);
 	const serialize = options.serializeData ?? identity;
 	const meta = Query.metaUnsafe(query);
-	const effect = Query.returnsEffectUnsafe(query);
-	let sent: Pick<DehydratedQuery, "effect" | "key" | "meta"> = {
-		key: query.key,
-	};
-	if (meta !== undefined) {
-		sent = { ...sent, meta };
-	}
-	if (effect !== undefined) {
-		sent = { ...sent, effect };
-	}
+	const sent =
+		meta === undefined ? { key: query.key } : { key: query.key, meta };
 	if (state.hasData) {
 		return { ...sent, data: serialize(state.data), updatedAt: state.updatedAt };
 	}
