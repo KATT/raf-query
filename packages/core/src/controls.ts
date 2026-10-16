@@ -14,7 +14,6 @@ import type {
 	InputOf,
 	IsPaged,
 	QueryFactory,
-	RegisteredThrowOnError,
 } from "./options.ts";
 import { fulfilled, pending, type Thenable } from "./thenable.ts";
 
@@ -86,9 +85,8 @@ export type HasTypedError<TFactory extends QueryFactory> =
 /**
  * Whether this read throws on failure. Untyped errors always throw. Typed
  * errors follow `options.throwOnError`, else the client's default (`false`
- * with a `layer`, `true` without). Types treat an omitted flag as the
- * `throwOnError` declared on `Register`, and as `false` (Result, matching a
- * client with a `layer`) when none is.
+ * with a `layer`, `true` without). Types treat an omitted flag as `false`
+ * (Result), matching a client with a `layer`.
  */
 export type ThrowsOnError<
 	TFactory extends QueryFactory,
@@ -98,22 +96,7 @@ export type ThrowsOnError<
 		? true
 		: TThrow extends boolean
 			? TThrow
-			: RegisteredThrowOnError extends true
-				? true
-				: false;
-
-/**
- * {@link ThrowsOnError} at runtime, for bindings: a read of `query` throws
- * when `throwOnError` (the call's, else the client's) is `true`, or when its
- * `queryFn` returns a promise or plain value, whose error isn't typed. A
- * query whose `queryFn` hasn't run yet follows `throwOnError`.
- */
-export function throwsOnError<TFactory extends QueryFactory>(
-	query: Query.Query<TFactory>,
-	throwOnError: boolean,
-): boolean {
-	return throwOnError || Query.returnsEffectUnsafe(query) === false;
-}
+			: false;
 
 /**
  * {@link ThrowsOnError} at runtime, for bindings: a read of `query` throws

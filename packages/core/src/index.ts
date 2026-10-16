@@ -3,9 +3,7 @@ export {
 	dehydrate,
 	hydrate,
 	QueryClient,
-	type QueryClientArgs,
 	type QueryClientConfig,
-	type QueryClientOptions,
 } from "./client.ts";
 export {
 	type HasTypedError,
@@ -64,7 +62,6 @@ export {
 	queryOptions,
 	type QueryTypes,
 	type Register,
-	type RegisteredThrowOnError,
 	type RetryPolicy,
 	type ServicesOf,
 } from "./options.ts";

@@ -3,23 +3,8 @@
 import { type ReactNode, useState } from "react";
 
 import { requestInBrowserOnly } from "./browser-requests.ts";
-import {
-	QueryClient,
-	type QueryClientConfig,
-	type RegisteredThrowOnError,
-} from "@raf-query/core";
+import { QueryClient, type QueryClientConfig } from "@raf-query/core";
 import { QueryClientProvider } from "../provider.tsx";
-
-/** Required when `Register` declares `throwOnError`, as the client's config is. */
-type ConfigProp = RegisteredThrowOnError extends boolean
-	? {
-			/** Options for the client it creates. */
-			readonly config: QueryClientConfig;
-		}
-	: {
-			/** Options for the client it creates. */
-			readonly config?: QueryClientConfig;
-		};
 
 /**
  * The query client provider for React Server Components apps. Creates one
@@ -33,9 +18,11 @@ type ConfigProp = RegisteredThrowOnError extends boolean
  * <QueryProvider>{props.children}</QueryProvider>
  * ```
  */
-export function QueryProvider(
-	props: ConfigProp & { readonly children?: ReactNode },
-) {
+export function QueryProvider(props: {
+	readonly children?: ReactNode;
+	/** Options for the client it creates. */
+	readonly config?: QueryClientConfig;
+}) {
 	const config = props.config;
 	const [client] = useState(() => {
 		const created = new QueryClient(config);

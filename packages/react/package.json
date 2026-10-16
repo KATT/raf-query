@@ -51,7 +51,7 @@
 		"prepack": "node ../../scripts/sync-package-docs.ts",
 		"build": "vp pack",
 		"test": "vp test",
-		"typecheck": "tsc && tsc -p type-tests/throw-on-error-true && tsc -p type-tests/throw-on-error-false",
+		"typecheck": "tsc",
 		"publish:npm": "pnpm pack --out package.tgz && npm publish package.tgz --access public && rm package.tgz"
 	},
 	"dependencies": {
