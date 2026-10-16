@@ -100,6 +100,27 @@ describe("paged queries", () => {
 		expect(Query.getUnsafe(query).data?.pages).toHaveLength(5);
 	});
 
+	it("start from initialData's pages, and page on from them", async () => {
+		function seededNumbers() {
+			return infiniteQueryOptions({
+				...numbersQuery(),
+				initialData: {
+					pageParams: [0],
+					pages: [{ items: [0, 1], next: 2, previous: null }],
+				},
+				queryKey: ["seeded-numbers"],
+				staleTime: Infinity,
+			});
+		}
+		const qc = new QueryClient({ isServer: false });
+		const query = qc.getQuery(seededNumbers);
+
+		expect(itemsOf((await qc.ensure(seededNumbers)).data)).toEqual([0, 1]);
+		expect(Query.hasPreviousPageUnsafe(query)).toBe(false);
+		await Effect.runPromise(Query.fetchNextPage(query));
+		expect(itemsOf(Query.getUnsafe(query).data)).toEqual([0, 1, 2, 3]);
+	});
+
 	it("set fetchDirection while a page loads", async () => {
 		const qc = new QueryClient({ isServer: false });
 		const query = qc.getQuery(numbersQuery, {});

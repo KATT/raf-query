@@ -110,6 +110,8 @@ export interface Entry extends Query {
 	hydratedMeta: QueryMeta | undefined;
 	/** Awaited by every caller of the request in flight; outlives restarts. */
 	inFlight: Deferred.Deferred<unknown, unknown> | undefined;
+	/** `data` is the options' `initialData`, which hydrated data always replaces. */
+	isInitialData: boolean;
 	readonly listeners: Map<() => void, SubscribeOptions>;
 	options: AnyQueryOptions | undefined;
 	/** The first load's promise, until it settles. */
@@ -188,6 +190,7 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 		hash,
 		hydratedMeta: undefined,
 		inFlight: undefined,
+		isInitialData: false,
 		key,
 		listeners: new Map(),
 		options: undefined,
@@ -336,16 +339,42 @@ export function provide(entry: Entry, caller: Context.Context<never>) {
 	entry.services = requestServices(entry.cache.services, caller);
 }
 
-/** Attach the options and input of the latest factory call. */
+/**
+ * Attach the options and input of the latest factory call. The first call
+ * seeds `initialData` into an entry nothing has filled or started yet.
+ */
 export function setOptions(
 	entry: Entry,
 	options: AnyQueryOptions,
 	input: unknown,
 ) {
+	const first = entry.options === undefined;
 	entry.options = options;
 	if (entry.handle.input !== input) {
 		entry.handle = { input, key: entry.key };
 	}
+	const state = entry.state;
+	if (first && state.status === "pending" && !state.isFetching) {
+		seed(entry);
+	}
+}
+
+/** Write the options' `initialData`, if they have one, as the entry's data. */
+function seed(entry: Entry) {
+	const options = entry.options;
+	if (!options || !("initialData" in options)) {
+		return;
+	}
+	const initialData = options.initialData;
+	const updatedAt = Predicate.isFunction(options.initialDataUpdatedAt)
+		? options.initialDataUpdatedAt()
+		: options.initialDataUpdatedAt;
+	succeed(
+		entry,
+		Predicate.isFunction(initialData) ? initialData() : initialData,
+		updatedAt ?? now(entry),
+	);
+	entry.isInitialData = true;
 }
 
 /**
@@ -419,6 +448,7 @@ export function reset(entry: Entry): Effect.Effect<void> {
 	return Effect.suspend(() => {
 		entry.tasks.cancel("errorShown");
 		entry.errorShown = false;
+		entry.isInitialData = false;
 		entry.pending ??= pending();
 		set(entry, {
 			data: undefined,
@@ -430,6 +460,7 @@ export function reset(entry: Entry): Effect.Effect<void> {
 			status: "pending",
 			updatedAt: 0,
 		});
+		seed(entry);
 		// An in-flight request restarts too, or its response would restore the
 		// data that was just dropped.
 		if (
@@ -456,7 +487,7 @@ export function resume(
 	entry: Entry,
 	promise: PromiseLike<{ readonly data?: unknown; readonly updatedAt: number }>,
 ) {
-	if (entry.state.hasData || entry.inFlight) {
+	if ((entry.state.hasData && !entry.isInitialData) || entry.inFlight) {
 		return;
 	}
 	let updatedAt: number | undefined;
@@ -662,6 +693,7 @@ function succeed(entry: Entry, next: unknown, updatedAt: number) {
 			: next;
 	const firstLoad = entry.pending;
 	entry.pending = undefined;
+	entry.isInitialData = false;
 	firstLoad?.resolve(data);
 	const unchanged = previous.hasData && data === previous.data;
 	// Data written while this entry's own request runs (hydration, `setData`)

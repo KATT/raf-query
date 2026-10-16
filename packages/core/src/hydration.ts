@@ -137,9 +137,12 @@ export function dehydrateEntries(
 	const sent = options.sent;
 	const dehydrated: Array<DehydratedQuery> = [];
 	for (const query of queries) {
+		const entry = Entry.entryOf(query);
+		// The receiver's factory call seeds its own `initialData`.
 		if (
 			!sent?.has(query.hash) &&
-			!Entry.isBrowserOnly(Entry.entryOf(query)) &&
+			!Entry.isBrowserOnly(entry) &&
+			!entry.isInitialData &&
 			filter(query)
 		) {
 			sent?.add(query.hash);
@@ -206,13 +209,18 @@ export const dehydrateStream: (
 	});
 
 /**
- * Take the sender's data if it's newer than the entry's. An entry that keeps
- * its own (the sender's is older, as in a router's cached payload) was asked
- * for again, so it revalidates if stale, as `prefetch` would.
+ * Take the sender's data if it's newer than the entry's, or the entry only
+ * has its `initialData`. An entry that keeps its own (the sender's is older,
+ * as in a router's cached payload) was asked for again, so it revalidates if
+ * stale, as `prefetch` would.
  */
 function takeNewer(entry: Entry.Entry, data: unknown, updatedAt: number) {
 	const current = entry.state;
-	if (!current.hasData || current.updatedAt < updatedAt) {
+	if (
+		!current.hasData ||
+		entry.isInitialData ||
+		current.updatedAt < updatedAt
+	) {
 		Entry.setData(entry, data, updatedAt);
 	} else {
 		Entry.revalidate(entry);
@@ -221,10 +229,11 @@ function takeNewer(entry: Entry.Entry, data: unknown, updatedAt: number) {
 
 /**
  * Write dehydrated entries into a cache. Existing entries only take newer
- * data. A pending entry the cache has nothing for resumes the sender's
- * request. One that has data, or a request of its own, waits for the
- * sender's instead of fetching again, and then takes whichever is newer;
- * if the sender's failed, it revalidates.
+ * data, or replace their `initialData`. A pending entry the cache has
+ * nothing but `initialData` for resumes the sender's request. One that has
+ * data, or a request of its own, waits for the sender's instead of fetching
+ * again, and then takes whichever is newer; if the sender's failed, it
+ * revalidates.
  */
 export function hydrateEntries(
 	entryFor: (key: QueryKey) => Entry.Entry,
@@ -247,7 +256,7 @@ export function hydrateEntries(
 					updatedAt: sent.updatedAt,
 				}),
 			);
-			if (!entry.state.hasData && !entry.inFlight) {
+			if ((!entry.state.hasData || entry.isInitialData) && !entry.inFlight) {
 				Entry.resume(entry, result);
 			} else {
 				result.then(

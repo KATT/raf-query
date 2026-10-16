@@ -2,6 +2,7 @@ import { describe, expect, expectTypeOf, it, vi } from "@effect/vitest";
 import { Context, Effect, Layer, Schedule } from "effect";
 
 import {
+	type DataOf,
 	dehydrate,
 	Query,
 	QueryCache,
@@ -286,6 +287,176 @@ describe("undefined data", () => {
 		expectTypeOf(fetchMaybe).returns.resolves.toEqualTypeOf<
 			number | undefined
 		>();
+	});
+});
+
+describe("initialData", () => {
+	type Backend = ReturnType<typeof createBackend>;
+	type Seed = Pick<
+		ReturnType<Backend["issueQuery"]>,
+		"initialData" | "initialDataUpdatedAt" | "staleTime"
+	>;
+
+	function seeded(backend: Backend, options: Seed) {
+		return (input: { id: number }) => ({
+			...backend.issueQuery(input),
+			...options,
+		});
+	}
+
+	it("seeds a new entry, so ensure and prefetch use it without fetching while fresh", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		const initialData = vi.fn(() => ({ id: 1, title: "Seeded" }));
+		const issueQuery = seeded(backend, { initialData, staleTime: 60_000 });
+
+		const handle = await qc.ensure(issueQuery, { id: 1 });
+		qc.prefetch(issueQuery, { id: 1 });
+
+		expect(handle.data).toEqual({ id: 1, title: "Seeded" });
+		expect(Query.getUnsafe(qc.getQuery(issueQuery, { id: 1 }))).toMatchObject({
+			hasData: true,
+			isFetching: false,
+			isStale: false,
+			status: "success",
+		});
+		expect(Query.readUnsafe(qc.getQuery(issueQuery, { id: 1 }))).toMatchObject({
+			status: "fulfilled",
+			value: { id: 1, title: "Seeded" },
+		});
+		expect(initialData).toHaveBeenCalledOnce();
+		expect(backend.requests).toHaveLength(0);
+	});
+
+	it("is stale per staleTime from initialDataUpdatedAt, and then refetched", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		const issueQuery = seeded(backend, {
+			initialData: { id: 1, title: "Seeded" },
+			initialDataUpdatedAt: 0,
+			staleTime: 60_000,
+		});
+
+		const handle = await qc.ensure(issueQuery, { id: 1 });
+		expect(handle.data.title).toBe("Seeded");
+		expect(backend.requests).toHaveLength(1);
+
+		const fresh = qc.fetch(issueQuery, { id: 1 });
+		backend.respondAll();
+		expect((await fresh).data.title).toBe("First");
+		expect(
+			Query.getUnsafe(qc.getQuery(issueQuery, { id: 1 })).updatedAt,
+		).toBeGreaterThan(0);
+	});
+
+	it("counts as fetched when it's seeded by default, and fetch waits once it's stale", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		const issueQuery = seeded(backend, {
+			initialData: { id: 1, title: "Seeded" },
+			initialDataUpdatedAt: () => undefined,
+		});
+		const before = Date.now();
+
+		const fetched = qc.fetch(issueQuery, { id: 1 });
+		const state = Query.getUnsafe(qc.getQuery(issueQuery, { id: 1 }));
+		expect(state.updatedAt).toBeGreaterThanOrEqual(before);
+		expect(state).toMatchObject({
+			data: { title: "Seeded" },
+			isFetching: true,
+		});
+		backend.respondAll();
+		expect((await fetched).data.title).toBe("First");
+	});
+
+	it("never replaces data the entry has", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		const issueQuery = seeded(backend, {
+			initialData: { id: 1, title: "Seeded" },
+			staleTime: Infinity,
+		});
+		const loaded = qc.fetch(backend.issueQuery, { id: 1 });
+		backend.respondAll();
+		await loaded;
+
+		expect((await qc.ensure(issueQuery, { id: 1 })).data.title).toBe("First");
+	});
+
+	it("seeds undefined data from initialData: undefined, unlike a missing option", async () => {
+		const queryFn = vi.fn((): Promise<number | undefined> =>
+			Promise.resolve(1),
+		);
+		const qc = new QueryClient({ isServer: false });
+		function maybeQuery(input: { seed: boolean }) {
+			return queryOptions({
+				...(input.seed && { initialData: undefined }),
+				queryFn,
+				queryKey: ["maybe", input.seed],
+				staleTime: Infinity,
+			});
+		}
+
+		expect((await qc.ensure(maybeQuery, { seed: true })).data).toBeUndefined();
+		expect(
+			Query.getUnsafe(qc.getQuery(maybeQuery, { seed: true })).hasData,
+		).toBe(true);
+		expect(queryFn).not.toHaveBeenCalled();
+		expect((await qc.ensure(maybeQuery, { seed: false })).data).toBe(1);
+		expect(queryFn).toHaveBeenCalledOnce();
+	});
+
+	it("is what reset goes back to, seeded again", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		let seeds = 0;
+		const issueQuery = seeded(backend, {
+			initialData: () => ({ id: 1, title: `Seeded ${++seeds}` }),
+			staleTime: Infinity,
+		});
+		qc.setData(issueQuery, { id: 1 }, { id: 1, title: "Edited" });
+
+		await qc.reset(issueQuery, { id: 1 });
+
+		expect(qc.getData(issueQuery, { id: 1 })?.title).toBe("Seeded 2");
+		expect(backend.requests).toHaveLength(0);
+	});
+
+	it("is cached data on the server too, and isn't dehydrated until replaced", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: true });
+		const issueQuery = seeded(backend, {
+			initialData: { id: 1, title: "Seeded" },
+		});
+
+		expect((await qc.fetch(issueQuery, { id: 1 })).data.title).toBe("Seeded");
+		expect(backend.requests).toHaveLength(0);
+		expect(dehydrate(qc).queries).toEqual([]);
+
+		qc.setData(issueQuery, { id: 1 }, { id: 1, title: "Written" });
+		expect(dehydrate(qc).queries).toMatchObject([
+			{ data: { title: "Written" }, key: ["issue", 1] },
+		]);
+	});
+
+	it("is typed by the queryFn's data, and doesn't widen it", () => {
+		function postQuery() {
+			return queryOptions({
+				initialData: () => ({ id: 1, title: "Seeded" }),
+				queryFn: () => Promise.resolve({ id: 1, title: "Fetched" }),
+				queryKey: ["post"],
+			});
+		}
+		expectTypeOf<DataOf<typeof postQuery>>().toEqualTypeOf<{
+			id: number;
+			title: string;
+		}>();
+		queryOptions({
+			// @ts-expect-error -- 2322: a lookup that may miss isn't the queryFn's data
+			initialData: () => [{ id: 1 }].find((post) => post.id === 2),
+			queryFn: () => Promise.resolve({ id: 1 }),
+			queryKey: ["post"],
+		});
 	});
 });
 
