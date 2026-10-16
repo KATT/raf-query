@@ -6,7 +6,7 @@
 
 - `detail-sections` title (`#<id>` beside it), `Opened <date>`, description, `Properties` with `Status`, `Assignee` with name and title, `<n> comments`.
 - `detail-nav` `All issues` goes back to the list; `Previous issue` / `Next issue` step by one id. `Previous issue` is a disabled button on `#1`; `Next issue` always links to the next id, past `#42` too (see [not found](not-found.md)).
-- `detail-skeletons` while a section's data loads, its skeleton shows. Stepping to another issue shows the new issue's skeletons, not the old issue's content.
+- `detail-skeletons` while a section's data loads, its skeleton shows. Stepping to another issue shows the new issue's skeletons, not the old issue's content. When the data arrives, the skeleton fades out over the content (a React view transition; it's instant with reduced motion and in browsers without view transitions).
 - `detail-assignee` the card shows the assignee's initials, name and title.
 
 ## How to get to it (user POV)
