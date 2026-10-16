@@ -1,4 +1,4 @@
-import { Effect, Predicate } from "effect";
+import { Effect, Option, Predicate } from "effect";
 
 import type { InfiniteData, InfiniteQueryOptions } from "./options.ts";
 import { replaceEqualDeep } from "./share.ts";
@@ -102,7 +102,8 @@ function keepWrites(
 	const pages = data.pages.map((page, index) => {
 		const pageParam = data.pageParams[index];
 		const read = readFrom.find(
-			(entry) => replaceEqualDeep(entry.pageParam, pageParam) === entry.pageParam,
+			(entry) =>
+				replaceEqualDeep(entry.pageParam, pageParam) === entry.pageParam,
 		);
 		const now = pageFor(latest, pageParam);
 		if (
@@ -125,7 +126,8 @@ function keepWrites(
  * longer ends at the page param the request started from, the write
  * replaced the list, and the page is dropped. Without a `direction`, loads
  * from the first page param again: as many pages as `current` has, or
- * `pages` if that's more, stopping at the last page.
+ * `pages` if that's more, stopping at the last page. A page written while
+ * the refetch was reading it, or after, stays as written ({@link keepWrites}).
  */
 export const fetchPages = /*#__PURE__*/ Effect.fnUntraced(function* (
 	options: PagedOptions,
@@ -159,6 +161,8 @@ export const fetchPages = /*#__PURE__*/ Effect.fnUntraced(function* (
 
 	const count = Math.max(request.pages ?? 1, current?.pages.length ?? 0);
 	let data: Pages = { pageParams: [], pages: [] };
+	const readFrom: Array<{ pageParam: unknown; seen: Option.Option<unknown> }> =
+		[];
 	let pageParam =
 		current && current.pageParams.length > 0
 			? current.pageParams[0]
@@ -171,8 +175,9 @@ export const fetchPages = /*#__PURE__*/ Effect.fnUntraced(function* (
 			}
 			pageParam = next;
 		}
+		readFrom.push({ pageParam, seen: pageFor(latest(), pageParam) });
 		const page = yield* fetchPage(pageParam, "forward");
 		data = addPage(data, page, pageParam, "forward", options.maxPages);
 	}
-	return data;
+	return keepWrites(data, readFrom, latest());
 });
