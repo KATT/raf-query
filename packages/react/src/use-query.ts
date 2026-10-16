@@ -16,6 +16,7 @@ import {
 	type ThrowsOnError,
 	type UseQueryControls,
 	type UseQueryOptions,
+	type UseQuerySelectOptions,
 	type UseQueryThrowOptions,
 } from "@raf-query/core";
 import type { Result } from "effect";
@@ -27,14 +28,15 @@ import { useQueryClient } from "./provider.tsx";
 export type UseQueryResult<
 	TFactory extends QueryFactory,
 	TThrow extends boolean | undefined = undefined,
+	TSelected = DataOf<TFactory>,
 > =
 	ThrowsOnError<TFactory, TThrow> extends true
 		? readonly [
-				promise: Thenable<DataOf<TFactory>>,
+				promise: Thenable<TSelected>,
 				controls: UseQueryControls<TFactory>,
 			]
 		: readonly [
-				promise: Thenable<Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>>,
+				promise: Thenable<Result.Result<TSelected, ErrorOf<TFactory>>>,
 				controls: UseQueryControls<TFactory>,
 			];
 
@@ -42,11 +44,12 @@ export type UseQueryResult<
 export type UseQueryResultWithData<
 	TFactory extends QueryFactory,
 	TThrow extends boolean | undefined = undefined,
+	TSelected = DataOf<TFactory>,
 > =
 	ThrowsOnError<TFactory, TThrow> extends true
-		? readonly [data: DataOf<TFactory>, controls: UseQueryControls<TFactory>]
+		? readonly [data: TSelected, controls: UseQueryControls<TFactory>]
 		: readonly [
-				result: Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>,
+				result: Result.Result<TSelected, ErrorOf<TFactory>>,
 				controls: UseQueryControls<TFactory>,
 			];
 
@@ -127,33 +130,53 @@ function storeFor<TFactory extends QueryFactory>(
  * receives a handle from `ensure` / `fetch` must be typed
  * {@link QueryHandleWithData}: typed as `QueryHandle`, it reads as a promise
  * while the hook returns the data.
+ *
+ * `select` reads part of the data. The promise (or the data) is then what
+ * it returns, and the component re-renders only when that changes:
+ *
+ * ```tsx
+ * const [titlePromise] = useQuery(postQuery, loaderData.post, {
+ *   select: (post) => post.title,
+ * });
+ * ```
  */
 export function useQuery<
 	TFactory extends QueryFactory,
 	const TThrow extends boolean | undefined = undefined,
+	TSelected = DataOf<TFactory>,
 >(
 	factory: TFactory,
 	handle: QueryHandleWithData<TFactory>,
 	options?: UseQueryOptions &
-		UseQueryThrowOptions<TFactory> & { readonly throwOnError?: TThrow },
-): UseQueryResultWithData<TFactory, TThrow>;
+		UseQueryThrowOptions<TFactory> &
+		UseQuerySelectOptions<TFactory, TSelected> & {
+			readonly throwOnError?: TThrow;
+		},
+): UseQueryResultWithData<TFactory, TThrow, TSelected>;
 export function useQuery<
 	TFactory extends QueryFactory,
 	const TThrow extends boolean | undefined = undefined,
+	TSelected = DataOf<TFactory>,
 >(
 	factory: TFactory,
 	handle: QueryHandle<TFactory>,
 	options?: UseQueryOptions &
-		UseQueryThrowOptions<TFactory> & { readonly throwOnError?: TThrow },
-): UseQueryResult<TFactory, TThrow>;
+		UseQueryThrowOptions<TFactory> &
+		UseQuerySelectOptions<TFactory, TSelected> & {
+			readonly throwOnError?: TThrow;
+		},
+): UseQueryResult<TFactory, TThrow, TSelected>;
 export function useQuery<TFactory extends QueryFactory>(
 	factory: TFactory,
 	handle: QueryHandle<TFactory>,
-	options: UseQueryOptions & { readonly throwOnError?: boolean } = {},
+	options: UseQueryOptions &
+		UseQuerySelectOptions<TFactory, unknown> & {
+			readonly throwOnError?: boolean;
+		} = {},
 	// Overloads name the return; the body picks at runtime.
 ):
-	| UseQueryResult<TFactory, boolean>
-	| UseQueryResultWithData<TFactory, boolean> {
+	| UseQueryResult<TFactory, boolean, unknown>
+	| UseQueryResultWithData<TFactory, boolean, unknown> {
 	const client = useQueryClient();
 	const query = queryFor(client, factory, handle.input);
 	assertSent(client, query);
@@ -162,6 +185,7 @@ export function useQuery<TFactory extends QueryFactory>(
 	const refetchInterval = options.refetchInterval;
 	const refetchOnReconnect = options.refetchOnReconnect;
 	const refetchOnWindowFocus = options.refetchOnWindowFocus;
+	const select = options.select;
 	const whilePending = options.whilePending;
 	const [store] = useState(() => storeFor(query, options));
 	const observer = store.observer;
@@ -176,6 +200,7 @@ export function useQuery<TFactory extends QueryFactory>(
 			refetchInterval,
 			refetchOnReconnect,
 			refetchOnWindowFocus,
+			select,
 			whilePending,
 		});
 	}, [
@@ -184,6 +209,7 @@ export function useQuery<TFactory extends QueryFactory>(
 		refetchInterval,
 		refetchOnReconnect,
 		refetchOnWindowFocus,
+		select,
 		whilePending,
 	]);
 
@@ -194,7 +220,7 @@ export function useQuery<TFactory extends QueryFactory>(
 	const throwOnError = options.throwOnError ?? client.throwOnError;
 	const withData = "data" in handle;
 	if (!throwOnError) {
-		const resultPromise = resultThenable<DataOf<TFactory>, ErrorOf<TFactory>>(
+		const resultPromise = resultThenable<unknown, ErrorOf<TFactory>>(
 			result.promise,
 		);
 		if (withData) {
@@ -202,27 +228,28 @@ export function useQuery<TFactory extends QueryFactory>(
 			return [
 				use(resultPromise),
 				controls,
-			] as unknown as UseQueryResultWithData<TFactory, false>;
+			] as unknown as UseQueryResultWithData<TFactory, false, unknown>;
 		}
 		// SAFETY: Result thenable for typed ErrorOf when throwOnError is false.
 		return [
 			QueryObserver.trackThenable(observer, resultPromise),
 			controls,
-		] as unknown as UseQueryResult<TFactory, false>;
+		] as unknown as UseQueryResult<TFactory, false, unknown>;
 	}
 	if (withData) {
 		const data = use(result.promise);
 		// SAFETY: as below; `use` unwraps the promise to its data.
 		return [data, controls] as unknown as UseQueryResultWithData<
 			TFactory,
-			true
+			true,
+			unknown
 		>;
 	}
 	// SAFETY: the result's promise is this factory's entry's promise (or an
-	// earlier input's entry of the same factory), and the result has every
-	// field of both control shapes.
+	// earlier input's entry of the same factory), through `select` when it is
+	// set, and the result has every field of both control shapes.
 	return [
 		QueryObserver.trackThenable(observer, result.promise),
 		controls,
-	] as unknown as UseQueryResult<TFactory, true>;
+	] as unknown as UseQueryResult<TFactory, true, unknown>;
 }

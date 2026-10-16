@@ -16,6 +16,7 @@ export {
 	type ThrowsOnError,
 	type UseQueryControls,
 	type UseQueryOptions,
+	type UseQuerySelectOptions,
 	type UseQueryThrowOptions,
 } from "./controls.ts";
 export * as Platform from "./platform.ts";

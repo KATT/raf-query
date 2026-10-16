@@ -28,7 +28,8 @@ import { listen } from "./listen.ts";
 import type { DataOf, QueryFactory } from "./options.ts";
 import { Platform } from "./platform.ts";
 import * as Query from "./query.ts";
-import type { Thenable } from "./thenable.ts";
+import { replaceEqualDeep } from "./share.ts";
+import { fulfilled, pending, type Pending, type Thenable } from "./thenable.ts";
 
 export const TypeId = "~@raf-query/core/QueryObserver";
 
@@ -42,6 +43,15 @@ export interface Options {
 	readonly refetchOnReconnect?: boolean;
 	/** Refetch on window focus while stale. Default: the query's option, else `true`. */
 	readonly refetchOnWindowFocus?: boolean;
+	/**
+	 * Read part of the data: `promise` settles with what this returns, on
+	 * the data it would show (a previous query's too, while `isPrevious`).
+	 * It runs again when the data or the function changes, and its result
+	 * is structurally shared with the last one, so a value deeply equal to
+	 * the last keeps its promise and notifies no one. If it throws, the
+	 * promise rejects with the error.
+	 */
+	readonly select?: (data: never) => unknown;
 	/**
 	 * What to show while the query has no data yet:
 	 * - `"suspend"` (default): the result's promise is the query's pending one.
@@ -76,7 +86,7 @@ export interface Result<TData = unknown> {
 	readonly isStale: boolean;
 	/** Key of the data in `promise`; differs from the query's while `isPrevious`. */
 	readonly key: QueryKey;
-	/** Settles with the data to show; see `Query.State.promise`. */
+	/** Settles with the data to show (through `select`); see `Query.State.promise`. */
 	readonly promise: Thenable<TData>;
 	/** The query's `refetch`. */
 	readonly refetch: Effect.Effect<void>;
@@ -106,6 +116,15 @@ interface Subscription {
 	readonly scope: Scope.Closeable;
 }
 
+/** The last `select` run: what it ran on, and the promise it handed out. */
+interface Selection {
+	/** Pending until `source` settles; then mapped through the latest `select`. */
+	readonly deferred: Pending<unknown> | undefined;
+	readonly promise: Thenable<unknown>;
+	select: (data: never) => unknown;
+	readonly source: Thenable<unknown>;
+}
+
 interface Impl<TFactory extends QueryFactory> extends QueryObserver<TFactory> {
 	current: Result<DataOf<TFactory>>;
 	/**
@@ -119,6 +138,7 @@ interface Impl<TFactory extends QueryFactory> extends QueryObserver<TFactory> {
 	readonly listeners: Set<() => void>;
 	options: Options;
 	query: Query.Query<TFactory>;
+	selection: Selection | undefined;
 	subscription: Subscription | undefined;
 	/** The latest {@link trackThenable} wrapper this observer handed out. */
 	tracked: Thenable<unknown> | undefined;
@@ -195,12 +215,98 @@ function setCurrent<TFactory extends QueryFactory>(
 	self.currentStatus = next.promise.status;
 }
 
-/** The result for `query` with `options`, given the last query that had data. */
+function rejected(reason: unknown): Thenable<never> {
+	const deferred = pending<never>();
+	deferred.reject(reason);
+	return deferred.promise;
+}
+
+function run(select: (data: never) => unknown, data: unknown): unknown {
+	// SAFETY: `select` is typed by the observed factory's data (the
+	// bindings' `UseQuerySelectOptions`), and `data` is that factory's.
+	const call = select as (data: unknown) => unknown;
+	return call(data);
+}
+
+/** Settle a selection made while its source was pending, once the source has settled. */
+function settleSelection(selection: Selection) {
+	const deferred = selection.deferred;
+	if (deferred?.promise.status !== "pending") {
+		return;
+	}
+	const source = selection.source;
+	if (source.status === "rejected") {
+		deferred.reject(source.reason);
+	} else if (source.status === "fulfilled") {
+		try {
+			deferred.resolve(run(selection.select, source.value));
+		} catch (error) {
+			deferred.reject(error);
+		}
+	}
+}
+
+/**
+ * `source` through `select`, as a promise as stable as the source's: the
+ * last selection's promise while the source and function are the same, or
+ * while the function returns a value deeply equal to the last.
+ */
+function selectUnsafe<TFactory extends QueryFactory>(
+	self: Impl<TFactory>,
+	source: Thenable<unknown>,
+	select: (data: never) => unknown,
+): Thenable<unknown> {
+	const last = self.selection;
+	if (last?.source === source) {
+		if (last.promise.status === "pending") {
+			last.select = select;
+			// The source's own `then` settles it too, but only a microtask
+			// after the source settles in place; a result computed in between
+			// has to see the new status.
+			settleSelection(last);
+			return last.promise;
+		}
+		if (last.select === select || source.status === "rejected") {
+			return last.promise;
+		}
+	}
+	let selection: Selection;
+	if (source.status === "pending") {
+		const deferred = pending<unknown>();
+		selection = { deferred, promise: deferred.promise, select, source };
+		const settle = () => {
+			settleSelection(selection);
+		};
+		source.then(settle, settle);
+	} else if (source.status === "rejected") {
+		const promise = rejected(source.reason);
+		selection = { deferred: undefined, promise, select, source };
+	} else {
+		const lastValue =
+			last?.promise.status === "fulfilled" ? last.promise.value : undefined;
+		let promise: Thenable<unknown>;
+		try {
+			const value = replaceEqualDeep(lastValue, run(select, source.value));
+			promise =
+				last?.promise.status === "fulfilled" && value === lastValue
+					? last.promise
+					: fulfilled(value);
+		} catch (error) {
+			promise = rejected(error);
+		}
+		selection = { deferred: undefined, promise, select, source };
+	}
+	self.selection = selection;
+	return selection.promise;
+}
+
+/** The result for `query` with `options`, given the observer's last query with data and selection. */
 function resultOf<TFactory extends QueryFactory>(
+	self: Impl<TFactory>,
 	query: Query.Query<TFactory>,
 	options: Options,
-	lastWithData: Query.Query<TFactory> | undefined,
 ): Result<DataOf<TFactory>> {
+	const lastWithData = self.lastWithData;
 	const state = Query.getUnsafe(query);
 	const previous =
 		options.whilePending === "previous" &&
@@ -212,6 +318,13 @@ function resultOf<TFactory extends QueryFactory>(
 			: undefined;
 	const shown = previous ?? query;
 	const shownState = previous ? Query.getUnsafe(previous) : state;
+	// SAFETY: with `select`, the promise holds what it returns; bindings
+	// type that from `select`'s return.
+	const promise = (
+		options.select
+			? selectUnsafe(self, shownState.promise, options.select)
+			: shownState.promise
+	) as Thenable<DataOf<TFactory>>;
 	return {
 		error: state.error,
 		fetchNextPage: Query.fetchNextPage(query),
@@ -227,7 +340,7 @@ function resultOf<TFactory extends QueryFactory>(
 		isPrevious: previous !== undefined,
 		isStale: state.isStale,
 		key: shown.handle.key,
-		promise: shownState.promise,
+		promise,
 		refetch: Query.refetch(query),
 		updatedAt: shownState.updatedAt,
 	};
@@ -238,18 +351,20 @@ export function makeUnsafe<TFactory extends QueryFactory>(
 	query: Query.Query<TFactory>,
 	options: Options = {},
 ): QueryObserver<TFactory> {
-	const current = resultOf(query, options, undefined);
 	const self: Impl<TFactory> = Object.assign(Object.create(Proto), {
-		current,
-		currentStatus: current.promise.status,
-		lastWithData: Query.getUnsafe(query).hasData ? query : undefined,
+		lastWithData: undefined,
 		listeners: new Set(),
 		options,
 		query,
+		selection: undefined,
 		subscription: undefined,
 		tracked: undefined,
 		trackedProps: new Set(),
 	});
+	setCurrent(self, resultOf(self, query, options));
+	if (Query.getUnsafe(query).hasData) {
+		self.lastWithData = query;
+	}
 	return self;
 }
 
@@ -285,7 +400,7 @@ export function getOptimisticResultUnsafe<TFactory extends QueryFactory>(
 	options: Options,
 ): Result<DataOf<TFactory>> {
 	const impl = implOf(self);
-	const result = resultOf(query, options, impl.lastWithData);
+	const result = resultOf(impl, query, options);
 	if (anyChanged(impl, result)) {
 		setCurrent(impl, result);
 	}
@@ -437,7 +552,7 @@ export function trackProp<TFactory extends QueryFactory>(
 
 /** Recompute the result, and notify listeners if a tracked property changed. */
 function updateResult<TFactory extends QueryFactory>(self: Impl<TFactory>) {
-	const next = resultOf(self.query, self.options, self.lastWithData);
+	const next = resultOf(self, self.query, self.options);
 	if (Query.getUnsafe(self.query).hasData) {
 		self.lastWithData = self.query;
 	}
