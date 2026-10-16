@@ -3,6 +3,8 @@ import { Avatar, AvatarFallback } from "@examples/ui/components/avatar";
 import { Card, CardContent } from "@examples/ui/components/card";
 import { Skeleton } from "@examples/ui/components/skeleton";
 
+import { FallbackFade } from "./fallback-fade.tsx";
+
 function initials(name: string) {
 	return name
 		.split(" ")
@@ -29,5 +31,9 @@ export function AssigneeCardView(props: { readonly user: User }) {
 }
 
 export function AssigneeCardSkeleton() {
-	return <Skeleton className="h-[74px]" />;
+	return (
+		<FallbackFade>
+			<Skeleton className="h-[74px]" />
+		</FallbackFade>
+	);
 }

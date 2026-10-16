@@ -7,6 +7,8 @@ import { cn } from "@examples/ui/lib/utils";
 import { MessageSquare } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { FallbackFade } from "./fallback-fade.tsx";
+
 const dateFormat = new Intl.DateTimeFormat("en", {
 	day: "numeric",
 	month: "short",
@@ -88,8 +90,10 @@ export function IssueRowSkeletons(props: { readonly count: number }) {
 
 export function IssueListSkeleton() {
 	return (
-		<Card className="gap-0 py-0">
-			<IssueRowSkeletons count={10} />
-		</Card>
+		<FallbackFade>
+			<Card className="gap-0 py-0">
+				<IssueRowSkeletons count={10} />
+			</Card>
+		</FallbackFade>
 	);
 }

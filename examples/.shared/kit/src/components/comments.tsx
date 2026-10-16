@@ -8,6 +8,8 @@ import { cn } from "@examples/ui/lib/utils";
 import { Loader2 } from "lucide-react";
 import { useFormStatus } from "react-dom";
 
+import { FallbackFade } from "./fallback-fade.tsx";
+
 const commentClassName = "rounded-lg border p-3";
 
 const timeFormat = new Intl.DateTimeFormat("en", {
@@ -92,10 +94,12 @@ export function CommentSkeletons(props: { readonly count: number }) {
 
 export function CommentsSkeleton() {
 	return (
-		<div className="grid gap-3">
-			<Skeleton className="h-6 w-32" />
-			<Skeleton className="h-16" />
-			<Skeleton className="h-16" />
-		</div>
+		<FallbackFade>
+			<div className="grid gap-3">
+				<Skeleton className="h-6 w-32" />
+				<Skeleton className="h-16" />
+				<Skeleton className="h-16" />
+			</div>
+		</FallbackFade>
 	);
 }
