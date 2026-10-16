@@ -21,6 +21,7 @@ Every feature in these docs appears somewhere in the app:
 | Screen or action                                        | Shows                                                                                                                                  |
 | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Loader verb                                             | The URL's first segment picks how loaders start queries: [`prefetch`, `ensure` or `fetch`](./starting-queries.md) (`/ensure/issues/3`) |
+| Progress bar along the top                              | The router's own pending state while `ensure` and `fetch` wait: `useRouterState`, `useNavigation`, or Next.js's `useLinkStatus`        |
 | Issue list with status filter and sort                  | Search params → loader → paged query, infinite scroll, `whilePending: "previous"`, `isPrevious` dimming                                |
 | Issue detail                                            | Under `prefetch` the page opens onto skeletons for the title, body, and status; `ensure` and `fetch` wait for them                     |
 | Comments under an issue                                 | A paged query, streamed under `prefetch`, infinite scroll                                                                              |
