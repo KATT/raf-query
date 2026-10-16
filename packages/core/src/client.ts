@@ -1,19 +1,22 @@
-import {
-	type DataOf,
-	type DehydratedState,
-	type DehydrateOptions,
-	type HydrateOptions,
-	type InputArgs,
-	type InputOf,
-	type LoadOptions,
-	type PagedQueryFactory,
-	Query,
-	QueryCache,
-	type QueryFactory,
-	type QueryHandle,
-	type QueryHandleWithData,
-} from "@raf-query/core";
 import { Context, Effect, Exit, Layer, Option, Predicate, Scope } from "effect";
+
+import * as QueryCache from "./cache.ts";
+import type {
+	DehydratedState,
+	DehydrateOptions,
+	HydrateOptions,
+} from "./hydration.ts";
+import type {
+	DataOf,
+	InputArgs,
+	InputOf,
+	LoadOptions,
+	PagedQueryFactory,
+	QueryFactory,
+	QueryHandle,
+	QueryHandleWithData,
+} from "./options.ts";
+import type * as Query from "./query.ts";
 
 export interface QueryClientConfig<TServices = never>
 	extends QueryCache.Config {
