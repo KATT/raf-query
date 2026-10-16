@@ -10,20 +10,21 @@ import {
 } from "@examples/kit/components/issue-list";
 import { LoadMore } from "@examples/kit/components/load-more";
 import { cn } from "@examples/ui/lib/utils";
-import { type QueryHandle, useQuery } from "@raf-query/react";
-import { use } from "react";
+import type { QueryHandle } from "@raf-query/react";
 
 import { AppLink } from "~/components/settings.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
+import { useLoaderVerb } from "~/components/loader-verb.tsx";
 import { issueListQuery } from "~/queries.ts";
+import { useQueryData } from "~/use-query-data.ts";
 
 export function IssueList(props: {
 	readonly handle: QueryHandle<typeof issueListQuery>;
 }) {
-	const [pagesPromise, list] = useQuery(issueListQuery, props.handle, {
+	const verb = useLoaderVerb();
+	const [pages, list] = useQueryData(issueListQuery, props.handle, {
 		whilePending: "previous",
 	});
-	const pages = use(pagesPromise);
 	const lastPage = pages.pages.at(-1);
 	const total = lastPage?.total ?? 0;
 	const shown = pages.pages.reduce((sum, page) => sum + page.issues.length, 0);
@@ -50,7 +51,7 @@ export function IssueList(props: {
 						{page.issues.map((issue) => (
 							<AppLink
 								className={issueRowClassName}
-								href={`/issues/${issue.id}`}
+								href={`/${verb}/issues/${issue.id}`}
 								key={issue.id}
 							>
 								<IssueRow issue={issue}>

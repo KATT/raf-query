@@ -16,7 +16,8 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 import { AppQueryProvider } from "~/components/app-query-provider.tsx";
-import { AppLink, Settings, SettingsProvider } from "~/components/settings.tsx";
+import { IssuesLink } from "~/components/loader-verb.tsx";
+import { Settings, SettingsProvider } from "~/components/settings.tsx";
 import { ThemeProvider } from "~/components/theme-provider.tsx";
 import { parsePrefetch, PREFETCH_COOKIE } from "~/settings.ts";
 
@@ -41,13 +42,10 @@ export default async function RootLayout(props: {
 						>
 							<header className="border-b">
 								<nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
-									<AppLink
-										className="flex items-center gap-2.5 font-semibold"
-										href="/issues"
-									>
+									<IssuesLink className="flex items-center gap-2.5 font-semibold">
 										<Logo alt="" />
 										Issues
-									</AppLink>
+									</IssuesLink>
 									<span className="text-sm text-muted-foreground">
 										raf-query · Next.js
 									</span>

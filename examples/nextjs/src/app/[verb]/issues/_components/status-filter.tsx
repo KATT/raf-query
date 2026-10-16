@@ -7,18 +7,19 @@ import {
 } from "@examples/db/types";
 import { statusLabel } from "@examples/kit/components/status-badge";
 import { cn } from "@examples/ui/lib/utils";
-import { type QueryHandle, useQuery } from "@raf-query/react";
-import { use } from "react";
+import type { QueryHandle } from "@raf-query/react";
 
 import { AppLink } from "~/components/settings.tsx";
+import { useLoaderVerb } from "~/components/loader-verb.tsx";
 import { issueCountsQuery } from "~/queries.ts";
+import { useQueryData } from "~/use-query-data.ts";
 
 export function StatusFilter(props: {
 	readonly counts: QueryHandle<typeof issueCountsQuery>;
 	readonly current: IssueListInput;
 }) {
-	const [countsPromise] = useQuery(issueCountsQuery, props.counts);
-	const counts = use(countsPromise);
+	const verb = useLoaderVerb();
+	const [counts] = useQueryData(issueCountsQuery, props.counts);
 	const current = props.current;
 
 	return (
@@ -31,7 +32,7 @@ export function StatusFilter(props: {
 							current.status === status && "bg-muted font-medium",
 						)}
 						href={{
-							pathname: "/issues",
+							pathname: `/${verb}/issues`,
 							query: { ...current, status },
 						}}
 						key={status}
@@ -51,7 +52,7 @@ export function StatusFilter(props: {
 							"rounded-md px-3 py-1.5 text-sm capitalize hover:bg-muted",
 							current.sort === sort && "bg-muted font-medium",
 						)}
-						href={{ pathname: "/issues", query: { ...current, sort } }}
+						href={{ pathname: `/${verb}/issues`, query: { ...current, sort } }}
 						key={sort}
 					>
 						{sort}

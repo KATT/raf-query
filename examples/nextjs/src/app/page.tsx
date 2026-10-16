@@ -1,5 +1,6 @@
+import { DEFAULT_LOADER_VERB } from "@examples/db/types";
 import { redirect } from "next/navigation";
 
 export default function Home() {
-	redirect("/issues");
+	redirect(`/${DEFAULT_LOADER_VERB}/issues`);
 }
