@@ -568,44 +568,6 @@ describe("QueryCache", () => {
 		}),
 	);
 
-	it.effect(
-		"waitFor succeeds with the first matching data, and stops reading when interrupted",
-		() =>
-			Effect.gen(function* () {
-				const backend = createBackend();
-				const cache = yield* QueryCache.make({ isServer: false });
-				const query = yield* cache.getQuery(backend.issueQuery, { id: 1 });
-				const fiber = yield* Effect.forkChild(
-					cache.waitFor(
-						backend.issueQuery,
-						{ id: 1 },
-						(issue) => issue.title === "B",
-					),
-					{ startImmediately: true },
-				);
-				expect(backend.requests).toHaveLength(1);
-				backend.respondAll();
-				yield* settle;
-				expect(fiber.pollUnsafe()).toBeUndefined();
-
-				yield* cache.setData(
-					backend.issueQuery,
-					{ id: 1 },
-					{ id: 1, title: "B" },
-				);
-				expect(yield* Fiber.join(fiber)).toEqual({ id: 1, title: "B" });
-				expect(Query.observerCountUnsafe(query)).toBe(0);
-
-				const never = yield* Effect.forkChild(
-					cache.waitFor(backend.issueQuery, { id: 1 }, () => false),
-					{ startImmediately: true },
-				);
-				expect(Query.observerCountUnsafe(query)).toBe(1);
-				yield* Fiber.interrupt(never);
-				expect(Query.observerCountUnsafe(query)).toBe(0);
-			}),
-	);
-
 	it.effect("invalidate refetches what watch is reading", () =>
 		Effect.gen(function* () {
 			const backend = createBackend();

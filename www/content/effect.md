@@ -99,7 +99,7 @@ tanstack-start-effect/src/docs/effect.ts#effect-queryfns
 tanstack-start-effect/src/docs/effect.the-cache-as-an-effect-service.ts#the-cache-as-an-effect-service
 ```
 
-The cache has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidate`, `reset`, `remove`, `setData`, `getData` (an [`Option`](https://effect.website/docs/v4/data-types/option)), `isFetching` (a count), `dehydrate` and `hydrate`. `watch` is a [`Stream`](https://effect.website/docs/v4/api/effect/Stream) of an entry's state, and `events` a `Stream` of cache events. `waitFor(factory, input, predicate)` succeeds with the first data that matches `predicate` ([Waiting for a change](./starting-queries.md#waiting-for-a-change)); interrupt it to stop waiting.
+The cache has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidate`, `reset`, `remove`, `setData`, `getData` (an [`Option`](https://effect.website/docs/v4/data-types/option)), `isFetching` (a count), `dehydrate` and `hydrate`. `watch` is a [`Stream`](https://effect.website/docs/v4/api/effect/Stream) of an entry's state, and `events` a `Stream` of cache events.
 
 `watch` counts as a reader while it runs, so invalidation and window focus refetch the entry. Outside React, `cache.mount` (`Effect<void, never, Scope>`) refetches read, stale entries on window focus and reconnect while its scope is open.
 

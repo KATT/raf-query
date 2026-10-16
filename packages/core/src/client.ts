@@ -202,33 +202,6 @@ export class QueryClient<TServices = never> {
 	}
 
 	/**
-	 * Start a query as {@link prefetch} does, and resolve with its data once
-	 * `predicate` returns `true` for it: the cached data at once, else the
-	 * first data a request or a write (`setData`, hydration, a live
-	 * subscription) brings. Counts as a reader while it waits, so
-	 * `invalidate` refetches it. A failed request doesn't reject, since a later
-	 * one can still match: pass a `signal` (`AbortSignal.timeout(ms)`) to stop
-	 * waiting, and the promise rejects with its reason.
-	 */
-	waitFor<TFactory extends QueryFactory<TServices>>(
-		factory: TFactory,
-		input: InputOf<TFactory>,
-		predicate: (data: DataOf<TFactory>) => boolean,
-		options: { readonly signal?: AbortSignal } = {},
-	): Promise<DataOf<TFactory>> {
-		const signal = options.signal;
-		if (signal?.aborted) {
-			return Promise.reject(signal.reason);
-		}
-		return Effect.runPromise(
-			provided(this.effect.waitFor(factory, input, predicate)),
-			{ signal },
-		).catch((error: unknown) => {
-			throw signal?.aborted ? signal.reason : error;
-		});
-	}
-
-	/**
 	 * Mark queries stale and refetch the ones being read. Resolves once those
 	 * refetches settle, so an action stays pending until fresh data is on
 	 * screen. Takes a factory and its input, or a {@link QueryCache.Filter}.
