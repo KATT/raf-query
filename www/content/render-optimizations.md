@@ -5,7 +5,7 @@ section: Guides
 order: 19
 ---
 
-raf-query re-renders a component only when something it uses has changed. Three mechanisms make that happen, all on by default.
+raf-query re-renders a component only when something it uses has changed. Three mechanisms make that happen, all on by default, and [`select`](#selecting-part-of-the-data) narrows a read to the part of the data a component uses.
 
 ## Structural sharing
 
@@ -50,12 +50,26 @@ A parent can read a prefetched handle and hand the promise to a child, so only t
 tanstack-start/src/docs/render-optimizations.passing-promises-down.tsx#passing-promises-down
 ```
 
+## Selecting part of the data
+
+`select` reads part of a query's data. The promise settles with what it returns, and the component re-renders only when that value changes:
+
+```sample
+tanstack-start/src/docs/render-optimizations.tsx#select
+```
+
+- **It runs again when the data or the function changes.** An inline function that reads props is fine: it reruns each render, and an equal result keeps the same promise.
+- **Its result is structurally shared** with the last one. A refetch that renames a todo but leaves the count alone keeps the promise, so `DoneCount` doesn't re-render.
+- **It only reads.** The cache keeps the query's full data, and every other reader of the query sees it unchanged.
+- **The rest of the read stays the same.** A handle from `ensure` or `fetch` returns the selected value itself. With `whilePending: "previous"`, it selects from the previous input's data. With `throwOnError: false`, the `Result` holds the selected value, and failures pass through. Paged factories get `{ pages, pageParams }` and keep their paging controls.
+- **If it throws**, the promise rejects with the error, as a failed first load does.
+
 ## Deriving data
 
-There's no `select` option. Derive in render: the data only changes when it actually changed, so with React Compiler (or `useMemo`) the derivation reruns only then:
+When a component uses the whole data anyway, derive in render. The data only changes when it actually changed, so with React Compiler (or `useMemo`) the derivation reruns only then:
 
 ```sample
 tanstack-start/src/docs/render-optimizations.tsx#deriving-data
 ```
 
-To share a derivation, put it in a function next to the factory, and call it wherever the data is read.
+To share a derivation, put it in a function next to the factory, and pass it as `select` or call it wherever the data is read.

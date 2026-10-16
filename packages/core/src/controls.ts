@@ -17,7 +17,21 @@ import type {
 import { fulfilled, pending, type Thenable } from "./thenable.ts";
 
 /** `refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`, `whilePending`. */
-export type UseQueryOptions = QueryObserver.Options;
+export type UseQueryOptions = Omit<QueryObserver.Options, "select">;
+
+/** `select`, typed by the factory's data. */
+export interface UseQuerySelectOptions<
+	TFactory extends QueryFactory,
+	TSelected,
+> {
+	/**
+	 * Read part of the data: the read settles with what this returns. It
+	 * runs again when the data or the function changes, and a result deeply
+	 * equal to the last keeps the promise, so the reader doesn't re-render.
+	 * It never writes to the cache.
+	 */
+	readonly select?: (data: DataOf<TFactory>) => TSelected;
+}
 
 /**
  * `throwOnError` only when {@link ErrorOf} is typed (Effect `queryFn`).
@@ -97,14 +111,18 @@ export type ThrowsOnError<
 			? TThrow
 			: false;
 
-/** What a read settles with: the data, or a `Result` when it doesn't throw. */
+/**
+ * What a read settles with: the data (or what `select` returns), or a
+ * `Result` of it when it doesn't throw.
+ */
 export type ReadValue<
 	TFactory extends QueryFactory,
 	TThrow extends boolean | undefined = undefined,
+	TSelected = DataOf<TFactory>,
 > =
 	ThrowsOnError<TFactory, TThrow> extends true
-		? DataOf<TFactory>
-		: Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>;
+		? TSelected
+		: Result.Result<TSelected, ErrorOf<TFactory>>;
 
 const commands = new WeakMap<Effect.Effect<void>, () => Promise<void>>();
 

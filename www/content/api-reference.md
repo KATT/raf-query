@@ -59,7 +59,7 @@ Accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
 tanstack-start/src/docs/api-reference.ts#usequery
 ```
 
-Options: `whilePending` (`"suspend"` or `"previous"`), `refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`.
+Options: `whilePending` (`"suspend"` or `"previous"`), `select` (a function of the data; the read settles with what it returns, and re-renders only when that changes. [Selecting part of the data](./render-optimizations.md#selecting-part-of-the-data)), `refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`.
 
 | Control        | Meaning                                                                                    |
 | -------------- | ------------------------------------------------------------------------------------------ |
@@ -81,15 +81,15 @@ The promise is a `Thenable<Data>`: read its `status`, `value` and `reason` to re
 
 Everything from `@raf-query/core`, plus:
 
-| Export                                | Use                                                                                                                                                                                                                                                   |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `HydrationBoundary`                   | Writes server data into the client: a loader's `state`, or in server components the request's `client`. [React Server Components](./react-server-components.md) · [React Router](./react-router.md)                                                   |
-| `QueryClientProvider`                 | Provides a client to the tree                                                                                                                                                                                                                         |
-| `QueryProvider`                       | Provider for React Server Components apps: a client per server render and per browser tab; its server render starts no request. [React Server Components](./react-server-components.md)                                                               |
-| `useQueryClient()`                    | Read the client                                                                                                                                                                                                                                       |
-| `useQuery(factory, handle, options?)` | `[Thenable<Data>, controls]`, or `[Data, controls]` for a `QueryHandleWithData`; Effect `queryFn`s with `throwOnError: false` (default when the client has a `layer`) yield `Result<Data, ErrorOf>` instead. Paged: `Data` is `{ pages, pageParams }` |
-| `useWaterfall(factory, input)`        | Start a query during render and return its handle. [Request waterfalls](./request-waterfalls.md#render-time-inputs-usewaterfall)                                                                                                                      |
-| `useIsFetching(filter?)`              | Global in-flight count (compatibility). Prefer router pending + per-query `isFetching`. [Background fetching indicators](./background-fetching-indicators.md)                                                                                         |
+| Export                                | Use                                                                                                                                                                                                                                                                                             |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HydrationBoundary`                   | Writes server data into the client: a loader's `state`, or in server components the request's `client`. [React Server Components](./react-server-components.md) · [React Router](./react-router.md)                                                                                             |
+| `QueryClientProvider`                 | Provides a client to the tree                                                                                                                                                                                                                                                                   |
+| `QueryProvider`                       | Provider for React Server Components apps: a client per server render and per browser tab; its server render starts no request. [React Server Components](./react-server-components.md)                                                                                                         |
+| `useQueryClient()`                    | Read the client                                                                                                                                                                                                                                                                                 |
+| `useQuery(factory, handle, options?)` | `[Thenable<Data>, controls]`, or `[Data, controls]` for a `QueryHandleWithData`; Effect `queryFn`s with `throwOnError: false` (default when the client has a `layer`) yield `Result<Data, ErrorOf>` instead. Paged: `Data` is `{ pages, pageParams }`. With `select`, `Data` is what it returns |
+| `useWaterfall(factory, input)`        | Start a query during render and return its handle. [Request waterfalls](./request-waterfalls.md#render-time-inputs-usewaterfall)                                                                                                                                                                |
+| `useIsFetching(filter?)`              | Global in-flight count (compatibility). Prefer router pending + per-query `isFetching`. [Background fetching indicators](./background-fetching-indicators.md)                                                                                                                                   |
 
 Subpath entries:
 
