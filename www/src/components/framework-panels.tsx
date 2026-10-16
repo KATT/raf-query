@@ -26,7 +26,9 @@ import {
  * the ref once that commit lands.
  *
  * Which panel shows is still CSS on `html[data-framework-mode]` (see
- * `frameworkModeScript`). React only animates a boundary whose DOM it mutated
+ * `frameworkModeScript`). The panels stack in one grid cell, so the wrapper's
+ * size doesn't change with the mode; a size change would make React snapshot
+ * the whole page, header included. React only animates a boundary whose DOM it mutated
  * itself, so the wrapper also mirrors the mode — after hydration only, since
  * the prerendered HTML always carries the default mode. The `<html>`
  * attribute flips in the ref callback: refs attach inside the view
@@ -47,6 +49,7 @@ export function FrameworkPanels(props: {
 	return (
 		<ViewTransition default={mode === settled ? "none" : "framework-panels"}>
 			<div
+				className="framework-panel-stack"
 				data-framework-panels={hydrated ? mode : undefined}
 				ref={(element) => {
 					if (element) {
