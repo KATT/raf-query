@@ -1,6 +1,6 @@
 ---
 title: Query invalidation
-description: Mark queries stale after a write, refetch the ones on screen, and select queries with key prefixes and predicates.
+description: Mark queries stale after a write, refetch the ones on screen, and select queries by key prefix, state and predicate.
 section: Guides
 order: 13
 ---
@@ -27,7 +27,7 @@ invalidation
 
 ## Query filters
 
-`invalidate`, `reset` and `remove` take either a factory and its input, or a filter:
+`invalidate`, `reset` and `remove` take either a factory and its input, or a filter. `isFetching` and `useIsFetching` take the same filter:
 
 ```ts twoslash
 import type { QueryKey } from "@raf-query/react";
@@ -37,9 +37,14 @@ type Query = QueryModule.Query;
 interface Filter {
 	queryKey?: QueryKey; // key prefix; every key matches without it
 	exact?: boolean; // match `queryKey` exactly instead of as a prefix
-	predicate?: (query: Query) => boolean; // runs after key matching
+	type?: "active" | "inactive" | "all"; // read by something, or not; default "all"
+	stale?: boolean; // stale as of now, or fresh
+	fetchStatus?: "fetching" | "idle"; // a request in flight, or not
+	predicate?: (query: Query) => boolean; // runs last
 }
 ```
+
+A query must pass every field that's set.
 
 Given these keys:
 
@@ -61,9 +66,27 @@ Given these keys:
 
 Object segments match **partially**: `{ status: "done" }` matches any object segment with that field, whatever else it has. This is why [query keys](./query-keys.md) go from general to specific, with an object of filters last: one prefix then reaches every variant.
 
+### Matching by state
+
+`type`, `stale` and `fetchStatus` narrow the key match by what's happening to each query:
+
+| Field                     | Matches                                                                                |
+| ------------------------- | -------------------------------------------------------------------------------------- |
+| `type: "active"`          | Queries something reads: a mounted `useQuery`, or another subscribed reader            |
+| `type: "inactive"`        | Queries nothing reads, such as a loader's `prefetch` for a page you left               |
+| `stale: true` / `false`   | Queries stale right now (older than `staleTime`, invalidated, or no data) / fresh ones |
+| `fetchStatus: "fetching"` | Queries with a request in flight                                                       |
+| `fetchStatus: "idle"`     | Queries without one                                                                    |
+
+```sample
+tanstack-start/src/docs/query-invalidation.matching-with-predicate.ts#matching-by-state
+```
+
+`invalidate` only refetches active queries anyway, so `type: "inactive"` marks queries stale without starting any request.
+
 ### Matching with predicate
 
-`predicate` receives each `Query` that passed the key match. Read its `key` and `handle.input`, or its state with the `Query` functions:
+`predicate` receives each `Query` that passed the other fields. Read its `key` and `handle.input`, or its state with the `Query` functions:
 
 ```sample
 tanstack-start/src/docs/query-invalidation.matching-with-predicate.ts#matching-with-predicate

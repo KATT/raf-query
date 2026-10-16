@@ -84,11 +84,14 @@ export type Event =
 
 /**
  * Selects cache entries: by key prefix (exact key with `exact`), then by
- * `predicate`. Without `queryKey` every key matches, so `{}` selects the
- * whole cache.
+ * `type`, `stale` and `fetchStatus`, then by `predicate`. An entry must pass
+ * every field that is set; without `queryKey` every key matches, so `{}`
+ * selects the whole cache.
  */
 export interface Filter {
 	readonly exact?: boolean;
+	/** `"fetching"`: only entries with a request in flight; `"idle"`: only those without. */
+	readonly fetchStatus?: "fetching" | "idle";
 	/**
 	 * Keep only entries this returns `true` for; runs after key matching.
 	 * `query.handle.input` is the input of the latest factory call, and stays
@@ -97,6 +100,17 @@ export interface Filter {
 	 */
 	readonly predicate?: (query: Query.Query) => boolean;
 	readonly queryKey?: QueryKey;
+	/**
+	 * `true`: only entries stale as of now (older than `staleTime`,
+	 * invalidated, or without data); `false`: only fresh ones.
+	 */
+	readonly stale?: boolean;
+	/**
+	 * `"active"`: only entries something reads (a subscribed reader, such as
+	 * a mounted `useQuery`); `"inactive"`: only those nothing reads. Default:
+	 * `"all"`.
+	 */
+	readonly type?: "active" | "all" | "inactive";
 }
 
 /** The entries `invalidate`, `reset` and `remove` act on: one factory call, or a filter. */
@@ -313,6 +327,21 @@ function keyMatcher(filter: Filter): (entry: Entry.Entry) => boolean {
 	return (entry) => matchesKey(entry.key, prefix);
 }
 
+/** Whether an entry passes every field of `filter` that is set; `predicate` runs last. */
+function matcher(filter: Filter): (entry: Entry.Entry) => boolean {
+	const keyMatches = keyMatcher(filter);
+	return (entry) =>
+		keyMatches(entry) &&
+		(filter.type === undefined ||
+			filter.type === "all" ||
+			Entry.isObserved(entry) === (filter.type === "active")) &&
+		(filter.stale === undefined ||
+			Entry.isStaleUnsafe(entry) === filter.stale) &&
+		(filter.fetchStatus === undefined ||
+			entry.state.isFetching === (filter.fetchStatus === "fetching")) &&
+		(filter.predicate?.(entry) ?? true);
+}
+
 /**
  * Waits for an entry's data on a cache miss, and with `fresh` also while it
  * needs a refetch (see `Entry.needsRefetch`). Otherwise cached data returns at
@@ -411,10 +440,7 @@ export const make: (
 				);
 				return entry ? [entry] : [];
 			}
-			const keyMatches = keyMatcher(first);
-			return [...state.entries.values()].filter(
-				(entry) => keyMatches(entry) && (first.predicate?.(entry) ?? true),
-			);
+			return [...state.entries.values()].filter(matcher(first));
 		};
 
 		const subscription = yield* RcRef.make({
