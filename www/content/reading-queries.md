@@ -84,6 +84,7 @@ tanstack-start/src/docs/reading-queries.lists.tsx#list-all
 ```
 
 - The promise suspends until every query has data, and rejects when a first load fails, like [`Promise.all`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all). It's the same promise until one query's data changes, so an update renders without suspending.
+- It's a `Thenable` too: a component can read its `status` and `value` instead of calling `use()`, and re-renders when every load has settled. See [Reading without Suspense](./comparison.md#reading-without-suspense).
 - The list can change length between renders. `whilePending: "previous"` keeps each position's last data while its new input loads.
 - It takes the same options as `useQuery`, and like it, [never refetches on mount](#no-refetch-on-mount). There is no `combine` option: derive what you need from the data after `use()`.
 
