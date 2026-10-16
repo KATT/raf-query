@@ -14,7 +14,6 @@ jobs:
         run: |
           pnpm --dir packages/core pack --out "$RUNNER_TEMP/core.tgz"
           pnpm --dir packages/react pack --out "$RUNNER_TEMP/react.tgz"
-          pnpm --dir packages/vue pack --out "$RUNNER_TEMP/vue.tgz"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -23,9 +22,8 @@ jobs:
           mkdir "$RUNNER_TEMP/consumer"
           cd "$RUNNER_TEMP/consumer"
           npm init -y > /dev/null
-          npm install --engine-strict "$RUNNER_TEMP/core.tgz" "$RUNNER_TEMP/react.tgz" "$RUNNER_TEMP/vue.tgz" react vue
+          npm install --engine-strict "$RUNNER_TEMP/core.tgz" "$RUNNER_TEMP/react.tgz" react
           node -e "import('@raf-query/react').then((m) => console.log(m.name))"
-          node -e "import('@raf-query/vue').then((m) => console.log(typeof m.useQuery))"
 
   build_www:
     name: Build www

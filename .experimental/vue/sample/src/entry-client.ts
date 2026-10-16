@@ -1,5 +1,9 @@
 // #region client
-import { type DehydratedState, hydrate, QueryClient } from "@raf-query/vue";
+import {
+	type DehydratedState,
+	hydrate,
+	QueryClient,
+} from "@raf-query/experimental-vue";
 
 import { createApp } from "./app.ts";
 

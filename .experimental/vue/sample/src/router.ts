@@ -10,7 +10,7 @@ declare module "vue-router" {
 // #endregion meta
 
 // #region router
-import type { QueryClient } from "@raf-query/vue";
+import type { QueryClient } from "@raf-query/experimental-vue";
 import {
 	createMemoryHistory,
 	createRouter,

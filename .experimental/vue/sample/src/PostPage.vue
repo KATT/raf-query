@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // #region script
-import { type QueryHandle, useQuery } from "@raf-query/vue";
+import { type QueryHandle, useQuery } from "@raf-query/experimental-vue";
 
 import Comments from "./Comments.vue";
 import { commentsQuery, postQuery } from "./queries.ts";

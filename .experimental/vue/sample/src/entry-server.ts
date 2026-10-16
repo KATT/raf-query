@@ -1,5 +1,5 @@
 // #region server
-import { dehydrate, Query, QueryClient } from "@raf-query/vue";
+import { dehydrate, Query, QueryClient } from "@raf-query/experimental-vue";
 import { renderToString } from "vue/server-renderer";
 
 import { createApp } from "./app.ts";

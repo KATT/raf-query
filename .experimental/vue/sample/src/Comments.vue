@@ -1,6 +1,10 @@
 <script setup lang="ts">
 // #region script
-import { type QueryHandle, useQuery, useQueryClient } from "@raf-query/vue";
+import {
+	type QueryHandle,
+	useQuery,
+	useQueryClient,
+} from "@raf-query/experimental-vue";
 import { ref } from "vue";
 
 import { addComment } from "./api.ts";

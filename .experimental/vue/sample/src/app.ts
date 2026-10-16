@@ -1,5 +1,5 @@
 // #region app
-import { type QueryClient, QueryPlugin } from "@raf-query/vue";
+import { type QueryClient, QueryPlugin } from "@raf-query/experimental-vue";
 import { createSSRApp } from "vue";
 
 import App from "./App.vue";

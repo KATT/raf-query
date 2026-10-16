@@ -98,20 +98,6 @@ Subpath entries:
 | `@raf-query/react/tanstack-router` | `setupRouterIntegration`. [TanStack Start](./tanstack-start.md)  |
 | `@raf-query/react/devtools`        | `QueryDevtools`, `QueryDevtoolsPanel`. [Devtools](./devtools.md) |
 
-## @raf-query/vue
-
-Experimental. Everything from `@raf-query/core`, plus composables and components. See [Vue](./vue.md).
-
-| Export                                              | Use                                                                                                                                                                                               |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `QueryPlugin`                                       | `app.use(QueryPlugin, { client })`: provides a client to every component                                                                                                                          |
-| `QueryClientProvider`, `provideQueryClient(client)` | Provide a client to a subtree                                                                                                                                                                     |
-| `useQueryClient()`                                  | Read the client                                                                                                                                                                                   |
-| `useQuery(factory, handle, options?)`               | Reactive controls plus `data` (`undefined` until there is data, except for a `QueryHandleWithData`) and `promise`, for `await` in an async `setup`. `handle` and `options` can be refs or getters |
-| `useWaterfall(factory, input)`                      | Start a query from a component and return its handle as a `ComputedRef`. `input` can be a ref or getter                                                                                           |
-| `useIsFetching(filter?)`                            | Read-only ref of the global in-flight count; `0` on the server                                                                                                                                    |
-| `HydrationBoundary`                                 | Hydrates its `state` into the provided client before its slot renders                                                                                                                             |
-
 ## @raf-query/core
 
 Framework-agnostic: the Promise `QueryClient` and the Effect cache behind it.

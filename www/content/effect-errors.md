@@ -2,7 +2,7 @@
 title: Effect typed errors
 description: An Effect queryFn's error type is the query's. useQuery returns a Result so you match failures inline; catchTag in loaders and actions; or throwOnError to an error boundary.
 section: Integrations
-order: 8
+order: 6
 ---
 
 An Effect `queryFn`'s error type is the query's error type. It flows through the factory: `ErrorOf<TFactory>` names it, and every verb on the cache fails with it. Catch the failures you expect with [`Effect.catchTag`](https://effect.website/docs/v4/api/effect/Effect#catchTag), and the type tells you what's left.

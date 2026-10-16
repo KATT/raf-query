@@ -414,6 +414,62 @@ importers:
         specifier: 1.0.0
         version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
 
+  .experimental/vue/package:
+    dependencies:
+      '@raf-query/core':
+        specifier: workspace:*
+        version: link:../../../packages/core
+    devDependencies:
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
+      '@types/node':
+        specifier: 26.6.4
+        version: 26.6.4
+      '@vitest/coverage-v8':
+        specifier: 5.0.1
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      '@vue/test-utils':
+        specifier: 2.5.1
+        version: 2.5.1(@vue/compiler-dom@3.5.44)(@vue/server-renderer@3.5.44)(vue@3.5.44(typescript@7.0.2))
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.1
+      happy-dom:
+        specifier: 21.0.1
+        version: 21.0.1
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite-plus:
+        specifier: 1.0.0
+        version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
+      vue:
+        specifier: 3.5.44
+        version: 3.5.44(typescript@7.0.2)
+
+  .experimental/vue/sample:
+    dependencies:
+      '@raf-query/experimental-vue':
+        specifier: workspace:*
+        version: link:../package
+      vue:
+        specifier: 3.5.44
+        version: 3.5.44(typescript@6.0.3)
+      vue-router:
+        specifier: 5.4.0
+        version: 5.4.0(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@6.0.3)(yaml@2.9.1))(@vue/compiler-sfc@3.5.44)(rolldown@1.2.13)(vue@3.5.44(typescript@6.0.3))
+    devDependencies:
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@1.0.0
+        version: '@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@6.0.3)(yaml@2.9.1)'
+      vue-tsc:
+        specifier: 3.3.13
+        version: 3.3.13(typescript@6.0.3)
+
   examples/.shared/api:
     dependencies:
       '@examples/db':
@@ -888,40 +944,6 @@ importers:
         specifier: 1.0.0
         version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
 
-  packages/vue:
-    dependencies:
-      '@raf-query/core':
-        specifier: workspace:*
-        version: link:../core
-    devDependencies:
-      '@effect/vitest':
-        specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
-      '@types/node':
-        specifier: 26.6.4
-        version: 26.6.4
-      '@vitest/coverage-v8':
-        specifier: 5.0.1
-        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
-      '@vue/test-utils':
-        specifier: 2.5.1
-        version: 2.5.1(@vue/compiler-dom@3.5.44)(@vue/server-renderer@3.5.44)(vue@3.5.44(typescript@7.0.2))
-      effect:
-        specifier: 'catalog:'
-        version: 4.0.1
-      happy-dom:
-        specifier: 21.0.1
-        version: 21.0.1
-      typescript:
-        specifier: 7.0.2
-        version: 7.0.2
-      vite-plus:
-        specifier: 1.0.0
-        version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
-      vue:
-        specifier: 3.5.44
-        version: 3.5.44(typescript@7.0.2)
-
   tooling/bundle-size:
     dependencies:
       '@raf-query/experimental-tanstack-react-query':
@@ -1167,9 +1189,6 @@ importers:
       '@samples/tanstack-start-effect':
         specifier: workspace:*
         version: link:samples/tanstack-start-effect
-      '@samples/vue':
-        specifier: workspace:*
-        version: link:samples/vue
       '@shikijs/rehype':
         specifier: 4.5.0
         version: 4.5.0
@@ -1436,28 +1455,6 @@ importers:
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@1.0.0
         version: '@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)'
-
-  www/samples/vue:
-    dependencies:
-      '@raf-query/vue':
-        specifier: workspace:*
-        version: link:../../../packages/vue
-      vue:
-        specifier: 3.5.44
-        version: 3.5.44(typescript@6.0.3)
-      vue-router:
-        specifier: 5.4.0
-        version: 5.4.0(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@6.0.3)(yaml@2.9.1))(@vue/compiler-sfc@3.5.44)(rolldown@1.2.13)(vue@3.5.44(typescript@6.0.3))
-    devDependencies:
-      typescript:
-        specifier: 6.0.3
-        version: 6.0.3
-      vite:
-        specifier: npm:@voidzero-dev/vite-plus-core@1.0.0
-        version: '@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@6.0.3)(yaml@2.9.1)'
-      vue-tsc:
-        specifier: 3.3.13
-        version: 3.3.13(typescript@6.0.3)
 
 packages:
 

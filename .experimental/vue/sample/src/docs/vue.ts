@@ -8,7 +8,7 @@ import {
 	useQuery,
 	useWaterfall,
 	queryOptions,
-} from "@raf-query/vue";
+} from "@raf-query/experimental-vue";
 import { computed } from "vue";
 import { postQuery } from "../queries.ts";
 

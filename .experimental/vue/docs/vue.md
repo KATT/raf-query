@@ -1,17 +1,14 @@
 ---
 title: Vue
-description: Experimental. Read queries in Vue components with @raf-query/vue, start them from Vue Router navigations, and render them on the server.
+description: Read queries in Vue components with @raf-query/experimental-vue, start them from Vue Router navigations, and render them on the server.
 section: Integrations
 order: 4
 ---
 
-`@raf-query/vue` is raf-query for Vue 3.5 or newer. Query factories, handles, the `QueryClient` and its verbs (`prefetch`, `ensure`, `invalidate`, `setData`, `dehydrate`) are the same as with React, so the rest of these docs applies. Only how a component reads a query is different: composables instead of hooks.
-
-> [!WARNING]
-> `@raf-query/vue` is experimental. Its API can change in any release, and it isn't used in production yet.
+`@raf-query/experimental-vue` is raf-query for Vue 3.5 or newer. Query factories, handles, the `QueryClient` and its verbs (`prefetch`, `ensure`, `invalidate`, `setData`, `dehydrate`) are the same as with React, so the rest of these docs applies. Only how a component reads a query is different: composables instead of hooks.
 
 ```bash
-pnpm add @raf-query/vue effect
+pnpm add @raf-query/experimental-vue effect
 ```
 
 ## Setup

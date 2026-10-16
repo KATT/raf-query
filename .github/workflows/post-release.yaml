@@ -19,7 +19,6 @@ jobs:
 
             * [GitHub releases](https://github.com/KATT/raf-query/releases/tag/{release_tag})
             * [`@raf-query/react` on npm](https://www.npmjs.com/package/@raf-query/react/v/${{ env.npm_version }})
-            * [`@raf-query/vue` on npm](https://www.npmjs.com/package/@raf-query/vue/v/${{ env.npm_version }})
             * [`@raf-query/core` on npm](https://www.npmjs.com/package/@raf-query/core/v/${{ env.npm_version }})
 
             Cheers! 📦🚀

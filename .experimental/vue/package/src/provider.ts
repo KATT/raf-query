@@ -14,7 +14,7 @@ import {
  * verbs take any factory here.
  */
 const queryClientKey: InjectionKey<QueryClient<unknown>> = Symbol(
-	"@raf-query/vue QueryClient",
+	"@raf-query/experimental-vue QueryClient",
 );
 
 /**

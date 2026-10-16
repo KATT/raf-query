@@ -1,5 +1,8 @@
 // #region queries
-import { infiniteQueryOptions, queryOptions } from "@raf-query/vue";
+import {
+	infiniteQueryOptions,
+	queryOptions,
+} from "@raf-query/experimental-vue";
 
 import { type CommentPage, getPost, listComments } from "./api.ts";
 

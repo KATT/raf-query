@@ -11,7 +11,7 @@
 	},
 	"hooks": {
 		"after:bump": "pnpm -r --filter \"./packages/*\" exec npm pkg set version=${version}",
-		"before:git:release": "pnpm build && git fetch -q origin main && { test \"$(git rev-parse FETCH_HEAD)\" = \"$(git rev-parse HEAD)\" || { echo 'main moved during this release; the newer run releases it.'; exit 1; }; } && pnpm --filter @raf-query/core run publish:npm && pnpm --filter @raf-query/react run publish:npm && pnpm --filter @raf-query/vue run publish:npm"
+		"before:git:release": "pnpm build && git fetch -q origin main && { test \"$(git rev-parse FETCH_HEAD)\" = \"$(git rev-parse HEAD)\" || { echo 'main moved during this release; the newer run releases it.'; exit 1; }; } && pnpm --filter @raf-query/core run publish:npm && pnpm --filter @raf-query/react run publish:npm"
 	},
 	"npm": false,
 	"plugins": {

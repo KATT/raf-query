@@ -7,6 +7,6 @@
 - **Server**: no subscription (SSR renders once and never unmounts); getters compute the result on read instead. `useIsFetching` is `0` on the server.
 - **Plain TypeScript, no `.vue` files**: components are `defineComponent` setup functions with render functions, so `tsc` (TypeScript 7) type-checks the package and `vp pack` builds it. `vue-tsc` would need TypeScript's JavaScript API, which 7 doesn't have.
 - **Providing the client**: `app.use(QueryPlugin, { client })` (mounts in the browser until the app unmounts), or `QueryClientProvider` / `provideQueryClient` for one subtree. `HydrationBoundary` hydrates synchronously before its slot renders: Vue doesn't throw renders away, so React's split into render-time and commit-time writes isn't needed.
-- **Experimental** (maintainer's call): the docs page, README, package description and package lists say so. It still publishes in lockstep under `latest`; only the label differs from `@raf-query/react`.
-- Lint: `.oxlintrc.json` turns off React's hook and compiler rules for `packages/vue/src`.
-- Lives in `packages/vue/src`; docs in `www/content/vue.md`.
+- **An experiment, not a package yet** (human: "their packages and their example apps should live in experimental like react router used to do"): `.experimental/vue/` holds `package/` (`@raf-query/experimental-vue`, private, `0.0.0`), `sample/` (`@examples/experimental-vue`) and the draft guide in `docs/`, which the site doesn't build. Its README lists the steps to make it real. Lost: an "Experimental" label on a published `@raf-query/vue` (tried first).
+- Lint: `.oxlintrc.json` turns off React's hook and compiler rules for `.experimental/vue/package/src`.
+- Lives in `.experimental/vue/package/src`; draft docs in `.experimental/vue/docs/vue.md`.
