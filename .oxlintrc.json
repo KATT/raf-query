@@ -76,6 +76,11 @@
 						"importNames": ["onTestFinished"],
 						"message": "Return a Disposable and `using` it instead.",
 						"name": "vitest"
+					},
+					{
+						"importNames": ["onTestFinished"],
+						"message": "Return a Disposable and `using` it instead.",
+						"name": "vite-plus/test"
 					}
 				]
 			}
@@ -515,10 +520,11 @@
 			}
 		},
 		{
-			// Vue composables are named `use…` too, but run once in `setup`, not on
-			// every render, and React Compiler never sees them, so neither React's
-			// rules of hooks nor the compiler's rules apply.
-			"files": ["packages/vue/src/**"],
+			// Vue and Svelte composables are named `use…` too, but run once in
+			// `setup` or a component's `<script>`, not on every render, and React
+			// Compiler never sees them, so neither React's rules of hooks nor the
+			// compiler's rules apply.
+			"files": ["packages/vue/src/**", "packages/svelte/{src,test}/**"],
 			"rules": {
 				"react-hooks/rules-of-hooks": "off",
 				"react/rules-of-hooks": "off",
@@ -582,6 +588,19 @@
 				"react/no-unescaped-entities": "off",
 				"typescript/consistent-type-assertions": "off",
 				"workspace/no-overzealous-destructuring": "off"
+			}
+		},
+		{
+			// Svelte's runes, which the Svelte compiler replaces.
+			"files": ["**/*.svelte", "**/*.svelte.ts"],
+			"globals": {
+				"$bindable": "readonly",
+				"$derived": "readonly",
+				"$effect": "readonly",
+				"$host": "readonly",
+				"$inspect": "readonly",
+				"$props": "readonly",
+				"$state": "readonly"
 			}
 		},
 		{
