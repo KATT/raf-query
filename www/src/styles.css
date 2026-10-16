@@ -57,9 +57,12 @@ html[data-announcement-dismissed] .announcement-bar {
  * Framework switches cross-fade the panels in the view transition overlay,
  * which paints above the page. The overlay stops at the sticky site header's
  * bottom edge (3.5rem + its border), so panels scrolled under the header
- * stay behind it. Page navigations snapshot the whole page instead (below).
+ * stay behind it. Page navigations and demo windows can snapshot the whole
+ * page, where the clip would blank the header; they name the header instead.
  */
-html:not(:active-view-transition-type(page))::view-transition {
+html:not(
+		:active-view-transition-type(page, demo-forward, demo-back, demo-reload)
+	)::view-transition {
 	clip-path: polygon(
 		-100vw calc(3.5rem + 1px),
 		200vw calc(3.5rem + 1px),
@@ -105,7 +108,8 @@ html:active-view-transition-type(page) .announcement-bar {
 	view-transition-name: announcement-bar;
 }
 
-html:active-view-transition-type(page) .site-header {
+html:active-view-transition-type(page, demo-forward, demo-back, demo-reload)
+	.site-header {
 	view-transition-name: site-header;
 }
 
@@ -114,21 +118,21 @@ html:active-view-transition-type(page) .site-header {
  * (the active "Docs"), and from a scrolled page both would otherwise slide in
  * from where they sat above the viewport. The header's snapshot paints on
  * its own, where `backdrop-blur` has nothing to blur, so its group blurs the
- * fading page behind it instead.
+ * page behind it instead.
  */
-html:active-view-transition-type(page)::view-transition-group(site-header),
-html:active-view-transition-type(page)::view-transition-group(announcement-bar),
-html:active-view-transition-type(page)::view-transition-new(site-header),
-html:active-view-transition-type(page)::view-transition-new(announcement-bar) {
+::view-transition-group(site-header),
+::view-transition-group(announcement-bar),
+::view-transition-new(site-header),
+::view-transition-new(announcement-bar) {
 	animation: none;
 }
 
-html:active-view-transition-type(page)::view-transition-old(site-header),
-html:active-view-transition-type(page)::view-transition-old(announcement-bar) {
+::view-transition-old(site-header),
+::view-transition-old(announcement-bar) {
 	display: none;
 }
 
-html:active-view-transition-type(page)::view-transition-group(site-header) {
+::view-transition-group(site-header) {
 	backdrop-filter: blur(8px);
 }
 
