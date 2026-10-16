@@ -214,6 +214,34 @@ describe("useQuery", () => {
 		cleanup();
 	});
 
+	it("renders initialData without suspending, then the refetch of it once stale", async () => {
+		const test = setup();
+		function seededIssue(input: { id: number }) {
+			return {
+				...test.backend.issueQuery(input),
+				initialData: { assigneeId: 10, id: input.id, title: "Seeded" },
+			};
+		}
+		function SeededTitle(props: {
+			readonly handle: QueryHandle<typeof seededIssue>;
+		}) {
+			const [issuePromise, issueState] = useQuery(seededIssue, props.handle);
+			const issue = use(issuePromise);
+			return (
+				<p>{`${issue.title}${issueState.isFetching ? " (fetching)" : ""}`}</p>
+			);
+		}
+		const handle = test.client.prefetch(seededIssue, { id: 1 });
+
+		await mount(test.view(<SeededTitle handle={handle} />));
+		expect(screen.getByText("Seeded (fetching)")).toBeDefined();
+
+		await test.backend.respond();
+		expect(screen.getByText("First")).toBeDefined();
+		expect(test.backend.calls()).toBe(1);
+		cleanup();
+	});
+
 	it("suspends on a new input by default", async () => {
 		const test = setup();
 		const first = test.client.prefetch(test.backend.issueQuery, { id: 1 });

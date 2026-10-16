@@ -212,8 +212,9 @@ export class QueryClient<TServices = never> {
 	}
 
 	/**
-	 * Drop queries' data and errors, as if they were never fetched. Read ones
-	 * suspend and refetch; resolves once those refetches settle.
+	 * Drop queries' data and errors, as if they were never fetched: back to
+	 * their `initialData`, if any. Read ones suspend (or show that) and
+	 * refetch; resolves once those refetches settle.
 	 */
 	reset<TFactory extends QueryFactory<TServices>>(
 		...target: QueryCache.Target<TFactory>
