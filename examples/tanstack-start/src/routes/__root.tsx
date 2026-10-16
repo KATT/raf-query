@@ -76,6 +76,7 @@ function RootDocument(props: { readonly children: ReactNode }) {
 							</Link>
 						}
 						framework="TanStack Start"
+						loaders="browser"
 						settings={
 							<Settings
 								onPrefetchChange={(next) => {

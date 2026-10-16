@@ -5,7 +5,7 @@ import { allKeyed, dehydrate } from "@raf-query/react";
 import { HydrationBoundary } from "@raf-query/react";
 import { Suspense } from "react";
 
-import { createAppQueryClient } from "~/query-client.ts";
+import { queryClientContext } from "~/query-client.ts";
 import { issueCountsQuery, issueListQuery } from "~/queries.ts";
 import { withRequest } from "~/settings.ts";
 
@@ -18,7 +18,7 @@ export async function loader(args: Route.LoaderArgs) {
 		const input = IssueListInput.parse(
 			Object.fromEntries(new URL(args.request.url).searchParams),
 		);
-		const { queryClient } = createAppQueryClient();
+		const queryClient = args.context.get(queryClientContext);
 		// `fetch` waits for fresh data: on a cache miss, and when the cached
 		// data is stale.
 		const handles = await allKeyed({

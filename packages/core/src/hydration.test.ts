@@ -96,6 +96,37 @@ describe("hydrate", () => {
 		expect(Query.getUnsafe(query).status).toBe("success");
 	});
 
+	it("resumes one request from overlapping snapshots of one server client", async () => {
+		const backend = createBackend();
+		const server = new QueryClient({ isServer: true });
+		const browser = new QueryClient({ isServer: false });
+		// A layout's loader and a child route's loader, on the request's client.
+		server.prefetch(backend.issueQuery, { id: 1 });
+		const layout = dehydrate(server);
+		server.prefetch(backend.issueQuery, { id: 1 });
+		server.prefetch(backend.issueQuery, { id: 2 });
+		const child = dehydrate(server);
+		expect(child.queries.map((query) => query.key)).toEqual([
+			["issue", 1],
+			["issue", 2],
+		]);
+
+		hydrate(browser, layout);
+		hydrate(browser, child);
+		const first = Query.readUnsafe(
+			browser.getQuery(backend.issueQuery, { id: 1 }),
+		);
+		const second = Query.readUnsafe(
+			browser.getQuery(backend.issueQuery, { id: 2 }),
+		);
+
+		expect(backend.requests.map((request) => request.id)).toEqual([1, 2]);
+		backend.respondAll();
+		expect(await first).toEqual({ id: 1, title: "First" });
+		expect(await second).toEqual({ id: 2, title: "Second" });
+		expect(backend.requests).toHaveLength(0);
+	});
+
 	it("counts resumed data as fetched when the server got it", async () => {
 		const backend = createBackend();
 		const browser = new QueryClient({
