@@ -104,6 +104,7 @@ export default function App(props: Route.ComponentProps) {
 						</AppLink>
 					}
 					framework="React Router"
+					loaders="server"
 					settings={
 						<AppSettings
 							onPrefetchChange={setPrefetch}
