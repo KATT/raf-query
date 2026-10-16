@@ -14,7 +14,16 @@ const DEVTOOLS_PORT = Number(process.env.VERIFY_EXAMPLES_CDP_PORT ?? 9333);
 const STATE_DIR = process.env.VERIFY_EXAMPLES_DIR ?? "/tmp/verify-examples";
 const PID_FILE = `${STATE_DIR}/chrome.pid`;
 
+// `experimental` apps are checked only with `doctor --app`. `ready` is the
+// page whose HTML must have issue rows: Svelte and Vue render `prefetch`
+// pages as skeletons and stream the data, so they're checked under `ensure`.
 const apps = {
+	"experimental-svelte": {
+		experimental: true,
+		port: 3007,
+		ready: "/ensure/issues",
+		script: "dev:svelte",
+	},
 	nextjs: { port: 3001, script: "dev:next" },
 	"react-router": { port: 3006, script: "dev:react-router" },
 	"tanstack-start": { port: 3000, script: "dev:start" },
@@ -380,13 +389,15 @@ const commands = {
 			healthy = false;
 			console.log(`FAIL chrome: nothing on :${DEVTOOLS_PORT}`);
 		}
-		const names = args.values.app ? [args.values.app] : Object.keys(apps);
+		const names = args.values.app
+			? [args.values.app]
+			: Object.keys(apps).filter((name) => !apps[name].experimental);
 		for (const name of names) {
 			const app = apps[name];
 			if (!app) {
 				fail(`Unknown app ${name}`);
 			}
-			const url = `http://localhost:${app.port}/issues`;
+			const url = `http://localhost:${app.port}${app.ready ?? "/issues"}`;
 			try {
 				const response = await fetch(url, {
 					signal: AbortSignal.timeout(30_000),
