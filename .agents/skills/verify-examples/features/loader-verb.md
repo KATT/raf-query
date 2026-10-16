@@ -40,7 +40,8 @@ Commands:
 
 ## Gotchas
 
-- Only `tanstack-start` and `tanstack-start-effect` have the bar and the verb in their URLs so far. In `nextjs` and `react-router` the pages live at `/issues…` and always `prefetch`.
+- `react-router` doesn't have the bar yet: its pages live at `/issues…` and always `prefetch`.
+- In `nextjs` every navigation renders on the server with a new query client, so `ensure` waits on every visit, like `fetch`. Its first HTML under `ensure` and `fetch` still has skeleton markup, swapped out within the same response; check that the time to first byte waits for the data (`curl -w '%{time_starttransfer}'` with latency at 3 s) rather than counting `animate-pulse`.
 - In `tanstack-start-effect`, `ensure` and `fetch` reject with the query's failure: the issue loader catches `IssueNotFound` and throws the router's not-found, so a missing issue is a 404 there too.
 - The URL changes as soon as you click, before `ensure` or `fetch` finish: check what's on screen (`$PAGE`), not `location.pathname`.
 - The router reruns a revisited route's loader before showing it (`defaultStaleReloadMode: "blocking"`). Without that it would show the route's last loader data and rerun the loader behind it, and `fetch` would never wait.
