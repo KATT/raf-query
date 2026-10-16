@@ -1,4 +1,4 @@
-import { HydrationBoundary } from "@raf-query/react/rsc";
+import { HydrationBoundary } from "@raf-query/react";
 import { Suspense } from "react";
 
 import { Comments } from "../../components/comments.tsx";

@@ -1,10 +1,10 @@
 import {
 	dehydrate,
+	HydrationBoundary,
 	QueryClient,
 	type QueryHandle,
 	useQuery,
 } from "@raf-query/react";
-import { HydrationBoundary } from "@raf-query/react/react-router";
 import { Suspense, use } from "react";
 
 import type { PostComment } from "~/api.ts";
