@@ -30,6 +30,7 @@
 		"@rolldown/plugin-babel": "0.2.4",
 		"@samples/nextjs": "workspace:*",
 		"@samples/react-router": "workspace:*",
+		"@samples/react-router-spa": "workspace:*",
 		"@samples/tanstack-start": "workspace:*",
 		"@samples/tanstack-start-effect": "workspace:*",
 		"@samples/sveltekit": "workspace:*",

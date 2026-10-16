@@ -3,6 +3,18 @@ import { QueryDevtools } from "@raf-query/react/devtools";
 import { type ReactNode, useState } from "react";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 
+import { queryClientContext } from "~/query-client.ts";
+
+import type { Route } from "./+types/root";
+
+// #region middleware
+export const middleware: Array<Route.MiddlewareFunction> = [
+	({ context }) => {
+		context.set(queryClientContext, new QueryClient());
+	},
+];
+// #endregion middleware
+
 export function Layout(props: { readonly children: ReactNode }) {
 	return (
 		<html lang="en">

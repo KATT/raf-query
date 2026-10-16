@@ -25,6 +25,7 @@ export function Header(props: {
 				</AppLink>
 			}
 			framework="Next.js"
+			loaders="server"
 			settings={
 				<Settings
 					latency={props.latency}

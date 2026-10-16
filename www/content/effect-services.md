@@ -1,11 +1,11 @@
 ---
-title: Services
+title: Effect services
 description: Effect queryFns can require services. They become part of the factory's type, and QueryClient provides them from a layer.
-section: Effect
-order: 2
+section: Integrations
+order: 7
 ---
 
-A `queryFn`'s Effect can require services. They're part of the factory's type, `ServicesOf<TFactory>`, and every verb that can start the query requires them:
+A `queryFn`'s Effect can require [services](https://effect.website/docs/v4/requirements-management/services). They're part of the factory's type, `ServicesOf<TFactory>`, and every verb that can start the query requires them:
 
 ```sample
 tanstack-start-effect/src/docs/effect-services.ts#intro
@@ -16,15 +16,15 @@ tanstack-start-effect/src/docs/effect-services.ts#intro
 - On `QueryCache`, `ensure`, `fetch`, `prefetch`, `getQuery` and `watch` require the factory's services, and so does `Query.fetch`.
 - A request runs with the services the cache was built with, under those of the latest of these calls for its entry.
 - Requests that start without a caller (a render's read, `refetch`, polling, focus and reconnect, `invalidate`) reuse the entry's last services.
-- The caller's `Scope` isn't passed on: a request outlives the call that started it. Scope a `queryFn`'s resources with `Effect.scoped`.
+- The caller's [`Scope`](https://effect.website/docs/v4/resource-management/scope) isn't passed on: a request outlives the call that started it. Scope a `queryFn`'s resources with [`Effect.scoped`](https://effect.website/docs/v4/api/effect/Effect#scoped).
 
 ## Tracing
 
-Each request runs in a `raf-query.request` span with a `raf_query.hash` attribute, under the latest caller's span if it had one. Defects are logged with `Effect.logError`; typed failures are the query's error.
+Each request runs in a `raf-query.request` [span](https://effect.website/docs/v4/observability/tracing) with a `raf_query.hash` attribute, under the latest caller's span if it had one. Defects are logged with [`Effect.logError`](https://effect.website/docs/v4/api/effect/Effect#logError); typed failures are the query's error.
 
 ## Services in QueryClient
 
-`QueryClient` gets its services from a `layer`. It's built into the client's scope along with the cache, so it must build synchronously:
+`QueryClient` gets its services from a [`layer`](https://effect.website/docs/v4/requirements-management/layers). It's built into the client's scope along with the cache, so it must build synchronously:
 
 ```sample
 tanstack-start-effect/src/docs/effect-services.services-in-queryclient.ts#services-in-queryclient
@@ -38,7 +38,7 @@ The client's type is `QueryClient<TServices>`, and its verbs accept only factori
 tanstack-start-effect/src/docs/effect-services.run-promise.ts#run-promise
 ```
 
-Like `Effect.runPromise`, it rejects with the Effect's failure or defect. An Effect that needs a service the layer doesn't provide is a type error. [Typed errors](./effect-errors.md) covers catching the failures first.
+Like [`Effect.runPromise`](https://effect.website/docs/v4/api/effect/Effect#runPromise), it rejects with the Effect's failure or defect. An Effect that needs a service the layer doesn't provide is a type error. [Typed errors](./effect-errors.md) covers catching the failures first.
 
 ### In React
 

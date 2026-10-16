@@ -1,8 +1,8 @@
 ---
 title: Using Effect
 description: The cache is written in Effect. Return Effects from queryFns for typed errors, services and interruption, run loaders and actions as Effects, and read the same queries from React.
-section: Effect
-order: 1
+section: Integrations
+order: 6
 ---
 
 raf-query's cache is written in [Effect](https://effect.website). Using raf-query doesn't take any Effect: `queryFn`s return promises, and `QueryClient`, the hooks and the integrations speak promises. Apps that do use Effect get the same cache as Effects, with typed errors and [services](./effect-services.md).
@@ -11,7 +11,7 @@ raf-query's cache is written in [Effect](https://effect.website). Using raf-quer
 
 ## The whole picture
 
-An issue page on TanStack Start, from the API to the form that renames the issue. The [Effect example app](./examples.md) is the same thing, in full, with Effect RPC.
+An issue page on TanStack Start, from the API to the form that renames the issue. The [Effect example app](./examples.md) is the same thing, in full, with [Effect RPC](https://effect.website/docs/v4/api/effect/rpc/RpcGroup).
 
 ### The API: errors and a service
 
@@ -21,7 +21,7 @@ Failures are tagged errors, and the API is a service. Its methods say how they c
 tanstack-start-effect/src/issues.ts#api
 ```
 
-`IssueApiLive`, a `Layer<IssueApi>`, implements it: an HTTP client, an RPC client, a database.
+`IssueApiLive`, a [`Layer<IssueApi>`](https://effect.website/docs/v4/requirements-management/layers), implements it: an HTTP client, an RPC client, a database.
 
 ### Queries
 
@@ -45,13 +45,13 @@ tanstack-start-effect/src/routes/__root.tsx
 
 ### The route
 
-Loaders use the same Promise verbs as a non-Effect app. Prefetch is sync; `ensure` returns a Promise. A loader that needs a typed catch is an `Effect.fn`, like a form action: it `yield*`s the `QueryCache` service, starts its reads together with `Effect.all`, and catches what it expects. `runPromise` runs it with the layer's services — the same shape as Effect's `ManagedRuntime`:
+Loaders use the same Promise verbs as a non-Effect app. Prefetch is sync; `ensure` returns a Promise. A loader that needs a typed catch is an [`Effect.fn`](https://effect.website/docs/v4/api/effect/Effect#fn-variable), like a form action: it `yield*`s the `QueryCache` service, starts its reads together with [`Effect.all`](https://effect.website/docs/v4/api/effect/Effect#all), and catches what it expects. `runPromise` runs it with the layer's services — the same shape as Effect's [`ManagedRuntime`](https://effect.website/docs/v4/api/effect/ManagedRuntime):
 
 ```sample
 tanstack-start-effect/src/routes/issues.$issueId.tsx
 ```
 
-With a `layer`, the client defaults to `throwOnError: false`: Effect `useQuery` returns a `Result` so you can match failures inline ([Typed errors](./effect-errors.md#in-react)). Pass `throwOnError: true` when you want a rejecting promise instead.
+With a `layer`, the client defaults to `throwOnError: false`: Effect `useQuery` returns a [`Result`](https://effect.website/docs/v4/data-types/result) so you can match failures inline ([Typed errors](./effect-errors.md#in-react)). Pass `throwOnError: true` when you want a rejecting promise instead.
 
 A list page that only prefetches never needs `runPromise`:
 
@@ -85,7 +85,7 @@ What an Effect `queryFn` adds over a promise:
 - **Services.** What the Effect requires, `ServicesOf<TFactory>`, every verb that can start the query requires. See [Services](./effect-services.md).
 - **Defects aren't retried.** A `queryFn` that throws instead of returning, or an Effect that dies, is a defect: it fails the request without retrying.
 - **Interruption.** Cancelling the request interrupts the fiber, so its finalizers run. No `AbortSignal` needed.
-- **Schedules.** `retry` accepts a `Schedule` as well as a count or predicate:
+- **Schedules.** `retry` accepts a [`Schedule`](https://effect.website/docs/v4/scheduling/using-schedules) as well as a count or predicate:
 
 ```sample
 tanstack-start-effect/src/docs/effect.ts#effect-queryfns
@@ -99,7 +99,7 @@ tanstack-start-effect/src/docs/effect.ts#effect-queryfns
 tanstack-start-effect/src/docs/effect.the-cache-as-an-effect-service.ts#the-cache-as-an-effect-service
 ```
 
-The cache has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidate`, `reset`, `remove`, `setData`, `getData` (an `Option`), `isFetching` (a count), `dehydrate` and `hydrate`. `watch` is a `Stream` of an entry's state, and `events` a `Stream` of cache events.
+The cache has every verb as an Effect: `prefetch`, `ensure`, `fetch`, `invalidate`, `reset`, `remove`, `setData`, `getData` (an [`Option`](https://effect.website/docs/v4/data-types/option)), `isFetching` (a count), `dehydrate` and `hydrate`. `watch` is a [`Stream`](https://effect.website/docs/v4/api/effect/Stream) of an entry's state, and `events` a `Stream` of cache events.
 
 `watch` counts as a reader while it runs, so invalidation and window focus refetch the entry. Outside React, `cache.mount` (`Effect<void, never, Scope>`) refetches read, stale entries on window focus and reconnect while its scope is open.
 
@@ -121,10 +121,10 @@ The SSR integrations are thin wrappers over Effect APIs:
 
 - `dehydrateStream(options)` (scoped) returns the cache's `initial` state and a `Stream` of `updates`: entries that start or settle later, each sent once, batched per microtask. The stream ends when the scope closes.
 - `hydrateStream(stream)` hydrates each state as it arrives.
-- `Stream.toReadableStream` and `Stream.fromReadableStream` carry it over a web stream.
+- [`Stream.toReadableStream`](https://effect.website/docs/v4/api/effect/Stream#toReadableStream) and [`Stream.fromReadableStream`](https://effect.website/docs/v4/api/effect/Stream#fromReadableStream) carry it over a web stream.
 
 The `sent` option (a `Set` of hashes) makes separate `dehydrate` calls of one request skip entries already sent.
 
 ## Time and the page
 
-Time comes from Effect's `Clock`, and the page from the `Platform` service (focus, visibility, `navigator.onLine`; the default reads the globals). Provide `TestClock` or another `Platform` to test staleness, garbage collection and offline retries without a browser. See [Testing](./testing.md).
+Time comes from Effect's [`Clock`](https://effect.website/docs/v4/api/effect/Clock), and the page from the `Platform` service (focus, visibility, [`navigator.onLine`](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/onLine); the default reads the globals). Provide [`TestClock`](https://effect.website/docs/v4/api/effect/testing/TestClock) or another `Platform` to test staleness, garbage collection and offline retries without a browser. See [Testing](./testing.md).
