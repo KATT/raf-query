@@ -625,4 +625,59 @@ describe("ssr: false", () => {
 		act(() => root.unmount());
 		container.remove();
 	});
+
+	it("re-renders a reader of the promise's status once the browser loads it", async () => {
+		function tagQuery() {
+			return queryOptions({
+				queryFn: async () => "beta",
+				queryKey: ["tag"],
+				ssr: false,
+			});
+		}
+		const loader = new QueryClient({ isServer: true });
+		const handle = loader.prefetch(tagQuery);
+		const state = dehydrate(loader);
+		function Tag() {
+			const [promise] = useQuery(tagQuery, handle);
+			return (
+				<span>{promise.status === "fulfilled" ? promise.value : "…"}</span>
+			);
+		}
+		function Page(props: { readonly client: QueryClient }) {
+			return (
+				<QueryClientProvider client={props.client}>
+					<HydrationBoundary state={state}>
+						<Tag />
+					</HydrationBoundary>
+				</QueryClientProvider>
+			);
+		}
+
+		const stream = await renderToReadableStream(
+			<Page client={new QueryClient({ isServer: true })} />,
+		);
+		await stream.allReady;
+		const html = await new Response(stream).text();
+		expect(html).toContain("<span>…</span>");
+
+		const container = document.createElement("div");
+		container.innerHTML = html;
+		document.body.append(container);
+		const recoverable: Array<unknown> = [];
+		const root = await act(async () =>
+			hydrateRoot(
+				container,
+				<Page client={new QueryClient({ isServer: false })} />,
+				{
+					onRecoverableError: (error) => recoverable.push(error),
+				},
+			),
+		);
+		await act(flush);
+
+		expect(container.textContent).toBe("beta");
+		expect(recoverable).toEqual([]);
+		act(() => root.unmount());
+		container.remove();
+	});
 });
