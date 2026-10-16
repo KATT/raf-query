@@ -692,6 +692,38 @@ describe("QueryCache", () => {
 			}),
 	);
 
+	it.effect('"always" refetches fresh data on focus and reconnect', () =>
+		Effect.gen(function* () {
+			const platform = fakePlatform();
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({
+				defaults: { refetchOnReconnect: "always", staleTime: Infinity },
+				isServer: false,
+			}).pipe(Effect.provideService(Platform.Platform, platform));
+			yield* cache.mount;
+			yield* cache.setData(
+				backend.issueQuery,
+				{ id: 1 },
+				{ id: 1, title: "A" },
+			);
+			const query = cache.getQueryUnsafe(backend.issueQuery, { id: 1 });
+			Query.subscribeUnsafe(query, () => {});
+
+			platform.emit("focus");
+			expect(backend.requests).toHaveLength(0);
+			platform.emit("online");
+			expect(backend.requests).toHaveLength(1);
+			backend.respondAll();
+			yield* settle;
+
+			Query.subscribeUnsafe(query, () => {}, {
+				refetchOnWindowFocus: "always",
+			});
+			platform.emit("focus");
+			expect(backend.requests).toHaveLength(1);
+		}),
+	);
+
 	it.effect("hydrate resumes a dehydrated request", () =>
 		Effect.gen(function* () {
 			const backend = createBackend();

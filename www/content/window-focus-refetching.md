@@ -1,6 +1,6 @@
 ---
 title: Window focus refetching
-description: Stale queries on screen refetch when the user comes back to the tab or reconnects. How to turn it off, globally or per read.
+description: Stale queries on screen refetch when the user comes back to the tab or reconnects. How to turn it off, or refetch fresh data too, globally or per read.
 section: Guides
 order: 15
 ---
@@ -37,6 +37,16 @@ tanstack-start/src/docs/window-focus-refetching.per-query.ts#per-query
 ```
 
 A long `staleTime` is often the better fix: the data then refetches on focus only once it's actually old.
+
+## Refetching fresh data too
+
+`"always"` refetches a read query on the event even while it's fresh. Use it for data that other tabs or devices change, where `staleTime` keeps navigation within the tab quiet but coming back should show the latest:
+
+```sample
+tanstack-start/src/docs/window-focus-refetching.ts#always
+```
+
+`refetchOnWindowFocus` and `refetchOnReconnect` take `true`, `false` or `"always"` everywhere they're accepted: the client's defaults, a factory, and `useQuery`'s options. A reader's value replaces the query's, and the query refetches if any reader wants it to: one reader with `"always"` refetches it even when the others would wait for it to go stale.
 
 ## What counts as focus
 

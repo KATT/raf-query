@@ -1,5 +1,5 @@
 import { queryOptions } from "@raf-query/react";
-import { getSettings } from "~/api.ts";
+import { getSettings, listTodos } from "~/api.ts";
 import { Platform, QueryClient } from "@raf-query/react";
 import { Layer } from "effect";
 
@@ -9,6 +9,17 @@ export function settingsQuery() {
 		queryKey: ["settings"],
 		queryFn: () => getSettings(),
 		refetchOnWindowFocus: false,
+	});
+}
+// #endregion
+
+// #region always
+export function todosQuery() {
+	return queryOptions({
+		queryKey: ["todos"],
+		queryFn: () => listTodos(),
+		staleTime: 5 * 60_000,
+		refetchOnWindowFocus: "always",
 	});
 }
 // #endregion

@@ -38,10 +38,16 @@ export type TypeId = typeof TypeId;
 export interface Options {
 	/** Refetch on this interval (ms) while subscribed and the page is visible. */
 	readonly refetchInterval?: number;
-	/** Refetch on reconnect while stale. Default: the query's option, else `true`. */
-	readonly refetchOnReconnect?: boolean;
-	/** Refetch on window focus while stale. Default: the query's option, else `true`. */
-	readonly refetchOnWindowFocus?: boolean;
+	/**
+	 * Refetch on reconnect: `true` while stale, `"always"` even when fresh.
+	 * Default: the query's option, else `true`.
+	 */
+	readonly refetchOnReconnect?: boolean | "always";
+	/**
+	 * Refetch on window focus: `true` while stale, `"always"` even when fresh.
+	 * Default: the query's option, else `true`.
+	 */
+	readonly refetchOnWindowFocus?: boolean | "always";
 	/**
 	 * What to show while the query has no data yet:
 	 * - `"suspend"` (default): the result's promise is the query's pending one.

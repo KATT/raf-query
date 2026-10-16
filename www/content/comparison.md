@@ -129,7 +129,7 @@ Same problem space, fewer knobs:
 | TanStack Query                                                      | What raf-query does instead                                                                           |
 | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `networkMode` (`offlineFirst` / `always`) + `fetchStatus: "paused"` | Retries pause while offline; the first attempt always runs (`navigator.onLine` is unreliable)         |
-| `refetchOnWindowFocus` / `Reconnect`: `'always'` or a function      | Boolean only: refetch read + stale queries, or don't                                                  |
+| `refetchOnWindowFocus` / `Reconnect` as a function of the query     | `boolean` or `"always"`, per query or per read; a read can pick its value from what it renders        |
 | `refetchIntervalInBackground`                                       | Polling is per-read and pauses while the tab is hidden                                                |
 | `initialData` / `initialDataUpdatedAt`                              | Seed with `setData` / hydrate, or let the loader fetch                                                |
 | Custom `structuralSharing` merge function                           | Boolean on / off; deep equality on plain objects and arrays                                           |

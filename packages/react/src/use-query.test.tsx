@@ -137,9 +137,9 @@ class Boundary extends Component<
 	}
 }
 
-function setup() {
+function setup(defaults: { readonly staleTime?: number } = {}) {
 	const backend = createBackend();
-	const client = new QueryClient({ isServer: false });
+	const client = new QueryClient({ defaults, isServer: false });
 	function IssueTitle(props: {
 		readonly handle: QueryHandle<typeof backend.issueQuery>;
 		readonly options?: UseQueryOptions;
@@ -520,6 +520,23 @@ describe("useQuery", () => {
 		});
 		expect(screen.getByText("Value 4")).toBeDefined();
 		expect(renders.count).toBe(2);
+		cleanup();
+	});
+
+	it('refetches fresh data on focus with refetchOnWindowFocus: "always"', async () => {
+		const test = setup({ staleTime: Infinity });
+		const handle = test.client.prefetch(test.backend.issueQuery, { id: 1 });
+		await test.backend.respond();
+		const options: UseQueryOptions = { refetchOnWindowFocus: "always" };
+		await mount(
+			test.view(<test.IssueTitle handle={handle} options={options} />),
+		);
+		expect(test.backend.calls()).toBe(1);
+
+		await act(async () => {
+			window.dispatchEvent(new Event("visibilitychange"));
+		});
+		expect(test.backend.calls()).toBe(2);
 		cleanup();
 	});
 
