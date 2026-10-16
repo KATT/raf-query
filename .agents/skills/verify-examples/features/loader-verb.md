@@ -40,7 +40,8 @@ Commands:
 
 ## Gotchas
 
-- Only `tanstack-start` has the bar and the verb in its URLs so far. In the other three apps the pages live at `/issues…` and always `prefetch`.
+- Only `tanstack-start` and `tanstack-start-effect` have the bar and the verb in their URLs so far. In `nextjs` and `react-router` the pages live at `/issues…` and always `prefetch`.
+- In `tanstack-start-effect`, `ensure` and `fetch` reject with the query's failure: the issue loader catches `IssueNotFound` and throws the router's not-found, so a missing issue is a 404 there too.
 - The URL changes as soon as you click, before `ensure` or `fetch` finish: check what's on screen (`$PAGE`), not `location.pathname`.
 - The router reruns a revisited route's loader before showing it (`defaultStaleReloadMode: "blocking"`). Without that it would show the route's last loader data and rerun the loader behind it, and `fetch` would never wait.
 - Scrolling or clicking far down the list can load its next page; those row skeletons belong to the list, not to the next page.

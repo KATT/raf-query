@@ -21,7 +21,7 @@ const routes = {
 	nextjs: "src/app/issues/page.tsx",
 	"react-router": "app/routes/issues/route.tsx",
 	"tanstack-start": "src/routes/$verb/issues/index.tsx",
-	"tanstack-start-effect": "src/routes/issues/index.tsx",
+	"tanstack-start-effect": "src/routes/$verb/issues/index.tsx",
 } satisfies Record<App, string>;
 
 const ignored = new Set([

@@ -6,4 +6,5 @@
 - Bare `/issues/...` and `/` redirect to `/${DEFAULT_LOADER_VERB}/...` (`prefetch`), keeping the search, so old links and the live sites' entry still work.
 - TanStack Start needs `defaultStaleReloadMode: "blocking"`: without it a revisit shows the last loader data and reloads in the background, so `fetch` never visibly waits.
 - On a server with a per-request client the cache is empty, so `ensure` and `fetch` wait for the same thing on a full page load; they differ only on client navigations.
+- Effect app: `useQueryData` keeps `useQuery`'s `throwOnError` typing (a `Result` by default). `ensure` and `fetch` reject with the query's failure rather than handing back a `Result`, so the issue loader catches `IssueNotFound` and throws `notFound()`.
 - Rolled out one app per stacked PR, TanStack Start first. The verify-examples feature map (`features/loader-verb.md`) says which apps have the bar.
