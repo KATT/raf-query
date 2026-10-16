@@ -1,0 +1,6 @@
+# Page navigations fade with the router's view transitions (human asked)
+
+- `www/src/router.tsx` sets `defaultViewTransition` with `types: pathChanged ? ["page"] : false`. The router wraps the commit, scroll restoration included, in `document.startViewTransition`, so Back lands on the restored position and new pages start at the top. Search-only changes return `false`: the homepage framework switch runs its own React `<ViewTransition>` (`docs-home-framework-crossfade.md`).
+- `styles.css` under `:active-view-transition-type(page)`: the announcement bar, site header and docs sidebar get names so they hold still (only the active sidebar link cross-fades); the root fades out fast and fades in with a small rise.
+- Lost: React `<ViewTransition>` around the doc article. Route data comes from `useSyncExternalStore`, so the page would need `useDeferredValue`, which commits the new page after the router has already scrolled — Back restored onto the old, shorter page and clamped, and cross-page hashes had no target yet.
+- React waits for an active document transition before starting its own, so a `<ViewTransition>` that mounts or reveals during a page change animates after it instead of cutting it off.
