@@ -17,16 +17,27 @@ html[data-announcement-dismissed] .announcement-bar {
  * Homepage framework panels: every mode ships in the static HTML; a blocking
  * script sets data-framework-mode from ?mode= before paint so the other modes
  * never flash the prerendered TanStack Start content.
+ *
+ * The modes stack in one grid cell, so the box is as tall as the tallest
+ * mode and a switch moves nothing outside it. That keeps the switch's view
+ * transition to the panels: React leaves the rest of the page live unless a
+ * boundary's size changes.
  */
+.framework-panel-stack {
+	display: grid;
+}
+
 [data-framework-panel] {
-	display: none;
+	grid-area: 1 / 1;
+	min-width: 0;
+	visibility: hidden;
 }
 
 :root:not([data-framework-mode]) [data-framework-panel="tanstack-start"],
 [data-framework-mode="tanstack-start"] [data-framework-panel="tanstack-start"],
 [data-framework-mode="nextjs"] [data-framework-panel="nextjs"],
 [data-framework-mode="react-router"] [data-framework-panel="react-router"] {
-	display: contents;
+	visibility: visible;
 }
 
 :root:not([data-framework-mode])
@@ -44,41 +55,40 @@ html[data-announcement-dismissed] .announcement-bar {
 
 /*
  * Framework switches cross-fade the panels in the view transition overlay,
- * which paints above the page. Naming the sticky header and the framework
- * pill puts them in that overlay too, above the panels, as on the page.
- * They switch at once instead of cross-fading: only the panels animate.
+ * which paints above the page. The overlay stops at the sticky site header's
+ * bottom edge (3.5rem + its border), so panels scrolled under the header
+ * stay behind it. Page navigations snapshot the whole page instead (below).
  */
-.site-header {
-	view-transition-name: site-header;
+html:not(:active-view-transition-type(page))::view-transition {
+	clip-path: polygon(
+		-100vw calc(3.5rem + 1px),
+		200vw calc(3.5rem + 1px),
+		200vw 200vh,
+		-100vw 200vh
+	);
 }
 
+/*
+ * The pill floats over the walkthrough panels, so it joins the overlay to
+ * stay above them. It switches at once instead of cross-fading. Its snapshot
+ * paints on its own, where `backdrop-blur` has nothing to blur, so the group
+ * blurs the panels behind it instead.
+ */
 .framework-mode-bar {
 	view-transition-name: framework-mode-bar;
 }
 
-::view-transition-group(site-header),
 ::view-transition-group(framework-mode-bar),
-::view-transition-new(site-header),
 ::view-transition-new(framework-mode-bar) {
 	animation: none;
 }
 
-::view-transition-old(site-header),
 ::view-transition-old(framework-mode-bar) {
 	display: none;
 }
 
-/*
- * A snapshot is painted on its own, so its `backdrop-blur` has nothing to
- * blur and the content scrolled under it shows through sharp. Blur again in
- * the overlay, where the fading panels sit behind the group.
- */
-::view-transition-group(site-header),
 ::view-transition-group(framework-mode-bar) {
 	backdrop-filter: blur(8px);
-}
-
-::view-transition-group(framework-mode-bar) {
 	border-radius: 9999px;
 }
 
@@ -93,6 +103,33 @@ html[data-announcement-dismissed] .announcement-bar {
  */
 html:active-view-transition-type(page) .announcement-bar {
 	view-transition-name: announcement-bar;
+}
+
+html:active-view-transition-type(page) .site-header {
+	view-transition-name: site-header;
+}
+
+/*
+ * The header and announcement bar switch at once: the header's links change
+ * (the active "Docs"), and from a scrolled page both would otherwise slide in
+ * from where they sat above the viewport. The header's snapshot paints on
+ * its own, where `backdrop-blur` has nothing to blur, so its group blurs the
+ * fading page behind it instead.
+ */
+html:active-view-transition-type(page)::view-transition-group(site-header),
+html:active-view-transition-type(page)::view-transition-group(announcement-bar),
+html:active-view-transition-type(page)::view-transition-new(site-header),
+html:active-view-transition-type(page)::view-transition-new(announcement-bar) {
+	animation: none;
+}
+
+html:active-view-transition-type(page)::view-transition-old(site-header),
+html:active-view-transition-type(page)::view-transition-old(announcement-bar) {
+	display: none;
+}
+
+html:active-view-transition-type(page)::view-transition-group(site-header) {
+	backdrop-filter: blur(8px);
 }
 
 html:active-view-transition-type(page) .docs-sidebar {
