@@ -9,9 +9,14 @@ export default {
 	redirects: () =>
 		Promise.resolve([
 			{
-				destination: `/${DEFAULT_LOADER_VERB}/issues/:path*`,
+				destination: `/${DEFAULT_LOADER_VERB}/issues`,
 				permanent: false,
-				source: "/issues/:path*",
+				source: "/issues",
+			},
+			{
+				destination: `/${DEFAULT_LOADER_VERB}/issues/:path+`,
+				permanent: false,
+				source: "/issues/:path+",
 			},
 		]),
 	transpilePackages: [
