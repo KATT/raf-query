@@ -35,8 +35,13 @@ export type TypeId = typeof TypeId;
 
 /** How one reader observes its query. */
 export interface Options {
-	/** Refetch on this interval (ms) while subscribed and the page is visible. */
+	/**
+	 * Refetch on this interval (ms) while subscribed and the page is visible,
+	 * or hidden too with {@link refetchIntervalInBackground}.
+	 */
 	readonly refetchInterval?: number;
+	/** Keep polling on `refetchInterval` while the page is hidden. Default `false`. */
+	readonly refetchIntervalInBackground?: boolean;
 	/** Refetch on reconnect while stale. Default: the query's option, else `true`. */
 	readonly refetchOnReconnect?: boolean;
 	/** Refetch on window focus while stale. Default: the query's option, else `true`. */
@@ -438,19 +443,27 @@ function restartPolling<TFactory extends QueryFactory>(self: Impl<TFactory>) {
 	const polls = subscription.polls;
 	Effect.runForkWith(entryOf(self.query).cache.services)(
 		interval !== undefined && Number.isFinite(interval) && interval > 0
-			? FiberHandle.run(polls, poll(self.query, interval))
+			? FiberHandle.run(polls, poll(self, self.query, interval))
 			: FiberHandle.clear(polls),
 	);
 }
 
-/** Refetch `query` every `interval` ms while the page is visible. */
+/**
+ * Refetch `query` every `interval` ms while the page is visible, or always
+ * with `refetchIntervalInBackground`. That option is read on every tick, so
+ * changing it doesn't restart the timer.
+ */
 function poll<TFactory extends QueryFactory>(
+	self: Impl<TFactory>,
 	query: Query.Query<TFactory>,
 	interval: number,
 ): Effect.Effect<never> {
 	return Effect.gen(function* () {
 		const platform = yield* Platform;
-		if (platform.isVisibleUnsafe()) {
+		if (
+			self.options.refetchIntervalInBackground === true ||
+			platform.isVisibleUnsafe()
+		) {
 			yield* Effect.forkChild(Query.refetch(query), {
 				startImmediately: true,
 			});

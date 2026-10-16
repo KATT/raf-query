@@ -151,6 +151,7 @@ export function useQuery<TFactory extends QueryFactory>(
 	Query.readUnsafe(query);
 
 	const refetchInterval = options.refetchInterval;
+	const refetchIntervalInBackground = options.refetchIntervalInBackground;
 	const refetchOnReconnect = options.refetchOnReconnect;
 	const refetchOnWindowFocus = options.refetchOnWindowFocus;
 	const whilePending = options.whilePending;
@@ -165,6 +166,7 @@ export function useQuery<TFactory extends QueryFactory>(
 	useEffect(() => {
 		QueryObserver.setOptionsUnsafe(observer, query, {
 			refetchInterval,
+			refetchIntervalInBackground,
 			refetchOnReconnect,
 			refetchOnWindowFocus,
 			whilePending,
@@ -173,6 +175,7 @@ export function useQuery<TFactory extends QueryFactory>(
 		observer,
 		query,
 		refetchInterval,
+		refetchIntervalInBackground,
 		refetchOnReconnect,
 		refetchOnWindowFocus,
 		whilePending,

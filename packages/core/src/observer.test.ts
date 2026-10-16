@@ -133,6 +133,30 @@ describe("QueryObserver", () => {
 		expect(test.backend.requests).toHaveLength(0);
 	});
 
+	it("skips polls while the page is hidden, unless refetchIntervalInBackground", async () => {
+		const test = await setup();
+		using _timers = fakeTimers();
+		vi.stubGlobal("document", { visibilityState: "hidden" });
+		const observer = QueryObserver.makeUnsafe(test.query, {
+			refetchInterval: 1000,
+		});
+		QueryObserver.subscribeUnsafe(observer, () => {});
+
+		await vi.advanceTimersByTimeAsync(3000);
+		expect(test.backend.requests).toHaveLength(0);
+
+		QueryObserver.setOptionsUnsafe(observer, test.query, {
+			refetchInterval: 1000,
+			refetchIntervalInBackground: true,
+		});
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(test.backend.requests).toHaveLength(1);
+		test.backend.respondAll();
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(test.backend.requests).toHaveLength(1);
+		test.backend.respondAll();
+	});
+
 	it("stops polling when its query leaves the cache", async () => {
 		const test = await setup();
 		using _timers = fakeTimers();
