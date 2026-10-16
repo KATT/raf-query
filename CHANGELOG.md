@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.2](https://github.com/KATT/raf-query/compare/0.10.1...0.10.2) (2026-10-16)
+
+### Features
+
+- **react:** re-render useQuery readers of the thenable's status when the first load settles (2/3) ([#198](https://github.com/KATT/raf-query/issues/198)) ([436d83c](https://github.com/KATT/raf-query/commit/436d83cfd6a3944265eb56d5597c322342c5a6c6))
+- **react:** type useQuery's promise as a Thenable (1/3) ([#200](https://github.com/KATT/raf-query/issues/200)) ([47e5309](https://github.com/KATT/raf-query/commit/47e530957565a2bd345642ae7a4be5d3c501ffb2))
+
 ## [0.10.1](https://github.com/KATT/raf-query/compare/0.10.0...0.10.1) (2026-10-16)
 
 ### Features

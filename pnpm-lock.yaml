@@ -1359,6 +1359,9 @@ importers:
       '@raf-query/react':
         specifier: workspace:*
         version: link:../../../packages/react
+      '@tanstack/react-query':
+        specifier: 5.104.1
+        version: 5.104.1(react@19.3.0)
       '@tanstack/react-router':
         specifier: 1.170.42
         version: 1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
