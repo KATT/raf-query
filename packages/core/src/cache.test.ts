@@ -1306,6 +1306,187 @@ describe("when the last reader leaves mid-request", () => {
 	);
 });
 
+describe("cancel", () => {
+	it.effect("interrupts a refetch and keeps the data as it was", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: false });
+			const failed: Array<unknown> = [];
+			cache.subscribeUnsafe((event) => {
+				if (event.type === "failed") {
+					failed.push(event.error);
+				}
+			});
+			yield* cache.setData(
+				backend.issueQuery,
+				{ id: 1 },
+				{ id: 1, title: "Cached" },
+			);
+			const query = cache.getQueryUnsafe(backend.issueQuery, { id: 1 });
+			const before = Query.getUnsafe(query);
+			const fetched = yield* Effect.forkChild(
+				Effect.flip(cache.fetch(backend.issueQuery, { id: 1 })),
+				{ startImmediately: true },
+			);
+			expect(Query.getUnsafe(query).isFetching).toBe(true);
+
+			yield* cache.cancel(backend.issueQuery, { id: 1 });
+
+			expect(backend.requests[0]?.signal.aborted).toBe(true);
+			expect(Query.getUnsafe(query)).toMatchObject({
+				data: { id: 1, title: "Cached" },
+				error: null,
+				failureCount: 0,
+				isFetching: false,
+				status: "success",
+				updatedAt: before.updatedAt,
+			});
+			expect(Query.getUnsafe(query).promise).toBe(before.promise);
+			expect(yield* Fiber.join(fetched)).toBeInstanceOf(Query.CancelledError);
+			expect(failed).toEqual([]);
+		}),
+	);
+
+	it.effect("keeps data written after it over the cancelled response", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: false });
+			yield* cache.setData(
+				backend.issueQuery,
+				{ id: 1 },
+				{ id: 1, title: "Cached" },
+			);
+			yield* cache.prefetch(backend.issueQuery, { id: 1 });
+
+			yield* cache.cancel({ queryKey: ["issue"] });
+			yield* cache.setData(
+				backend.issueQuery,
+				{ id: 1 },
+				{ id: 1, title: "Optimistic" },
+			);
+			backend.respondAll();
+			yield* settle;
+
+			const data = yield* cache.getData(backend.issueQuery, { id: 1 });
+			expect(Option.getOrUndefined(data)?.title).toBe("Optimistic");
+			expect(yield* cache.isFetching()).toBe(0);
+		}),
+	);
+
+	it.effect("leaves a first load pending until the next read", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: false });
+			const query = cache.getQueryUnsafe(backend.issueQuery, { id: 1 });
+			const held = Query.readUnsafe(query);
+			const ensured = yield* Effect.forkChild(
+				Effect.flip(cache.ensure(backend.issueQuery, { id: 1 })),
+				{ startImmediately: true },
+			);
+
+			yield* Query.cancel(query);
+
+			expect(backend.requests[0]?.signal.aborted).toBe(true);
+			expect(yield* Fiber.join(ensured)).toBeInstanceOf(Query.CancelledError);
+			expect(Query.getUnsafe(query)).toMatchObject({
+				hasData: false,
+				isFetching: false,
+				status: "pending",
+			});
+			expect(Query.getUnsafe(query).promise).toBe(held);
+			yield* settle;
+			expect(held.status).toBe("pending");
+
+			expect(Query.readUnsafe(query)).toBe(held);
+			expect(backend.requests).toHaveLength(2);
+			backend.respondAll();
+			expect(yield* Effect.promise(() => held)).toEqual({
+				id: 1,
+				title: "First",
+			});
+		}),
+	);
+
+	it.effect("leaves a first load pending until setData", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: false });
+			const query = cache.getQueryUnsafe(backend.issueQuery, { id: 1 });
+			const held = Query.readUnsafe(query);
+
+			yield* cache.cancel(backend.issueQuery, { id: 1 });
+			yield* cache.setData(
+				backend.issueQuery,
+				{ id: 1 },
+				{ id: 1, title: "Optimistic" },
+			);
+			backend.respondAll();
+
+			expect(yield* Effect.promise(() => held)).toEqual({
+				id: 1,
+				title: "Optimistic",
+			});
+			expect(backend.requests).toHaveLength(0);
+		}),
+	);
+
+	it.effect("succeeds once an Effect queryFn has been interrupted", () =>
+		Effect.gen(function* () {
+			let interrupted = false;
+			const effectQuery = () =>
+				queryOptions({
+					queryFn: () =>
+						Effect.never.pipe(
+							Effect.onInterrupt(() =>
+								Effect.sleep("1 millis").pipe(
+									Effect.andThen(
+										Effect.sync(() => {
+											interrupted = true;
+										}),
+									),
+								),
+							),
+							Effect.as("never"),
+						),
+					queryKey: ["effect"],
+				});
+			const cache = yield* QueryCache.make({ isServer: false });
+			yield* cache.setData(effectQuery, undefined, "cached");
+			yield* cache.prefetch(effectQuery);
+
+			const cancelled = yield* Effect.forkChild(cache.cancel({}), {
+				startImmediately: true,
+			});
+			expect(interrupted).toBe(false);
+			yield* TestClock.adjust("1 millis");
+			yield* Fiber.join(cancelled);
+
+			expect(interrupted).toBe(true);
+			expect(Option.getOrUndefined(yield* cache.getData(effectQuery))).toBe(
+				"cached",
+			);
+		}),
+	);
+
+	it.effect("does nothing without a request in flight", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: false });
+			yield* cache.setData(
+				backend.issueQuery,
+				{ id: 1 },
+				{ id: 1, title: "Cached" },
+			);
+			const query = cache.getQueryUnsafe(backend.issueQuery, { id: 1 });
+			const before = Query.getUnsafe(query);
+
+			yield* cache.cancel({});
+
+			expect(Query.getUnsafe(query)).toBe(before);
+		}),
+	);
+});
+
 describe("QueryCache filters", () => {
 	function issuesQuery(input: { projectId: number; status: string }) {
 		return queryOptions({

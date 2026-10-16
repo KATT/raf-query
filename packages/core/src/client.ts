@@ -231,6 +231,19 @@ export class QueryClient<TServices = never> {
 		Effect.runSync(this.effect.remove(...target));
 	}
 
+	/**
+	 * Abort queries' requests in flight and keep their data, as it was before
+	 * the request; `ensure` / `fetch` waiting on them reject with an
+	 * `AbortError`. Call it before an optimistic `setData`, so a refetch
+	 * already running can't overwrite the write. Resolves once the requests
+	 * have stopped.
+	 */
+	cancel<TFactory extends QueryFactory<TServices>>(
+		...target: QueryCache.Target<TFactory>
+	): Promise<void> {
+		return Effect.runPromise(this.effect.cancel(...target));
+	}
+
 	/** Write data for a factory call. Readers re-render without suspending. */
 	setData<TFactory extends QueryFactory<TServices>>(
 		factory: TFactory,

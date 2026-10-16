@@ -6,7 +6,9 @@ import {
 	Deferred,
 	Effect,
 	Exit,
+	Fiber,
 	FiberMap,
+	Option,
 	Pipeable,
 	Predicate,
 	Schedule,
@@ -43,8 +45,9 @@ import { fulfilled, type Pending, pending, type Thenable } from "./thenable.ts";
 export const TypeId = "~@raf-query/core/Query";
 
 /**
- * The failure of a request that was interrupted rather than settled: its
- * entry was removed or cleared, or an Effect `queryFn` was interrupted.
+ * The failure of a request that was interrupted rather than settled: it was
+ * cancelled, its entry was removed or cleared, or an Effect `queryFn` was
+ * interrupted.
  */
 export class CancelledError extends Data.TaggedError("CancelledError") {
 	override readonly message = "The query was cancelled";
@@ -88,6 +91,8 @@ interface Tasks {
 		effect: Effect.Effect<void>,
 		options?: { readonly onlyIfMissing?: boolean },
 	): void;
+	/** Interrupt the task's current fiber, and wait until it has stopped. */
+	interrupt(task: Task): Effect.Effect<void>;
 }
 
 interface Commands {
@@ -173,6 +178,10 @@ function makeTasks(cache: CacheState, scope: Scope.Scope): Tasks {
 		},
 		fork(task, effect, options) {
 			run(task, effect, options);
+		},
+		interrupt(task) {
+			const fiber = FiberMap.getUnsafe(fibers, task);
+			return Option.isSome(fiber) ? Fiber.interrupt(fiber.value) : Effect.void;
 		},
 	};
 }
@@ -443,6 +452,26 @@ export function reset(entry: Entry): Effect.Effect<void> {
 	});
 }
 
+/**
+ * Interrupt the request in flight and go back to the state before it, data
+ * included; its awaiters fail with a {@link CancelledError}. A first load
+ * keeps its pending promise, which the next request or `setData` settles.
+ * Succeeds once the request has stopped.
+ */
+export function cancel(entry: Entry): Effect.Effect<void> {
+	return Effect.suspend(() => {
+		const inFlight = entry.inFlight;
+		if (!inFlight) {
+			return Effect.void;
+		}
+		entry.inFlight = undefined;
+		const stopped = entry.tasks.interrupt("request");
+		revert(entry);
+		Deferred.doneUnsafe(inFlight, Exit.fail(new CancelledError()));
+		return stopped;
+	});
+}
+
 /** Write data directly, as if a request had returned it. */
 export function setData(entry: Entry, data: unknown, updatedAt = now(entry)) {
 	succeed(entry, data, updatedAt);
@@ -645,12 +674,17 @@ function unobserved(
 	}
 	entry.inFlight = undefined;
 	entry.tasks.cancel("request");
+	revert(entry);
+	Deferred.doneUnsafe(awaiter, Exit.succeed(entry.state.data));
+}
+
+/** The state before the request that was in flight; `inFlight` is already cleared. */
+function revert(entry: Entry) {
 	set(entry, {
 		failureCount: entry.failureCountBefore,
 		fetchDirection: undefined,
 		isFetching: false,
 	});
-	Deferred.doneUnsafe(awaiter, Exit.succeed(entry.state.data));
 	scheduleGc(entry);
 }
 

@@ -99,7 +99,7 @@ export interface Filter {
 	readonly queryKey?: QueryKey;
 }
 
-/** The entries `invalidate`, `reset` and `remove` act on: one factory call, or a filter. */
+/** The entries `invalidate`, `reset`, `remove` and `cancel` act on: one factory call, or a filter. */
 export type Target<TFactory extends QueryFactory> =
 	| [factory: TFactory, ...args: InputArgs<TFactory>]
 	| [filter: Filter];
@@ -119,6 +119,15 @@ type Loaded<TFactory extends QueryFactory> = Effect.Effect<
 export interface QueryCache {
 	/** Every entry. */
 	readonly all: Effect.Effect<ReadonlyArray<Query.Query>>;
+	/**
+	 * Interrupt queries' requests in flight and keep their data, as it was
+	 * before the request; their awaiters fail with a `CancelledError`. Call it
+	 * before an optimistic `setData`, so a refetch already running can't
+	 * overwrite the write. Succeeds once the requests have stopped.
+	 */
+	cancel<TFactory extends QueryFactory>(
+		...target: Target<TFactory>
+	): Effect.Effect<void>;
 	/** Drop every entry and interrupt their requests. */
 	readonly clear: Effect.Effect<void>;
 	/** Snapshot the cache for transfer to another cache (server → browser). */
@@ -451,6 +460,8 @@ export const make: (
 
 		const cache: QueryCache = {
 			all: Effect.sync(() => [...state.entries.values()]),
+			cancel: (...target) =>
+				Effect.suspend(() => settleAll(match(target).map(Entry.cancel))),
 			clear: Effect.sync(() => {
 				for (const entry of state.entries.values()) {
 					Entry.remove(entry);

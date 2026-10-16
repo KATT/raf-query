@@ -794,6 +794,45 @@ describe("remove", () => {
 	});
 });
 
+describe("cancel", () => {
+	it("aborts a refetch, rejects its fetch, and lets setData win", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "A" });
+		const refetched = qc.fetch(backend.issueQuery, { id: 1 });
+		expect(qc.isFetching()).toBe(1);
+
+		await qc.cancel(backend.issueQuery, { id: 1 });
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "Optimistic" });
+
+		await expect(refetched).rejects.toMatchObject({ name: "AbortError" });
+		expect(backend.requests[0]?.signal.aborted).toBe(true);
+		expect(qc.isFetching()).toBe(0);
+		backend.respondAll();
+		await flush();
+		expect(qc.getData(backend.issueQuery, { id: 1 })).toEqual({
+			id: 1,
+			title: "Optimistic",
+		});
+	});
+
+	it("matches a filter, and keeps every entry", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		qc.prefetch(backend.issueQuery, { id: 1 });
+		qc.prefetch(backend.issueQuery, { id: 2 });
+
+		await qc.cancel({ predicate: (query) => query.key[1] === 2 });
+
+		expect(backend.requests.map((request) => request.signal.aborted)).toEqual([
+			false,
+			true,
+		]);
+		expect(qc.getAll()).toHaveLength(2);
+		expect(qc.isFetching()).toBe(1);
+	});
+});
+
 describe("retry", () => {
 	it("retries the configured number of times", async () => {
 		const queryFn = vi.fn(() => Promise.reject(new Error("down")));

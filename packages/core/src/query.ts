@@ -126,7 +126,8 @@ function typedState<TFactory extends QueryFactory>(
 
 /**
  * Start a request, or join the one in flight. Fails with the request's
- * error, or a {@link CancelledError} if the entry leaves the cache first.
+ * error, or a {@link CancelledError} if it's cancelled or the entry leaves
+ * the cache first.
  * The entry's requests run with this fiber's services from now on, as after
  * a `QueryCache` verb.
  */
@@ -189,6 +190,17 @@ export function invalidate<TFactory extends QueryFactory>(
 	self: Query<TFactory>,
 ): Effect.Effect<void> {
 	return internal.invalidate(internal.entryOf(self));
+}
+
+/**
+ * Interrupt the request in flight and keep the data, as it was before the
+ * request; its awaiters fail with a {@link CancelledError}. Succeeds once
+ * the request has stopped.
+ */
+export function cancel<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
+): Effect.Effect<void> {
+	return internal.cancel(internal.entryOf(self));
 }
 
 /**
