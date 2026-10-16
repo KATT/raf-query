@@ -555,17 +555,17 @@ describe("HydrationBoundary with a loader's state (React Router)", () => {
 	});
 });
 
-describe("ssr: false", () => {
+describe(`enabled: "browser"`, () => {
 	it("renders pending on the server, then runs once in the browser", async () => {
 		const calls: Array<string> = [];
 		function permissionQuery() {
 			return queryOptions({
+				enabled: "browser",
 				queryFn: async () => {
 					calls.push("permission");
 					return "granted";
 				},
 				queryKey: ["permission"],
-				ssr: false,
 				staleTime: Infinity,
 			});
 		}
@@ -600,7 +600,7 @@ describe("ssr: false", () => {
 		expect(html).toContain("<p>Detecting</p>");
 		expect(html).toContain("<p>Waiting</p>");
 		expect(errors).toHaveLength(1);
-		expect(errors[0]).toBeInstanceOf(Query.BrowserOnlyError);
+		expect(errors[0]).toBeInstanceOf(Query.DisabledError);
 		expect(calls).toEqual([]);
 
 		const container = document.createElement("div");
@@ -629,9 +629,9 @@ describe("ssr: false", () => {
 	it("re-renders a reader of the promise's status once the browser loads it", async () => {
 		function tagQuery() {
 			return queryOptions({
+				enabled: "browser",
 				queryFn: async () => "beta",
 				queryKey: ["tag"],
-				ssr: false,
 			});
 		}
 		const loader = new QueryClient({ isServer: true });

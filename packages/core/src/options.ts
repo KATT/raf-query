@@ -142,6 +142,21 @@ export type RetryPolicy =
 
 /** Options every query accepts. `QueryCache` defaults fill in the rest. */
 export interface QueryBehavior {
+	/**
+	 * Whether this cache runs the query. Default `true`.
+	 *
+	 * - `"browser"`: only the browser runs it, for data only a browser has
+	 *   (permissions, device APIs). A server cache never starts it or sends
+	 *   it; under Suspense, React renders the fallback on the server and the
+	 *   query in the browser.
+	 * - `false`: no cache runs it, such as while the user lacks a permission.
+	 *   A later factory call that returns `true` runs it.
+	 *
+	 * Where it's disabled, readers see `isPending`, and a promise that
+	 * rejects with `Query.DisabledError`; `ensure` and `fetch` fail with that
+	 * error, and `invalidate`, `reset` and `refetch` do nothing.
+	 */
+	readonly enabled?: boolean | "browser";
 	/** How long an unread entry stays cached, in ms. `Infinity` keeps it. */
 	readonly gcTime?: number;
 	/**
@@ -160,15 +175,6 @@ export interface QueryBehavior {
 	readonly retryDelay?:
 		| number
 		| ((failureCount: number, error: unknown) => number);
-	/**
-	 * `false`: only the browser runs the query, for data only a browser has
-	 * (permissions, device APIs). A server cache never starts it or sends it.
-	 * Readers there see `isPending`, and a promise that rejects with
-	 * `Query.BrowserOnlyError`: under Suspense, React renders the fallback on
-	 * the server and the query in the browser. `ensure` and `fetch` on the
-	 * server fail with that error. Default `true`.
-	 */
-	readonly ssr?: boolean;
 	/** How long data counts as fresh, in ms. Fresh data is never refetched. */
 	readonly staleTime?: number;
 	/**

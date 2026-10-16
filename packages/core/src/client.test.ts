@@ -342,25 +342,28 @@ describe("on the server", () => {
 	});
 });
 
-describe("ssr: false", () => {
-	function capabilityQuery(input: { id: number }) {
+describe("enabled", () => {
+	function capabilityQuery(input: {
+		enabled: boolean | "browser";
+		id: number;
+	}) {
 		const calls: Array<number> = [];
 		return {
 			calls,
 			query: () =>
 				queryOptions({
+					enabled: input.enabled,
 					queryFn: () => {
 						calls.push(input.id);
 						return "granted";
 					},
 					queryKey: ["capability", input.id],
-					ssr: false,
 				}),
 		};
 	}
 
-	it("never runs or sends the query on the server", async () => {
-		const capability = capabilityQuery({ id: 1 });
+	it('never runs or sends an enabled: "browser" query on the server', async () => {
+		const capability = capabilityQuery({ enabled: "browser", id: 1 });
 		const qc = new QueryClient({ isServer: true });
 
 		const handle = qc.prefetch(capability.query);
@@ -370,10 +373,10 @@ describe("ssr: false", () => {
 		await qc.invalidate(capability.query);
 		await Effect.runPromise(Query.refetch(query));
 		await expect(qc.ensure(capability.query)).rejects.toBeInstanceOf(
-			Query.BrowserOnlyError,
+			Query.DisabledError,
 		);
 		await expect(qc.fetch(capability.query)).rejects.toThrow(
-			'Query ["capability",1] runs in the browser only (ssr: false)',
+			'Query ["capability",1] runs in the browser only (enabled: "browser")',
 		);
 
 		expect(capability.calls).toEqual([]);
@@ -383,8 +386,8 @@ describe("ssr: false", () => {
 		expect(dehydrate(qc, { filter: () => true }).queries).toEqual([]);
 	});
 
-	it("runs the query in the browser", async () => {
-		const capability = capabilityQuery({ id: 1 });
+	it('runs an enabled: "browser" query in the browser', async () => {
+		const capability = capabilityQuery({ enabled: "browser", id: 1 });
 		const qc = new QueryClient({ isServer: false });
 
 		await expect(qc.fetch(capability.query)).resolves.toHaveProperty(
@@ -392,6 +395,54 @@ describe("ssr: false", () => {
 			"granted",
 		);
 		expect(capability.calls).toEqual([1]);
+	});
+
+	it("never runs an enabled: false query in the browser", async () => {
+		const capability = capabilityQuery({ enabled: false, id: 1 });
+		const qc = new QueryClient({ isServer: false });
+
+		qc.prefetch(capability.query);
+		const query = qc.getQuery(capability.query);
+		const promise = Query.readUnsafe(query);
+		const unsubscribe = Query.subscribeUnsafe(query, () => {});
+		await qc.invalidate(capability.query);
+		await Effect.runPromise(Query.refetch(query));
+		await expect(qc.fetch(capability.query)).rejects.toThrow(
+			'Query ["capability",1] is disabled (enabled: false)',
+		);
+		unsubscribe();
+
+		expect(capability.calls).toEqual([]);
+		expect(promise.status).toBe("rejected");
+	});
+
+	it("runs the query once a factory call enables it", async () => {
+		let enabled = false;
+		const calls: Array<string> = [];
+		function permissionQuery() {
+			return queryOptions({
+				enabled,
+				queryFn: async () => {
+					calls.push("permission");
+					return "granted";
+				},
+				queryKey: ["permission"],
+			});
+		}
+		const qc = new QueryClient({ isServer: false });
+		qc.prefetch(permissionQuery);
+		const disabled = Query.readUnsafe(qc.getQuery(permissionQuery));
+
+		enabled = true;
+		qc.prefetch(permissionQuery);
+		const query = qc.getQuery(permissionQuery);
+		const loading = Query.readUnsafe(query);
+
+		expect(disabled.status).toBe("rejected");
+		expect(loading).not.toBe(disabled);
+		await expect(loading).resolves.toBe("granted");
+		expect(Query.getUnsafe(query)).toMatchObject({ data: "granted" });
+		expect(calls).toEqual(["permission"]);
 	});
 });
 
