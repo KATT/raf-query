@@ -175,8 +175,16 @@ export interface QueryBehavior {
 	 * Keep the parts of new data that are deeply equal to the old data, so
 	 * unchanged objects keep their identity and unchanged data keeps its
 	 * promise. Compares plain objects and arrays. Default `true`.
+	 *
+	 * A function merges instead: it gets the cached data and the new data
+	 * whenever data replaces data (responses, `setData`, hydration) and
+	 * returns what to cache. Returning `oldData` itself keeps the promise, so
+	 * readers see no change. If it throws, so does `setData`, and a request
+	 * fails with that error.
 	 */
-	readonly structuralSharing?: boolean;
+	readonly structuralSharing?:
+		| boolean
+		| ((oldData: unknown, newData: unknown) => unknown);
 }
 
 declare const servicesType: unique symbol;

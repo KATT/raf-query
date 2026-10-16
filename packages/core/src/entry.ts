@@ -443,9 +443,12 @@ export function reset(entry: Entry): Effect.Effect<void> {
 	});
 }
 
-/** Write data directly, as if a request had returned it. */
+/**
+ * Write data directly, as if a request had returned it. Throws what a
+ * `structuralSharing` function throws.
+ */
 export function setData(entry: Entry, data: unknown, updatedAt = now(entry)) {
-	succeed(entry, data, updatedAt);
+	succeed(entry, share(entry, data), updatedAt);
 }
 
 /**
@@ -609,15 +612,16 @@ function settle(
 		return;
 	}
 	entry.inFlight = undefined;
-	if (Exit.isSuccess(exit)) {
-		const data = succeed(entry, exit.value, updatedAt);
+	const shared = Exit.isSuccess(exit) ? shareExit(entry, exit.value) : exit;
+	if (Exit.isSuccess(shared)) {
+		const data = succeed(entry, shared.value, updatedAt);
 		Deferred.doneUnsafe(awaiter, Exit.succeed(data));
-	} else if (Cause.hasInterruptsOnly(exit.cause)) {
+	} else if (Cause.hasInterruptsOnly(shared.cause)) {
 		set(entry, { fetchDirection: undefined, isFetching: false });
 		Deferred.doneUnsafe(awaiter, Exit.fail(new CancelledError()));
 	} else {
-		fail(entry, Cause.squash(exit.cause));
-		Deferred.doneUnsafe(awaiter, exit);
+		fail(entry, Cause.squash(shared.cause));
+		Deferred.doneUnsafe(awaiter, shared);
 	}
 	scheduleGc(entry);
 }
@@ -654,12 +658,35 @@ function unobserved(
 	scheduleGc(entry);
 }
 
-function succeed(entry: Entry, next: unknown, updatedAt: number) {
+/**
+ * `next`, keeping what `structuralSharing` keeps of the entry's data: the
+ * parts deeply equal to it, or whatever its function returns. Only data that
+ * replaces data is shared.
+ */
+function share(entry: Entry, next: unknown): unknown {
 	const previous = entry.state;
-	const data =
-		previous.hasData && behavior(entry, "structuralSharing") !== false
-			? replaceEqualDeep(previous.data, next)
-			: next;
+	if (!previous.hasData) {
+		return next;
+	}
+	const option = behavior(entry, "structuralSharing");
+	if (Predicate.isFunction(option)) {
+		return option(previous.data, next);
+	}
+	return option === false ? next : replaceEqualDeep(previous.data, next);
+}
+
+/** {@link share} for a response: a sharing function that throws fails the request. */
+function shareExit(entry: Entry, next: unknown): Exit.Exit<unknown, unknown> {
+	try {
+		return Exit.succeed(share(entry, next));
+	} catch (error) {
+		return Exit.die(error);
+	}
+}
+
+/** Write already-shared `data`; data identical to the old keeps its promise. */
+function succeed(entry: Entry, data: unknown, updatedAt: number) {
+	const previous = entry.state;
 	const firstLoad = entry.pending;
 	entry.pending = undefined;
 	firstLoad?.resolve(data);
