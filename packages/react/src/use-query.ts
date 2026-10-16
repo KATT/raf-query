@@ -12,6 +12,7 @@ import {
 	QueryObserver,
 	Query,
 	resultThenable,
+	type Thenable,
 	type ThrowsOnError,
 	type UseQueryControls,
 	type UseQueryOptions,
@@ -29,11 +30,11 @@ export type UseQueryResult<
 > =
 	ThrowsOnError<TFactory, TThrow> extends true
 		? readonly [
-				promise: Promise<DataOf<TFactory>>,
+				promise: Thenable<DataOf<TFactory>>,
 				controls: UseQueryControls<TFactory>,
 			]
 		: readonly [
-				promise: Promise<Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>>,
+				promise: Thenable<Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>>,
 				controls: UseQueryControls<TFactory>,
 			];
 
@@ -101,7 +102,15 @@ function storeFor<TFactory extends QueryFactory>(
  * The promise is stable per data version and already fulfilled once the
  * cache has data, so `use()` only suspends while there is nothing to show.
  * The component re-renders when the promise changes, and when a control it
- * has read changes; changes to controls it never reads are skipped.
+ * has read changes; changes to controls it never reads are skipped. A
+ * first load settles its pending promise in place: that counts as a change
+ * once the component has read the promise's `status`, `value` or `reason`,
+ * so reading them without `use()` re-renders when the data lands:
+ *
+ * ```tsx
+ * const [tagPromise] = useQuery(tagQuery, loaderData.tag);
+ * const tag = tagPromise.status === "fulfilled" ? tagPromise.value : "…";
+ * ```
  *
  * A handle from `ensure` or `fetch` already has its data, so the hook
  * unwraps the promise itself and returns the data (or `Result`):
@@ -196,10 +205,10 @@ export function useQuery<TFactory extends QueryFactory>(
 			] as unknown as UseQueryResultWithData<TFactory, false>;
 		}
 		// SAFETY: Result thenable for typed ErrorOf when throwOnError is false.
-		return [resultPromise, controls] as unknown as UseQueryResult<
-			TFactory,
-			false
-		>;
+		return [
+			QueryObserver.trackThenable(observer, resultPromise),
+			controls,
+		] as unknown as UseQueryResult<TFactory, false>;
 	}
 	if (withData) {
 		const data = use(result.promise);
@@ -212,8 +221,8 @@ export function useQuery<TFactory extends QueryFactory>(
 	// SAFETY: the result's promise is this factory's entry's promise (or an
 	// earlier input's entry of the same factory), and the result has every
 	// field of both control shapes.
-	return [result.promise, controls] as unknown as UseQueryResult<
-		TFactory,
-		true
-	>;
+	return [
+		QueryObserver.trackThenable(observer, result.promise),
+		controls,
+	] as unknown as UseQueryResult<TFactory, true>;
 }
