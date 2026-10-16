@@ -9,7 +9,7 @@ import { AssigneeCardSkeleton } from "@examples/kit/components/user";
 import { Button, buttonVariants } from "@examples/ui/components/button";
 import { cn } from "@examples/ui/lib/utils";
 import { Separator } from "@examples/ui/components/separator";
-import type { QueryHandle } from "@raf-query/react";
+import { type QueryHandleWithData, useQuery } from "@raf-query/react";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -18,17 +18,15 @@ import { EditBody } from "~/components/edit-body.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
 import { AppLink } from "~/components/settings.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
-import { useLoaderVerb } from "~/components/loader-verb.tsx";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
-import { useQueryData } from "~/use-query-data.ts";
 
 import { AssigneeCard } from "./assignee-card.tsx";
 import { Comments } from "./comments.tsx";
 
 export function IssuePage(props: {
-	readonly assignee: QueryHandle<typeof assigneeQuery>;
-	readonly comments: QueryHandle<typeof commentsQuery>;
-	readonly issue: QueryHandle<typeof issueQuery>;
+	readonly assignee: QueryHandleWithData<typeof assigneeQuery>;
+	readonly comments: QueryHandleWithData<typeof commentsQuery>;
+	readonly issue: QueryHandleWithData<typeof issueQuery>;
 }) {
 	const id = props.issue.input.id;
 
@@ -71,12 +69,11 @@ export function IssuePage(props: {
 
 /** Back, previous, and next come from the URL, so the bar renders before the issue. */
 function IssueNav(props: { readonly id: number }) {
-	const verb = useLoaderVerb();
 	return (
 		<nav className="flex items-center gap-2">
 			<AppLink
 				className={cn(buttonVariants({ size: "sm", variant: "ghost" }))}
-				href={`/${verb}/issues`}
+				href="/fetch/issues"
 			>
 				<ArrowLeft /> All issues
 			</AppLink>
@@ -85,7 +82,7 @@ function IssueNav(props: { readonly id: number }) {
 					<AppLink
 						aria-label="Previous issue"
 						className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
-						href={`/${verb}/issues/${props.id - 1}`}
+						href={`/fetch/issues/${props.id - 1}`}
 						title="Previous issue"
 					>
 						<ChevronLeft />
@@ -104,7 +101,7 @@ function IssueNav(props: { readonly id: number }) {
 				<AppLink
 					aria-label="Next issue"
 					className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
-					href={`/${verb}/issues/${props.id + 1}`}
+					href={`/fetch/issues/${props.id + 1}`}
 					title="Next issue"
 				>
 					<ChevronRight />
@@ -114,15 +111,17 @@ function IssueNav(props: { readonly id: number }) {
 	);
 }
 
-function useIssue(handle: QueryHandle<typeof issueQuery>) {
-	const [issue] = useQueryData(issueQuery, handle);
+function useIssue(handle: QueryHandleWithData<typeof issueQuery>) {
+	const [issue] = useQuery(issueQuery, handle);
 	if (!issue) {
 		notFound();
 	}
 	return issue;
 }
 
-function IssueBody(props: { readonly handle: QueryHandle<typeof issueQuery> }) {
+function IssueBody(props: {
+	readonly handle: QueryHandleWithData<typeof issueQuery>;
+}) {
 	const issue = useIssue(props.handle);
 
 	return (
@@ -137,7 +136,7 @@ function IssueBody(props: { readonly handle: QueryHandle<typeof issueQuery> }) {
 }
 
 function IssueStatus(props: {
-	readonly handle: QueryHandle<typeof issueQuery>;
+	readonly handle: QueryHandleWithData<typeof issueQuery>;
 }) {
 	const issue = useIssue(props.handle);
 	return <StatusSelect align="end" issueId={issue.id} status={issue.status} />;

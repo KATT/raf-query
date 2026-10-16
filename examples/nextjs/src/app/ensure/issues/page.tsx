@@ -1,11 +1,9 @@
 import { IssueListInput } from "@examples/db/types";
 import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { allKeyed } from "@raf-query/react";
-import { HydrationBoundary } from "@raf-query/react";
+import { allKeyed, HydrationBoundary } from "@raf-query/react";
 import { Suspense } from "react";
 
-import { parseLoaderVerb, startQuery } from "~/loader-verb.ts";
 import { issueCountsQuery, issueListQuery } from "~/queries.ts";
 import { getQueryClient } from "~/query-client.ts";
 
@@ -13,17 +11,17 @@ import { IssueList } from "./_components/issue-list.tsx";
 import { StatusFilter } from "./_components/status-filter.tsx";
 
 export default async function IssuesPage(props: {
-	readonly params: Promise<{ verb: string }>;
 	readonly searchParams: Promise<
 		Record<string, string | ReadonlyArray<string>>
 	>;
 }) {
 	const input = IssueListInput.parse(await props.searchParams);
-	const verb = parseLoaderVerb((await props.params).verb);
 	const qc = getQueryClient();
+	// `ensure` waits for data the cache doesn't have. The server renders
+	// every navigation with a new client, so here it waits like `fetch`.
 	const handles = await allKeyed({
-		counts: startQuery(qc, verb, issueCountsQuery),
-		issues: startQuery(qc, verb, issueListQuery, input),
+		counts: qc.ensure(issueCountsQuery),
+		issues: qc.ensure(issueListQuery, input),
 	});
 
 	return (
