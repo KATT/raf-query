@@ -19,7 +19,7 @@ export type App = (typeof apps)[number];
 /** The route each app's CodeSandbox link opens, relative to the app. */
 const routes = {
 	nextjs: "src/app/[verb]/issues/page.tsx",
-	"react-router": "app/routes/issues/route.tsx",
+	"react-router": "app/routes/$verb/issues/route.tsx",
 	"tanstack-start": "src/routes/$verb/issues/index.tsx",
 	"tanstack-start-effect": "src/routes/$verb/issues/index.tsx",
 } satisfies Record<App, string>;

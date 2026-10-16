@@ -12,6 +12,7 @@ Behavior-level inventory of the example issue tracker, from a user's point of vi
 
 ## Driving conventions
 
+- Recipes open `$U/issues…`, which redirects to the same page under `/prefetch/` (see [loader verb](loader-verb.md)). Paths read back from the page (`location.pathname`, link targets) carry the verb.
 - Find elements by role and accessible name (`$CE snapshot`), never by CSS class or position.
 - Wait for text with `$CE wait`, not fixed sleeps. The server adds about 400 ms ± 50% per API call by default; set Latency to None for fast runs, or 3 s to watch pending states.
 - `$CE open` the same URL twice after starting a dev server: Vite and Next.js compile on first visit and may reload the page once.

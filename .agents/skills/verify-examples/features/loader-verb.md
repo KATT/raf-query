@@ -40,8 +40,7 @@ Commands:
 
 ## Gotchas
 
-- `react-router` doesn't have the bar yet: its pages live at `/issues…` and always `prefetch`.
-- In `nextjs` every navigation renders on the server with a new query client, so `ensure` waits on every visit, like `fetch`. Its first HTML under `ensure` and `fetch` still has skeleton markup, swapped out within the same response; check that the time to first byte waits for the data (`curl -w '%{time_starttransfer}'` with latency at 3 s) rather than counting `animate-pulse`.
+- In `nextjs` and `react-router` every navigation renders on the server with a new query client, so `ensure` waits on every visit, like `fetch`. Their first HTML under `ensure` and `fetch` still has skeleton markup, swapped out within the same response; check that the time to first byte waits for the data (`curl -w '%{time_starttransfer}'` with latency at 3 s) rather than counting `animate-pulse`. `react-router` waits for the whole page for bots, and `curl`'s default user agent counts as one: send a browser's (`-A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'`) to see `prefetch` stream.
 - In `tanstack-start-effect`, `ensure` and `fetch` reject with the query's failure: the issue loader catches `IssueNotFound` and throws the router's not-found, so a missing issue is a 404 there too.
 - The URL changes as soon as you click, before `ensure` or `fetch` finish: check what's on screen (`$PAGE`), not `location.pathname`.
 - The router reruns a revisited route's loader before showing it (`defaultStaleReloadMode: "blocking"`). Without that it would show the route's last loader data and rerun the loader behind it, and `fetch` would never wait.

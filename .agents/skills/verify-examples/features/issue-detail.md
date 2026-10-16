@@ -22,10 +22,10 @@ Preconditions:
 
 Commands:
 
-- **Sections.** `$CE open $U/issues/3; $CE snapshot`. Has `textbox "Title"`, `textbox "Description"`, `heading "PROPERTIES"`, `button "Status: Open. Change status"`, `heading "2 comments"`, `textbox "Add a comment"`, and links `All issues`, `Previous issue` (`/issues/2`), `Next issue` (`/issues/4`). `$CE text | grep -E '^(Opened|Assignee|Linus Torvalds|Kernel maintainer)'` prints `Opened Sun Jan 11 2026`, `Assignee`, `Linus Torvalds`, `Kernel maintainer`.
-- **Next and previous.** `$CE click --role link --name 'Next issue' --exact; $CE wait --text "Notification email ignores the user's locale"; $CE eval location.pathname` gives `"/issues/4"`. `$CE click --role link --name 'Previous issue' --exact` goes back to `/issues/3`.
+- **Sections.** `$CE open $U/issues/3; $CE snapshot`. Has `textbox "Title"`, `textbox "Description"`, `heading "PROPERTIES"`, `button "Status: Open. Change status"`, `heading "2 comments"`, `textbox "Add a comment"`, and links `All issues`, `Previous issue` (`/prefetch/issues/2`), `Next issue` (`/prefetch/issues/4`). `$CE text | grep -E '^(Opened|Assignee|Linus Torvalds|Kernel maintainer)'` prints `Opened Sun Jan 11 2026`, `Assignee`, `Linus Torvalds`, `Kernel maintainer`.
+- **Next and previous.** `$CE click --role link --name 'Next issue' --exact; $CE wait --text "Notification email ignores the user's locale"; $CE eval location.pathname` gives `"/prefetch/issues/4"`. `$CE click --role link --name 'Previous issue' --exact` goes back to `/prefetch/issues/3`.
 - **First issue.** `$CE open $U/issues/1; $CE snapshot | grep 'Previous issue'`. `button "Previous issue" [disabled]`.
-- **Skeletons on a step.** `$CE open $U/issues/3; $CE select --name Latency --value 3000; $CE click --role link --name 'Next issue' --exact`, then right away `$CE eval 'location.pathname + " " + document.querySelectorAll(".animate-pulse").length + " " + document.querySelector("input[aria-label=Title]")?.value'`. `"/issues/4 8 undefined"`: the URL moved and skeletons stand in for every section; issue `#3`'s title is gone. `$CE wait --role textbox --name Title --exact --timeout 15000` then shows the data. Click `Reset` afterwards.
+- **Skeletons on a step.** `$CE open $U/issues/3; $CE select --name Latency --value 3000; $CE click --role link --name 'Next issue' --exact`, then right away `$CE eval 'location.pathname + " " + document.querySelectorAll(".animate-pulse").length + " " + document.querySelector("input[aria-label=Title]")?.value'`. `"/prefetch/issues/4 8 undefined"`: the URL moved and skeletons stand in for every section; issue `#3`'s title is gone. `$CE wait --role textbox --name Title --exact --timeout 15000` then shows the data. Click `Reset` afterwards.
 
 ## Gotchas
 
