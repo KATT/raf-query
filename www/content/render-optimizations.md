@@ -28,6 +28,16 @@ Structural sharing only looks inside plain objects and arrays. Class instances, 
 tanstack-start/src/docs/render-optimizations.ts#structural-sharing
 ```
 
+### A custom merge
+
+For data the default can't compare, pass a function instead. It gets the cached data and the new data, and returns what to cache. Return the old data itself and nothing changes for readers: same data, same promise, no re-render. This one keeps the old schedule when the new one serializes the same, `Date`s included:
+
+```sample
+tanstack-start/src/docs/render-optimizations.ts#custom-merge
+```
+
+The function runs whenever data replaces data: a response, `setData`, or hydration into an entry that already has data. A first load is cached as it is. For [infinite queries](./infinite-queries.md), it gets the whole `{ pages, pageParams }`. If it throws, the request fails with that error and the cached data stays, and `setData` throws.
+
 ## Stable promises
 
 `useQuery` returns a promise owned by the cache. It changes only when the data does, so it's safe to pass down, compare, or use as a dependency. A new promise is always pre-resolved: `use()` returns its value synchronously, and nothing suspends on a refetch.

@@ -79,7 +79,6 @@ Same problem space, fewer knobs:
 | `refetchOnWindowFocus` / `Reconnect`: `'always'` or a function      | Boolean only: refetch read + stale queries, or don't                                                  |
 | `refetchIntervalInBackground`                                       | Polling is per-read and pauses while the tab is hidden                                                |
 | `initialData` / `initialDataUpdatedAt`                              | Seed with `setData` / hydrate, or let the loader fetch                                                |
-| Custom `structuralSharing` merge function                           | Boolean on / off; deep equality on plain objects and arrays                                           |
 | Query filter `type` / `stale` / `fetchStatus` fields                | Filter is `{ queryKey?, exact?, predicate? }`; `predicate` covers the rest                            |
 | `cancelQueries` as its own verb                                     | `remove` cancels; unread background refetches abort when the last reader leaves                       |
 | Manual `notifyOnChangeProps` allowlist                              | Automatic tracked results, like TanStack's default path                                               |

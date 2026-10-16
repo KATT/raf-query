@@ -47,7 +47,7 @@ Accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
 | `retry` (count, `boolean`, predicate, `Schedule`)                                        | `3`; `0` on the server                            |
 | `retryDelay` (ms, or a function of the failure count)                                    | Doubling from 1 s, at most 30 s                   |
 | `refetchOnWindowFocus`, `refetchOnReconnect`                                             | `true` (only read, stale queries refetch)         |
-| `structuralSharing` (keep deeply equal parts of data)                                    | `true`                                            |
+| `structuralSharing` (keep deeply equal parts of data, or a merge function)               | `true`                                            |
 | `ssr` (`false`: [only the browser runs it](./ssr-and-hydration.md#browser-only-queries)) | `true`                                            |
 | [`meta`](./query-meta.md)                                                                | None                                              |
 
