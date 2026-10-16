@@ -7,33 +7,45 @@ import { AssigneeCardSkeleton } from "@examples/kit/components/user";
 import { Button, buttonVariants } from "@examples/ui/components/button";
 import { cn } from "@examples/ui/lib/utils";
 import { Separator } from "@examples/ui/components/separator";
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import { allKeyed, type QueryHandle } from "@raf-query/react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Result, Schema } from "effect";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
-import { Suspense, use } from "react";
+import { Suspense } from "react";
 
 import { EditBody } from "~/components/edit-body.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
+import { startQuery, useQueryData } from "~/loader-verb.ts";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 import { IssueId, IssueNotFound } from "~/rpc.ts";
 
 import { AssigneeCard } from "./-components/assignee-card.tsx";
 import { Comments } from "./-components/comments.tsx";
 
-export const Route = createFileRoute("/issues/$issueId")({
-	loader: (args) => {
+export const Route = createFileRoute("/$verb/issues/$issueId")({
+	loader: async (args) => {
 		const qc = args.context.queryClient;
+		const verb = args.params.verb;
 		const id = Number(args.params.issueId);
 		if (!Schema.is(IssueId)(id)) {
 			throw notFound();
 		}
-		return {
-			assignee: qc.prefetch(assigneeQuery, { issueId: id }),
-			comments: qc.prefetch(commentsQuery, { issueId: id }),
-			issue: qc.prefetch(issueQuery, { id }),
-		};
+		try {
+			return await allKeyed({
+				assignee: startQuery(qc, verb, assigneeQuery, { issueId: id }),
+				comments: startQuery(qc, verb, commentsQuery, { issueId: id }),
+				issue: startQuery(qc, verb, issueQuery, { id }),
+			});
+		} catch (error) {
+			// `ensure` and `fetch` reject with the query's failure, so a missing
+			// issue 404s here. After `prefetch`, the page finds out when it reads
+			// the issue.
+			if (Schema.is(IssueNotFound)(error)) {
+				throw notFound();
+			}
+			throw error;
+		}
 	},
 	component: IssuePage,
 	// Previous and next stay on this route, so a new id mounts a fresh page.
@@ -83,11 +95,14 @@ function IssuePage() {
 
 /** Back, previous, and next come from the URL, so the bar renders before the issue. */
 function IssueNav(props: { readonly id: number }) {
+	const params = Route.useParams();
+
 	return (
 		<nav className="flex items-center gap-2">
 			<Link
 				className={cn(buttonVariants({ size: "sm", variant: "ghost" }))}
-				to="/issues"
+				params={{ verb: params.verb }}
+				to="/$verb/issues"
 			>
 				<ArrowLeft /> All issues
 			</Link>
@@ -96,9 +111,9 @@ function IssueNav(props: { readonly id: number }) {
 					<Link
 						aria-label="Previous issue"
 						className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
-						params={{ issueId: String(props.id - 1) }}
+						params={{ issueId: String(props.id - 1), verb: params.verb }}
 						title="Previous issue"
-						to="/issues/$issueId"
+						to="/$verb/issues/$issueId"
 					>
 						<ChevronLeft />
 					</Link>
@@ -116,9 +131,9 @@ function IssueNav(props: { readonly id: number }) {
 				<Link
 					aria-label="Next issue"
 					className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
-					params={{ issueId: String(props.id + 1) }}
+					params={{ issueId: String(props.id + 1), verb: params.verb }}
 					title="Next issue"
-					to="/issues/$issueId"
+					to="/$verb/issues/$issueId"
 				>
 					<ChevronRight />
 				</Link>
@@ -132,8 +147,7 @@ function IssueNav(props: { readonly id: number }) {
  * not-found page; any other failure throws to the error boundary.
  */
 function useIssue(handle: QueryHandle<typeof issueQuery>) {
-	const [issuePromise] = useQuery(issueQuery, handle);
-	const issue = use(issuePromise);
+	const [issue] = useQueryData(issueQuery, handle);
 	if (Result.isFailure(issue)) {
 		if (Schema.is(IssueNotFound)(issue.failure)) {
 			throw notFound();

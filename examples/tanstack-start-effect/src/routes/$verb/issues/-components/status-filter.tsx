@@ -1,9 +1,9 @@
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import type { QueryHandle } from "@raf-query/react";
 import { statusLabel } from "@examples/kit/components/status-badge";
 import { cn } from "@examples/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
-import { use } from "react";
 
+import { useQueryData } from "~/loader-verb.ts";
 import { issueCountsQuery } from "~/queries.ts";
 import { type IssueListInput, issueSorts, issueStatuses } from "~/rpc.ts";
 
@@ -11,10 +11,9 @@ export function StatusFilter(props: {
 	readonly counts: QueryHandle<typeof issueCountsQuery>;
 	readonly current: IssueListInput;
 }) {
-	const [countsPromise] = useQuery(issueCountsQuery, props.counts, {
+	const [counts] = useQueryData(issueCountsQuery, props.counts, {
 		throwOnError: true,
 	});
-	const counts = use(countsPromise);
 	const current = props.current;
 
 	return (
@@ -26,9 +25,10 @@ export function StatusFilter(props: {
 							"flex justify-between gap-2 rounded-md px-3 py-1.5 text-sm hover:bg-muted",
 							current.status === status && "bg-muted font-medium",
 						)}
+						from="/$verb/issues/"
 						key={status}
 						search={{ ...current, status }}
-						to="/issues"
+						to="."
 					>
 						{statusLabel(status)}
 						<span className="text-muted-foreground">{counts[status]}</span>
@@ -45,9 +45,10 @@ export function StatusFilter(props: {
 							"rounded-md px-3 py-1.5 text-sm capitalize hover:bg-muted",
 							current.sort === sort && "bg-muted font-medium",
 						)}
+						from="/$verb/issues/"
 						key={sort}
 						search={{ ...current, sort }}
-						to="/issues"
+						to="."
 					>
 						{sort}
 					</Link>

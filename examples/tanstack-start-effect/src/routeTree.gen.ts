@@ -10,13 +10,20 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VerbRouteRouteImport } from './routes/$verb/route'
 import { Route as RpcRouteImport } from './routes/rpc'
-import { Route as IssuesIndexRouteImport } from './routes/issues/index'
-import { Route as IssuesIssueIdRouteRouteImport } from './routes/issues/$issueId/route'
+import { Route as IssuesSplatRouteImport } from './routes/issues.$'
+import { Route as VerbIssuesIndexRouteImport } from './routes/$verb/issues/index'
+import { Route as VerbIssuesIssueIdRouteRouteImport } from './routes/$verb/issues/$issueId/route'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerbRouteRoute = VerbRouteRouteImport.update({
+  id: '/$verb',
+  path: '/$verb',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RpcRoute = RpcRouteImport.update({
@@ -24,49 +31,79 @@ const RpcRoute = RpcRouteImport.update({
   path: '/rpc',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IssuesIndexRoute = IssuesIndexRouteImport.update({
-  id: '/issues/',
-  path: '/issues/',
+const IssuesSplatRoute = IssuesSplatRouteImport.update({
+  id: '/issues/$',
+  path: '/issues/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IssuesIssueIdRouteRoute = IssuesIssueIdRouteRouteImport.update({
+const VerbIssuesIndexRoute = VerbIssuesIndexRouteImport.update({
+  id: '/issues/',
+  path: '/issues/',
+  getParentRoute: () => VerbRouteRoute,
+} as any)
+const VerbIssuesIssueIdRouteRoute = VerbIssuesIssueIdRouteRouteImport.update({
   id: '/issues/$issueId',
   path: '/issues/$issueId',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => VerbRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$verb': typeof VerbRouteRouteWithChildren
   '/rpc': typeof RpcRoute
-  '/issues/$issueId': typeof IssuesIssueIdRouteRoute
-  '/issues/': typeof IssuesIndexRoute
+  '/issues/$': typeof IssuesSplatRoute
+  '/$verb/issues/$issueId': typeof VerbIssuesIssueIdRouteRoute
+  '/$verb/issues/': typeof VerbIssuesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$verb': typeof VerbRouteRouteWithChildren
   '/rpc': typeof RpcRoute
-  '/issues/$issueId': typeof IssuesIssueIdRouteRoute
-  '/issues': typeof IssuesIndexRoute
+  '/issues/$': typeof IssuesSplatRoute
+  '/$verb/issues/$issueId': typeof VerbIssuesIssueIdRouteRoute
+  '/$verb/issues': typeof VerbIssuesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$verb': typeof VerbRouteRouteWithChildren
   '/rpc': typeof RpcRoute
-  '/issues/$issueId': typeof IssuesIssueIdRouteRoute
-  '/issues/': typeof IssuesIndexRoute
+  '/issues/$': typeof IssuesSplatRoute
+  '/$verb/issues/$issueId': typeof VerbIssuesIssueIdRouteRoute
+  '/$verb/issues/': typeof VerbIssuesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/rpc' | '/issues/$issueId' | '/issues/'
+  fullPaths:
+    | '/'
+    | '/$verb'
+    | '/rpc'
+    | '/issues/$'
+    | '/$verb/issues/$issueId'
+    | '/$verb/issues/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/rpc' | '/issues/$issueId' | '/issues'
-  id: '__root__' | '/' | '/rpc' | '/issues/$issueId' | '/issues/'
+  to:
+    | '/'
+    | '/$verb'
+    | '/rpc'
+    | '/issues/$'
+    | '/$verb/issues/$issueId'
+    | '/$verb/issues'
+  id:
+    | '__root__'
+    | '/'
+    | '/$verb'
+    | '/rpc'
+    | '/issues/$'
+    | '/$verb/issues/$issueId'
+    | '/$verb/issues/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  VerbRouteRoute: typeof VerbRouteRouteWithChildren
   RpcRoute: typeof RpcRoute
-  IssuesIssueIdRouteRoute: typeof IssuesIssueIdRouteRoute
-  IssuesIndexRoute: typeof IssuesIndexRoute
+  IssuesSplatRoute: typeof IssuesSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -78,6 +115,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$verb': {
+      id: '/$verb'
+      path: '/$verb'
+      fullPath: '/$verb'
+      preLoaderRoute: typeof VerbRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rpc': {
       id: '/rpc'
       path: '/rpc'
@@ -85,28 +129,49 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RpcRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/issues/': {
-      id: '/issues/'
-      path: '/issues'
-      fullPath: '/issues/'
-      preLoaderRoute: typeof IssuesIndexRouteImport
+    '/issues/$': {
+      id: '/issues/$'
+      path: '/issues/$'
+      fullPath: '/issues/$'
+      preLoaderRoute: typeof IssuesSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/issues/$issueId': {
-      id: '/issues/$issueId'
+    '/$verb/issues/': {
+      id: '/$verb/issues/'
+      path: '/issues'
+      fullPath: '/$verb/issues/'
+      preLoaderRoute: typeof VerbIssuesIndexRouteImport
+      parentRoute: typeof VerbRouteRoute
+    }
+    '/$verb/issues/$issueId': {
+      id: '/$verb/issues/$issueId'
       path: '/issues/$issueId'
-      fullPath: '/issues/$issueId'
-      preLoaderRoute: typeof IssuesIssueIdRouteRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/$verb/issues/$issueId'
+      preLoaderRoute: typeof VerbIssuesIssueIdRouteRouteImport
+      parentRoute: typeof VerbRouteRoute
     }
   }
 }
 
+interface VerbRouteRouteChildren {
+  VerbIssuesIssueIdRouteRoute: typeof VerbIssuesIssueIdRouteRoute
+  VerbIssuesIndexRoute: typeof VerbIssuesIndexRoute
+}
+
+const VerbRouteRouteChildren: VerbRouteRouteChildren = {
+  VerbIssuesIssueIdRouteRoute: VerbIssuesIssueIdRouteRoute,
+  VerbIssuesIndexRoute: VerbIssuesIndexRoute,
+}
+
+const VerbRouteRouteWithChildren = VerbRouteRoute._addFileChildren(
+  VerbRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  VerbRouteRoute: VerbRouteRouteWithChildren,
   RpcRoute: RpcRoute,
-  IssuesIssueIdRouteRoute: IssuesIssueIdRouteRoute,
-  IssuesIndexRoute: IssuesIndexRoute,
+  IssuesSplatRoute: IssuesSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

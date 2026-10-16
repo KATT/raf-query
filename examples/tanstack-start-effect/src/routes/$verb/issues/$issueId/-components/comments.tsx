@@ -6,12 +6,13 @@ import {
 } from "@examples/kit/components/comments";
 import { LoadMore } from "@examples/kit/components/load-more";
 import { warnMockDbWrite } from "@examples/kit/lib/mock-db-toast";
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import type { QueryHandle } from "@raf-query/react";
 import { useRouteContext } from "@tanstack/react-router";
 import { Effect } from "effect";
-import { use, useOptimistic, useRef } from "react";
+import { useOptimistic, useRef } from "react";
 
 import { Issues } from "~/issues.ts";
+import { useQueryData } from "~/loader-verb.ts";
 import { commentsQuery, invalidateIssues } from "~/queries.ts";
 import type { Comment } from "~/rpc.ts";
 
@@ -37,10 +38,9 @@ export function Comments(props: {
 		select: (context) => context.queryClient,
 	});
 	const formRef = useRef<HTMLFormElement>(null);
-	const [pagesPromise, comments] = useQuery(commentsQuery, props.handle, {
+	const [pages, comments] = useQueryData(commentsQuery, props.handle, {
 		throwOnError: true,
 	});
-	const pages = use(pagesPromise);
 	const issueId = props.handle.input.issueId;
 	const loaded = pages.pages.flatMap((page) => page.comments);
 	const confirmedIds = new Set(loaded.map((comment) => comment.id));

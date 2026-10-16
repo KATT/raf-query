@@ -1,4 +1,4 @@
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import type { QueryHandle } from "@raf-query/react";
 import { Card } from "@examples/ui/components/card";
 import {
 	IssueListSummary,
@@ -9,20 +9,20 @@ import {
 } from "@examples/kit/components/issue-list";
 import { LoadMore } from "@examples/kit/components/load-more";
 import { cn } from "@examples/ui/lib/utils";
-import { Link } from "@tanstack/react-router";
-import { use } from "react";
+import { Link, useParams } from "@tanstack/react-router";
 
 import { StatusSelect } from "~/components/status-select.tsx";
+import { useQueryData } from "~/loader-verb.ts";
 import { issueListQuery } from "~/queries.ts";
 
 export function IssueList(props: {
 	readonly handle: QueryHandle<typeof issueListQuery>;
 }) {
-	const [pagesPromise, list] = useQuery(issueListQuery, props.handle, {
+	const params = useParams({ from: "/$verb" });
+	const [pages, list] = useQueryData(issueListQuery, props.handle, {
 		throwOnError: true,
 		whilePending: "previous",
 	});
-	const pages = use(pagesPromise);
 	const lastPage = pages.pages.at(-1);
 	const total = lastPage?.total ?? 0;
 	const shown = pages.pages.reduce((sum, page) => sum + page.issues.length, 0);
@@ -50,8 +50,8 @@ export function IssueList(props: {
 							<Link
 								className={issueRowClassName}
 								key={issue.id}
-								params={{ issueId: String(issue.id) }}
-								to="/issues/$issueId"
+								params={{ issueId: String(issue.id), verb: params.verb }}
+								to="/$verb/issues/$issueId"
 							>
 								<IssueRow issue={issue}>
 									<StatusSelect issueId={issue.id} status={issue.status} />

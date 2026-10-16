@@ -1,20 +1,19 @@
 import { AssigneeCardView } from "@examples/kit/components/user";
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import type { QueryHandle } from "@raf-query/react";
 import { Result, Schema } from "effect";
-import { use } from "react";
 
+import { useQueryData } from "~/loader-verb.ts";
 import { assigneeQuery } from "~/queries.ts";
 import { IssueNotFound } from "~/rpc.ts";
 
 /**
  * Reads the assignee as `Result<User, …>`. The client's `layer` defaults
- * `throwOnError` to false, so `use()` never throws — match the Result.
+ * `throwOnError` to false, so the read never throws — match the Result.
  */
 export function AssigneeCard(props: {
 	readonly handle: QueryHandle<typeof assigneeQuery>;
 }) {
-	const [userPromise, controls] = useQuery(assigneeQuery, props.handle);
-	const user = use(userPromise);
+	const [user, controls] = useQueryData(assigneeQuery, props.handle);
 	return Result.match(user, {
 		onFailure: (error) =>
 			Schema.is(IssueNotFound)(error) ? null : (
