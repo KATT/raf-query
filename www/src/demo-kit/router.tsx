@@ -9,8 +9,10 @@ import {
 } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { BrowserWindow } from "./browser.tsx";
+import { BrowserWindow, type DemoNavigation } from "./browser.tsx";
 import { useDemoSession } from "./session.ts";
+
+const navigatingAttribute = "data-demo-navigating";
 
 /** A page's first load, before its loader has data to render. */
 function PageSkeleton() {
@@ -35,23 +37,36 @@ export function DemoRouter(props: {
 }) {
 	const queryClient = useQueryClient();
 	const session = useDemoSession();
-	const [router] = useState(() =>
-		createRouter({
+	const [router] = useState(() => {
+		const history = createMemoryHistory({
+			initialEntries: [session.location ?? props.initial],
+		});
+		let lastAction = "PUSH";
+		history.subscribe((event) => {
+			lastAction = event.action.type;
+		});
+		return createRouter({
 			context: { queryClient },
 			// A stale loader reruns before the page renders, instead of the router
 			// showing its last loader data meanwhile, so what each verb waits for
 			// is what the page waits for.
 			defaultStaleReloadMode: "blocking",
-			history: createMemoryHistory({
-				initialEntries: [session.location ?? props.initial],
-			}),
+			defaultViewTransition: {
+				types: (change): Array<DemoNavigation> | false => {
+					if (!change.fromLocation || !change.hrefChanged) {
+						return false;
+					}
+					return lastAction === "BACK" ? ["demo-back"] : ["demo-forward"];
+				},
+			},
+			history,
 			routeTree: props.routeTree,
 			// The router scrolls the window to the top after each navigation, its
 			// first load included, unless this returns false. The window is the
 			// docs page, not the demo.
 			scrollRestoration: () => false,
-		}),
-	);
+		});
+	});
 	const href = useRouterState({
 		router,
 		select: (state) => state.location.href,
@@ -81,8 +96,27 @@ export function DemoRouter(props: {
 				session.reload(href);
 			}}
 		>
-			{isFirstLoad ? <PageSkeleton /> : null}
-			<RouterProvider router={router} />
+			{/* Several demos can share a page, and view transition names must be
+			    unique: the marker moves to whichever window navigates last, and
+			    styles.css names only that one. */}
+			<div
+				ref={(page) => {
+					if (page === null) {
+						return;
+					}
+					return router.subscribe("onBeforeNavigate", () => {
+						for (const marked of document.querySelectorAll(
+							`[${navigatingAttribute}]`,
+						)) {
+							marked.removeAttribute(navigatingAttribute);
+						}
+						page.setAttribute(navigatingAttribute, "");
+					});
+				}}
+			>
+				{isFirstLoad ? <PageSkeleton /> : null}
+				<RouterProvider router={router} />
+			</div>
 		</BrowserWindow>
 	);
 }

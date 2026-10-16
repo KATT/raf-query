@@ -93,6 +93,84 @@ html:active-view-transition-type(page)::view-transition-new(root) {
 	}
 }
 
+/*
+ * Demo browser windows: a link slides the page in from the right, Back from
+ * the left, Reload cross-fades. `DemoBrowser` sets these classes through
+ * `<ViewTransition>`; `DemoRouter` marks the window that navigated.
+ */
+html:active-view-transition-type(demo-forward) [data-demo-navigating] {
+	view-transition-name: demo-page;
+	view-transition-class: demo-forward;
+}
+
+html:active-view-transition-type(demo-back) [data-demo-navigating] {
+	view-transition-name: demo-page;
+	view-transition-class: demo-back;
+}
+
+/* Only the window animates; the page around it (resized by it) just updates. */
+html:active-view-transition-type(
+		demo-forward, demo-back
+	)::view-transition-old(root) {
+	display: none;
+}
+
+html:active-view-transition-type(
+		demo-forward, demo-back
+	)::view-transition-new(root) {
+	animation: none;
+}
+
+::view-transition-group(.demo-forward),
+::view-transition-group(.demo-back),
+::view-transition-group(.demo-reload) {
+	overflow: clip;
+}
+
+::view-transition-old(.demo-forward) {
+	animation: 120ms ease-in both demo-out-left;
+}
+
+::view-transition-new(.demo-forward) {
+	animation: 200ms ease-out 60ms both demo-in-right;
+}
+
+::view-transition-old(.demo-back) {
+	animation: 120ms ease-in both demo-out-right;
+}
+
+::view-transition-new(.demo-back) {
+	animation: 200ms ease-out 60ms both demo-in-left;
+}
+
+@keyframes demo-out-left {
+	to {
+		opacity: 0;
+		transform: translateX(-1.5rem);
+	}
+}
+
+@keyframes demo-out-right {
+	to {
+		opacity: 0;
+		transform: translateX(1.5rem);
+	}
+}
+
+@keyframes demo-in-right {
+	from {
+		opacity: 0;
+		transform: translateX(1.5rem);
+	}
+}
+
+@keyframes demo-in-left {
+	from {
+		opacity: 0;
+		transform: translateX(-1.5rem);
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	::view-transition-group(*),
 	::view-transition-old(*),

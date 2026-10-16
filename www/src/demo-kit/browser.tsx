@@ -2,12 +2,14 @@ import { cn } from "@examples/ui/lib/utils";
 import { type QueryClient, useQueryClient } from "@raf-query/react";
 import { ArrowLeft, Lock, RotateCw } from "lucide-react";
 import {
+	addTransitionType,
 	createContext,
 	type ReactNode,
 	Suspense,
 	use,
 	useState,
 	useTransition,
+	ViewTransition,
 } from "react";
 
 export interface DemoLocation {
@@ -51,6 +53,21 @@ function useNavigation() {
 	return navigation;
 }
 
+/** View transition types for a demo browser's navigations; `styles.css` animates each. */
+export type DemoNavigation = "demo-back" | "demo-forward" | "demo-reload";
+
+/**
+ * Only the window's own navigations animate. With a class for every
+ * transition, React would also name the page for a demo's own
+ * `startTransition`s, cross-fading pending UI the demo is there to show.
+ */
+const demoPageTransition = {
+	default: "none",
+	"demo-back": "demo-back",
+	"demo-forward": "demo-forward",
+	"demo-reload": "demo-reload",
+} as const satisfies Record<"default" | DemoNavigation, string>;
+
 function isPromise<T>(value: T | Promise<T>): value is Promise<T> {
 	return typeof value === "object" && value !== null && "then" in value;
 }
@@ -83,10 +100,11 @@ export function DemoBrowser<TData>(props: {
 		location: props.initial,
 	};
 
-	const go = (location: DemoLocation, keep: number) => {
+	const go = (location: DemoLocation, keep: number, type: DemoNavigation) => {
 		startTransition(async () => {
 			const data = await loader({ client, location });
 			startTransition(() => {
+				addTransitionType(type);
 				setHistory((previous) => [
 					...previous.slice(0, keep),
 					{ data, location },
@@ -98,7 +116,7 @@ export function DemoBrowser<TData>(props: {
 	const navigation: Navigation = {
 		location: current.location,
 		navigate: (to) => {
-			go(to, history.length);
+			go(to, history.length, "demo-forward");
 		},
 		preload: (to) => {
 			void loader({ client, location: to });
@@ -113,17 +131,21 @@ export function DemoBrowser<TData>(props: {
 			isNavigating={isNavigating}
 			onBack={() => {
 				if (previous) {
-					go(previous.location, history.length - 2);
+					go(previous.location, history.length - 2, "demo-back");
 				}
 			}}
 			onReload={() => {
-				go(current.location, history.length - 1);
+				go(current.location, history.length - 1, "demo-reload");
 			}}
 		>
 			<NavigationContext value={navigation}>
-				<Suspense fallback={props.fallback}>
-					<RouteView entry={current}>{props.children}</RouteView>
-				</Suspense>
+				<ViewTransition default={demoPageTransition}>
+					<div>
+						<Suspense fallback={props.fallback}>
+							<RouteView entry={current}>{props.children}</RouteView>
+						</Suspense>
+					</div>
+				</ViewTransition>
 			</NavigationContext>
 		</BrowserWindow>
 	);
