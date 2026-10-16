@@ -151,7 +151,7 @@ export function dehydrateEntries(
 	for (const query of queries) {
 		if (
 			!sent?.has(query.hash) &&
-			!Entry.isBrowserOnly(Entry.entryOf(query)) &&
+			!Entry.isDisabled(Entry.entryOf(query)) &&
 			filter(query)
 		) {
 			sent?.add(query.hash);
