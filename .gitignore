@@ -21,3 +21,5 @@
 **/.vercel
 **/next-env.d.ts
 **/*.tsbuildinfo
+# SvelteKit adapter-node output
+/.experimental/*/app/build

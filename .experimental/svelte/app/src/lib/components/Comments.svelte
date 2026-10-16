@@ -80,8 +80,7 @@
 {#if comments.data}
 	<section class="grid gap-4">
 		<h2 class="font-semibold">
-			{displayTotal}
-			{displayTotal === 1 ? "comment" : "comments"}
+			{`${displayTotal} ${displayTotal === 1 ? "comment" : "comments"}`}
 		</h2>
 		<form class="grid gap-2" onsubmit={post}>
 			<Textarea disabled={isPosting} name="body" placeholder="Add a comment" required />
