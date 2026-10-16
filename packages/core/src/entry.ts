@@ -51,17 +51,14 @@ export class CancelledError extends Data.TaggedError("CancelledError") {
 }
 
 /**
- * Why a query that isn't `enabled` in a cache has no data there: its
- * promise rejects with this, and `ensure` / `fetch` die with it.
+ * Why a query with `enabled: false` has no data: `ensure` / `fetch` die
+ * with it, and on a server its promise rejects with it.
  */
 export class DisabledError extends Data.TaggedError("DisabledError")<{
-	readonly enabled: false | "browser";
 	readonly hash: string;
 }> {
 	override get message() {
-		return this.enabled === "browser"
-			? `Query ${this.hash} runs in the browser only (enabled: "browser")`
-			: `Query ${this.hash} is disabled (enabled: false)`;
+		return `Query ${this.hash} is disabled (enabled: false)`;
 	}
 }
 
@@ -246,18 +243,9 @@ function behavior<TName extends keyof QueryBehavior>(
 	return entry.options?.[name] ?? entry.cache.defaults[name];
 }
 
-/** Why this cache never runs the entry's query, or `undefined` when it does. */
-function disabledBy(entry: Entry): false | "browser" | undefined {
-	const enabled = behavior(entry, "enabled");
-	if (enabled === false) {
-		return false;
-	}
-	return enabled === "browser" && entry.cache.isServer ? "browser" : undefined;
-}
-
-/** The entry's query isn't `enabled` in its cache: it never runs here. */
+/** The entry's latest factory call returned `enabled: false`: it doesn't run. */
 export function isDisabled(entry: Entry) {
-	return disabledBy(entry) !== undefined;
+	return behavior(entry, "enabled") === false;
 }
 
 /** Until a factory call attaches options, `meta` comes from hydration. */
@@ -526,12 +514,17 @@ function begin(
 	if (Predicate.isTagged(entry.scope.state, "Closed")) {
 		return Effect.fail(new CancelledError());
 	}
-	const disabled = disabledBy(entry);
-	if (disabled !== undefined) {
-		const error = new DisabledError({ enabled: disabled, hash: entry.hash });
-		const firstLoad = entry.pending;
-		entry.pending = undefined;
-		firstLoad?.reject(error);
+	if (isDisabled(entry)) {
+		const error = new DisabledError({ hash: entry.hash });
+		// A server render can't wait for a later factory call, so its readers
+		// reject and React renders the Suspense fallback there, then the
+		// component in the browser. Browser readers stay suspended until a
+		// factory call enables the query.
+		if (entry.cache.isServer) {
+			const firstLoad = entry.pending;
+			entry.pending = undefined;
+			firstLoad?.reject(error);
+		}
 		return Effect.die(error);
 	}
 	const options = entry.options;

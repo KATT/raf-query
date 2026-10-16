@@ -555,12 +555,14 @@ describe("HydrationBoundary with a loader's state (React Router)", () => {
 	});
 });
 
-describe(`enabled: "browser"`, () => {
+describe("enabled: false on the server", () => {
 	it("renders pending on the server, then runs once in the browser", async () => {
+		// Stands in for `typeof window !== "undefined"`, which happy-dom sets on both sides.
+		let browser = false;
 		const calls: Array<string> = [];
 		function permissionQuery() {
 			return queryOptions({
-				enabled: "browser",
+				enabled: browser,
 				queryFn: async () => {
 					calls.push("permission");
 					return "granted";
@@ -606,6 +608,7 @@ describe(`enabled: "browser"`, () => {
 		const container = document.createElement("div");
 		container.innerHTML = html;
 		document.body.append(container);
+		browser = true;
 		const recoverable: Array<unknown> = [];
 		const root = await act(async () =>
 			hydrateRoot(
@@ -627,9 +630,10 @@ describe(`enabled: "browser"`, () => {
 	});
 
 	it("re-renders a reader of the promise's status once the browser loads it", async () => {
+		let browser = false;
 		function tagQuery() {
 			return queryOptions({
-				enabled: "browser",
+				enabled: browser,
 				queryFn: async () => "beta",
 				queryKey: ["tag"],
 			});
@@ -660,6 +664,7 @@ describe(`enabled: "browser"`, () => {
 		const html = await new Response(stream).text();
 		expect(html).toContain("<span>…</span>");
 
+		browser = true;
 		const container = document.createElement("div");
 		container.innerHTML = html;
 		document.body.append(container);

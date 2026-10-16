@@ -183,6 +183,38 @@ describe("useQuery", () => {
 		cleanup();
 	});
 
+	it("keeps a disabled query suspended, not at the error boundary, until a factory call enables it", async () => {
+		const test = setup();
+		let enabled = false;
+		function permissionQuery() {
+			return queryOptions({
+				enabled,
+				queryFn: async () => "granted",
+				queryKey: ["permission"],
+			});
+		}
+		const handle = test.client.prefetch(permissionQuery);
+		function Permission() {
+			const [permissionPromise] = useQuery(permissionQuery, handle);
+			const permission = use(permissionPromise);
+			return <p>{permission}</p>;
+		}
+
+		await mount(test.view(<Permission />));
+		await test.backend.respond();
+		expect(screen.getByText("Loading")).toBeDefined();
+
+		enabled = true;
+		await act(async () => {
+			test.client.prefetch(permissionQuery);
+			await new Promise((resolve) => {
+				setTimeout(resolve, 10);
+			});
+		});
+		expect(screen.getByText("granted")).toBeDefined();
+		cleanup();
+	});
+
 	it("renders cached data without suspending, and re-renders on setData", async () => {
 		const test = setup();
 		test.client.setData(
