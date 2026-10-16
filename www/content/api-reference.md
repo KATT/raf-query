@@ -46,7 +46,7 @@ Accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
 | `gcTime`                                                                                 | 5 minutes; `Infinity` on the server               |
 | `retry` (count, `boolean`, predicate, `Schedule`)                                        | `3`; `0` on the server                            |
 | `retryDelay` (ms, or a function of the failure count)                                    | Doubling from 1 s, at most 30 s                   |
-| `refetchOnWindowFocus`, `refetchOnReconnect`                                             | `true` (only read, stale queries refetch)         |
+| `refetchOnWindowFocus`, `refetchOnReconnect` (`boolean` or `"always"`)                   | `true` (only read, stale queries refetch)         |
 | `structuralSharing` (keep deeply equal parts of data)                                    | `true`                                            |
 | `ssr` (`false`: [only the browser runs it](./ssr-and-hydration.md#browser-only-queries)) | `true`                                            |
 | [`meta`](./query-meta.md)                                                                | None                                              |
@@ -59,7 +59,7 @@ Accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
 tanstack-start/src/docs/api-reference.ts#usequery
 ```
 
-Options: `whilePending` (`"suspend"` or `"previous"`), `refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`.
+Options: `whilePending` (`"suspend"` or `"previous"`), `refetchInterval`, `refetchOnWindowFocus` and `refetchOnReconnect` (`boolean` or `"always"`, overriding the query's).
 
 | Control        | Meaning                                                                                    |
 | -------------- | ------------------------------------------------------------------------------------------ |
