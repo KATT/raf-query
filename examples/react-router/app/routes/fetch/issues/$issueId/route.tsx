@@ -24,7 +24,7 @@ import { EditBody } from "~/components/edit-body.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
 import { NotFound } from "~/components/not-found.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
-import { createAppQueryClient } from "~/query-client.ts";
+import { queryClientContext } from "~/query-client.ts";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 import { withRequest } from "~/settings.ts";
 
@@ -38,7 +38,7 @@ export async function loader(args: Route.LoaderArgs) {
 		if (!IssueId.safeParse(id).success) {
 			throw new Response("Not Found", { status: 404 });
 		}
-		const { queryClient } = createAppQueryClient();
+		const queryClient = args.context.get(queryClientContext);
 		// `fetch` waits for fresh data: on a cache miss, and when the cached
 		// data is stale.
 		const handles = await allKeyed({

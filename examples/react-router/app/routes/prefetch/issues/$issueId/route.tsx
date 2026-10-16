@@ -19,7 +19,7 @@ import { EditBody } from "~/components/edit-body.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
 import { NotFound } from "~/components/not-found.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
-import { createAppQueryClient } from "~/query-client.ts";
+import { queryClientContext } from "~/query-client.ts";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 import { withRequest } from "~/settings.ts";
 
@@ -33,7 +33,7 @@ export function loader(args: Route.LoaderArgs) {
 		if (!IssueId.safeParse(id).success) {
 			throw new Response("Not Found", { status: 404 });
 		}
-		const { queryClient } = createAppQueryClient();
+		const queryClient = args.context.get(queryClientContext);
 		// `prefetch` starts each query and returns its handle at once. The page
 		// streams in behind skeletons, and finds out about a missing
 		// issue when it reads it.
