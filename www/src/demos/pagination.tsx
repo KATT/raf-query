@@ -1,6 +1,11 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
-import { type QueryHandle, queryOptions, useQuery } from "@raf-query/react";
+import {
+	type QueryHandle,
+	queryOptions,
+	useQuery,
+	useQueryClient,
+} from "@raf-query/react";
 import { use, useState } from "react";
 
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
@@ -110,12 +115,17 @@ function Projects(props: {
 }
 
 function Pagination() {
+	const qc = useQueryClient();
 	const [whilePending, setWhilePending] = useState<WhilePending>("previous");
 	return (
 		<div className="grid gap-3">
 			<Segmented
 				label="whilePending"
-				onChange={setWhilePending}
+				onChange={(next) => {
+					qc.clear();
+					server.reset();
+					setWhilePending(next);
+				}}
 				options={[
 					{ label: '"previous"', value: "previous" },
 					{ label: '"suspend"', value: "suspend" },
@@ -125,6 +135,7 @@ function Pagination() {
 			<DemoBrowser
 				fallback={<ListSkeleton />}
 				initial={{ path: "/projects", search: { page: 1 } }}
+				key={whilePending}
 				loader={(args): PageData => {
 					const page = Math.max(1, Number(args.location.search?.page ?? 1));
 					return {
@@ -141,7 +152,7 @@ function Pagination() {
 
 export default defineDemo({
 	Component: Pagination,
-	hint: 'Page through the list with each setting. "previous" commits the URL at once and dims the old page; "suspend" keeps the whole old screen until the new page is in. Visited pages render instantly.',
+	hint: 'Page through the list with each setting. "previous" commits the URL at once and dims the old page; "suspend" keeps the whole old screen until the new page is in. Visited pages render instantly. Switching the setting starts over from page 1 with an empty cache.',
 	server,
 	title: "Paginated list with whilePending",
 });
