@@ -46,7 +46,9 @@ const usage = `control-examples <command> [options]
        [--timeout <ms>]        Wait until text (or a typed value) appears /
                                disappears, a control exists, or <expr> is true
   eval <expression>            Evaluate in the page, print JSON
-  screenshot --path <file>     Save a PNG of the viewport
+  screenshot --path <file> [--width <px>]
+                               Save a PNG of the viewport; --width lays the
+                               page out at that width (a phone at 390) first
 
 Roles: button, link, textbox, combobox, menuitem, heading, checkbox, any.
 --name matches the accessible name case-insensitively as a substring;
@@ -512,6 +514,17 @@ const commands = {
 		if (!path) {
 			fail("screenshot needs --path");
 		}
+		const width = args.values.width;
+		if (width) {
+			// The override ends with this command's DevTools session.
+			await cdp.send("Emulation.setDeviceMetricsOverride", {
+				deviceScaleFactor: 2,
+				height: 900,
+				mobile: Number(width) < 768,
+				width: Number(width),
+			});
+			await sleep(500);
+		}
 		const shot = await cdp.send("Page.captureScreenshot", { format: "png" });
 		mkdirSync(dirname(path), { recursive: true });
 		writeFileSync(path, Buffer.from(shot.data, "base64"));
@@ -640,6 +653,7 @@ const args = parseArgs({
 		timeout: { type: "string" },
 		value: { type: "string" },
 		wait: { type: "string" },
+		width: { type: "string" },
 	},
 });
 const needsPage = !["chrome", "doctor"].includes(command);
