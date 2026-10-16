@@ -61,17 +61,19 @@ tanstack-start/src/docs/api-reference.ts#usequery
 
 Options: `whilePending` (`"suspend"` or `"previous"`), `refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`.
 
-| Control        | Meaning                                                                                    |
-| -------------- | ------------------------------------------------------------------------------------------ |
-| `isPending`    | No data yet for the handle's input; `use(promise)` will suspend                            |
-| `isPrevious`   | The promise holds data for a previous input while the handle's input loads                 |
-| `isFetching`   | A request is in flight: first load, new input, or background refetch                       |
-| `isStale`      | Data is older than `staleTime`                                                             |
-| `error`        | Error from a failed background refetch. Existing data stays readable                       |
-| `updatedAt`    | When the data in the promise was fetched                                                   |
-| `key`, `input` | Key and input of the data in the promise. They differ from the handle's while `isPrevious` |
-| `hash`         | Stable string form of the handle's key, for `key` props on Suspense boundaries             |
-| `refetch()`    | Refetch now. Returns a promise, so it can be awaited inside a transition or action         |
+| Control         | Meaning                                                                                            |
+| --------------- | -------------------------------------------------------------------------------------------------- |
+| `isPending`     | No data yet for the handle's input; `use(promise)` will suspend                                    |
+| `isPrevious`    | The promise holds data for a previous input while the handle's input loads                         |
+| `isFetching`    | A request is in flight: first load, new input, or background refetch                               |
+| `isStale`       | Data is older than `staleTime`                                                                     |
+| `error`         | Error from a failed background refetch. Existing data stays readable                               |
+| `failureCount`  | Failed attempts of the latest request, retries included. `0` once a request succeeds               |
+| `failureReason` | Error of the latest request's last failed attempt, or `null`. Set while it retries, before `error` |
+| `updatedAt`     | When the data in the promise was fetched                                                           |
+| `key`, `input`  | Key and input of the data in the promise. They differ from the handle's while `isPrevious`         |
+| `hash`          | Stable string form of the handle's key, for `key` props on Suspense boundaries                     |
+| `refetch()`     | Refetch now. Returns a promise, so it can be awaited inside a transition or action                 |
 
 Paged factories add `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage` and `isFetchingPreviousPage`. See [Reading queries](./reading-queries.md).
 
