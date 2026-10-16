@@ -537,6 +537,22 @@ describe("HydrationBoundary with a loader's state (React Router)", () => {
 		act(() => root.unmount());
 		container.remove();
 	});
+
+	it("throws a clear error when a client component passes `client`", async () => {
+		const server = new QueryClient({ isServer: true });
+		await expect(
+			renderToReadableStream(
+				<QueryClientProvider client={new QueryClient({ isServer: true })}>
+					<HydrationBoundary client={server}>
+						<p>Page</p>
+					</HydrationBoundary>
+				</QueryClientProvider>,
+				{ onError: () => {} },
+			),
+		).rejects.toThrow(
+			"HydrationBoundary needs `state` here. `client` works only in server components.",
+		);
+	});
 });
 
 describe("ssr: false", () => {

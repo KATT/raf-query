@@ -73,12 +73,16 @@ export type HydrationBoundaryProps =
  * are fine: each only writes what its `state` holds.
  */
 export function HydrationBoundary(props: HydrationBoundaryProps) {
-	// SAFETY: `client` is only passed in server components, which resolve
-	// the `react-server` build (`hydration-boundary-react-server.tsx`).
-	const own = props as Extract<HydrationBoundaryProps, { state: unknown }>;
+	// The types allow `client` here: TypeScript can't tell which build a file
+	// gets, since it doesn't see the `react-server` condition.
+	if (props.state === undefined) {
+		throw new Error(
+			"HydrationBoundary needs `state` here. `client` works only in server components.",
+		);
+	}
 	return (
-		<Hydrate options={own.options} state={own.state}>
-			{own.children}
+		<Hydrate options={props.options} state={props.state}>
+			{props.children}
 		</Hydrate>
 	);
 }
