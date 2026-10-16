@@ -31,7 +31,7 @@ pnpm build
 
 ## Example apps
 
-`examples/` holds the same issue tracker four times: on TanStack Start, on Next.js, on React Router Framework Mode, and on TanStack Start written with Effect and Effect RPC. The packages they share live in `examples/.shared/`. `.experimental/tanstack-query/` runs the same app on the experimental TanStack Query package, and `.experimental/svelte/app` on SvelteKit:
+`examples/` holds the same issue tracker four times: on TanStack Start, on Next.js, on React Router Framework Mode, and on TanStack Start written with Effect and Effect RPC. The packages they share live in `examples/.shared/`. `.experimental/tanstack-query/` runs the same app on the experimental TanStack Query package, `.experimental/svelte/app` on SvelteKit, and `.experimental/vue/app` on Vue:
 
 | Directory                             | What                                                                               |
 | ------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -42,6 +42,7 @@ pnpm build
 | `.experimental/tanstack-query/start`  | TanStack Start app on TanStack Query, <http://localhost:3002>                      |
 | `.experimental/tanstack-query/nextjs` | Next.js App Router app on TanStack Query, <http://localhost:3003>                  |
 | `.experimental/svelte/app`            | SvelteKit app on the experimental Svelte bindings, <http://localhost:3007>         |
+| `.experimental/vue/app`               | Vue and Vue Router app on the experimental Vue bindings, <http://localhost:3008>   |
 | `examples/.shared/ui`                 | Vanilla shadcn/ui (Base UI) and the Tailwind theme (`@examples/ui`)                |
 | `examples/.shared/kit`                | UI helpers and markup the apps share (rows, menus), no data code (`@examples/kit`) |
 | `examples/.shared/db`                 | In-memory fake database with latency (`@examples/db`), and its schemas             |
@@ -54,6 +55,7 @@ pnpm dev:start          # TanStack Start only
 pnpm dev:next           # Next.js only
 pnpm dev:effect         # TanStack Start with Effect only
 pnpm dev:svelte         # SvelteKit only
+pnpm dev:vue            # Vue only
 pnpm dev:experimental   # the experimental apps
 pnpm dev:all            # every app, and the docs site
 pnpm build:examples     # production builds of every app, as CI runs them

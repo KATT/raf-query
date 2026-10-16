@@ -2,16 +2,21 @@
 
 Private Vue 3.5 bindings over `@raf-query/core`: composables (`useQuery`, `useWaterfall`, `useIsFetching`), `QueryPlugin` / `QueryClientProvider`, and `HydrationBoundary`, built on core's `QueryBinding`. Not published and not a docs topic yet — the draft guide lives in [`docs/`](./docs/).
 
-| Path       | Package                       | Role                                                                 |
-| ---------- | ----------------------------- | -------------------------------------------------------------------- |
-| `package/` | `@raf-query/experimental-vue` | The bindings                                                         |
-| `sample/`  | `@examples/experimental-vue`  | The Vue app (Vue Router, SSR entries) the guide's code is taken from |
-| `docs/`    | —                             | Stashed `www` guide (not linked from the site)                       |
+| Path       | Package                          | Role                                                                            |
+| ---------- | -------------------------------- | ------------------------------------------------------------------------------- |
+| `package/` | `@raf-query/experimental-vue`    | The bindings                                                                    |
+| `sample/`  | `@examples/experimental-vue`     | The Vue app (Vue Router, SSR entries) the guide's code is taken from            |
+| `app/`     | `@examples/experimental-vue-app` | The example issue tracker on Vue Router and shadcn-vue, <http://localhost:3008> |
+| `docs/`    | —                                | Stashed `www` guide (not linked from the site)                                  |
 
 ```shell
 pnpm --filter @raf-query/experimental-vue test
 pnpm --filter @examples/experimental-vue typecheck   # vue-tsc
+pnpm dev:vue                                         # the issue tracker, on :3008
+pnpm --filter @examples/experimental-vue-app typecheck
 ```
+
+`app/` matches the four React apps screen for screen (the [verify-examples](../../.agents/skills/verify-examples/SKILL.md) feature map drives it as `experimental-vue`), except for the devtools, which are React-only. Its shadcn-vue components live in `app/src/components/ui` (`components.json` there; reinstall to bump) and style themselves with the shared `@examples/ui` theme. It isn't deployed.
 
 ## Making it real
 
