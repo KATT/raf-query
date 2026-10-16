@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.10.1](https://github.com/KATT/raf-query/compare/0.10.0...0.10.1) (2026-10-16)
+
+### Features
+
+- **core:** export QueryClient, dehydrate, hydrate, allKeyed and the useQuery controls from @raf-query/core ([#193](https://github.com/KATT/raf-query/issues/193)) ([54492ab](https://github.com/KATT/raf-query/commit/54492abbe2966a0645e8a4c77f9c5ab31d6e3a20)), references [#194](https://github.com/KATT/raf-query/issues/194)
+
+### Documentation
+
+- React Router client-only and server sections with one server client per request, Effect under Integrations, official docs links, and ensure waits like fetch in server-only code ([#192](https://github.com/KATT/raf-query/issues/192)) ([841ffcf](https://github.com/KATT/raf-query/commit/841ffcf4d0fa0a40dfc58dc65bfcfadca8948874)), references [#190](https://github.com/KATT/raf-query/issues/190)
+
 ## [0.10.0](https://github.com/KATT/raf-query/compare/0.9.2...0.10.0) (2026-10-16)
 
 ### ⚠ BREAKING CHANGES
