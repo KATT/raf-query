@@ -258,11 +258,10 @@ const stepsByMode = {
 			body: (
 				<>
 					<p>
-						React Router runs the loader as soon as a navigation starts, and
-						with <code>{'prefetch="intent"'}</code>, when a link is hovered.
-						Every query the page needs starts there, at the same time, before
-						anything renders. Each loader creates its own client, so requests
-						never share data.
+						React Router runs the loader on the server as soon as a navigation
+						starts. Every query the page needs starts there, at the same time,
+						before anything renders. Each loader creates its own client, so
+						requests never share data.
 					</p>
 					<p>
 						<code>prefetch</code> never holds the navigation: the page renders

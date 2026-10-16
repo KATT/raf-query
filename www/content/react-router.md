@@ -7,6 +7,8 @@ order: 4
 
 In [React Router Framework Mode](https://reactrouter.com/start/modes#framework), loaders start the queries. Each loader dehydrates its request's cache into the loader data, and `HydrationBoundary` from `@raf-query/react/react-router` writes it into the browser's client.
 
+If you can choose the router, prefer [TanStack Start](./tanstack-start.md). Its loaders run in the browser on client navigations, so a link preloaded on hover starts the next page's queries in the browser's cache, and the click uses them. React Router runs the loaders on the server for each navigation, and the click doesn't use what a prefetch loaded: see [Prefetching links](#prefetching-links).
+
 ## Setup
 
 One `QueryClient` per browser tab, in the root route's component:
@@ -54,9 +56,13 @@ While a link navigation is loading the next route, show pending state with React
 react-router/app/docs/react-router.tsx#pending-ui
 ```
 
-`prefetch="intent"` loads a route's code and data when the user hovers or focuses the link, so the loader's queries start before the click. `Link` and `NavLink` also take `"render"`, `"viewport"`, and `"none"` (the default).
-
 Per-query background refetches after the page has rendered use `controls.isFetching`. See [Background fetching indicators](./background-fetching-indicators.md).
+
+## Prefetching links
+
+`prefetch="intent"` on a `Link` or `NavLink` preloads the route's modules and requests its loader data when the user hovers or focuses the link (`"render"` does it when the link renders, `"viewport"` when it scrolls into view, and `"none"`, the default, never). That request runs the loaders on the server, but React Router doesn't keep its response: the click requests the loader data again, and the loaders and their queries run a second time. What a prefetch saves is loading the route's code.
+
+In TanStack Router, the navigation reuses a route preloaded in the last 30 seconds, or joins its loader if it's still running ([Preloading](https://tanstack.com/router/latest/docs/framework/react/guide/preloading)). Its loaders run in the browser, so the queries a preload starts land in the browser's cache, and the navigation's loader finds them there even once the preload is stale. See [TanStack Start](./tanstack-start.md).
 
 ## Search params
 
