@@ -1,7 +1,10 @@
-# `ssr: false` runs a query in the browser only (agent)
+# `enabled` decides whether a cache runs a query (human asked, agent shaped)
 
-- `ssr` is a `QueryBehavior` option (factory or per call). With `ssr: false`, `Entry.begin` on a server cache (`cache.isServer`) never runs the request: it rejects the entry's pending promise with `Query.BrowserOnlyError` and dies with it, so `ensure` / `fetch` fail, `prefetch` stays quiet, and readers see `isPending` with a rejected promise.
-- `invalidate` / `reset` and the observer commands (`refetch`, `fetchNextPage`, `fetchPreviousPage`) are no-ops for browser-only entries on the server; `dehydrateEntries` skips them, so the browser starts empty and runs the query itself.
-- Rejected, not pending: a promise that never settles would hang a streaming SSR render that `use()`s it. Rejecting makes React render the nearest Suspense boundary on the client (reported to `onRecoverableError`), the same path RSC uses for client-only content.
+- Human: "enabled might be nicer than ssr". `enabled?: boolean | "browser"` is a `QueryBehavior` option (factory or `config.defaults`), default `true`. `"browser"` is what `ssr: false` was: a server cache (`cache.isServer`) never runs it. `false` turns the query off in every cache. `ssr` is gone.
+- Where it's disabled, `Entry.begin` never runs the request: it rejects the entry's pending promise with `Query.DisabledError` (`enabled` says which) and dies with it, so `ensure` / `fetch` fail, `prefetch` stays quiet, and readers see `isPending` with a rejected promise. `invalidate` / `reset` and the observer commands (`refetch`, paging) are no-ops; `dehydrateEntries` skips disabled entries, so the browser starts empty and runs a `"browser"` query itself.
+- Rejected, not pending: a promise that never settles would hang a streaming SSR render that `use()`s it. Rejecting makes React render the nearest Suspense boundary on the client (reported to `onRecoverableError`), the same path RSC uses for client-only content. In the browser, `enabled: false` reaches the error boundary unless the reader checks `isPending`.
+- A factory call that returns `enabled: true` later starts the query: `startRequest` makes a new pending promise whenever the entry has no data and no pending one (after a failed or a disabled first load).
+- `"browser"`, not a function of the cache (`enabled: (cache) => !cache.isServer`) or `typeof window !== "undefined"`: the server/browser split is the only thing a factory can't see from its input, a string reads as what it means, and the cache's `isServer` stays the source of truth (tests make server clients in jsdom).
+- Unlike TanStack, `refetch()` doesn't run a disabled query: `"browser"` on the server can't run at all, and one rule for both values is simpler.
 - Not used: React's internal `react.recoverable` symbol (not exported in stable React) and throwing from `useQuery` during SSR (breaks the `isPending ? … : use(promise)` reader pattern).
-- Tests: `client.test.ts` and `ssr.test.tsx` ("ssr: false").
+- Tests: `client.test.ts` ("enabled") and `ssr.test.tsx` (`enabled: "browser"`).

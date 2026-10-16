@@ -33,19 +33,31 @@ The factory is the only place a query is declared, including whether it's paged.
 
 Options set in the factory override the client's `config.defaults`:
 
-| Option                                       | What it does                                                                                              |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `queryKey`                                   | The cache key; include the input. See [Query keys](./query-keys.md)                                       |
-| `queryFn`                                    | Loads the data. See [Query functions](./query-functions.md)                                               |
-| `staleTime`                                  | How long data counts as fresh, in ms                                                                      |
-| `gcTime`                                     | How long an unread entry stays cached, in ms                                                              |
-| `retry`, `retryDelay`                        | See [Retries](./retries.md)                                                                               |
-| `refetchOnWindowFocus`, `refetchOnReconnect` | See [Window focus refetching](./window-focus-refetching.md)                                               |
-| `structuralSharing`                          | See [Render optimizations](./render-optimizations.md)                                                     |
-| `ssr`                                        | `false` runs the query [only in the browser](./ssr-and-hydration.md#browser-only-queries). Default `true` |
-| `meta`                                       | Anything you want to know about the query elsewhere. See [Query meta](./query-meta.md)                    |
+| Option                                       | What it does                                                                                                                                                |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `queryKey`                                   | The cache key; include the input. See [Query keys](./query-keys.md)                                                                                         |
+| `queryFn`                                    | Loads the data. See [Query functions](./query-functions.md)                                                                                                 |
+| `staleTime`                                  | How long data counts as fresh, in ms                                                                                                                        |
+| `gcTime`                                     | How long an unread entry stays cached, in ms                                                                                                                |
+| `retry`, `retryDelay`                        | See [Retries](./retries.md)                                                                                                                                 |
+| `refetchOnWindowFocus`, `refetchOnReconnect` | See [Window focus refetching](./window-focus-refetching.md)                                                                                                 |
+| `structuralSharing`                          | See [Render optimizations](./render-optimizations.md)                                                                                                       |
+| `enabled`                                    | `"browser"` runs the query [only in the browser](./ssr-and-hydration.md#browser-only-queries); `false` [turns it off](#turning-a-query-off). Default `true` |
+| `meta`                                       | Anything you want to know about the query elsewhere. See [Query meta](./query-meta.md)                                                                      |
 
 `infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam` and `maxPages`. See [Infinite queries](./infinite-queries.md).
+
+## Turning a query off
+
+`enabled: false` turns a query off in every cache, for data nobody should load right now, such as a feature behind a flag:
+
+```sample
+tanstack-start/src/docs/query-factories.turning-a-query-off.ts#turning-a-query-off
+```
+
+Nothing runs a query that's off: not the verbs, not its readers, not `invalidate` or `refetch()`. Readers see `isPending` and a promise that rejects with `Query.DisabledError`, so check `isPending` before calling `use()`, or let an error boundary show it. `ensure` and `fetch` fail with the same error. Every call runs the factory again, so a later call that returns `enabled: true`, such as the loader running after the flag turned on, starts the query.
+
+`enabled: "browser"` turns a query off on the server only. See [Browser-only queries](./ssr-and-hydration.md#browser-only-queries).
 
 ## Type inference
 
