@@ -12,6 +12,7 @@ import {
 	QueryObserver,
 	Query,
 	resultThenable,
+	type Thenable,
 	type ThrowsOnError,
 	type UseQueryControls,
 	type UseQueryOptions,
@@ -29,11 +30,11 @@ export type UseQueryResult<
 > =
 	ThrowsOnError<TFactory, TThrow> extends true
 		? readonly [
-				promise: Promise<DataOf<TFactory>>,
+				promise: Thenable<DataOf<TFactory>>,
 				controls: UseQueryControls<TFactory>,
 			]
 		: readonly [
-				promise: Promise<Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>>,
+				promise: Thenable<Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>>,
 				controls: UseQueryControls<TFactory>,
 			];
 
