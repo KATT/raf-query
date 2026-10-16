@@ -73,6 +73,51 @@ function edgeParam(data: Pages, direction: Direction) {
 	return direction === "forward" ? data.pageParams.at(-1) : data.pageParams[0];
 }
 
+/** The page `data` holds for `pageParam`, compared deeply. */
+function pageFor(
+	data: Pages | undefined,
+	pageParam: unknown,
+): Option.Option<unknown> {
+	const index =
+		data?.pageParams.findIndex(
+			(param) => replaceEqualDeep(param, pageParam) === param,
+		) ?? -1;
+	return index === -1 ? Option.none() : Option.some(data?.pages[index]);
+}
+
+/**
+ * `data`, a full refetch's pages, with each page that `latest` replaced
+ * after the refetch started reading it: that write is newer than the read.
+ * A page written before its read started is read again, and the read wins.
+ */
+function keepWrites(
+	data: Pages,
+	readFrom: ReadonlyArray<{
+		readonly pageParam: unknown;
+		readonly seen: Option.Option<unknown>;
+	}>,
+	latest: Pages | undefined,
+): Pages {
+	let changed = false;
+	const pages = data.pages.map((page, index) => {
+		const pageParam = data.pageParams[index];
+		const read = readFrom.find(
+			(entry) => replaceEqualDeep(entry.pageParam, pageParam) === entry.pageParam,
+		);
+		const now = pageFor(latest, pageParam);
+		if (
+			!read ||
+			Option.isNone(now) ||
+			(Option.isSome(read.seen) && read.seen.value === now.value)
+		) {
+			return page;
+		}
+		changed = true;
+		return now.value;
+	});
+	return changed ? { pageParams: data.pageParams, pages } : data;
+}
+
 /**
  * A paged query's request. With a `direction`, adds one page at that end of
  * the entry's data, read again with `latest` once the page loads, so data
