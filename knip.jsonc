@@ -166,6 +166,11 @@
 			"entry": ["src/**/*.{ts,tsx}"],
 			"includeEntryExports": false,
 		},
+		".experimental/svelte/app": {
+			"entry": ["src/**/*.{ts,svelte}"],
+			// shadcn-svelte components keep the exports the CLI generated.
+			"includeEntryExports": false,
+		},
 		".experimental/svelte/sample": {
 			"entry": ["src/**/*.{ts,svelte}"],
 			"includeEntryExports": false,

@@ -19,10 +19,10 @@ Preconditions:
 
 - Baseline state.
 
-Name data requests with this expression (`$DATA`). It covers the REST API, Effect RPC, React Router's `.data` loaders and Next.js RSC fetches, and skips Vite's source modules:
+Name data requests with this expression (`$DATA`). It covers the REST API, Effect RPC, React Router's `.data` loaders, SvelteKit's `__data.json` loads and Next.js RSC fetches, and skips Vite's source modules:
 
 ```bash
-DATA='performance.getEntriesByType("resource").map(e => new URL(e.name)).filter(u => (u.pathname.startsWith("/api/") && !u.pathname.includes("/src/")) || u.pathname.startsWith("/rpc") || u.pathname.endsWith(".data") || u.searchParams.has("_rsc")).map(u => u.pathname + u.search)'
+DATA='performance.getEntriesByType("resource").map(e => new URL(e.name)).filter(u => (u.pathname.startsWith("/api/") && !u.pathname.includes("/src/")) || u.pathname.startsWith("/rpc") || u.pathname.endsWith(".data") || u.pathname.endsWith("/__data.json") || u.searchParams.has("_rsc")).map(u => u.pathname + u.search)'
 ```
 
 Commands:
@@ -39,10 +39,11 @@ Commands:
 
 - `$CE screenshot --width 390` shows the phone layout. Nothing in the header scrolls sideways at 360 px.
 
-- What a prefetch request looks like depends on the stack: `/api/issues/4`, `/api/issues/4/comments?cursor=0` and `/api/issues/4/assignee` in `tanstack-start`; three `/rpc/` calls in `tanstack-start-effect`; `/issues/4.data` in `react-router`.
+- What a prefetch request looks like depends on the stack: `/api/issues/4`, `/api/issues/4/comments?cursor=0` and `/api/issues/4/assignee` in `tanstack-start`; three `/rpc/` calls in `tanstack-start-effect`; `/issues/4.data` in `react-router`; `/prefetch/issues/4/__data.json?x-sveltekit-invalidated=01` in `experimental-svelte`.
 - In `react-router` the click requests the page's `.data` again (a second `/issues/4.data` after the hover's): React Router doesn't reuse the prefetched response, so the loaders run twice. The TanStack apps' click reuses what the hover loaded.
 - `nextjs` has no `On render` option: `next/link` prefetches in the viewport or not at all, and the app adds intent itself. It also prefetches only in a production build (`pnpm --filter @examples/nextjs build && pnpm --filter @examples/nextjs start`); in dev, `$DATA` stays empty for both prefetch recipes.
 - In `nextjs` and `react-router` a navigation always runs the server's page code (an RSC or `.data` fetch), whatever the stale time. Stale time shows in the browser's own requests: `/api/issues/counts` after the back navigation only with `0 ms`. `tanstack-start-effect`'s `/rpc/` calls all share one path; compare how many there are (more with `0 ms`).
 - The `Stale time` values are milliseconds, and `Forever` is `Infinity`. `$CE select --value` takes the value or the label.
 - A server restart doesn't clear cookies; Reset does.
 - Reset doesn't touch the database: edits stay until the dev server restarts. The TanStack apps also call `router.clearCache()`, but every app reloads the page right after, so the four behave the same.
+- In `experimental-svelte` every navigation runs the server `load` (a `__data.json` fetch), and the browser never fetches `/api/issues/counts` itself, whatever the stale time: the load's streamed counts replace the cached ones. Stale time shows only in the browser's own refetches, such as after a write or on window focus.

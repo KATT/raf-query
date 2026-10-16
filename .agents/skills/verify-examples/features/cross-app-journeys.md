@@ -41,4 +41,5 @@ Where the apps differ on purpose:
 | Assignee card errors          | none                                                   | none                                                           | `Could not load the assignee.` + `Try again` | none                                                                              |
 
 - In `nextjs` the old page stays on screen until the new page's server payload arrives. Wait for a control only the new page has (`textbox "Title"`) before acting on one both pages have (a status menu).
+- `experimental-svelte` matches `react-router` on every row except: client navigation is server `load`s (`__data.json` fetch), and a missing issue is 200 under `prefetch` (the page shows `Nothing here.`) and 404 under `ensure` and `fetch`. Under `prefetch` it opens the list with the cached counts and swaps in the load's streamed counts a moment later, so after **Close it** wait for them (`$CE wait --role link --name '/^Closed 10$/'`) before the snapshot.
 - Each app has its own in-memory data. A write in one app doesn't show in another, and restarting one app's server reseeds only that app.

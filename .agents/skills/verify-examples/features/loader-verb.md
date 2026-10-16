@@ -46,3 +46,4 @@ Commands:
 - The URL changes as soon as you click, before `ensure` or `fetch` finish: check what's on screen (`$PAGE`), not `location.pathname`.
 - The router reruns a revisited route's loader before showing it (`defaultStaleReloadMode: "blocking"`). Without that it would show the route's last loader data and rerun the loader behind it, and `fetch` would never wait.
 - Scrolling or clicking far down the list can load its next page; those row skeletons belong to the list, not to the next page.
+- `experimental-svelte` loads on the server like `nextjs` and `react-router` (SvelteKit server `load`s, a new query client per navigation): its `ensure` hint says to use fetch, and `ensure` waits on every visit. Unlike them its first HTML under `ensure` and `fetch` has no skeleton markup at all.

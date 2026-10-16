@@ -14,6 +14,14 @@ The four example apps are the same issue tracker on four stacks, so one feature 
 | `tanstack-start-effect` | `pnpm dev:effect`       | 3005 | Effect RPC at `/rpc`, no `/api` |
 | `react-router`          | `pnpm dev:react-router` | 3006 | REST API at `/api/*` (Hono)     |
 
+The experimental apps run the same issue tracker on other frameworks. A change to `examples/.shared/` or `packages/core` should keep them matching too, but they aren't part of "all four":
+
+| App                   | Start             | Port | Data layer                  |
+| --------------------- | ----------------- | ---- | --------------------------- |
+| `experimental-svelte` | `pnpm dev:svelte` | 3007 | REST API at `/api/*` (Hono) |
+
+Their differences from the four are in each feature's `Gotchas`.
+
 The helper below is `CE`:
 
 ```bash
@@ -33,7 +41,7 @@ tmux -f /exec-daemon/tmux.portal.conf send-keys -t example-react-router:0.0 'eva
 
 The table's `Start` column has each app's root script. No env vars, no database: data is an in-memory mock seeded when the server process starts.
 
-Ready means `curl -s localhost:<port>/issues` returns issue rows (`Change status` is in the HTML). TanStack Start answers `/issues` with a 307 to `/issues?sort=newest&status=all`; follow redirects. The first request after a start compiles routes and can take 10-20 s.
+Ready means `curl -s localhost:<port>/issues` returns issue rows (`Change status` is in the HTML). TanStack Start answers `/issues` with a 307 to `/issues?sort=newest&status=all`; follow redirects. The SvelteKit app renders `prefetch` pages as skeletons, so check it with `curl -s localhost:3007/ensure/issues`. The first request after a start compiles routes and can take 10-20 s.
 
 Then start the browser:
 
@@ -48,6 +56,7 @@ To check a production build instead of dev (Next.js prefetches links only in pro
 ```bash
 $CE doctor                     # Chrome + all four apps
 $CE doctor --app react-router  # Chrome + one app
+$CE doctor --app experimental-svelte  # experimental apps are checked only by name
 ```
 
 Each line is `ok` or `FAIL` with the reason. Drive nothing until the apps you need are `ok`. If an app is `FAIL` and you didn't start it, start it as in Launch; don't drive a port someone else's process owns without checking its tmux session first (`tmux -f /exec-daemon/tmux.portal.conf ls`).

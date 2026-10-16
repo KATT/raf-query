@@ -31,7 +31,7 @@ pnpm build
 
 ## Example apps
 
-`examples/` holds the same issue tracker four times: on TanStack Start, on Next.js, on React Router Framework Mode, and on TanStack Start written with Effect and Effect RPC. The packages they share live in `examples/.shared/`. `.experimental/tanstack-query/` runs the same app on the experimental TanStack Query package:
+`examples/` holds the same issue tracker four times: on TanStack Start, on Next.js, on React Router Framework Mode, and on TanStack Start written with Effect and Effect RPC. The packages they share live in `examples/.shared/`. `.experimental/tanstack-query/` runs the same app on the experimental TanStack Query package, and `.experimental/svelte/app` on SvelteKit:
 
 | Directory                             | What                                                                               |
 | ------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -41,6 +41,7 @@ pnpm build
 | `examples/tanstack-start-effect`      | TanStack Start app written with Effect and Effect RPC, <http://localhost:3005>     |
 | `.experimental/tanstack-query/start`  | TanStack Start app on TanStack Query, <http://localhost:3002>                      |
 | `.experimental/tanstack-query/nextjs` | Next.js App Router app on TanStack Query, <http://localhost:3003>                  |
+| `.experimental/svelte/app`            | SvelteKit app on the experimental Svelte bindings, <http://localhost:3007>         |
 | `examples/.shared/ui`                 | Vanilla shadcn/ui (Base UI) and the Tailwind theme (`@examples/ui`)                |
 | `examples/.shared/kit`                | UI helpers and markup the apps share (rows, menus), no data code (`@examples/kit`) |
 | `examples/.shared/db`                 | In-memory fake database with latency (`@examples/db`), and its schemas             |
@@ -52,10 +53,11 @@ pnpm dev                # the three apps and the docs site, in parallel
 pnpm dev:start          # TanStack Start only
 pnpm dev:next           # Next.js only
 pnpm dev:effect         # TanStack Start with Effect only
-pnpm dev:experimental   # both apps on TanStack Query
-pnpm dev:all            # all five, and the docs site
+pnpm dev:svelte         # SvelteKit only
+pnpm dev:experimental   # the experimental apps
+pnpm dev:all            # every app, and the docs site
 pnpm build:examples     # production builds of every app, as CI runs them
-pnpm preview:examples   # build all five, then serve the production builds
+pnpm preview:examples   # build every app, then serve the production builds
 ```
 
 Every database call waits the latency picked in the app's top bar, or `DB_LATENCY_MS` (default 400), ± 50%. The top bar also sets how links prefetch and how long query data stays fresh (`staleTime`, 5 seconds until you pick another). **Reset** clears those cookies and reloads so the query cache is empty. Data the server loads for the first render streams in with the HTML. Later loads (scrolling, filters, opening an issue) are requests to the shared REST API (`examples/.shared/api`) in the browser's network tab, such as `GET /api/issues?status=open&cursor=10`, and mutations are `PATCH` / `POST` to it. The TanStack Start and Next.js apps serve the same API under `/api`. The Effect app serves an Effect RPC group instead, and its requests are `POST /rpc/` with the procedure's name (`GetIssue`, `UpdateTitle`) in the body. Data lives in memory and resets when the server restarts. To add or bump shadcn, run `pnpm dlx shadcn@latest add <name>` (or `add --all`) in `examples/.shared/ui` — keep that package vanilla (Base UI, lucide); do not hand-edit registry files. Brand tokens stay in its `globals.css`. App-only helpers and markup the apps share go in `examples/.shared/kit`, but nothing that calls `useQuery`, the query client, or the API, so each app's data code still reads on its own.
