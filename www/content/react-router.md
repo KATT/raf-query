@@ -8,7 +8,7 @@ order: 3
 React Router apps load data in one of two places, and raf-query fits each differently. Find yours, then read its section. Each one stands on its own:
 
 - **[Client-only](#client-only-apps)**: [SPA Mode](https://reactrouter.com/how-to/spa) (`ssr: false`) with [`clientLoader`](https://reactrouter.com/start/framework/data-loading#client-data-loading), or [Data Mode](https://reactrouter.com/start/modes#data)'s [`createBrowserRouter`](https://reactrouter.com/api/data-routers/createBrowserRouter). Loaders run in the browser, on the tab's one `QueryClient`, and nothing is hydrated. `prefetch`, `ensure` and `fetch` work as in [Starting queries](./starting-queries.md).
-- **[Server rendering](#server-rendering)**: [Framework Mode](https://reactrouter.com/start/modes#framework) with [`ssr: true`](https://reactrouter.com/api/framework-conventions/react-router.config.ts#ssr) (the default) and [`loader`](https://reactrouter.com/start/framework/data-loading#server-data-loading). Loaders run on the server with a new `QueryClient` per request and dehydrate it into the loader data, and `HydrationBoundary` writes it into the browser's client. Use `prefetch` and `fetch` there: `ensure` waits like `fetch`.
+- **[Server rendering](#server-rendering)**: [Framework Mode](https://reactrouter.com/start/modes#framework) with [`ssr: true`](https://reactrouter.com/api/framework-conventions/react-router.config.ts#ssr) (the default) and [`loader`](https://reactrouter.com/start/framework/data-loading#server-data-loading). Loaders run on the server with one `QueryClient` per request, which a root middleware creates, and dehydrate it into the loader data. `HydrationBoundary` writes it into the browser's client. Use `prefetch` and `fetch` there: `ensure` waits like `fetch`.
 
 ## Client-only apps
 
@@ -65,9 +65,23 @@ react-router/app/root.tsx#app
 
 Mount DevTools only when `import.meta.env.DEV` is true so Vite drops the panel from production builds. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
 
+### A client per request
+
+A root [`middleware`](https://reactrouter.com/how-to/middleware) creates the request's `QueryClient` and puts it in a [context](https://reactrouter.com/api/utils/createContext):
+
+```sample
+react-router/app/query-client.ts#context
+```
+
+```sample
+react-router/app/root.tsx#middleware
+```
+
+Server middleware runs for the document request and for each client navigation's data request, before any loader. Every loader of that request reads the same client from `args.context`, so nested routes share one cache: React Router runs the matched routes' loaders in parallel, and a query that a layout's loader and a child route's loader both start is requested once.
+
 ### Server loaders
 
-Each loader creates a `QueryClient` for its request, starts every query the route needs, and returns the handles with a dehydrated snapshot of the cache:
+Each loader takes the request's client from the context, starts every query the route needs, and returns the handles with a dehydrated snapshot of the cache:
 
 ```sample
 react-router/app/routes/posts.$slug.tsx#loader
@@ -83,8 +97,9 @@ react-router/app/routes/posts.$slug.tsx#component
 react-router/app/components/comments.tsx#component
 ```
 
-- Create a **new `QueryClient` in each loader**. A module-level client would share data between requests and users.
+- Create the server's client **per request**, in the middleware. A module-level client would share data between requests and users.
 - **`dehydrate(qc)`** takes entries with data and entries still loading. React Router [streams promises in loader data](https://reactrouter.com/how-to/suspense), so a `prefetch` that is still loading resolves in the browser when the server's request does, and the browser doesn't fetch it again.
+- With nested routes, a loader's snapshot holds every entry the client has when the loader returns, other loaders' queries included. The browser keeps the newer copy of an entry, so the overlap only adds to the payload.
 - **`HydrationBoundary`** writes the entries into the provider's client: entries the browser doesn't have yet while it renders, so its children read them, and the rest once it commits. The browser keeps whichever copy of an entry is newer. See [SSR and hydration](./ssr-and-hydration.md#when-the-browser-already-has-data).
 - `await qc.fetch(...)` returns a handle with the `data`, for deciding on a redirect or building another query's input in the loader. Pass it to components as a `QueryHandleWithData`: `useQuery` returns the data without a promise, and follows later refetches. See [Handles](./handles.md).
 - Use `prefetch` and `fetch` in a `loader`, not `ensure`. A `loader` runs on the server for every navigation, client-side ones included, and its client starts empty, so `ensure` waits for the request every time, exactly like `fetch`. See [Starting queries](./starting-queries.md#server-only-code).

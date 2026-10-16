@@ -1,7 +1,6 @@
 import {
 	dehydrate,
 	HydrationBoundary,
-	QueryClient,
 	type QueryHandleWithData,
 	useQuery,
 } from "@raf-query/react";
@@ -9,12 +8,13 @@ import { Suspense } from "react";
 
 import { Comments, CommentsSkeleton } from "~/components/comments.tsx";
 import { commentsQuery, postQuery } from "~/queries.ts";
+import { queryClientContext } from "~/query-client.ts";
 
 import type { Route } from "./+types/posts.$slug";
 
 // #region loader
 export async function loader(args: Route.LoaderArgs) {
-	const qc = new QueryClient();
+	const qc = args.context.get(queryClientContext);
 	const { slug } = args.params;
 	// Doesn't wait: the comments stream in after the page renders.
 	const comments = qc.prefetch(commentsQuery, { slug });

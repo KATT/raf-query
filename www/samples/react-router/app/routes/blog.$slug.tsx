@@ -1,7 +1,6 @@
 import {
 	dehydrate,
 	HydrationBoundary,
-	QueryClient,
 	type QueryHandle,
 	useQuery,
 } from "@raf-query/react";
@@ -10,6 +9,7 @@ import { Suspense, use } from "react";
 import type { PostComment } from "~/api.ts";
 import { CommentsSkeleton } from "~/components/comments.tsx";
 import { commentsQuery, postQuery } from "~/queries.ts";
+import { queryClientContext } from "~/query-client.ts";
 
 import type { Route } from "./+types/blog.$slug";
 
@@ -22,7 +22,7 @@ declare function PostSkeleton(): React.ReactNode;
 // #region hero
 // #region loader
 export function loader(args: Route.LoaderArgs) {
-	const qc = new QueryClient();
+	const qc = args.context.get(queryClientContext);
 	const { slug } = args.params;
 	// Never waits: both load while the page renders.
 	const comments = qc.prefetch(commentsQuery, { slug });
