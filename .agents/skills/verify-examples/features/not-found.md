@@ -22,7 +22,7 @@ Preconditions:
 Commands:
 
 - **Unknown path.** `curl -s -o /dev/null -w '%{http_code}\n' $U/nope` is `404`. `$CE open $U/nope; $CE text | grep -E '^(Issues|Nothing here\.)$'` prints both: the header is there.
-- **Bad id.** Same for `$U/issues/abc` and `$U/issues/0`: `404`, `Nothing here.`
+- **Bad id.** Same for `$U/issues/abc` and `$U/issues/0`, following redirects (`curl -sL`): `404`, `Nothing here.`
 - **Missing issue.** `$CE open $U/issues/43 --wait 1500; $CE text | grep 'Nothing here.'`. Also from the UI: `$CE open $U/issues/42; $CE click --role link --name 'Next issue' --exact; $CE wait --text 'Nothing here.'`.
 
 ## Gotchas

@@ -40,6 +40,7 @@ Walk the list top to bottom for a broad regression, then finish with [cross-app 
 - [Inline editing](inline-editing.md): edit the title and description in place, cancel, validation.
 - [Comments](comments.md): paged comments, posting with an optimistic row.
 - [Settings bar](settings-bar.md): link prefetch, stale time, latency, Reset.
+- [Loader verb](loader-verb.md): `prefetch`, `ensure` or `fetch` from the URL, and what each waits for.
 - [Devtools](devtools.md): the raf-query devtools panel.
 - [Not found](not-found.md): unknown URLs and missing issues.
 - [Demo write warning](demo-write-toast.md): the toast deployed demos show on writes.
