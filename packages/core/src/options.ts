@@ -92,13 +92,15 @@ export type QueryFnResult<TTypes extends QueryTypes> =
 
 /**
  * App-wide types, filled in by module augmentation. Declare `queryMeta` to
- * type every query's `meta`. Augment the package you import from;
+ * type every query's `meta`, and `throwOnError` to declare the default of
+ * every `QueryClient` the app creates. Augment the package you import from;
  * `@raf-query/react` re-exports this interface, so either works:
  *
  * ```ts
  * declare module "@raf-query/react" {
  *   interface Register {
  *     queryMeta: { errorMessage?: string };
+ *     throwOnError: true;
  *   }
  * }
  * ```
@@ -113,6 +115,17 @@ export interface Register {}
 export type QueryMeta = Register extends { queryMeta: infer TQueryMeta }
 	? TQueryMeta
 	: Record<string, unknown>;
+
+/**
+ * The `throwOnError` declared on {@link Register}, `undefined` when none is.
+ * Once declared, every `QueryClient` takes that `throwOnError`, and reads
+ * that omit the flag are typed by it.
+ */
+export type RegisteredThrowOnError = Register extends {
+	throwOnError: infer TThrow extends boolean;
+}
+	? TThrow
+	: undefined;
 
 export interface QueryFunctionContext {
 	/** The query's `meta` when this request started ({@link QueryBehavior.meta}). */

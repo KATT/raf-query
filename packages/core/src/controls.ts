@@ -14,6 +14,7 @@ import type {
 	InputOf,
 	IsPaged,
 	QueryFactory,
+	RegisteredThrowOnError,
 } from "./options.ts";
 import { fulfilled, pending, type Thenable } from "./thenable.ts";
 
@@ -85,8 +86,9 @@ export type HasTypedError<TFactory extends QueryFactory> =
 /**
  * Whether this read throws on failure. Untyped errors always throw. Typed
  * errors follow `options.throwOnError`, else the client's default (`false`
- * with a `layer`, `true` without). Types treat an omitted flag as `false`
- * (Result), matching a client with a `layer`.
+ * with a `layer`, `true` without). Types treat an omitted flag as the
+ * `throwOnError` declared on `Register`, and as `false` (Result, matching a
+ * client with a `layer`) when none is.
  */
 export type ThrowsOnError<
 	TFactory extends QueryFactory,
@@ -96,7 +98,9 @@ export type ThrowsOnError<
 		? true
 		: TThrow extends boolean
 			? TThrow
-			: false;
+			: RegisteredThrowOnError extends true
+				? true
+				: false;
 
 /**
  * {@link ThrowsOnError} at runtime, for bindings: a read of `query` throws

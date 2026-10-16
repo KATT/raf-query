@@ -15,10 +15,12 @@ import type {
 	QueryFactory,
 	QueryHandle,
 	QueryHandleWithData,
+	RegisteredThrowOnError,
 } from "./options.ts";
 import type * as Query from "./query.ts";
 
-export interface QueryClientConfig<TServices = never>
+/** {@link QueryClientConfig}, with `throwOnError` optional whatever `Register` declares. */
+export interface QueryClientOptions<TServices = never>
 	extends QueryCache.Config {
 	/**
 	 * Services for queries whose `queryFn` returns an Effect. Built with the
@@ -34,9 +36,33 @@ export interface QueryClientConfig<TServices = never>
 	 * rejects. Defaults to `false` when `layer` is set, `true` otherwise.
 	 * Promise `queryFn`s always throw, whatever this flag says: reads tell
 	 * them apart by what the `queryFn` returned ({@link Query.returnsEffectUnsafe}).
+	 *
+	 * Types can't see a client's flag, so they assume `false` for reads
+	 * that omit it. Declare `throwOnError` on `Register` to change that; this
+	 * option is then required, and must match.
 	 */
 	readonly throwOnError?: boolean;
 }
+
+/**
+ * The client's options. When `Register` declares `throwOnError`, the client
+ * must be given that same value, so reads typed by it see what they get.
+ */
+export type QueryClientConfig<TServices = never> =
+	RegisteredThrowOnError extends boolean
+		? QueryClientOptions<TServices> & {
+				readonly throwOnError: RegisteredThrowOnError;
+			}
+		: QueryClientOptions<TServices>;
+
+/**
+ * The `QueryClient` constructor's arguments: the config is required when
+ * `Register` declares `throwOnError`.
+ */
+export type QueryClientArgs<TServices = never> =
+	RegisteredThrowOnError extends boolean
+		? [config: QueryClientConfig<TServices>]
+		: [config?: QueryClientConfig<TServices>];
 
 /**
  * A verb's Effect, run by a client. Its requirement is the factory's
@@ -102,7 +128,8 @@ export class QueryClient<TServices = never> {
 	 */
 	readonly #scope = Scope.makeUnsafe();
 
-	constructor(config: QueryClientConfig<TServices> = {}) {
+	constructor(...args: QueryClientArgs<TServices>) {
+		const config: QueryClientOptions<TServices> = args[0] ?? {};
 		const cache = QueryCache.layer(config);
 		const services = Effect.runSync(
 			Layer.buildWithScope(

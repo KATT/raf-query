@@ -29,6 +29,27 @@ tanstack-start-effect/src/docs/effect-errors.tsx#in-react
 
 Set `throwOnError: true` on the client or on the call to get a rejecting promise again (and throw to an error boundary). That option only exists in the type when `ErrorOf` is typed — promise `queryFn`s always throw. On the same client, a query whose `queryFn` returns a promise still reads as plain data: `useQuery` tells the two apart by what the `queryFn` returned, on this client or on the server whose data was hydrated, so Effect and promise queries mix freely.
 
+### Declare the client's default
+
+TypeScript can't see the flag a client was built with, so a read that omits `throwOnError` is typed as a `Result`, the default with a `layer`. If your client throws instead, declare it once on `Register`, in the package you import from, as for [`meta`](./query-meta.md#typing-meta):
+
+```ts twoslash
+import { Layer } from "effect";
+const AppLive = Layer.empty;
+// ---cut---
+import { QueryClient } from "@raf-query/react";
+
+declare module "@raf-query/react" {
+	interface Register {
+		throwOnError: true;
+	}
+}
+
+const queryClient = new QueryClient({ layer: AppLive, throwOnError: true });
+```
+
+Reads that omit the flag are then typed as plain data, and a call's own `throwOnError: false` still returns a `Result`. Every `new QueryClient(...)` (and `QueryProvider`'s `config`) must then pass the same `throwOnError`, so a client can't disagree with the types. Declare `throwOnError: false` to require the opposite.
+
 `retry` and `retryDelay` still get the error as `unknown` (query defaults share them). Narrow with the schema there too:
 
 ```sample
