@@ -8,8 +8,8 @@ import {
 } from "@raf-query/core";
 import { type ReactNode, useEffect, useState } from "react";
 
-import { hydrate, type QueryClient } from "./client.ts";
-import { useQueryClient } from "./provider.tsx";
+import { hydrate, type QueryClient } from "../client.ts";
+import { useQueryClient } from "../provider.tsx";
 
 /**
  * Entries the client has no data for, which children need during this

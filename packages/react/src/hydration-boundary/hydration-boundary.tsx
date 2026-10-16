@@ -7,7 +7,7 @@ import type {
 } from "@raf-query/core";
 import type { ReactNode } from "react";
 
-import type { QueryClient } from "./client.ts";
+import type { QueryClient } from "../client.ts";
 import { Hydrate } from "./hydrate.tsx";
 
 export type HydrationBoundaryProps =

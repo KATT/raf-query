@@ -1,4 +1,4 @@
-import { dehydrate } from "./client.ts";
+import { dehydrate } from "../client.ts";
 import { Hydrate } from "./hydrate.tsx";
 import type { HydrationBoundaryProps } from "./hydration-boundary.tsx";
 import { sentHashes } from "./sent.ts";
