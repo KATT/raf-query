@@ -8,10 +8,10 @@ import { AssigneeCardSkeleton } from "@examples/kit/components/user";
 import { Button, buttonVariants } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
 import { cn } from "@examples/ui/lib/utils";
-import { dehydrate, type QueryHandle, useQuery } from "@raf-query/react";
+import { allKeyed, dehydrate, type QueryHandle } from "@raf-query/react";
 import { HydrationBoundary } from "@raf-query/react/react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
-import { Suspense, use } from "react";
+import { Suspense } from "react";
 import { isRouteErrorResponse } from "react-router";
 
 import { AppLink } from "~/components/app-link.tsx";
@@ -19,8 +19,11 @@ import { EditBody } from "~/components/edit-body.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
 import { NotFound } from "~/components/not-found.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
+import { parseLoaderVerb, startQuery } from "~/loader-verb.ts";
 import { createAppQueryClient } from "~/query-client.ts";
+import { useLoaderVerb } from "~/loader-verb.ts";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
+import { useQueryData } from "~/use-query-data.ts";
 import { withRequest } from "~/settings.ts";
 
 import type { Route } from "./+types/route";
@@ -28,21 +31,29 @@ import { AssigneeCard } from "./components/assignee-card.tsx";
 import { Comments } from "./components/comments.tsx";
 
 export async function loader(args: Route.LoaderArgs) {
-	return withRequest(args.request, () => {
+	return withRequest(args.request, async () => {
+		const verb = parseLoaderVerb(args.params.verb);
 		const id = Number(args.params.issueId);
 		if (!IssueId.safeParse(id).success) {
 			throw new Response("Not Found", { status: 404 });
 		}
 		const { queryClient } = createAppQueryClient();
-		const assignee = queryClient.prefetch(assigneeQuery, { issueId: id });
-		const comments = queryClient.prefetch(commentsQuery, { issueId: id });
-		const issue = queryClient.prefetch(issueQuery, { id });
+		const handles = await allKeyed({
+			assignee: startQuery(queryClient, verb, assigneeQuery, { issueId: id }),
+			comments: startQuery(queryClient, verb, commentsQuery, { issueId: id }),
+			issue: startQuery(queryClient, verb, issueQuery, { id }),
+		});
+		// `ensure` and `fetch` waited for the issue, so a missing one 404s
+		// here. After `prefetch`, the page finds out when it reads the issue.
+		if ("data" in handles.issue && handles.issue.data === null) {
+			throw new Response("Not Found", { status: 404 });
+		}
 		return {
-			assignee,
-			comments,
+			assignee: handles.assignee,
+			comments: handles.comments,
 			dehydratedState: dehydrate(queryClient),
 			id,
-			issue,
+			issue: handles.issue,
 		};
 	});
 }
@@ -101,11 +112,12 @@ export function ErrorBoundary(props: Route.ErrorBoundaryProps) {
 }
 
 function IssueNav(props: { readonly id: number }) {
+	const verb = useLoaderVerb();
 	return (
 		<nav className="flex items-center gap-2">
 			<AppLink
 				className={cn(buttonVariants({ size: "sm", variant: "ghost" }))}
-				to="/issues"
+				to={`/${verb}/issues`}
 			>
 				<ArrowLeft /> All issues
 			</AppLink>
@@ -115,7 +127,7 @@ function IssueNav(props: { readonly id: number }) {
 						aria-label="Previous issue"
 						className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
 						title="Previous issue"
-						to={`/issues/${props.id - 1}`}
+						to={`/${verb}/issues/${props.id - 1}`}
 					>
 						<ChevronLeft />
 					</AppLink>
@@ -134,7 +146,7 @@ function IssueNav(props: { readonly id: number }) {
 					aria-label="Next issue"
 					className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
 					title="Next issue"
-					to={`/issues/${props.id + 1}`}
+					to={`/${verb}/issues/${props.id + 1}`}
 				>
 					<ChevronRight />
 				</AppLink>
@@ -151,8 +163,7 @@ function IssueNav(props: { readonly id: number }) {
 const issueNotFound = new Response("Not Found", { status: 404 });
 
 function useIssue(handle: QueryHandle<typeof issueQuery>) {
-	const [issuePromise] = useQuery(issueQuery, handle);
-	const issue = use(issuePromise);
+	const [issue] = useQueryData(issueQuery, handle);
 	if (!issue) {
 		throw issueNotFound;
 	}

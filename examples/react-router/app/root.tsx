@@ -25,6 +25,7 @@ import {
 } from "react-router";
 
 import { AppLink, PrefetchContext } from "~/components/app-link.tsx";
+import { useLoaderVerb } from "~/loader-verb.ts";
 import { Settings } from "~/components/settings.tsx";
 import {
 	DEFAULT_PREFETCH,
@@ -77,6 +78,7 @@ export default function App(props: Route.ComponentProps) {
 		}
 		return { queryClient: client, queryDefaults: defaults };
 	});
+	const verb = useLoaderVerb();
 	const [prefetch, setPrefetch] = useState(
 		() => props.loaderData.prefetch ?? DEFAULT_PREFETCH,
 	);
@@ -88,7 +90,7 @@ export default function App(props: Route.ComponentProps) {
 					<nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
 						<AppLink
 							className="flex items-center gap-2.5 font-semibold"
-							to="/issues"
+							to={`/${verb}/issues`}
 						>
 							<Logo alt="" />
 							Issues
