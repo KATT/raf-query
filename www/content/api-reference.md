@@ -98,7 +98,7 @@ Subpath entries:
 
 ## @raf-query/vue
 
-Everything from `@raf-query/core`, plus composables and components. See [Vue](./vue.md).
+Experimental. Everything from `@raf-query/core`, plus composables and components. See [Vue](./vue.md).
 
 | Export                                              | Use                                                                                                                                                                                               |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -112,7 +112,7 @@ Everything from `@raf-query/core`, plus composables and components. See [Vue](./
 
 ## @raf-query/svelte
 
-Everything from `@raf-query/core`, plus runes and components for Svelte 5. See [Svelte](./svelte.md).
+Experimental. Everything from `@raf-query/core`, plus runes and components for Svelte 5. See [Svelte](./svelte.md).
 
 | Export                                            | Use                                                                                                                               |
 | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |

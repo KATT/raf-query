@@ -1,11 +1,14 @@
 ---
 title: Svelte
-description: Read queries in Svelte 5 components with @raf-query/svelte, load them in SvelteKit, and render them on the server.
+description: Experimental. Read queries in Svelte 5 components with @raf-query/svelte, load them in SvelteKit, and render them on the server.
 section: Integrations
 order: 5
 ---
 
 `@raf-query/svelte` is raf-query for Svelte 5.7 or newer, built on runes. Query factories, handles, the `QueryClient` and its verbs (`prefetch`, `ensure`, `invalidate`, `setData`, `dehydrate`) are the same as with React, so the rest of these docs applies. Only how a component reads a query is different.
+
+> [!WARNING]
+> `@raf-query/svelte` is experimental. Its API can change in any release, and it isn't used in production yet.
 
 ```bash
 pnpm add @raf-query/svelte effect

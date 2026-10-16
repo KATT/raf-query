@@ -1,7 +1,7 @@
 {
 	"name": "@raf-query/svelte",
 	"version": "0.10.0",
-	"description": "Svelte bindings for raf-query, a render-as-you-fetch query library",
+	"description": "Experimental Svelte bindings for raf-query, a render-as-you-fetch query library",
 	"keywords": [
 		"query",
 		"raf",

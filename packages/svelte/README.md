@@ -4,8 +4,8 @@ Render-as-you-fetch data fetching for Svelte: start queries in SvelteKit `load` 
 
 **[Documentation](https://raf-query.katt.dev/docs/svelte)** · [API reference](https://raf-query.katt.dev/docs/api-reference#raf-querysvelte) · [GitHub](https://github.com/KATT/raf-query)
 
-> [!NOTE]
-> raf-query is early. The API can still change between minor releases, and you use it at your own risk.
+> [!WARNING]
+> `@raf-query/svelte` is experimental. Its API can change in any release, and it isn't used in production yet.
 
 ## Install
 

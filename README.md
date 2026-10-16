@@ -74,16 +74,16 @@ The loader decides when each request starts and whether the navigation waits for
 npm install @raf-query/react effect
 ```
 
-See [installation](https://raf-query.katt.dev/docs/installation) for requirements, then set it up for [TanStack Start](https://raf-query.katt.dev/docs/tanstack-start), [React Server Components](https://raf-query.katt.dev/docs/react-server-components) (such as the Next.js App Router) or [React Router](https://raf-query.katt.dev/docs/react-router). Vue apps install `@raf-query/vue` ([Vue](https://raf-query.katt.dev/docs/vue)), and Svelte apps `@raf-query/svelte` ([Svelte](https://raf-query.katt.dev/docs/svelte)).
+See [installation](https://raf-query.katt.dev/docs/installation) for requirements, then set it up for [TanStack Start](https://raf-query.katt.dev/docs/tanstack-start), [React Server Components](https://raf-query.katt.dev/docs/react-server-components) (such as the Next.js App Router) or [React Router](https://raf-query.katt.dev/docs/react-router). Vue and Svelte apps install the experimental `@raf-query/vue` ([Vue](https://raf-query.katt.dev/docs/vue)) or `@raf-query/svelte` ([Svelte](https://raf-query.katt.dev/docs/svelte)).
 
 ## Packages
 
-| Package                                | Contents                                                                                        |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| [`@raf-query/react`](packages/react)   | Hooks, and the TanStack Router, RSC and devtools integrations. Re-exports `@raf-query/core`     |
-| [`@raf-query/vue`](packages/vue)       | Composables, `QueryPlugin` and `HydrationBoundary` for Vue. Re-exports `@raf-query/core`        |
-| [`@raf-query/svelte`](packages/svelte) | Runes, `QueryClientProvider` and `HydrationBoundary` for Svelte 5. Re-exports `@raf-query/core` |
-| [`@raf-query/core`](packages/core)     | The framework-agnostic `QueryClient` and the Effect-native cache behind it                      |
+| Package                                | Contents                                                                                                      |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| [`@raf-query/react`](packages/react)   | Hooks, and the TanStack Router, RSC and devtools integrations. Re-exports `@raf-query/core`                   |
+| [`@raf-query/vue`](packages/vue)       | Experimental. Composables, `QueryPlugin` and `HydrationBoundary` for Vue. Re-exports `@raf-query/core`        |
+| [`@raf-query/svelte`](packages/svelte) | Experimental. Runes, `QueryClientProvider` and `HydrationBoundary` for Svelte 5. Re-exports `@raf-query/core` |
+| [`@raf-query/core`](packages/core)     | The framework-agnostic `QueryClient` and the Effect-native cache behind it                                    |
 
 ## Examples
 

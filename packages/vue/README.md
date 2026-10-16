@@ -4,8 +4,8 @@ Render-as-you-fetch data fetching for Vue: start queries in route guards, loader
 
 **[Documentation](https://raf-query.katt.dev/docs/vue)** · [API reference](https://raf-query.katt.dev/docs/api-reference#raf-queryvue) · [GitHub](https://github.com/KATT/raf-query)
 
-> [!NOTE]
-> raf-query is early. The API can still change between minor releases, and you use it at your own risk.
+> [!WARNING]
+> `@raf-query/vue` is experimental. Its API can change in any release, and it isn't used in production yet.
 
 ## Install
 
