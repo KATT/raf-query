@@ -22,13 +22,13 @@ Controls are tracked: only components that read `isFetching` re-render when it c
 A navigation is not a background fetch: it's a transition. Use the router's pending state for the navigation itself:
 
 - [TanStack Start](./tanstack-start.md#pending-ui): `pendingComponent` / `pendingMs`, or `useRouterState({ select: (state) => state.isLoading })`
-- [Next.js](./nextjs.md#pending-ui): `useLinkStatus` from `next/link`
+- [Next.js](./react-server-components.md#pending-ui): `useLinkStatus` from `next/link`
 
 `isFetching` covers what happens after the page has rendered.
 
 ## useIsFetching
 
-You probably don't need this. Prefer the router's pending UI for navigations ([TanStack Start](./tanstack-start.md#pending-ui), [Next.js](./nextjs.md#pending-ui)) and per-query `isFetching` for background refetches. The hook stays for TanStack Query compatibility when you want one count of every in-flight request across the app:
+You probably don't need this. Prefer the router's pending UI for navigations ([TanStack Start](./tanstack-start.md#pending-ui), [Next.js](./react-server-components.md#pending-ui)) and per-query `isFetching` for background refetches. The hook stays for TanStack Query compatibility when you want one count of every in-flight request across the app:
 
 ```sample
 tanstack-start/src/docs/background-fetching-indicators.tsx#useisfetching

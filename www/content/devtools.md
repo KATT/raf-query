@@ -13,7 +13,7 @@ On Vite and TanStack Start, use `import.meta.env.DEV`:
 tanstack-start/src/docs/devtools.tsx#intro
 ```
 
-On Next.js, use `process.env.NODE_ENV !== "production"` instead — see [Next.js](./nextjs.md). Either check is replaced at build time, so the production branch is empty and the panel's code is tree-shaken. Omit the element (or the whole import) whenever you don't want the panel — there is no separate production entry.
+On Next.js, use `process.env.NODE_ENV !== "production"` instead — see [React Server Components](./react-server-components.md). Either check is replaced at build time, so the production branch is empty and the panel's code is tree-shaken. Omit the element (or the whole import) whenever you don't want the panel — there is no separate production entry.
 
 In Next.js, put it inside `QueryProvider` in the root layout. It's a client component, so a server component layout can render it.
 

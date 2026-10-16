@@ -1,8 +1,8 @@
 ---
 title: TanStack Start
 description: Set up raf-query with TanStack Router and Start, start queries in loaders, stream them during SSR and handle redirects.
-section: Server rendering
-order: 2
+section: Integrations
+order: 1
 ---
 
 TanStack Router's loaders are where raf-query wants queries to start, and its SSR streaming is what carries the cache to the browser. The integration is one function call.

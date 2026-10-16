@@ -1,0 +1,7 @@
+# Docs: an Integrations section, and one RSC page (human asked)
+
+Human: "the grouping of 'server rendering' doesn't make sense … there should likely be an 'Integrations' grouping … word it so that it's not specific to next.js (it's any RSC lib i guess)".
+
+- **Sidebar**: Getting started, Integrations, Guides, Server rendering, Effect, Reference, Project. Integrations holds the per-framework setup pages (TanStack Start, React Server Components, React Router), right after Getting started, since installation and the quick start send readers there. Server rendering keeps the concept page (SSR and hydration) that every integration builds on. Lost: one "Server rendering" section mixing that concept page with framework setup.
+- **`react-server-components.md`** (was `nextjs.md`), titled "React Server Components (Next.js)": Next.js is the framework most RSC apps use and the one the samples (and the homepage's Next.js tab) show, and the title keeps it findable in search and with Cmd+F; other RSC frameworks are on the fringes. The integration needs only a bundler that resolves `react-server` ([rsc-frameworks-test.md](./rsc-frameworks-test.md)); sections built on Next.js APIs (`useLinkStatus`, `next/headers`, Route Handlers, server actions) say so. `/docs/nextjs` and `/docs/nextjs.md` 308 to the new slug (`www/build/vercel-output.ts`), for links already out there.
+- Effect stays its own section: it's a way to write queries and loaders across every integration, not a framework.

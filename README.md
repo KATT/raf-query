@@ -74,7 +74,7 @@ The loader decides when each request starts and whether the navigation waits for
 npm install @raf-query/react effect
 ```
 
-See [installation](https://raf-query.katt.dev/docs/installation) for requirements, then set it up for [TanStack Start](https://raf-query.katt.dev/docs/tanstack-start) or [Next.js](https://raf-query.katt.dev/docs/nextjs).
+See [installation](https://raf-query.katt.dev/docs/installation) for requirements, then set it up for [TanStack Start](https://raf-query.katt.dev/docs/tanstack-start), [React Server Components](https://raf-query.katt.dev/docs/react-server-components) (such as the Next.js App Router) or [React Router](https://raf-query.katt.dev/docs/react-router).
 
 ## Packages
 

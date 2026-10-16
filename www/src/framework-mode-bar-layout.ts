@@ -2,7 +2,7 @@
  * Most pixels of scroll (code top approaching the sticky line) that map to a
  * full code-center → viewport-center parallax. Shorter = snappier drift.
  */
-export const FRAMEWORK_MODE_BAR_PARALLAX_TRAVEL = 280;
+const FRAMEWORK_MODE_BAR_PARALLAX_TRAVEL = 280;
 
 export type FrameworkModeBarLayoutInput = {
 	/**

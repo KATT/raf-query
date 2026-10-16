@@ -73,8 +73,8 @@ Only send what's serializable. These docs, for instance, cache each demo's code 
 tanstack-start/src/docs/ssr-and-hydration.ts#serialization
 ```
 
-## Framework guides
+## Integrations
 
 - [TanStack Start](./tanstack-start.md): `setupRouterIntegration` streams the router's query client.
-- [Next.js App Router](./nextjs.md): `QueryProvider` and `HydrationBoundary` for React Server Components.
+- [React Server Components](./react-server-components.md): `QueryProvider` and `HydrationBoundary` for the Next.js App Router and other RSC frameworks.
 - [React Router](./react-router.md): `HydrationBoundary` for the snapshot each Framework Mode loader returns.
