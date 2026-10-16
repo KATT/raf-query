@@ -11,6 +11,7 @@ const api = { toggleTodo: toggleTodoApi };
 
 // #region optimistic-updates-in-the-cache
 async function toggleTodo(id: number) {
+	await qc.cancel(todosQuery);
 	const previous = qc.getData(todosQuery);
 	qc.setData(todosQuery, undefined, (data) => ({
 		pageParams: data?.pageParams ?? [],

@@ -27,7 +27,7 @@ What changes is the API around the cache. TanStack Query lets any component star
 | `queryClient.setQueryData` / `getQueryData`          | `qc.setData(factory, input, updater)` / `qc.getData(...)`    |                                                                                                                                      |
 | `useIsFetching()`                                    | `useIsFetching()`                                            | Kept for compatibility; prefer router pending + per-query `isFetching`. [Background indicators](./background-fetching-indicators.md) |
 | `HydrationBoundary` + `dehydrate()`                  | Automatic streaming                                          | [SSR and hydration](./ssr-and-hydration.md)                                                                                          |
-| `cancelQueries()`                                    | `qc.remove(...)`                                             | Unread background refetches are [aborted](./query-cancellation.md) for you                                                           |
+| `queryClient.cancelQueries(filters)`                 | `qc.cancel(filter)` or `qc.cancel(factory, input)`           | Reverts to the state before the request; unread background refetches are [aborted](./query-cancellation.md) for you                  |
 
 ## What stays the same
 
@@ -81,7 +81,6 @@ Same problem space, fewer knobs:
 | `initialData` / `initialDataUpdatedAt`                              | Seed with `setData` / hydrate, or let the loader fetch                                                |
 | Custom `structuralSharing` merge function                           | Boolean on / off; deep equality on plain objects and arrays                                           |
 | Query filter `type` / `stale` / `fetchStatus` fields                | Filter is `{ queryKey?, exact?, predicate? }`; `predicate` covers the rest                            |
-| `cancelQueries` as its own verb                                     | `remove` cancels; unread background refetches abort when the last reader leaves                       |
 | Manual `notifyOnChangeProps` allowlist                              | Automatic tracked results, like TanStack's default path                                               |
 | `throwOnError` as a function / for promise `queryFn`s               | Promise `queryFn`s always throw; Effect `queryFn`s can return a `Result` when `throwOnError` is false |
 

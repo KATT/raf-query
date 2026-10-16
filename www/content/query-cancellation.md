@@ -1,6 +1,6 @@
 ---
 title: Query cancellation
-description: Pass the queryFn's AbortSignal to fetch so requests nobody needs any more are aborted, and cancel queries yourself.
+description: Pass the queryFn's AbortSignal to fetch so requests nobody needs any more are aborted, and cancel queries yourself with qc.cancel.
 section: Guides
 order: 18
 ---
@@ -33,6 +33,7 @@ A `queryFn` that ignores the signal still works. Its request just runs to the en
 raf-query is conservative about aborting, because a result that arrives is usually still worth caching:
 
 - **The last reader leaves during a background refetch.** If the `queryFn` read its `signal`, the request is aborted, and the entry goes back to how it was before it: same data, not fetching. `fetch` callers waiting on it get the cached data.
+- **You cancel it** with `qc.cancel`. The entry keeps its data, as below.
 - **The entry is removed or cleared** (`remove`, `clear`, `reset`). Its request is aborted, and `fetch` / `ensure` callers reject with an `AbortError`, as an aborted `fetch` would.
 
 Some requests are never aborted for losing their readers:
@@ -50,7 +51,17 @@ cancellation
 
 ## Cancelling yourself
 
-To stop a request yourself, `remove` the entry: the request is aborted and the data dropped. To keep the data and only abort, there's no direct call; in practice, letting a request finish and caching its result is almost always what you want.
+`cancel` aborts requests in flight and keeps the data. It takes a factory and its input, or a [filter](./query-invalidation.md#query-filters), like `invalidate`:
+
+```sample
+tanstack-start/src/docs/query-cancellation.ts#cancelling-yourself
+```
+
+Each matching entry goes back to how it was before its request: same data, same `updatedAt`, not fetching. `fetch` / `ensure` callers waiting on the request reject with an `AbortError`. The promise `cancel` returns resolves once the requests have stopped. Entries with no request in flight are left alone.
+
+A cancelled first load has no data to go back to, so it stays pending. Renders suspended on it keep waiting, and the next read, `prefetch` or `setData` settles the same promise.
+
+The main use is an [optimistic update in the cache](./mutations.md#optimistic-updates-in-the-cache): cancel before `setData`, or a refetch already in flight lands after your write and replaces it. To drop the data as well, `remove` the entry.
 
 ## Effect
 

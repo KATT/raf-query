@@ -1,4 +1,14 @@
-import { queryOptions } from "@raf-query/react";
+import { QueryClient, queryOptions } from "@raf-query/react";
+import { postQuery } from "~/queries.ts";
+
+const qc = new QueryClient();
+
+declare const slug: string;
+
+// #region cancelling-yourself
+await qc.cancel(postQuery, { slug });
+await qc.cancel({ queryKey: ["posts"] });
+// #endregion
 
 declare const axios: {
 	get(url: string, options: { signal: AbortSignal }): Promise<unknown>;

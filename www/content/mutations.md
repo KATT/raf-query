@@ -45,6 +45,8 @@ tanstack-start/src/docs/mutations.optimistic-updates.tsx#optimistic-updates
 tanstack-start/src/docs/mutations.ts#optimistic-updates-in-the-cache
 ```
 
+`qc.cancel` comes first: a refetch already in flight would otherwise land after the optimistic write and replace it with data from before the write. `cancel` aborts that request and keeps the cached data as it was. See [Query cancellation](./query-cancellation.md#cancelling-yourself).
+
 This is more code, and you're responsible for the rollback. Reach for it only when `useOptimistic` can't reach the readers that need the update.
 
 ## Updates from mutation responses
