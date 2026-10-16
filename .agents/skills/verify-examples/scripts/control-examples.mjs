@@ -24,6 +24,12 @@ const apps = {
 		ready: "/ensure/issues",
 		script: "dev:svelte",
 	},
+	"experimental-vue": {
+		experimental: true,
+		port: 3008,
+		ready: "/ensure/issues",
+		script: "dev:vue",
+	},
 	nextjs: { port: 3001, script: "dev:next" },
 	"react-router": { port: 3006, script: "dev:react-router" },
 	"tanstack-start": { port: 3000, script: "dev:start" },

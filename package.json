@@ -15,6 +15,7 @@
 		"dev:effect": "pnpm --filter @examples/tanstack-start-effect dev",
 		"dev:www": "pnpm --filter @raf-query/www dev",
 		"dev:svelte": "pnpm --filter @examples/experimental-svelte-app dev",
+		"dev:vue": "pnpm --filter @examples/experimental-vue-app dev",
 		"dev:experimental": "pnpm --parallel --filter \"@examples/experimental-*\" dev",
 		"dev:all": "pnpm --parallel --filter \"./examples/*\" --filter \"@examples/experimental-*\" --filter \"./www\" dev",
 		"preview:examples": "pnpm build:examples && pnpm --parallel --filter \"./examples/*\" --filter \"@examples/experimental-*\" start",

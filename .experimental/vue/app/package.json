@@ -1,0 +1,42 @@
+{
+	"name": "@examples/experimental-vue-app",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Experiment: the example issue tracker on Vue, Vue Router and shadcn-vue",
+	"type": "module",
+	"scripts": {
+		"build": "vp build",
+		"dev": "vp dev --port 3008",
+		"start": "PORT=3008 node dist/server/server.js",
+		"typecheck": "vue-tsc"
+	},
+	"dependencies": {
+		"@effect/platform-node": "catalog:",
+		"@examples/api": "workspace:*",
+		"@examples/db": "workspace:*",
+		"@examples/kit": "workspace:*",
+		"@examples/ui": "workspace:*",
+		"@hono/node-server": "2.1.5",
+		"@lucide/vue": "1.55.0",
+		"@raf-query/experimental-vue": "workspace:*",
+		"@vueuse/core": "15.0.0",
+		"class-variance-authority": "0.7.1",
+		"cn": "0.4.0",
+		"effect": "catalog:",
+		"hono": "4.13.13",
+		"reka-ui": "2.11.0",
+		"vue": "3.5.44",
+		"vue-router": "5.4.0",
+		"vue-sonner": "2.0.9"
+	},
+	"devDependencies": {
+		"@tailwindcss/vite": "4.3.3",
+		"@types/node": "26.6.4",
+		"@vitejs/plugin-vue": "6.0.10",
+		"tailwindcss": "4.3.3",
+		"typescript": "6.0.3",
+		"vite": "8.3.4",
+		"vite-plus": "1.0.0",
+		"vue-tsc": "3.3.13"
+	}
+}
