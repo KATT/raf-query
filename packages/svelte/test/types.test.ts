@@ -86,8 +86,8 @@ describe("useQuery types", () => {
 	});
 
 	it("takes throwOnError only for typed errors", () => {
-		// @ts-expect-error -- 2322: promise factories always throw
 		const read = () =>
+			// @ts-expect-error -- 2322: promise factories always throw
 			useQuery(
 				postQuery,
 				() => post,
