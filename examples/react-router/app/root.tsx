@@ -1,10 +1,13 @@
 import {
 	applyStaleTime,
 	DEFAULT_STALE_TIME,
+	type LoaderVerb,
 	queryTimeDefaults,
 	type QueryTimeDefaults,
 } from "@examples/db/types";
+import { AppHeader } from "@examples/kit/components/app-header";
 import { Logo } from "@examples/kit/components/logo";
+import { loaderVerbOf } from "@examples/kit/lib/loader-verb";
 import { ThemeProvider } from "@examples/kit/components/theme-provider";
 import { Toaster } from "@examples/ui/components/sonner";
 import { logoUrl } from "@examples/kit/lib/logo";
@@ -22,6 +25,7 @@ import {
 	Outlet,
 	Scripts,
 	ScrollRestoration,
+	useLocation,
 } from "react-router";
 
 import { AppLink, PrefetchContext } from "~/components/app-link.tsx";
@@ -77,6 +81,7 @@ export default function App(props: Route.ComponentProps) {
 		}
 		return { queryClient: client, queryDefaults: defaults };
 	});
+	const verb = loaderVerbOf(useLocation().pathname);
 	const [prefetch, setPrefetch] = useState(
 		() => props.loaderData.prefetch ?? DEFAULT_PREFETCH,
 	);
@@ -84,27 +89,27 @@ export default function App(props: Route.ComponentProps) {
 	return (
 		<QueryClientProvider client={queryClient}>
 			<PrefetchContext value={prefetch}>
-				<header className="border-b">
-					<nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
+				<AppHeader
+					brand={
 						<AppLink
-							className="flex items-center gap-2.5 font-semibold"
-							to="/issues"
+							className="flex shrink-0 items-center gap-2.5 font-semibold"
+							to={`/${verb}/issues`}
 						>
 							<Logo alt="" />
 							Issues
 						</AppLink>
-						<span className="text-sm text-muted-foreground">
-							raf-query · React Router
-						</span>
-						<div className="ml-auto">
-							<AppSettings
-								onPrefetchChange={setPrefetch}
-								prefetch={prefetch}
-								queryDefaults={queryDefaults}
-							/>
-						</div>
-					</nav>
-				</header>
+					}
+					framework="React Router"
+					settings={
+						<AppSettings
+							onPrefetchChange={setPrefetch}
+							prefetch={prefetch}
+							queryDefaults={queryDefaults}
+							verb={verb}
+						/>
+					}
+					verb={verb}
+				/>
 				<main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
 					<Outlet />
 				</main>
@@ -119,6 +124,7 @@ function AppSettings(props: {
 	readonly onPrefetchChange: (prefetch: Prefetch) => void;
 	readonly prefetch: Prefetch;
 	readonly queryDefaults: QueryTimeDefaults;
+	readonly verb: LoaderVerb;
 }) {
 	const queryClient = useQueryClient();
 	return (
@@ -130,6 +136,7 @@ function AppSettings(props: {
 			}}
 			prefetch={props.prefetch}
 			queryDefaults={props.queryDefaults}
+			verb={props.verb}
 		/>
 	);
 }

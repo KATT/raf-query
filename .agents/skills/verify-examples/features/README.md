@@ -12,6 +12,7 @@ Behavior-level inventory of the example issue tracker, from a user's point of vi
 
 ## Driving conventions
 
+- Recipes open `$U/issues…`, which redirects to the same page under `/prefetch/` (see [loader verb](loader-verb.md)). Paths read back from the page (`location.pathname`, link targets) carry the verb.
 - Find elements by role and accessible name (`$CE snapshot`), never by CSS class or position.
 - Wait for text with `$CE wait`, not fixed sleeps. The server adds about 400 ms ± 50% per API call by default; set Latency to None for fast runs, or 3 s to watch pending states.
 - `$CE open` the same URL twice after starting a dev server: Vite and Next.js compile on first visit and may reload the page once.
@@ -39,7 +40,8 @@ Walk the list top to bottom for a broad regression, then finish with [cross-app 
 - [Status changes](status-changes.md): the status menu in list rows and on the issue page, optimistic.
 - [Inline editing](inline-editing.md): edit the title and description in place, cancel, validation.
 - [Comments](comments.md): paged comments, posting with an optimistic row.
-- [Settings bar](settings-bar.md): link prefetch, stale time, latency, Reset.
+- [Settings bar](settings-bar.md): loader verb, link prefetch, stale time, latency, Reset.
+- [Loader verb](loader-verb.md): `prefetch`, `ensure` or `fetch` from the URL and the header's `Loader` select, and what each waits for.
 - [Devtools](devtools.md): the raf-query devtools panel.
 - [Not found](not-found.md): unknown URLs and missing issues.
 - [Demo write warning](demo-write-toast.md): the toast deployed demos show on writes.
