@@ -1,15 +1,7 @@
 "use client";
 
-import {
-	DEFAULT_LOADER_VERB,
-	LoaderVerb,
-	loaderVerbs,
-} from "@examples/db/types";
-import {
-	LoaderVerbBar,
-	loaderVerbLinkClassName,
-} from "@examples/kit/components/loader-verb";
-import { useParams, usePathname, useSearchParams } from "next/navigation";
+import { DEFAULT_LOADER_VERB, LoaderVerb } from "@examples/db/types";
+import { useParams } from "next/navigation";
 import type { ComponentProps } from "react";
 
 import { AppLink } from "./settings.tsx";
@@ -26,26 +18,4 @@ export function IssuesLink(
 ) {
 	const verb = useLoaderVerb();
 	return <AppLink {...props} href={`/${verb}/issues`} />;
-}
-
-/** The bar's links: the same page and search under each verb. */
-export function LoaderVerbNav(props: { readonly verb: LoaderVerb }) {
-	const pathname = usePathname();
-	const search = useSearchParams().toString();
-	const rest = pathname.slice(`/${props.verb}`.length);
-
-	return (
-		<LoaderVerbBar verb={props.verb}>
-			{loaderVerbs.map((next) => (
-				<AppLink
-					aria-current={next === props.verb ? "page" : undefined}
-					className={loaderVerbLinkClassName(next === props.verb)}
-					href={`/${next}${rest}${search === "" ? "" : `?${search}`}`}
-					key={next}
-				>
-					{next}
-				</AppLink>
-			))}
-		</LoaderVerbBar>
-	);
 }

@@ -7,7 +7,6 @@ import {
 	parseStaleTime,
 	STALE_TIME_COOKIE,
 } from "@examples/db/types";
-import { Logo } from "@examples/kit/components/logo";
 import { logoUrl } from "@examples/kit/lib/logo";
 import { Toaster } from "@examples/ui/components/sonner";
 import { QueryDevtools } from "@raf-query/react/devtools";
@@ -16,8 +15,8 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 import { AppQueryProvider } from "~/components/app-query-provider.tsx";
-import { IssuesLink } from "~/components/loader-verb.tsx";
-import { Settings, SettingsProvider } from "~/components/settings.tsx";
+import { Header } from "~/components/header.tsx";
+import { SettingsProvider } from "~/components/settings.tsx";
 import { ThemeProvider } from "~/components/theme-provider.tsx";
 import { parsePrefetch, PREFETCH_COOKIE } from "~/settings.ts";
 
@@ -40,25 +39,10 @@ export default async function RootLayout(props: {
 						<SettingsProvider
 							prefetch={parsePrefetch(cookieStore.get(PREFETCH_COOKIE)?.value)}
 						>
-							<header className="border-b">
-								<nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
-									<IssuesLink className="flex items-center gap-2.5 font-semibold">
-										<Logo alt="" />
-										Issues
-									</IssuesLink>
-									<span className="text-sm text-muted-foreground">
-										raf-query · Next.js
-									</span>
-									<div className="ml-auto">
-										<Settings
-											latency={parseLatency(
-												cookieStore.get(LATENCY_COOKIE)?.value,
-											)}
-											staleTime={staleTime}
-										/>
-									</div>
-								</nav>
-							</header>
+							<Header
+								latency={parseLatency(cookieStore.get(LATENCY_COOKIE)?.value)}
+								staleTime={staleTime}
+							/>
 							<main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
 								{props.children}
 								<QueryDevtools />

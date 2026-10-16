@@ -5,13 +5,16 @@ import {
 	DEFAULT_LATENCY_MS,
 	DEFAULT_STALE_TIME,
 	LATENCY_COOKIE,
+	LoaderVerb,
 	parseLatency,
 	parseStaleTime,
 	STALE_TIME_COOKIE,
 } from "@examples/db/types";
 import { SettingsControls } from "@examples/kit/components/settings";
+import { withLoaderVerb } from "@examples/kit/lib/loader-verb";
 import { useQueryClient } from "@raf-query/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
 	type ComponentProps,
 	createContext,
@@ -53,7 +56,9 @@ export function SettingsProvider(props: {
 export function Settings(props: {
 	readonly latency: number | undefined;
 	readonly staleTime: number | undefined;
+	readonly verb: LoaderVerb;
 }) {
+	const router = useRouter();
 	const settings = use(PrefetchContext);
 	const queryClient = useQueryClient();
 	const defaults = useStaleTimeDefaults();
@@ -89,9 +94,16 @@ export function Settings(props: {
 				applyStaleTime(defaults, next);
 				setStaleTime(next);
 			}}
+			onVerbChange={(value) => {
+				const verb = LoaderVerb.safeParse(value);
+				if (verb.success) {
+					router.push(withLoaderVerb(location, verb.data));
+				}
+			}}
 			prefetch={settings.prefetch}
 			prefetchOptions={prefetchOptions}
 			staleTime={staleTime ?? DEFAULT_STALE_TIME}
+			verb={props.verb}
 		/>
 	);
 }

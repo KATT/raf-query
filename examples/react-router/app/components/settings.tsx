@@ -3,13 +3,16 @@ import {
 	DEFAULT_LATENCY_MS,
 	DEFAULT_STALE_TIME,
 	LATENCY_COOKIE,
+	LoaderVerb,
 	parseLatency,
 	parseStaleTime,
 	type QueryTimeDefaults,
 	STALE_TIME_COOKIE,
 } from "@examples/db/types";
 import { SettingsControls } from "@examples/kit/components/settings";
+import { withLoaderVerb } from "@examples/kit/lib/loader-verb";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 
 import {
 	clearCookie,
@@ -29,7 +32,9 @@ export function Settings(props: {
 	readonly onReset: () => void;
 	readonly prefetch: Prefetch;
 	readonly queryDefaults: QueryTimeDefaults;
+	readonly verb: LoaderVerb;
 }) {
+	const navigate = useNavigate();
 	const [latency, setLatency] = useState(readLatency);
 	const [staleTime, setStaleTime] = useState(readStaleTime);
 
@@ -64,9 +69,16 @@ export function Settings(props: {
 				applyStaleTime(props.queryDefaults, next);
 				setStaleTime(next);
 			}}
+			onVerbChange={(value) => {
+				const verb = LoaderVerb.safeParse(value);
+				if (verb.success) {
+					void navigate(withLoaderVerb(location, verb.data));
+				}
+			}}
 			prefetch={props.prefetch}
 			prefetchOptions={prefetchOptions}
 			staleTime={staleTime ?? DEFAULT_STALE_TIME}
+			verb={props.verb}
 		/>
 	);
 }
