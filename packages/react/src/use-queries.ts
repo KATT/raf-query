@@ -2,6 +2,7 @@
 
 import {
 	fulfilled,
+	type Pending,
 	pending,
 	promiseControls,
 	type QueryFactory,
@@ -15,6 +16,7 @@ import {
 	type UseQueryOptions,
 	type UseQueryThrowOptions,
 } from "@raf-query/core";
+import { Predicate } from "effect";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { assertSent } from "./query-provider/browser-requests.ts";
@@ -25,7 +27,7 @@ export type UseQueriesResult<
 	TFactory extends QueryFactory,
 	TThrow extends boolean | undefined = undefined,
 > = readonly [
-	promise: Promise<ReadonlyArray<ReadValue<TFactory, TThrow>>>,
+	promise: Thenable<ReadonlyArray<ReadValue<TFactory, TThrow>>>,
 	controls: ReadonlyArray<UseQueryControls<TFactory>>,
 ];
 
@@ -141,47 +143,78 @@ function valuesOf<T>(parts: ReadonlyArray<Thenable<T>>): Array<T> | undefined {
 
 const noData = fulfilled<ReadonlyArray<never>>([]);
 
-const combined = new WeakMap<
-	Thenable<unknown>,
-	{
-		readonly all: Thenable<ReadonlyArray<unknown>>;
-		readonly parts: ReadonlyArray<Thenable<unknown>>;
+const settledFields = new Set<PropertyKey>(["reason", "status", "value"]);
+
+interface Combined {
+	readonly all: Pending<ReadonlyArray<unknown>>;
+	readonly parts: ReadonlyArray<Thenable<unknown>>;
+	/** `all.promise`, marking every part's tracked wrapper on a settled-field read. */
+	readonly tracked: Thenable<ReadonlyArray<unknown>>;
+}
+
+const combined = new WeakMap<Thenable<unknown>, Combined>();
+
+/** Settle `all` once its parts have: with the first rejection, or every value. */
+function settle(combination: Combined) {
+	const all = combination.all;
+	if (all.promise.status !== "pending") {
+		return;
 	}
->();
+	const rejected = combination.parts.find((part) => part.status === "rejected");
+	if (rejected?.status === "rejected") {
+		all.reject(rejected.reason);
+		return;
+	}
+	const values = valuesOf(combination.parts);
+	if (values) {
+		all.resolve(values);
+	}
+}
 
 /**
  * `Promise.all` of `parts`, as a thenable that is settled already when they
  * are. The same parts give the same thenable, so `use()` sees one promise
- * until one of them changes.
+ * until one of them changes. A part settles its thenable in place, so a
+ * render after that settles this one in place too, before anyone reads it.
+ * Reading its `status`, `value` or `reason` reads the parts' `wrappers`
+ * ({@link QueryObserver.trackThenable}), so their observers notify when a
+ * part settles.
  */
 function allOf<T>(
 	parts: ReadonlyArray<Thenable<T>>,
+	wrappers: ReadonlyArray<Thenable<T>>,
 ): Thenable<ReadonlyArray<T>> {
 	const first = parts[0];
 	if (first === undefined) {
 		return noData;
 	}
-	const cached = combined.get(first);
-	if (cached && sameItems(cached.parts, parts)) {
-		// SAFETY: stored under the same parts, so it holds their values.
-		return cached.all as Thenable<ReadonlyArray<T>>;
+	let combination = combined.get(first);
+	if (!combination || !sameItems(combination.parts, parts)) {
+		const all = pending<ReadonlyArray<unknown>>();
+		const tracked: Thenable<ReadonlyArray<unknown>> = new Proxy(all.promise, {
+			get: (target, name) => {
+				if (settledFields.has(name)) {
+					for (const wrapper of wrappers) {
+						void wrapper.status;
+					}
+				}
+				// oxlint-disable-next-line anti-slop/no-reflect-get -- a Proxy trap forwarding to its target
+				const value: unknown = Reflect.get(target, name, target);
+				// `Promise.prototype.then` throws on a receiver that isn't a promise.
+				return Predicate.isFunction(value) ? value.bind(target) : value;
+			},
+		});
+		const created: Combined = { all, parts, tracked };
+		combination = created;
+		combined.set(first, created);
+		Promise.all(parts).then(
+			() => settle(created),
+			() => settle(created),
+		);
 	}
-	let all: Thenable<ReadonlyArray<T>>;
-	const rejected = parts.find((part) => part.status === "rejected");
-	const values = valuesOf(parts);
-	if (rejected?.status === "rejected") {
-		const deferred = pending<ReadonlyArray<T>>();
-		deferred.reject(rejected.reason);
-		all = deferred.promise;
-	} else if (values) {
-		all = fulfilled(values);
-	} else {
-		const deferred = pending<ReadonlyArray<T>>();
-		Promise.all(parts).then(deferred.resolve, deferred.reject);
-		all = deferred.promise;
-	}
-	combined.set(first, { all, parts });
-	return all;
+	settle(combination);
+	// SAFETY: stored under the same parts, so it holds their values.
+	return combination.tracked as Thenable<ReadonlyArray<T>>;
 }
 
 /**
@@ -272,10 +305,13 @@ export function useQueries<
 	const parts = results.map((result): Thenable<unknown> =>
 		throwOnError ? result.promise : resultThenable(result.promise),
 	);
+	const wrappers = parts.map((part, index) =>
+		QueryObserver.trackThenable(observers[index], part),
+	);
 	// SAFETY: each part is its query's data promise (or its `Result` thenable
 	// when `throwOnError` is false), the shape `ReadValue` picks, and every
 	// control has every field of both control shapes.
-	return [allOf(parts), controls] as unknown as UseQueriesResult<
+	return [allOf(parts, wrappers), controls] as unknown as UseQueriesResult<
 		TFactory,
 		TThrow
 	>;

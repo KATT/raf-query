@@ -237,6 +237,28 @@ describe("useQueries", () => {
 		cleanup();
 	});
 
+	it("re-renders a component that reads the promise's status when the loads settle", async () => {
+		const test = setup();
+		const handles = test.prefetch([1, 2]);
+		function Status() {
+			const [titlesPromise] = useQueries(test.backend.issueQuery, handles);
+			return (
+				<p>
+					{titlesPromise.status === "fulfilled"
+						? titlesPromise.value.join(", ")
+						: "…"}
+				</p>
+			);
+		}
+
+		await mount(test.view(<Status />));
+		expect(screen.getByText("…")).toBeDefined();
+		await test.backend.respond();
+
+		expect(screen.getByText("First, Second")).toBeDefined();
+		cleanup();
+	});
+
 	it("throws a failed first load to the error boundary", async () => {
 		const test = setup();
 		await mount(test.view(<test.Titles handles={test.prefetch([1, 4])} />));
