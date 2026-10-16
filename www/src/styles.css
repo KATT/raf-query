@@ -42,6 +42,32 @@ html[data-announcement-dismissed] .announcement-bar {
 	font-weight: 500;
 }
 
+/*
+ * Framework switches cross-fade the panels in the view transition overlay,
+ * which paints above the page. Naming the sticky header and the framework
+ * pill puts them in that overlay too, above the panels, as on the page.
+ */
+.site-header {
+	view-transition-name: site-header;
+}
+
+.framework-mode-bar {
+	view-transition-name: framework-mode-bar;
+}
+
+/* Panels differ in height; keep the outgoing one from spilling past the box. */
+::view-transition-group(.framework-panels) {
+	overflow: clip;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	::view-transition-group(*),
+	::view-transition-old(*),
+	::view-transition-new(*) {
+		animation: none !important;
+	}
+}
+
 .prose {
 	--tw-prose-body: var(--foreground);
 	--tw-prose-headings: var(--foreground);

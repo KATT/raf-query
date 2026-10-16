@@ -35,6 +35,7 @@ import homeLoader from "sample:tanstack-start/src/routes/blog.$slug.tsx#route";
 import { DocBody } from "~/components/doc-body.tsx";
 import { DemoEmbed } from "~/components/demo-embed.tsx";
 import { FrameworkModeBar } from "~/components/framework-mode-bar.tsx";
+import { FrameworkPanels } from "~/components/framework-panels.tsx";
 import type { DocSegment } from "~/content/types.ts";
 import { firstDoc } from "~/content/docs.ts";
 import { demoQuery } from "~/demos/registry.ts";
@@ -44,7 +45,6 @@ import {
 	frameworkModes,
 	homeSearchDefaults,
 	homeSearchSchema,
-	syncFrameworkModeAttribute,
 } from "~/framework-mode.ts";
 import { pageHead } from "~/seo.ts";
 import { site } from "~/site.ts";
@@ -449,8 +449,6 @@ const leaveOuts: ReadonlyArray<{
 function HomePage() {
 	const data = Route.useLoaderData();
 	const search = Route.useSearch();
-	// Client navigations (and hydration) — first paint uses frameworkModeScript.
-	syncFrameworkModeAttribute(search.mode);
 	return (
 		<>
 			<main>
@@ -514,11 +512,13 @@ function HomePage() {
 							id="hero-code"
 						>
 							<FrameworkModeBar mode={search.mode} />
-							{frameworkModes.map((mode) => (
-								<div data-framework-panel={mode} key={mode}>
-									<DocBody demos={{}} segments={heroByMode[mode]} />
-								</div>
-							))}
+							<FrameworkPanels mode={search.mode}>
+								{frameworkModes.map((mode) => (
+									<div data-framework-panel={mode} key={mode}>
+										<DocBody demos={{}} segments={heroByMode[mode]} />
+									</div>
+								))}
+							</FrameworkPanels>
 						</div>
 					</div>
 				</section>
@@ -535,48 +535,50 @@ function HomePage() {
 					</h2>
 					{/* Every mode in static HTML. Shared step ids are applied to the
 					    visible panel only by frameworkModeScript / applyFrameworkMode. */}
-					{frameworkModes.map((mode) => (
-						<div data-framework-panel={mode} key={mode}>
-							<p className="mb-12 max-w-2xl text-muted-foreground [&_code]:font-mono [&_code]:text-[0.9em] [&_code]:text-foreground">
-								{howItWorksByMode[mode]}
-							</p>
-							<ol className="grid gap-16">
-								{stepsByMode[mode].map((step, index) => (
-									<li
-										className="grid scroll-mt-32 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-12"
-										data-step-id={step.id}
-										id={mode === defaultFrameworkMode ? step.id : undefined}
-										key={step.id}
-									>
-										<div className="grid content-start gap-4 lg:sticky lg:top-36">
-											<h3 className="flex items-center gap-3 text-xl font-semibold tracking-tight">
-												<span
-													aria-hidden="true"
-													className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-sm text-primary-foreground"
+					<FrameworkPanels mode={search.mode}>
+						{frameworkModes.map((mode) => (
+							<div data-framework-panel={mode} key={mode}>
+								<p className="mb-12 max-w-2xl text-muted-foreground [&_code]:font-mono [&_code]:text-[0.9em] [&_code]:text-foreground">
+									{howItWorksByMode[mode]}
+								</p>
+								<ol className="grid gap-16">
+									{stepsByMode[mode].map((step, index) => (
+										<li
+											className="grid scroll-mt-32 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-12"
+											data-step-id={step.id}
+											id={mode === defaultFrameworkMode ? step.id : undefined}
+											key={step.id}
+										>
+											<div className="grid content-start gap-4 lg:sticky lg:top-36">
+												<h3 className="flex items-center gap-3 text-xl font-semibold tracking-tight">
+													<span
+														aria-hidden="true"
+														className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-sm text-primary-foreground"
+													>
+														{index + 1}
+													</span>
+													<HashLink id={step.id}>{step.title}</HashLink>
+												</h3>
+												<div className="grid gap-3 text-muted-foreground [&_code]:font-mono [&_code]:text-[0.9em] [&_code]:text-foreground">
+													{step.body}
+												</div>
+												<Link
+													className={`${docLink} w-fit text-sm`}
+													params={{ slug: step.slug }}
+													to="/docs/$slug"
 												>
-													{index + 1}
-												</span>
-												<HashLink id={step.id}>{step.title}</HashLink>
-											</h3>
-											<div className="grid gap-3 text-muted-foreground [&_code]:font-mono [&_code]:text-[0.9em] [&_code]:text-foreground">
-												{step.body}
+													{step.guide} <ArrowRight className="inline size-4" />
+												</Link>
 											</div>
-											<Link
-												className={`${docLink} w-fit text-sm`}
-												params={{ slug: step.slug }}
-												to="/docs/$slug"
-											>
-												{step.guide} <ArrowRight className="inline size-4" />
-											</Link>
-										</div>
-										<div className="min-w-0 [&_.code-block]:my-0!">
-											<DocBody demos={{}} segments={step.code} />
-										</div>
-									</li>
-								))}
-							</ol>
-						</div>
-					))}
+											<div className="min-w-0 [&_.code-block]:my-0!">
+												<DocBody demos={{}} segments={step.code} />
+											</div>
+										</li>
+									))}
+								</ol>
+							</div>
+						))}
+					</FrameworkPanels>
 				</section>
 
 				<section

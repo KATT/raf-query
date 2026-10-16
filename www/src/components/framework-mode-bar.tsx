@@ -44,7 +44,7 @@ export function FrameworkModeBar(props: { readonly mode: FrameworkMode }) {
 
 	return (
 		<div
-			className="pointer-events-none z-30 w-max -translate-x-1/2"
+			className="framework-mode-bar pointer-events-none z-30 w-max -translate-x-1/2"
 			ref={(shell) => {
 				if (shell === null) {
 					return;
