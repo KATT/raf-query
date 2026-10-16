@@ -64,6 +64,9 @@
 		"packages/react": {
 			"includeEntryExports": false,
 		},
+		"packages/vue": {
+			"includeEntryExports": false,
+		},
 		".experimental/tanstack-query/package": {
 			// Same surface as `@raf-query/react`, kept for the comparison even
 			// where the experimental apps don't call every export.

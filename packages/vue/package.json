@@ -1,0 +1,72 @@
+{
+	"name": "@raf-query/vue",
+	"version": "0.10.0",
+	"description": "Vue bindings for raf-query, a render-as-you-fetch query library",
+	"keywords": [
+		"query",
+		"raf",
+		"render-as-you-fetch",
+		"suspense",
+		"vue"
+	],
+	"license": "MIT",
+	"author": {
+		"name": "KATT",
+		"email": "alexander@n1s.se"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/KATT/raf-query.git",
+		"directory": "packages/vue"
+	},
+	"homepage": "https://raf-query.katt.dev",
+	"bugs": {
+		"url": "https://github.com/KATT/raf-query/issues"
+	},
+	"files": [
+		"dist/",
+		"CHANGELOG.md",
+		"LICENSE.md",
+		"README.md"
+	],
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/sync-package-docs.ts",
+		"build": "vp pack",
+		"test": "vp test",
+		"typecheck": "tsc",
+		"publish:npm": "pnpm pack --out package.tgz && npm publish package.tgz --access public && rm package.tgz"
+	},
+	"dependencies": {
+		"@raf-query/core": "workspace:*"
+	},
+	"peerDependencies": {
+		"effect": "^4.0.0",
+		"vue": "^3.5.0"
+	},
+	"devDependencies": {
+		"@effect/vitest": "catalog:",
+		"@types/node": "26.6.4",
+		"@vitest/coverage-v8": "5.0.1",
+		"@vue/test-utils": "2.5.1",
+		"effect": "catalog:",
+		"happy-dom": "21.0.1",
+		"typescript": "7.0.2",
+		"vite-plus": "1.0.0",
+		"vue": "3.5.44"
+	},
+	"publishConfig": {
+		"access": "public",
+		"exports": {
+			".": "./dist/index.mjs"
+		},
+		"provenance": true
+	},
+	"engines": {
+		"node": ">=22"
+	}
+}

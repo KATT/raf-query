@@ -515,6 +515,38 @@
 			}
 		},
 		{
+			// Vue composables are named `use…` too, but run once in `setup`, not on
+			// every render, and React Compiler never sees them, so neither React's
+			// rules of hooks nor the compiler's rules apply.
+			"files": ["packages/vue/src/**"],
+			"rules": {
+				"react-hooks/rules-of-hooks": "off",
+				"react/rules-of-hooks": "off",
+				"react/error-boundaries": "off",
+				"react/globals": "off",
+				"react/immutability": "off",
+				"react/incompatible-library": "off",
+				"react/preserve-manual-memoization": "off",
+				"react/purity": "off",
+				"react/refs": "off",
+				"react/set-state-in-effect": "off",
+				"react/set-state-in-render": "off",
+				"react/static-components": "off",
+				"react/use-memo": "off",
+				"react/unsupported-syntax": "off",
+				"react/void-use-memo": "off",
+				"react/no-deriving-state-in-effects": "off",
+				"react/invariant": "off",
+				"react/rule-suppression": "off",
+				"react/syntax": "off",
+				"react/todo": "off",
+				"react/capitalized-calls": "off",
+				"react/exhaustive-effect-dependencies": "off",
+				"react/hooks": "off",
+				"react/memo-dependencies": "off"
+			}
+		},
+		{
 			// TanStack Router infers loader/search/context types from option key
 			// order (`validateSearch` before `loader`, `loader` before `head`).
 			"files": [

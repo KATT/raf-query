@@ -6,6 +6,7 @@ This is a Vite+ / pnpm monorepo. The publishable packages live in `packages/`:
 | ---------------- | ------------------ |
 | `packages/core`  | `@raf-query/core`  |
 | `packages/react` | `@raf-query/react` |
+| `packages/vue`   | `@raf-query/vue`   |
 
 Experiments live under top-level `.experimental/<topic>/`, each with a README and its package/apps underneath. The release and the root `./packages/*` / `./examples/*` globs don't reach them. `.experimental/tanstack-query/` is raf-query's API on TanStack Query (`package/`, plus `start/` and `nextjs/` apps). Private, not published, version `0.0.0`. See [the experiment READMEs](../.experimental/).
 
