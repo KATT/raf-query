@@ -6,6 +6,7 @@ import { Component, type ReactNode, StrictMode, Suspense, use } from "react";
 import {
 	dehydrate,
 	hydrate,
+	type InfiniteData,
 	infiniteQueryOptions,
 	Query,
 	QueryClient,
@@ -965,6 +966,163 @@ describe("useQuery", () => {
 			await app.backend.respond();
 			expect(screen.getByText("Error: Error: No issue 404")).toBeDefined();
 			cleanup();
+		});
+	});
+
+	describe("throwOnError on the query's options", () => {
+		class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {
+			id: Schema.Number,
+		}) {}
+		function readName(id: number) {
+			return Effect.gen(function* () {
+				if (id !== 1) {
+					return yield* Effect.fail(new NotFound({ id }));
+				}
+				return "Ada";
+			});
+		}
+		function throwingNameQuery(input: { id: number }) {
+			return queryOptions({
+				queryFn: () => readName(input.id),
+				queryKey: ["throwing-name", input.id],
+				retry: false,
+				throwOnError: true,
+			});
+		}
+		function resultNameQuery(input: { id: number }) {
+			return queryOptions({
+				queryFn: () => readName(input.id),
+				queryKey: ["result-name", input.id],
+				retry: false,
+				throwOnError: false,
+			});
+		}
+		function view(client: QueryClient<unknown>, children: ReactNode) {
+			return (
+				<QueryClientProvider client={client}>
+					<Boundary>
+						<Suspense fallback={<p>Loading</p>}>{children}</Suspense>
+					</Boundary>
+				</QueryClientProvider>
+			);
+		}
+		function Name(props: {
+			readonly handle: QueryHandle<typeof throwingNameQuery>;
+		}) {
+			const [namePromise] = useQuery(throwingNameQuery, props.handle);
+			expectTypeOf(namePromise).toEqualTypeOf<Thenable<string>>();
+			return <p>{use(namePromise)}</p>;
+		}
+
+		it("reads as plain data on a client with a layer", async () => {
+			const client = new QueryClient({ isServer: false, layer: Layer.empty });
+			expect(client.throwOnError).toBe(false);
+			const handle = client.prefetch(throwingNameQuery, { id: 1 });
+			await mount(view(client, <Name handle={handle} />));
+			await waitFor(() => screen.getByText("Ada"));
+			cleanup();
+		});
+
+		it("throws a failure to the error boundary", async () => {
+			const client = new QueryClient({ isServer: false, layer: Layer.empty });
+			const handle = client.prefetch(throwingNameQuery, { id: 404 });
+			await mount(view(client, <Name handle={handle} />));
+			await waitFor(() => screen.getByText(/Error: NotFound/));
+			cleanup();
+		});
+
+		it("reads a handle from ensure as plain data", async () => {
+			const client = new QueryClient({ isServer: false, layer: Layer.empty });
+			function EnsuredName(props: {
+				readonly handle: QueryHandleWithData<typeof throwingNameQuery>;
+			}) {
+				const [name] = useQuery(throwingNameQuery, props.handle);
+				expectTypeOf(name).toEqualTypeOf<string>();
+				return <p>{name}</p>;
+			}
+			const handle = await client.ensure(throwingNameQuery, { id: 1 });
+			await mount(view(client, <EnsuredName handle={handle} />));
+			expect(screen.getByText("Ada")).toBeDefined();
+			cleanup();
+		});
+
+		it("is overridden by the call's throwOnError", async () => {
+			const client = new QueryClient({ isServer: false, layer: Layer.empty });
+			function MaybeName(props: {
+				readonly handle: QueryHandle<typeof throwingNameQuery>;
+			}) {
+				const [namePromise] = useQuery(throwingNameQuery, props.handle, {
+					throwOnError: false,
+				});
+				expectTypeOf(namePromise).toEqualTypeOf<
+					Thenable<Result.Result<string, NotFound>>
+				>();
+				return (
+					<p>
+						{Result.match(use(namePromise), {
+							onFailure: (error) => `missing ${error.id}`,
+							onSuccess: (value) => value,
+						})}
+					</p>
+				);
+			}
+			const handle = client.prefetch(throwingNameQuery, { id: 404 });
+			await mount(view(client, <MaybeName handle={handle} />));
+			await waitFor(() => screen.getByText("missing 404"));
+			cleanup();
+		});
+
+		it("overrides the client's default", async () => {
+			const client = new QueryClient({ isServer: false });
+			expect(client.throwOnError).toBe(true);
+			function MaybeName(props: {
+				readonly handle: QueryHandle<typeof resultNameQuery>;
+			}) {
+				const [namePromise] = useQuery(resultNameQuery, props.handle);
+				expectTypeOf(namePromise).toEqualTypeOf<
+					Thenable<Result.Result<string, NotFound>>
+				>();
+				return (
+					<p>
+						{Result.match(use(namePromise), {
+							onFailure: (error) => `missing ${error.id}`,
+							onSuccess: (value) => value,
+						})}
+					</p>
+				);
+			}
+			const handle = client.prefetch(resultNameQuery, { id: 404 });
+			await mount(view(client, <MaybeName handle={handle} />));
+			await waitFor(() => screen.getByText("missing 404"));
+			cleanup();
+		});
+
+		it("types paged reads", () => {
+			function pagesQuery() {
+				return infiniteQueryOptions({
+					getNextPageParam: () => null,
+					initialPageParam: 0,
+					queryFn: (context) => readName(context.pageParam),
+					queryKey: ["name-pages"],
+					throwOnError: true,
+				});
+			}
+			const useTypes = (handle: QueryHandle<typeof pagesQuery>) => {
+				const [pagesPromise] = useQuery(pagesQuery, handle);
+				expectTypeOf(pagesPromise).toEqualTypeOf<
+					Thenable<InfiniteData<{ page: string; pageParam: number }>>
+				>();
+				const [result] = useQuery(pagesQuery, handle, { throwOnError: false });
+				expectTypeOf(result).toEqualTypeOf<
+					Thenable<
+						Result.Result<
+							InfiniteData<{ page: string; pageParam: number }>,
+							NotFound
+						>
+					>
+				>();
+			};
+			expect(useTypes).toBeTypeOf("function");
 		});
 	});
 });

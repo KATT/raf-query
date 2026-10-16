@@ -200,6 +200,46 @@ describe("QueryBinding", () => {
 		);
 	});
 
+	it("takes throwOnError from the query's options, unless the read sets it", async () => {
+		class NotFound extends Data.TaggedError("NotFound")<{
+			readonly id: number;
+		}> {}
+		const missing = (input: { id: number }) =>
+			queryOptions({
+				queryFn: () => Effect.fail(new NotFound({ id: input.id })),
+				queryKey: ["missing", input.id],
+				retry: false,
+				throwOnError: true,
+			});
+		const client = new QueryClient({ layer: Layer.empty });
+		const handle = client.getQuery(missing, { id: 1 }).handle;
+		const throwing = bind(client, missing, handle);
+		const asResult = bind(client, missing, handle, { throwOnError: false });
+		void asResult.binding.result.promise;
+		await flush();
+
+		await expect(throwing.binding.result.promise).rejects.toBeInstanceOf(
+			NotFound,
+		);
+		const settled = await asResult.binding.result.promise;
+		expect(Result.isFailure(settled)).toBe(true);
+	});
+
+	it("reads a promise queryFn as plain data on a client with a layer", async () => {
+		const backend = createBackend();
+		const client = new QueryClient({ isServer: false, layer: Layer.empty });
+		const handle = client.prefetch(backend.issueQuery, { id: 1 });
+		const bound = bind(client, backend.issueQuery, handle);
+		backend.respondAll();
+		await flush();
+
+		expect(bound.binding.result.data).toEqual({ id: 1, title: "First" });
+		await expect(bound.binding.result.promise).resolves.toEqual({
+			id: 1,
+			title: "First",
+		});
+	});
+
 	it("runs the observer's commands as promises", async () => {
 		const backend = createBackend();
 		const client = new QueryClient({ isServer: false });
