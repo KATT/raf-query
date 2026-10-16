@@ -7,7 +7,7 @@ This is a Vite+ / pnpm monorepo. The publishable packages live in `packages/`:
 | `packages/core`  | `@raf-query/core`  |
 | `packages/react` | `@raf-query/react` |
 
-Experiments live under top-level `.experimental/<topic>/`, each with a README and its package/apps underneath. The release and the root `./packages/*` / `./examples/*` globs don't reach them. `.experimental/tanstack-query/` is raf-query's API on TanStack Query (`package/`, plus `start/` and `nextjs/` apps). Private, not published, version `0.0.0`. See [the experiment READMEs](../.experimental/).
+Experiments live under top-level `.experimental/<topic>/`, each with a README and its package/apps underneath. The release and the root `./packages/*` / `./examples/*` globs don't reach them. `.experimental/tanstack-query/` is raf-query's API on TanStack Query (`package/`, plus `start/` and `nextjs/` apps). `.experimental/vue/` is the Vue bindings (`package/`, a `sample/` app and the draft `docs/`). Private, like every experiment: not published, version `0.0.0`. See [the experiment READMEs](../.experimental/).
 
 Each package has its own `README.md`, shown on npm. Root `LICENSE.md` / `CHANGELOG.md` are shared: each package's `prepack` runs [`scripts/sync-package-docs.ts`](../scripts/sync-package-docs.ts), which copies them into the package so the npm tarball includes them without a second copy in git.
 
