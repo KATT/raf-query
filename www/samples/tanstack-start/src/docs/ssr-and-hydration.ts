@@ -9,7 +9,7 @@ export function pushStateQuery(input: { channel: string }) {
 	return queryOptions({
 		queryKey: ["pushState", input.channel],
 		queryFn: () => detectPushState(input.channel),
-		enabled: "browser",
+		enabled: typeof window !== "undefined",
 	});
 }
 // #endregion

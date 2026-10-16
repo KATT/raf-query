@@ -9,7 +9,7 @@ declare const flags: { readonly billing: boolean };
 
 declare function listInvoices(orgId: string): Promise<ReadonlyArray<Invoice>>;
 
-// #region turning-a-query-off
+// #region disabling-a-query
 export function invoicesQuery(input: { orgId: string }) {
 	return queryOptions({
 		queryKey: ["invoices", input.orgId],

@@ -14,7 +14,7 @@ export function permissionQuery(input: { name: PermissionName }) {
 			return status.state;
 		},
 		// Only the browser has `navigator.permissions`.
-		enabled: "browser",
+		enabled: typeof window !== "undefined",
 	});
 }
 // #endregion queries
