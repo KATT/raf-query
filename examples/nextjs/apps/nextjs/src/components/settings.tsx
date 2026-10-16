@@ -10,10 +10,11 @@ import {
 	parseStaleTime,
 	STALE_TIME_COOKIE,
 } from "@examples/db/types";
+import { NavigationProgress } from "@examples/kit/components/navigation-progress";
 import { SettingsControls } from "@examples/kit/components/settings";
 import { withLoaderVerb } from "@examples/kit/lib/loader-verb";
 import { useQueryClient } from "@raf-query/react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { useRouter } from "next/navigation";
 import {
 	type ComponentProps,
@@ -21,6 +22,7 @@ import {
 	type ReactNode,
 	use,
 	useState,
+	useTransition,
 } from "react";
 
 import { useStaleTimeDefaults } from "~/components/app-query-provider.tsx";
@@ -64,47 +66,53 @@ export function Settings(props: {
 	const defaults = useStaleTimeDefaults();
 	const [latency, setLatency] = useState(props.latency);
 	const [staleTime, setStaleTime] = useState(props.staleTime);
+	const [switchingVerb, startSwitchingVerb] = useTransition();
 
 	return (
-		<SettingsControls
-			latency={latency ?? DEFAULT_LATENCY_MS}
-			onLatencyChange={(value) => {
-				writeCookie(LATENCY_COOKIE, value);
-				setLatency(parseLatency(value));
-			}}
-			onPrefetchChange={(value) => {
-				const next = parsePrefetch(value);
-				writeCookie(PREFETCH_COOKIE, next);
-				settings.setPrefetch(next);
-			}}
-			onReset={() => {
-				clearCookie(PREFETCH_COOKIE);
-				clearCookie(LATENCY_COOKIE);
-				clearCookie(STALE_TIME_COOKIE);
-				applyStaleTime(defaults, DEFAULT_STALE_TIME);
-				queryClient.clear();
-				window.location.reload();
-			}}
-			onStaleTimeChange={(value) => {
-				const next = parseStaleTime(value);
-				if (next === undefined) {
-					return;
-				}
-				writeCookie(STALE_TIME_COOKIE, value);
-				applyStaleTime(defaults, next);
-				setStaleTime(next);
-			}}
-			onVerbChange={(value) => {
-				const verb = LoaderVerb.safeParse(value);
-				if (verb.success) {
-					router.push(withLoaderVerb(location, verb.data));
-				}
-			}}
-			prefetch={settings.prefetch}
-			prefetchOptions={prefetchOptions}
-			staleTime={staleTime ?? DEFAULT_STALE_TIME}
-			verb={props.verb}
-		/>
+		<>
+			{switchingVerb ? <NavigationProgress /> : null}
+			<SettingsControls
+				latency={latency ?? DEFAULT_LATENCY_MS}
+				onLatencyChange={(value) => {
+					writeCookie(LATENCY_COOKIE, value);
+					setLatency(parseLatency(value));
+				}}
+				onPrefetchChange={(value) => {
+					const next = parsePrefetch(value);
+					writeCookie(PREFETCH_COOKIE, next);
+					settings.setPrefetch(next);
+				}}
+				onReset={() => {
+					clearCookie(PREFETCH_COOKIE);
+					clearCookie(LATENCY_COOKIE);
+					clearCookie(STALE_TIME_COOKIE);
+					applyStaleTime(defaults, DEFAULT_STALE_TIME);
+					queryClient.clear();
+					window.location.reload();
+				}}
+				onStaleTimeChange={(value) => {
+					const next = parseStaleTime(value);
+					if (next === undefined) {
+						return;
+					}
+					writeCookie(STALE_TIME_COOKIE, value);
+					applyStaleTime(defaults, next);
+					setStaleTime(next);
+				}}
+				onVerbChange={(value) => {
+					const verb = LoaderVerb.safeParse(value);
+					if (verb.success) {
+						startSwitchingVerb(() => {
+							router.push(withLoaderVerb(location, verb.data));
+						});
+					}
+				}}
+				prefetch={settings.prefetch}
+				prefetchOptions={prefetchOptions}
+				staleTime={staleTime ?? DEFAULT_STALE_TIME}
+				verb={props.verb}
+			/>
+		</>
 	);
 }
 
@@ -115,22 +123,41 @@ export function Settings(props: {
  * builds.
  */
 export function AppLink(props: ComponentProps<typeof Link>) {
+	const { children, ...link } = props;
 	const settings = use(PrefetchContext);
 	const [intent, setIntent] = useState(false);
 
 	if (settings.prefetch !== "intent") {
-		return <Link {...props} prefetch={settings.prefetch === "viewport"} />;
+		return (
+			<Link {...link} prefetch={settings.prefetch === "viewport"}>
+				{children}
+				<LinkProgress />
+			</Link>
+		);
 	}
 	const showIntent = () => {
 		setIntent(true);
 	};
 	return (
 		<Link
-			{...props}
+			{...link}
 			onFocus={showIntent}
 			onMouseEnter={showIntent}
 			onTouchStart={showIntent}
 			prefetch={intent}
-		/>
+		>
+			{children}
+			<LinkProgress />
+		</Link>
 	);
+}
+
+/**
+ * Next.js has no app-wide navigation state, only `useLinkStatus` for the
+ * `Link` it's rendered in, so every `AppLink` shows the bar while its own
+ * navigation is pending.
+ */
+function LinkProgress() {
+	const status = useLinkStatus();
+	return status.pending ? <NavigationProgress /> : null;
 }
