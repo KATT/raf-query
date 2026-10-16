@@ -31,6 +31,7 @@ PAGE='document.querySelector("main").innerText.includes("Showing") ? "list" : "i
 Commands:
 
 - **Redirects.** `curl -s -o /dev/null -w '%{redirect_url}\n' $U/issues/3` is `$U/prefetch/issues/3`; `$U/issues?status=open` keeps `status=open`. `curl -s -o /dev/null -w '%{http_code}\n' $U/bogus/issues/3` is `404`.
+- **The API isn't a verb.** In the REST apps, `curl -s -o /dev/null -w '%{http_code} %{content_type}\n' "$U/api/issues?sort=newest&status=all&cursor=10"` is `200 application/json`, and so is `$U/api/issues/3`. An HTML 404 means a `:verb/issues…` page route caught the request, and the list's infinite scroll never loads a second page.
 - **Switch verb.** `$CE open "$U/prefetch/issues?status=open"; $CE click --role link --name ensure --exact`. `$CE eval location.pathname + location.search` is `/ensure/issues?status=open&sort=newest`, and `$CE snapshot | grep 'link "#'` rows link to `/ensure/issues/<id>`.
 - **First HTML.** `curl -s $U/ensure/issues/3 | grep -c animate-pulse` is `0` and the title is in the HTML; under `/prefetch/` the count is above `0`.
 - **prefetch opens at once.** `$CE open $U/prefetch/issues; $CE wait --role link --name '/^#41 /'; $CE click --role link --name '/^#41 /'; $CE eval "$PAGE"` is `issue` right away; the title fills in about 3 s later.

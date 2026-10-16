@@ -7,6 +7,8 @@ export default [
 		route("issues/:issueId", "routes/$verb/issues/$issueId/route.tsx"),
 	]),
 	route("issues/*", "routes/issues.$.tsx"),
-	route("api/*", "routes/api.$.ts"),
+	// React Router ranks `:verb/issues/…` above `api/*` for `/api/issues/…`;
+	// the static `issues` segment puts the API first.
+	route("api/issues/*", "routes/api.$.ts"),
 	route("*", "routes/not-found.tsx"),
 ] satisfies RouteConfig;
