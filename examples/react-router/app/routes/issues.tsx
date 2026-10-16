@@ -1,8 +1,7 @@
 import { IssueListInput } from "@examples/db/types";
 import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { dehydrate } from "@raf-query/react";
-import { HydrationBoundary } from "@raf-query/react/react-router";
+import { dehydrate, HydrationBoundary } from "@raf-query/react";
 import { Suspense } from "react";
 
 import { IssueList } from "~/components/issue-list.tsx";

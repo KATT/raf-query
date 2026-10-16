@@ -84,6 +84,7 @@ Everything from `@raf-query/core`, plus:
 | `QueryClient`                                  | The cache with Promise methods ([above](#queryclient))                                                                                                                                                                                               |
 | `allKeyed(record)`                             | Await a record of promises, keeping keys                                                                                                                                                                                                             |
 | `dehydrate(client)` / `hydrate(client, state)` | Low-level cache transfer used by the integrations                                                                                                                                                                                                    |
+| `HydrationBoundary`                            | Writes server data into the client: a loader's `state`, or in server components the request's `client`. [Next.js](./nextjs.md) · [React Router](./react-router.md)                                                                                   |
 | `QueryClientProvider`                          | Provides a client to the tree                                                                                                                                                                                                                        |
 | `useQueryClient()`                             | Read the client                                                                                                                                                                                                                                      |
 | `useQuery(factory, handle, options?)`          | `[Promise<Data>, controls]`, or `[Data, controls]` for a `QueryHandleWithData`; Effect `queryFn`s with `throwOnError: false` (default when the client has a `layer`) yield `Result<Data, ErrorOf>` instead. Paged: `Data` is `{ pages, pageParams }` |
@@ -95,8 +96,7 @@ Subpath entries:
 | Entry                              | Use                                                              |
 | ---------------------------------- | ---------------------------------------------------------------- |
 | `@raf-query/react/tanstack-router` | `setupRouterIntegration`. [TanStack Start](./tanstack-start.md)  |
-| `@raf-query/react/rsc`             | `QueryProvider` and `HydrationBoundary`. [Next.js](./nextjs.md)  |
-| `@raf-query/react/react-router`    | `HydrationBoundary`. [React Router](./react-router.md)           |
+| `@raf-query/react/rsc`             | `QueryProvider`. [Next.js](./nextjs.md)                          |
 | `@raf-query/react/devtools`        | `QueryDevtools`, `QueryDevtoolsPanel`. [Devtools](./devtools.md) |
 
 ## @raf-query/core

@@ -1,5 +1,5 @@
 import { IssueId } from "@examples/db/types";
-import { HydrationBoundary } from "@raf-query/react/rsc";
+import { HydrationBoundary } from "@raf-query/react";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
