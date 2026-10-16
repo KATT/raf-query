@@ -1,5 +1,8 @@
 import type { LoaderVerb } from "@examples/db/types";
-import { LoaderVerbHint } from "@examples/kit/components/loader-verb";
+import {
+	type LoaderRuntime,
+	LoaderVerbHint,
+} from "@examples/kit/components/loader-verb";
 import type { ReactNode } from "react";
 
 /**
@@ -9,6 +12,7 @@ import type { ReactNode } from "react";
 export function AppHeader(props: {
 	readonly brand: ReactNode;
 	readonly framework: string;
+	readonly loaders: LoaderRuntime;
 	readonly settings: ReactNode;
 	readonly verb: LoaderVerb;
 }) {
@@ -24,7 +28,7 @@ export function AppHeader(props: {
 				{props.settings}
 			</div>
 			<div className="mx-auto max-w-5xl px-4 pb-2.5 sm:px-6">
-				<LoaderVerbHint verb={props.verb} />
+				<LoaderVerbHint loaders={props.loaders} verb={props.verb} />
 			</div>
 		</header>
 	);
