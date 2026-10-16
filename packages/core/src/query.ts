@@ -93,10 +93,10 @@ export const CancelledError: typeof internal.CancelledError =
 
 export type CancelledError = internal.CancelledError;
 
-export const BrowserOnlyError: typeof internal.BrowserOnlyError =
-	internal.BrowserOnlyError;
+export const DisabledError: typeof internal.DisabledError =
+	internal.DisabledError;
 
-export type BrowserOnlyError = internal.BrowserOnlyError;
+export type DisabledError = internal.DisabledError;
 
 export const isQuery: (value: unknown) => value is Query = internal.isQuery;
 
