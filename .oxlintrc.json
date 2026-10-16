@@ -585,6 +585,16 @@
 			}
 		},
 		{
+			// `<script setup>` compiler macros, which the Vue compiler replaces.
+			"files": ["www/samples/vue/src/**/*.vue"],
+			"globals": {
+				"defineEmits": "readonly",
+				"defineModel": "readonly",
+				"defineProps": "readonly",
+				"withDefaults": "readonly"
+			}
+		},
+		{
 			// A page's own samples (`src/docs/<page>`, `app/docs/<page>` in the
 			// React Router app) are its code blocks, shown
 			// one region at a time: fragments with hooks at the top level, bindings

@@ -152,6 +152,7 @@
 				"@samples/react-router",
 				"@samples/tanstack-start",
 				"@samples/tanstack-start-effect",
+				"@samples/vue",
 				"sample",
 			],
 		},
@@ -160,6 +161,10 @@
 			// which Knip does not parse: every file is an entry, and its
 			// exports are what the pages import.
 			"entry": ["src/**/*.{ts,tsx}"],
+			"includeEntryExports": false,
+		},
+		"www/samples/vue": {
+			"entry": ["src/**/*.{ts,vue}"],
 			"includeEntryExports": false,
 		},
 		"www/samples/react-router": {
