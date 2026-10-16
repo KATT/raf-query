@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "@effect/vitest";
+import { Effect } from "effect";
 
 import {
 	dehydrate,
@@ -40,6 +41,41 @@ describe("dehydrate", () => {
 
 		await expect(redacted).rejects.toThrow('Query ["issue",404] failed');
 		await expect(kept).rejects.toThrow("No issue 404");
+	});
+
+	it("sends whether each queryFn returned an Effect, once it has run", () => {
+		const backend = createBackend();
+		function countQuery() {
+			return queryOptions({
+				queryFn: () => Effect.succeed(1),
+				queryKey: ["count"],
+			});
+		}
+		const server = new QueryClient({ isServer: true });
+		server.prefetch(backend.issueQuery, { id: 1 });
+		server.prefetch(countQuery);
+		server.setData(backend.issueQuery, { id: 2 }, { id: 2, title: "B" });
+
+		const browser = new QueryClient({ isServer: false });
+		const sent = dehydrate(server);
+		hydrate(browser, sent);
+
+		expect(sent.queries.map((query) => query.effect)).toEqual([
+			false,
+			true,
+			undefined,
+		]);
+		expect(
+			Query.returnsEffectUnsafe(
+				browser.getQuery(backend.issueQuery, { id: 1 }),
+			),
+		).toBe(false);
+		expect(Query.returnsEffectUnsafe(browser.getQuery(countQuery))).toBe(true);
+		expect(
+			Query.returnsEffectUnsafe(
+				browser.getQuery(backend.issueQuery, { id: 2 }),
+			),
+		).toBeUndefined();
 	});
 });
 

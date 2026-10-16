@@ -27,7 +27,7 @@ With a `layer`, the client defaults to `throwOnError: false`. `useQuery` then re
 tanstack-start-effect/src/docs/effect-errors.tsx#in-react
 ```
 
-Set `throwOnError: true` on the client or on the call to get a rejecting promise again (and throw to an error boundary). That option only exists in the type when `ErrorOf` is typed — promise `queryFn`s always throw.
+Set `throwOnError: true` on the client or on the call to get a rejecting promise again (and throw to an error boundary). That option only exists in the type when `ErrorOf` is typed — promise `queryFn`s always throw. On the same client, a query whose `queryFn` returns a promise still reads as plain data: `useQuery` tells the two apart by what the `queryFn` returned, on this client or on the server whose data was hydrated, so Effect and promise queries mix freely.
 
 `retry` and `retryDelay` still get the error as `unknown` (query defaults share them). Narrow with the schema there too:
 

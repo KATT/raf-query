@@ -20,6 +20,8 @@ export interface DehydratedResult {
  */
 export interface DehydratedQuery {
 	readonly data?: unknown;
+	/** Whether the sender's `queryFn` returned an Effect, when it ran there. */
+	readonly effect?: boolean;
 	readonly key: QueryKey;
 	/** The query's `meta`, for receivers that haven't called its factory. */
 	readonly meta?: QueryMeta;
@@ -100,8 +102,16 @@ function dehydrateUnsafe<TFactory extends QueryFactory>(
 	const state = Query.getUnsafe(query);
 	const serialize = options.serializeData ?? identity;
 	const meta = Query.metaUnsafe(query);
-	const sent =
-		meta === undefined ? { key: query.key } : { key: query.key, meta };
+	const effect = Query.returnsEffectUnsafe(query);
+	let sent: Pick<DehydratedQuery, "effect" | "key" | "meta"> = {
+		key: query.key,
+	};
+	if (meta !== undefined) {
+		sent = { ...sent, meta };
+	}
+	if (effect !== undefined) {
+		sent = { ...sent, effect };
+	}
 	if (state.hasData) {
 		return { ...sent, data: serialize(state.data), updatedAt: state.updatedAt };
 	}
@@ -237,6 +247,7 @@ export function hydrateEntries(
 		if (!entry.options && query.meta !== undefined) {
 			entry.hydratedMeta = query.meta;
 		}
+		entry.returnsEffect ??= query.effect;
 		if (query.updatedAt > 0) {
 			takeNewer(entry, deserialize(query.data), query.updatedAt);
 		} else if (query.promise) {

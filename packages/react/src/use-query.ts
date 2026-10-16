@@ -13,6 +13,7 @@ import {
 	resultThenable,
 	type Thenable,
 	type ThrowsOnError,
+	throwsOnError,
 	type UseQueryControls,
 	type UseQueryOptions,
 	type UseQueryThrowOptions,
@@ -179,7 +180,10 @@ export function useQuery<TFactory extends QueryFactory>(
 	// be seen, so it always counts as read.
 	QueryObserver.trackProp(observer, "promise");
 	const controls = promiseControls(QueryObserver.trackResult(observer, result));
-	const throwOnError = options.throwOnError ?? client.throwOnError;
+	const throwOnError = throwsOnError(
+		query,
+		options.throwOnError ?? client.throwOnError,
+	);
 	const withData = "data" in handle;
 	if (!throwOnError) {
 		const resultPromise = resultThenable<DataOf<TFactory>, ErrorOf<TFactory>>(
