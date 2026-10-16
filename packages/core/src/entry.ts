@@ -105,6 +105,8 @@ export interface Entry extends Query {
 	errorShown: boolean;
 	/** `failureCount` before the request in flight, restored if it's cancelled. */
 	failureCountBefore: number;
+	/** `failureReason` before the request in flight, restored with the count. */
+	failureReasonBefore: unknown;
 	handle: QueryHandle;
 	/** `meta` sent with dehydrated state, for an entry no factory call has reached. */
 	hydratedMeta: QueryMeta | undefined;
@@ -184,6 +186,7 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 		cache,
 		errorShown: false,
 		failureCountBefore: 0,
+		failureReasonBefore: null,
 		handle: { input: undefined, key },
 		hash,
 		hydratedMeta: undefined,
@@ -200,6 +203,7 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 			data: undefined,
 			error: null,
 			failureCount: 0,
+			failureReason: null,
 			fetchDirection: undefined,
 			hasData: false,
 			isFetching: false,
@@ -424,6 +428,7 @@ export function reset(entry: Entry): Effect.Effect<void> {
 			data: undefined,
 			error: null,
 			failureCount: 0,
+			failureReason: null,
 			hasData: false,
 			isInvalidated: false,
 			promise: entry.pending.promise,
@@ -563,6 +568,7 @@ function startRequest(
 ): Deferred.Deferred<unknown, unknown> {
 	if (!entry.inFlight) {
 		entry.failureCountBefore = entry.state.failureCount;
+		entry.failureReasonBefore = entry.state.failureReason;
 	}
 	const awaiter = entry.inFlight ?? Deferred.makeUnsafe<unknown, unknown>();
 	entry.inFlight = awaiter;
@@ -574,6 +580,7 @@ function startRequest(
 		set(entry, {
 			error: null,
 			failureCount: 0,
+			failureReason: null,
 			fetchDirection: direction,
 			isFetching: true,
 			promise: entry.pending.promise,
@@ -582,6 +589,7 @@ function startRequest(
 	} else {
 		set(entry, {
 			failureCount: 0,
+			failureReason: null,
 			fetchDirection: direction,
 			isFetching: true,
 		});
@@ -647,6 +655,7 @@ function unobserved(
 	entry.tasks.cancel("request");
 	set(entry, {
 		failureCount: entry.failureCountBefore,
+		failureReason: entry.failureReasonBefore,
 		fetchDirection: undefined,
 		isFetching: false,
 	});
@@ -671,6 +680,7 @@ function succeed(entry: Entry, next: unknown, updatedAt: number) {
 		data,
 		error: null,
 		failureCount: 0,
+		failureReason: null,
 		fetchDirection: isFetching ? previous.fetchDirection : undefined,
 		hasData: true,
 		isFetching,
@@ -780,9 +790,12 @@ function attempt(
 		}
 		return result;
 	}).pipe(
-		Effect.tapError(() =>
+		Effect.tapError((error) =>
 			Effect.sync(() =>
-				set(entry, { failureCount: entry.state.failureCount + 1 }),
+				set(entry, {
+					failureCount: entry.state.failureCount + 1,
+					failureReason: error,
+				}),
 			),
 		),
 	);

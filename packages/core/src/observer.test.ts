@@ -63,6 +63,44 @@ describe("QueryObserver", () => {
 		expect(listener).toHaveBeenCalledTimes(2);
 	});
 
+	it("notifies of a retried failure only listeners that read failureCount or failureReason", async () => {
+		const backend = createBackend();
+		const qc = makeCacheUnsafe({ isServer: false });
+		const factory = (input: { id: number }) => ({
+			...backend.issueQuery(input),
+			retry: 1,
+			retryDelay: 0,
+		});
+		Effect.runSync(qc.setData(factory, { id: 1 }, { id: 1, title: "Cached" }));
+		const query = qc.getQueryUnsafe(factory, { id: 1 });
+		const reading = QueryObserver.makeUnsafe(query);
+		const notReading = QueryObserver.makeUnsafe(query);
+		const readingListener = vi.fn();
+		const notReadingListener = vi.fn();
+		QueryObserver.subscribeUnsafe(reading, readingListener);
+		QueryObserver.subscribeUnsafe(notReading, notReadingListener);
+		void QueryObserver.trackResult(reading, QueryObserver.getUnsafe(reading))
+			.failureCount;
+		void QueryObserver.trackResult(
+			notReading,
+			QueryObserver.getUnsafe(notReading),
+		).promise;
+
+		Effect.runFork(Query.refetch(query));
+		await flush();
+		backend.requests[0]?.fail(new Error("down"));
+		await flush();
+
+		expect(QueryObserver.getUnsafe(reading)).toMatchObject({
+			error: null,
+			failureCount: 1,
+			failureReason: new Error("down"),
+			isFetching: true,
+		});
+		expect(readingListener).toHaveBeenCalledOnce();
+		expect(notReadingListener).not.toHaveBeenCalled();
+	});
+
 	describe("a first load settling its promise in place", () => {
 		async function pendingObserver(id: number) {
 			const backend = createBackend();

@@ -523,6 +523,59 @@ describe("useQuery", () => {
 		cleanup();
 	});
 
+	it("shows the retries of a request to a reader of failureCount and failureReason", async () => {
+		const client = new QueryClient({ isServer: false });
+		const attempts: Array<PromiseWithResolvers<string>> = [];
+		function flakyQuery() {
+			return queryOptions({
+				queryFn: () => {
+					const attempt = Promise.withResolvers<string>();
+					attempts.push(attempt);
+					return attempt.promise;
+				},
+				queryKey: ["flaky"],
+				retry: 2,
+				retryDelay: 0,
+			});
+		}
+		function Status(props: {
+			readonly handle: QueryHandle<typeof flakyQuery>;
+		}) {
+			const [, controls] = useQuery(flakyQuery, props.handle);
+			return (
+				<p>
+					{controls.failureCount > 0
+						? `Retrying (${controls.failureCount}/2): ${String(controls.failureReason)}`
+						: "No failures"}
+				</p>
+			);
+		}
+		const handle = client.prefetch(flakyQuery);
+		await mount(
+			<QueryClientProvider client={client}>
+				<Status handle={handle} />
+			</QueryClientProvider>,
+		);
+		expect(screen.getByText("No failures")).toBeDefined();
+
+		await act(async () => {
+			attempts[0]?.reject(new Error("down"));
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+		expect(screen.getByText("Retrying (1/2): Error: down")).toBeDefined();
+
+		await act(async () => {
+			attempts[1]?.resolve("ok");
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+		expect(screen.getByText("No failures")).toBeDefined();
+		expect(Query.getUnsafe(client.getQuery(flakyQuery))).toMatchObject({
+			data: "ok",
+			failureReason: null,
+		});
+		cleanup();
+	});
+
 	describe("a background refetch that reads its signal", () => {
 		function slowNote() {
 			const client = new QueryClient({ isServer: false });

@@ -808,6 +808,73 @@ describe("retry", () => {
 		expect(Query.getUnsafe(query).failureCount).toBe(3);
 	});
 
+	it("counts failures and keeps the last one's error while retrying", async () => {
+		using _timers = fakeTimers();
+		let calls = 0;
+		const qc = new QueryClient({ isServer: false });
+		const query = qc.getQuery(() =>
+			queryOptions({
+				queryFn: () => {
+					calls++;
+					return calls < 3
+						? Promise.reject(new Error(`down ${calls}`))
+						: Promise.resolve("ok");
+				},
+				queryKey: ["failures"],
+				retryDelay: 100,
+			}),
+		);
+		const result = Effect.runPromise(Query.fetch(query));
+
+		await vi.advanceTimersByTimeAsync(0);
+		expect(Query.getUnsafe(query)).toMatchObject({
+			error: null,
+			failureCount: 1,
+			failureReason: new Error("down 1"),
+			status: "pending",
+		});
+		await vi.advanceTimersByTimeAsync(100);
+		expect(Query.getUnsafe(query)).toMatchObject({
+			failureCount: 2,
+			failureReason: new Error("down 2"),
+		});
+		await vi.advanceTimersByTimeAsync(100);
+		expect(await result).toBe("ok");
+		expect(Query.getUnsafe(query)).toMatchObject({
+			failureCount: 0,
+			failureReason: null,
+		});
+	});
+
+	it("starts each request's failures over, and keeps them once it fails", async () => {
+		const qc = new QueryClient({ isServer: false });
+		const failing = vi.fn(() => Promise.reject(new Error("down")));
+		const query = qc.getQuery(() =>
+			queryOptions({
+				queryFn: failing,
+				queryKey: ["failing"],
+				retry: 1,
+				retryDelay: 0,
+			}),
+		);
+
+		await expect(Effect.runPromise(Query.fetch(query))).rejects.toThrow("down");
+		expect(Query.getUnsafe(query)).toMatchObject({
+			error: new Error("down"),
+			failureCount: 2,
+			failureReason: new Error("down"),
+		});
+
+		const refetch = Effect.runPromise(Effect.exit(Query.fetch(query)));
+		expect(Query.getUnsafe(query)).toMatchObject({
+			failureCount: 0,
+			failureReason: null,
+			isFetching: true,
+		});
+		await refetch;
+		expect(Query.getUnsafe(query).failureCount).toBe(2);
+	});
+
 	it("backs off exponentially by default", async () => {
 		using _timers = fakeTimers();
 		let calls = 0;

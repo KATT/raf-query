@@ -54,6 +54,10 @@ export interface Options {
 export interface Result<TData = unknown> {
 	/** Error of the last failed request. Existing data stays readable. */
 	readonly error: unknown;
+	/** Failed attempts of the latest request, retries included; `0` once one succeeds. */
+	readonly failureCount: number;
+	/** Error of the latest request's last failed attempt, or `null`. Set while it retries, before `error`. */
+	readonly failureReason: unknown;
 	/** The query's `fetchNextPage`. */
 	readonly fetchNextPage: Effect.Effect<void>;
 	/** The query's `fetchPreviousPage`. */
@@ -133,6 +137,8 @@ const Proto = {
 
 const resultKeys = {
 	error: true,
+	failureCount: true,
+	failureReason: true,
 	fetchNextPage: true,
 	fetchPreviousPage: true,
 	hash: true,
@@ -214,6 +220,8 @@ function resultOf<TFactory extends QueryFactory>(
 	const shownState = previous ? Query.getUnsafe(previous) : state;
 	return {
 		error: state.error,
+		failureCount: state.failureCount,
+		failureReason: state.failureReason,
 		fetchNextPage: Query.fetchNextPage(query),
 		fetchPreviousPage: Query.fetchPreviousPage(query),
 		hash: query.hash,
