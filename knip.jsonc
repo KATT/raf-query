@@ -175,6 +175,14 @@
 			"entry": ["src/**/*.{ts,svelte}"],
 			"includeEntryExports": false,
 		},
+		".experimental/vue/app": {
+			"entry": ["src/**/*.{ts,vue}"],
+			// shadcn-vue components keep the exports the CLI generated.
+			"includeEntryExports": false,
+			// `@tailwindcss/vite` resolves it from this app when compiling
+			// `@import "tailwindcss"` in `@examples/ui`.
+			"ignoreDependencies": ["tailwindcss"],
+		},
 		".experimental/vue/sample": {
 			"entry": ["src/**/*.{ts,vue}"],
 			"includeEntryExports": false,

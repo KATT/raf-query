@@ -19,6 +19,7 @@ The experimental apps run the same issue tracker on other frameworks. A change t
 | App                   | Start             | Port | Data layer                  |
 | --------------------- | ----------------- | ---- | --------------------------- |
 | `experimental-svelte` | `pnpm dev:svelte` | 3007 | REST API at `/api/*` (Hono) |
+| `experimental-vue`    | `pnpm dev:vue`    | 3008 | REST API at `/api/*` (Hono) |
 
 Their differences from the four are in each feature's `Gotchas`.
 
@@ -41,7 +42,7 @@ tmux -f /exec-daemon/tmux.portal.conf send-keys -t example-react-router:0.0 'eva
 
 The table's `Start` column has each app's root script. No env vars, no database: data is an in-memory mock seeded when the server process starts.
 
-Ready means `curl -s localhost:<port>/issues` returns issue rows (`Change status` is in the HTML). TanStack Start answers `/issues` with a 307 to `/issues?sort=newest&status=all`; follow redirects. The SvelteKit app renders `prefetch` pages as skeletons, so check it with `curl -s localhost:3007/ensure/issues`. The first request after a start compiles routes and can take 10-20 s.
+Ready means `curl -s localhost:<port>/issues` returns issue rows (`Change status` is in the HTML). TanStack Start answers `/issues` with a 307 to `/issues?sort=newest&status=all`; follow redirects. The SvelteKit and Vue apps render `prefetch` pages as skeletons, so check them with `curl -s localhost:3007/ensure/issues` (and `:3008`). The first request after a start compiles routes and can take 10-20 s.
 
 Then start the browser:
 

@@ -23,3 +23,4 @@
 **/*.tsbuildinfo
 # SvelteKit adapter-node output
 /.experimental/*/app/build
+/.experimental/*/app/dist

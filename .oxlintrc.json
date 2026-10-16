@@ -612,10 +612,11 @@
 		},
 		{
 			// `<script setup>` compiler macros, which the Vue compiler replaces.
-			"files": [".experimental/vue/sample/src/**/*.vue"],
+			"files": [".experimental/vue/{sample,app}/src/**/*.vue"],
 			"globals": {
 				"defineEmits": "readonly",
 				"defineModel": "readonly",
+				"defineOptions": "readonly",
 				"defineProps": "readonly",
 				"withDefaults": "readonly"
 			}
@@ -653,7 +654,8 @@
 				"examples/.shared/ui/src/components/**",
 				"examples/.shared/ui/src/hooks/**",
 				"examples/.shared/ui/src/lib/highlighter.tsx",
-				".experimental/*/app/src/lib/components/ui/**"
+				".experimental/*/app/src/lib/components/ui/**",
+				".experimental/vue/app/src/components/ui/**"
 			],
 			"rules": {
 				"typescript/no-deprecated": "off",
