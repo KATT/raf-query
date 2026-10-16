@@ -100,6 +100,10 @@
 		"workspace/no-overzealous-destructuring": "error",
 		// `use()` on its own line: `const post = use(p)`, not `use(p).title`.
 		"workspace/no-use-member-access": "error",
+		// Effect's own idioms (`.repos/effect/LLMS.md`): combinators go to
+		// `Effect.fn` as arguments, and a generator yields the service.
+		"workspace/no-pipe-on-effect-fn": "error",
+		"workspace/no-yield-service-use": "error",
 		// `anti-slop/require-safety-comment-for-type-assertion` covers assertions.
 		"typescript/consistent-type-assertions": "off",
 		// JSDoc `@deprecated` is not a TypeScript error; fail the lint instead.

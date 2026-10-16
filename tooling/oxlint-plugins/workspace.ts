@@ -7,8 +7,10 @@ import { noCustomTestTimeout } from "./no-custom-test-timeout.ts";
 import { noManualMemoization } from "./no-manual-memoization.ts";
 import { noMock } from "./no-mock.ts";
 import { noOverzealousDestructuring } from "./no-overzealous-destructuring.ts";
+import { noPipeOnEffectFn } from "./no-pipe-on-effect-fn.ts";
 import { noUseEffect } from "./no-use-effect.ts";
 import { noUseMemberAccess } from "./no-use-member-access.ts";
+import { noYieldServiceUse } from "./no-yield-service-use.ts";
 
 const plugin = eslintCompatPlugin({
 	meta: {
@@ -22,8 +24,10 @@ const plugin = eslintCompatPlugin({
 		"no-manual-memoization": noManualMemoization,
 		"no-mock": noMock,
 		"no-overzealous-destructuring": noOverzealousDestructuring,
+		"no-pipe-on-effect-fn": noPipeOnEffectFn,
 		"no-use-effect": noUseEffect,
 		"no-use-member-access": noUseMemberAccess,
+		"no-yield-service-use": noYieldServiceUse,
 	},
 });
 

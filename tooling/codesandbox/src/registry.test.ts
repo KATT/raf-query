@@ -140,20 +140,19 @@ describe("NpmRegistry.layer", () => {
 		return { layer, requests };
 	};
 
-	it.effect("reads the install metadata's versions", () =>
-		Effect.gen(function* () {
-			const registry = registryWith(
-				() =>
-					new Response(
-						JSON.stringify({
-							name: "x",
-							versions: { "0.1.10": {}, "0.1.9": {} },
-						}),
-					),
-			);
-			const versions = yield* NpmRegistry.use((npm) =>
-				npm.versions("@raf-query/react"),
-			).pipe(Effect.provide(registry.layer));
+	it.effect("reads the install metadata's versions", () => {
+		const registry = registryWith(
+			() =>
+				new Response(
+					JSON.stringify({
+						name: "x",
+						versions: { "0.1.10": {}, "0.1.9": {} },
+					}),
+				),
+		);
+		return Effect.gen(function* () {
+			const npm = yield* NpmRegistry;
+			const versions = yield* npm.versions("@raf-query/react");
 			assert.deepStrictEqual([...versions], ["0.1.10", "0.1.9"]);
 			const [request] = registry.requests;
 			assert.strictEqual(
@@ -164,20 +163,18 @@ describe("NpmRegistry.layer", () => {
 				request?.headers.accept,
 				"application/vnd.npm.install-v1+json",
 			);
-		}),
-	);
+		}).pipe(Effect.provide(registry.layer));
+	});
 
-	it.effect("fails on a non-2xx response", () =>
-		Effect.gen(function* () {
-			const registry = registryWith(
-				() => new Response("Not found", { status: 404 }),
-			);
-			const error = yield* NpmRegistry.use((npm) => npm.versions("nope")).pipe(
-				Effect.provide(registry.layer),
-				Effect.flip,
-			);
+	it.effect("fails on a non-2xx response", () => {
+		const registry = registryWith(
+			() => new Response("Not found", { status: 404 }),
+		);
+		return Effect.gen(function* () {
+			const npm = yield* NpmRegistry;
+			const error = yield* npm.versions("nope").pipe(Effect.flip);
 			assert.strictEqual(error.packageName, "nope");
 			assert.instanceOf(error.cause, HttpClientError.HttpClientError);
-		}),
-	);
+		}).pipe(Effect.provide(registry.layer));
+	});
 });
