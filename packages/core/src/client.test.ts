@@ -8,7 +8,7 @@ import {
 	QueryClient,
 	queryOptions,
 } from "./index.ts";
-import { createBackend, flush } from "./test-utils.ts";
+import { createBackend, flush, type Issue } from "./test-utils.ts";
 
 function fakeTimers(
 	options?: Parameters<typeof vi.useFakeTimers>[0],
@@ -227,6 +227,106 @@ describe("ensure and fetch", () => {
 			input: undefined,
 			key: ["count"],
 		});
+	});
+});
+
+describe("waitFor", () => {
+	it("starts the query and resolves with the first data that matches", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+
+		const waiting = qc.waitFor(
+			backend.issueQuery,
+			{ id: 1 },
+			(issue) => issue.title === "Renamed",
+		);
+		expect(backend.requests).toHaveLength(1);
+		backend.respondAll();
+		await flush();
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "Renamed" });
+
+		await expect(waiting).resolves.toEqual({ id: 1, title: "Renamed" });
+	});
+
+	it("resolves at once when cached data matches, and revalidates it", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "First" });
+
+		const issue = await qc.waitFor(backend.issueQuery, { id: 1 }, () => true);
+
+		expect(issue).toEqual({ id: 1, title: "First" });
+		expect(backend.requests).toHaveLength(1);
+	});
+
+	it("counts as a reader while it waits", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		const query = qc.getQuery(backend.issueQuery, { id: 1 });
+		const controller = new AbortController();
+
+		const waiting = qc.waitFor(backend.issueQuery, { id: 1 }, () => false, {
+			signal: controller.signal,
+		});
+		expect(Query.observerCountUnsafe(query)).toBe(1);
+		controller.abort();
+		await waiting.catch(() => {});
+		expect(Query.observerCountUnsafe(query)).toBe(0);
+	});
+
+	it("keeps waiting through a failed request", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+
+		const waiting = qc.waitFor(backend.issueQuery, { id: 404 }, () => true);
+		backend.respondAll();
+		await flush();
+		expect(Query.getUnsafe(qc.getQuery(backend.issueQuery, { id: 404 })).status).toBe(
+			"error",
+		);
+		qc.setData(backend.issueQuery, { id: 404 }, { id: 404, title: "Found" });
+
+		await expect(waiting).resolves.toEqual({ id: 404, title: "Found" });
+	});
+
+	it("rejects with the signal's reason when it aborts, and stops listening", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		const controller = new AbortController();
+
+		const waiting = qc.waitFor(backend.issueQuery, { id: 1 }, () => false, {
+			signal: controller.signal,
+		});
+		controller.abort(new Error("gave up"));
+
+		await expect(waiting).rejects.toThrow("gave up");
+		const timedOut = qc.waitFor(backend.issueQuery, { id: 1 }, () => false, {
+			signal: AbortSignal.timeout(1),
+		});
+		await expect(timedOut).rejects.toMatchObject({ name: "TimeoutError" });
+	});
+
+	it("rejects without starting the query when the signal is already aborted", async () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+
+		const waiting = qc.waitFor(backend.issueQuery, { id: 1 }, () => true, {
+			signal: AbortSignal.abort(),
+		});
+
+		await expect(waiting).rejects.toMatchObject({ name: "AbortError" });
+		expect(backend.requests).toHaveLength(0);
+	});
+
+	it("types the predicate's argument and the result as the factory's data", () => {
+		const backend = createBackend();
+		const qc = new QueryClient({ isServer: false });
+		const typed = () =>
+			qc.waitFor(backend.issueQuery, { id: 1 }, (issue) => {
+				expectTypeOf(issue).toEqualTypeOf<Issue>();
+				return true;
+			});
+		expectTypeOf(typed).returns.toEqualTypeOf<Promise<Issue>>();
 	});
 });
 
