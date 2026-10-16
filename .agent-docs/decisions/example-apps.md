@@ -21,4 +21,4 @@ App scope, small enough to read in one sitting, covering every documented featur
 
 App: **issue tracker** (confirmed). Data: an in-memory fake DB with artificial latency, shared by both apps so their behavior matches. **`queryFn`s call the shared REST API** (`@examples/api`, human asked; see `examples-rest-api.md`), not server functions.
 
-- **No `useWaterfall` in the examples** (human): it's an escape hatch the examples shouldn't encourage. A query whose input comes from another query's result starts in the loader or server component once that result is in.
+- **No `useWaterfall` in the examples** (human): it's an escape hatch. A query whose input comes from another query's result starts in the loader or server component. Lint: `no-restricted-imports` in `.oxlintrc.json`.
