@@ -1,5 +1,5 @@
+import { QueryProvider } from "@raf-query/react";
 import { QueryDevtools } from "@raf-query/react/devtools";
-import { QueryProvider } from "@raf-query/react/rsc";
 import type { ReactNode } from "react";
 
 import { queryClientConfig } from "~/query-client.ts";
