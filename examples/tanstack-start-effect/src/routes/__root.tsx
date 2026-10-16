@@ -1,11 +1,9 @@
 /// <reference types="vite/client" />
-import {
-	DEFAULT_LOADER_VERB,
-	type QueryTimeDefaults,
-} from "@examples/db/types";
+import type { QueryTimeDefaults } from "@examples/db/types";
 import { AppHeader } from "@examples/kit/components/app-header";
 import { Logo } from "@examples/kit/components/logo";
 import { ThemeProvider } from "@examples/kit/components/theme-provider";
+import { loaderVerbOf } from "@examples/kit/lib/loader-verb";
 import { logoUrl } from "@examples/kit/lib/logo";
 import { Toaster } from "@examples/ui/components/sonner";
 import type { QueryClient } from "@raf-query/react";
@@ -15,7 +13,7 @@ import {
 	Link,
 	Outlet,
 	Scripts,
-	useParams,
+	useLocation,
 	useRouter,
 } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
@@ -50,7 +48,9 @@ export const Route = createRootRouteWithContext<{
 function RootDocument(props: { readonly children: ReactNode }) {
 	const router = useRouter();
 	const [prefetch, setPrefetch] = useState(readPrefetch);
-	const verb = useParams({ strict: false }).verb ?? DEFAULT_LOADER_VERB;
+	const verb = loaderVerbOf(
+		useLocation({ select: (location) => location.pathname }),
+	);
 
 	return (
 		<html lang="en" suppressHydrationWarning>
@@ -64,8 +64,7 @@ function RootDocument(props: { readonly children: ReactNode }) {
 							<Link
 								className="flex shrink-0 items-center gap-2.5 font-semibold"
 								key={prefetch}
-								params={{ verb }}
-								to="/$verb/issues"
+								to={`/${verb}/issues`}
 							>
 								<Logo alt="" />
 								Issues

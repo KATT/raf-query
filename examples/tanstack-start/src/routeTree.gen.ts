@@ -10,20 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as VerbRouteRouteImport } from './routes/$verb/route'
 import { Route as ApiSplatRouteImport } from './routes/api.$'
 import { Route as IssuesSplatRouteImport } from './routes/issues.$'
-import { Route as VerbIssuesIndexRouteImport } from './routes/$verb/issues/index'
-import { Route as VerbIssuesIssueIdRouteRouteImport } from './routes/$verb/issues/$issueId/route'
+import { Route as EnsureIssuesIndexRouteImport } from './routes/ensure/issues/index'
+import { Route as EnsureIssuesIssueIdRouteRouteImport } from './routes/ensure/issues/$issueId/route'
+import { Route as FetchIssuesIndexRouteImport } from './routes/fetch/issues/index'
+import { Route as FetchIssuesIssueIdRouteRouteImport } from './routes/fetch/issues/$issueId/route'
+import { Route as PrefetchIssuesIndexRouteImport } from './routes/prefetch/issues/index'
+import { Route as PrefetchIssuesIssueIdRouteRouteImport } from './routes/prefetch/issues/$issueId/route'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const VerbRouteRoute = VerbRouteRouteImport.update({
-  id: '/$verb',
-  path: '/$verb',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSplatRoute = ApiSplatRouteImport.update({
@@ -36,74 +34,119 @@ const IssuesSplatRoute = IssuesSplatRouteImport.update({
   path: '/issues/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VerbIssuesIndexRoute = VerbIssuesIndexRouteImport.update({
-  id: '/issues/',
-  path: '/issues/',
-  getParentRoute: () => VerbRouteRoute,
+const EnsureIssuesIndexRoute = EnsureIssuesIndexRouteImport.update({
+  id: '/ensure/issues/',
+  path: '/ensure/issues/',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const VerbIssuesIssueIdRouteRoute = VerbIssuesIssueIdRouteRouteImport.update({
-  id: '/issues/$issueId',
-  path: '/issues/$issueId',
-  getParentRoute: () => VerbRouteRoute,
+const EnsureIssuesIssueIdRouteRoute =
+  EnsureIssuesIssueIdRouteRouteImport.update({
+    id: '/ensure/issues/$issueId',
+    path: '/ensure/issues/$issueId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const FetchIssuesIndexRoute = FetchIssuesIndexRouteImport.update({
+  id: '/fetch/issues/',
+  path: '/fetch/issues/',
+  getParentRoute: () => rootRouteImport,
 } as any)
+const FetchIssuesIssueIdRouteRoute = FetchIssuesIssueIdRouteRouteImport.update({
+  id: '/fetch/issues/$issueId',
+  path: '/fetch/issues/$issueId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrefetchIssuesIndexRoute = PrefetchIssuesIndexRouteImport.update({
+  id: '/prefetch/issues/',
+  path: '/prefetch/issues/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrefetchIssuesIssueIdRouteRoute =
+  PrefetchIssuesIssueIdRouteRouteImport.update({
+    id: '/prefetch/issues/$issueId',
+    path: '/prefetch/issues/$issueId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/$verb': typeof VerbRouteRouteWithChildren
   '/api/$': typeof ApiSplatRoute
   '/issues/$': typeof IssuesSplatRoute
-  '/$verb/issues/$issueId': typeof VerbIssuesIssueIdRouteRoute
-  '/$verb/issues/': typeof VerbIssuesIndexRoute
+  '/ensure/issues/$issueId': typeof EnsureIssuesIssueIdRouteRoute
+  '/fetch/issues/$issueId': typeof FetchIssuesIssueIdRouteRoute
+  '/prefetch/issues/$issueId': typeof PrefetchIssuesIssueIdRouteRoute
+  '/ensure/issues/': typeof EnsureIssuesIndexRoute
+  '/fetch/issues/': typeof FetchIssuesIndexRoute
+  '/prefetch/issues/': typeof PrefetchIssuesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/$verb': typeof VerbRouteRouteWithChildren
   '/api/$': typeof ApiSplatRoute
   '/issues/$': typeof IssuesSplatRoute
-  '/$verb/issues/$issueId': typeof VerbIssuesIssueIdRouteRoute
-  '/$verb/issues': typeof VerbIssuesIndexRoute
+  '/ensure/issues/$issueId': typeof EnsureIssuesIssueIdRouteRoute
+  '/fetch/issues/$issueId': typeof FetchIssuesIssueIdRouteRoute
+  '/prefetch/issues/$issueId': typeof PrefetchIssuesIssueIdRouteRoute
+  '/ensure/issues': typeof EnsureIssuesIndexRoute
+  '/fetch/issues': typeof FetchIssuesIndexRoute
+  '/prefetch/issues': typeof PrefetchIssuesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/$verb': typeof VerbRouteRouteWithChildren
   '/api/$': typeof ApiSplatRoute
   '/issues/$': typeof IssuesSplatRoute
-  '/$verb/issues/$issueId': typeof VerbIssuesIssueIdRouteRoute
-  '/$verb/issues/': typeof VerbIssuesIndexRoute
+  '/ensure/issues/$issueId': typeof EnsureIssuesIssueIdRouteRoute
+  '/fetch/issues/$issueId': typeof FetchIssuesIssueIdRouteRoute
+  '/prefetch/issues/$issueId': typeof PrefetchIssuesIssueIdRouteRoute
+  '/ensure/issues/': typeof EnsureIssuesIndexRoute
+  '/fetch/issues/': typeof FetchIssuesIndexRoute
+  '/prefetch/issues/': typeof PrefetchIssuesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/$verb'
     | '/api/$'
     | '/issues/$'
-    | '/$verb/issues/$issueId'
-    | '/$verb/issues/'
+    | '/ensure/issues/$issueId'
+    | '/fetch/issues/$issueId'
+    | '/prefetch/issues/$issueId'
+    | '/ensure/issues/'
+    | '/fetch/issues/'
+    | '/prefetch/issues/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/$verb'
     | '/api/$'
     | '/issues/$'
-    | '/$verb/issues/$issueId'
-    | '/$verb/issues'
+    | '/ensure/issues/$issueId'
+    | '/fetch/issues/$issueId'
+    | '/prefetch/issues/$issueId'
+    | '/ensure/issues'
+    | '/fetch/issues'
+    | '/prefetch/issues'
   id:
     | '__root__'
     | '/'
-    | '/$verb'
     | '/api/$'
     | '/issues/$'
-    | '/$verb/issues/$issueId'
-    | '/$verb/issues/'
+    | '/ensure/issues/$issueId'
+    | '/fetch/issues/$issueId'
+    | '/prefetch/issues/$issueId'
+    | '/ensure/issues/'
+    | '/fetch/issues/'
+    | '/prefetch/issues/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  VerbRouteRoute: typeof VerbRouteRouteWithChildren
   ApiSplatRoute: typeof ApiSplatRoute
   IssuesSplatRoute: typeof IssuesSplatRoute
+  EnsureIssuesIssueIdRouteRoute: typeof EnsureIssuesIssueIdRouteRoute
+  FetchIssuesIssueIdRouteRoute: typeof FetchIssuesIssueIdRouteRoute
+  PrefetchIssuesIssueIdRouteRoute: typeof PrefetchIssuesIssueIdRouteRoute
+  EnsureIssuesIndexRoute: typeof EnsureIssuesIndexRoute
+  FetchIssuesIndexRoute: typeof FetchIssuesIndexRoute
+  PrefetchIssuesIndexRoute: typeof PrefetchIssuesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -113,13 +156,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/$verb': {
-      id: '/$verb'
-      path: '/$verb'
-      fullPath: '/$verb'
-      preLoaderRoute: typeof VerbRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/$': {
@@ -136,42 +172,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IssuesSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$verb/issues/': {
-      id: '/$verb/issues/'
-      path: '/issues'
-      fullPath: '/$verb/issues/'
-      preLoaderRoute: typeof VerbIssuesIndexRouteImport
-      parentRoute: typeof VerbRouteRoute
+    '/ensure/issues/': {
+      id: '/ensure/issues/'
+      path: '/ensure/issues'
+      fullPath: '/ensure/issues/'
+      preLoaderRoute: typeof EnsureIssuesIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/$verb/issues/$issueId': {
-      id: '/$verb/issues/$issueId'
-      path: '/issues/$issueId'
-      fullPath: '/$verb/issues/$issueId'
-      preLoaderRoute: typeof VerbIssuesIssueIdRouteRouteImport
-      parentRoute: typeof VerbRouteRoute
+    '/ensure/issues/$issueId': {
+      id: '/ensure/issues/$issueId'
+      path: '/ensure/issues/$issueId'
+      fullPath: '/ensure/issues/$issueId'
+      preLoaderRoute: typeof EnsureIssuesIssueIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fetch/issues/': {
+      id: '/fetch/issues/'
+      path: '/fetch/issues'
+      fullPath: '/fetch/issues/'
+      preLoaderRoute: typeof FetchIssuesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fetch/issues/$issueId': {
+      id: '/fetch/issues/$issueId'
+      path: '/fetch/issues/$issueId'
+      fullPath: '/fetch/issues/$issueId'
+      preLoaderRoute: typeof FetchIssuesIssueIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prefetch/issues/': {
+      id: '/prefetch/issues/'
+      path: '/prefetch/issues'
+      fullPath: '/prefetch/issues/'
+      preLoaderRoute: typeof PrefetchIssuesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prefetch/issues/$issueId': {
+      id: '/prefetch/issues/$issueId'
+      path: '/prefetch/issues/$issueId'
+      fullPath: '/prefetch/issues/$issueId'
+      preLoaderRoute: typeof PrefetchIssuesIssueIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
-interface VerbRouteRouteChildren {
-  VerbIssuesIssueIdRouteRoute: typeof VerbIssuesIssueIdRouteRoute
-  VerbIssuesIndexRoute: typeof VerbIssuesIndexRoute
-}
-
-const VerbRouteRouteChildren: VerbRouteRouteChildren = {
-  VerbIssuesIssueIdRouteRoute: VerbIssuesIssueIdRouteRoute,
-  VerbIssuesIndexRoute: VerbIssuesIndexRoute,
-}
-
-const VerbRouteRouteWithChildren = VerbRouteRoute._addFileChildren(
-  VerbRouteRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  VerbRouteRoute: VerbRouteRouteWithChildren,
   ApiSplatRoute: ApiSplatRoute,
   IssuesSplatRoute: IssuesSplatRoute,
+  EnsureIssuesIssueIdRouteRoute: EnsureIssuesIssueIdRouteRoute,
+  FetchIssuesIssueIdRouteRoute: FetchIssuesIssueIdRouteRoute,
+  PrefetchIssuesIssueIdRouteRoute: PrefetchIssuesIssueIdRouteRoute,
+  EnsureIssuesIndexRoute: EnsureIssuesIndexRoute,
+  FetchIssuesIndexRoute: FetchIssuesIndexRoute,
+  PrefetchIssuesIndexRoute: PrefetchIssuesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
