@@ -31,11 +31,11 @@ Commands:
 - **Back to the default.** `$CE click --role link --name '/^All \d+$/'`, then `$CE click --role link --name Newest --exact`. The first row is `#42 Billing export breaks on narrow screens`.
 - **Pending.** Set Latency to 3 s (`$CE select --name Latency --value 3000`), click `Closed`, and right away `$CE eval '!!document.querySelector("[aria-busy=true]")'`: `true`, and the old rows are still listed. After `$CE wait --text 'of 9 issues' --timeout 15000` it's `false`. Click `Reset` afterwards.
 - **Infinite scroll.** `$CE open $U/issues; $CE scroll bottom; $CE wait --text 'Showing 42 of 42 issues'; $CE snapshot | grep -c 'button "Load more"'`. Prints `0`: no more pages.
-- **Row link.** `$CE click --role link --name '/^#3 /'; $CE wait --text Opened; $CE eval location.pathname`. `"/issues/3"`.
+- **Row link.** `$CE click --role link --name '/^#3 /'; $CE wait --text Opened; $CE eval location.pathname`. `"/prefetch/issues/3"`.
 
 ## Gotchas
 
-- The URL differs per app for the same list. TanStack Start and TanStack Start Effect always carry both params (`/issues?sort=newest&status=all`, and `/issues` redirects there). Next.js links carry both, but `/issues` itself has none. React Router leaves out defaults: `/issues`, `/issues?status=open`, `/issues?status=open&sort=oldest`. Assert on `location.search` containing a param, not on the whole URL.
+- The URL differs per app for the same list. TanStack Start and TanStack Start Effect always carry both params (`/prefetch/issues?sort=newest&status=all`, and `/issues` redirects there). Next.js links carry both, but `/prefetch/issues` itself has none. React Router leaves out defaults: `/prefetch/issues`, `/prefetch/issues?status=open`, `/prefetch/issues?status=open&sort=oldest`. Assert on `location.search` containing a param, not on the whole URL.
 - At the helper's 1280×900 window the end of the list is already near the viewport, so a fresh load shows `Showing 30 of 42 issues` before any scrolling. Don't assert `Showing 10 of`; assert the count grows to 42.
 - `list-empty` isn't reachable on seed data (every status has issues). To see it, move all nine Closed issues to another status, then put them back.
 - Status labels in rows are `aria-label`s, not text, so `$CE wait --text` / `--gone` can't see them. Wait on `Showing … of <total> issues` (each filter has its own total) or with `--eval`.
