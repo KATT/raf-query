@@ -59,7 +59,7 @@ Accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
 tanstack-start/src/docs/api-reference.ts#usequery
 ```
 
-Options: `whilePending` (`"suspend"` or `"previous"`), `refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`.
+Options: `whilePending` (`"suspend"` or `"previous"`), `refetchInterval`, `refetchIntervalInBackground` (keep polling while the page is hidden; default `false`), `refetchOnWindowFocus`, `refetchOnReconnect`.
 
 | Control        | Meaning                                                                                    |
 | -------------- | ------------------------------------------------------------------------------------------ |
