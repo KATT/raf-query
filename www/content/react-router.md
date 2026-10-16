@@ -5,7 +5,7 @@ section: Server rendering
 order: 4
 ---
 
-In [React Router Framework Mode](https://reactrouter.com/start/modes#framework), loaders start the queries. Each loader dehydrates its request's cache into the loader data, and `HydrationBoundary` from `@raf-query/react/react-router` writes it into the browser's client.
+In [React Router Framework Mode](https://reactrouter.com/start/modes#framework), loaders start the queries. Each loader dehydrates its request's cache into the loader data, and `HydrationBoundary` from `@raf-query/react` writes it into the browser's client.
 
 ## Setup
 
@@ -42,9 +42,9 @@ react-router/app/components/comments.tsx#component
 
 ## What the integration is
 
-`@raf-query/react/react-router` exports `HydrationBoundary`, which takes a dehydrated state. The cache verbs, handles and `useQuery` are the same as everywhere else. React Router has no hooks for streaming a cache with the page, so each loader returns its snapshot in its data. Options the other integrations take as `dehydrateOptions`, such as `keepErrors` and `filter`, go to `dehydrate(qc, options)`.
+`HydrationBoundary`, from `@raf-query/react`, takes the dehydrated `state`. The cache verbs, handles and `useQuery` are the same as everywhere else. React Router has no hooks for streaming a cache with the page, so each loader returns its snapshot in its data. Options the other integrations take as `dehydrateOptions`, such as `keepErrors` and `filter`, go to `dehydrate(qc, options)`.
 
-`react-router` isn't a peer dependency: the entry imports nothing from it.
+`react-router` isn't a peer dependency: raf-query imports nothing from it.
 
 ## Pending UI
 

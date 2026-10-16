@@ -47,19 +47,18 @@ starting-queries
 
 ## Packages
 
-| Package            | Contents                                                                                                                                    |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@raf-query/core`  | Framework-agnostic and Effect-only: `QueryCache`, `queryOptions` / `infiniteQueryOptions`, handles, dehydrate / hydrate                     |
-| `@raf-query/react` | `QueryClient` (the cache with Promise methods), hooks, provider, `allKeyed`. Re-exports `@raf-query/core`, so apps import only this package |
+| Package            | Contents                                                                                                                                                         |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@raf-query/core`  | Framework-agnostic and Effect-only: `QueryCache`, `queryOptions` / `infiniteQueryOptions`, handles, dehydrate / hydrate                                          |
+| `@raf-query/react` | `QueryClient` (the cache with Promise methods), hooks, provider, `HydrationBoundary`, `allKeyed`. Re-exports `@raf-query/core`, so apps import only this package |
 
 `@raf-query/react` has subpath entries for framework integrations and tooling:
 
-| Entry                              | Use                                                                 |
-| ---------------------------------- | ------------------------------------------------------------------- |
-| `@raf-query/react/tanstack-router` | Streams the router's query cache to the client during SSR           |
-| `@raf-query/react/rsc`             | `QueryProvider` and `HydrationBoundary` for React Server Components |
-| `@raf-query/react/react-router`    | `HydrationBoundary` for React Router Framework Mode loaders         |
-| `@raf-query/react/devtools`        | [Devtools](./devtools.md) panel for inspecting the cache            |
+| Entry                              | Use                                                       |
+| ---------------------------------- | --------------------------------------------------------- |
+| `@raf-query/react/tanstack-router` | Streams the router's query cache to the client during SSR |
+| `@raf-query/react/rsc`             | `QueryProvider` for React Server Components               |
+| `@raf-query/react/devtools`        | [Devtools](./devtools.md) panel for inspecting the cache  |
 
 ## Where next
 
