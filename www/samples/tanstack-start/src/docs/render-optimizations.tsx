@@ -1,6 +1,10 @@
 import { Suspense } from "react";
-import { type QueryHandleWithData, useQuery } from "@raf-query/react";
-import { postQuery } from "~/queries.ts";
+import {
+	type QueryHandle,
+	type QueryHandleWithData,
+	useQuery,
+} from "@raf-query/react";
+import { postQuery, todosQuery } from "~/queries.ts";
 import type { ReactNode } from "react";
 import { Route } from "~/routes/posts.$slug.tsx";
 import { use } from "react";
@@ -35,6 +39,20 @@ function RefreshButton(props: {
 			Refresh
 		</button>
 	);
+}
+// #endregion
+
+// #region select
+function DoneCount(props: { handle: QueryHandle<typeof todosQuery> }) {
+	// Re-renders when the count changes, not on every edit to a todo.
+	const [countPromise] = useQuery(todosQuery, props.handle, {
+		select: (data) =>
+			data.pages.flatMap((page) => page.items).filter((todo) => todo.done)
+				.length,
+	});
+	const count = use(countPromise);
+	//    ^?
+	return <span>{count} done</span>;
 }
 // #endregion
 

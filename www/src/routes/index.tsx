@@ -430,8 +430,8 @@ const leaveOuts: ReadonlyArray<{
 		why: "Actions, useOptimistic and useActionState already cover pending, optimistic and error state.",
 	},
 	{
-		feature: "enabled / select / placeholderData",
-		why: "The route owns the input; shape data in the queryFn or the component; whilePending keeps the previous page.",
+		feature: "enabled / placeholderData",
+		why: "The route owns the input; whilePending keeps the previous page.",
 	},
 	{
 		feature: "refetchOnMount",

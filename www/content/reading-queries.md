@@ -19,7 +19,7 @@ A handle from `ensure` or `fetch` had its data loaded before the route rendered,
 tanstack-start/src/docs/reading-queries.tsx#post-page
 ```
 
-`options` takes [`whilePending`](./url-state-and-pagination.md) and per-read refetch settings (`refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`). There is no option to change the input: the handle decides what is read.
+`options` takes [`whilePending`](./url-state-and-pagination.md), [`select`](./render-optimizations.md#selecting-part-of-the-data) to read part of the data, and per-read refetch settings (`refetchInterval`, `refetchOnWindowFocus`, `refetchOnReconnect`). There is no option to change the input: the handle decides what is read.
 
 ## Controls
 
