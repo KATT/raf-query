@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "@effect/vitest";
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, type Result } from "effect";
 import type { ComponentProps } from "react";
 
 import {
@@ -17,6 +17,7 @@ import {
 	type QueryOptions,
 	queryOptions,
 	type ServicesOf,
+	type Thenable,
 	useQuery,
 	useWaterfall,
 } from "./index.ts";
@@ -170,6 +171,49 @@ describe("types", () => {
 			// @ts-expect-error the handle is `commentsQuery`'s
 			useQuery(draftCommentsQuery, comments);
 			useQuery(postQuery, post);
+		}
+		expect(useTypeOnly).toBeTypeOf("function");
+	});
+
+	it("infer useQuery's data from select", () => {
+		function useTypeOnly(
+			post: QueryHandle<typeof postQuery>,
+			ensured: QueryHandleWithData<typeof postQuery>,
+			comments: QueryHandle<typeof commentsQuery>,
+			user: QueryHandle<typeof userQuery>,
+		) {
+			const [titlePromise] = useQuery(postQuery, post, {
+				select: (data) => {
+					expectTypeOf(data).toEqualTypeOf<{ slug: string; title: string }>();
+					return data.title.length;
+				},
+			});
+			expectTypeOf(titlePromise).toEqualTypeOf<Thenable<number>>();
+			const [title] = useQuery(postQuery, ensured, {
+				select: (data) => data.title,
+			});
+			expectTypeOf(title).toEqualTypeOf<string>();
+			const [nextPromise, paging] = useQuery(commentsQuery, comments, {
+				select: (data) => data.pages.map((page) => page.next),
+				whilePending: "previous",
+			});
+			expectTypeOf(nextPromise).toEqualTypeOf<Thenable<Array<number | null>>>();
+			expectTypeOf(paging.fetchNextPage).toBeFunction();
+			const [userResult] = useQuery(userQuery, user, {
+				select: (name) => name.length,
+			});
+			expectTypeOf(userResult).toEqualTypeOf<
+				Thenable<Result.Result<number, NotFound>>
+			>();
+			const [userLength] = useQuery(userQuery, user, {
+				select: (name) => name.length,
+				throwOnError: true,
+			});
+			expectTypeOf(userLength).toEqualTypeOf<Thenable<number>>();
+			useQuery(postQuery, post, {
+				// @ts-expect-error `select` takes the factory's data
+				select: (data: { other: string }) => data.other,
+			});
 		}
 		expect(useTypeOnly).toBeTypeOf("function");
 	});

@@ -320,6 +320,27 @@ describe("QueryObserver", () => {
 			expect(promise).toMatchObject({ status: "fulfilled", value: "First" });
 		});
 
+		it("has settled the selection for a read in the same turn as its first load", async () => {
+			const backend = createBackend();
+			const qc = makeCacheUnsafe({ isServer: false });
+			Effect.runSync(qc.prefetch(backend.issueQuery, { id: 1 }));
+			const query = qc.getQueryUnsafe(backend.issueQuery, { id: 1 });
+			const options = {
+				select: (issue: { title: string }) => issue.title,
+			};
+			const observer = QueryObserver.makeUnsafe(query, options);
+			const promise = QueryObserver.getUnsafe(observer).promise;
+
+			Effect.runSync(
+				qc.setData(backend.issueQuery, { id: 1 }, { id: 1, title: "Set" }),
+			);
+			expect(
+				QueryObserver.getOptimisticResultUnsafe(observer, query, options)
+					.promise,
+			).toBe(promise);
+			expect(promise).toMatchObject({ status: "fulfilled", value: "Set" });
+		});
+
 		it("settles a pending selection with no listener when its source does", async () => {
 			const backend = createBackend();
 			const qc = makeCacheUnsafe({ isServer: false });

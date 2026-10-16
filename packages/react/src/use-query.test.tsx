@@ -888,6 +888,287 @@ describe("useQuery", () => {
 		});
 		cleanup();
 	});
+
+	describe("select", () => {
+		function setTitle(test: ReturnType<typeof setup>, patch: Partial<Issue>) {
+			return act(async () => {
+				test.client.setData(test.backend.issueQuery, { id: 1 }, (issue) => ({
+					assigneeId: 10,
+					id: 1,
+					title: "First",
+					...issue,
+					...patch,
+				}));
+				await Promise.resolve();
+			});
+		}
+
+		it("re-renders only when the selected value changes, with an inline select", async () => {
+			const test = setup();
+			const renders = { count: 0 };
+			function Assignee(props: {
+				readonly handle: QueryHandle<typeof test.backend.issueQuery>;
+			}) {
+				renders.count++;
+				const [assigneePromise] = useQuery(
+					test.backend.issueQuery,
+					props.handle,
+					{ select: (issue) => ({ id: issue.assigneeId }) },
+				);
+				const assignee = use(assigneePromise);
+				return <p>{`Assignee ${assignee.id}`}</p>;
+			}
+			const handle = test.client.prefetch(test.backend.issueQuery, { id: 1 });
+			await test.backend.respond();
+			await mount(test.view(<Assignee handle={handle} />));
+			expect(screen.getByText("Assignee 10")).toBeDefined();
+			expect(renders.count).toBe(1);
+
+			await setTitle(test, { title: "Renamed" });
+			expect(renders.count).toBe(1);
+
+			await setTitle(test, { assigneeId: 20 });
+			expect(screen.getByText("Assignee 20")).toBeDefined();
+			expect(renders.count).toBe(2);
+			cleanup();
+		});
+
+		it("runs a select that reads props again when they change", async () => {
+			const test = setup();
+			function Title(props: {
+				readonly handle: QueryHandle<typeof test.backend.issueQuery>;
+				readonly suffix: string;
+			}) {
+				const [titlePromise] = useQuery(test.backend.issueQuery, props.handle, {
+					select: (issue) => `${issue.title}${props.suffix}`,
+				});
+				const title = use(titlePromise);
+				return <p>{title}</p>;
+			}
+			const handle = test.client.prefetch(test.backend.issueQuery, { id: 1 });
+			await test.backend.respond();
+			const result = await mount(
+				test.view(<Title handle={handle} suffix="" />),
+			);
+			expect(screen.getByText("First")).toBeDefined();
+
+			await result.rerender(test.view(<Title handle={handle} suffix="!" />));
+			expect(screen.getByText("First!")).toBeDefined();
+			cleanup();
+		});
+
+		it("resumes use() on a first load in StrictMode, without React's uncached promise warning", async () => {
+			const test = setup();
+			const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+			function Title(props: {
+				readonly handle: QueryHandle<typeof test.backend.issueQuery>;
+			}) {
+				const [titlePromise] = useQuery(test.backend.issueQuery, props.handle, {
+					select: (issue) => issue.title.toUpperCase(),
+				});
+				const title = use(titlePromise);
+				return <p>{title}</p>;
+			}
+			const handle = test.client.prefetch(test.backend.issueQuery, { id: 1 });
+
+			await mount(
+				<StrictMode>{test.view(<Title handle={handle} />)}</StrictMode>,
+			);
+			expect(screen.getByText("Loading")).toBeDefined();
+			await test.backend.respond();
+			expect(screen.getByText("FIRST")).toBeDefined();
+			expect(errors).not.toHaveBeenCalled();
+			errors.mockRestore();
+			cleanup();
+		});
+
+		it("re-renders a reader of the promise's status when the first load lands", async () => {
+			const test = setup();
+			function Title(props: {
+				readonly handle: QueryHandle<typeof test.backend.issueQuery>;
+			}) {
+				const [titlePromise] = useQuery(test.backend.issueQuery, props.handle, {
+					select: (issue) => issue.title.toUpperCase(),
+				});
+				return (
+					<p>
+						{titlePromise.status === "fulfilled" ? titlePromise.value : "…"}
+					</p>
+				);
+			}
+			const handle = test.client.prefetch(test.backend.issueQuery, { id: 1 });
+
+			await mount(test.view(<Title handle={handle} />));
+			expect(screen.getByText("…")).toBeDefined();
+			await test.backend.respond();
+			expect(screen.getByText("FIRST")).toBeDefined();
+			cleanup();
+		});
+
+		it("returns the selected value for a handle from ensure", async () => {
+			const test = setup();
+			function Title(props: {
+				readonly handle: QueryHandleWithData<typeof test.backend.issueQuery>;
+			}) {
+				const [title] = useQuery(test.backend.issueQuery, props.handle, {
+					select: (issue) => issue.title.toUpperCase(),
+				});
+				return <p>{title}</p>;
+			}
+			const ensuring = test.client.ensure(test.backend.issueQuery, { id: 1 });
+			await test.backend.respond();
+			await mount(test.view(<Title handle={await ensuring} />));
+			expect(screen.getByText("FIRST")).toBeDefined();
+
+			await setTitle(test, { title: "Renamed" });
+			expect(screen.getByText("RENAMED")).toBeDefined();
+			cleanup();
+		});
+
+		it("selects the previous input's data with whilePending: previous", async () => {
+			const test = setup();
+			function Title(props: {
+				readonly handle: QueryHandle<typeof test.backend.issueQuery>;
+			}) {
+				const [titlePromise, titleState] = useQuery(
+					test.backend.issueQuery,
+					props.handle,
+					{
+						select: (issue) => issue.title.toUpperCase(),
+						whilePending: "previous",
+					},
+				);
+				const title = use(titlePromise);
+				return <p data-previous={titleState.isPrevious}>{title}</p>;
+			}
+			const first = test.client.prefetch(test.backend.issueQuery, { id: 1 });
+			await test.backend.respond();
+			const result = await mount(test.view(<Title handle={first} />));
+
+			const second = test.client.prefetch(test.backend.issueQuery, { id: 2 });
+			await result.rerender(test.view(<Title handle={second} />));
+			expect(screen.getByText("FIRST").dataset["previous"]).toBe("true");
+			await test.backend.respond();
+			expect(screen.getByText("SECOND").dataset["previous"]).toBe("false");
+			cleanup();
+		});
+
+		it("throws what select throws to the error boundary", async () => {
+			const test = setup();
+			const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+			function Title(props: {
+				readonly handle: QueryHandle<typeof test.backend.issueQuery>;
+			}) {
+				const [titlePromise] = useQuery(test.backend.issueQuery, props.handle, {
+					select: (): string => {
+						throw new Error("bad select");
+					},
+				});
+				const title = use(titlePromise);
+				return <p>{title}</p>;
+			}
+			const handle = test.client.prefetch(test.backend.issueQuery, { id: 1 });
+			await test.backend.respond();
+			await mount(test.view(<Title handle={handle} />));
+			expect(screen.getByText("Error: Error: bad select")).toBeDefined();
+			errors.mockRestore();
+			cleanup();
+		});
+
+		it("selects the success value of a Result when throwOnError is false", async () => {
+			class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {
+				id: Schema.Number,
+			}) {}
+			function nameQuery(input: { id: number }) {
+				return queryOptions({
+					queryFn: () =>
+						input.id === 1
+							? Effect.succeed("Ada")
+							: Effect.fail(new NotFound({ id: input.id })),
+					queryKey: ["name", input.id],
+					retry: false,
+				});
+			}
+			const client = new QueryClient({ isServer: false, layer: Layer.empty });
+			const select = vi.fn((name: string) => name.length);
+			function NameLength(props: {
+				readonly handle: QueryHandle<typeof nameQuery>;
+			}) {
+				const [lengthPromise] = useQuery(nameQuery, props.handle, { select });
+				const length = use(lengthPromise);
+				return (
+					<p>
+						{Result.match(length, {
+							onFailure: (error) => `missing ${error.id}`,
+							onSuccess: (value) => `length ${value}`,
+						})}
+					</p>
+				);
+			}
+			function view(handle: QueryHandle<typeof nameQuery>) {
+				return (
+					<QueryClientProvider client={client}>
+						<Suspense fallback={<p>Loading</p>}>
+							<NameLength handle={handle} />
+						</Suspense>
+					</QueryClientProvider>
+				);
+			}
+
+			await mount(view(client.prefetch(nameQuery, { id: 1 })));
+			await waitFor(() => screen.getByText("length 3"));
+			cleanup();
+			await mount(view(client.prefetch(nameQuery, { id: 404 })));
+			await waitFor(() => screen.getByText("missing 404"));
+			expect(select).toHaveBeenCalledWith("Ada");
+			expect(select).toHaveBeenCalledTimes(1);
+			cleanup();
+		});
+
+		it("selects across the pages of a paged factory", async () => {
+			const client = new QueryClient({ isServer: false });
+			function numbersQuery() {
+				return infiniteQueryOptions({
+					getNextPageParam: (lastPage: ReadonlyArray<number>) =>
+						lastPage[0] === 1 ? 2 : null,
+					initialPageParam: 1,
+					queryFn: (context) => [context.pageParam, context.pageParam * 10],
+					queryKey: ["numbers"],
+				});
+			}
+			function Numbers(props: {
+				readonly handle: QueryHandleWithData<typeof numbersQuery>;
+			}) {
+				const [numbers, paging] = useQuery(numbersQuery, props.handle, {
+					select: (data) => data.pages.flat(),
+				});
+				return (
+					<button
+						disabled={!paging.hasNextPage}
+						onClick={() => {
+							void paging.fetchNextPage();
+						}}
+						type="button"
+					>
+						{numbers.join(",")}
+					</button>
+				);
+			}
+			const handle = await client.ensure(numbersQuery);
+			await mount(
+				<QueryClientProvider client={client}>
+					<Numbers handle={handle} />
+				</QueryClientProvider>,
+			);
+
+			await act(async () => {
+				screen.getByText("1,10").click();
+			});
+			const button = await screen.findByText("1,10,2,20");
+			expect(button.hasAttribute("disabled")).toBe(true);
+			cleanup();
+		});
+	});
 });
 
 describe("useWaterfall", () => {
