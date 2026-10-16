@@ -1,6 +1,6 @@
 {
 	"name": "@raf-query/react",
-	"version": "0.9.2",
+	"version": "0.10.2",
 	"description": "React bindings for raf-query, a render-as-you-fetch query library",
 	"keywords": [
 		"query",
@@ -32,10 +32,11 @@
 	"type": "module",
 	"sideEffects": false,
 	"exports": {
-		".": "./src/index.ts",
+		".": {
+			"react-server": "./src/index-react-server.ts",
+			"default": "./src/index.ts"
+		},
 		"./devtools": "./src/devtools.tsx",
-		"./rsc": "./src/rsc.tsx",
-		"./react-router": "./src/react-router.tsx",
 		"./tanstack-router": {
 			"workerd": "./src/tanstack-router.ts",
 			"worker": "./src/tanstack-router.ts",
@@ -84,10 +85,11 @@
 	"publishConfig": {
 		"access": "public",
 		"exports": {
-			".": "./dist/index.mjs",
+			".": {
+				"react-server": "./dist/index-react-server.mjs",
+				"default": "./dist/index.mjs"
+			},
 			"./devtools": "./dist/devtools.mjs",
-			"./rsc": "./dist/rsc.mjs",
-			"./react-router": "./dist/react-router.mjs",
 			"./tanstack-router": {
 				"workerd": "./dist/tanstack-router.mjs",
 				"worker": "./dist/tanstack-router.mjs",

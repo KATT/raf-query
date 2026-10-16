@@ -11,8 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RpcRouteImport } from './routes/rpc'
-import { Route as IssuesIndexRouteImport } from './routes/issues.index'
-import { Route as IssuesIssueIdRouteImport } from './routes/issues.$issueId'
+import { Route as IssuesSplatRouteImport } from './routes/issues.$'
+import { Route as EnsureIssuesIndexRouteImport } from './routes/ensure/issues/index'
+import { Route as EnsureIssuesIssueIdRouteRouteImport } from './routes/ensure/issues/$issueId/route'
+import { Route as FetchIssuesIndexRouteImport } from './routes/fetch/issues/index'
+import { Route as FetchIssuesIssueIdRouteRouteImport } from './routes/fetch/issues/$issueId/route'
+import { Route as PrefetchIssuesIndexRouteImport } from './routes/prefetch/issues/index'
+import { Route as PrefetchIssuesIssueIdRouteRouteImport } from './routes/prefetch/issues/$issueId/route'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -24,49 +29,124 @@ const RpcRoute = RpcRouteImport.update({
   path: '/rpc',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IssuesIndexRoute = IssuesIndexRouteImport.update({
-  id: '/issues/',
-  path: '/issues/',
+const IssuesSplatRoute = IssuesSplatRouteImport.update({
+  id: '/issues/$',
+  path: '/issues/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IssuesIssueIdRoute = IssuesIssueIdRouteImport.update({
-  id: '/issues/$issueId',
-  path: '/issues/$issueId',
+const EnsureIssuesIndexRoute = EnsureIssuesIndexRouteImport.update({
+  id: '/ensure/issues/',
+  path: '/ensure/issues/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EnsureIssuesIssueIdRouteRoute =
+  EnsureIssuesIssueIdRouteRouteImport.update({
+    id: '/ensure/issues/$issueId',
+    path: '/ensure/issues/$issueId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const FetchIssuesIndexRoute = FetchIssuesIndexRouteImport.update({
+  id: '/fetch/issues/',
+  path: '/fetch/issues/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FetchIssuesIssueIdRouteRoute = FetchIssuesIssueIdRouteRouteImport.update({
+  id: '/fetch/issues/$issueId',
+  path: '/fetch/issues/$issueId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrefetchIssuesIndexRoute = PrefetchIssuesIndexRouteImport.update({
+  id: '/prefetch/issues/',
+  path: '/prefetch/issues/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrefetchIssuesIssueIdRouteRoute =
+  PrefetchIssuesIssueIdRouteRouteImport.update({
+    id: '/prefetch/issues/$issueId',
+    path: '/prefetch/issues/$issueId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/rpc': typeof RpcRoute
-  '/issues/$issueId': typeof IssuesIssueIdRoute
-  '/issues/': typeof IssuesIndexRoute
+  '/issues/$': typeof IssuesSplatRoute
+  '/ensure/issues/$issueId': typeof EnsureIssuesIssueIdRouteRoute
+  '/fetch/issues/$issueId': typeof FetchIssuesIssueIdRouteRoute
+  '/prefetch/issues/$issueId': typeof PrefetchIssuesIssueIdRouteRoute
+  '/ensure/issues/': typeof EnsureIssuesIndexRoute
+  '/fetch/issues/': typeof FetchIssuesIndexRoute
+  '/prefetch/issues/': typeof PrefetchIssuesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/rpc': typeof RpcRoute
-  '/issues/$issueId': typeof IssuesIssueIdRoute
-  '/issues': typeof IssuesIndexRoute
+  '/issues/$': typeof IssuesSplatRoute
+  '/ensure/issues/$issueId': typeof EnsureIssuesIssueIdRouteRoute
+  '/fetch/issues/$issueId': typeof FetchIssuesIssueIdRouteRoute
+  '/prefetch/issues/$issueId': typeof PrefetchIssuesIssueIdRouteRoute
+  '/ensure/issues': typeof EnsureIssuesIndexRoute
+  '/fetch/issues': typeof FetchIssuesIndexRoute
+  '/prefetch/issues': typeof PrefetchIssuesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/rpc': typeof RpcRoute
-  '/issues/$issueId': typeof IssuesIssueIdRoute
-  '/issues/': typeof IssuesIndexRoute
+  '/issues/$': typeof IssuesSplatRoute
+  '/ensure/issues/$issueId': typeof EnsureIssuesIssueIdRouteRoute
+  '/fetch/issues/$issueId': typeof FetchIssuesIssueIdRouteRoute
+  '/prefetch/issues/$issueId': typeof PrefetchIssuesIssueIdRouteRoute
+  '/ensure/issues/': typeof EnsureIssuesIndexRoute
+  '/fetch/issues/': typeof FetchIssuesIndexRoute
+  '/prefetch/issues/': typeof PrefetchIssuesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/rpc' | '/issues/$issueId' | '/issues/'
+  fullPaths:
+    | '/'
+    | '/rpc'
+    | '/issues/$'
+    | '/ensure/issues/$issueId'
+    | '/fetch/issues/$issueId'
+    | '/prefetch/issues/$issueId'
+    | '/ensure/issues/'
+    | '/fetch/issues/'
+    | '/prefetch/issues/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/rpc' | '/issues/$issueId' | '/issues'
-  id: '__root__' | '/' | '/rpc' | '/issues/$issueId' | '/issues/'
+  to:
+    | '/'
+    | '/rpc'
+    | '/issues/$'
+    | '/ensure/issues/$issueId'
+    | '/fetch/issues/$issueId'
+    | '/prefetch/issues/$issueId'
+    | '/ensure/issues'
+    | '/fetch/issues'
+    | '/prefetch/issues'
+  id:
+    | '__root__'
+    | '/'
+    | '/rpc'
+    | '/issues/$'
+    | '/ensure/issues/$issueId'
+    | '/fetch/issues/$issueId'
+    | '/prefetch/issues/$issueId'
+    | '/ensure/issues/'
+    | '/fetch/issues/'
+    | '/prefetch/issues/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   RpcRoute: typeof RpcRoute
-  IssuesIssueIdRoute: typeof IssuesIssueIdRoute
-  IssuesIndexRoute: typeof IssuesIndexRoute
+  IssuesSplatRoute: typeof IssuesSplatRoute
+  EnsureIssuesIssueIdRouteRoute: typeof EnsureIssuesIssueIdRouteRoute
+  FetchIssuesIssueIdRouteRoute: typeof FetchIssuesIssueIdRouteRoute
+  PrefetchIssuesIssueIdRouteRoute: typeof PrefetchIssuesIssueIdRouteRoute
+  EnsureIssuesIndexRoute: typeof EnsureIssuesIndexRoute
+  FetchIssuesIndexRoute: typeof FetchIssuesIndexRoute
+  PrefetchIssuesIndexRoute: typeof PrefetchIssuesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -85,18 +165,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RpcRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/issues/': {
-      id: '/issues/'
-      path: '/issues'
-      fullPath: '/issues/'
-      preLoaderRoute: typeof IssuesIndexRouteImport
+    '/issues/$': {
+      id: '/issues/$'
+      path: '/issues/$'
+      fullPath: '/issues/$'
+      preLoaderRoute: typeof IssuesSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/issues/$issueId': {
-      id: '/issues/$issueId'
-      path: '/issues/$issueId'
-      fullPath: '/issues/$issueId'
-      preLoaderRoute: typeof IssuesIssueIdRouteImport
+    '/ensure/issues/': {
+      id: '/ensure/issues/'
+      path: '/ensure/issues'
+      fullPath: '/ensure/issues/'
+      preLoaderRoute: typeof EnsureIssuesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ensure/issues/$issueId': {
+      id: '/ensure/issues/$issueId'
+      path: '/ensure/issues/$issueId'
+      fullPath: '/ensure/issues/$issueId'
+      preLoaderRoute: typeof EnsureIssuesIssueIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fetch/issues/': {
+      id: '/fetch/issues/'
+      path: '/fetch/issues'
+      fullPath: '/fetch/issues/'
+      preLoaderRoute: typeof FetchIssuesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fetch/issues/$issueId': {
+      id: '/fetch/issues/$issueId'
+      path: '/fetch/issues/$issueId'
+      fullPath: '/fetch/issues/$issueId'
+      preLoaderRoute: typeof FetchIssuesIssueIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prefetch/issues/': {
+      id: '/prefetch/issues/'
+      path: '/prefetch/issues'
+      fullPath: '/prefetch/issues/'
+      preLoaderRoute: typeof PrefetchIssuesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prefetch/issues/$issueId': {
+      id: '/prefetch/issues/$issueId'
+      path: '/prefetch/issues/$issueId'
+      fullPath: '/prefetch/issues/$issueId'
+      preLoaderRoute: typeof PrefetchIssuesIssueIdRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -105,8 +220,13 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   RpcRoute: RpcRoute,
-  IssuesIssueIdRoute: IssuesIssueIdRoute,
-  IssuesIndexRoute: IssuesIndexRoute,
+  IssuesSplatRoute: IssuesSplatRoute,
+  EnsureIssuesIssueIdRouteRoute: EnsureIssuesIssueIdRouteRoute,
+  FetchIssuesIssueIdRouteRoute: FetchIssuesIssueIdRouteRoute,
+  PrefetchIssuesIssueIdRouteRoute: PrefetchIssuesIssueIdRouteRoute,
+  EnsureIssuesIndexRoute: EnsureIssuesIndexRoute,
+  FetchIssuesIndexRoute: FetchIssuesIndexRoute,
+  PrefetchIssuesIndexRoute: PrefetchIssuesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

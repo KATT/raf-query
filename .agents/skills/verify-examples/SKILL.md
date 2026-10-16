@@ -65,7 +65,7 @@ Each line is `ok` or `FAIL` with the reason. Drive nothing until the apps you ne
 - `$CE press Enter|Escape|Tab|ArrowDown|...`
 - `$CE scroll bottom|top|<px>`: mouse-wheel scrolling; `bottom` keeps going while an infinite list grows.
 - `$CE wait --text <t>` / `--gone <t>` / `--role <r> --name <n>`, with `--timeout <ms>` (default 10 s). Text includes what's typed in inputs. Wait on something, never sleep blindly before asserting.
-- `$CE text`, `$CE eval '<expression>'`, `$CE screenshot --path <file>`.
+- `$CE text`, `$CE eval '<expression>'`, `$CE screenshot --path <file>` (`--width 390` for a phone's layout).
 
 Server-rendered HTML is checked with `curl` (see [server-rendering](features/server-rendering.md)). Persistence is checked with `curl` against `/api/*` in the three REST apps, and by reloading the page in `tanstack-start-effect`.
 

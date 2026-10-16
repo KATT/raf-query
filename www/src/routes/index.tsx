@@ -260,8 +260,9 @@ const stepsByMode = {
 					<p>
 						React Router runs the loader on the server as soon as a navigation
 						starts. Every query the page needs starts there, at the same time,
-						before anything renders. Each loader creates its own client, so
-						requests never share data.
+						before anything renders. A root middleware creates one client per
+						request, and every loader reads it from the context: nested routes
+						share a cache, and requests never share data.
 					</p>
 					<p>
 						<code>prefetch</code> never holds the navigation: the page renders
@@ -272,7 +273,7 @@ const stepsByMode = {
 						still loading to the browser, so nothing is fetched twice.
 					</p>
 					<p>
-						Use <code>ensure</code> when the route can’t lay out without the
+						Use <code>fetch</code> when the route can’t lay out without the
 						data. Prefer <code>prefetch</code> when a component will read it
 						under Suspense — the usual shape, and what the example app does for
 						streamed parts of the page.

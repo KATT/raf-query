@@ -51,15 +51,6 @@ function createSession(
 	return session;
 }
 
-/** Starts every variant of the demo over, as a page load would. */
-export function resetSessions(demo: DemoDefinition): void {
-	for (const variant of demo.variants) {
-		void liveSessions.get(variant)?.client.dispose();
-		liveSessions.delete(variant);
-		variant.server.reset();
-	}
-}
-
 function sessionsFor(demo: DemoDefinition): ReadonlyArray<Session> {
 	return demo.variants.map(
 		(variant) => liveSessions.get(variant) ?? createSession(demo, variant),

@@ -74,25 +74,25 @@ The loader decides when each request starts and whether the navigation waits for
 npm install @raf-query/react effect
 ```
 
-See [installation](https://raf-query.katt.dev/docs/installation) for requirements, then set it up for [TanStack Start](https://raf-query.katt.dev/docs/tanstack-start) or [Next.js](https://raf-query.katt.dev/docs/nextjs).
+See [installation](https://raf-query.katt.dev/docs/installation) for requirements, then set it up for [TanStack Start](https://raf-query.katt.dev/docs/tanstack-start), [React Server Components](https://raf-query.katt.dev/docs/react-server-components) (such as the Next.js App Router) or [React Router](https://raf-query.katt.dev/docs/react-router).
 
 ## Packages
 
-| Package                              | Contents                                                                                                   |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| [`@raf-query/react`](packages/react) | `QueryClient`, hooks, and the TanStack Router, RSC and devtools integrations. Re-exports `@raf-query/core` |
-| [`@raf-query/core`](packages/core)   | The framework-agnostic, Effect-native cache, for Effect programs and bindings                              |
+| Package                              | Contents                                                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------------------------- |
+| [`@raf-query/react`](packages/react) | Hooks, and the TanStack Router, RSC and devtools integrations. Re-exports `@raf-query/core` |
+| [`@raf-query/core`](packages/core)   | The framework-agnostic `QueryClient` and the Effect-native cache behind it                  |
 
 ## Examples
 
 The same issue tracker, built on three frameworks so the integrations can be compared side by side, and once more with Effect and Effect RPC. Each runs live on Vercel, and opens in CodeSandbox, which runs it on a cloud VM:
 
-| Example                                                                   | Framework                             | Try it                                                                                                                                                                                                                                                                                   |
-| ------------------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`examples/tanstack-start`](examples/tanstack-start#readme)               | TanStack Start                        | [tanstack-start.raf-query.katt.dev](https://tanstack-start.raf-query.katt.dev) · [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/tanstack-start?file=/apps/tanstack-start/src/routes/issues.index.tsx)                             |
-| [`examples/nextjs`](examples/nextjs#readme)                               | Next.js App Router                    | [nextjs.raf-query.katt.dev](https://nextjs.raf-query.katt.dev) · [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/nextjs?file=/apps/nextjs/src/app/issues/page.tsx)                                                                 |
-| [`examples/react-router`](examples/react-router#readme)                   | React Router Framework Mode           | [react-router.raf-query.katt.dev](https://react-router.raf-query.katt.dev) · [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/react-router?file=/apps/react-router/app/routes/issues.tsx)                                           |
-| [`examples/tanstack-start-effect`](examples/tanstack-start-effect#readme) | TanStack Start, Effect and Effect RPC | [tanstack-start-effect.raf-query.katt.dev](https://tanstack-start-effect.raf-query.katt.dev) · [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/tanstack-start-effect?file=/apps/tanstack-start-effect/src/routes/issues.index.tsx) |
+| Example                                                                   | Framework                             | Try it                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`examples/tanstack-start`](examples/tanstack-start#readme)               | TanStack Start                        | [tanstack-start.raf-query.katt.dev](https://tanstack-start.raf-query.katt.dev) · [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/tanstack-start?file=/apps/tanstack-start/src/routes/prefetch/issues/index.tsx)                             |
+| [`examples/nextjs`](examples/nextjs#readme)                               | Next.js App Router                    | [nextjs.raf-query.katt.dev](https://nextjs.raf-query.katt.dev) · [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/nextjs?file=/apps/nextjs/src/app/prefetch/issues/page.tsx)                                                                 |
+| [`examples/react-router`](examples/react-router#readme)                   | React Router Framework Mode           | [react-router.raf-query.katt.dev](https://react-router.raf-query.katt.dev) · [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/react-router?file=/apps/react-router/app/routes/prefetch/issues/route.tsx)                                     |
+| [`examples/tanstack-start-effect`](examples/tanstack-start-effect#readme) | TanStack Start, Effect and Effect RPC | [tanstack-start-effect.raf-query.katt.dev](https://tanstack-start-effect.raf-query.katt.dev) · [Open in CodeSandbox](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/tanstack-start-effect?file=/apps/tanstack-start-effect/src/routes/prefetch/issues/index.tsx) |
 
 ## Development
 

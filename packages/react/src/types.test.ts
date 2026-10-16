@@ -7,6 +7,7 @@ import {
 	type DataOf,
 	dehydrate,
 	type ErrorOf,
+	HydrationBoundary,
 	type InfiniteData,
 	infiniteQueryOptions,
 	QueryClient,
@@ -327,5 +328,24 @@ describe("types", () => {
 			ComponentProps<typeof QueryClientProvider>["client"]
 		>();
 		expectTypeOf(qc).toExtend<Parameters<typeof dehydrate>[0]>();
+	});
+});
+
+describe("HydrationBoundary", () => {
+	it("takes a client or a dehydrated state, not both", () => {
+		type Props = ComponentProps<typeof HydrationBoundary>;
+		const qc = new QueryClient({ isServer: true });
+		expectTypeOf({ client: qc }).toExtend<Props>();
+		expectTypeOf({ state: dehydrate(qc) }).toExtend<Props>();
+		expectTypeOf({ client: qc, state: dehydrate(qc) }).not.toExtend<Props>();
+		expectTypeOf({}).not.toExtend<Props>();
+		expectTypeOf({
+			client: qc,
+			options: { keepErrors: true },
+		}).toExtend<Props>();
+		expectTypeOf({
+			options: { keepErrors: true },
+			state: dehydrate(qc),
+		}).not.toExtend<Props>();
 	});
 });

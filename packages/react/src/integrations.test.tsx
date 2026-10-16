@@ -15,8 +15,8 @@ import {
 	queryOptions,
 	useQuery,
 } from "./index.ts";
-import { Hydrate } from "./hydrate.tsx";
-import { HydrationBoundary } from "./rsc.tsx";
+import { Hydrate } from "./hydration-boundary/hydrate.tsx";
+import { HydrationBoundary } from "./index-react-server.ts";
 import { setupRouterIntegration } from "./tanstack-router.ts";
 
 function createBackend() {

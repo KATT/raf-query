@@ -5,8 +5,7 @@ import {
 	type QueryTimeDefaults,
 	queryTimeDefaults,
 } from "@examples/db/types";
-import { useQueryClient } from "@raf-query/react";
-import { QueryProvider } from "@raf-query/react/rsc";
+import { QueryProvider, useQueryClient } from "@raf-query/react";
 import { createContext, type ReactNode, use, useState } from "react";
 
 const StaleTimeDefaultsContext = createContext<QueryTimeDefaults | null>(null);

@@ -109,7 +109,7 @@ function focus() {
 const queryClient = new QueryClient({ layer: FakePlatform });
 ```
 
-With a fake clock, a test of `staleTime` or `gcTime` runs in milliseconds. [`@effect/vitest`](https://effect.website/docs/testing/vitest/)'s `it.effect` provides `TestClock`:
+With a fake clock, a test of `staleTime` or `gcTime` runs in milliseconds. [`@effect/vitest`](https://effect.website/docs/v4/api/vitest)'s `it.effect` provides `TestClock`:
 
 ```sample
 tanstack-start/src/docs/testing.ts#time-focus-and-the-network

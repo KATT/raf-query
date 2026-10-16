@@ -1,28 +1,28 @@
 import {
 	dehydrate,
-	QueryClient,
+	HydrationBoundary,
 	type QueryHandle,
 	useQuery,
 } from "@raf-query/react";
-import { HydrationBoundary } from "@raf-query/react/react-router";
 import { Suspense, use } from "react";
 
 import type { PostComment } from "~/api.ts";
 import { CommentsSkeleton } from "~/components/comments.tsx";
 import { commentsQuery, postQuery } from "~/queries.ts";
+import { queryClientContext } from "~/query-client.ts";
 
 import type { Route } from "./+types/blog.$slug";
 
 declare function Comment(props: { comment: PostComment }): React.ReactNode;
 declare function PostSkeleton(): React.ReactNode;
 
-// Homepage sample: both queries stream. `posts.$slug.tsx` keeps ensure +
+// Homepage sample: both queries stream. `posts.$slug.tsx` keeps fetch +
 // prefetch for the guide that teaches that split.
 
 // #region hero
 // #region loader
 export function loader(args: Route.LoaderArgs) {
-	const qc = new QueryClient();
+	const qc = args.context.get(queryClientContext);
 	const { slug } = args.params;
 	// Never waits: both load while the page renders.
 	const comments = qc.prefetch(commentsQuery, { slug });

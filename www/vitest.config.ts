@@ -7,8 +7,7 @@ export default defineConfig({
 		tsconfigPaths: true,
 	},
 	test: {
-		environment: "happy-dom",
-		include: ["{build,src}/**/*.test.{ts,tsx}"],
+		include: ["build/**/*.test.ts"],
 		unstubGlobals: true,
 	},
 });

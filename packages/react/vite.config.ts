@@ -4,9 +4,8 @@ export default defineConfig({
 	pack: {
 		entry: [
 			"src/index.ts",
+			"src/index-react-server.ts",
 			"src/devtools.tsx",
-			"src/rsc.tsx",
-			"src/react-router.tsx",
 			"src/tanstack-router.ts",
 			"src/tanstack-router-browser.ts",
 		],

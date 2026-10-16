@@ -53,6 +53,11 @@ const routes = [
 	{ headers: { Location: "/$1" }, src: "^/(.+)\\.html$", status: 308 },
 	{ headers: { Location: "/docs/overview" }, src: "^/docs$", status: 307 },
 	{
+		headers: { Location: "/docs/react-server-components$1" },
+		src: "^/docs/nextjs(\\.md)?$",
+		status: 308,
+	},
+	{
 		continue: true,
 		headers: { "Cache-Control": "public, max-age=31536000, immutable" },
 		src: "^/assets/.*$",

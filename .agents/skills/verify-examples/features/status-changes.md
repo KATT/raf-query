@@ -25,7 +25,7 @@ Commands:
 - **On the issue page.** `$CE open $U/issues/3; $CE click --role button --name 'Change status'; $CE snapshot | grep menuitem` lists `menuitem "Open"`, `"In progress"`, `"Closed"`. `$CE click --role menuitem --name 'In progress' --exact`, then right away `$CE snapshot | grep 'Change status'`: `button "Status: In progress. Change status" [disabled, …]`.
 - **Persisted.** After a second, `$CE open $U/issues/3; $CE snapshot | grep 'Change status'`: `Status: In progress`, not disabled. REST apps also: `curl -s $U/api/issues/3 | grep -o '"status":"[a-z_]*"'`.
 - **Put it back.** `$CE click --role button --name 'Change status'; $CE click --role menuitem --name Open --exact`.
-- **In a list row.** `$CE open $U/issues; $CE click --role button --name 'Change status' --nth 0; $CE click --role menuitem --name Open --exact`. Right away the first trigger reads `Status: Open. Change status [disabled]`. After the write, `$CE snapshot | grep -E '^link "(Open|Closed) [0-9]+"'` shows `Open 18` and `Closed 8`. `$CE eval location.pathname` is still `/issues`: opening the menu doesn't open the row. Put `#42` back to `Closed` the same way; the counts return to 17 and 9.
+- **In a list row.** `$CE open $U/issues; $CE click --role button --name 'Change status' --nth 0; $CE click --role menuitem --name Open --exact`. Right away the first trigger reads `Status: Open. Change status [disabled]`. After the write, `$CE snapshot | grep -E '^link "(Open|Closed) [0-9]+"'` shows `Open 18` and `Closed 8`. `$CE eval location.pathname` is still `/prefetch/issues`: opening the menu doesn't open the row. Put `#42` back to `Closed` the same way; the counts return to 17 and 9.
 
 ## Gotchas
 

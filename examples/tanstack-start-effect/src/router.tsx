@@ -30,6 +30,10 @@ export function getRouter() {
 		defaultPreload: toDefaultPreload(readPrefetch()),
 		// The query cache decides what's fresh; loaders always run and dedupe there.
 		defaultPreloadStaleTime: 0,
+		// A revisit waits for its loader, as the URL's verb says. With the
+		// default (`"background"`), the router renders the route's last loader
+		// data and reruns the loader behind it, so `fetch` would never wait.
+		defaultStaleReloadMode: "blocking",
 		routeTree,
 		scrollRestoration: true,
 		Wrap: (props) => (
