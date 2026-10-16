@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.11.0](https://github.com/KATT/raf-query/compare/0.10.4...0.11.0) (2026-10-16)
+
+### ⚠ BREAKING CHANGES
+
+- **core:** enabled replaces ssr, as a boolean like TanStack Query's ([#204](https://github.com/KATT/raf-query/issues/204))
+
+### Features
+
+- **core:** enabled replaces ssr, as a boolean like TanStack Query's ([#204](https://github.com/KATT/raf-query/issues/204)) ([b7e543b](https://github.com/KATT/raf-query/commit/b7e543b9d1d34e02061740f749f2ddabcdee2ad2))
+
 ## [0.10.4](https://github.com/KATT/raf-query/compare/0.10.3...0.10.4) (2026-10-16)
 
 ### Bug Fixes
