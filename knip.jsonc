@@ -127,6 +127,11 @@
 			"entry": ["src/analyze.ts", "fixtures/**/*.{ts,tsx}"],
 			"includeEntryExports": false,
 		},
+		"tooling/rsc-frameworks": {
+			// Each app is built by path from its test, with its own vite config.
+			"entry": ["vite-rsc/vite.config.ts", "vite-rsc/entry.*.tsx"],
+			"includeEntryExports": false,
+		},
 		"tooling/oxlint-plugins": {
 			// Loaded by path from the root `.oxlintrc.json`.
 			"entry": [

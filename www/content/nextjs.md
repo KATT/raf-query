@@ -5,7 +5,7 @@ section: Server rendering
 order: 3
 ---
 
-In the App Router, server components play the part of loaders: they start queries and pass handles to client components. `QueryProvider` from `@raf-query/react/rsc` and `HydrationBoundary` from `@raf-query/react` connect them.
+In the App Router, server components play the part of loaders: they start queries and pass handles to client components. `QueryProvider` and `HydrationBoundary`, both from `@raf-query/react`, connect them.
 
 ## Setup
 

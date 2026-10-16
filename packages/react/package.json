@@ -37,7 +37,6 @@
 			"default": "./src/index.ts"
 		},
 		"./devtools": "./src/devtools.tsx",
-		"./rsc": "./src/rsc.ts",
 		"./tanstack-router": {
 			"workerd": "./src/tanstack-router.ts",
 			"worker": "./src/tanstack-router.ts",
@@ -91,7 +90,6 @@
 				"default": "./dist/index.mjs"
 			},
 			"./devtools": "./dist/devtools.mjs",
-			"./rsc": "./dist/rsc.mjs",
 			"./tanstack-router": {
 				"workerd": "./dist/tanstack-router.mjs",
 				"worker": "./dist/tanstack-router.mjs",
