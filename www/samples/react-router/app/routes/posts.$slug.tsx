@@ -1,10 +1,10 @@
 import {
 	dehydrate,
+	HydrationBoundary,
 	QueryClient,
 	type QueryHandleWithData,
 	useQuery,
 } from "@raf-query/react";
-import { HydrationBoundary } from "@raf-query/react/react-router";
 import { Suspense } from "react";
 
 import { Comments, CommentsSkeleton } from "~/components/comments.tsx";

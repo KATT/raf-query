@@ -2,7 +2,7 @@ import { IssueListInput } from "@examples/db/types";
 import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { allKeyed } from "@raf-query/react";
-import { HydrationBoundary } from "@raf-query/react/rsc";
+import { HydrationBoundary } from "@raf-query/react";
 import { Suspense } from "react";
 
 import { parseLoaderVerb, startQuery } from "~/loader-verb.ts";

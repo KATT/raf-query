@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.10.0](https://github.com/KATT/raf-query/compare/0.9.2...0.10.0) (2026-10-16)
+
+### ⚠ BREAKING CHANGES
+
+- **react:** import HydrationBoundary from @raf-query/react in RSC and React Router ([#175](https://github.com/KATT/raf-query/issues/175))
+- **react:** import QueryProvider from @raf-query/react ([#177](https://github.com/KATT/raf-query/issues/177))
+
+### Features
+
+- **react:** import HydrationBoundary from @raf-query/react in RSC and React Router ([#175](https://github.com/KATT/raf-query/issues/175)) ([244705c](https://github.com/KATT/raf-query/commit/244705c74841d280a596195dec5cf5e5d5617fe5))
+- **react:** import QueryProvider from @raf-query/react ([#177](https://github.com/KATT/raf-query/issues/177)) ([fb4fceb](https://github.com/KATT/raf-query/commit/fb4fcebb404906b4a9d5716a1d45cb33c82da2fb)), references [#175](https://github.com/KATT/raf-query/issues/175) [#175](https://github.com/KATT/raf-query/issues/175) [#175](https://github.com/KATT/raf-query/issues/175) [#175](https://github.com/KATT/raf-query/issues/175)
+
+### Code Refactoring
+
+- **react:** group the HydrationBoundary and QueryProvider files in folders ([#186](https://github.com/KATT/raf-query/issues/186)) ([ad07bb4](https://github.com/KATT/raf-query/commit/ad07bb45ca77fc797cd6b8432685e58f43907258)), references [#175](https://github.com/KATT/raf-query/issues/175)
+
 ## [0.9.2](https://github.com/KATT/raf-query/compare/0.9.1...0.9.2) (2026-10-15)
 
 ### Bug Fixes

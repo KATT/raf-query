@@ -3,8 +3,8 @@
 import { type ReactNode, useState } from "react";
 
 import { requestInBrowserOnly } from "./browser-requests.ts";
-import { QueryClient, type QueryClientConfig } from "./client.ts";
-import { QueryClientProvider } from "./provider.tsx";
+import { QueryClient, type QueryClientConfig } from "../client.ts";
+import { QueryClientProvider } from "../provider.tsx";
 
 /**
  * The query client provider for React Server Components apps. Creates one

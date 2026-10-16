@@ -1,4 +1,4 @@
-import type { QueryClient } from "./client.ts";
+import type { QueryClient } from "../client.ts";
 
 const sentByClient = new WeakMap<QueryClient, Set<string>>();
 

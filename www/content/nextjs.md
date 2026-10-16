@@ -5,7 +5,7 @@ section: Server rendering
 order: 3
 ---
 
-In the App Router, server components play the part of loaders: they start queries and pass handles to client components. `@raf-query/react/rsc` provides the two pieces that connect them.
+In the App Router, server components play the part of loaders: they start queries and pass handles to client components. `QueryProvider` and `HydrationBoundary`, both from `@raf-query/react`, connect them.
 
 ## Setup
 
@@ -42,6 +42,7 @@ nextjs/src/app/(blog)/components/comments.tsx#component
 ```
 
 - Render a `HydrationBoundary` in each server component that starts queries for client components. Entries already sent in this request are skipped, so nesting them is fine.
+- `client` works only in server components. Next.js resolves `@raf-query/react` with the `react-server` export condition there, which picks the `HydrationBoundary` that dehydrates the client. Client components get the one that takes a dehydrated `state`, as in [React Router](./react-router.md).
 - Pending entries stream as promises through the RSC payload: the page's shell renders while `comments` loads.
 - `await qc.fetch(...)` (or `ensure`, which waits for the same thing on the server) returns a handle with the `data`: render `post.data` in the server component, and pass `post` to client components that read the query: typed `QueryHandleWithData`, they get the data from `useQuery` without a promise. The data crosses once: the RSC payload references the `HydrationBoundary`'s copy.
 

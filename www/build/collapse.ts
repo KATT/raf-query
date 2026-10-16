@@ -221,14 +221,20 @@ export function collapseRegions(nextId: () => string): ShikiTransformer {
 			// first, so the earlier indexes stay put. Ids follow source order.
 			const built = regions.map((region) => {
 				const startAt = childIndex(code.children, this.lines[region.start]);
-				const endAt = childIndex(code.children, this.lines[region.end]);
+				let endAt = childIndex(code.children, this.lines[region.end]);
+				const inner = regionNodes(code.children, startAt, endAt);
+				// The wrapper is a block, so a newline after it would render as an
+				// empty line. It ends the body instead, where it renders as nothing
+				// and Copy still puts the next line on a line of its own.
+				const after = code.children[endAt + 1];
+				if (after && isNewline(after)) {
+					inner.push(after);
+					endAt += 1;
+				}
 				return {
 					endAt,
 					startAt,
-					wrapper: collapseElement(
-						regionNodes(code.children, startAt, endAt),
-						nextId(),
-					),
+					wrapper: collapseElement(inner, nextId()),
 				};
 			});
 			for (const region of built.toReversed()) {
