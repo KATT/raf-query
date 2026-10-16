@@ -116,6 +116,12 @@ export interface Entry extends Query {
 	pending: Pending<unknown> | undefined;
 	/** The last reader left during the request in flight: it retries no more. */
 	retriesStopped: boolean;
+	/**
+	 * The last `queryFn` call returned an Effect (`true`) or a promise or
+	 * plain value (`false`), here or on the cache it was hydrated from.
+	 * `undefined` until one has run.
+	 */
+	returnsEffect: boolean | undefined;
 	/** Open while the entry is cached; owns its fibers. */
 	readonly scope: Scope.Closeable;
 	/**
@@ -193,6 +199,7 @@ export function make(cache: CacheState, key: QueryKey, hash: string): Entry {
 		options: undefined,
 		pending: first,
 		retriesStopped: false,
+		returnsEffect: undefined,
 		scope,
 		services: cache.services,
 		signalRead: false,
@@ -774,8 +781,9 @@ function attempt(
 			entry.signalRead = true;
 			return signal;
 		});
+		entry.returnsEffect = Effect.isEffect(result);
 		// Interrupting an Effect cancels it, whether it reads the signal or not.
-		if (Effect.isEffect(result)) {
+		if (entry.returnsEffect) {
 			entry.signalRead = true;
 		}
 		return result;

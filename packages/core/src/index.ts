@@ -14,6 +14,7 @@ export {
 	type ReadValue,
 	resultThenable,
 	type ThrowsOnError,
+	throwsOnError,
 	type UseQueryControls,
 	type UseQueryOptions,
 	type UseQueryThrowOptions,

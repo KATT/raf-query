@@ -4,6 +4,8 @@ import { Context, Effect, Layer, Result, Schema } from "effect";
 import { Component, type ReactNode, StrictMode, Suspense, use } from "react";
 
 import {
+	dehydrate,
+	hydrate,
 	infiniteQueryOptions,
 	Query,
 	QueryClient,
@@ -887,6 +889,83 @@ describe("useQuery", () => {
 			expect(screen.getByText(/Error:/)).toBeTruthy();
 		});
 		cleanup();
+	});
+
+	describe("a promise queryFn on a client with a layer", () => {
+		function layered() {
+			const backend = createBackend();
+			const client = new QueryClient({ isServer: false, layer: Layer.empty });
+			expect(client.throwOnError).toBe(false);
+			function Title(props: {
+				readonly handle: QueryHandle<typeof backend.issueQuery>;
+			}) {
+				const [issuePromise] = useQuery(backend.issueQuery, props.handle);
+				expectTypeOf(issuePromise).toEqualTypeOf<Thenable<Issue>>();
+				const issue = use(issuePromise);
+				return <p>{issue.title}</p>;
+			}
+			const view = (children: ReactNode) => (
+				<QueryClientProvider client={client}>
+					<Boundary>
+						<Suspense fallback={<p>Loading</p>}>{children}</Suspense>
+					</Boundary>
+				</QueryClientProvider>
+			);
+			return { backend, client, Title, view };
+		}
+
+		it("returns plain data, not a Result", async () => {
+			const app = layered();
+			const handle = app.client.prefetch(app.backend.issueQuery, { id: 1 });
+			await mount(app.view(<app.Title handle={handle} />));
+			await app.backend.respond();
+			expect(screen.getByText("First")).toBeDefined();
+			cleanup();
+		});
+
+		it("returns plain data for a handle from ensure", async () => {
+			const app = layered();
+			const issueQuery = app.backend.issueQuery;
+			function Title(props: {
+				readonly handle: QueryHandleWithData<typeof issueQuery>;
+			}) {
+				const [issue] = useQuery(issueQuery, props.handle);
+				expectTypeOf(issue).toEqualTypeOf<Issue>();
+				return <p>{issue.title}</p>;
+			}
+			const loading = app.client.ensure(issueQuery, { id: 1 });
+			await app.backend.respond();
+			await mount(app.view(<Title handle={await loading} />));
+			expect(screen.getByText("First")).toBeDefined();
+			cleanup();
+		});
+
+		it("returns plain data hydrated from a server that ran the query", async () => {
+			const app = layered();
+			const server = new QueryClient({ isServer: true });
+			const loading = server.ensure(app.backend.issueQuery, { id: 1 });
+			await app.backend.respond();
+			const loaded = await loading;
+			hydrate(app.client, dehydrate(server));
+
+			await mount(
+				app.view(
+					<app.Title handle={{ input: loaded.input, key: loaded.key }} />,
+				),
+			);
+			expect(screen.getByText("First")).toBeDefined();
+			expect(app.backend.calls()).toBe(1);
+			cleanup();
+		});
+
+		it("throws a failure to the error boundary", async () => {
+			const app = layered();
+			const handle = app.client.prefetch(app.backend.issueQuery, { id: 404 });
+			await mount(app.view(<app.Title handle={handle} />));
+			await app.backend.respond();
+			expect(screen.getByText("Error: Error: No issue 404")).toBeDefined();
+			cleanup();
+		});
 	});
 });
 

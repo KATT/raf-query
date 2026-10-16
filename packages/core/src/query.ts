@@ -211,6 +211,18 @@ export function metaUnsafe<TFactory extends QueryFactory>(
 	return internal.metaOf(internal.entryOf(self));
 }
 
+/**
+ * Whether the query's `queryFn` returns an Effect (`true`) or a promise or
+ * plain value (`false`), as of its last call, on this cache or the one its
+ * data was hydrated from. `undefined` until one has run. Bindings read typed
+ * errors as a `Result` only for Effects.
+ */
+export function returnsEffectUnsafe<TFactory extends QueryFactory>(
+	self: Query<TFactory>,
+): boolean | undefined {
+	return internal.entryOf(self).returnsEffect;
+}
+
 /** The entry's current state. */
 export function get<TFactory extends QueryFactory>(
 	self: Query<TFactory>,
