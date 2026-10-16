@@ -6,7 +6,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@raf-query/experimental-vue";
-import { computed, ref, useTemplateRef } from "vue";
+import { computed, ref } from "vue";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,7 +26,7 @@ const comments = useQuery(commentsQuery, () => props.comments);
 /** Posts that haven't saved yet, newest first. */
 const posting = ref<ReadonlyArray<Comment>>([]);
 const isPosting = ref(false);
-const formRef = useTemplateRef("form");
+const draft = ref("");
 
 const loaded = computed(
 	() => comments.data?.pages.flatMap((page) => page.comments) ?? [],
@@ -56,18 +56,14 @@ const skeletons = computed(() =>
 );
 
 async function post() {
-	const form = formRef.value;
-	if (!form) {
-		return;
-	}
-	const body = String(new FormData(form).get("body") ?? "").trim();
+	const body = draft.value.trim();
 	if (body === "") {
 		return;
 	}
 	const issueId = props.comments.input.issueId;
 	const id = crypto.randomUUID();
 	warnMockDbWrite();
-	form.reset();
+	draft.value = "";
 	posting.value = [
 		{
 			author: currentUser,
@@ -99,8 +95,9 @@ async function post() {
 		<h2 class="font-semibold">
 			{{ `${displayTotal} ${displayTotal === 1 ? "comment" : "comments"}` }}
 		</h2>
-		<form ref="form" class="grid gap-2" @submit.prevent="post">
+		<form class="grid gap-2" @submit.prevent="post">
 			<Textarea
+				v-model="draft"
 				:disabled="isPosting"
 				name="body"
 				placeholder="Add a comment"
