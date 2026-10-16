@@ -27,6 +27,7 @@ Where a reviewer can see this change: the docs page, and the example route that 
   - Docs (`www`) is project `raf-query`. Pages live at `/docs/<slug>`.
   - The Next.js example is `raf-query-nextjs`. Routes look like `/issues` and `/issues/1`.
   - The TanStack Start example is `raf-query-tanstack-start`, with the same routes.
+  - The React Router example is `raf-query-react-router`, with the same routes.
   - The Effect example is `raf-query-tanstack-start-effect` (`examples/tanstack-start-effect`), same routes.
 - A cell can hold several links, separated by ` · `.
 - While a deploy is not Ready, leave "pending", then replace it.
@@ -37,6 +38,7 @@ Example, once the bot has posted the previews:
 - Docs: [Pending UI](https://<raf-query preview>/docs/tanstack-start#pending-ui)
 - Next.js: [Issue list](https://<raf-query-nextjs preview>/issues)
 - TanStack Start: [Issue detail](https://<raf-query-tanstack-start preview>/issues/1)
+- React Router: [Issue list](https://<raf-query-react-router preview>/issues?status=open)
 - TanStack Start (Effect): [Assignee](https://<raf-query-tanstack-start-effect preview>/issues/3)
 -->
 
@@ -45,6 +47,7 @@ Example, once the bot has posted the previews:
 | Docs                    | pending |
 | Next.js                 | pending |
 | TanStack Start          | pending |
+| React Router            | pending |
 | TanStack Start (Effect) | pending |
 
 ## Alternatives considered
