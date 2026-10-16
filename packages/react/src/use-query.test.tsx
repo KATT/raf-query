@@ -901,7 +901,8 @@ describe("useQuery", () => {
 			}) {
 				const [issuePromise] = useQuery(backend.issueQuery, props.handle);
 				expectTypeOf(issuePromise).toEqualTypeOf<Thenable<Issue>>();
-				return <p>{use(issuePromise).title}</p>;
+				const issue = use(issuePromise);
+				return <p>{issue.title}</p>;
 			}
 			const view = (children: ReactNode) => (
 				<QueryClientProvider client={client}>
@@ -914,53 +915,54 @@ describe("useQuery", () => {
 		}
 
 		it("returns plain data, not a Result", async () => {
-			const { backend, client, Title, view } = layered();
-			await mount(
-				view(<Title handle={client.prefetch(backend.issueQuery, { id: 1 })} />),
-			);
-			await backend.respond();
+			const app = layered();
+			const handle = app.client.prefetch(app.backend.issueQuery, { id: 1 });
+			await mount(app.view(<app.Title handle={handle} />));
+			await app.backend.respond();
 			expect(screen.getByText("First")).toBeDefined();
 			cleanup();
 		});
 
 		it("returns plain data for a handle from ensure", async () => {
-			const { backend, client, view } = layered();
+			const app = layered();
+			const issueQuery = app.backend.issueQuery;
 			function Title(props: {
-				readonly handle: QueryHandleWithData<typeof backend.issueQuery>;
+				readonly handle: QueryHandleWithData<typeof issueQuery>;
 			}) {
-				const [issue] = useQuery(backend.issueQuery, props.handle);
+				const [issue] = useQuery(issueQuery, props.handle);
 				expectTypeOf(issue).toEqualTypeOf<Issue>();
 				return <p>{issue.title}</p>;
 			}
-			const loading = client.ensure(backend.issueQuery, { id: 1 });
-			await backend.respond();
-			await mount(view(<Title handle={await loading} />));
+			const loading = app.client.ensure(issueQuery, { id: 1 });
+			await app.backend.respond();
+			await mount(app.view(<Title handle={await loading} />));
 			expect(screen.getByText("First")).toBeDefined();
 			cleanup();
 		});
 
 		it("returns plain data hydrated from a server that ran the query", async () => {
-			const { backend, client, Title, view } = layered();
+			const app = layered();
 			const server = new QueryClient({ isServer: true });
-			const loading = server.ensure(backend.issueQuery, { id: 1 });
-			await backend.respond();
-			const handle = await loading;
-			hydrate(client, dehydrate(server));
+			const loading = server.ensure(app.backend.issueQuery, { id: 1 });
+			await app.backend.respond();
+			const loaded = await loading;
+			hydrate(app.client, dehydrate(server));
 
-			await mount(view(<Title handle={handle} />));
+			await mount(
+				app.view(
+					<app.Title handle={{ input: loaded.input, key: loaded.key }} />,
+				),
+			);
 			expect(screen.getByText("First")).toBeDefined();
-			expect(backend.calls()).toBe(1);
+			expect(app.backend.calls()).toBe(1);
 			cleanup();
 		});
 
 		it("throws a failure to the error boundary", async () => {
-			const { backend, client, Title, view } = layered();
-			await mount(
-				view(
-					<Title handle={client.prefetch(backend.issueQuery, { id: 404 })} />,
-				),
-			);
-			await backend.respond();
+			const app = layered();
+			const handle = app.client.prefetch(app.backend.issueQuery, { id: 404 });
+			await mount(app.view(<app.Title handle={handle} />));
+			await app.backend.respond();
 			expect(screen.getByText("Error: Error: No issue 404")).toBeDefined();
 			cleanup();
 		});

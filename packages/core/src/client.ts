@@ -32,7 +32,8 @@ export interface QueryClientConfig<TServices = never>
 	 * When `false`, `useQuery` for an Effect `queryFn` (a typed `ErrorOf`)
 	 * returns a `Result` in the first tuple slot instead of a promise that
 	 * rejects. Defaults to `false` when `layer` is set, `true` otherwise.
-	 * Promise `queryFn`s always throw; this flag does not apply to them.
+	 * Promise `queryFn`s always throw, whatever this flag says: reads tell
+	 * them apart by what the `queryFn` returned ({@link Query.returnsEffectUnsafe}).
 	 */
 	readonly throwOnError?: boolean;
 }
