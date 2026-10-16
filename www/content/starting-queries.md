@@ -58,7 +58,7 @@ In a browser loader, prefer `ensure`: a stale `fetch` blocks the navigation on t
 
 React server components and React Router loaders run only on the server, for every navigation, and each request gets a new client. Its cache starts empty, so every query is a cache miss, and a server client never refetches data it already has (see [Behavior](#behavior)). There, `ensure` and `fetch` wait for the same request every time, and returning to a page waits again.
 
-Use `prefetch` and `fetch` in that code, not `ensure`: `prefetch` for what can stream in behind a Suspense fallback, `fetch` for what the page can't lay out without or the code needs to branch on. See [Next.js](./nextjs.md#pages) and [React Router](./react-router.md#loaders).
+Use `prefetch` and `fetch` in that code, not `ensure`: `prefetch` for what can stream in behind a Suspense fallback, `fetch` for what the page can't lay out without or the code needs to branch on. See [React Server Components](./react-server-components.md#pages) and [React Router](./react-router.md#loaders).
 
 ## Behavior
 
