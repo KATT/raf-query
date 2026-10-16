@@ -23,6 +23,7 @@ import {
 	type DehydratedState,
 	dehydrate,
 	hydrate,
+	HydrationBoundary,
 	Query,
 	QueryClient,
 	QueryClientProvider,
@@ -32,8 +33,8 @@ import {
 	useQuery,
 	useWaterfall,
 } from "./index.ts";
-import { HydrationBoundary as ReactRouterHydrationBoundary } from "./react-router.tsx";
-import { HydrationBoundary, QueryProvider } from "./rsc.tsx";
+import { HydrationBoundary as ServerHydrationBoundary } from "./index-react-server.ts";
+import { QueryProvider } from "./rsc.ts";
 import type { DehydratedRouterQueries } from "./tanstack-router-shared.ts";
 import { setupRouterIntegration } from "./tanstack-router.ts";
 import { flush } from "./test-utils.ts";
@@ -392,7 +393,7 @@ describe("RSC QueryProvider", () => {
 
 		const result = await renderHtml(
 			<QueryProvider config={{ isServer: true }}>
-				<HydrationBoundary client={rsc}>
+				<ServerHydrationBoundary client={rsc}>
 					<Suspense fallback={<p>Loading</p>}>
 						<Show backend={backend} handle={pending} />
 					</Suspense>
@@ -400,13 +401,34 @@ describe("RSC QueryProvider", () => {
 						backend={backend}
 						handle={{ input: { id: 2 }, key: ["issue", 2] }}
 					/>
-				</HydrationBoundary>
+				</ServerHydrationBoundary>
 			</QueryProvider>,
 		);
 
 		expect(result.errors).toEqual([]);
 		expect(result.html).toContain("Issue 1</p>");
 		expect(result.html).toContain("Cached</p>");
+		expect(backend.calls).toEqual([1]);
+	});
+
+	it("takes a dehydrated state in a server component too", async () => {
+		const backend = createBackend();
+		const loader = new QueryClient({ isServer: true });
+		await loader.ensure(backend.issueQuery, { id: 1 });
+
+		const result = await renderHtml(
+			<QueryProvider config={{ isServer: true }}>
+				<ServerHydrationBoundary state={dehydrate(loader)}>
+					<Show
+						backend={backend}
+						handle={{ input: { id: 1 }, key: ["issue", 1] }}
+					/>
+				</ServerHydrationBoundary>
+			</QueryProvider>,
+		);
+
+		expect(result.errors).toEqual([]);
+		expect(result.html).toContain("Issue 1</p>");
 		expect(backend.calls).toEqual([1]);
 	});
 
@@ -467,7 +489,7 @@ describe("RSC QueryProvider", () => {
 	});
 });
 
-describe("React Router HydrationBoundary", () => {
+describe("HydrationBoundary with a loader's state (React Router)", () => {
 	it("hydrates a loader's dehydrated state into the browser client", async () => {
 		const backend = createBackend();
 		const loader = new QueryClient({ isServer: true });
@@ -481,9 +503,9 @@ describe("React Router HydrationBoundary", () => {
 
 		const stream = await renderToReadableStream(
 			<QueryClientProvider client={new QueryClient({ isServer: true })}>
-				<ReactRouterHydrationBoundary state={state}>
+				<HydrationBoundary state={state}>
 					<Show />
-				</ReactRouterHydrationBoundary>
+				</HydrationBoundary>
 			</QueryClientProvider>,
 		);
 		await stream.allReady;
@@ -499,9 +521,9 @@ describe("React Router HydrationBoundary", () => {
 			hydrateRoot(
 				container,
 				<QueryClientProvider client={browser}>
-					<ReactRouterHydrationBoundary state={state}>
+					<HydrationBoundary state={state}>
 						<Show />
-					</ReactRouterHydrationBoundary>
+					</HydrationBoundary>
 				</QueryClientProvider>,
 			),
 		);
