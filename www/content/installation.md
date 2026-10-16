@@ -32,7 +32,7 @@ The TanStack Router integration and the devtools are subpath exports of the same
 | `@raf-query/react/tanstack-router` | [TanStack Start and TanStack Router](./tanstack-start.md) SSR streaming |
 | `@raf-query/react/devtools`        | The [devtools](./devtools.md) panel; omit the element to tree-shake it  |
 
-React Server Components apps, such as the [Next.js App Router](./nextjs.md), and [React Router Framework Mode](./react-router.md) need no subpath: `QueryProvider` and `HydrationBoundary` come from `@raf-query/react`.
+[React Server Components](./react-server-components.md) apps, such as the Next.js App Router, and [React Router Framework Mode](./react-router.md) need no subpath: `QueryProvider` and `HydrationBoundary` come from `@raf-query/react`.
 
 `@tanstack/react-router` is an optional peer: only apps that import `/tanstack-router` need it.
 

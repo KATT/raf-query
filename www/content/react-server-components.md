@@ -1,11 +1,13 @@
 ---
-title: Next.js App Router
-description: Start queries in React Server Components, send them to client components with HydrationBoundary, and refetch from the browser.
-section: Server rendering
-order: 3
+title: React Server Components (Next.js)
+description: Start queries in server components, send them to client components with HydrationBoundary, and refetch from the browser. For the Next.js App Router and other RSC frameworks.
+section: Integrations
+order: 2
 ---
 
-In the App Router, server components play the part of loaders: they start queries and pass handles to client components. `QueryProvider` and `HydrationBoundary`, both from `@raf-query/react`, connect them.
+With React Server Components, server components play the part of loaders: they start queries and pass handles to client components. `QueryProvider` and `HydrationBoundary`, both from `@raf-query/react`, connect them.
+
+The samples use the [Next.js App Router](https://nextjs.org/docs/app). Other RSC frameworks work the same way: the integration needs only a bundler that resolves the `react-server` export condition, which React itself needs too. It's tested on [Vite's RSC plugin](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-rsc), which Waku and React Router's RSC mode build on. Navigation, request headers and server actions are the framework's own, so those sections show the Next.js APIs.
 
 ## Setup
 
@@ -23,7 +25,7 @@ nextjs/src/app/layout.tsx
 
 `QueryProvider` creates one client per server render and one per browser tab. Its `config` must be serializable, since it crosses from the server component layout to the client.
 
-Mount DevTools only when `process.env.NODE_ENV !== "production"` so Next.js drops the panel from production builds. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
+Mount DevTools only when `process.env.NODE_ENV !== "production"` so the bundler drops the panel from production builds. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
 
 ## Pages
 
@@ -42,13 +44,13 @@ nextjs/src/app/(blog)/components/comments.tsx#component
 ```
 
 - Render a `HydrationBoundary` in each server component that starts queries for client components. Entries already sent in this request are skipped, so nesting them is fine.
-- `client` works only in server components. Next.js resolves `@raf-query/react` with the `react-server` export condition there, which picks the `HydrationBoundary` that dehydrates the client. Client components get the one that takes a dehydrated `state`, as in [React Router](./react-router.md).
+- `client` works only in server components. The bundler resolves `@raf-query/react` with the `react-server` export condition there, which picks the `HydrationBoundary` that dehydrates the client. Client components get the one that takes a dehydrated `state`, as in [React Router](./react-router.md).
 - Pending entries stream as promises through the RSC payload: the page's shell renders while `comments` loads.
 - `await qc.fetch(...)` (or `ensure`, which waits for the same thing on the server) returns a handle with the `data`: render `post.data` in the server component, and pass `post` to client components that read the query: typed `QueryHandleWithData`, they get the data from `useQuery` without a promise. The data crosses once: the RSC payload references the `HydrationBoundary`'s copy.
 
 ## Pending UI
 
-While a link navigation is loading the next RSC payload, show pending state with Next.js — not [`useIsFetching`](./background-fetching-indicators.md#useisfetching). Render [`useLinkStatus`](https://nextjs.org/docs/app/api-reference/functions/use-link-status) as a child of the `Link` it tracks:
+While a link navigation is loading the next RSC payload, show pending state with the framework's router — not [`useIsFetching`](./background-fetching-indicators.md#useisfetching). In Next.js, render [`useLinkStatus`](https://nextjs.org/docs/app/api-reference/functions/use-link-status) as a child of the `Link` it tracks:
 
 ```sample
 nextjs/src/docs/nextjs.tsx#pending-ui
@@ -68,7 +70,7 @@ Changing search params with `<Link>` or `router.push` renders the page again on 
 
 ## Queries that start in the browser
 
-`QueryProvider`'s server render starts no requests. A client component reading a query that no `HydrationBoundary` sent renders its Suspense fallback on the server, and the query loads in the browser. This is what happens with [`useWaterfall`](./request-waterfalls.md#render-time-inputs-usewaterfall) in a client component. That boundary renders in the browser through React's error recovery, with the digest Next.js uses for `ssr: false`, so Next.js doesn't report it.
+`QueryProvider`'s server render starts no requests. A client component reading a query that no `HydrationBoundary` sent renders its Suspense fallback on the server, and the query loads in the browser. This is what happens with [`useWaterfall`](./request-waterfalls.md#render-time-inputs-usewaterfall) in a client component. That boundary renders in the browser through React's error recovery, with the digest Next.js uses for `ssr: false`, so Next.js doesn't report it. Other RSC frameworks see a recoverable error.
 
 ## Server and browser requests
 
@@ -84,7 +86,7 @@ Client components' server render starts no request, so it isn't a third place.
 
 ### An API in the same app
 
-Have the API read the session from the request's cookies, and give factories one `apiFetch` with two files behind it: on the server it calls the API's handler in the process with the page request's cookies, and in the browser it's `fetch`. A [subpath import](https://nodejs.org/api/packages.html#subpath-imports) picks the file. Next.js resolves the `react-server` condition in server components, so the server file can import `next/headers` and your API, and neither reaches the browser bundle:
+Have the API read the session from the request's cookies, and give factories one `apiFetch` with two files behind it: on the server it calls the API's handler in the process with the page request's cookies, and in the browser it's `fetch`. A [subpath import](https://nodejs.org/api/packages.html#subpath-imports) picks the file. The bundler resolves the `react-server` condition in server components, so the server file can import the request's headers (`next/headers` in Next.js) and your API, and neither reaches the browser bundle:
 
 ```json title="package.json"
 {
@@ -147,4 +149,4 @@ To read it from client components too, put the server-only code behind an API, a
 
 ## Example
 
-[`examples/nextjs`](https://github.com/KATT/raf-query/tree/main/examples/nextjs) is the same issue tracker as the TanStack Start example, so the two integrations can be compared side by side.
+[`examples/nextjs`](https://github.com/KATT/raf-query/tree/main/examples/nextjs) is the same issue tracker as the TanStack Start example, built on the Next.js App Router, so the two integrations can be compared side by side.

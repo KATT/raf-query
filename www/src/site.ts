@@ -11,6 +11,7 @@ export const site = {
 /** Sidebar sections, in order. */
 export const sections = [
 	"Getting started",
+	"Integrations",
 	"Guides",
 	"Server rendering",
 	"Effect",

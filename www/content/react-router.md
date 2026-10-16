@@ -1,8 +1,8 @@
 ---
 title: React Router
 description: Start queries in React Router Framework Mode loaders, dehydrate the cache, and hydrate it with HydrationBoundary.
-section: Server rendering
-order: 4
+section: Integrations
+order: 3
 ---
 
 In [React Router Framework Mode](https://reactrouter.com/start/modes#framework), loaders start the queries. Each loader dehydrates its request's cache into the loader data, and `HydrationBoundary` from `@raf-query/react` writes it into the browser's client.
