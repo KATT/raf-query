@@ -51,6 +51,7 @@ starting-queries
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `@raf-query/core`  | Framework-agnostic: `QueryClient` (the cache with Promise methods), its Effect `QueryCache`, `queryOptions` / `infiniteQueryOptions`, handles, `allKeyed`, dehydrate / hydrate |
 | `@raf-query/react` | Hooks, providers, `HydrationBoundary`. Re-exports `@raf-query/core`, so apps import only this package                                                                          |
+| `@raf-query/vue`   | Composables, `QueryPlugin`, `HydrationBoundary` for [Vue](./vue.md). Re-exports `@raf-query/core`                                                                              |
 
 `@raf-query/react` has subpath entries for framework integrations and tooling:
 
