@@ -44,7 +44,8 @@ nextjs/src/app/(blog)/components/comments.tsx#component
 - Render a `HydrationBoundary` in each server component that starts queries for client components. Entries already sent in this request are skipped, so nesting them is fine.
 - `client` works only in server components. Next.js resolves `@raf-query/react` with the `react-server` export condition there, which picks the `HydrationBoundary` that dehydrates the client. Client components get the one that takes a dehydrated `state`, as in [React Router](./react-router.md).
 - Pending entries stream as promises through the RSC payload: the page's shell renders while `comments` loads.
-- `await qc.fetch(...)` (or `ensure`, which waits for the same thing on the server) returns a handle with the `data`: render `post.data` in the server component, and pass `post` to client components that read the query: typed `QueryHandleWithData`, they get the data from `useQuery` without a promise. The data crosses once: the RSC payload references the `HydrationBoundary`'s copy.
+- `await qc.fetch(...)` returns a handle with the `data`: render `post.data` in the server component, and pass `post` to client components that read the query: typed `QueryHandleWithData`, they get the data from `useQuery` without a promise. The data crosses once: the RSC payload references the `HydrationBoundary`'s copy.
+- Use `prefetch` and `fetch` in server components, not `ensure`. Each request's client starts empty, so `ensure` waits for the request every time, exactly like `fetch`. See [Starting queries](./starting-queries.md#server-only-code).
 
 ## Pending UI
 

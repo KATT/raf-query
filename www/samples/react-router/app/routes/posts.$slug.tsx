@@ -19,7 +19,7 @@ export async function loader(args: Route.LoaderArgs) {
 	// Doesn't wait: the comments stream in after the page renders.
 	const comments = qc.prefetch(commentsQuery, { slug });
 	// Waits, so the post is in the page's first HTML.
-	const post = await qc.ensure(postQuery, { slug });
+	const post = await qc.fetch(postQuery, { slug });
 	return {
 		comments,
 		dehydratedState: dehydrate(qc),

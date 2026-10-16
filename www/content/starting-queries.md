@@ -13,7 +13,7 @@ Queries start where the page's inputs are known: a route loader, a server compon
 | `qc.ensure(factory, input)`   | `Promise<QueryHandleWithData>` | Waits for the request | Resolves at once, refetches in the background | `ensureQueryData({ revalidateIfStale: true })` |
 | `qc.fetch(factory, input)`    | `Promise<QueryHandleWithData>` | Waits for the request | Waits for the refetch                         | `fetchQuery`                                   |
 
-Fresh cached data is reused by all three, without a request. So `prefetch` never holds anything up, `ensure` holds up only the first visit (returning to a page shows the cached data at once, then fresh data), and `fetch` always returns fresh data, at the cost of a round trip whenever the cache is stale.
+Fresh cached data is reused by all three, without a request. So `prefetch` never holds anything up, `ensure` holds up only the first visit (returning to a page shows the cached data at once, then fresh data), and `fetch` always returns fresh data, at the cost of a round trip whenever the cache is stale. That difference needs a client that keeps its cache between navigations, as a TanStack Router loader's does. Code that only runs on the server has none: see [Server-only code](#server-only-code).
 
 `ensure` and `fetch` return the same thing: the handle `prefetch` returns, plus the `data` they waited for. See [Handles](./handles.md).
 
@@ -52,7 +52,13 @@ tanstack-start/src/docs/starting-queries.ts#awaiting-several-queries
 - a loader that must branch on the data, such as a redirect
 - outside React, in scripts and tests
 
-On the server the two wait for the same thing, since cached data is reused there (see [Behavior](#behavior)). In a browser loader, prefer `ensure`: a stale `fetch` blocks the navigation on the refetch, while a stale `ensure` renders the cached data at once and updates when the refetch lands. TanStack Router hides the difference while it still holds the route's last loader data: it renders that and reruns the loader in the background, unless the loader's `staleReloadMode` is `"blocking"`, as in the [demo](#prefetch-or-ensure). There, open a post, go back, and reopen it once its cache is stale.
+In a browser loader, prefer `ensure`: a stale `fetch` blocks the navigation on the refetch, while a stale `ensure` renders the cached data at once and updates when the refetch lands. TanStack Router hides the difference while it still holds the route's last loader data: it renders that and reruns the loader in the background, unless the loader's `staleReloadMode` is `"blocking"`, as in the [demo](#prefetch-or-ensure). There, open a post, go back, and reopen it once its cache is stale.
+
+## Server-only code
+
+React server components and React Router loaders run only on the server, for every navigation, and each request gets a new client. Its cache starts empty, so every query is a cache miss, and a server client never refetches data it already has (see [Behavior](#behavior)). There, `ensure` and `fetch` wait for the same request every time, and returning to a page waits again.
+
+Use `prefetch` and `fetch` in that code, not `ensure`: `prefetch` for what can stream in behind a Suspense fallback, `fetch` for what the page can't lay out without or the code needs to branch on. See [Next.js](./nextjs.md#pages) and [React Router](./react-router.md#loaders).
 
 ## Behavior
 
