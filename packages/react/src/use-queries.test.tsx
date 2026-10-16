@@ -9,8 +9,10 @@ import {
 	QueryClientProvider,
 	type QueryHandle,
 	queryOptions,
+	type Thenable,
 	useQueries,
 	type UseQueryOptions,
+	type UseQueryResultWithData,
 } from "./index.ts";
 
 function createBackend() {
@@ -91,28 +93,21 @@ class Boundary extends Component<
 function setup() {
 	const backend = createBackend();
 	const client = new QueryClient({ isServer: false });
-	const seen: Array<Promise<ReadonlyArray<string>>> = [];
+	const seen: Array<Promise<string>> = [];
 	function Titles(props: {
 		readonly handles: ReadonlyArray<QueryHandle<typeof backend.issueQuery>>;
 		readonly options?: UseQueryOptions;
 	}) {
-		const [titlesPromise, states] = useQueries(
-			backend.issueQuery,
-			props.handles,
-			props.options,
-		);
-		seen.push(titlesPromise);
-		const titles = use(titlesPromise);
-		return (
-			<p>
-				{titles
-					.map(
-						(title, index) =>
-							`${title}${states[index]?.isFetching ? "*" : ""}${states[index]?.isPrevious ? "^" : ""}`,
-					)
-					.join(", ") || "None"}
-			</p>
-		);
+		const reads = useQueries(backend.issueQuery, props.handles, props.options);
+		const titles: Array<string> = [];
+		for (const [titlePromise, state] of reads) {
+			seen.push(titlePromise);
+			const title = use(titlePromise);
+			titles.push(
+				`${title}${state.isFetching ? "*" : ""}${state.isPrevious ? "^" : ""}`,
+			);
+		}
+		return <p>{titles.join(", ") || "None"}</p>;
 	}
 	function view(children: ReactNode) {
 		return (
@@ -142,7 +137,7 @@ describe("useQueries", () => {
 		cleanup();
 	});
 
-	it("renders cached data without suspending, and keeps its promise across renders", async () => {
+	it("renders cached data without suspending, and keeps each promise across renders", async () => {
 		const test = setup();
 		const handles = test.prefetch([1, 2]);
 		await test.backend.respond();
@@ -152,7 +147,8 @@ describe("useQueries", () => {
 		await result.rerender(test.view(<test.Titles handles={[...handles]} />));
 
 		expect(screen.getByText("First, Second")).toBeDefined();
-		expect(new Set(test.seen).size).toBe(1);
+		expect(test.seen).toHaveLength(4);
+		expect(new Set(test.seen).size).toBe(2);
 		cleanup();
 	});
 
@@ -241,18 +237,20 @@ describe("useQueries", () => {
 		const test = setup();
 		const handles = test.prefetch([1, 2]);
 		function Status() {
-			const [titlesPromise] = useQueries(test.backend.issueQuery, handles);
+			const reads = useQueries(test.backend.issueQuery, handles);
 			return (
 				<p>
-					{titlesPromise.status === "fulfilled"
-						? titlesPromise.value.join(", ")
-						: "…"}
+					{reads
+						.map(([titlePromise]) =>
+							titlePromise.status === "fulfilled" ? titlePromise.value : "…",
+						)
+						.join(", ")}
 				</p>
 			);
 		}
 
 		await mount(test.view(<Status />));
-		expect(screen.getByText("…")).toBeDefined();
+		expect(screen.getByText("…, …")).toBeDefined();
 		await test.backend.respond();
 
 		expect(screen.getByText("First, Second")).toBeDefined();
@@ -293,6 +291,52 @@ describe("useQueries", () => {
 		cleanup();
 	});
 
+	it("returns the data itself for handles from ensure", async () => {
+		const test = setup();
+		const ensured = Promise.all(
+			[1, 2].map((id) => test.client.ensure(test.backend.issueQuery, { id })),
+		);
+		await test.backend.respond();
+		const handles = await ensured;
+		function Titles() {
+			const reads = useQueries(test.backend.issueQuery, handles);
+			expectTypeOf(reads).toEqualTypeOf<
+				ReadonlyArray<
+					UseQueryResultWithData<typeof test.backend.issueQuery, undefined>
+				>
+			>();
+			return <p>{reads.map(([title]) => title).join(", ")}</p>;
+		}
+
+		await mount(test.view(<Titles />));
+
+		expect(screen.getByText("First, Second")).toBeDefined();
+		cleanup();
+	});
+
+	it("maps a tuple of handles to a tuple of results, each by its own handle", async () => {
+		const test = setup();
+		const first = test.client.prefetch(test.backend.issueQuery, { id: 1 });
+		const ensured = test.client.ensure(test.backend.issueQuery, { id: 2 });
+		await test.backend.respond();
+		const second = await ensured;
+		function Pair() {
+			const [[firstPromise], [secondTitle]] = useQueries(
+				test.backend.issueQuery,
+				[first, second],
+			);
+			expectTypeOf(firstPromise).toEqualTypeOf<Thenable<string>>();
+			expectTypeOf(secondTitle).toEqualTypeOf<string>();
+			const firstTitle = use(firstPromise);
+			return <p>{`${firstTitle} & ${secondTitle}`}</p>;
+		}
+
+		await mount(test.view(<Pair />));
+
+		expect(screen.getByText("First & Second")).toBeDefined();
+		cleanup();
+	});
+
 	it("streams every query's data from a server render", async () => {
 		const backend = createBackend();
 		const client = new QueryClient({ isServer: true });
@@ -300,8 +344,10 @@ describe("useQueries", () => {
 			client.prefetch(backend.issueQuery, { id }),
 		);
 		function Titles() {
-			const [titlesPromise] = useQueries(backend.issueQuery, handles);
-			const titles = use(titlesPromise);
+			const titles: Array<string> = [];
+			for (const [titlePromise] of useQueries(backend.issueQuery, handles)) {
+				titles.push(use(titlePromise));
+			}
 			return <p>{titles.join(", ")}</p>;
 		}
 
@@ -331,11 +377,13 @@ describe("useQueries", () => {
 		const client = new QueryClient({ isServer: false, throwOnError: false });
 		const handles = [1, -1].map((id) => client.prefetch(countQuery, { id }));
 		function Counts() {
-			const [countsPromise] = useQueries(countQuery, handles);
-			const counts = use(countsPromise);
-			expectTypeOf(counts).toEqualTypeOf<
-				ReadonlyArray<Result.Result<number, string>>
-			>();
+			const counts: Array<Result.Result<number, string>> = [];
+			for (const [countPromise] of useQueries(countQuery, handles)) {
+				expectTypeOf(countPromise).toEqualTypeOf<
+					Thenable<Result.Result<number, string>>
+				>();
+				counts.push(use(countPromise));
+			}
 			return (
 				<p>
 					{counts

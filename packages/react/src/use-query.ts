@@ -4,6 +4,7 @@ import {
 	type DataOf,
 	type ErrorOf,
 	type InputArgs,
+	type PromiseControls,
 	promiseControls,
 	type QueryClient,
 	type QueryFactory,
@@ -187,42 +188,42 @@ export function useQuery<TFactory extends QueryFactory>(
 		whilePending,
 	]);
 
+	const [promise, controls] = readerTuple(
+		observer,
+		result,
+		options.throwOnError ?? client.throwOnError,
+	);
+	if ("data" in handle) {
+		const value = use(promise);
+		// SAFETY: as below; `use` unwraps the thenable to its data or Result.
+		return [value, controls] as unknown as UseQueryResultWithData<
+			TFactory,
+			boolean
+		>;
+	}
+	// SAFETY: the result's promise is this factory's entry's promise (or an
+	// earlier input's entry of the same factory), as a Result thenable when
+	// `throwOnError` is false; the result has every field of both control
+	// shapes.
+	return [promise, controls] as unknown as UseQueryResult<TFactory, boolean>;
+}
+
+/**
+ * One reader's `[promise, controls]` for a render: the result's promise
+ * (or its `Result` thenable when `throwOnError` is false), tracked so a
+ * status read re-renders on settle, and the result's tracked controls.
+ */
+export function readerTuple<TFactory extends QueryFactory>(
+	observer: QueryObserver.QueryObserver<TFactory>,
+	result: QueryObserver.Result<DataOf<TFactory>>,
+	throwOnError: boolean,
+): readonly [Thenable<unknown>, PromiseControls] {
 	// The promise is returned as the tuple's first element, where reads can't
 	// be seen, so it always counts as read.
 	QueryObserver.trackProp(observer, "promise");
 	const controls = promiseControls(QueryObserver.trackResult(observer, result));
-	const throwOnError = options.throwOnError ?? client.throwOnError;
-	const withData = "data" in handle;
-	if (!throwOnError) {
-		const resultPromise = resultThenable<DataOf<TFactory>, ErrorOf<TFactory>>(
-			result.promise,
-		);
-		if (withData) {
-			// SAFETY: `use` unwraps to Result when throwOnError is false.
-			return [
-				use(resultPromise),
-				controls,
-			] as unknown as UseQueryResultWithData<TFactory, false>;
-		}
-		// SAFETY: Result thenable for typed ErrorOf when throwOnError is false.
-		return [
-			QueryObserver.trackThenable(observer, resultPromise),
-			controls,
-		] as unknown as UseQueryResult<TFactory, false>;
-	}
-	if (withData) {
-		const data = use(result.promise);
-		// SAFETY: as below; `use` unwraps the promise to its data.
-		return [data, controls] as unknown as UseQueryResultWithData<
-			TFactory,
-			true
-		>;
-	}
-	// SAFETY: the result's promise is this factory's entry's promise (or an
-	// earlier input's entry of the same factory), and the result has every
-	// field of both control shapes.
-	return [
-		QueryObserver.trackThenable(observer, result.promise),
-		controls,
-	] as unknown as UseQueryResult<TFactory, true>;
+	const promise: Thenable<unknown> = throwOnError
+		? result.promise
+		: resultThenable(result.promise);
+	return [QueryObserver.trackThenable(observer, promise), controls];
 }
