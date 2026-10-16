@@ -523,6 +523,41 @@ describe("useQuery", () => {
 		cleanup();
 	});
 
+	it("polls while the page is hidden with refetchIntervalInBackground", async () => {
+		const test = setup();
+		using _hidden = vi
+			.spyOn(document, "visibilityState", "get")
+			.mockReturnValue("hidden");
+		const handle = test.client.prefetch(test.backend.issueQuery, { id: 1 });
+		await test.backend.respond();
+		const wait = () =>
+			act(async () => {
+				await new Promise((resolve) => {
+					setTimeout(resolve, 50);
+				});
+			});
+		const result = await mount(
+			test.view(
+				<test.IssueTitle handle={handle} options={{ refetchInterval: 10 }} />,
+			),
+		);
+
+		await wait();
+		expect(test.backend.calls()).toBe(1);
+
+		await result.rerender(
+			test.view(
+				<test.IssueTitle
+					handle={handle}
+					options={{ refetchInterval: 10, refetchIntervalInBackground: true }}
+				/>,
+			),
+		);
+		await wait();
+		expect(test.backend.calls()).toBe(2);
+		cleanup();
+	});
+
 	describe("a background refetch that reads its signal", () => {
 		function slowNote() {
 			const client = new QueryClient({ isServer: false });

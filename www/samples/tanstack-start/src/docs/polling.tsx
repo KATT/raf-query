@@ -19,3 +19,13 @@ const [buildPromise, build] = useQuery(buildQuery, props.handle, {
 	refetchInterval: buildState === "running" ? 1000 : undefined,
 });
 // #endregion
+
+// #region in-the-background
+function BuildMonitor(props: { handle: QueryHandle<typeof buildQuery> }) {
+	const [buildPromise, build] = useQuery(buildQuery, props.handle, {
+		refetchInterval: 5000,
+		refetchIntervalInBackground: true,
+	});
+	// ...
+}
+// #endregion

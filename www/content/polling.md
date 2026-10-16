@@ -1,6 +1,6 @@
 ---
 title: Polling
-description: Refetch a query on an interval while it's on screen with refetchInterval, and pause while the tab is hidden.
+description: Refetch a query on an interval while it's on screen with refetchInterval, pausing while the tab is hidden unless refetchIntervalInBackground is set.
 section: Guides
 order: 16
 ---
@@ -13,7 +13,7 @@ tanstack-start/src/docs/polling.tsx#intro
 
 - Polling starts when the component mounts and stops when it unmounts.
 - Each reader polls on its own timer. Requests are deduped, so a poll that lands while another request for the query is in flight joins it instead of starting a second one.
-- Ticks while the page is hidden are skipped. When the page becomes visible again, [window focus refetching](./window-focus-refetching.md) catches up on stale data, and polling carries on.
+- Ticks while the page is hidden are skipped, unless the read sets [`refetchIntervalInBackground`](#polling-in-the-background). When the page becomes visible again, [window focus refetching](./window-focus-refetching.md) catches up on stale data, and polling carries on.
 - Changing the interval restarts the timer.
 
 Each poll is a background refetch: the data on screen stays put, and only re-renders if something changed. Structural sharing keeps a response equal to the current data from re-rendering anything at all.
@@ -29,6 +29,16 @@ The interval is a plain value read on every render, so you can change it with st
 ```sample
 tanstack-start/src/docs/polling.tsx#changing-the-interval
 ```
+
+## Polling in the background
+
+`refetchIntervalInBackground: true` keeps polling while the page is hidden, for data that should be current the moment the user comes back, or that a hidden tab acts on (a title badge, a notification):
+
+```sample
+tanstack-start/src/docs/polling.tsx#in-the-background
+```
+
+Changing it takes effect on the next tick, without restarting the timer. Browsers [throttle timers in hidden tabs](https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#timeouts_in_inactive_tabs), so background polls can come less often than the interval says.
 
 ## Polling and staleTime
 

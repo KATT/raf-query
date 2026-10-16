@@ -20,7 +20,7 @@ Out of the box, raf-query is configured with **aggressive but sane** defaults, t
 
 - **Mounting a component never fetches.** Unlike TanStack Query, raf-query has no refetch on mount: whatever started the query decides when it loads. Rendering the same handle in ten components reads one cache entry.
 
-- **Polling is per read.** `useQuery(factory, handle, { refetchInterval })` refetches on a timer while that component is mounted and the page is visible, independent of `staleTime`. See [Polling](./polling.md).
+- **Polling is per read.** `useQuery(factory, handle, { refetchInterval })` refetches on a timer while that component is mounted and the page is visible (hidden too, with `refetchIntervalInBackground`), independent of `staleTime`. See [Polling](./polling.md).
 
 - **Unread entries are kept for five minutes** (`gcTime: 300_000`). An entry nobody reads is **inactive**: it stays in the cache in case it's needed again, then is garbage-collected.
 

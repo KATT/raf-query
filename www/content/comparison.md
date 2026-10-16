@@ -23,6 +23,7 @@ What changes is the API around the cache. TanStack Query lets any component star
 | `enabled: typeof window !== "undefined"`             | `queryOptions({ ssr: false })`                               | [Browser-only queries](./ssr-and-hydration.md#browser-only-queries)                                                                  |
 | `useInfiniteQuery()`                                 | `useQuery()` with an `infiniteQueryOptions` factory          | [Infinite queries](./infinite-queries.md)                                                                                            |
 | `placeholderData: keepPreviousData`                  | `useQuery(f, h, { whilePending: "previous" })`               | `isPrevious` instead of `isPlaceholderData`                                                                                          |
+| `refetchIntervalInBackground: true`                  | `useQuery(f, h, { refetchIntervalInBackground: true })`      | An option of the read, like `refetchInterval`. [Polling](./polling.md#polling-in-the-background)                                     |
 | `useMutation()`                                      | Form Actions + `qc.invalidate()`                             | React provides pending and [optimistic](./mutations.md) state                                                                        |
 | `queryClient.invalidateQueries(filters)`             | `qc.invalidate(filter)` or `qc.invalidate(factory, input)`   | Resolves when read queries have refetched                                                                                            |
 | `queryClient.resetQueries` / `removeQueries`         | `qc.reset(...)` / `qc.remove(...)`                           | Same [filters](./query-invalidation.md#query-filters)                                                                                |
@@ -130,7 +131,6 @@ Same problem space, fewer knobs:
 | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `networkMode` (`offlineFirst` / `always`) + `fetchStatus: "paused"` | Retries pause while offline; the first attempt always runs (`navigator.onLine` is unreliable)         |
 | `refetchOnWindowFocus` / `Reconnect`: `'always'` or a function      | Boolean only: refetch read + stale queries, or don't                                                  |
-| `refetchIntervalInBackground`                                       | Polling is per-read and pauses while the tab is hidden                                                |
 | `initialData` / `initialDataUpdatedAt`                              | Seed with `setData` / hydrate, or let the loader fetch                                                |
 | Custom `structuralSharing` merge function                           | Boolean on / off; deep equality on plain objects and arrays                                           |
 | Query filter `type` / `stale` / `fetchStatus` fields                | Filter is `{ queryKey?, exact?, predicate? }`; `predicate` covers the rest                            |
