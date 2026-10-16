@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.10.3](https://github.com/KATT/raf-query/compare/0.10.2...0.10.3) (2026-10-16)
+
+### Features
+
+- **core:** add QueryBinding, a framework-free useQuery for bindings ([#197](https://github.com/KATT/raf-query/issues/197)) ([4865802](https://github.com/KATT/raf-query/commit/48658024f4d21d43ce8274de379a19c8898b6173)), references [#194](https://github.com/KATT/raf-query/issues/194)
+
 ## [0.10.2](https://github.com/KATT/raf-query/compare/0.10.1...0.10.2) (2026-10-16)
 
 ### Features
