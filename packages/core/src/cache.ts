@@ -257,6 +257,18 @@ export interface QueryCache {
 	/** Listen to cache events synchronously, as they happen. */
 	subscribeUnsafe(listener: (event: Event) => void): () => void;
 	readonly [TypeId]: TypeId;
+	/**
+	 * Start a query as `prefetch` does, and succeed with its data once
+	 * `predicate` returns `true` for it: the cached data at once, else the
+	 * first data a request or a write brings. Counts as a reader while it
+	 * waits. A failed request doesn't fail it, since a later request or
+	 * write can still match; interrupt it to stop waiting.
+	 */
+	waitFor<TFactory extends QueryFactory>(
+		factory: TFactory,
+		input: InputOf<TFactory>,
+		predicate: (data: DataOf<TFactory>) => boolean,
+	): Effect.Effect<DataOf<TFactory>, never, ServicesOf<TFactory>>;
 	/** A factory call's `Query.changes`. */
 	watch<TFactory extends QueryFactory>(
 		factory: TFactory,
@@ -347,6 +359,36 @@ function withData<TFactory extends QueryFactory>(
 > {
 	const handle = handleOf<TFactory>(entry);
 	return Effect.map(loaded, (data) => ({ ...handle, data }));
+}
+
+/** `prefetch`'s start: a request on a miss, a background refetch of stale data. */
+function startOrRevalidate(entry: Entry.Entry) {
+	if (entry.state.hasData) {
+		Entry.revalidate(entry);
+	} else {
+		Entry.start(entry);
+	}
+}
+
+/** The entry's first data, from now on, that `predicate` matches. */
+function firstMatch<TFactory extends QueryFactory>(
+	entry: Entry.Entry,
+	predicate: (data: DataOf<TFactory>) => boolean,
+): Effect.Effect<DataOf<TFactory>> {
+	return Entry.changes(entry).pipe(
+		Stream.filter((state) => state.hasData),
+		Stream.map(
+			(state) =>
+				// SAFETY: as in `dataOf`, for states with `hasData`.
+				state.data as DataOf<TFactory>,
+		),
+		Stream.filter(predicate),
+		Stream.runHead,
+		// `changes` ends only when interrupted, so a value always comes first.
+		Effect.flatMap(
+			Option.match({ onNone: () => Effect.never, onSome: Effect.succeed }),
+		),
+	);
 }
 
 /** Settles every effect, started together. */
@@ -504,11 +546,7 @@ export const make: (
 				: Effect.asVoid(RcRef.get(subscription)),
 			prefetch: (factory, ...args) =>
 				Effect.map(buildFor(factory, args[0]), (entry) => {
-					if (entry.state.hasData) {
-						Entry.revalidate(entry);
-					} else {
-						Entry.start(entry);
-					}
+					startOrRevalidate(entry);
 					return handleOf<typeof factory>(entry);
 				}),
 			remove: (...target) =>
@@ -531,6 +569,15 @@ export const make: (
 				}),
 			subscribeUnsafe,
 			[TypeId]: TypeId,
+			waitFor: <TFactory extends QueryFactory>(
+				factory: TFactory,
+				input: InputOf<TFactory>,
+				predicate: (data: DataOf<TFactory>) => boolean,
+			) =>
+				Effect.flatMap(buildFor(factory, input), (entry) => {
+					startOrRevalidate(entry);
+					return firstMatch<TFactory>(entry, predicate);
+				}),
 			watch: (factory, ...args) =>
 				Stream.unwrap(
 					Effect.map(

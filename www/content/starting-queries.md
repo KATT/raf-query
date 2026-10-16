@@ -62,6 +62,32 @@ Use `prefetch` and `fetch` in that code, not `ensure`: `prefetch` for what can s
 
 A client-only React Router app is different: its [`clientLoader`](https://reactrouter.com/start/framework/data-loading#client-data-loading)s run in the browser on the tab's client, which keeps its cache between navigations, so there `ensure` holds up only the first visit, as in TanStack Router. See [React Router](./react-router.md#client-loaders).
 
+## Waiting for a change
+
+`qc.waitFor(factory, input, predicate, { signal })` starts a query as `prefetch` does, and resolves with its data once `predicate` returns `true` for it. Cached data that matches resolves at once. Otherwise it waits for the first data a request or a write brings: a refetch, `setData`, hydration, or a live subscription. Use it when an action changes data on the server and the next step needs the cache to show it, as a sign-in does:
+
+```ts twoslash
+import { QueryClient, queryOptions } from "@raf-query/react";
+const qc = new QueryClient();
+declare function getMe(): Promise<{ name: string } | null>;
+declare function signIn(): Promise<void>;
+function meQuery() {
+	return queryOptions({ queryFn: getMe, queryKey: ["me"] });
+}
+// ---cut---
+async function signInThenGo(navigate: () => void) {
+	const signedIn = qc.waitFor(meQuery, undefined, (me) => me !== null, {
+		signal: AbortSignal.timeout(10_000),
+	});
+	await signIn();
+	await qc.invalidate(meQuery);
+	await signedIn;
+	navigate();
+}
+```
+
+While it waits it counts as a reader, so `invalidate` refetches the query, and the cache keeps it. A failed request doesn't reject it, because a later request or write can still match. Pass a [`signal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) to stop waiting: the promise rejects with the signal's reason (a `TimeoutError` for [`AbortSignal.timeout`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal/timeout_static)). In Effect, `QueryCache`'s `waitFor` is the same, and interrupting it stops it.
+
 ## Behavior
 
 - Every verb dedupes against the cache: a request already in flight for the entry is joined, not repeated.

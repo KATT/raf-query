@@ -281,9 +281,9 @@ describe("waitFor", () => {
 		const waiting = qc.waitFor(backend.issueQuery, { id: 404 }, () => true);
 		backend.respondAll();
 		await flush();
-		expect(Query.getUnsafe(qc.getQuery(backend.issueQuery, { id: 404 })).status).toBe(
-			"error",
-		);
+		expect(
+			Query.getUnsafe(qc.getQuery(backend.issueQuery, { id: 404 })).status,
+		).toBe("error");
 		qc.setData(backend.issueQuery, { id: 404 }, { id: 404, title: "Found" });
 
 		await expect(waiting).resolves.toEqual({ id: 404, title: "Found" });
