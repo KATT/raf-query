@@ -523,7 +523,7 @@ describe("useQuery", () => {
 		cleanup();
 	});
 
-	it("shows the retries of a request to a reader of failureCount and failureReason", async () => {
+	it("shows a first load's retries to a reader of failureCount and failureReason, then its error", async () => {
 		const client = new QueryClient({ isServer: false });
 		const attempts: Array<PromiseWithResolvers<string>> = [];
 		function flakyQuery() {
@@ -538,39 +538,60 @@ describe("useQuery", () => {
 				retryDelay: 0,
 			});
 		}
-		function Status(props: {
-			readonly handle: QueryHandle<typeof flakyQuery>;
-		}) {
-			const [, controls] = useQuery(flakyQuery, props.handle);
+		function Body(props: { readonly promise: Thenable<string> }) {
+			return <p>{use(props.promise)}</p>;
+		}
+		function Flaky(props: { readonly handle: QueryHandle<typeof flakyQuery> }) {
+			const [promise, controls] = useQuery(flakyQuery, props.handle);
 			return (
-				<p>
-					{controls.failureCount > 0
-						? `Retrying (${controls.failureCount}/2): ${String(controls.failureReason)}`
-						: "No failures"}
-				</p>
+				<>
+					{controls.isFetching && controls.failureCount > 0 ? (
+						<p>{`Retrying (${controls.failureCount}/2): ${String(controls.failureReason)}`}</p>
+					) : null}
+					<Suspense fallback={<p>Loading</p>}>
+						<Body promise={promise} />
+					</Suspense>
+				</>
 			);
 		}
+		const settleAttempt = (
+			settle: (attempt: PromiseWithResolvers<string>) => void,
+		) =>
+			act(async () => {
+				const attempt = attempts.at(-1);
+				if (attempt) {
+					settle(attempt);
+				}
+				await new Promise((resolve) => setTimeout(resolve, 10));
+			});
 		const handle = client.prefetch(flakyQuery);
 		await mount(
 			<QueryClientProvider client={client}>
-				<Status handle={handle} />
+				<Boundary>
+					<Flaky handle={handle} />
+				</Boundary>
 			</QueryClientProvider>,
 		);
-		expect(screen.getByText("No failures")).toBeDefined();
+		expect(screen.getByText("Loading")).toBeDefined();
+
+		await settleAttempt((attempt) => attempt.reject(new Error("down 1")));
+		expect(screen.getByText("Retrying (1/2): Error: down 1")).toBeDefined();
+		expect(screen.getByText("Loading")).toBeDefined();
+		await settleAttempt((attempt) => attempt.reject(new Error("down 2")));
+		expect(screen.getByText("Retrying (2/2): Error: down 2")).toBeDefined();
+		await settleAttempt((attempt) => attempt.reject(new Error("down 3")));
+		expect(screen.getByText("Error: Error: down 3")).toBeDefined();
+		expect(attempts).toHaveLength(3);
 
 		await act(async () => {
-			attempts[0]?.reject(new Error("down"));
-			await new Promise((resolve) => setTimeout(resolve, 10));
+			screen.getByRole("button").click();
 		});
-		expect(screen.getByText("Retrying (1/2): Error: down")).toBeDefined();
-
-		await act(async () => {
-			attempts[1]?.resolve("ok");
-			await new Promise((resolve) => setTimeout(resolve, 10));
-		});
-		expect(screen.getByText("No failures")).toBeDefined();
+		expect(attempts).toHaveLength(4);
+		expect(screen.queryByText(/Retrying/)).toBeNull();
+		await settleAttempt((attempt) => attempt.resolve("ok"));
+		expect(screen.getByText("ok")).toBeDefined();
 		expect(Query.getUnsafe(client.getQuery(flakyQuery))).toMatchObject({
-			data: "ok",
+			failureCount: 0,
 			failureReason: null,
 		});
 		cleanup();
