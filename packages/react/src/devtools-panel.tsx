@@ -479,6 +479,11 @@ function QueryDetails(props: {
 					<Field label="Failures" palette={palette}>
 						{String(state.failureCount)}
 					</Field>
+					{state.failureReason == null ? null : (
+						<Field label="Last failure" palette={palette}>
+							{preview(state.failureReason)}
+						</Field>
+					)}
 				</dl>
 			</div>
 			<Heading palette={palette} title="Actions" />
