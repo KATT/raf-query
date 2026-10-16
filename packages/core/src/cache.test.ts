@@ -1419,6 +1419,72 @@ describe("QueryCache filters", () => {
 		}),
 	);
 
+	it.effect("type matches entries by whether something reads them", () =>
+		Effect.gen(function* () {
+			const cache = yield* seed();
+			Query.subscribeUnsafe(
+				cache.getQueryUnsafe(labelsQuery, { projectId: 3 }),
+				() => {},
+			);
+
+			yield* cache.invalidate({ type: "active" });
+			expect(yield* hashesWhere(cache, (state) => state.isInvalidated)).toEqual(
+				[],
+			);
+			yield* cache.remove({ type: "inactive" });
+			expect(yield* hashesWhere(cache, () => true)).toEqual(['["labels",3]']);
+			yield* cache.remove({ type: "all" });
+			expect(yield* cache.all).toHaveLength(0);
+		}),
+	);
+
+	it.effect("stale matches entries by staleness as of now", () =>
+		Effect.gen(function* () {
+			const cache = yield* seed();
+			function timedQuery() {
+				return queryOptions({
+					queryFn: () => [],
+					queryKey: ["timed"],
+					staleTime: 1000,
+				});
+			}
+			yield* cache.setData(timedQuery, undefined, []);
+			yield* cache.invalidate(issuesQuery, { projectId: 4, status: "open" });
+			expect(yield* hashesWhere(cache, (state) => state.isStale)).toEqual([
+				'["issues",{"projectId":4,"status":"open"}]',
+			]);
+
+			yield* TestClock.adjust("2 seconds");
+			yield* cache.remove({ stale: false });
+			expect(yield* hashesWhere(cache, () => true)).toEqual([
+				'["issues",{"projectId":4,"status":"open"}]',
+				'["timed"]',
+			]);
+			yield* cache.remove({ queryKey: ["timed"], stale: true });
+			expect(yield* hashesWhere(cache, () => true)).toEqual([
+				'["issues",{"projectId":4,"status":"open"}]',
+			]);
+		}),
+	);
+
+	it.effect("fetchStatus matches entries by a request in flight", () =>
+		Effect.gen(function* () {
+			const backend = createBackend();
+			const cache = yield* QueryCache.make({ isServer: false });
+			yield* cache.prefetch(backend.issueQuery, { id: 1 });
+			yield* cache.setData(
+				backend.issueQuery,
+				{ id: 2 },
+				{ id: 2, title: "Second" },
+			);
+
+			expect(yield* cache.isFetching({ fetchStatus: "fetching" })).toBe(1);
+			expect(yield* cache.isFetching({ fetchStatus: "idle" })).toBe(0);
+			yield* cache.remove({ fetchStatus: "idle", queryKey: ["issue"] });
+			expect(yield* hashesWhere(cache, () => true)).toEqual(['["issue",1]']);
+		}),
+	);
+
 	it.effect("a hydrated-only entry has no input yet", () =>
 		Effect.gen(function* () {
 			const cache = yield* QueryCache.make({ isServer: false });
