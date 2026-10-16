@@ -1,0 +1,8 @@
+# One HydrationBoundary import for RSC and React Router (human asked)
+
+Human: "make the hydration boundary the same import for rsc and react router … something in package.json that auto-picks the right file. If it adds payload or anything, don't do it."
+
+- **`import { HydrationBoundary } from "@raf-query/react"`** everywhere. The main entry's `react-server` export condition points at `index-react-server.ts`, whose `HydrationBoundary` (`hydration-boundary-react-server.tsx`) is a server component that takes the request's `client` (dehydrating with the `sent` set) or a `state`. Everywhere else `index.ts` gives the `"use client"` one (`hydration-boundary.tsx`), which takes only `state`. Both entries re-export `index-shared.ts`, so the RSC graph never imports the client boundary (Next.js would make it a client reference).
+- **One props type**, a union of `{ client, options?: DehydrateOptions }` and `{ state, options?: HydrateOptions }`, declared in `hydration-boundary.tsx`. TypeScript can't see `react-server` (Next.js apps don't set `customConditions`), so both builds must type as the same component. The client build doesn't handle `client` (a cast, no runtime check), so no bytes reach the browser; `client` in a client component is a misuse the types can't catch.
+- **No payload:** client JS is byte-identical for `examples/nextjs` and within a few bytes for `examples/react-router`; `pnpm bundle-size` fixtures unchanged. Rolldown flattens `index-shared.ts` into `dist/index.mjs`.
+- Lost: `@raf-query/react/react-router` (removed) and `HydrationBoundary` from `/rsc` (now only `QueryProvider`). Also lost: exact per-framework props types.
