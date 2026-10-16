@@ -49,6 +49,16 @@ tanstack-start/src/docs/retries.ts#retry-delay
 
 In the browser, retries pause while `navigator.onLine` is `false`: after the delay, the next attempt waits for the window's `online` event. The request counts as fetching meanwhile. The first attempt always runs, since `navigator.onLine` can't be trusted to be right.
 
+## Showing retries
+
+While a request retries, its error isn't on `error` yet. The reader's controls count the failed attempts in `failureCount`, and hold the last attempt's error in `failureReason`, so a component can say it's retrying:
+
+```sample
+tanstack-start/src/docs/retries.while-it-retries.tsx#while-it-retries
+```
+
+`Post` reads the query and passes the promise down, so it renders while its child suspends on a first load. Both go back to `0` and `null` when the next request starts, and when a request succeeds. When the retries run out, they keep the last failure and `error` is set too.
+
 ## Showing errors
 
 What the user sees depends on whether there was data before the failure.

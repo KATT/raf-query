@@ -1,6 +1,11 @@
 import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { type QueryHandle, queryOptions, useQuery } from "@raf-query/react";
+import {
+	type DataOf,
+	type QueryHandle,
+	queryOptions,
+	useQuery,
+} from "@raf-query/react";
 import {
 	CatchBoundary,
 	type ErrorComponentProps,
@@ -43,20 +48,30 @@ function PostSkeleton() {
 	);
 }
 
+function PostBody(props: {
+	readonly promise: Promise<DataOf<typeof postQuery>>;
+}) {
+	const post = use(props.promise);
+	return (
+		<div className="grid gap-1">
+			<h3 className="text-lg font-semibold">{post?.title}</h3>
+			<p className="text-sm text-muted-foreground">{post?.body}</p>
+		</div>
+	);
+}
+
 /**
- * Reads and unwraps the query in one component, so the render that throws a
- * failed first load to the boundary is a read of the query: resetting the
- * boundary then refetches it.
+ * Reads the query above the Suspense boundary its data suspends in, so it
+ * shows a first load's retries too. The error boundary wraps this reader:
+ * resetting it re-renders the read, which refetches.
  */
 function PostView(props: { readonly handle: QueryHandle<typeof postQuery> }) {
 	const [postPromise, post] = useQuery(postQuery, props.handle);
-	const data = use(postPromise);
 	return (
 		<div className="grid gap-3">
-			<div className="grid gap-1">
-				<h3 className="text-lg font-semibold">{data?.title}</h3>
-				<p className="text-sm text-muted-foreground">{data?.body}</p>
-			</div>
+			<Suspense fallback={<PostSkeleton />}>
+				<PostBody promise={postPromise} />
+			</Suspense>
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
 					disabled={post.isFetching}
@@ -72,7 +87,10 @@ function PostView(props: { readonly handle: QueryHandle<typeof postQuery> }) {
 				</Button>
 				{post.isFetching ? (
 					<span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-						<Spinner /> fetching
+						<Spinner />
+						{post.failureCount > 0
+							? `retrying (${post.failureCount}/2)`
+							: "fetching"}
 					</span>
 				) : null}
 			</div>
@@ -140,9 +158,7 @@ function Page(props: { readonly data: PageData }) {
 				errorComponent={PostError}
 				getResetKey={() => data.post.key.join("/")}
 			>
-				<Suspense fallback={<PostSkeleton />}>
-					<PostView handle={data.post} />
-				</Suspense>
+				<PostView handle={data.post} />
 			</CatchBoundary>
 		</div>
 	);
@@ -173,7 +189,7 @@ function Retries() {
 
 export default defineDemo({
 	Component: Retries,
-	hint: "Queries here retry twice. Fail one request and open a post: the retry recovers it. Fail three to exhaust the retries: a first load hits the error boundary, a refetch keeps the old data.",
+	hint: "Queries here retry twice. Fail one request and open a post: the retry recovers it, and the post shows the retry while it waits. Fail three to exhaust the retries: a first load hits the error boundary, a refetch keeps the old data.",
 	server,
 	title: "Retries and error boundaries",
 });

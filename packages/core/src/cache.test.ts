@@ -982,31 +982,39 @@ describe("when the last reader leaves mid-request", () => {
 			}),
 	);
 
-	it.effect("restores the failure count from before the request", () =>
-		Effect.gen(function* () {
-			const source = controlled({ readsSignal: true });
-			const cache = yield* QueryCache.make({ isServer: false });
-			yield* cache.setData(source.factory, undefined, "cached");
-			const query = cache.getQueryUnsafe(source.factory);
-			const unsubscribe = Query.subscribeUnsafe(query, () => {});
-			yield* Effect.forkChild(Query.refetch(query), { startImmediately: true });
-			yield* settle;
-			source.attempts[0]?.reject(new Error("down"));
-			yield* settle;
-			expect(Query.getUnsafe(query).failureCount).toBe(1);
+	it.effect(
+		"restores the failure count and reason from before the request",
+		() =>
+			Effect.gen(function* () {
+				const source = controlled({ readsSignal: true });
+				const cache = yield* QueryCache.make({ isServer: false });
+				yield* cache.setData(source.factory, undefined, "cached");
+				const query = cache.getQueryUnsafe(source.factory);
+				const unsubscribe = Query.subscribeUnsafe(query, () => {});
+				yield* Effect.forkChild(Query.refetch(query), {
+					startImmediately: true,
+				});
+				yield* settle;
+				source.attempts[0]?.reject(new Error("down"));
+				yield* settle;
+				expect(Query.getUnsafe(query)).toMatchObject({
+					failureCount: 1,
+					failureReason: new Error("down"),
+				});
 
-			unsubscribe();
-			yield* settle;
-			yield* TestClock.adjust("1 minute");
+				unsubscribe();
+				yield* settle;
+				yield* TestClock.adjust("1 minute");
 
-			expect(source.attempts).toHaveLength(1);
-			expect(Query.getUnsafe(query)).toMatchObject({
-				data: "cached",
-				error: null,
-				failureCount: 0,
-				isFetching: false,
-			});
-		}),
+				expect(source.attempts).toHaveLength(1);
+				expect(Query.getUnsafe(query)).toMatchObject({
+					data: "cached",
+					error: null,
+					failureCount: 0,
+					failureReason: null,
+					isFetching: false,
+				});
+			}),
 	);
 
 	it.effect("lets a first load finish, so a held read resolves", () =>

@@ -39,6 +39,10 @@ export type UseQueryThrowOptions<TFactory extends QueryFactory> =
 export interface QueryControls<TFactory extends QueryFactory> {
 	/** Error of the last failed request. Existing data stays readable. */
 	readonly error: unknown;
+	/** Failed attempts of the latest request, retries included; `0` once one succeeds. */
+	readonly failureCount: number;
+	/** Error of the latest request's last failed attempt, or `null`. Set while it retries, before `error`. */
+	readonly failureReason: unknown;
 	/** Stable string form of the handle's key, for `key` props. */
 	readonly hash: string;
 	/** Input of the data in the promise; differs from the handle's while `isPrevious`. */

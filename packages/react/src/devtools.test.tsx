@@ -165,6 +165,30 @@ describe("QueryDevtoolsPanel", () => {
 		expect(within(details).queryByText("Meta")).toBeNull();
 	});
 
+	it("shows the last failure of a request that is retrying", async () => {
+		using _dom = domCleanup();
+		const client = new QueryClient({ isServer: false });
+		function flakyQuery() {
+			return queryOptions({
+				queryFn: () => Promise.reject(new Error("down")),
+				queryKey: ["flaky"],
+				retry: 1,
+				retryDelay: 60_000,
+			});
+		}
+		client.prefetch(flakyQuery);
+
+		await mount(<QueryDevtoolsPanel client={client} />);
+		await settle();
+		fireEvent.click(queryButton('["flaky"]'));
+
+		const details = screen.getByRole("region", { name: "Query details" });
+		expect(within(details).getByText("Last failure")).toBeTruthy();
+		expect(within(details).getByText("Error: down")).toBeTruthy();
+		expect(within(details).queryByText("Error")).toBeNull();
+		client.clear();
+	});
+
 	it("shows the selected entry's meta", async () => {
 		using _dom = domCleanup();
 		const client = new QueryClient({ isServer: false });

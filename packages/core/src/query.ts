@@ -54,6 +54,8 @@ export interface State<TData> {
 	readonly error: unknown;
 	/** Failed attempts of the current request, retries included. */
 	readonly failureCount: number;
+	/** Error of the current request's last failed attempt, or `null`. */
+	readonly failureReason: unknown;
 	/** Set while a paged query loads a page at one end of the list. */
 	readonly fetchDirection: Direction | undefined;
 	readonly hasData: boolean;
