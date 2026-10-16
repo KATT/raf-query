@@ -2,7 +2,7 @@
 title: Effect services
 description: Effect queryFns can require services. They become part of the factory's type, and QueryClient provides them from a layer.
 section: Integrations
-order: 5
+order: 7
 ---
 
 A `queryFn`'s Effect can require [services](https://effect.website/docs/v4/requirements-management/services). They're part of the factory's type, `ServicesOf<TFactory>`, and every verb that can start the query requires them:
