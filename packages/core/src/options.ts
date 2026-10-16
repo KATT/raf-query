@@ -150,10 +150,16 @@ export interface QueryBehavior {
 	 * query's own `meta` replaces the default's as a whole.
 	 */
 	readonly meta?: QueryMeta;
-	/** Refetch read, stale queries when the browser comes back online. */
-	readonly refetchOnReconnect?: boolean;
-	/** Refetch read, stale queries when the window regains focus. */
-	readonly refetchOnWindowFocus?: boolean;
+	/**
+	 * Refetch the query when the browser comes back online, if it's read:
+	 * `true` when stale, `"always"` even when fresh. Default `true`.
+	 */
+	readonly refetchOnReconnect?: boolean | "always";
+	/**
+	 * Refetch the query when the window regains focus, if it's read: `true`
+	 * when stale, `"always"` even when fresh. Default `true`.
+	 */
+	readonly refetchOnWindowFocus?: boolean | "always";
 	/** Retries after a failed request. */
 	readonly retry?: RetryPolicy;
 	/** Delay before retry number `failureCount` (1-based), in ms. */

@@ -75,8 +75,8 @@ export interface State<TData> {
 
 /** Per-reader preferences, registered with {@link subscribeUnsafe}. */
 export interface SubscribeOptions {
-	readonly refetchOnReconnect?: boolean;
-	readonly refetchOnWindowFocus?: boolean;
+	readonly refetchOnReconnect?: boolean | "always";
+	readonly refetchOnWindowFocus?: boolean | "always";
 }
 
 export interface FetchRequest {

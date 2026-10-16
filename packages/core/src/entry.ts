@@ -474,15 +474,21 @@ export function resume(
 	);
 }
 
-/** Refetch a read, stale entry whose readers want it on this event. */
+/**
+ * Refetch a read entry on this event if a reader wants it: while stale, or
+ * with `"always"` even when fresh.
+ */
 export function onPlatformEvent(entry: Entry, event: PlatformEvent) {
 	const option =
 		event === "focus" ? "refetchOnWindowFocus" : "refetchOnReconnect";
 	const fallback = behavior(entry, option) ?? true;
-	const wanted = [...entry.listeners.values()].some(
+	const wanted = [...entry.listeners.values()].map(
 		(options) => options[option] ?? fallback,
 	);
-	if (wanted && isStaleUnsafe(entry)) {
+	if (
+		wanted.includes("always") ||
+		(wanted.includes(true) && isStaleUnsafe(entry))
+	) {
 		start(entry);
 	}
 }
