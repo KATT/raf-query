@@ -170,7 +170,7 @@ describe("openUrl", () => {
 	it("opens the copy's folder on the codesandbox branch", () => {
 		assert.strictEqual(
 			openUrl("nextjs"),
-			"https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/nextjs?file=/apps/nextjs/src/app/[verb]/issues/page.tsx",
+			"https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/nextjs?file=/apps/nextjs/src/app/prefetch/issues/page.tsx",
 		);
 	});
 });
