@@ -46,6 +46,7 @@ html[data-announcement-dismissed] .announcement-bar {
  * Framework switches cross-fade the panels in the view transition overlay,
  * which paints above the page. Naming the sticky header and the framework
  * pill puts them in that overlay too, above the panels, as on the page.
+ * They switch at once instead of cross-fading: only the panels animate.
  */
 .site-header {
 	view-transition-name: site-header;
@@ -53,6 +54,18 @@ html[data-announcement-dismissed] .announcement-bar {
 
 .framework-mode-bar {
 	view-transition-name: framework-mode-bar;
+}
+
+::view-transition-group(site-header),
+::view-transition-group(framework-mode-bar),
+::view-transition-new(site-header),
+::view-transition-new(framework-mode-bar) {
+	animation: none;
+}
+
+::view-transition-old(site-header),
+::view-transition-old(framework-mode-bar) {
+	display: none;
 }
 
 /* Panels differ in height; keep the outgoing one from spilling past the box. */
