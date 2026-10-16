@@ -34,3 +34,4 @@ Commands:
 
 - Next.js has no app-wide navigation state: each in-app link shows the bar while its own navigation is pending (`useLinkStatus`), and the `Loader` select shows it while its `router.push` transition is pending. A navigation started elsewhere (browser back) shows no bar there.
 - Next.js and React Router wait on the server for `ensure` too, so the bar shows on every `ensure` visit there; the TanStack apps skip it when the issue is cached.
+- `experimental-svelte` follows SvelteKit's app-wide `navigating` state, so browser back shows the bar too. It waits on the server for `ensure`, like `nextjs` and `react-router`.

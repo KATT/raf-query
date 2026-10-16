@@ -2,17 +2,22 @@
 
 Private Svelte 5 bindings over `@raf-query/core`, built on runes: `useQuery`, `useWaterfall`, `useIsFetching`, `QueryClientProvider` / `setQueryClient`, and `HydrationBoundary`, built on core's `QueryBinding`. Not published and not a docs topic yet — the draft guide lives in [`docs/`](./docs/).
 
-| Path       | Package                          | Role                                                                         |
-| ---------- | -------------------------------- | ---------------------------------------------------------------------------- |
-| `package/` | `@raf-query/experimental-svelte` | The bindings                                                                 |
-| `sample/`  | `@examples/experimental-svelte`  | The SvelteKit app (server `load`s, hydration) the guide's code is taken from |
-| `docs/`    | —                                | Stashed `www` guide (not linked from the site)                               |
+| Path       | Package                             | Role                                                                              |
+| ---------- | ----------------------------------- | --------------------------------------------------------------------------------- |
+| `package/` | `@raf-query/experimental-svelte`    | The bindings                                                                      |
+| `sample/`  | `@examples/experimental-svelte`     | The SvelteKit app (server `load`s, hydration) the guide's code is taken from      |
+| `app/`     | `@examples/experimental-svelte-app` | The example issue tracker on SvelteKit and shadcn-svelte, <http://localhost:3007> |
+| `docs/`    | —                                   | Stashed `www` guide (not linked from the site)                                    |
 
 ```shell
 pnpm --filter @raf-query/experimental-svelte test
 pnpm --filter @raf-query/experimental-svelte build      # svelte-package, what a release would ship
 pnpm --filter @examples/experimental-svelte typecheck   # svelte-kit sync && svelte-check
+pnpm dev:svelte                                         # the issue tracker, on :3007
+pnpm --filter @examples/experimental-svelte-app typecheck
 ```
+
+`app/` matches the four React apps screen for screen (the [verify-examples](../../.agents/skills/verify-examples/SKILL.md) feature map drives it as `experimental-svelte`), except for the devtools, which are React-only. Its shadcn-svelte components live in `app/src/lib/components/ui` (`components.json` there; reinstall to bump) and style themselves with the shared `@examples/ui` theme. It isn't deployed.
 
 The sample's `prepare` script runs `svelte-kit sync` on install: its `tsconfig.json` extends the generated `$app/tsconfig`, which lint and knip load.
 

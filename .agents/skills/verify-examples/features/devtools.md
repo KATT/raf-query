@@ -32,3 +32,4 @@ Commands:
 - The open panel covers the bottom of the page. Clicks on rows or comments there fail with `covered by …`; close the panel first.
 - The open state is per origin (per app). A panel left open in one app doesn't open in the others.
 - Query counts depend on what the page has loaded: after scrolling the list, or with comments paged in, there are more rows than on a fresh load.
+- The devtools are React-only: `experimental-svelte` has no `raf-query` button.
