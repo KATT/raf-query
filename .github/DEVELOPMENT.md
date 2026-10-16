@@ -73,12 +73,13 @@ cd /tmp/codesandbox/examples/nextjs && pnpm install && pnpm dev
 
 ### Deploying
 
-`examples/tanstack-start`, `examples/nextjs` and `examples/tanstack-start-effect` are each a Vercel project in the `trpc` team, with the app's directory as the root directory and its `vercel.json` setting the install and build commands. Pushes to `main` deploy to production, and pull requests get preview deployments. A project skips the build when nothing it uses changed since its last successful deployment on that branch (`ignoreCommand`, diffing from `VERCEL_GIT_PREVIOUS_SHA`); a branch's first deployment always builds. The docs site (`www/`) works the same way. The experimental apps aren't deployed.
+`examples/tanstack-start`, `examples/nextjs`, `examples/react-router` and `examples/tanstack-start-effect` are each a Vercel project in the `trpc` team, with the app's directory as the root directory and its `vercel.json` setting the install and build commands. Pushes to `main` deploy to production, and pull requests get preview deployments. The `main` ruleset requires each project's `Vercel – <project>` check, so a pull request can't merge while a deployment fails; a skipped deployment passes. A project skips the build when nothing it uses changed since its last successful deployment on that branch (`ignoreCommand`, diffing from `VERCEL_GIT_PREVIOUS_SHA`); a branch's first deployment always builds. The docs site (`www/`) works the same way. The experimental apps aren't deployed.
 
 | App                              | URL                                                |
 | -------------------------------- | -------------------------------------------------- |
 | `examples/tanstack-start`        | <https://tanstack-start.raf-query.katt.dev>        |
 | `examples/nextjs`                | <https://nextjs.raf-query.katt.dev>                |
+| `examples/react-router`          | <https://react-router.raf-query.katt.dev>          |
 | `examples/tanstack-start-effect` | <https://tanstack-start-effect.raf-query.katt.dev> |
 
 The Start apps build with Nitro's `nitro()` Vite plugin, which writes Vercel Build Output on Vercel and a Node server in `.output/` elsewhere. Each deployment's database lives in the memory of the function instance that serves it, so edits reset whenever an instance starts, and two instances can show different data.
