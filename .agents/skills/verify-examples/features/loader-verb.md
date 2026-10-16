@@ -1,11 +1,12 @@
 # Loader verb
 
-A bar above every page picks how the page's loader starts its queries: `prefetch`, `ensure` or `fetch`. The verb is the URL's first segment (`/ensure/issues/3`), so a page under each verb can be opened, compared and shared. A line next to the links says what the current verb waits for.
+The `Loader` select in the header picks how the page's loader starts its queries: `prefetch`, `ensure` or `fetch`. The verb is the URL's first segment (`/ensure/issues/3`), so a page under each verb can be opened, compared and shared. A line along the header's bottom edge names the current verb and says what it waits for.
 
 ## Sub-features
 
 - `verb-url` `/prefetch/…`, `/ensure/…`, `/fetch/…` serve the same pages. `/` and the verb-less `/issues…` URLs redirect to the same page under `prefetch`, keeping the search params. Any other first segment is the not-found page.
-- `verb-bar` `navigation "Loader verb"` with links `prefetch`, `ensure`, `fetch` to the current page and search under that verb; the current one is `aria-current="page"`.
+- `verb-picker` `combobox "Loader"` with options `prefetch`, `ensure`, `fetch`; its value is the URL's verb. Choosing one navigates to the current page and search under that verb. Outside the verb's pages (the not-found page) it goes to that verb's list.
+- `verb-hint` the header's last line: the verb, then what it waits for.
 - `verb-links` every in-app link (header, rows, filters, back, previous, next) stays under the current verb.
 - `verb-prefetch` never waits: a click opens the new page at once, onto skeletons. Its first HTML has skeletons, and the data streams in after.
 - `verb-ensure` waits on a cache miss: the old page stays until the data lands. Stale cached data opens at once and refetches behind it. Its first HTML has the data, no skeletons.
@@ -14,7 +15,7 @@ A bar above every page picks how the page's loader starts its queries: `prefetch
 
 ## How to get to it (user POV)
 
-- The bar at the top of every page, under the header.
+- The header of every page: the first select, and the line under the selects.
 
 ## Driving it with control-examples
 
@@ -31,7 +32,7 @@ PAGE='document.querySelector("main").innerText.includes("Showing") ? "list" : "i
 Commands:
 
 - **Redirects.** `curl -s -o /dev/null -w '%{redirect_url}\n' $U/issues/3` is `$U/prefetch/issues/3`; `$U/issues?status=open` keeps `status=open`. `curl -s -o /dev/null -w '%{http_code}\n' $U/bogus/issues/3` is `404`.
-- **Switch verb.** `$CE open "$U/prefetch/issues?status=open"; $CE click --role link --name ensure --exact`. `$CE eval location.pathname + location.search` is `/ensure/issues?status=open&sort=newest`, and `$CE snapshot | grep 'link "#'` rows link to `/ensure/issues/<id>`.
+- **Switch verb.** `$CE open "$U/prefetch/issues?status=open"; $CE select --name Loader --value ensure; $CE wait --text 'Waits for data'`. `$CE eval 'location.pathname + location.search'` is `/ensure/issues?status=open` (plus `&sort=newest` in the TanStack apps), and `$CE snapshot | grep 'link "#'` rows link to `/ensure/issues/<id>`. From `$U/nope` the same select lands on `/ensure/issues`.
 - **First HTML.** `curl -s $U/ensure/issues/3 | grep -c animate-pulse` is `0` and the title is in the HTML; under `/prefetch/` the count is above `0`.
 - **prefetch opens at once.** `$CE open $U/prefetch/issues; $CE wait --role link --name '/^#41 /'; $CE click --role link --name '/^#41 /'; $CE eval "$PAGE"` is `issue` right away; the title fills in about 3 s later.
 - **ensure waits once.** Same with `/ensure/`: `list` right after the click, `issue` once the data lands. Then `$CE click --role link --name 'All issues'`, wait for the rows, click `#41` again: `issue` at once, with the cached title.
