@@ -26,6 +26,7 @@
 
 - The docs site's pages (`www/content`) are the full documentation, API reference included. The root `README.md` and each package's `README.md` are a short taste that links there: don't copy guides or reference tables into them.
 - The docs and READMEs describe how raf-query works **now**. Don't reference history: no "since vX", "as of vX", "previously", "no longer", "pre-X.Y.Z", or migration notes. Version history and upgrade notes belong in `CHANGELOG.md` (generated from commit messages on release), so put that context in the commit / PR description instead.
+- When the docs name a third-party API, option, or concept (React Router's `clientLoader`, Next.js's `headers()`, a TanStack Router option, a web platform API), link its official documentation at its first mention on the page. Check that each link and anchor resolves.
 - [`.agent-docs/`](.agent-docs/) is agent-owned working memory (decisions, bootstrap context, notes worth keeping across sessions). Read it when starting non-trivial work; update it when you learn or decide something durable. Edit and delete at will — see [`.agent-docs/README.md`](.agent-docs/README.md).
 - Decisions are one file each in `.agent-docs/decisions/`: add a new file rather than appending to an existing one. They hold the short version. For the full reasoning, use git history (`git blame -C -C` on the file, then `gh pr view N --comments` for the `(#N)` in the commit subject), as described in `.agent-docs/README.md`.
 
