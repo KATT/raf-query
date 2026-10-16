@@ -1027,7 +1027,9 @@ describe("useQuery", () => {
 			const client = new QueryClient({ isServer: false, layer: Layer.empty });
 			const handle = client.prefetch(throwingNameQuery, { id: 404 });
 			await mount(view(client, <Name handle={handle} />));
-			await waitFor(() => screen.getByText(/Error: NotFound/));
+			await waitFor(() => {
+				expect(screen.getByText(/Error: NotFound/)).toBeDefined();
+			});
 			cleanup();
 		});
 

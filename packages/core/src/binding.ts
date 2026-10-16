@@ -15,6 +15,7 @@ import {
 	promiseControls,
 	type ReadValue,
 	resultThenable,
+	throwsOnError,
 	type UseQueryControls,
 	type UseQueryOptions,
 	type UseQueryThrowOptions,
@@ -256,7 +257,11 @@ function resultOf<TFactory extends QueryFactory>(
 	}
 
 	function throwOnError() {
-		return impl.source.options().throwOnError ?? impl.client.throwOnError;
+		return throwsOnError(
+			impl.query,
+			impl.source.options().throwOnError,
+			impl.client.throwOnError,
+		);
 	}
 
 	// A promise settles in place, so the result doesn't change when it does;
