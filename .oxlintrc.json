@@ -76,6 +76,11 @@
 						"importNames": ["onTestFinished"],
 						"message": "Return a Disposable and `using` it instead.",
 						"name": "vitest"
+					},
+					{
+						"importNames": ["onTestFinished"],
+						"message": "Return a Disposable and `using` it instead.",
+						"name": "vite-plus/test"
 					}
 				]
 			}
@@ -518,10 +523,14 @@
 			}
 		},
 		{
-			// Vue composables are named `use…` too, but run once in `setup`, not on
-			// every render, and React Compiler never sees them, so neither React's
-			// rules of hooks nor the compiler's rules apply.
-			"files": [".experimental/vue/package/src/**"],
+			// Vue and Svelte composables are named `use…` too, but run once in
+			// `setup` or a component's `<script>`, not on every render, and React
+			// Compiler never sees them, so neither React's rules of hooks nor the
+			// compiler's rules apply.
+			"files": [
+				".experimental/vue/package/src/**",
+				".experimental/svelte/package/{src,test}/**"
+			],
 			"rules": {
 				"react-hooks/rules-of-hooks": "off",
 				"react/rules-of-hooks": "off",
@@ -570,7 +579,7 @@
 			"files": [
 				"www/samples/*/src/**/*.{ts,tsx}",
 				"www/samples/react-router*/app/**/*.{ts,tsx}",
-				".experimental/vue/sample/src/**/*.{ts,tsx}"
+				".experimental/*/sample/src/**/*.{ts,tsx}"
 			],
 			"rules": {
 				"anti-slop/require-safety-comment-for-type-assertion": "off",
@@ -586,6 +595,19 @@
 				"react/no-unescaped-entities": "off",
 				"typescript/consistent-type-assertions": "off",
 				"workspace/no-overzealous-destructuring": "off"
+			}
+		},
+		{
+			// Svelte's runes, which the Svelte compiler replaces.
+			"files": ["**/*.svelte", "**/*.svelte.ts"],
+			"globals": {
+				"$bindable": "readonly",
+				"$derived": "readonly",
+				"$effect": "readonly",
+				"$host": "readonly",
+				"$inspect": "readonly",
+				"$props": "readonly",
+				"$state": "readonly"
 			}
 		},
 		{
@@ -608,7 +630,7 @@
 			"files": [
 				"www/samples/*/src/docs/**/*.{ts,tsx}",
 				"www/samples/react-router*/app/docs/**/*.{ts,tsx}",
-				".experimental/vue/sample/src/docs/**/*.{ts,tsx}"
+				".experimental/*/sample/src/docs/**/*.{ts,tsx}"
 			],
 			"rules": {
 				"anti-slop/no-runtime-typeof": "off",

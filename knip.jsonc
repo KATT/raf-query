@@ -67,6 +67,9 @@
 		".experimental/vue/package": {
 			"includeEntryExports": false,
 		},
+		".experimental/svelte/package": {
+			"includeEntryExports": false,
+		},
 		".experimental/tanstack-query/package": {
 			// Same surface as `@raf-query/react`, kept for the comparison even
 			// where the experimental apps don't call every export.
@@ -161,6 +164,10 @@
 			// which Knip does not parse: every file is an entry, and its
 			// exports are what the pages import.
 			"entry": ["src/**/*.{ts,tsx}"],
+			"includeEntryExports": false,
+		},
+		".experimental/svelte/sample": {
+			"entry": ["src/**/*.{ts,svelte}"],
 			"includeEntryExports": false,
 		},
 		".experimental/vue/sample": {
