@@ -22,6 +22,7 @@ export {
 	type UseQueryThrowOptions,
 } from "./controls.ts";
 export * as Platform from "./platform.ts";
+export * as QueryBinding from "./binding.ts";
 export * as Query from "./query.ts";
 export * as QueryCache from "./cache.ts";
 export * as QueryObserver from "./observer.ts";

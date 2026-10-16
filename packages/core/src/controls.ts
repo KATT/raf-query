@@ -115,6 +115,19 @@ export function throwsOnError<TFactory extends QueryFactory>(
 	return throwOnError || Query.returnsEffectUnsafe(query) === false;
 }
 
+/**
+ * {@link ThrowsOnError} at runtime, for bindings: a read of `query` throws
+ * when `throwOnError` (the call's, else the client's) is `true`, or when its
+ * `queryFn` returns a promise or plain value, whose error isn't typed. A
+ * query whose `queryFn` hasn't run yet follows `throwOnError`.
+ */
+export function throwsOnError<TFactory extends QueryFactory>(
+	query: Query.Query<TFactory>,
+	throwOnError: boolean,
+): boolean {
+	return throwOnError || Query.returnsEffectUnsafe(query) === false;
+}
+
 /** What a read settles with: the data, or a `Result` when it doesn't throw. */
 export type ReadValue<
 	TFactory extends QueryFactory,

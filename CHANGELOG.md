@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.10.4](https://github.com/KATT/raf-query/compare/0.10.3...0.10.4) (2026-10-16)
+
+### Bug Fixes
+
+- **core:** keep pages written during a paged refetch ([#215](https://github.com/KATT/raf-query/issues/215)) ([b6a5946](https://github.com/KATT/raf-query/commit/b6a5946e806e12e9b7df40e80ef0e532c0871b25)), references [#75](https://github.com/KATT/raf-query/issues/75)
+- **react:** read promise queryFns as plain data on a client with a layer (1/2) ([#205](https://github.com/KATT/raf-query/issues/205)) ([a9b156e](https://github.com/KATT/raf-query/commit/a9b156edfa18b1e41e9ea929afc412252a61b83c))
+
+## [0.10.3](https://github.com/KATT/raf-query/compare/0.10.2...0.10.3) (2026-10-16)
+
+### Features
+
+- **core:** add QueryBinding, a framework-free useQuery for bindings ([#197](https://github.com/KATT/raf-query/issues/197)) ([4865802](https://github.com/KATT/raf-query/commit/48658024f4d21d43ce8274de379a19c8898b6173)), references [#194](https://github.com/KATT/raf-query/issues/194)
+
 ## [0.10.2](https://github.com/KATT/raf-query/compare/0.10.1...0.10.2) (2026-10-16)
 
 ### Features
