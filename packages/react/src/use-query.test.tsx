@@ -11,6 +11,7 @@ import {
 	type QueryHandle,
 	type QueryHandleWithData,
 	queryOptions,
+	type Thenable,
 	useQuery,
 	type UseQueryOptions,
 	useWaterfall,
@@ -586,7 +587,7 @@ describe("useQuery", () => {
 			const [issue] = useQuery(backend.issueQuery, withData);
 			expectTypeOf(issue).toEqualTypeOf<Issue>();
 			const [promise] = useQuery(backend.issueQuery, handle);
-			expectTypeOf(promise).toEqualTypeOf<Promise<Issue>>();
+			expectTypeOf(promise).toEqualTypeOf<Thenable<Issue>>();
 		};
 		expect(useTypes).toBeTypeOf("function");
 	});
@@ -674,7 +675,7 @@ describe("useQuery", () => {
 			const [namePromise] = useQuery(nameQuery, props.handle);
 			const name = use(namePromise);
 			expectTypeOf(namePromise).toEqualTypeOf<
-				Promise<Result.Result<string, NotFound>>
+				Thenable<Result.Result<string, NotFound>>
 			>();
 			expectTypeOf(name).toEqualTypeOf<Result.Result<string, NotFound>>();
 			return (
