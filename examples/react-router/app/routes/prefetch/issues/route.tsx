@@ -5,7 +5,7 @@ import { dehydrate } from "@raf-query/react";
 import { HydrationBoundary } from "@raf-query/react";
 import { Suspense } from "react";
 
-import { createAppQueryClient } from "~/query-client.ts";
+import { queryClientContext } from "~/query-client.ts";
 import { issueCountsQuery, issueListQuery } from "~/queries.ts";
 import { withRequest } from "~/settings.ts";
 
@@ -18,7 +18,7 @@ export function loader(args: Route.LoaderArgs) {
 		const input = IssueListInput.parse(
 			Object.fromEntries(new URL(args.request.url).searchParams),
 		);
-		const { queryClient } = createAppQueryClient();
+		const queryClient = args.context.get(queryClientContext);
 		// `prefetch` starts each query and returns its handle at once. The page
 		// streams in behind skeletons.
 		const handles = {

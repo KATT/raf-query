@@ -6,7 +6,7 @@ The `Loader` select in the header picks how the page's loader starts its queries
 
 - `verb-url` `/prefetch/…`, `/ensure/…`, `/fetch/…` serve the same pages. `/` and the verb-less `/issues…` URLs redirect to the same page under `prefetch`, keeping the search params. Any other first segment is the not-found page.
 - `verb-picker` `combobox "Loader"` with options `prefetch`, `ensure`, `fetch`; its value is the URL's verb. Choosing one navigates to the current page and search under that verb. Outside the verb's pages (the not-found page) it goes to that verb's list.
-- `verb-hint` the header's last line: the verb, then what it waits for.
+- `verb-hint` the header's last line: the verb, then what it waits for. In `nextjs` and `react-router` the `ensure` line says it waits like fetch on every navigation and to use fetch; the TanStack apps say cached data shows at once.
 - `verb-links` every in-app link (header, rows, filters, back, previous, next) stays under the current verb.
 - `verb-prefetch` never waits: a click opens the new page at once, onto skeletons. Its first HTML has skeletons, and the data streams in after.
 - `verb-ensure` waits on a cache miss: the old page stays until the data lands. Stale cached data opens at once and refetches behind it. Its first HTML has the data, no skeletons.
