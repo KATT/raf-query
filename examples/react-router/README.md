@@ -4,6 +4,8 @@
 
 [![Open in CodeSandbox](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/p/devbox/github/KATT/raf-query/tree/codesandbox/examples/react-router?file=/apps/react-router/app/routes/issues.tsx)
 
+Live at [react-router.raf-query.katt.dev](https://react-router.raf-query.katt.dev).
+
 A small issue tracker built with [raf-query](https://github.com/KATT/raf-query#readme) on [React Router](https://reactrouter.com) Framework Mode. [`examples/tanstack-start`](https://github.com/KATT/raf-query/tree/main/examples/tanstack-start) and [`examples/nextjs`](https://github.com/KATT/raf-query/tree/main/examples/nextjs) are the same app on TanStack Start and the Next.js App Router, so the integrations can be compared side by side.
 
 | Screen / action                                         | Shows                                                                                            | Files                                                                                                                              |
