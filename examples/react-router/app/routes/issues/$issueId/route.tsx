@@ -15,17 +15,17 @@ import { Suspense, use } from "react";
 import { isRouteErrorResponse } from "react-router";
 
 import { AppLink } from "~/components/app-link.tsx";
-import { Comments } from "~/components/comments.tsx";
 import { EditBody } from "~/components/edit-body.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
 import { NotFound } from "~/components/not-found.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
-import { AssigneeCard } from "~/components/user.tsx";
 import { createAppQueryClient } from "~/query-client.ts";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 import { withRequest } from "~/settings.ts";
 
-import type { Route } from "./+types/issues.$issueId";
+import type { Route } from "./+types/route";
+import { AssigneeCard } from "./components/assignee-card.tsx";
+import { Comments } from "./components/comments.tsx";
 
 export async function loader(args: Route.LoaderArgs) {
 	return withRequest(args.request, () => {

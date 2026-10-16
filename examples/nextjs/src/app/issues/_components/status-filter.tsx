@@ -8,9 +8,9 @@ import {
 import { statusLabel } from "@examples/kit/components/status-badge";
 import { cn } from "@examples/ui/lib/utils";
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { AppLink } from "./settings.tsx";
 import { use } from "react";
 
+import { AppLink } from "~/components/settings.tsx";
 import { issueCountsQuery } from "~/queries.ts";
 
 export function StatusFilter(props: {

@@ -12,16 +12,16 @@ import { Separator } from "@examples/ui/components/separator";
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { notFound } from "next/navigation";
-import { AppLink } from "./settings.tsx";
 import { Suspense, use } from "react";
 
+import { EditBody } from "~/components/edit-body.tsx";
+import { EditTitle } from "~/components/edit-title.tsx";
+import { AppLink } from "~/components/settings.tsx";
+import { StatusSelect } from "~/components/status-select.tsx";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 
+import { AssigneeCard } from "./assignee-card.tsx";
 import { Comments } from "./comments.tsx";
-import { EditBody } from "./edit-body.tsx";
-import { EditTitle } from "./edit-title.tsx";
-import { StatusSelect } from "./status-select.tsx";
-import { AssigneeCard } from "./user.tsx";
 
 export function IssuePage(props: {
 	readonly assignee: QueryHandle<typeof assigneeQuery>;

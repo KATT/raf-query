@@ -13,12 +13,13 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Suspense, use } from "react";
 
-import { Comments } from "~/components/comments.tsx";
 import { EditBody } from "~/components/edit-body.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
-import { AssigneeCard } from "~/components/user.tsx";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
+
+import { AssigneeCard } from "./-components/assignee-card.tsx";
+import { Comments } from "./-components/comments.tsx";
 
 export const Route = createFileRoute("/issues/$issueId")({
 	loader: (args) => {

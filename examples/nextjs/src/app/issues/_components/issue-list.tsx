@@ -11,12 +11,11 @@ import {
 import { LoadMore } from "@examples/kit/components/load-more";
 import { cn } from "@examples/ui/lib/utils";
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { AppLink } from "./settings.tsx";
 import { use } from "react";
 
+import { AppLink } from "~/components/settings.tsx";
+import { StatusSelect } from "~/components/status-select.tsx";
 import { issueListQuery } from "~/queries.ts";
-
-import { StatusSelect } from "./status-select.tsx";
 
 export function IssueList(props: {
 	readonly handle: QueryHandle<typeof issueListQuery>;

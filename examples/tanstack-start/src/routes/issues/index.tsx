@@ -1,16 +1,16 @@
+import { IssueListInput } from "@examples/db/types";
 import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { createFileRoute } from "@tanstack/react-router";
-import { Schema } from "effect";
 import { Suspense } from "react";
 
-import { IssueList } from "~/components/issue-list.tsx";
-import { StatusFilter } from "~/components/status-filter.tsx";
 import { issueCountsQuery, issueListQuery } from "~/queries.ts";
-import { IssueListInput } from "~/rpc.ts";
+
+import { IssueList } from "./-components/issue-list.tsx";
+import { StatusFilter } from "./-components/status-filter.tsx";
 
 export const Route = createFileRoute("/issues/")({
-	validateSearch: Schema.toStandardSchemaV1(IssueListInput),
+	validateSearch: IssueListInput,
 	loaderDeps: (args) => args.search,
 	loader: (args) => {
 		const qc = args.context.queryClient;

@@ -9,13 +9,11 @@ import {
 } from "@examples/kit/components/issue-list";
 import { LoadMore } from "@examples/kit/components/load-more";
 import { cn } from "@examples/ui/lib/utils";
-
+import { Link } from "@tanstack/react-router";
 import { use } from "react";
 
+import { StatusSelect } from "~/components/status-select.tsx";
 import { issueListQuery } from "~/queries.ts";
-
-import { AppLink } from "./app-link.tsx";
-import { StatusSelect } from "./status-select.tsx";
 
 export function IssueList(props: {
 	readonly handle: QueryHandle<typeof issueListQuery>;
@@ -48,15 +46,16 @@ export function IssueList(props: {
 						key={pages.pageParams[index]}
 					>
 						{page.issues.map((issue) => (
-							<AppLink
+							<Link
 								className={issueRowClassName}
 								key={issue.id}
-								to={`/issues/${issue.id}`}
+								params={{ issueId: String(issue.id) }}
+								to="/issues/$issueId"
 							>
 								<IssueRow issue={issue}>
 									<StatusSelect issueId={issue.id} status={issue.status} />
 								</IssueRow>
-							</AppLink>
+							</Link>
 						))}
 					</div>
 				))}

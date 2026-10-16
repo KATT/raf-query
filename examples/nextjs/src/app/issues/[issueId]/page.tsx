@@ -3,9 +3,10 @@ import { HydrationBoundary } from "@raf-query/react/rsc";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
-import { IssuePage } from "~/components/issue-page.tsx";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
 import { getQueryClient } from "~/query-client.ts";
+
+import { IssuePage } from "./_components/issue-page.tsx";
 
 const IssueIdParam = z.coerce.number<string>().pipe(IssueId);
 

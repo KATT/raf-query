@@ -117,8 +117,8 @@
 			"ignoreIssues": {
 				"app/root.tsx": ["unresolved"],
 				"app/routes/api.$.ts": ["unresolved"],
-				"app/routes/issues.$issueId.tsx": ["unresolved"],
-				"app/routes/issues.tsx": ["unresolved"],
+				"app/routes/issues/$issueId/route.tsx": ["unresolved"],
+				"app/routes/issues/route.tsx": ["unresolved"],
 			},
 		},
 		"tooling/bundle-size": {

@@ -12,14 +12,14 @@ import { cn } from "@examples/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { use } from "react";
 
+import { StatusSelect } from "~/components/status-select.tsx";
 import { issueListQuery } from "~/queries.ts";
-
-import { StatusSelect } from "./status-select.tsx";
 
 export function IssueList(props: {
 	readonly handle: QueryHandle<typeof issueListQuery>;
 }) {
 	const [pagesPromise, list] = useQuery(issueListQuery, props.handle, {
+		throwOnError: true,
 		whilePending: "previous",
 	});
 	const pages = use(pagesPromise);

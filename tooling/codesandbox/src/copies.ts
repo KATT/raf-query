@@ -19,9 +19,9 @@ export type App = (typeof apps)[number];
 /** The route each app's CodeSandbox link opens, relative to the app. */
 const routes = {
 	nextjs: "src/app/issues/page.tsx",
-	"react-router": "app/routes/issues.tsx",
-	"tanstack-start": "src/routes/issues.index.tsx",
-	"tanstack-start-effect": "src/routes/issues.index.tsx",
+	"react-router": "app/routes/issues/route.tsx",
+	"tanstack-start": "src/routes/issues/index.tsx",
+	"tanstack-start-effect": "src/routes/issues/index.tsx",
 } satisfies Record<App, string>;
 
 const ignored = new Set([

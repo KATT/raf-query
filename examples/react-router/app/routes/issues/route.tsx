@@ -5,13 +5,13 @@ import { dehydrate } from "@raf-query/react";
 import { HydrationBoundary } from "@raf-query/react/react-router";
 import { Suspense } from "react";
 
-import { IssueList } from "~/components/issue-list.tsx";
-import { StatusFilter } from "~/components/status-filter.tsx";
 import { createAppQueryClient } from "~/query-client.ts";
 import { issueCountsQuery, issueListQuery } from "~/queries.ts";
 import { withRequest } from "~/settings.ts";
 
-import type { Route } from "./+types/issues";
+import type { Route } from "./+types/route";
+import { IssueList } from "./components/issue-list.tsx";
+import { StatusFilter } from "./components/status-filter.tsx";
 
 export async function loader(args: Route.LoaderArgs) {
 	return withRequest(args.request, () => {

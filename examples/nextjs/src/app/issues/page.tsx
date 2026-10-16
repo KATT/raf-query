@@ -4,10 +4,11 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { HydrationBoundary } from "@raf-query/react/rsc";
 import { Suspense } from "react";
 
-import { IssueList } from "~/components/issue-list.tsx";
-import { StatusFilter } from "~/components/status-filter.tsx";
 import { issueCountsQuery, issueListQuery } from "~/queries.ts";
 import { getQueryClient } from "~/query-client.ts";
+
+import { IssueList } from "./_components/issue-list.tsx";
+import { StatusFilter } from "./_components/status-filter.tsx";
 
 export default async function IssuesPage(props: {
 	readonly searchParams: Promise<
