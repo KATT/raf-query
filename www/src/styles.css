@@ -61,9 +61,13 @@ html[data-announcement-dismissed] .announcement-bar {
 }
 
 /*
- * Page navigations (router `defaultViewTransition`, type "page"): the header
- * and docs sidebar hold still while the rest of the page fades and rises.
+ * Page navigations (router `defaultViewTransition`, type "page"): the site
+ * chrome holds still while the rest of the page fades and rises.
  */
+html:active-view-transition-type(page) .announcement-bar {
+	view-transition-name: announcement-bar;
+}
+
 html:active-view-transition-type(page) .docs-sidebar {
 	view-transition-name: docs-sidebar;
 }
