@@ -1,5 +1,8 @@
 /// <reference types="vite/client" />
-import type { QueryTimeDefaults } from "@examples/db/types";
+import {
+	DEFAULT_LOADER_VERB,
+	type QueryTimeDefaults,
+} from "@examples/db/types";
 import { Logo } from "@examples/kit/components/logo";
 import { ThemeProvider } from "@examples/kit/components/theme-provider";
 import { logoUrl } from "@examples/kit/lib/logo";
@@ -11,6 +14,7 @@ import {
 	Link,
 	Outlet,
 	Scripts,
+	useParams,
 	useRouter,
 } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
@@ -44,6 +48,7 @@ export const Route = createRootRouteWithContext<{
 function RootDocument(props: { readonly children: ReactNode }) {
 	const router = useRouter();
 	const [prefetch, setPrefetch] = useState(readPrefetch);
+	const { verb } = useParams({ strict: false });
 
 	return (
 		<html lang="en" suppressHydrationWarning>
@@ -57,7 +62,8 @@ function RootDocument(props: { readonly children: ReactNode }) {
 							<Link
 								className="flex items-center gap-2.5 font-semibold"
 								key={prefetch}
-								to="/issues"
+								params={{ verb: verb ?? DEFAULT_LOADER_VERB }}
+								to="/$verb/issues"
 							>
 								<Logo alt="" />
 								Issues

@@ -7,9 +7,10 @@ import {
 } from "@examples/kit/components/comments";
 import { LoadMore } from "@examples/kit/components/load-more";
 import { warnMockDbWrite } from "@examples/kit/lib/mock-db-toast";
-import { type QueryHandle, useQuery, useQueryClient } from "@raf-query/react";
-import { use, useOptimistic, useRef } from "react";
+import { type QueryHandle, useQueryClient } from "@raf-query/react";
+import { useOptimistic, useRef } from "react";
 
+import { useQueryData } from "~/loader-verb.ts";
 import { commentsQuery } from "~/queries.ts";
 
 export function Comments(props: {
@@ -17,8 +18,7 @@ export function Comments(props: {
 }) {
 	const queryClient = useQueryClient();
 	const formRef = useRef<HTMLFormElement>(null);
-	const [pagesPromise, comments] = useQuery(commentsQuery, props.handle);
-	const pages = use(pagesPromise);
+	const [pages, comments] = useQueryData(commentsQuery, props.handle);
 	const issueId = props.handle.input.issueId;
 	const loaded = pages.pages.flatMap((page) => page.comments);
 	const confirmedIds = new Set(loaded.map((comment) => comment.id));

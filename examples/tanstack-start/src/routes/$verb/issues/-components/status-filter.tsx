@@ -3,20 +3,19 @@ import {
 	issueSorts,
 	issueStatuses,
 } from "@examples/db/types";
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import type { QueryHandle } from "@raf-query/react";
 import { statusLabel } from "@examples/kit/components/status-badge";
 import { cn } from "@examples/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
-import { use } from "react";
 
+import { useQueryData } from "~/loader-verb.ts";
 import { issueCountsQuery } from "~/queries.ts";
 
 export function StatusFilter(props: {
 	readonly counts: QueryHandle<typeof issueCountsQuery>;
 	readonly current: IssueListInput;
 }) {
-	const [countsPromise] = useQuery(issueCountsQuery, props.counts);
-	const counts = use(countsPromise);
+	const [counts] = useQueryData(issueCountsQuery, props.counts);
 	const current = props.current;
 
 	return (
@@ -30,7 +29,8 @@ export function StatusFilter(props: {
 						)}
 						key={status}
 						search={{ ...current, status }}
-						to="/issues"
+						from="/$verb/issues/"
+						to="."
 					>
 						{statusLabel(status)}
 						<span className="text-muted-foreground">{counts[status]}</span>
@@ -49,7 +49,8 @@ export function StatusFilter(props: {
 						)}
 						key={sort}
 						search={{ ...current, sort }}
-						to="/issues"
+						from="/$verb/issues/"
+						to="."
 					>
 						{sort}
 					</Link>

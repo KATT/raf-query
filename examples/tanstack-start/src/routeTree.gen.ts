@@ -10,13 +10,20 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VerbRouteRouteImport } from './routes/$verb/route'
 import { Route as ApiSplatRouteImport } from './routes/api.$'
-import { Route as IssuesIndexRouteImport } from './routes/issues/index'
-import { Route as IssuesIssueIdRouteRouteImport } from './routes/issues/$issueId/route'
+import { Route as IssuesSplatRouteImport } from './routes/issues.$'
+import { Route as VerbIssuesIndexRouteImport } from './routes/$verb/issues/index'
+import { Route as VerbIssuesIssueIdRouteRouteImport } from './routes/$verb/issues/$issueId/route'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerbRouteRoute = VerbRouteRouteImport.update({
+  id: '/$verb',
+  path: '/$verb',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSplatRoute = ApiSplatRouteImport.update({
@@ -24,49 +31,79 @@ const ApiSplatRoute = ApiSplatRouteImport.update({
   path: '/api/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IssuesIndexRoute = IssuesIndexRouteImport.update({
-  id: '/issues/',
-  path: '/issues/',
+const IssuesSplatRoute = IssuesSplatRouteImport.update({
+  id: '/issues/$',
+  path: '/issues/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IssuesIssueIdRouteRoute = IssuesIssueIdRouteRouteImport.update({
+const VerbIssuesIndexRoute = VerbIssuesIndexRouteImport.update({
+  id: '/issues/',
+  path: '/issues/',
+  getParentRoute: () => VerbRouteRoute,
+} as any)
+const VerbIssuesIssueIdRouteRoute = VerbIssuesIssueIdRouteRouteImport.update({
   id: '/issues/$issueId',
   path: '/issues/$issueId',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => VerbRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/issues/$issueId': typeof IssuesIssueIdRouteRoute
+  '/$verb': typeof VerbRouteRouteWithChildren
   '/api/$': typeof ApiSplatRoute
-  '/issues/': typeof IssuesIndexRoute
+  '/issues/$': typeof IssuesSplatRoute
+  '/$verb/issues/$issueId': typeof VerbIssuesIssueIdRouteRoute
+  '/$verb/issues/': typeof VerbIssuesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/issues/$issueId': typeof IssuesIssueIdRouteRoute
+  '/$verb': typeof VerbRouteRouteWithChildren
   '/api/$': typeof ApiSplatRoute
-  '/issues': typeof IssuesIndexRoute
+  '/issues/$': typeof IssuesSplatRoute
+  '/$verb/issues/$issueId': typeof VerbIssuesIssueIdRouteRoute
+  '/$verb/issues': typeof VerbIssuesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/issues/$issueId': typeof IssuesIssueIdRouteRoute
+  '/$verb': typeof VerbRouteRouteWithChildren
   '/api/$': typeof ApiSplatRoute
-  '/issues/': typeof IssuesIndexRoute
+  '/issues/$': typeof IssuesSplatRoute
+  '/$verb/issues/$issueId': typeof VerbIssuesIssueIdRouteRoute
+  '/$verb/issues/': typeof VerbIssuesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/issues/$issueId' | '/api/$' | '/issues/'
+  fullPaths:
+    | '/'
+    | '/$verb'
+    | '/api/$'
+    | '/issues/$'
+    | '/$verb/issues/$issueId'
+    | '/$verb/issues/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/issues/$issueId' | '/api/$' | '/issues'
-  id: '__root__' | '/' | '/issues/$issueId' | '/api/$' | '/issues/'
+  to:
+    | '/'
+    | '/$verb'
+    | '/api/$'
+    | '/issues/$'
+    | '/$verb/issues/$issueId'
+    | '/$verb/issues'
+  id:
+    | '__root__'
+    | '/'
+    | '/$verb'
+    | '/api/$'
+    | '/issues/$'
+    | '/$verb/issues/$issueId'
+    | '/$verb/issues/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  IssuesIssueIdRouteRoute: typeof IssuesIssueIdRouteRoute
+  VerbRouteRoute: typeof VerbRouteRouteWithChildren
   ApiSplatRoute: typeof ApiSplatRoute
-  IssuesIndexRoute: typeof IssuesIndexRoute
+  IssuesSplatRoute: typeof IssuesSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -78,6 +115,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$verb': {
+      id: '/$verb'
+      path: '/$verb'
+      fullPath: '/$verb'
+      preLoaderRoute: typeof VerbRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/$': {
       id: '/api/$'
       path: '/api/$'
@@ -85,28 +129,49 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/issues/': {
-      id: '/issues/'
-      path: '/issues'
-      fullPath: '/issues/'
-      preLoaderRoute: typeof IssuesIndexRouteImport
+    '/issues/$': {
+      id: '/issues/$'
+      path: '/issues/$'
+      fullPath: '/issues/$'
+      preLoaderRoute: typeof IssuesSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/issues/$issueId': {
-      id: '/issues/$issueId'
+    '/$verb/issues/': {
+      id: '/$verb/issues/'
+      path: '/issues'
+      fullPath: '/$verb/issues/'
+      preLoaderRoute: typeof VerbIssuesIndexRouteImport
+      parentRoute: typeof VerbRouteRoute
+    }
+    '/$verb/issues/$issueId': {
+      id: '/$verb/issues/$issueId'
       path: '/issues/$issueId'
-      fullPath: '/issues/$issueId'
-      preLoaderRoute: typeof IssuesIssueIdRouteRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/$verb/issues/$issueId'
+      preLoaderRoute: typeof VerbIssuesIssueIdRouteRouteImport
+      parentRoute: typeof VerbRouteRoute
     }
   }
 }
 
+interface VerbRouteRouteChildren {
+  VerbIssuesIssueIdRouteRoute: typeof VerbIssuesIssueIdRouteRoute
+  VerbIssuesIndexRoute: typeof VerbIssuesIndexRoute
+}
+
+const VerbRouteRouteChildren: VerbRouteRouteChildren = {
+  VerbIssuesIssueIdRouteRoute: VerbIssuesIssueIdRouteRoute,
+  VerbIssuesIndexRoute: VerbIssuesIndexRoute,
+}
+
+const VerbRouteRouteWithChildren = VerbRouteRoute._addFileChildren(
+  VerbRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  IssuesIssueIdRouteRoute: IssuesIssueIdRouteRoute,
+  VerbRouteRoute: VerbRouteRouteWithChildren,
   ApiSplatRoute: ApiSplatRoute,
-  IssuesIndexRoute: IssuesIndexRoute,
+  IssuesSplatRoute: IssuesSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
