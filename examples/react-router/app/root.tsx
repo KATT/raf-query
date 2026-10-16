@@ -32,6 +32,7 @@ import {
 
 import { AppLink, PrefetchContext } from "~/components/app-link.tsx";
 import { Settings } from "~/components/settings.tsx";
+import { createAppQueryClient, queryClientContext } from "~/query-client.ts";
 import {
 	DEFAULT_PREFETCH,
 	type Prefetch,
@@ -45,6 +46,14 @@ import "./app.css";
 
 export const links: Route.LinksFunction = () => [
 	{ href: logoUrl, rel: "icon", type: "image/svg+xml" },
+];
+
+/** One query client per request, for every loader the request runs. */
+export const middleware: Array<Route.MiddlewareFunction> = [
+	(args) => {
+		const client = withRequest(args.request, createAppQueryClient);
+		args.context.set(queryClientContext, client.queryClient);
+	},
 ];
 
 export function loader(args: Route.LoaderArgs) {
@@ -104,6 +113,7 @@ export default function App(props: Route.ComponentProps) {
 						</AppLink>
 					}
 					framework="React Router"
+					loaders="server"
 					settings={
 						<AppSettings
 							onPrefetchChange={setPrefetch}
