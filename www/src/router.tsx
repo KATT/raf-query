@@ -15,6 +15,11 @@ export function getRouter() {
 	const router = createRouter({
 		context: { queryClient },
 		defaultNotFoundComponent: NotFound,
+		// Page changes animate as a whole (styles.css). Search-only changes, like
+		// the homepage framework switch, run their own React <ViewTransition>.
+		defaultViewTransition: {
+			types: (change) => (change.pathChanged ? ["page"] : false),
+		},
 		// Hovering a link loads the page's content chunk into the query cache,
 		// so the click renders without waiting.
 		defaultPreload: "intent",
