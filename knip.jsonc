@@ -64,10 +64,10 @@
 		"packages/react": {
 			"includeEntryExports": false,
 		},
-		"packages/vue": {
+		".experimental/vue/package": {
 			"includeEntryExports": false,
 		},
-		"packages/svelte": {
+		".experimental/svelte/package": {
 			"includeEntryExports": false,
 		},
 		".experimental/tanstack-query/package": {
@@ -155,9 +155,7 @@
 				"@samples/react-router",
 				"@samples/react-router-spa",
 				"@samples/tanstack-start",
-				"@samples/sveltekit",
 				"@samples/tanstack-start-effect",
-				"@samples/vue",
 				"sample",
 			],
 		},
@@ -168,11 +166,11 @@
 			"entry": ["src/**/*.{ts,tsx}"],
 			"includeEntryExports": false,
 		},
-		"www/samples/sveltekit": {
+		".experimental/svelte/sample": {
 			"entry": ["src/**/*.{ts,svelte}"],
 			"includeEntryExports": false,
 		},
-		"www/samples/vue": {
+		".experimental/vue/sample": {
 			"entry": ["src/**/*.{ts,vue}"],
 			"includeEntryExports": false,
 		},

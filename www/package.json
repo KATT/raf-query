@@ -33,8 +33,6 @@
 		"@samples/react-router-spa": "workspace:*",
 		"@samples/tanstack-start": "workspace:*",
 		"@samples/tanstack-start-effect": "workspace:*",
-		"@samples/sveltekit": "workspace:*",
-		"@samples/vue": "workspace:*",
 		"@shikijs/rehype": "4.5.0",
 		"@shikijs/twoslash": "4.5.0",
 		"@tailwindcss/typography": "0.5.20",

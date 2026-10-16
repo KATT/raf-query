@@ -29,14 +29,14 @@ export function appOf(
 	return apps.find((app) => file.startsWith(`${app}${path.sep}`));
 }
 
-/** Writes `src/routeTree.gen.ts` for each sample app with `src/routes/__root.tsx`, like TanStack Start's plugin does. */
+/** Writes `src/routeTree.gen.ts` for each sample app with `src/routes`, like TanStack Start's plugin does. */
 export const generateRouteTrees = Effect.fn("generateRouteTrees")(function* (
 	samplesDir: string,
 ) {
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path;
 	const apps = yield* Effect.filter(yield* sampleApps(samplesDir), (app) =>
-		fs.exists(path.join(app, "src/routes/__root.tsx")),
+		fs.exists(path.join(app, "src/routes")),
 	);
 	yield* Effect.forEach(
 		apps,
@@ -65,73 +65,42 @@ export const generateRouteTrees = Effect.fn("generateRouteTrees")(function* (
 	);
 });
 
-/** Runs an app's own CLI from its `node_modules/.bin`, failing on a nonzero exit. */
-const runBin = Effect.fn("runBin")(function* (
-	app: string,
-	bin: string,
-	args: ReadonlyArray<string>,
-) {
-	const path = yield* Path.Path;
-	const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-	const command = [bin, ...args].join(" ");
-	const exitCode = yield* spawner
-		.exitCode(
-			ChildProcess.make(path.join(app, "node_modules/.bin", bin), args, {
-				cwd: app,
-				stderr: "inherit",
-				stdout: "ignore",
-			}),
-		)
-		.pipe(
-			Effect.mapError(
-				(cause) =>
-					new ContentError({
-						cause,
-						message: `${app}: couldn't run ${command}`,
-					}),
-			),
-		);
-	if (exitCode !== 0) {
-		return yield* new ContentError({
-			message: `${app}: ${command} exited with ${exitCode}`,
-		});
-	}
-});
-
 /** Writes `.react-router/types` for each sample app with `react-router.config.ts`, like `react-router typegen`. */
 export const generateRouteTypes = Effect.fn("generateRouteTypes")(function* (
 	samplesDir: string,
 ) {
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path;
+	const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
 	const apps = yield* Effect.filter(yield* sampleApps(samplesDir), (app) =>
 		fs.exists(path.join(app, "react-router.config.ts")),
 	);
 	yield* Effect.forEach(
 		apps,
-		(app) => runBin(app, "react-router", ["typegen"]),
-		{
-			concurrency: "unbounded",
-			discard: true,
-		},
+		Effect.fnUntraced(function* (app) {
+			const exitCode = yield* spawner
+				.exitCode(
+					ChildProcess.make(
+						path.join(app, "node_modules/.bin/react-router"),
+						["typegen"],
+						{ cwd: app, stderr: "inherit", stdout: "ignore" },
+					),
+				)
+				.pipe(
+					Effect.mapError(
+						(cause) =>
+							new ContentError({
+								cause,
+								message: `${app}: couldn't run react-router typegen`,
+							}),
+					),
+				);
+			if (exitCode !== 0) {
+				return yield* new ContentError({
+					message: `${app}: react-router typegen exited with ${exitCode}`,
+				});
+			}
+		}),
+		{ concurrency: "unbounded", discard: true },
 	);
-});
-
-/**
- * Writes `.svelte-kit/` and `node_modules/$app/tsconfig.json` for each sample
- * app with SvelteKit, like `svelte-kit sync`: its `tsconfig.json` extends the
- * generated one, and its routes import the generated `./$types`.
- */
-export const syncKitApps = Effect.fn("syncKitApps")(function* (
-	samplesDir: string,
-) {
-	const fs = yield* FileSystem.FileSystem;
-	const path = yield* Path.Path;
-	const apps = yield* Effect.filter(yield* sampleApps(samplesDir), (app) =>
-		fs.exists(path.join(app, "node_modules/.bin/svelte-kit")),
-	);
-	yield* Effect.forEach(apps, (app) => runBin(app, "svelte-kit", ["sync"]), {
-		concurrency: "unbounded",
-		discard: true,
-	});
 });

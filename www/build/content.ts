@@ -8,11 +8,7 @@ import { parse as parseYaml } from "yaml";
 import type { Doc, DocMeta, DocSection, Sample } from "../src/content/types.ts";
 import { stripCollapseMarkers } from "./collapse.ts";
 import { ContentError, messageOf } from "./content-error.ts";
-import {
-	generateRouteTrees,
-	generateRouteTypes,
-	syncKitApps,
-} from "./sample-apps.ts";
+import { generateRouteTrees, generateRouteTypes } from "./sample-apps.ts";
 import { renderMarkdown } from "./markdown.ts";
 import { expandSnippets } from "./snippets.ts";
 
@@ -427,11 +423,7 @@ export function docsContent(options: ContentOptions): Plugin {
 		async buildStart() {
 			generated ??= run(
 				Effect.all(
-					[
-						generateRouteTrees(samplesDir),
-						generateRouteTypes(samplesDir),
-						syncKitApps(samplesDir),
-					],
+					[generateRouteTrees(samplesDir), generateRouteTypes(samplesDir)],
 					{ concurrency: "unbounded" },
 				),
 			);

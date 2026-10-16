@@ -10,7 +10,7 @@ raf-query is a data-fetching library for React built around **render-as-you-fetc
 The cache's mechanics (dedupe, staleness, retries, infinite paging, SSR hydration) follow [TanStack Query](https://tanstack.com/query). The public API is built around loaders, RSC and `use()` instead of `useQuery`-in-render.
 
 > [!NOTE]
-> raf-query is early. Its packages are on npm at `0.x`, and the API can still change between minor releases.
+> raf-query is early. Both packages are on npm at `0.x`, and the API can still change between minor releases.
 
 ## Motivation
 
@@ -47,12 +47,10 @@ starting-queries
 
 ## Packages
 
-| Package             | Contents                                                                                                                                                                       |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@raf-query/core`   | Framework-agnostic: `QueryClient` (the cache with Promise methods), its Effect `QueryCache`, `queryOptions` / `infiniteQueryOptions`, handles, `allKeyed`, dehydrate / hydrate |
-| `@raf-query/react`  | Hooks, providers, `HydrationBoundary`. Re-exports `@raf-query/core`, so apps import only this package                                                                          |
-| `@raf-query/vue`    | Experimental. Composables, `QueryPlugin`, `HydrationBoundary` for [Vue](./vue.md). Re-exports `@raf-query/core`                                                                |
-| `@raf-query/svelte` | Experimental. Runes, `QueryClientProvider`, `HydrationBoundary` for [Svelte](./svelte.md). Re-exports `@raf-query/core`                                                        |
+| Package            | Contents                                                                                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@raf-query/core`  | Framework-agnostic: `QueryClient` (the cache with Promise methods), its Effect `QueryCache`, `queryOptions` / `infiniteQueryOptions`, handles, `allKeyed`, dehydrate / hydrate |
+| `@raf-query/react` | Hooks, providers, `HydrationBoundary`. Re-exports `@raf-query/core`, so apps import only this package                                                                          |
 
 `@raf-query/react` has subpath entries for framework integrations and tooling:
 

@@ -5,7 +5,7 @@ section: Getting started
 order: 2
 ---
 
-Apps install one package, `@raf-query/react`. It re-exports everything from `@raf-query/core`, so you never import core directly. Vue and Svelte apps install the experimental `@raf-query/vue` ([Vue](./vue.md)) or `@raf-query/svelte` ([Svelte](./svelte.md)) instead.
+Apps install one package, `@raf-query/react`. It re-exports everything from `@raf-query/core`, so you never import core directly.
 
 ```bash
 npm install @raf-query/react effect

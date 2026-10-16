@@ -496,9 +496,12 @@
 			}
 		},
 		{
-			// Experiment libraries (always `package/`) are not app code; the
-			// callback-inference rules above are for examples.
-			"files": [".experimental/*/package/src/**/*.{ts,tsx}"],
+			// Experiment libraries (always `package/`) and docs samples (`sample/`)
+			// are not app code; the callback-inference rules above are for examples.
+			"files": [
+				".experimental/*/package/src/**/*.{ts,tsx}",
+				".experimental/*/sample/src/**/*.{ts,tsx}"
+			],
 			"rules": {
 				"workspace/infer-callback-params": "off",
 				"workspace/inline-jsx-callback": "off"
@@ -524,7 +527,10 @@
 			// `setup` or a component's `<script>`, not on every render, and React
 			// Compiler never sees them, so neither React's rules of hooks nor the
 			// compiler's rules apply.
-			"files": ["packages/vue/src/**", "packages/svelte/{src,test}/**"],
+			"files": [
+				".experimental/vue/package/src/**",
+				".experimental/svelte/package/{src,test}/**"
+			],
 			"rules": {
 				"react-hooks/rules-of-hooks": "off",
 				"react/rules-of-hooks": "off",
@@ -572,7 +578,8 @@
 			// need.
 			"files": [
 				"www/samples/*/src/**/*.{ts,tsx}",
-				"www/samples/react-router*/app/**/*.{ts,tsx}"
+				"www/samples/react-router*/app/**/*.{ts,tsx}",
+				".experimental/*/sample/src/**/*.{ts,tsx}"
 			],
 			"rules": {
 				"anti-slop/require-safety-comment-for-type-assertion": "off",
@@ -605,7 +612,7 @@
 		},
 		{
 			// `<script setup>` compiler macros, which the Vue compiler replaces.
-			"files": ["www/samples/vue/src/**/*.vue"],
+			"files": [".experimental/vue/sample/src/**/*.vue"],
 			"globals": {
 				"defineEmits": "readonly",
 				"defineModel": "readonly",
@@ -622,7 +629,8 @@
 			// code rules don't fit.
 			"files": [
 				"www/samples/*/src/docs/**/*.{ts,tsx}",
-				"www/samples/react-router*/app/docs/**/*.{ts,tsx}"
+				"www/samples/react-router*/app/docs/**/*.{ts,tsx}",
+				".experimental/*/sample/src/docs/**/*.{ts,tsx}"
 			],
 			"rules": {
 				"anti-slop/no-runtime-typeof": "off",
