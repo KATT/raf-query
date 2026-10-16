@@ -5,12 +5,12 @@ import { cn } from "@examples/ui/lib/utils";
 import type { ReactNode } from "react";
 
 const hints = {
-	prefetch:
-		"Never waits: pages open at once, and each part shows a skeleton until its data lands.",
 	ensure:
 		"Waits for data the cache doesn't have. Cached data shows at once, even when stale, and refetches behind it.",
 	fetch:
 		"Waits for fresh data: on a cache miss, and when the cached data is stale.",
+	prefetch:
+		"Never waits: pages open at once, and each part shows a skeleton until its data lands.",
 } satisfies Record<LoaderVerb, string>;
 
 /** The class for each verb's link; the app renders the links with its router. */

@@ -51,9 +51,17 @@ export function useQueryData<TFactory extends QueryFactory>(
 		UseQueryControls<TFactory>,
 	];
 	if ("data" in handle) {
-		// SAFETY: see above; a handle with data gets its data.
-		return [value as DataOf<TFactory>, controls];
+		return [
+			// SAFETY: see above; a handle with data gets its data.
+			value as DataOf<TFactory>,
+			controls,
+		];
 	}
-	// SAFETY: see above; a handle without data gets a promise.
-	return [use(value as Promise<DataOf<TFactory>>), controls];
+	return [
+		use(
+			// SAFETY: see above; a handle without data gets a promise.
+			value as Promise<DataOf<TFactory>>,
+		),
+		controls,
+	];
 }

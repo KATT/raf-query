@@ -3,7 +3,12 @@ import {
 	LoaderVerbBar,
 	loaderVerbLinkClassName,
 } from "@examples/kit/components/loader-verb";
-import { createFileRoute, Link, notFound, Outlet } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	Link,
+	notFound,
+	Outlet,
+} from "@tanstack/react-router";
 
 /**
  * `/prefetch/…`, `/ensure/…`, `/fetch/…`: the first segment picks how the
@@ -23,14 +28,14 @@ export const Route = createFileRoute("/$verb")({
 });
 
 function VerbLayout() {
-	const { verb } = Route.useParams();
+	const params = Route.useParams();
 
 	return (
 		<>
-			<LoaderVerbBar verb={verb}>
+			<LoaderVerbBar verb={params.verb}>
 				{loaderVerbs.map((next) => (
 					<Link
-						className={loaderVerbLinkClassName(next === verb)}
+						className={loaderVerbLinkClassName(next === params.verb)}
 						key={next}
 						params={(prev) => ({ ...prev, verb: next })}
 						search={(prev) => prev}

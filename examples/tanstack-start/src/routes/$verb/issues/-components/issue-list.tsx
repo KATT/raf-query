@@ -18,7 +18,7 @@ import { issueListQuery } from "~/queries.ts";
 export function IssueList(props: {
 	readonly handle: QueryHandle<typeof issueListQuery>;
 }) {
-	const { verb } = useParams({ from: "/$verb" });
+	const params = useParams({ from: "/$verb" });
 	const [pages, list] = useQueryData(issueListQuery, props.handle, {
 		whilePending: "previous",
 	});
@@ -49,7 +49,7 @@ export function IssueList(props: {
 							<Link
 								className={issueRowClassName}
 								key={issue.id}
-								params={{ issueId: String(issue.id), verb }}
+								params={{ issueId: String(issue.id), verb: params.verb }}
 								to="/$verb/issues/$issueId"
 							>
 								<IssueRow issue={issue}>

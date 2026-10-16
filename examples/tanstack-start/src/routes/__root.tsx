@@ -48,7 +48,7 @@ export const Route = createRootRouteWithContext<{
 function RootDocument(props: { readonly children: ReactNode }) {
 	const router = useRouter();
 	const [prefetch, setPrefetch] = useState(readPrefetch);
-	const { verb } = useParams({ strict: false });
+	const params = useParams({ strict: false });
 
 	return (
 		<html lang="en" suppressHydrationWarning>
@@ -62,7 +62,7 @@ function RootDocument(props: { readonly children: ReactNode }) {
 							<Link
 								className="flex items-center gap-2.5 font-semibold"
 								key={prefetch}
-								params={{ verb: verb ?? DEFAULT_LOADER_VERB }}
+								params={{ verb: params.verb ?? DEFAULT_LOADER_VERB }}
 								to="/$verb/issues"
 							>
 								<Logo alt="" />

@@ -27,9 +27,9 @@ export function StatusFilter(props: {
 							"flex justify-between gap-2 rounded-md px-3 py-1.5 text-sm hover:bg-muted",
 							current.status === status && "bg-muted font-medium",
 						)}
+						from="/$verb/issues/"
 						key={status}
 						search={{ ...current, status }}
-						from="/$verb/issues/"
 						to="."
 					>
 						{statusLabel(status)}
@@ -47,9 +47,9 @@ export function StatusFilter(props: {
 							"rounded-md px-3 py-1.5 text-sm capitalize hover:bg-muted",
 							current.sort === sort && "bg-muted font-medium",
 						)}
+						from="/$verb/issues/"
 						key={sort}
 						search={{ ...current, sort }}
-						from="/$verb/issues/"
 						to="."
 					>
 						{sort}
