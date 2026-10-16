@@ -3,14 +3,13 @@ import {
 	issueSorts,
 	issueStatuses,
 } from "@examples/db/types";
-import type { QueryHandle } from "@raf-query/react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
 import { statusLabel } from "@examples/kit/components/status-badge";
 import { cn } from "@examples/ui/lib/utils";
+import { use } from "react";
 
 import { AppLink } from "~/components/app-link.tsx";
-import { useLoaderVerb } from "~/loader-verb.ts";
 import { issueCountsQuery } from "~/queries.ts";
-import { useQueryData } from "~/use-query-data.ts";
 
 function issuesSearch(input: IssueListInput) {
 	const params = new URLSearchParams();
@@ -28,8 +27,8 @@ export function StatusFilter(props: {
 	readonly counts: QueryHandle<typeof issueCountsQuery>;
 	readonly current: IssueListInput;
 }) {
-	const verb = useLoaderVerb();
-	const [counts] = useQueryData(issueCountsQuery, props.counts);
+	const [countsPromise] = useQuery(issueCountsQuery, props.counts);
+	const counts = use(countsPromise);
 	const current = props.current;
 
 	return (
@@ -42,7 +41,7 @@ export function StatusFilter(props: {
 							current.status === status && "bg-muted font-medium",
 						)}
 						key={status}
-						to={`/${verb}/issues${issuesSearch({ ...current, status })}`}
+						to={`/prefetch/issues${issuesSearch({ ...current, status })}`}
 					>
 						{statusLabel(status)}
 						<span className="text-muted-foreground">{counts[status]}</span>
@@ -60,7 +59,7 @@ export function StatusFilter(props: {
 							current.sort === sort && "bg-muted font-medium",
 						)}
 						key={sort}
-						to={`/${verb}/issues${issuesSearch({ ...current, sort })}`}
+						to={`/prefetch/issues${issuesSearch({ ...current, sort })}`}
 					>
 						{sort}
 					</AppLink>

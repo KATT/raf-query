@@ -1,4 +1,4 @@
-import type { QueryHandle } from "@raf-query/react";
+import { type QueryHandleWithData, useQuery } from "@raf-query/react";
 import { Card } from "@examples/ui/components/card";
 import {
 	IssueListSummary,
@@ -12,15 +12,12 @@ import { cn } from "@examples/ui/lib/utils";
 
 import { AppLink } from "~/components/app-link.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
-import { useLoaderVerb } from "~/loader-verb.ts";
 import { issueListQuery } from "~/queries.ts";
-import { useQueryData } from "~/use-query-data.ts";
 
 export function IssueList(props: {
-	readonly handle: QueryHandle<typeof issueListQuery>;
+	readonly handle: QueryHandleWithData<typeof issueListQuery>;
 }) {
-	const verb = useLoaderVerb();
-	const [pages, list] = useQueryData(issueListQuery, props.handle, {
+	const [pages, list] = useQuery(issueListQuery, props.handle, {
 		whilePending: "previous",
 	});
 	const lastPage = pages.pages.at(-1);
@@ -50,7 +47,7 @@ export function IssueList(props: {
 							<AppLink
 								className={issueRowClassName}
 								key={issue.id}
-								to={`/${verb}/issues/${issue.id}`}
+								to={`/ensure/issues/${issue.id}`}
 							>
 								<IssueRow issue={issue}>
 									<StatusSelect issueId={issue.id} status={issue.status} />

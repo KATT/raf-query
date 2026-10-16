@@ -7,6 +7,7 @@ import {
 } from "@examples/db/types";
 import { AppHeader } from "@examples/kit/components/app-header";
 import { Logo } from "@examples/kit/components/logo";
+import { loaderVerbOf } from "@examples/kit/lib/loader-verb";
 import { ThemeProvider } from "@examples/kit/components/theme-provider";
 import { Toaster } from "@examples/ui/components/sonner";
 import { logoUrl } from "@examples/kit/lib/logo";
@@ -24,10 +25,10 @@ import {
 	Outlet,
 	Scripts,
 	ScrollRestoration,
+	useLocation,
 } from "react-router";
 
 import { AppLink, PrefetchContext } from "~/components/app-link.tsx";
-import { useLoaderVerb } from "~/loader-verb.ts";
 import { Settings } from "~/components/settings.tsx";
 import {
 	DEFAULT_PREFETCH,
@@ -80,7 +81,7 @@ export default function App(props: Route.ComponentProps) {
 		}
 		return { queryClient: client, queryDefaults: defaults };
 	});
-	const verb = useLoaderVerb();
+	const verb = loaderVerbOf(useLocation().pathname);
 	const [prefetch, setPrefetch] = useState(
 		() => props.loaderData.prefetch ?? DEFAULT_PREFETCH,
 	);

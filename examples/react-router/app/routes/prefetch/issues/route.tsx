@@ -1,11 +1,10 @@
 import { IssueListInput } from "@examples/db/types";
 import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { allKeyed, dehydrate } from "@raf-query/react";
+import { dehydrate } from "@raf-query/react";
 import { HydrationBoundary } from "@raf-query/react";
 import { Suspense } from "react";
 
-import { parseLoaderVerb, startQuery } from "~/loader-verb.ts";
 import { createAppQueryClient } from "~/query-client.ts";
 import { issueCountsQuery, issueListQuery } from "~/queries.ts";
 import { withRequest } from "~/settings.ts";
@@ -14,17 +13,18 @@ import type { Route } from "./+types/route";
 import { IssueList } from "./components/issue-list.tsx";
 import { StatusFilter } from "./components/status-filter.tsx";
 
-export async function loader(args: Route.LoaderArgs) {
-	return withRequest(args.request, async () => {
-		const verb = parseLoaderVerb(args.params.verb);
+export function loader(args: Route.LoaderArgs) {
+	return withRequest(args.request, () => {
 		const input = IssueListInput.parse(
 			Object.fromEntries(new URL(args.request.url).searchParams),
 		);
 		const { queryClient } = createAppQueryClient();
-		const handles = await allKeyed({
-			counts: startQuery(queryClient, verb, issueCountsQuery),
-			issues: startQuery(queryClient, verb, issueListQuery, input),
-		});
+		// `prefetch` starts each query and returns its handle at once. The page
+		// streams in behind skeletons.
+		const handles = {
+			counts: queryClient.prefetch(issueCountsQuery),
+			issues: queryClient.prefetch(issueListQuery, input),
+		};
 		return {
 			counts: handles.counts,
 			dehydratedState: dehydrate(queryClient),

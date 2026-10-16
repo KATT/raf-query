@@ -8,7 +8,12 @@ import { AssigneeCardSkeleton } from "@examples/kit/components/user";
 import { Button, buttonVariants } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
 import { cn } from "@examples/ui/lib/utils";
-import { allKeyed, dehydrate, type QueryHandle } from "@raf-query/react";
+import {
+	allKeyed,
+	dehydrate,
+	type QueryHandleWithData,
+	useQuery,
+} from "@raf-query/react";
 import { HydrationBoundary } from "@raf-query/react";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Suspense } from "react";
@@ -19,11 +24,8 @@ import { EditBody } from "~/components/edit-body.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
 import { NotFound } from "~/components/not-found.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
-import { parseLoaderVerb, startQuery } from "~/loader-verb.ts";
 import { createAppQueryClient } from "~/query-client.ts";
-import { useLoaderVerb } from "~/loader-verb.ts";
 import { assigneeQuery, commentsQuery, issueQuery } from "~/queries.ts";
-import { useQueryData } from "~/use-query-data.ts";
 import { withRequest } from "~/settings.ts";
 
 import type { Route } from "./+types/route";
@@ -32,20 +34,19 @@ import { Comments } from "./components/comments.tsx";
 
 export async function loader(args: Route.LoaderArgs) {
 	return withRequest(args.request, async () => {
-		const verb = parseLoaderVerb(args.params.verb);
 		const id = Number(args.params.issueId);
 		if (!IssueId.safeParse(id).success) {
 			throw new Response("Not Found", { status: 404 });
 		}
 		const { queryClient } = createAppQueryClient();
+		// `fetch` waits for fresh data: on a cache miss, and when the cached
+		// data is stale.
 		const handles = await allKeyed({
-			assignee: startQuery(queryClient, verb, assigneeQuery, { issueId: id }),
-			comments: startQuery(queryClient, verb, commentsQuery, { issueId: id }),
-			issue: startQuery(queryClient, verb, issueQuery, { id }),
+			assignee: queryClient.fetch(assigneeQuery, { issueId: id }),
+			comments: queryClient.fetch(commentsQuery, { issueId: id }),
+			issue: queryClient.fetch(issueQuery, { id }),
 		});
-		// `ensure` and `fetch` waited for the issue, so a missing one 404s
-		// here. After `prefetch`, the page finds out when it reads the issue.
-		if ("data" in handles.issue && handles.issue.data === null) {
+		if (handles.issue.data === null) {
 			throw new Response("Not Found", { status: 404 });
 		}
 		return {
@@ -112,12 +113,11 @@ export function ErrorBoundary(props: Route.ErrorBoundaryProps) {
 }
 
 function IssueNav(props: { readonly id: number }) {
-	const verb = useLoaderVerb();
 	return (
 		<nav className="flex items-center gap-2">
 			<AppLink
 				className={cn(buttonVariants({ size: "sm", variant: "ghost" }))}
-				to={`/${verb}/issues`}
+				to="/fetch/issues"
 			>
 				<ArrowLeft /> All issues
 			</AppLink>
@@ -127,7 +127,7 @@ function IssueNav(props: { readonly id: number }) {
 						aria-label="Previous issue"
 						className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
 						title="Previous issue"
-						to={`/${verb}/issues/${props.id - 1}`}
+						to={`/fetch/issues/${props.id - 1}`}
 					>
 						<ChevronLeft />
 					</AppLink>
@@ -146,7 +146,7 @@ function IssueNav(props: { readonly id: number }) {
 					aria-label="Next issue"
 					className={cn(buttonVariants({ size: "icon", variant: "outline" }))}
 					title="Next issue"
-					to={`/${verb}/issues/${props.id + 1}`}
+					to={`/fetch/issues/${props.id + 1}`}
 				>
 					<ChevronRight />
 				</AppLink>
@@ -162,15 +162,17 @@ function IssueNav(props: { readonly id: number }) {
  */
 const issueNotFound = new Response("Not Found", { status: 404 });
 
-function useIssue(handle: QueryHandle<typeof issueQuery>) {
-	const [issue] = useQueryData(issueQuery, handle);
+function useIssue(handle: QueryHandleWithData<typeof issueQuery>) {
+	const [issue] = useQuery(issueQuery, handle);
 	if (!issue) {
 		throw issueNotFound;
 	}
 	return issue;
 }
 
-function IssueBody(props: { readonly handle: QueryHandle<typeof issueQuery> }) {
+function IssueBody(props: {
+	readonly handle: QueryHandleWithData<typeof issueQuery>;
+}) {
 	const issue = useIssue(props.handle);
 
 	return (
@@ -185,7 +187,7 @@ function IssueBody(props: { readonly handle: QueryHandle<typeof issueQuery> }) {
 }
 
 function IssueStatus(props: {
-	readonly handle: QueryHandle<typeof issueQuery>;
+	readonly handle: QueryHandleWithData<typeof issueQuery>;
 }) {
 	const issue = useIssue(props.handle);
 	return <StatusSelect align="end" issueId={issue.id} status={issue.status} />;
