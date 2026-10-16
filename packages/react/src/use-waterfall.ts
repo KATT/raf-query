@@ -8,7 +8,7 @@ import {
 } from "@raf-query/core";
 import { useState } from "react";
 
-import { startsRequests } from "./browser-requests.ts";
+import { startsRequests } from "./query-provider/browser-requests.ts";
 import { useQueryClient } from "./provider.tsx";
 
 /**

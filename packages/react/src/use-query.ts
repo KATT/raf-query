@@ -19,7 +19,7 @@ import {
 import { Effect, Result } from "effect";
 import { use, useEffect, useState, useSyncExternalStore } from "react";
 
-import { assertSent } from "./browser-requests.ts";
+import { assertSent } from "./query-provider/browser-requests.ts";
 import type { QueryClient } from "./client.ts";
 import { useQueryClient } from "./provider.tsx";
 
