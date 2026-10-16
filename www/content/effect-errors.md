@@ -1,13 +1,13 @@
 ---
-title: Typed errors
+title: Effect typed errors
 description: An Effect queryFn's error type is the query's. useQuery returns a Result so you match failures inline; catchTag in loaders and actions; or throwOnError to an error boundary.
-section: Effect
-order: 3
+section: Integrations
+order: 6
 ---
 
-An Effect `queryFn`'s error type is the query's error type. It flows through the factory: `ErrorOf<TFactory>` names it, and every verb on the cache fails with it. Catch the failures you expect with `Effect.catchTag`, and the type tells you what's left.
+An Effect `queryFn`'s error type is the query's error type. It flows through the factory: `ErrorOf<TFactory>` names it, and every verb on the cache fails with it. Catch the failures you expect with [`Effect.catchTag`](https://effect.website/docs/v4/api/effect/Effect#catchTag), and the type tells you what's left.
 
-In React, a client with a `layer` defaults to `throwOnError: false`: `useQuery` gives you a `Result<Data, ErrorOf>` so you match failures inline with Effect's `Result`. Promise `queryFn`s keep a rejecting promise — their `ErrorOf` is `unknown`, so a `Result` would not help.
+In React, a client with a `layer` defaults to `throwOnError: false`: `useQuery` gives you a `Result<Data, ErrorOf>` so you match failures inline with Effect's [`Result`](https://effect.website/docs/v4/data-types/result). Promise `queryFn`s keep a rejecting promise — their `ErrorOf` is `unknown`, so a `Result` would not help.
 
 The examples use the issue tracker from [Using Effect](./effect.md#the-whole-picture): an `IssueApi` service whose methods fail with `IssueNotFound`, `Unauthorized` and `EmptyTitle`.
 
@@ -37,7 +37,7 @@ tanstack-start-effect/src/docs/effect-errors.retry-predicate.ts#retry-predicate
 
 ## Catch it where you call
 
-Loaders that only `prefetch` or `ensure` use the Promise verbs, the same as a non-Effect app. When the loader itself needs Effect — a typed `catchTag`, or `yield*` of a service — write it as an `Effect.fn` that `yield*`s the `QueryCache` service, and run it with `queryClient.runPromise`. That runs it with the services of the client's [layer](./effect-services.md#services-in-queryclient), as Effect's `ManagedRuntime` does. The failures stay typed until the Effect catches them, and the promise rejects with whatever is left.
+Loaders that only `prefetch` or `ensure` use the Promise verbs, the same as a non-Effect app. When the loader itself needs Effect — a typed `catchTag`, or `yield*` of a service — write it as an [`Effect.fn`](https://effect.website/docs/v4/api/effect/Effect#fn-variable) that `yield*`s the `QueryCache` service, and run it with `queryClient.runPromise`. That runs it with the services of the client's [layer](./effect-services.md#services-in-queryclient), as Effect's [`ManagedRuntime`](https://effect.website/docs/v4/api/effect/ManagedRuntime) does. The failures stay typed until the Effect catches them, and the promise rejects with whatever is left.
 
 A loader can turn a typed failure into the router's own error. Here a missing issue becomes TanStack Router's `notFound()`, so the route renders its not-found page, and anything else reaches `errorComponent`:
 
@@ -47,7 +47,7 @@ tanstack-start-effect/src/docs/effect-errors.route.tsx#catch-it-where-you-call
 
 `catchTag("IssueNotFound", …)` type-checks because `ErrorOf<typeof issueQuery>` includes that tag. Leave a tag out and TypeScript rejects the call.
 
-A form action can catch every failure it declares into the message the form shows. `Effect.catchTags` lists them, and the Effect is left with `never` in its error channel, so its promise never rejects:
+A form action can catch every failure it declares into the message the form shows. [`Effect.catchTags`](https://effect.website/docs/v4/api/effect/Effect#catchTags) lists them, and the Effect is left with `never` in its error channel, so its promise never rejects:
 
 ```sample title="src/components/rename-form.tsx"
 tanstack-start-effect/src/docs/effect-errors.tsx#catch-it-where-you-call
@@ -70,4 +70,4 @@ You don't have to match a `Result`. Set `throwOnError: true` on the client or on
 tanstack-start-effect/src/docs/effect-errors.or-let-it-throw.tsx#or-let-it-throw
 ```
 
-A query that failed during server rendering rejects in the browser with a `RedactedError`, unless the integration sets `keepErrors` ([SSR and hydration](./ssr-and-hydration.md#errors)), so `Schema.is` is false for it. The fallback branch covers it, and resetting the boundary refetches from the browser, where the failure keeps its type.
+A query that failed during server rendering rejects in the browser with a `RedactedError`, unless the integration sets `keepErrors` ([SSR and hydration](./ssr-and-hydration.md#errors)), so [`Schema.is`](https://effect.website/docs/v4/api/effect/Schema#is) is false for it. The fallback branch covers it, and resetting the boundary refetches from the browser, where the failure keeps its type.
