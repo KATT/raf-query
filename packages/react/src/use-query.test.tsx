@@ -366,6 +366,123 @@ describe("useQuery", () => {
 		cleanup();
 	});
 
+	describe("a component that reads the promise's status, not use()", () => {
+		function setupStatus() {
+			const test = setup();
+			function IssueStatus(props: {
+				readonly handle: QueryHandle<typeof test.backend.issueQuery>;
+			}) {
+				const [issuePromise] = useQuery(test.backend.issueQuery, props.handle);
+				if (issuePromise.status === "rejected") {
+					return <p>{`Failed: ${String(issuePromise.reason)}`}</p>;
+				}
+				return (
+					<p>
+						{issuePromise.status === "fulfilled"
+							? issuePromise.value.title
+							: "…"}
+					</p>
+				);
+			}
+			return { ...test, IssueStatus };
+		}
+
+		it("re-renders when a prefetch's first load fulfills", async () => {
+			const test = setupStatus();
+			const handle = test.client.prefetch(test.backend.issueQuery, { id: 1 });
+
+			await mount(test.view(<test.IssueStatus handle={handle} />));
+			expect(screen.getByText("…")).toBeDefined();
+			await test.backend.respond();
+			expect(screen.getByText("First")).toBeDefined();
+			cleanup();
+		});
+
+		it("re-renders when a prefetch's first load rejects", async () => {
+			const test = setupStatus();
+			test.backend.issues.delete(1);
+			const handle = test.client.prefetch(test.backend.issueQuery, { id: 1 });
+
+			await mount(test.view(<test.IssueStatus handle={handle} />));
+			expect(screen.getByText("…")).toBeDefined();
+			await test.backend.respond();
+			expect(screen.getByText("Failed: Error: No issue 1")).toBeDefined();
+			cleanup();
+		});
+
+		it("re-renders when the first load lands with throwOnError: false", async () => {
+			const gate = Promise.withResolvers<string>();
+			function nameQuery() {
+				return queryOptions({
+					queryFn: () => Effect.promise(() => gate.promise),
+					queryKey: ["name"],
+				});
+			}
+			const client = new QueryClient({ isServer: false, layer: Layer.empty });
+			function Name(props: { readonly handle: QueryHandle<typeof nameQuery> }) {
+				const [namePromise] = useQuery(nameQuery, props.handle);
+				return (
+					<p>
+						{namePromise.status === "fulfilled"
+							? Result.getOrThrow(namePromise.value)
+							: "…"}
+					</p>
+				);
+			}
+
+			await mount(
+				<QueryClientProvider client={client}>
+					<Name handle={client.prefetch(nameQuery)} />
+				</QueryClientProvider>,
+			);
+			expect(screen.getByText("…")).toBeDefined();
+			await act(async () => {
+				gate.resolve("Ada");
+				await new Promise((resolve) => {
+					setTimeout(resolve, 10);
+				});
+			});
+			expect(screen.getByText("Ada")).toBeDefined();
+			cleanup();
+		});
+	});
+
+	it("resumes use() on a first load without suspending again", async () => {
+		const test = setup();
+		const renders = { fallback: 0, issue: 0 };
+		const seen = new Set<Promise<unknown>>();
+		function Fallback() {
+			renders.fallback++;
+			return <p>Loading</p>;
+		}
+		function Issue(props: {
+			readonly handle: QueryHandle<typeof test.backend.issueQuery>;
+		}) {
+			renders.issue++;
+			const [issuePromise] = useQuery(test.backend.issueQuery, props.handle);
+			seen.add(issuePromise);
+			const issue = use(issuePromise);
+			return <p>{issue.title}</p>;
+		}
+		const handle = test.client.prefetch(test.backend.issueQuery, { id: 1 });
+
+		await mount(
+			<QueryClientProvider client={test.client}>
+				<Suspense fallback={<Fallback />}>
+					<Issue handle={handle} />
+				</Suspense>
+			</QueryClientProvider>,
+		);
+		// React renders a suspending mount twice before showing the fallback.
+		expect(renders).toEqual({ fallback: 1, issue: 2 });
+		await test.backend.respond();
+
+		expect(screen.getByText("First")).toBeDefined();
+		expect(renders).toEqual({ fallback: 1, issue: 3 });
+		expect(seen.size).toBe(1);
+		cleanup();
+	});
+
 	it("doesn't re-render for retries of a background refetch", async () => {
 		const client = new QueryClient({ isServer: false });
 		let attempt = 0;
