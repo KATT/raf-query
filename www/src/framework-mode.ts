@@ -11,9 +11,6 @@ export type FrameworkMode = (typeof frameworkModes)[number];
 
 export const defaultFrameworkMode: FrameworkMode = "tanstack-start";
 
-/** Set on `<html>` before paint and after client navigations. */
-export const frameworkModeAttribute = "data-framework-mode";
-
 /** Defaults stripped from the URL by `stripSearchParams` on `/`. */
 export const homeSearchDefaults = {
 	mode: defaultFrameworkMode,
@@ -32,10 +29,6 @@ export const homeSearchSchema = z.object({
 
 export type HomeSearch = z.infer<typeof homeSearchSchema>;
 
-export function parseFrameworkMode(value: string | undefined): FrameworkMode {
-	return frameworkModes.find((mode) => mode === value) ?? defaultFrameworkMode;
-}
-
 /** Drop the default from the URL so `/` stays clean. */
 export function frameworkModeSearch(
 	mode: FrameworkMode,
@@ -49,7 +42,7 @@ export function frameworkModeSearch(
  * `frameworkModeScript`, so it can't close over module bindings — and it
  * assumes a browser document (the script only runs there).
  */
-export function applyFrameworkMode(mode: FrameworkMode) {
+function applyFrameworkMode(mode: FrameworkMode) {
 	document.documentElement.setAttribute("data-framework-mode", mode);
 	for (const panel of document.querySelectorAll("[data-framework-panel]")) {
 		const on = panel.getAttribute("data-framework-panel") === mode;

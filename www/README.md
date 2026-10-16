@@ -94,7 +94,7 @@ The name is a file in `src/demos/`, which default-exports `defineDemo({ Componen
 - To compare ways of doing the same thing, pass `variants` (each a `Component`, `server`, `label` and `description`) instead of `Component` and `server`. The frame shows a switch and gives each variant its own client. Every variant opened stays mounted in a hidden `<Activity>`, so switching back finds its page and requests as they were.
 - `DemoRouter` (`src/demo-kit/router.tsx`) runs a TanStack Router route tree in the demo's browser window, on a memory history, with the client as `context.queryClient`. Its Reload starts the variant over on the same URL. `DemoBrowser` is a smaller hand-rolled router that the other demos use.
 - The docs site registers its own router type, so demo routes name theirs: `route.useLoaderData<typeof router>()`, and `Link` with all its type parameters. See `src/demos/starting-queries.tsx`.
-- `pnpm test` runs the demos' tests (Vitest, happy-dom).
+- Demos have no tests: the docs site's presentation isn't unit tested. `pnpm test` runs the build's tests (`build/*.test.ts`): sample expansion and code folding.
 
 ## For agents
 

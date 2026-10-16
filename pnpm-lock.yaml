@@ -1145,9 +1145,6 @@ importers:
       '@tanstack/router-generator':
         specifier: 1.167.41
         version: 1.167.41
-      '@testing-library/react':
-        specifier: 16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@types/hast':
         specifier: 3.0.5
         version: 3.0.5
@@ -1175,9 +1172,6 @@ importers:
       github-slugger:
         specifier: 2.0.0
         version: 2.0.0
-      happy-dom:
-        specifier: 21.0.1
-        version: 21.0.1
       hast-util-to-html:
         specifier: 9.0.5
         version: 9.0.5
