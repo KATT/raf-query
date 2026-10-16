@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "@effect/vitest";
 import { Effect, Fiber, Stream } from "effect";
 
-import { Query, QueryObserver } from "./index.ts";
+import { Query, QueryObserver, type Thenable } from "./index.ts";
 import { createBackend, flush, makeCacheUnsafe } from "./test-utils.ts";
 
 async function setup() {
@@ -171,6 +171,221 @@ describe("QueryObserver", () => {
 			input: { id: 2 },
 			isPrevious: false,
 			promise: Query.getUnsafe(second).promise,
+		});
+	});
+
+	describe("select", () => {
+		async function setTitle(
+			test: Awaited<ReturnType<typeof setup>>,
+			title: string,
+		) {
+			Effect.runSync(
+				test.qc.setData(test.backend.issueQuery, { id: 1 }, { id: 1, title }),
+			);
+			await flush();
+		}
+
+		/** The value of a selection's promise, which the observer types as the query's data. */
+		function selectedValue<T>(promise: Thenable<unknown>): T {
+			if (promise.status !== "fulfilled") {
+				throw new Error(`Selection is ${promise.status}`);
+			}
+			// SAFETY: with `select`, the observer's promise holds what it
+			// returns; the observer's types don't follow `select`.
+			return promise.value as T;
+		}
+
+		it("settles the promise with what it returns", async () => {
+			const test = await setup();
+			const observer = QueryObserver.makeUnsafe(test.query, {
+				select: (issue: { title: string }) => issue.title.toUpperCase(),
+			});
+			expect(QueryObserver.getUnsafe(observer).promise).toMatchObject({
+				status: "fulfilled",
+				value: "FIRST",
+			});
+		});
+
+		it("keeps the promise, and doesn't notify, when the selection is deeply equal", async () => {
+			const test = await setup();
+			const select = vi.fn((issue: { id: number; title: string }) => ({
+				id: issue.id,
+			}));
+			const observer = QueryObserver.makeUnsafe(test.query, { select });
+			const listener = vi.fn();
+			QueryObserver.subscribeUnsafe(observer, listener);
+			QueryObserver.trackProp(observer, "promise");
+			const before = QueryObserver.getUnsafe(observer).promise;
+
+			await setTitle(test, "Renamed");
+			expect(select).toHaveBeenCalledTimes(2);
+			expect(Query.getUnsafe(test.query).promise).toMatchObject({
+				value: { title: "Renamed" },
+			});
+			expect(QueryObserver.getUnsafe(observer).promise).toBe(before);
+			expect(listener).not.toHaveBeenCalled();
+		});
+
+		it("notifies with a new promise when the selection changes", async () => {
+			const test = await setup();
+			const observer = QueryObserver.makeUnsafe(test.query, {
+				select: (issue: { title: string }) => issue.title,
+			});
+			const listener = vi.fn();
+			QueryObserver.subscribeUnsafe(observer, listener);
+			QueryObserver.trackProp(observer, "promise");
+
+			await setTitle(test, "Renamed");
+			expect(listener).toHaveBeenCalledOnce();
+			expect(QueryObserver.getUnsafe(observer).promise).toMatchObject({
+				status: "fulfilled",
+				value: "Renamed",
+			});
+		});
+
+		it("shares unchanged parts of the selection with the last one", async () => {
+			const test = await setup();
+			const select = (issue: { id: number; title: string }) => ({
+				ids: [issue.id],
+				title: issue.title,
+			});
+			const observer = QueryObserver.makeUnsafe(test.query, { select });
+			QueryObserver.subscribeUnsafe(observer, () => {});
+			const before = selectedValue<ReturnType<typeof select>>(
+				QueryObserver.getUnsafe(observer).promise,
+			);
+
+			await setTitle(test, "Renamed");
+			const after = selectedValue<ReturnType<typeof select>>(
+				QueryObserver.getUnsafe(observer).promise,
+			);
+			expect(after).not.toBe(before);
+			expect(after).toMatchObject({ title: "Renamed" });
+			expect(after).toHaveProperty("ids", before?.ids);
+		});
+
+		it("runs a new function on the same data, keeping the promise for an equal result", async () => {
+			const test = await setup();
+			const observer = QueryObserver.makeUnsafe(test.query, {
+				select: (issue: { title: string }) => [issue.title],
+			});
+			const first = QueryObserver.getUnsafe(observer).promise;
+			const inline = vi.fn((issue: { title: string }) => [issue.title]);
+
+			expect(
+				QueryObserver.getOptimisticResultUnsafe(observer, test.query, {
+					select: inline,
+				}).promise,
+			).toBe(first);
+			expect(inline).toHaveBeenCalledOnce();
+			expect(
+				QueryObserver.getOptimisticResultUnsafe(observer, test.query, {
+					select: (issue: { title: string }) => [issue.title, "!"],
+				}).promise,
+			).toMatchObject({ value: ["First", "!"] });
+		});
+
+		it("doesn't run again for the same data and function", async () => {
+			const test = await setup();
+			const select = vi.fn((issue: { title: string }) => issue.title);
+			const observer = QueryObserver.makeUnsafe(test.query, { select });
+
+			QueryObserver.getOptimisticResultUnsafe(observer, test.query, {
+				select,
+			});
+			QueryObserver.subscribeUnsafe(observer, () => {});
+			expect(select).toHaveBeenCalledOnce();
+		});
+
+		it("settles the selection of a pending first load in place", async () => {
+			const backend = createBackend();
+			const qc = makeCacheUnsafe({ isServer: false });
+			Effect.runSync(qc.prefetch(backend.issueQuery, { id: 1 }));
+			const query = qc.getQueryUnsafe(backend.issueQuery, { id: 1 });
+			const observer = QueryObserver.makeUnsafe(query, {
+				select: (issue: { title: string }) => issue.title,
+			});
+			const listener = vi.fn();
+			QueryObserver.subscribeUnsafe(observer, listener);
+			QueryObserver.trackProp(observer, "promise");
+			const promise = QueryObserver.getUnsafe(observer).promise;
+			expect(QueryObserver.trackThenable(observer, promise).status).toBe(
+				"pending",
+			);
+
+			backend.respondAll();
+			await flush();
+			expect(listener).toHaveBeenCalledOnce();
+			expect(QueryObserver.getUnsafe(observer).promise).toBe(promise);
+			expect(promise).toMatchObject({ status: "fulfilled", value: "First" });
+		});
+
+		it("settles a pending selection with no listener when its source does", async () => {
+			const backend = createBackend();
+			const qc = makeCacheUnsafe({ isServer: false });
+			Effect.runSync(qc.prefetch(backend.issueQuery, { id: 1 }));
+			const query = qc.getQueryUnsafe(backend.issueQuery, { id: 1 });
+			const observer = QueryObserver.makeUnsafe(query, {
+				select: (issue: { title: string }) => issue.title,
+			});
+
+			backend.respondAll();
+			expect(await QueryObserver.getUnsafe(observer).promise).toBe("First");
+		});
+
+		it("rejects with a failed first load's error", async () => {
+			const backend = createBackend();
+			const qc = makeCacheUnsafe({ isServer: false });
+			Effect.runSync(qc.prefetch(backend.issueQuery, { id: 3 }));
+			const query = qc.getQueryUnsafe(backend.issueQuery, { id: 3 });
+			const observer = QueryObserver.makeUnsafe(query, {
+				select: (issue: { title: string }) => issue.title,
+			});
+			const promise = QueryObserver.getUnsafe(observer).promise;
+
+			backend.respondAll();
+			await expect(promise).rejects.toThrow("No issue 3");
+		});
+
+		it("rejects with what it throws", async () => {
+			const test = await setup();
+			const observer = QueryObserver.makeUnsafe(test.query, {
+				select: () => {
+					throw new Error("bad select");
+				},
+			});
+			const promise = QueryObserver.getUnsafe(observer).promise;
+			expect(promise.status).toBe("rejected");
+			await expect(promise).rejects.toThrow("bad select");
+		});
+
+		it("selects the previous query's data with whilePending: previous", async () => {
+			const test = await setup();
+			const options = {
+				select: (issue: { id: number }) => issue.id > 0,
+				whilePending: "previous",
+			} as const;
+			const observer = QueryObserver.makeUnsafe(test.query, options);
+			QueryObserver.subscribeUnsafe(observer, () => {});
+			const before = QueryObserver.getUnsafe(observer).promise;
+			const second = test.qc.getQueryUnsafe(test.backend.issueQuery, {
+				id: 2,
+			});
+			Query.readUnsafe(second);
+
+			QueryObserver.setOptionsUnsafe(observer, second, options);
+			expect(QueryObserver.getUnsafe(observer)).toMatchObject({
+				isPrevious: true,
+				promise: before,
+			});
+
+			test.backend.respondAll();
+			await flush();
+			expect(QueryObserver.getUnsafe(observer)).toMatchObject({
+				input: { id: 2 },
+				isPrevious: false,
+				promise: before,
+			});
 		});
 	});
 
