@@ -44,14 +44,14 @@ function PostRow(props: { handle: QueryHandle<typeof postQuery> }) {
 
 // #region list-all
 function WordCount() {
-	const [postsPromise, postStates] = useQueries(postQuery, loaderData.posts);
-	const posts = use(postsPromise);
+	const postReads = useQueries(postQuery, loaderData.posts);
+	const posts = postReads.map(([postPromise]) => use(postPromise));
 	const words = posts.reduce(
 		(sum, post) => sum + post.body.split(" ").length,
 		0,
 	);
 	return (
-		<p aria-busy={postStates.some((state) => state.isFetching)}>
+		<p aria-busy={postReads.some(([, postState]) => postState.isFetching)}>
 			{posts.length} posts, {words} words
 		</p>
 	);

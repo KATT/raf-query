@@ -77,14 +77,14 @@ When each item renders on its own, give each one a component that calls `useQuer
 tanstack-start/src/docs/reading-queries.lists.tsx#list-rows
 ```
 
-When one component needs all of them at once, for a total or a side-by-side comparison, `useQueries` reads the whole list. It returns one promise of every query's data, in the handles' order, and each query's controls:
+When one component needs all of them at once, for a total or a side-by-side comparison, `useQueries` reads the whole list. It returns what `useQuery` returns for each handle, in the handles' order: a `[promise, controls]` tuple per query. Call `use()` on each promise; unlike a hook, `use()` can run in a loop:
 
 ```sample
 tanstack-start/src/docs/reading-queries.lists.tsx#list-all
 ```
 
-- The promise suspends until every query has data, and rejects when a first load fails, like [`Promise.all`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all). It's the same promise until one query's data changes, so an update renders without suspending.
-- It's a `Thenable` too: a component can read its `status` and `value` instead of calling `use()`, and re-renders when every load has settled. See [Reading without Suspense](./comparison.md#reading-without-suspense).
+- Each promise behaves as `useQuery`'s: it's the same promise until its query's data changes, so an update renders without suspending, and a handle from `ensure` or `fetch` gives its data directly. The component suspends on the first query without data, and shows once all of them have it.
+- A tuple of handles gives a tuple of results, each typed by its own handle: `const [[postPromise], [author]] = useQueries(...)`.
 - The list can change length between renders. `whilePending: "previous"` keeps each position's last data while its new input loads.
 - It takes the same options as `useQuery`, and like it, [never refetches on mount](#no-refetch-on-mount). There is no `combine` option: derive what you need from the data after `use()`.
 
