@@ -533,6 +533,12 @@ export const renderMarkdown = Effect.fn("renderMarkdown")(function* (
 		.use(rehypeHeadings(headings))
 		.use(rehypeShiki, {
 			defaultColor: false,
+			// Loading all of Shiki's languages took seconds per process, so
+			// others load on first use, and an unknown one fails the render. A
+			// block in a language loaded on first use highlights after the rest,
+			// so `ts` and `tsx` load up front: `typeQueries` is in page order.
+			langs: ["ts", "tsx"],
+			lazy: true,
 			themes: { dark: "github-dark", light: "github-light" },
 			transformers: [
 				blocks.transformer,
