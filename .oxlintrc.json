@@ -483,6 +483,25 @@
 			}
 		},
 		{
+			// Library code targets ES2024. Tests and their helpers run on Node and
+			// clean up with `using`.
+			"files": ["packages/*/src/**", ".experimental/*/package/src/**"],
+			"rules": {
+				"workspace/no-explicit-resource-management": "error"
+			}
+		},
+		{
+			"files": [
+				"packages/*/src/**/*.test.{ts,tsx}",
+				"packages/*/src/test-utils.ts",
+				".experimental/*/package/src/**/*.test.{ts,tsx}",
+				".experimental/*/package/src/test-utils.ts"
+			],
+			"rules": {
+				"workspace/no-explicit-resource-management": "off"
+			}
+		},
+		{
 			"files": [
 				"examples/*/src/**/*.{ts,tsx}",
 				"examples/*/app/**/*.{ts,tsx}",
