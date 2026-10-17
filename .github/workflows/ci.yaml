@@ -31,6 +31,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare
+      # Compiled Twoslash blocks. Each entry checks the files it was compiled
+      # from, so restoring an older cache only means more blocks recompile.
+      - uses: actions/cache@v4
+        with:
+          key: twoslash-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.run_id }}
+          path: www/node_modules/.cache/twoslash
+          restore-keys: |
+            twoslash-${{ hashFiles('pnpm-lock.yaml') }}-
+            twoslash-
       - run: pnpm build:www
 
   build_examples:
