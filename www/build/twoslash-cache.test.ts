@@ -16,20 +16,39 @@ function block(code: string): TwoslashBlock {
 	return { code, lang: "ts", options: {}, root: "/samples/app" };
 }
 
-/** A temporary dir with a lockfile and a source file, removed when the test ends. */
+/**
+ * A temporary dir with a lockfile, a source file and a sample app that
+ * compiles inline blocks, removed when the test ends.
+ */
 const setup = Effect.fn("setup")(function* () {
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path;
 	const root = yield* fs.makeTempDirectoryScoped({ prefix: "twoslash-cache-" });
 	const lockfile = path.join(root, "pnpm-lock.yaml");
 	const source = path.join(root, "packages/react/src/index.ts");
+	const samplesDir = path.join(root, "samples");
 	yield* fs.makeDirectory(path.dirname(source), { recursive: true });
+	yield* fs.makeDirectory(path.join(samplesDir, "tanstack-start/src"), {
+		recursive: true,
+	});
+	yield* fs.writeFileString(
+		path.join(samplesDir, "tanstack-start/src/app.ts"),
+		"export {};",
+	);
 	yield* fs.writeFileString(lockfile, "lockfileVersion: 9");
 	yield* fs.writeFileString(source, "export const a = 1;");
+	yield* fs.writeFileString(
+		path.join(samplesDir, "tanstack-start/tsconfig.json"),
+		JSON.stringify({
+			compilerOptions: { lib: ["es5"], strict: true, types: [] },
+			include: ["src"],
+		}),
+	);
 	return {
 		installed: path.join(root, "node_modules/.pnpm/a@1/index.d.ts"),
 		lockfile,
 		options: { dir: path.join(root, "cache"), inputs: [lockfile] },
+		samplesDir,
 		source,
 	};
 });
@@ -116,28 +135,26 @@ describe("makeTwoslashCache", () => {
 	it.effect("renders a page from the cache the same as compiling it", () =>
 		Effect.gen(function* () {
 			const dirs = yield* setup();
-			const samplesDir = new URL("../samples", import.meta.url).pathname;
 			const markdown = [
 				"```ts twoslash",
-				'import { QueryClient } from "@raf-query/react";',
-				"const queryClient = new QueryClient();",
+				'const keys = ["todos", 1] as const;',
 				"//    ^?",
 				"```",
 			].join("\n");
 
 			const compiled = makeTwoslashCache(dirs.options);
 			const first = yield* renderMarkdown(markdown, {
-				samplesDir,
+				samplesDir: dirs.samplesDir,
 				twoslashCache: compiled,
 			});
 			expect(compiled.stats).toEqual({ hits: 0, misses: 1 });
 			expect(first.typeQueries).toEqual([
-				["const queryClient: QueryClient<never>"],
+				['const keys: readonly ["todos", 1]'],
 			]);
 
 			const cached = makeTwoslashCache(dirs.options);
 			const second = yield* renderMarkdown(markdown, {
-				samplesDir,
+				samplesDir: dirs.samplesDir,
 				twoslashCache: cached,
 			});
 			expect(cached.stats).toEqual({ hits: 1, misses: 0 });
