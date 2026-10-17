@@ -14,6 +14,7 @@ import type {
 	InputOf,
 	IsPaged,
 	QueryFactory,
+	ThrowOnErrorOf,
 } from "./options.ts";
 import { fulfilled, pending, type Thenable } from "./thenable.ts";
 
@@ -29,8 +30,8 @@ export type UseQueryThrowOptions<TFactory extends QueryFactory> =
 		? {
 				/**
 				 * When `false`, the data is a `Result` instead of a rejecting
-				 * promise. Omit to use the client's default (`false` with a
-				 * `layer`, `true` without).
+				 * promise. Omit to use the query's `throwOnError`, else the
+				 * client's default (`false` with a `layer`, `true` without).
 				 */
 				readonly throwOnError?: boolean;
 			}
@@ -84,9 +85,10 @@ export type HasTypedError<TFactory extends QueryFactory> =
 
 /**
  * Whether this read throws on failure. Untyped errors always throw. Typed
- * errors follow `options.throwOnError`, else the client's default (`false`
- * with a `layer`, `true` without). Types treat an omitted flag as `false`
- * (Result), matching a client with a `layer`.
+ * errors follow the read's `throwOnError`, else the query's
+ * ({@link ThrowOnErrorOf}), else the client's default (`false` with a
+ * `layer`, `true` without). Types can't see the client's, so they treat it
+ * as `false` (Result), matching a client with a `layer`.
  */
 export type ThrowsOnError<
 	TFactory extends QueryFactory,
@@ -96,19 +98,26 @@ export type ThrowsOnError<
 		? true
 		: TThrow extends boolean
 			? TThrow
-			: false;
+			: ThrowOnErrorOf<TFactory> extends boolean
+				? ThrowOnErrorOf<TFactory>
+				: false;
 
 /**
  * {@link ThrowsOnError} at runtime, for bindings: a read of `query` throws
- * when `throwOnError` (the call's, else the client's) is `true`, or when its
- * `queryFn` returns a promise or plain value, whose error isn't typed. A
- * query whose `queryFn` hasn't run yet follows `throwOnError`.
+ * when its `queryFn` returns a promise or plain value, whose error isn't
+ * typed. Otherwise it follows the read's `throwOnError`, else the query's
+ * options', else `clientDefault` (pass the client's `throwOnError`). A query
+ * whose `queryFn` hasn't run yet follows the flags.
  */
 export function throwsOnError<TFactory extends QueryFactory>(
 	query: Query.Query<TFactory>,
-	throwOnError: boolean,
+	throwOnError: boolean | undefined,
+	clientDefault = false,
 ): boolean {
-	return throwOnError || Query.returnsEffectUnsafe(query) === false;
+	return (
+		Query.returnsEffectUnsafe(query) === false ||
+		(throwOnError ?? query.options?.throwOnError ?? clientDefault)
+	);
 }
 
 /** What a read settles with: the data, or a `Result` when it doesn't throw. */

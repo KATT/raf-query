@@ -64,5 +64,6 @@ export {
 	type Register,
 	type RetryPolicy,
 	type ServicesOf,
+	type ThrowOnErrorOf,
 } from "./options.ts";
 export { fulfilled, pending, type Pending, type Thenable } from "./thenable.ts";

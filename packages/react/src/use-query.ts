@@ -78,9 +78,10 @@ function storeFor<TFactory extends QueryFactory>(
  * const post = use(postPromise);
  * ```
  *
- * For an Effect `queryFn` (typed {@link ErrorOf}), with the client's
- * `throwOnError: false` (the default when it has a `layer`), the first slot
- * is a `Result` instead — `use()` never throws:
+ * For an Effect `queryFn` (typed {@link ErrorOf}), with `throwOnError: false`
+ * (the call's, else the query's, else the client's, which is the default
+ * when it has a `layer`), the first slot is a `Result` instead — `use()`
+ * never throws:
  *
  * ```tsx
  * const [issueResult, issueState] = useQuery(issueQuery, loaderData.issue);
@@ -182,7 +183,8 @@ export function useQuery<TFactory extends QueryFactory>(
 	const controls = promiseControls(QueryObserver.trackResult(observer, result));
 	const throwOnError = throwsOnError(
 		query,
-		options.throwOnError ?? client.throwOnError,
+		options.throwOnError,
+		client.throwOnError,
 	);
 	const withData = "data" in handle;
 	if (!throwOnError) {

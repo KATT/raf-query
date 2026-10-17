@@ -36,20 +36,21 @@ tanstack-start/src/docs/api-reference.ts#queryclient
 
 ## Query options
 
-Accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults`:
+Accepted by `queryOptions`, `infiniteQueryOptions` and `config.defaults` (all but `throwOnError`, which is per query):
 
-| Option                                                                                                                                                     | Default                                           |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `queryKey`                                                                                                                                                 | Required. [Query keys](./query-keys.md)           |
-| `queryFn`                                                                                                                                                  | Required. [Query functions](./query-functions.md) |
-| `staleTime`                                                                                                                                                | `0` ms                                            |
-| `gcTime`                                                                                                                                                   | 5 minutes; `Infinity` on the server               |
-| `retry` (count, `boolean`, predicate, `Schedule`)                                                                                                          | `3`; `0` on the server                            |
-| `retryDelay` (ms, or a function of the failure count)                                                                                                      | Doubling from 1 s, at most 30 s                   |
-| `refetchOnWindowFocus`, `refetchOnReconnect`                                                                                                               | `true` (only read, stale queries refetch)         |
-| `structuralSharing` (keep deeply equal parts of data)                                                                                                      | `true`                                            |
-| `enabled` (`false`: [the query doesn't run](./query-factories.md#disabling-a-query), such as [on the server](./ssr-and-hydration.md#browser-only-queries)) | `true`                                            |
-| [`meta`](./query-meta.md)                                                                                                                                  | None                                              |
+| Option                                                                                                                                                     | Default                                                               |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `queryKey`                                                                                                                                                 | Required. [Query keys](./query-keys.md)                               |
+| `queryFn`                                                                                                                                                  | Required. [Query functions](./query-functions.md)                     |
+| `staleTime`                                                                                                                                                | `0` ms                                                                |
+| `gcTime`                                                                                                                                                   | 5 minutes; `Infinity` on the server                                   |
+| `retry` (count, `boolean`, predicate, `Schedule`)                                                                                                          | `3`; `0` on the server                                                |
+| `retryDelay` (ms, or a function of the failure count)                                                                                                      | Doubling from 1 s, at most 30 s                                       |
+| `refetchOnWindowFocus`, `refetchOnReconnect`                                                                                                               | `true` (only read, stale queries refetch)                             |
+| `structuralSharing` (keep deeply equal parts of data)                                                                                                      | `true`                                                                |
+| `enabled` (`false`: [the query doesn't run](./query-factories.md#disabling-a-query), such as [on the server](./ssr-and-hydration.md#browser-only-queries)) | `true`                                                                |
+| [`meta`](./query-meta.md)                                                                                                                                  | None                                                                  |
+| `throwOnError` (Effect reads: reject, or `false` for a `Result`; a read's own wins)                                                                        | The client's ([typed errors](./effect-errors.md#set-it-on-the-query)) |
 
 `infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam` and `maxPages`. [Infinite queries](./infinite-queries.md)
 
@@ -81,15 +82,15 @@ The promise is a `Thenable<Data>`: read its `status`, `value` and `reason` to re
 
 Everything from `@raf-query/core`, plus:
 
-| Export                                | Use                                                                                                                                                                                                                                                   |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `HydrationBoundary`                   | Writes server data into the client: a loader's `state`, or in server components the request's `client`. [React Server Components](./react-server-components.md) · [React Router](./react-router.md)                                                   |
-| `QueryClientProvider`                 | Provides a client to the tree                                                                                                                                                                                                                         |
-| `QueryProvider`                       | Provider for React Server Components apps: a client per server render and per browser tab; its server render starts no request. [React Server Components](./react-server-components.md)                                                               |
-| `useQueryClient()`                    | Read the client                                                                                                                                                                                                                                       |
-| `useQuery(factory, handle, options?)` | `[Thenable<Data>, controls]`, or `[Data, controls]` for a `QueryHandleWithData`; Effect `queryFn`s with `throwOnError: false` (default when the client has a `layer`) yield `Result<Data, ErrorOf>` instead. Paged: `Data` is `{ pages, pageParams }` |
-| `useWaterfall(factory, input)`        | Start a query during render and return its handle. [Request waterfalls](./request-waterfalls.md#render-time-inputs-usewaterfall)                                                                                                                      |
-| `useIsFetching(filter?)`              | Global in-flight count (compatibility). Prefer router pending + per-query `isFetching`. [Background fetching indicators](./background-fetching-indicators.md)                                                                                         |
+| Export                                | Use                                                                                                                                                                                                                                                                                     |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HydrationBoundary`                   | Writes server data into the client: a loader's `state`, or in server components the request's `client`. [React Server Components](./react-server-components.md) · [React Router](./react-router.md)                                                                                     |
+| `QueryClientProvider`                 | Provides a client to the tree                                                                                                                                                                                                                                                           |
+| `QueryProvider`                       | Provider for React Server Components apps: a client per server render and per browser tab; its server render starts no request. [React Server Components](./react-server-components.md)                                                                                                 |
+| `useQueryClient()`                    | Read the client                                                                                                                                                                                                                                                                         |
+| `useQuery(factory, handle, options?)` | `[Thenable<Data>, controls]`, or `[Data, controls]` for a `QueryHandleWithData`; Effect `queryFn`s with `throwOnError: false` (the call's, else the query's, else the client's: default with a `layer`) yield `Result<Data, ErrorOf>` instead. Paged: `Data` is `{ pages, pageParams }` |
+| `useWaterfall(factory, input)`        | Start a query during render and return its handle. [Request waterfalls](./request-waterfalls.md#render-time-inputs-usewaterfall)                                                                                                                                                        |
+| `useIsFetching(filter?)`              | Global in-flight count (compatibility). Prefer router pending + per-query `isFetching`. [Background fetching indicators](./background-fetching-indicators.md)                                                                                                                           |
 
 Subpath entries:
 

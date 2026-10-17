@@ -49,9 +49,10 @@ export type UseQueryResultWithData<
  * or `fetch` (a server `load`) already has its data, so `data` is never
  * `undefined` for it, and the server's HTML has it.
  *
- * For an Effect `queryFn` (typed `ErrorOf`), with the client's
- * `throwOnError: false` (the default when it has a `layer`), `data` and the
- * promise hold a `Result` instead, and the promise never rejects.
+ * For an Effect `queryFn` (typed `ErrorOf`), with `throwOnError: false`
+ * (the call's, else the query's, else the client's, which is the default
+ * when it has a `layer`), `data` and the promise hold a `Result` instead,
+ * and the promise never rejects.
  *
  * The result follows the cache: a refetch, `setData` or invalidation
  * updates what reads it, and markup updates only when a property it read
