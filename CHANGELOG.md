@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.11.1](https://github.com/KATT/raf-query/compare/0.11.0...0.11.1) (2026-10-17)
+
+### Features
+
+- **core:** take throwOnError from the query's options (2/2) ([#214](https://github.com/KATT/raf-query/issues/214)) ([ef1f0fd](https://github.com/KATT/raf-query/commit/ef1f0fd8eda2a73f4c4c268e8a3a5cf91a0ba0d8)), references [#448](https://github.com/KATT/raf-query/issues/448)
+
 ## [0.11.0](https://github.com/KATT/raf-query/compare/0.10.4...0.11.0) (2026-10-16)
 
 ### ⚠ BREAKING CHANGES
