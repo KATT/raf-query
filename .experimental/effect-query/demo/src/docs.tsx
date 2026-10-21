@@ -2,12 +2,13 @@ import { Badge } from "@examples/ui/components/badge";
 import { Button } from "@examples/ui/components/button";
 import { Input } from "@examples/ui/components/input";
 import { cn } from "cn";
+import { Boundary } from "@raf-query/experimental-effect-query";
 import { Match, Result } from "effect";
 import { FileText, Lock } from "lucide-react";
 import { useState } from "react";
 
 import type { Doc } from "./api.ts";
-import { DocAccess, Session } from "./boundaries.tsx";
+import { DocAccess, useDocAccess, useSession } from "./boundaries.tsx";
 import { Caught } from "./frame.tsx";
 import { docList, docQuery, renameDoc } from "./queries.ts";
 
@@ -23,11 +24,11 @@ export const DocList = (props: {
 	readonly selected: number;
 }) => {
 	// Session and the boundaries above it catch everything ListDocs can fail
-	// with, so `use` type-checks and returns the docs: there is no failure here.
-	const docs = Session.use(docList);
+	// with, so the hook returns the docs themselves: there is no failure here.
+	const docs = useSession(docList);
 	return (
 		<nav className="space-y-2">
-			<TypeChip>Session.use(docList): DocSummary[]</TypeChip>
+			<TypeChip>useSession(docList): DocSummary[]</TypeChip>
 			<ul className="space-y-1">
 				{docs.map((doc) => (
 					<li key={doc.id}>
@@ -68,11 +69,11 @@ export const DocList = (props: {
 export const DocPage = (props: { readonly id: number }) => {
 	// Forbidden went to DocAccess, Unauthorized to Session, RpcClientError to
 	// Network: only DocNotFound is left for this component.
-	const result = DocAccess.useResult(docQuery(props.id));
+	const result = useDocAccess(docQuery(props.id));
 	return (
 		<div className="space-y-3">
 			<TypeChip>
-				DocAccess.useResult(docQuery(id)): Result&lt;Doc, DocNotFound&gt;
+				useDocAccess(docQuery(id)): Result&lt;Doc, DocNotFound&gt;
 			</TypeChip>
 			{Result.isSuccess(result) ? (
 				<DocView doc={result.success} />
@@ -107,7 +108,7 @@ const DocView = (props: { readonly doc: Doc }) => (
 );
 
 const RenameForm = (props: { readonly doc: Doc }) => {
-	const run = DocAccess.useRun();
+	const run = Boundary.useRun(DocAccess);
 	const [title, setTitle] = useState(props.doc.title);
 	const [pending, setPending] = useState(false);
 	const [problem, setProblem] = useState<string>();

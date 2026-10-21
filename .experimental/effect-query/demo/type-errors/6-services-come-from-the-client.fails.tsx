@@ -8,7 +8,7 @@
 import { Context, Effect } from "effect";
 import { Query } from "@raf-query/experimental-effect-query";
 
-import { DocAccess } from "../src/boundaries.tsx";
+import { useDocAccess } from "../src/boundaries.tsx";
 
 class Analytics extends Context.Service<
 	Analytics,
@@ -17,7 +17,8 @@ class Analytics extends Context.Service<
 
 const views = Query.make({
 	effect: Effect.flatMap(Analytics, (analytics) => analytics.views),
+	errors: [],
 	key: ["views"],
 });
 
-export const Views = () => <p>{DocAccess.use(views)} views</p>;
+export const Views = () => <p>{useDocAccess(views)} views</p>;

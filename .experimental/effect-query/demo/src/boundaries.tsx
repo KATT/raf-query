@@ -1,6 +1,7 @@
 /**
- * The boundary chain, from the outside in. Each one takes its errors off the
- * type of every hook read through it, or through a boundary inside it.
+ * The boundary chain, from the outside in. Each is a pair: the Provider to
+ * mount, and the hook that reads through it. Each takes its errors off the
+ * type of its hook, and of the hooks of the boundaries inside it.
  *
  * - `App` mounts the client and catches defects (and interrupts).
  * - `Network` catches the transport's `RpcClientError`.
@@ -120,21 +121,25 @@ const RequestAccess = (props: Boundary.FallbackProps<Forbidden>) => {
 	);
 };
 
-export const App = Boundary.root({ client, fallback: Crashed, name: "App" });
+export const [App] = Boundary.root({
+	client,
+	fallback: Crashed,
+	name: "App",
+});
 
-export const Network = App.catchErrors({
+export const [Network] = Boundary.catchErrors(App, {
 	errors: [RpcClientError.RpcClientError],
 	fallback: Offline,
 	name: "Network",
 });
 
-export const Session = Network.catchErrors({
+export const [Session, useSession] = Boundary.catchErrors(Network, {
 	errors: [Unauthorized],
 	fallback: SignIn,
 	name: "Session",
 });
 
-export const DocAccess = Session.catchErrors({
+export const [DocAccess, useDocAccess] = Boundary.catchErrors(Session, {
 	errors: [Forbidden],
 	fallback: RequestAccess,
 	name: "DocAccess",

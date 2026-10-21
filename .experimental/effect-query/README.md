@@ -2,17 +2,18 @@
 
 A render-as-you-fetch query cache built only on Effect, for apps whose data comes from Effects (an Effect RPC client, say). Because every query is an Effect, every failure has a type, and the cache keeps each query's whole `Exit`. Boundaries route on its `Cause`:
 
-- A chain of boundaries reads like an Effect pipeline laid over the component tree. `Boundary.root` is `Effect.provide`: it mounts the client and catches defects and interrupts. Each `catchErrors` below it is `Effect.catchTags` for the subtree it wraps. Generic errors (`Unauthorized`) go near the top, narrower ones (`Forbidden` for one document) further down.
+- A chain of boundaries reads like an Effect pipeline laid over the component tree. `Boundary.root` is `Effect.provide`: it mounts the client and catches defects and interrupts. Each `Boundary.catchErrors(parent, …)` below it is `Effect.catchTags` for the subtree it wraps. Generic errors (`Unauthorized`) go near the top, narrower ones (`Forbidden` for one document) further down.
+- Each boundary is a pair, like `useState`'s: `const [Session, useSession] = Boundary.catchErrors(App, { name, errors, fallback })`. The first is the Provider you mount (`<App><Session>…</Session></App>`) and the handle the next boundary takes; the second is the hook that reads through it.
 - A typed failure goes to the innermost boundary, in the chain the component reads through, whose schemas accept it. What no boundary catches comes back to the component.
-- `Boundary.use(query)` only compiles when the chain catches every error the query can fail with, so it returns the data and nothing else. `useResult(query)` returns `Result<A, E minus what the chain catches>`, and `useRun()` runs Effects (mutations) with the same narrowing.
-- When the chain catches everything, the failure type is `never`: there is no error left to get, and handling one the chain already caught is a type error too.
+- `useSession(query)` returns `Result<A, E minus what the chain catches>`, and when nothing is left, the data itself: no `Result`, so there is no error to get. `Boundary.useRun(Session)` runs mutations with the same narrowing. Handling an error the chain already caught, or catching it twice, is a type error.
+- A query (and a mutation) lists its errors' schemas, like an `Rpc` does, and its Effect can fail with nothing else. The hook needs them at runtime: whether to hand back a `Result` or the data depends on what is left, and types are gone by then.
 
 Not published; version stays `0.0.0`. Browser only: no SSR or hydration yet.
 
-| Path       | Package                                | Role                                                      |
-| ---------- | -------------------------------------- | --------------------------------------------------------- |
-| `package/` | `@raf-query/experimental-effect-query` | Library: `Query`, `QueryCache`, `QueryClient`, `Boundary` |
-| `demo/`    | `@examples/experimental-effect-query`  | Interactive demo, <http://localhost:3010>                 |
+| Path       | Package                                | Role                                                                  |
+| ---------- | -------------------------------------- | --------------------------------------------------------------------- |
+| `package/` | `@raf-query/experimental-effect-query` | Library: `Query`, `Mutation`, `QueryCache`, `QueryClient`, `Boundary` |
+| `demo/`    | `@examples/experimental-effect-query`  | Interactive demo, <http://localhost:3010>                             |
 
 ```shell
 pnpm --filter @raf-query/experimental-effect-query test
@@ -26,7 +27,7 @@ pnpm --filter @examples/experimental-effect-query type-errors # rewrites them af
 A docs app over an Effect RPC API that runs in the browser (`RpcServer.makeNoSerialization` connected to `RpcClient.makeNoSerialization`). Its boundaries, from the outside in: `App` (defects), `Network` (the transport's `RpcClientError`), `Session` (the session middleware's `Unauthorized`) and `DocAccess` (`Forbidden`). `DocNotFound` and `EmptyTitle` are left to the components.
 
 - **Live**: a chaos panel signs you out, takes the transport offline, locks or deletes documents, and makes the server die. Dashed outlines show which boundary wraps what; the one that caught turns solid. The event log comes from `createRoot`'s `onCaughtError` and `Boundary.caughtBy`.
-- **Type errors**: the files in `demo/type-errors/` import the demo's boundaries and queries. Five don't compile (an unhandled error, a non-exhaustive match, a case for an error already caught, a boundary that re-catches, a missing service) and one does (nothing left to handle). `scripts/type-errors.ts` runs tsc over them and writes what it said to `src/type-errors.gen.json`, which the tab renders; `typecheck` fails when that file is out of date.
+- **Type errors**: the files in `demo/type-errors/` import the demo's boundaries and queries. Six don't compile (reading data off a `Result` with an error left, a non-exhaustive match, a case for an error already caught, a boundary that re-catches, a query that leaves an error out of its list, a missing service) and one does (nothing left to handle). `scripts/type-errors.ts` runs tsc over them and writes what it said to `src/type-errors.gen.json`, which the tab renders; `typecheck` fails when that file is out of date.
 
 ## Making it real
 

@@ -22,8 +22,8 @@ createRoot(root, {
 			return;
 		}
 		log({
-			by: caught.boundary.name,
-			root: caught.boundary.parent === undefined,
+			by: caught.name,
+			root: caught.root,
 			what: Predicate.hasProperty(caught.error, "_tag")
 				? // oxlint-disable-next-line eslint/no-underscore-dangle -- the errors boundaries catch are tagged
 					String(caught.error._tag)

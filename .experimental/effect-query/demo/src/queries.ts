@@ -1,34 +1,53 @@
 import { Effect } from "effect";
-import { Query, QueryCache } from "@raf-query/experimental-effect-query";
+import { RpcClientError } from "effect/rpc";
+import {
+	Mutation,
+	Query,
+	QueryCache,
+} from "@raf-query/experimental-effect-query";
 
+import { DocNotFound, EmptyTitle, Forbidden, Unauthorized } from "./api.ts";
 import { DocsClient } from "./client.ts";
 
-/** Fails with `Unauthorized | RpcClientError`. */
 export const docList = Query.make({
 	effect: Effect.gen(function* () {
 		const docs = yield* DocsClient;
 		return yield* docs.ListDocs();
 	}),
+	errors: [Unauthorized, RpcClientError.RpcClientError],
 	key: ["docs"],
 	staleTime: "10 seconds",
 });
 
-/** Fails with `Forbidden | DocNotFound | Unauthorized | RpcClientError`. */
 export const docQuery = (id: number) =>
 	Query.make({
 		effect: Effect.gen(function* () {
 			const docs = yield* DocsClient;
 			return yield* docs.GetDoc({ id });
 		}),
+		errors: [
+			Forbidden,
+			DocNotFound,
+			Unauthorized,
+			RpcClientError.RpcClientError,
+		],
 		key: ["docs", id],
 		staleTime: "10 seconds",
 	});
 
-/** Fails with `Forbidden | DocNotFound | EmptyTitle | Unauthorized | RpcClientError`. */
 export const renameDoc = (id: number, title: string) =>
-	Effect.gen(function* () {
-		const docs = yield* DocsClient;
-		const doc = yield* docs.RenameDoc({ id, title });
-		yield* QueryCache.invalidate(["docs"]);
-		return doc;
+	Mutation.make({
+		effect: Effect.gen(function* () {
+			const docs = yield* DocsClient;
+			const doc = yield* docs.RenameDoc({ id, title });
+			yield* QueryCache.invalidate(["docs"]);
+			return doc;
+		}),
+		errors: [
+			Forbidden,
+			DocNotFound,
+			EmptyTitle,
+			Unauthorized,
+			RpcClientError.RpcClientError,
+		],
 	});

@@ -25,30 +25,30 @@ const Live = () => {
 	const [selected, setSelected] = useState(1);
 	return (
 		<Suspense fallback={<Loading />}>
-			<App.Provider>
+			<App>
 				<Frame catches="defects and interrupts" name="App" tone="root">
-					<Network.Provider>
+					<Network>
 						<Frame catches="RpcClientError" name="Network" tone="network">
-							<Session.Provider>
+							<Session>
 								<Frame catches="Unauthorized" name="Session" tone="session">
 									<div className="grid gap-3 md:grid-cols-[220px_1fr]">
 										<Suspense fallback={<Loading />}>
 											<DocList onSelect={setSelected} selected={selected} />
 										</Suspense>
-										<DocAccess.Provider key={selected}>
+										<DocAccess key={selected}>
 											<Frame catches="Forbidden" name="DocAccess" tone="access">
 												<Suspense fallback={<Loading />}>
 													<DocPage id={selected} />
 												</Suspense>
 											</Frame>
-										</DocAccess.Provider>
+										</DocAccess>
 									</div>
 								</Frame>
-							</Session.Provider>
+							</Session>
 						</Frame>
-					</Network.Provider>
+					</Network>
 				</Frame>
-			</App.Provider>
+			</App>
 		</Suspense>
 	);
 };
