@@ -125,11 +125,6 @@ export interface Hook<Handled> {
 	): Read<A, Exclude<E, Handled>>;
 }
 
-/** What `useSet` returns: writes the atom, and waits for its result. */
-export type Setter<Handled, A, E, W> = (
-	value: Exclude<W, Atom.Reset | Atom.Interrupt>,
-) => Promise<Read<A, Exclude<E, Handled>>>;
-
 /** The errors a boundary and the ones above it catch. */
 export type HandledBy<B> = B extends Boundary<infer H> ? H : never;
 
@@ -563,9 +558,13 @@ export const catchErrors = <Handled, const S extends ReadonlyArray<Catchable>>(
 export const useSet = <Handled, A, E, W>(
 	boundary: Boundary<Handled>,
 	atom: Atom.Writable<AsyncResult.AsyncResult<A, E>, W>,
-): Setter<Handled, A, E, W> => {
+): ((
+	value: Exclude<W, Atom.Reset | Atom.Interrupt>,
+) => Promise<Read<A, Exclude<E, Handled>>>) => {
 	// SAFETY: `atom`'s types were checked by the signature; at runtime they are erased.
 	const erased = atom as Atom.Writable<AnyResult, unknown>;
 	// SAFETY: see `make`.
-	return useWrite(implOf(boundary), erased) as Setter<Handled, A, E, W>;
+	return useWrite(implOf(boundary), erased) as (
+		value: Exclude<W, Atom.Reset | Atom.Interrupt>,
+	) => Promise<Read<A, Exclude<E, Handled>>>;
 };
