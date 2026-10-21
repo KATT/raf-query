@@ -75,7 +75,32 @@ Result.match(post, {
 });
 ```
 
-`errorTypes<PostNotFound | Unauthorized>()`, with a type argument and nothing to check, trusts that every failure is one of them. On an Effect `queryFn`, `errors` restricts the inferred error: an Effect that can fail with something it doesn't list is a type error.
+In the demo, the post query declares `PostNotFound` and `Unauthorized`. Open the deleted post, or fail a request with `Unauthorized`: the post matches each as a typed `Result`. A plain failure isn't declared, so it reaches the error boundary as `unknown`:
+
+```demo
+declared-errors
+```
+
+`errorTypes<PostNotFound | Unauthorized>()`, with a type argument and nothing to check, trusts that every failure is one of them.
+
+On an Effect `queryFn`, `errors` restricts the inferred error. The list can name more than the Effect fails with, but an Effect that can fail with something it doesn't list is a type error:
+
+```ts twoslash
+// @errors: 2322
+import { Data, Effect } from "effect";
+import { errorTypes, queryOptions } from "@raf-query/react";
+class PostNotFound extends Data.TaggedError("PostNotFound") {}
+class Unauthorized extends Data.TaggedError("Unauthorized") {}
+declare function getPost(
+	slug: string,
+): Effect.Effect<{ title: string }, PostNotFound | Unauthorized>;
+// ---cut---
+queryOptions({
+	queryKey: ["post", "hello"],
+	queryFn: () => getPost("hello"),
+	errors: errorTypes(PostNotFound),
+});
+```
 
 ## The query function context
 

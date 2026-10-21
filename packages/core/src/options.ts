@@ -206,8 +206,13 @@ declare const errorType: unique symbol;
  * from other failures at runtime; without it, every failure counts as one.
  */
 export interface ErrorTypes<TError> {
-	/** Type-only: the declared error. Never present at runtime. */
-	readonly [errorType]?: () => TError;
+	/**
+	 * Type-only: the declared error. Never present at runtime. Invariant, so
+	 * that on an Effect `queryFn` the declared error wins inference whatever
+	 * order the options are written in: covariant only, an Effect `queryFn`
+	 * written first would fix the error and an undeclared one would pass.
+	 */
+	readonly [errorType]?: (error: TError) => TError;
 	readonly is: ((error: unknown) => boolean) | undefined;
 }
 

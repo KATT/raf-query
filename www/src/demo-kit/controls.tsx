@@ -1,7 +1,7 @@
 import { Button } from "@examples/ui/components/button";
 import { cn } from "@examples/ui/lib/utils";
 import { Zap } from "lucide-react";
-import { useSyncExternalStore } from "react";
+import { type ReactNode, useSyncExternalStore } from "react";
 
 import type { FakeServer } from "./server.ts";
 
@@ -45,9 +45,16 @@ export function Segmented<TValue extends string>(props: {
 	);
 }
 
-/** Makes the fake server fail its next `count` requests. */
+/**
+ * Makes the fake server fail its next `count` requests, with a typed error
+ * when `error` is given (its `tag` names it on the button).
+ */
 export function FailNextButton(props: {
 	readonly count?: number;
+	readonly error?: {
+		readonly make: (label: string) => Error;
+		readonly tag: string;
+	};
 	readonly server: FakeServer<unknown>;
 }) {
 	const server = props.server;
@@ -57,24 +64,63 @@ export function FailNextButton(props: {
 		() => 0,
 	);
 	const count = props.count ?? 1;
+	const error = props.error;
+	let label =
+		count === 1 ? "Fail the next request" : `Fail the next ${count} requests`;
+	if (error) {
+		label = `Fail with ${error.tag}`;
+	}
 	return (
 		<Button
 			onClick={() => {
-				server.failNext(failures + count);
+				server.failNext(count, error?.make);
 			}}
 			size="xs"
 			variant="outline"
 		>
 			<Zap />
-			{count === 1
-				? "Fail the next request"
-				: `Fail the next ${count} requests`}
+			{label}
 			{failures > 0 ? (
 				<span className="rounded bg-destructive/15 px-1 text-destructive tabular-nums">
 					{failures}
 				</span>
 			) : null}
 		</Button>
+	);
+}
+
+/**
+ * A failure as the code that handled it sees it: who caught it and the type
+ * its `error` has there, so a demo shows what the types promise.
+ */
+export function ErrorNotice(props: {
+	readonly action?: ReactNode;
+	/** Who got the error, e.g. `Result` or `<AuthBoundary>`. */
+	readonly caughtBy: string;
+	readonly children: ReactNode;
+	/** The type of `error` where it was caught, e.g. `PostNotFound` or `unknown`. */
+	readonly type: string;
+}) {
+	return (
+		<div
+			className={cn(
+				"grid justify-items-start gap-2 rounded-md border p-3 text-sm",
+				props.type === "unknown"
+					? "border-destructive/40 bg-destructive/10"
+					: "border-amber-500/40 bg-amber-500/10",
+			)}
+			role="alert"
+		>
+			<p className="flex flex-wrap items-center gap-1.5 font-mono text-xs">
+				<span className="rounded bg-background/70 px-1.5 py-0.5">
+					{props.caughtBy}
+				</span>
+				<span className="text-muted-foreground">error:</span>
+				<span className="font-semibold">{props.type}</span>
+			</p>
+			<div>{props.children}</div>
+			{props.action}
+		</div>
 	);
 }
 
