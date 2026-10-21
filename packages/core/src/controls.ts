@@ -189,27 +189,40 @@ export function promiseControls(result: QueryObserver.Result): PromiseControls {
 	return proxied as unknown as PromiseControls;
 }
 
+type ResultThenables = WeakMap<
+	Thenable<unknown>,
+	Thenable<Result.Result<unknown, unknown>>
+>;
+
 /**
  * One `Result` thenable per data thenable, so readers see a stable identity
  * across re-renders the same way they do for the data promise.
  */
-const resultThenables = new WeakMap<
-	Thenable<unknown>,
-	Thenable<Result.Result<unknown, unknown>>
->();
+const resultThenables: ResultThenables = new WeakMap();
+
+/** The same, per `scope` passed to {@link resultThenable}. */
+const scopedResultThenables = new WeakMap<WeakKey, ResultThenables>();
 
 /**
  * A thenable that fulfills with a `Result` when `promise` settles, for reads
  * that don't throw (`throwOnError: false`). Settled already when `promise`
  * is, and the same thenable for the same `promise`. A failure that `isError`
  * (pass {@link resultErrorsOf}) doesn't accept rejects the thenable instead,
- * so it reaches an error boundary. For bindings.
+ * so it reaches an error boundary. Reads whose `isError` differs for the
+ * same query pass a `scope` each (an error boundary), so each gets its own
+ * thenable. For bindings.
  */
 export function resultThenable<A, E>(
 	promise: Thenable<A>,
 	isError?: (error: unknown) => boolean,
+	scope?: WeakKey,
 ): Thenable<Result.Result<A, E>> {
-	const cached = resultThenables.get(promise);
+	let cache = resultThenables;
+	if (scope) {
+		cache = scopedResultThenables.get(scope) ?? new WeakMap();
+		scopedResultThenables.set(scope, cache);
+	}
+	const cached = cache.get(promise);
 	if (cached) {
 		// SAFETY: each thenable is stored under the Result shape for its A/E.
 		return cached as Thenable<Result.Result<A, E>>;
@@ -253,7 +266,7 @@ export function resultThenable<A, E>(
 		);
 		next = deferred.promise;
 	}
-	resultThenables.set(
+	cache.set(
 		promise,
 		// SAFETY: WeakMap values are Result thenables; A/E are erased in the map.
 		next as Thenable<Result.Result<unknown, unknown>>,
