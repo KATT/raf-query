@@ -27,6 +27,7 @@ import {
 	type DataOf,
 	type ErrorOf,
 	exitThenable,
+	Query,
 	type QueryCache,
 	type QueryClient,
 	type QueryFactory,
@@ -67,14 +68,17 @@ export type TypeId = typeof TypeId;
 
 export interface FallbackProps<E> {
 	readonly error: E;
-	/** Renders the boundary's children again, which refetches the failed queries they read. */
+	/**
+	 * Renders the boundary's children again. First loads that failed and that
+	 * nothing on screen shows start over as they are read.
+	 */
 	readonly retry: () => void;
 }
 
 export interface RootFallbackProps {
 	/** Why it failed: a defect, an interrupt, or a typed failure nothing caught. */
 	readonly cause: Cause.Cause<unknown>;
-	/** Renders the app again, which refetches the failed queries it reads. */
+	/** Renders the app again; failed first loads start over as they are read. */
 	readonly retry: () => void;
 }
 
@@ -259,6 +263,21 @@ interface Impl extends AnyBoundary {
 interface CatcherProps {
 	readonly boundary: Impl;
 	readonly children?: ReactNode;
+	readonly client: QueryClient<unknown> | null;
+}
+
+/**
+ * A first load that failed and that nothing on screen shows. The fallback
+ * unmounted its readers, and the ones it never rendered (React stops at the
+ * first sibling that throws) haven't read their failure yet either.
+ */
+function isUnshownFailure(query: Query.Query) {
+	const state = Query.getUnsafe(query);
+	return (
+		state.status === "error" &&
+		!state.hasData &&
+		Query.observerCountUnsafe(query) === 0
+	);
 }
 
 interface CatcherState {
@@ -272,7 +291,12 @@ class Catcher extends Component<CatcherProps, CatcherState> {
 		return { caught: { value } };
 	}
 
+	/** Drops the failed first loads nothing shows, so the children refetch them as they render again. */
 	retry = () => {
+		const client = this.props.client;
+		if (client !== null) {
+			Effect.runFork(client.effect.reset({ predicate: isUnshownFailure }));
+		}
 		this.setState({ caught: undefined });
 	};
 
@@ -409,7 +433,7 @@ function Mount(props: {
 	const above = use(MountedContext);
 	const boundary = props.boundary;
 	const value = useMemo(
-		() => ({
+		(): Mounted => ({
 			boundaries: new Set<Link>([...(above?.boundaries ?? []), boundary]),
 		}),
 		[above, boundary],
@@ -457,6 +481,7 @@ function make(options: {
 	const parent = options.parent;
 	function BoundaryProvider(props: { readonly children?: ReactNode }) {
 		const above = use(MountedContext);
+		const contextClient = useOptionalQueryClient();
 		if (
 			parent !== undefined &&
 			(above === undefined || !above.boundaries.has(parent))
@@ -465,9 +490,10 @@ function make(options: {
 				`Boundary "${options.name}": <${options.name}> needs <${parent.displayName}> above it.`,
 			);
 		}
+		const client = options.client ?? contextClient;
 		const mounted = <Mount boundary={self}>{props.children}</Mount>;
 		return (
-			<Catcher boundary={self}>
+			<Catcher boundary={self} client={client}>
 				{parent === undefined ? (
 					<RootClient boundary={self}>{mounted}</RootClient>
 				) : (

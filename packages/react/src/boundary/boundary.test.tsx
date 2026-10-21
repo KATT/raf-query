@@ -320,6 +320,36 @@ describe("Boundary", () => {
 		expect(test.state.calls).toBe(2);
 	});
 
+	it("retry refetches every failed query read under the boundary, not only the one it caught", async () => {
+		const test = setup("unauthorized");
+		function Title() {
+			const doc = test.DocAccess.useResult(docQuery, test.doc);
+			return <p>{Result.getOrThrow(doc).title}</p>;
+		}
+		function List() {
+			const docs = test.useAuth(docListQuery, test.list);
+			return <p>{docs.length} docs</p>;
+		}
+		using _view = await mount(
+			test.view(
+				<>
+					<Suspense fallback={null}>
+						<List />
+					</Suspense>
+					<Suspense fallback={null}>
+						<Title />
+					</Suspense>
+				</>,
+			),
+		);
+		expect(screen.getByText("sign in")).toBeDefined();
+		test.state.behavior = "ok";
+		await act(async () => fireEvent.click(screen.getByText("sign in")));
+		await settle();
+		expect(screen.getByText("Doc 1")).toBeDefined();
+		expect(screen.getByText("1 docs")).toBeDefined();
+	});
+
 	it("root's retry refetches a defect's query", async () => {
 		const test = setup("die");
 		function Title() {

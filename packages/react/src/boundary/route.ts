@@ -23,7 +23,7 @@ export type Route<L extends Link> =
 	| { readonly error: unknown; readonly kind: "uncaught" }
 	| { readonly kind: "defect" };
 
-export function catches(link: Link, error: unknown): boolean {
+function catches(link: Link, error: unknown): boolean {
 	return link.errors.some((schema) => Schema.is(schema)(error));
 }
 
