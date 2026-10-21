@@ -1,0 +1,85 @@
+[
+	{
+		"description": "`DocAccess` and the boundaries above it catch `Forbidden`, `Unauthorized` and `RpcClientError`. `GetDoc` can also fail with `DocNotFound`, so `use`, which returns the data and nothing else, doesn't type-check, and says which tag is left.",
+		"errors": [
+			{
+				"code": "TS2345",
+				"column": 28,
+				"line": 5,
+				"message": "Argument of type 'Query<{ readonly body: string; readonly id: number; readonly title: string; readonly updatedBy: string; }, DocNotFound | Forbidden | RpcClientError | Unauthorized, DocsClient>' is not assignable to parameter of type 'Query<{ readonly body: string; readonly id: number; readonly title: string; readonly updatedBy: string; }, DocNotFound | Forbidden | RpcClientError | Unauthorized, DocsClient> & { ...; }'.\n  Property 'UnhandledErrors' is missing in type 'Query<{ readonly body: string; readonly id: number; readonly title: string; readonly updatedBy: string; }, DocNotFound | Forbidden | RpcClientError | Unauthorized, DocsClient>' but required in type '{ readonly UnhandledErrors: \"DocNotFound\"; }'."
+			}
+		],
+		"expect": "fails",
+		"file": "1-use-needs-every-error-handled.fails.tsx",
+		"source": "import { DocAccess } from \"../src/boundaries.tsx\";\nimport { docQuery } from \"../src/queries.ts\";\n\nexport const Title = (props: { readonly id: number }) => {\n\tconst doc = DocAccess.use(docQuery(props.id));\n\treturn <h1>{doc.title}</h1>;\n};\n",
+		"title": "`use` only compiles when every error is handled"
+	},
+	{
+		"description": "Read through `Session`, a doc can still fail with `Forbidden` or `DocNotFound`: both come back in the `Result`. Forgetting one is a type error.",
+		"errors": [
+			{
+				"code": "TS2345",
+				"column": 27,
+				"line": 9,
+				"message": "Argument of type '{ DocNotFound: () => React.JSX.Element; }' is not assignable to parameter of type 'ValueTagHandlers<DocNotFound | Forbidden> & {}'.\n  Property 'Forbidden' is missing in type '{ DocNotFound: () => React.JSX.Element; }' but required in type 'ValueTagHandlers<DocNotFound | Forbidden>'."
+			}
+		],
+		"expect": "fails",
+		"file": "2-match-what-is-left.fails.tsx",
+		"source": "import { Match, Result } from \"effect\";\n\nimport { Session } from \"../src/boundaries.tsx\";\nimport { docQuery } from \"../src/queries.ts\";\n\nexport const Title = (props: { readonly id: number }) =>\n\tResult.match(Session.useResult(docQuery(props.id)), {\n\t\tonFailure: (error) =>\n\t\t\tMatch.valueTags(error, {\n\t\t\t\tDocNotFound: () => <p>No such doc</p>,\n\t\t\t}),\n\t\tonSuccess: (doc) => <h1>{doc.title}</h1>,\n\t});\n",
+		"title": "What's left must be matched exhaustively"
+	},
+	{
+		"description": "Under `DocAccess`, the failure is `DocNotFound` and nothing else. An `Unauthorized` can't reach this component (`Session` caught it), so a case for it is a type error, not dead code.",
+		"errors": [
+			{
+				"code": "TS2322",
+				"column": 5,
+				"line": 11,
+				"message": "Type '() => React.JSX.Element' is not assignable to type 'never'."
+			}
+		],
+		"expect": "fails",
+		"file": "3-cannot-handle-what-was-caught.fails.tsx",
+		"source": "import { Match, Result } from \"effect\";\n\nimport { DocAccess } from \"../src/boundaries.tsx\";\nimport { docQuery } from \"../src/queries.ts\";\n\nexport const Title = (props: { readonly id: number }) =>\n\tResult.match(DocAccess.useResult(docQuery(props.id)), {\n\t\tonFailure: (error) =>\n\t\t\tMatch.valueTags(error, {\n\t\t\t\tDocNotFound: () => <p>No such doc</p>,\n\t\t\t\tUnauthorized: () => <p>Sign in</p>,\n\t\t\t}),\n\t\tonSuccess: (doc) => <h1>{doc.title}</h1>,\n\t});\n",
+		"title": "You can't handle an error a boundary already caught"
+	},
+	{
+		"description": "`Session` already catches `Unauthorized`, so a boundary inside it that lists `Unauthorized` again would never see one.",
+		"errors": [
+			{
+				"code": "TS2322",
+				"column": 2,
+				"line": 5,
+				"message": "Type '[typeof Unauthorized]' is not assignable to type 'readonly [typeof Unauthorized] & { readonly AlreadyHandledAbove: \"Unauthorized\"; }'.\n  Property 'AlreadyHandledAbove' is missing in type '[typeof Unauthorized]' but required in type '{ readonly AlreadyHandledAbove: \"Unauthorized\"; }'."
+			}
+		],
+		"expect": "fails",
+		"file": "4-no-catching-twice.fails.tsx",
+		"source": "import { Unauthorized } from \"../src/api.ts\";\nimport { DocAccess } from \"../src/boundaries.tsx\";\n\nexport const Again = DocAccess.catchErrors({\n\terrors: [Unauthorized],\n\tfallback: () => <p>Sign in again</p>,\n\tname: \"Again\",\n});\n",
+		"title": "A boundary can't catch what one above it catches"
+	},
+	{
+		"description": "The root's client is built from the RPC client's layer. A query that needs another service (`Analytics` here) doesn't type-check at any boundary under it.",
+		"errors": [
+			{
+				"code": "TS2345",
+				"column": 46,
+				"line": 16,
+				"message": "Argument of type 'Query<number, never, Analytics>' is not assignable to parameter of type 'Query<number, never, DocsClient | QueryCache>'.\n  Type 'Analytics' is not assignable to type 'DocsClient | QueryCache'.\n    Type 'Analytics' is not assignable to type 'DocsClient'.\n      Types of property 'Service' are incompatible.\n        Type '{ readonly views: Effect<number, never, never>; }' is missing the following properties from type '{ readonly GetDoc: <const AsQueue extends boolean = false, const Discard = false>(input: { readonly id: number; }, options?: { readonly headers?: Input | undefined; readonly context?: Context<never> | undefined; readonly discard?: Discard | undefined; } | undefined) => Effect<...>; readonly ListDocs: <const AsQueue ...': GetDoc, ListDocs, RenameDoc"
+			}
+		],
+		"expect": "fails",
+		"file": "5-services-come-from-the-client.fails.tsx",
+		"source": "import { Context, Effect } from \"effect\";\nimport { Query } from \"@raf-query/experimental-effect-query\";\n\nimport { DocAccess } from \"../src/boundaries.tsx\";\n\nclass Analytics extends Context.Service<\n\tAnalytics,\n\t{ readonly views: Effect.Effect<number> }\n>()(\"Analytics\") {}\n\nconst views = Query.make({\n\teffect: Effect.flatMap(Analytics, (analytics) => analytics.views),\n\tkey: [\"views\"],\n});\n\nexport const Views = () => <p>{DocAccess.use(views)} views</p>;\n",
+		"title": "A query can only use services the client provides"
+	},
+	{
+		"description": "A boundary that catches `DocNotFound` too leaves nothing: `useResult`'s failure is `never`, and `use` returns the doc. This file compiles.",
+		"errors": [],
+		"expect": "compiles",
+		"file": "6-nothing-left-to-handle.compiles.tsx",
+		"source": "import { Result } from \"effect\";\n\nimport { DocNotFound } from \"../src/api.ts\";\nimport { DocAccess } from \"../src/boundaries.tsx\";\nimport { docQuery } from \"../src/queries.ts\";\n\nconst Everything = DocAccess.catchErrors({\n\terrors: [DocNotFound],\n\tfallback: (props) => <p>Doc {props.error.docId} is gone</p>,\n\tname: \"Everything\",\n});\n\nexport const Title = (props: { readonly id: number }) => {\n\tconst doc = Everything.use(docQuery(props.id));\n\treturn <h1>{doc.title}</h1>;\n};\n\nexport const Body = (props: { readonly id: number }) => {\n\tconst result = Everything.useResult(docQuery(props.id));\n\tif (Result.isFailure(result)) {\n\t\tconst impossible: never = result.failure;\n\t\treturn impossible;\n\t}\n\treturn <p>{result.success.body}</p>;\n};\n",
+		"title": "Once every error is caught, there is no failure to get"
+	}
+]

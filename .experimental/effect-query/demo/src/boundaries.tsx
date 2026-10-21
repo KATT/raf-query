@@ -1,0 +1,141 @@
+/**
+ * The boundary chain, from the outside in. Each one takes its errors off the
+ * type of every hook read through it, or through a boundary inside it.
+ *
+ * - `App` mounts the client and catches defects (and interrupts).
+ * - `Network` catches the transport's `RpcClientError`.
+ * - `Session` catches the session middleware's `Unauthorized`.
+ * - `DocAccess` catches `Forbidden`, around one document.
+ *
+ * `DocNotFound` and `EmptyTitle` are left to the components.
+ */
+import { Button } from "@examples/ui/components/button";
+import { Boundary } from "@raf-query/experimental-effect-query";
+import { Cause } from "effect";
+import { RpcClientError } from "effect/rpc";
+
+import { Forbidden, Unauthorized } from "./api.ts";
+import { setChaos, toggle, getChaos } from "./chaos.ts";
+import { client } from "./client.ts";
+import { Caught } from "./frame.tsx";
+
+const Crashed = (props: Boundary.RootFallbackProps) => {
+	const what = Cause.hasDies(props.cause) ? "a defect" : "an interrupt";
+	return (
+		<Caught
+			actions={
+				<Button
+					onClick={() => {
+						setChaos({ serverBug: false });
+						props.retry();
+					}}
+				>
+					Fix the server and retry
+				</Button>
+			}
+			name="App"
+			tone="root"
+			what={what}
+		>
+			<p className="text-sm">
+				No typed boundary can catch a defect: it isn’t in any error type. It
+				skipped every boundary on the way up.
+			</p>
+			<pre className="max-h-40 overflow-auto rounded-md bg-muted p-3 font-mono text-xs">
+				{Cause.pretty(props.cause)}
+			</pre>
+		</Caught>
+	);
+};
+
+const Offline = (
+	props: Boundary.FallbackProps<RpcClientError.RpcClientError>,
+) => {
+	return (
+		<Caught
+			actions={
+				<Button
+					onClick={() => {
+						setChaos({ offline: false });
+						props.retry();
+					}}
+				>
+					Reconnect
+				</Button>
+			}
+			name="Network"
+			tone="network"
+			what="RpcClientError"
+		>
+			<p className="text-sm">Can’t reach the server: {props.error.message}</p>
+		</Caught>
+	);
+};
+
+const SignIn = (props: Boundary.FallbackProps<Unauthorized>) => {
+	return (
+		<Caught
+			actions={
+				<Button
+					onClick={() => {
+						setChaos({ signedIn: true });
+						props.retry();
+					}}
+				>
+					Sign in
+				</Button>
+			}
+			name="Session"
+			tone="session"
+			what="Unauthorized"
+		>
+			<p className="text-sm">
+				Your session ended. Every query under here needs one.
+			</p>
+		</Caught>
+	);
+};
+
+const RequestAccess = (props: Boundary.FallbackProps<Forbidden>) => {
+	return (
+		<Caught
+			actions={
+				<Button
+					onClick={() => {
+						setChaos({ locked: toggle(getChaos().locked, props.error.docId) });
+						props.retry();
+					}}
+				>
+					Grant access
+				</Button>
+			}
+			name="DocAccess"
+			tone="access"
+			what="Forbidden"
+		>
+			<p className="text-sm">
+				You don’t have access to doc {props.error.docId}.
+			</p>
+		</Caught>
+	);
+};
+
+export const App = Boundary.root({ client, fallback: Crashed, name: "App" });
+
+export const Network = App.catchErrors({
+	errors: [RpcClientError.RpcClientError],
+	fallback: Offline,
+	name: "Network",
+});
+
+export const Session = Network.catchErrors({
+	errors: [Unauthorized],
+	fallback: SignIn,
+	name: "Session",
+});
+
+export const DocAccess = Session.catchErrors({
+	errors: [Forbidden],
+	fallback: RequestAccess,
+	name: "DocAccess",
+});
