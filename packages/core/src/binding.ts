@@ -14,6 +14,7 @@ import type { QueryClient } from "./client.ts";
 import {
 	promiseControls,
 	type ReadValue,
+	resultErrorsOf,
 	resultThenable,
 	throwsOnError,
 	type UseQueryControls,
@@ -272,7 +273,9 @@ function resultOf<TFactory extends QueryFactory>(
 			impl.awaited.add(promise);
 			promise.then(hooks.notify, hooks.notify);
 		}
-		return throwOnError() ? promise : resultThenable(promise);
+		return throwOnError()
+			? promise
+			: resultThenable(promise, resultErrorsOf(impl.query));
 	}
 
 	function controls() {

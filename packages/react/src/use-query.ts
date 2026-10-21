@@ -10,6 +10,7 @@ import {
 	type QueryHandleWithData,
 	QueryObserver,
 	Query,
+	resultErrorsOf,
 	resultThenable,
 	type Thenable,
 	type ThrowsOnError,
@@ -190,6 +191,7 @@ export function useQuery<TFactory extends QueryFactory>(
 	if (!throwOnError) {
 		const resultPromise = resultThenable<DataOf<TFactory>, ErrorOf<TFactory>>(
 			result.promise,
+			resultErrorsOf(query),
 		);
 		if (withData) {
 			// SAFETY: `use` unwraps to Result when throwOnError is false.
