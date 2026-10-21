@@ -14,6 +14,7 @@
 	"dependencies": {
 		"@examples/kit": "workspace:*",
 		"@examples/ui": "workspace:*",
+		"@raf-query/experimental-effect-query": "workspace:*",
 		"@raf-query/react": "workspace:*",
 		"@tanstack/react-router": "1.170.42",
 		"@tanstack/react-start": "1.168.61",
@@ -28,6 +29,7 @@
 		"@effect/platform-node": "catalog:",
 		"@effect/vitest": "catalog:",
 		"@rolldown/plugin-babel": "0.2.4",
+		"@samples/effect-query": "workspace:*",
 		"@samples/nextjs": "workspace:*",
 		"@samples/react-router": "workspace:*",
 		"@samples/react-router-spa": "workspace:*",

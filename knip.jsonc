@@ -163,6 +163,7 @@
 			// them. `sample:…` imports are a virtual module of
 			// `build/content.ts`.
 			"ignoreDependencies": [
+				"@samples/effect-query",
 				"@samples/nextjs",
 				"@samples/react-router",
 				"@samples/react-router-spa",

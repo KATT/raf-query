@@ -1,8 +1,8 @@
 import { queryOptions } from "@raf-query/react";
 
-import type { DemoDefinition } from "~/demo-kit/define.ts";
+import type { AnyDemoDefinition } from "~/demo-kit/define.ts";
 
-const modules = import.meta.glob<{ default: DemoDefinition }>([
+const modules = import.meta.glob<{ default: AnyDemoDefinition }>([
 	"./*.tsx",
 	"!./*.test.tsx",
 	"!./registry.ts",

@@ -4,6 +4,7 @@ import { ClientOnly } from "@tanstack/react-router";
 import { Suspense, use } from "react";
 
 import { DemoFrame } from "~/demo-kit/frame.tsx";
+import { StandaloneDemoFrame } from "~/demo-kit/standalone-frame.tsx";
 import { demoQuery } from "~/demos/registry.ts";
 
 function DemoPlaceholder() {
@@ -22,7 +23,12 @@ function DemoPlaceholder() {
 
 function LoadedDemo(props: { readonly handle: QueryHandle<typeof demoQuery> }) {
 	const [demoPromise] = useQuery(demoQuery, props.handle);
-	return <DemoFrame demo={use(demoPromise)} />;
+	const demo = use(demoPromise);
+	return "standalone" in demo ? (
+		<StandaloneDemoFrame demo={demo} />
+	) : (
+		<DemoFrame demo={demo} />
+	);
 }
 
 /**
