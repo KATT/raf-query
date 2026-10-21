@@ -70,6 +70,53 @@ function storeFor<TFactory extends QueryFactory>(
 }
 
 /**
+ * What every read of a handle shares: the entry, read (so its first request
+ * starts), and an observer the component re-renders with. The result's
+ * promise counts as read, since readers hand it on where reads can't be
+ * seen.
+ */
+export function useObservedQuery<TFactory extends QueryFactory>(
+	factory: TFactory,
+	handle: QueryHandle<TFactory>,
+	options: UseQueryOptions,
+) {
+	const client = useQueryClient();
+	const query = QueryBinding.queryFor(client, factory, handle);
+	assertSent(client, query);
+	Query.readUnsafe(query);
+
+	const refetchInterval = options.refetchInterval;
+	const refetchOnReconnect = options.refetchOnReconnect;
+	const refetchOnWindowFocus = options.refetchOnWindowFocus;
+	const whilePending = options.whilePending;
+	const [store] = useState(() => storeFor(query, options));
+	const observer = store.observer;
+	const result = QueryObserver.getOptimisticResultUnsafe(
+		observer,
+		query,
+		options,
+	);
+	useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+	useEffect(() => {
+		QueryObserver.setOptionsUnsafe(observer, query, {
+			refetchInterval,
+			refetchOnReconnect,
+			refetchOnWindowFocus,
+			whilePending,
+		});
+	}, [
+		observer,
+		query,
+		refetchInterval,
+		refetchOnReconnect,
+		refetchOnWindowFocus,
+		whilePending,
+	]);
+	QueryObserver.trackProp(observer, "promise");
+	return { client, observer, query, result };
+}
+
+/**
  * Read the query a handle points at. Returns a promise to unwrap with
  * `use()` and the query's controls:
  *
@@ -144,42 +191,11 @@ export function useQuery<TFactory extends QueryFactory>(
 ):
 	| UseQueryResult<TFactory, boolean>
 	| UseQueryResultWithData<TFactory, boolean> {
-	const client = useQueryClient();
-	const query = QueryBinding.queryFor(client, factory, handle);
-	assertSent(client, query);
-	Query.readUnsafe(query);
-
-	const refetchInterval = options.refetchInterval;
-	const refetchOnReconnect = options.refetchOnReconnect;
-	const refetchOnWindowFocus = options.refetchOnWindowFocus;
-	const whilePending = options.whilePending;
-	const [store] = useState(() => storeFor(query, options));
-	const observer = store.observer;
-	const result = QueryObserver.getOptimisticResultUnsafe(
-		observer,
-		query,
-		options,
-	);
-	useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
-	useEffect(() => {
-		QueryObserver.setOptionsUnsafe(observer, query, {
-			refetchInterval,
-			refetchOnReconnect,
-			refetchOnWindowFocus,
-			whilePending,
-		});
-	}, [
-		observer,
-		query,
-		refetchInterval,
-		refetchOnReconnect,
-		refetchOnWindowFocus,
-		whilePending,
-	]);
-
-	// The promise is returned as the tuple's first element, where reads can't
-	// be seen, so it always counts as read.
-	QueryObserver.trackProp(observer, "promise");
+	const observed = useObservedQuery(factory, handle, options);
+	const client = observed.client;
+	const query = observed.query;
+	const observer = observed.observer;
+	const result = observed.result;
 	const controls = promiseControls(QueryObserver.trackResult(observer, result));
 	const throwOnError = throwsOnError(
 		query,
