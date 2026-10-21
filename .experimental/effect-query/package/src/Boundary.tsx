@@ -156,8 +156,23 @@ class Escalation extends Error {
 const isOwn = (u: unknown): u is Escalation =>
 	Predicate.hasProperty(u, EscalationTypeId);
 
-/** Whether React caught one of the boundaries' own failures, for `createRoot`'s `onCaughtError`. */
-export const isEscalation: (u: unknown) => boolean = isOwn;
+export interface Caught {
+	/** The boundary that renders its fallback for it. */
+	readonly boundary: AnyBoundary;
+	readonly cause: Cause.Cause<unknown>;
+	/** The typed failure, or `undefined` when the root caught a defect or an interrupt. */
+	readonly error: unknown;
+}
+
+/**
+ * For `createRoot`'s `onCaughtError`: which boundary caught `u`, and why, when
+ * `u` is a failure a hook sent to a boundary. `undefined` for anything else
+ * React caught, such as an error thrown while rendering.
+ */
+export const caughtBy = (u: unknown): Caught | undefined =>
+	isOwn(u)
+		? { boundary: u.boundary, cause: u.cause, error: u.error }
+		: undefined;
 
 interface Impl extends AnyBoundary {
 	readonly client: QueryClient.Any | undefined;
@@ -284,9 +299,11 @@ const useRead = (
 		getSnapshot,
 		getSnapshot,
 	);
+	React.use(snapshot.promise);
+	// Settled without a result: the entry was dropped, and reading made a new one.
 	while (snapshot.exit === undefined) {
-		React.use(snapshot.promise);
 		snapshot = getSnapshot();
+		React.use(snapshot.promise);
 	}
 	return settle(boundary, snapshot.exit, hook === "useResult");
 };

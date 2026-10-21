@@ -65,7 +65,10 @@ describe("QueryCache", () => {
 			const pending = cache.readUnsafe(query, Context.empty());
 			expect(pending.exit).toBeUndefined();
 			expect(pending.isFetching).toBe(true);
+			expect(pending.promise).toMatchObject({ status: "pending" });
 			yield* TestClock.adjust("1 second");
+			// React reads `status` to tell a settled promise from one to suspend on.
+			expect(pending.promise).toMatchObject({ status: "fulfilled" });
 			yield* Effect.promise(() => pending.promise);
 			expect(cache.readUnsafe(query, Context.empty()).exit).toEqual(
 				Exit.succeed("done"),

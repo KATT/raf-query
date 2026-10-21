@@ -3,6 +3,7 @@ import {
 	cleanup,
 	fireEvent,
 	render,
+	type RenderOptions,
 	screen,
 } from "@testing-library/react";
 import { Cause, Effect, Layer, Match, Result } from "effect";
@@ -63,10 +64,13 @@ const settle = () =>
 	act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 
 /** Renders `node` and lets its queries settle; disposing unmounts it. */
-const mount = async (node: React.ReactNode): Promise<Disposable> => {
+const mount = async (
+	node: React.ReactNode,
+	options?: Pick<RenderOptions, "onCaughtError">,
+): Promise<Disposable> => {
 	// React logs every error a boundary catches.
 	const errors = vi.spyOn(console, "error").mockImplementation(() => {});
-	await act(async () => render(node));
+	await act(async () => render(node, options));
 	await settle();
 	return {
 		[Symbol.dispose]: () => {
@@ -118,6 +122,22 @@ describe("Boundary", () => {
 			});
 		using _view = await mount(tree(app, <Title />));
 		expect(screen.getByText("inline Forbidden")).toBeDefined();
+	});
+
+	it("tells onCaughtError which boundary caught what", async () => {
+		const app = setup("forbidden");
+		const caught: Array<string> = [];
+		const onCaughtError: RenderOptions["onCaughtError"] = (error) => {
+			const by = Boundary.caughtBy(error);
+			caught.push(
+				by === undefined ? "other" : `${by.boundary.name}: ${String(by.error)}`,
+			);
+		};
+		const Title = () => (
+			<p>{Result.getOrThrow(app.Doc.useResult(docQuery(1))).title}</p>
+		);
+		using _view = await mount(tree(app, <Title />), { onCaughtError });
+		expect(caught).toEqual(["Doc: Forbidden"]);
 	});
 
 	it("sends defects to the root", async () => {

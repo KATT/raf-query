@@ -42,7 +42,11 @@ export interface Snapshot<A = unknown, E = unknown> {
 	/** The last result, or `undefined` before the first one. */
 	readonly exit: Exit.Exit<A, E> | undefined;
 	readonly isFetching: boolean;
-	/** Settles when the first result arrives. `use()` it while `exit` is `undefined`. */
+	/**
+	 * Settles when the first result arrives, and says so in its `status`
+	 * (React's convention), so `use()` returns at once from then on: a reader
+	 * can call `use()` on every render, as React wants.
+	 */
 	readonly promise: Promise<void>;
 }
 
@@ -98,7 +102,10 @@ interface Entry {
 	readonly waiters: Set<(exit: Exit.Exit<unknown, unknown>) => void>;
 }
 
-const resolved = Promise.resolve();
+const resolved = Object.assign(Promise.resolve(), {
+	status: "fulfilled",
+	value: undefined,
+});
 
 export const make: (
 	config?: Config,
@@ -125,21 +132,24 @@ export const make: (
 
 		const pending = (entry: Entry) => {
 			const deferred = Promise.withResolvers<void>();
-			entry.resolve = deferred.resolve;
-			return deferred.promise;
+			const promise = Object.assign(deferred.promise, { status: "pending" });
+			entry.resolve = () => {
+				Object.assign(promise, { status: "fulfilled", value: undefined });
+				deferred.resolve();
+			};
+			return promise;
 		};
 
 		const settle = (entry: Entry, exit: Exit.Exit<unknown, unknown>) => {
 			entry.request = undefined;
 			entry.invalidated = false;
 			entry.updatedAt = clock.currentTimeMillisUnsafe();
+			entry.resolve();
 			setSnapshot(entry, {
 				exit,
 				isFetching: false,
-				promise:
-					entry.snapshot.exit === undefined ? resolved : entry.snapshot.promise,
+				promise: entry.snapshot.promise,
 			});
-			entry.resolve();
 			for (const waiter of entry.waiters) {
 				waiter(exit);
 			}
