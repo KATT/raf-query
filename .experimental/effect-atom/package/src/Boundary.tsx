@@ -175,19 +175,24 @@ export interface Caught {
  * `u` is a failure a hook sent to a boundary. `undefined` for anything else
  * React caught, such as an error thrown while rendering.
  */
+const caughtOf = (
+	boundary: Info,
+	error: unknown,
+	cause: Cause.Cause<unknown>,
+): Caught => ({
+	boundary,
+	cause,
+	error,
+	name: boundary.name,
+	root: boundary.parent === undefined,
+});
+
 export const caughtBy = (u: unknown): Caught | undefined =>
-	isOwn(u)
-		? {
-				boundary: u.boundary,
-				cause: u.cause,
-				error: u.error,
-				name: u.boundary.name,
-				root: u.boundary.parent === undefined,
-			}
-		: undefined;
+	isOwn(u) ? caughtOf(u.boundary, u.error, u.cause) : undefined;
 
 interface Impl extends Info {
 	readonly fallback: (props: FallbackProps<unknown>) => React.ReactNode;
+	readonly onCaught: ((caught: Caught) => void) | undefined;
 	readonly parent: Impl | undefined;
 	readonly rootFallback: (props: RootFallbackProps) => React.ReactNode;
 }
@@ -258,6 +263,24 @@ class Catcher extends React.Component<CatcherProps, CatcherState> {
 
 	static getDerivedStateFromError(value: unknown): CatcherState {
 		return { caught: { value } };
+	}
+
+	/** Only the boundary whose fallback rendered reports: the others threw it on. */
+	override componentDidCatch(value: unknown) {
+		const boundary = this.props.boundary;
+		const onCaught = rootOf(boundary).onCaught;
+		if (onCaught === undefined) {
+			return;
+		}
+		if (boundary.parent === undefined) {
+			onCaught(
+				isOwn(value)
+					? caughtOf(boundary, value.error, value.cause)
+					: caughtOf(boundary, undefined, Cause.die(value)),
+			);
+		} else if (isOwn(value) && value.boundary === boundary) {
+			onCaught(caughtOf(boundary, value.error, value.cause));
+		}
 	}
 
 	retry = () => {
@@ -431,6 +454,7 @@ const make = (options: {
 	readonly errors: ReadonlyArray<Catchable>;
 	readonly fallback: (props: FallbackProps<unknown>) => React.ReactNode;
 	readonly name: string;
+	readonly onCaught: ((caught: Caught) => void) | undefined;
 	readonly parent: Impl | undefined;
 	readonly rootFallback: (props: RootFallbackProps) => React.ReactNode;
 }): readonly [Boundary<unknown>, Hook<unknown>] => {
@@ -438,6 +462,7 @@ const make = (options: {
 		errors: options.errors,
 		fallback: options.fallback,
 		name: options.name,
+		onCaught: options.onCaught,
 		parent: options.parent,
 		rootFallback: options.rootFallback,
 	};
@@ -485,12 +510,15 @@ const implOf = (boundary: Boundary<unknown>): Impl => {
 export const root = (options: {
 	readonly fallback: (props: RootFallbackProps) => React.ReactNode;
 	readonly name: string;
+	/** Called once for each failure a boundary of this chain renders its fallback for. */
+	readonly onCaught?: ((caught: Caught) => void) | undefined;
 }): readonly [Boundary<never>, Hook<never>] =>
 	// SAFETY: see `make`; the root catches nothing typed.
 	make({
 		errors: [],
 		fallback: () => null,
 		name: options.name,
+		onCaught: options.onCaught,
 		parent: undefined,
 		rootFallback: options.fallback,
 	}) as readonly [Boundary<never>, Hook<never>];
@@ -514,6 +542,7 @@ export const catchErrors = <Handled, const S extends ReadonlyArray<Catchable>>(
 		errors: options.errors,
 		fallback,
 		name: options.name,
+		onCaught: undefined,
 		parent: above,
 		rootFallback: above.rootFallback,
 	}) as readonly [

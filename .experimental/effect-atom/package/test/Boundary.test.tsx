@@ -20,7 +20,10 @@ import {
 	Unauthorized,
 } from "./fixtures.ts";
 
-const setup = (initial: Behavior) => {
+const setup = (
+	initial: Behavior,
+	onCaught?: (caught: Boundary.Caught) => void,
+) => {
 	const docs = makeDocs(initial);
 	const [App, useApp] = Boundary.root({
 		fallback: (props) => (
@@ -29,6 +32,7 @@ const setup = (initial: Behavior) => {
 			</button>
 		),
 		name: "App",
+		onCaught,
 	});
 	const [Auth, useAuth] = Boundary.catchErrors(App, {
 		errors: [Unauthorized],
@@ -162,6 +166,36 @@ describe("Boundary", () => {
 		);
 		using _view = await mount(tree(signedOut, <Other />), { onCaughtError });
 		expect(caught).toEqual(["Auth: Unauthorized"]);
+	});
+
+	it("reports each failure to the root's onCaught, from the boundary that renders its fallback", async () => {
+		const caught: Array<string> = [];
+		const onCaught = (by: Boundary.Caught) =>
+			caught.push(`${by.name} ${by.root} ${String(by.error)}`);
+		const forbidden = setup("forbidden", onCaught);
+		const Title = () => (
+			<p>{title(forbidden.useDoc(forbidden.docs.docAtom(1)))}</p>
+		);
+		{
+			using _view = await mount(tree(forbidden, <Title />));
+			expect(caught).toEqual(["Doc false Forbidden"]);
+		}
+		caught.length = 0;
+		const signedOut = setup("unauthorized", onCaught);
+		const Other = () => (
+			<p>{title(signedOut.useDoc(signedOut.docs.docAtom(1)))}</p>
+		);
+		{
+			using _view = await mount(tree(signedOut, <Other />));
+			expect(caught).toEqual(["Auth false Unauthorized"]);
+		}
+		caught.length = 0;
+		const crashing = setup("ok", onCaught);
+		const Crash = () => {
+			throw new Error("render bug");
+		};
+		using _view = await mount(tree(crashing, <Crash />));
+		expect(caught).toEqual(["App true undefined"]);
 	});
 
 	it("sends defects to the root", async () => {
