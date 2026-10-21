@@ -3,6 +3,7 @@
 import {
 	type DataOf,
 	type ErrorOf,
+	type HasTypedError,
 	promiseControls,
 	QueryBinding,
 	type QueryFactory,
@@ -22,6 +23,10 @@ import {
 import type { Result } from "effect";
 import { use, useEffect, useState, useSyncExternalStore } from "react";
 
+import {
+	type ErrorBoundaryClaims,
+	isErrorBoundaryClaims,
+} from "./error-boundary.tsx";
 import { assertSent } from "./query-provider/browser-requests.ts";
 import { useQueryClient } from "./provider.tsx";
 
@@ -50,6 +55,40 @@ export type UseQueryResultWithData<
 				result: Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>,
 				controls: UseQueryControls<TFactory>,
 			];
+
+/**
+ * A read's `throwOnError` as an error boundary's claims. Only for typed
+ * errors: other promise reads always throw, and the boundary catches what
+ * it claims from them anyway.
+ */
+type ClaimOptions<TFactory extends QueryFactory, TOwned> = UseQueryOptions & {
+	readonly throwOnError: ErrorBoundaryClaims<TOwned> &
+		(HasTypedError<TFactory> extends true ? unknown : never);
+};
+
+/** What the boundary and the ones above it don't own. */
+type Unowned<TFactory extends QueryFactory, TOwned> = Exclude<
+	ErrorOf<TFactory>,
+	TOwned
+>;
+
+/** {@link useQuery}'s result when its `throwOnError` is a boundary's claims. */
+export type UseQueryClaimedResult<
+	TFactory extends QueryFactory,
+	TOwned,
+> = readonly [
+	promise: Thenable<Result.Result<DataOf<TFactory>, Unowned<TFactory, TOwned>>>,
+	controls: UseQueryControls<TFactory>,
+];
+
+/** {@link UseQueryClaimedResult} for a handle from `ensure` or `fetch`. */
+export type UseQueryClaimedResultWithData<
+	TFactory extends QueryFactory,
+	TOwned,
+> = readonly [
+	result: Result.Result<DataOf<TFactory>, Unowned<TFactory, TOwned>>,
+	controls: UseQueryControls<TFactory>,
+];
 
 /** An observer, with the stable callbacks `useSyncExternalStore` needs. */
 interface ObserverStore<TFactory extends QueryFactory> {
@@ -118,7 +157,21 @@ function storeFor<TFactory extends QueryFactory>(
  * receives a handle from `ensure` / `fetch` must be typed
  * {@link QueryHandleWithData}: typed as `QueryHandle`, it reads as a promise
  * while the hook returns the data.
+ *
+ * Pass an error boundary's claims as `throwOnError` (`useAuthBoundary()`,
+ * from `createErrorBoundary`) and the errors it owns reject to it, while the
+ * rest settle as a `Result` typed without them.
  */
+export function useQuery<TFactory extends QueryFactory, TOwned>(
+	factory: TFactory,
+	handle: QueryHandleWithData<TFactory>,
+	options: ClaimOptions<TFactory, TOwned>,
+): UseQueryClaimedResultWithData<TFactory, TOwned>;
+export function useQuery<TFactory extends QueryFactory, TOwned>(
+	factory: TFactory,
+	handle: QueryHandle<TFactory>,
+	options: ClaimOptions<TFactory, TOwned>,
+): UseQueryClaimedResult<TFactory, TOwned>;
 export function useQuery<
 	TFactory extends QueryFactory,
 	const TThrow extends boolean | undefined = undefined,
@@ -140,7 +193,9 @@ export function useQuery<
 export function useQuery<TFactory extends QueryFactory>(
 	factory: TFactory,
 	handle: QueryHandle<TFactory>,
-	options: UseQueryOptions & { readonly throwOnError?: boolean } = {},
+	options: UseQueryOptions & {
+		readonly throwOnError?: boolean | ErrorBoundaryClaims<unknown>;
+	} = {},
 	// Overloads name the return; the body picks at runtime.
 ):
 	| UseQueryResult<TFactory, boolean>
@@ -182,16 +237,22 @@ export function useQuery<TFactory extends QueryFactory>(
 	// be seen, so it always counts as read.
 	QueryObserver.trackProp(observer, "promise");
 	const controls = promiseControls(QueryObserver.trackResult(observer, result));
+	const readFlag = options.throwOnError;
+	const claims = isErrorBoundaryClaims(readFlag) ? readFlag : undefined;
 	const throwOnError = throwsOnError(
 		query,
-		options.throwOnError,
+		isErrorBoundaryClaims(readFlag) ? false : readFlag,
 		client.throwOnError,
 	);
 	const withData = "data" in handle;
 	if (!throwOnError) {
+		const declared = resultErrorsOf(query);
 		const resultPromise = resultThenable<DataOf<TFactory>, ErrorOf<TFactory>>(
 			result.promise,
-			resultErrorsOf(query),
+			claims
+				? (error) => !claims.owns(error) && (declared?.(error) ?? true)
+				: declared,
+			claims,
 		);
 		if (withData) {
 			// SAFETY: `use` unwraps to Result when throwOnError is false.

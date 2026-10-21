@@ -47,6 +47,111 @@ When the **first** load fails, the promise rejects and `use()` throws to the nea
 
 Effect `queryFn`s can return a typed `Result` in the first tuple slot instead of rejecting — see [Typed errors](./effect-errors.md#in-react).
 
+### Typed error boundaries
+
+Some failures belong to the app, not to the component that read the query: a signed-out user, a lost connection. `createErrorBoundary` makes a boundary that owns them for the tree under it, returned as a component and a hook. A read that passes the hook's value as `throwOnError` throws what the boundary owns to it, and its `Result` is typed without those errors, so the component only matches what is left. This works for any query with a typed error: an Effect `queryFn`'s inferred one, or a promise `queryFn`'s [declared errors](./query-functions.md#declaring-errors).
+
+```tsx twoslash
+import { Effect, Result, Schema } from "effect";
+import { use } from "react";
+import {
+	createErrorBoundary,
+	type QueryHandle,
+	queryOptions,
+	useQuery,
+} from "@raf-query/react";
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
+	"Unauthorized",
+	{},
+) {}
+class IssueNotFound extends Schema.TaggedError<IssueNotFound>()(
+	"IssueNotFound",
+	{ id: Schema.Number },
+) {}
+declare function getIssue(
+	id: number,
+): Effect.Effect<{ title: string }, IssueNotFound | Unauthorized>;
+function issueQuery(input: { id: number }) {
+	return queryOptions({
+		queryKey: ["issue", input.id],
+		queryFn: () => getIssue(input.id),
+	});
+}
+// ---cut---
+const [AuthBoundary, useAuthBoundary] = createErrorBoundary({
+	name: "Auth",
+	claims: [Unauthorized],
+	fallback: () => <p>Your session ended. Sign in again.</p>,
+});
+
+function IssueTitle(props: { handle: QueryHandle<typeof issueQuery> }) {
+	const [issuePromise] = useQuery(issueQuery, props.handle, {
+		throwOnError: useAuthBoundary(),
+	});
+	return Result.match(use(issuePromise), {
+		onFailure: (error) => `No issue ${error.id}`,
+		//          ^?
+		onSuccess: (issue) => issue.title,
+	});
+}
+```
+
+The component can't handle what the boundary owns: `Unauthorized` isn't in its `Result`'s error, so matching it is a type error.
+
+```tsx twoslash
+// @errors: 2322
+import { Effect, Match, Result, Schema } from "effect";
+import { use } from "react";
+import {
+	createErrorBoundary,
+	type QueryHandle,
+	queryOptions,
+	useQuery,
+} from "@raf-query/react";
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
+	"Unauthorized",
+	{},
+) {}
+class IssueNotFound extends Schema.TaggedError<IssueNotFound>()(
+	"IssueNotFound",
+	{ id: Schema.Number },
+) {}
+declare function getIssue(
+	id: number,
+): Effect.Effect<{ title: string }, IssueNotFound | Unauthorized>;
+function issueQuery(input: { id: number }) {
+	return queryOptions({
+		queryKey: ["issue", input.id],
+		queryFn: () => getIssue(input.id),
+	});
+}
+const [AuthBoundary, useAuthBoundary] = createErrorBoundary({
+	name: "Auth",
+	claims: [Unauthorized],
+	fallback: () => <p>Your session ended. Sign in again.</p>,
+});
+declare const handle: QueryHandle<typeof issueQuery>;
+const [issuePromise] = useQuery(issueQuery, handle, {
+	throwOnError: useAuthBoundary(),
+});
+const issue = use(issuePromise);
+// ---cut---
+if (Result.isFailure(issue)) {
+	Match.valueTags(issue.failure, {
+		IssueNotFound: (error) => `No issue ${error.id}`,
+		Unauthorized: () => "Sign in",
+	});
+}
+```
+
+In the demo, the post's Effect fails with `PostNotFound`, `Unauthorized` or `Offline`, all inferred. `<AuthBoundary>` owns `Unauthorized`, and its parent `<OfflineBoundary>` owns `Offline`, so the post matches only `PostNotFound`. Open the deleted post, then fail a request each way:
+
+```demo
+typed-error-boundaries
+```
+
+Render `<AuthBoundary>` above the components that use its hook; the hook throws outside it. Give a boundary a `parent` (another boundary's component) and it owns its parent's errors too, so a chain such as offline, then signed out, types every read below the innermost one. Each boundary checks its claims at runtime: its `fallback` gets the error it claims, typed, and it re-throws anything else to the boundaries above it. `reset` renders the children again, which refetches a failed first load.
+
 ## Passing promises down
 
 A component can call the hook with a prefetched handle and hand the promise to a child, so only the child suspends:

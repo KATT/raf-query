@@ -4,6 +4,8 @@ export { QueryProvider } from "./query-provider/query-provider.tsx";
 export { useIsFetching } from "./use-is-fetching.ts";
 export {
 	useQuery,
+	type UseQueryClaimedResult,
+	type UseQueryClaimedResultWithData,
 	type UseQueryResult,
 	type UseQueryResultWithData,
 } from "./use-query.ts";
