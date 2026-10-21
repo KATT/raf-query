@@ -3,8 +3,9 @@
  * observer's result with Promise commands, and the types every binding
  * shares. The React, Svelte and Vue packages build their reads on this.
  */
-import { Effect, Result } from "effect";
+import { Cause, Effect, Exit, Result } from "effect";
 
+import { causeOf } from "./entry.ts";
 import type { QueryKey } from "./key.ts";
 import type * as QueryObserver from "./observer.ts";
 import * as Query from "./query.ts";
@@ -172,13 +173,46 @@ export function promiseControls(result: QueryObserver.Result): PromiseControls {
 }
 
 /**
- * One `Result` thenable per data thenable, so readers see a stable identity
- * across re-renders the same way they do for the data promise.
+ * A thenable that fulfills with `onSettle`'s value when `promise` settles,
+ * never rejecting. Settled already when `promise` is, and the same thenable
+ * for the same `promise` in the same `cache`, so readers see a stable
+ * identity across re-renders the way they do for the data promise.
  */
-const resultThenables = new WeakMap<
-	Thenable<unknown>,
-	Thenable<Result.Result<unknown, unknown>>
->();
+function settledThenable<A, B>(
+	cache: WeakMap<Thenable<unknown>, Thenable<unknown>>,
+	promise: Thenable<A>,
+	onSettle: (
+		settled:
+			| { readonly status: "fulfilled"; readonly value: A }
+			| { readonly reason: unknown; readonly status: "rejected" },
+	) => B,
+): Thenable<B> {
+	const cached = cache.get(promise);
+	if (cached) {
+		// SAFETY: each cache holds one `onSettle`'s thenables, keyed by the
+		// promise whose value it maps; A and B are erased in the map.
+		return cached as Thenable<B>;
+	}
+	let next: Thenable<B>;
+	if (promise.status === "pending") {
+		const deferred = pending<B>();
+		promise.then(
+			(value) => {
+				deferred.resolve(onSettle({ status: "fulfilled", value }));
+			},
+			(error: unknown) => {
+				deferred.resolve(onSettle({ reason: error, status: "rejected" }));
+			},
+		);
+		next = deferred.promise;
+	} else {
+		next = fulfilled(onSettle(promise));
+	}
+	cache.set(promise, next);
+	return next;
+}
+
+const resultThenables = new WeakMap<Thenable<unknown>, Thenable<unknown>>();
 
 /**
  * A thenable that fulfills with a `Result` when `promise` settles, for reads
@@ -188,43 +222,37 @@ const resultThenables = new WeakMap<
 export function resultThenable<A, E>(
 	promise: Thenable<A>,
 ): Thenable<Result.Result<A, E>> {
-	const cached = resultThenables.get(promise);
-	if (cached) {
-		// SAFETY: each thenable is stored under the Result shape for its A/E.
-		return cached as Thenable<Result.Result<A, E>>;
-	}
-	let next: Thenable<Result.Result<A, E>>;
-	if (promise.status === "fulfilled") {
-		next = fulfilled(Result.succeed(promise.value));
-	} else if (promise.status === "rejected") {
-		next = fulfilled(
-			Result.fail(
-				// SAFETY: rejected reasons are this factory's ErrorOf when Result
-				// mode is on (typed Effect queryFn).
-				promise.reason as E,
-			),
-		);
-	} else {
-		const deferred = pending<Result.Result<A, E>>();
-		promise.then(
-			(value) => {
-				deferred.resolve(Result.succeed(value));
-			},
-			(error: unknown) => {
-				deferred.resolve(
-					Result.fail(
-						// SAFETY: as above for rejected reasons.
-						error as E,
-					),
-				);
-			},
-		);
-		next = deferred.promise;
-	}
-	resultThenables.set(
-		promise,
-		// SAFETY: WeakMap values are Result thenables; A/E are erased in the map.
-		next as Thenable<Result.Result<unknown, unknown>>,
+	return settledThenable(resultThenables, promise, (settled) =>
+		settled.status === "fulfilled"
+			? Result.succeed(settled.value)
+			: Result.fail(
+					// SAFETY: rejected reasons are this factory's ErrorOf when Result
+					// mode is on (typed Effect queryFn).
+					settled.reason as E,
+				),
 	);
-	return next;
+}
+
+const exitThenables = new WeakMap<Thenable<unknown>, Thenable<unknown>>();
+
+/**
+ * A thenable that fulfills with the read's `Exit` when `promise` (a query's
+ * `State.promise`) settles: its data, or the whole `Cause` its first load
+ * failed with, so a typed failure stays apart from a defect. A rejection
+ * the cache has no `Cause` for, such as a request adopted from a server's
+ * dehydrated state, is a defect. Never rejects; settled already when
+ * `promise` is, and the same thenable for the same `promise`. For bindings.
+ */
+export function exitThenable<A, E>(
+	promise: Thenable<A>,
+): Thenable<Exit.Exit<A, E>> {
+	return settledThenable(exitThenables, promise, (settled) =>
+		settled.status === "fulfilled"
+			? Exit.succeed(settled.value)
+			: Exit.failCause(
+					// SAFETY: a first load's failures are its factory's ErrorOf; the
+					// rest of a Cause (defects, interrupts) has no error type.
+					(causeOf(promise) ?? Cause.die(settled.reason)) as Cause.Cause<E>,
+				),
+	);
 }
