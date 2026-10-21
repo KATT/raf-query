@@ -1305,6 +1305,9 @@ importers:
 
   www:
     dependencies:
+      '@examples/experimental-effect-atom':
+        specifier: workspace:*
+        version: link:../.experimental/effect-atom/demo
       '@examples/kit':
         specifier: workspace:*
         version: link:../examples/.shared/kit
@@ -1595,9 +1598,15 @@ importers:
 
   www/samples/tanstack-start-effect:
     dependencies:
+      '@effect/atom-react':
+        specifier: 'catalog:'
+        version: 4.0.5(effect@4.0.5)(react@19.3.0)(scheduler@0.28.0)
       '@raf-query/core':
         specifier: workspace:*
         version: link:../../../packages/core
+      '@raf-query/experimental-effect-atom':
+        specifier: workspace:*
+        version: link:../../../.experimental/effect-atom/package
       '@raf-query/react':
         specifier: workspace:*
         version: link:../../../packages/react

@@ -16,4 +16,5 @@ export const sections = [
 	"Server rendering",
 	"Reference",
 	"Project",
+	"Experiments",
 ] as const;

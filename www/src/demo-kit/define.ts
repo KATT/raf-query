@@ -38,6 +38,25 @@ type DemoOptions = Pick<DemoDefinition, "createClient" | "hint" | "title"> &
 		| Pick<DemoDefinition, "variants" | "variantsLabel">
 	);
 
+/**
+ * A demo that brings its own state, such as an atom registry, instead of a
+ * query client and a fake server. It renders in a plain frame, without the
+ * queries panel.
+ */
+export interface StandaloneDemo {
+	readonly Component: ComponentType;
+	/** One sentence on what to try. */
+	readonly hint: string;
+	readonly standalone: true;
+	readonly title: string;
+}
+
+export function defineStandaloneDemo(
+	demo: Omit<StandaloneDemo, "standalone">,
+): StandaloneDemo {
+	return { ...demo, standalone: true };
+}
+
 export function defineDemo(demo: DemoOptions): DemoDefinition {
 	if ("variants" in demo) {
 		return demo;
