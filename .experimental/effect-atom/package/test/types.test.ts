@@ -23,7 +23,7 @@ const [DocBoundary, useDoc] = Boundary.catchErrors(Auth, {
 	fallback: () => null,
 	name: "Doc",
 });
-const [, useEverything] = Boundary.catchErrors(DocBoundary, {
+const [Everything, useEverything] = Boundary.catchErrors(DocBoundary, {
 	errors: [NotFound],
 	fallback: () => null,
 	name: "All",
@@ -156,10 +156,10 @@ describe("Boundary types", () => {
 
 	it("useSet writes a function atom, with the same narrowing", () => {
 		function useTypeOnly() {
-			expectTypeOf(useDoc.useSet(docs.rename)).toEqualTypeOf<
+			expectTypeOf(Boundary.useSet(DocBoundary, docs.rename)).toEqualTypeOf<
 				(value: number) => Promise<Doc | Boundary.Unhandled<NotFound>>
 			>();
-			expectTypeOf(useEverything.useSet(docs.rename)).toEqualTypeOf<
+			expectTypeOf(Boundary.useSet(Everything, docs.rename)).toEqualTypeOf<
 				(value: number) => Promise<Doc>
 			>();
 		}

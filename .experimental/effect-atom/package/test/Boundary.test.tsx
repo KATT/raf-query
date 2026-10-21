@@ -235,8 +235,7 @@ describe("Boundary", () => {
 		const app = setup("missing");
 		const results: Array<string> = [];
 		const Rename = () => {
-			// oxlint-disable-next-line react/hooks -- `useSet` hangs off the boundary's hook; React Compiler skips this component
-			const rename = app.useDoc.useSet(app.docs.rename);
+			const rename = Boundary.useSet(app.Doc, app.docs.rename);
 			const onClick = async () => {
 				const doc = await rename(1);
 				results.push(Boundary.isUnhandled(doc) ? doc.error._tag : doc.title);

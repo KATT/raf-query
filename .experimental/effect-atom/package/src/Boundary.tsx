@@ -123,18 +123,12 @@ export interface Hook<Handled> {
 	<A, E>(
 		atom: Atom.Atom<AsyncResult.AsyncResult<A, E>>,
 	): Read<A, Exclude<E, Handled>>;
-	/**
-	 * A function that writes to an `AsyncResult` function atom (a mutation,
-	 * say) and waits for its result. Errors a boundary in the chain catches go
-	 * there, and the promise never settles; the rest come back as an
-	 * `Unhandled`.
-	 */
-	readonly useSet: <A, E, W>(
-		atom: Atom.Writable<AsyncResult.AsyncResult<A, E>, W>,
-	) => (
-		value: Exclude<W, Atom.Reset | Atom.Interrupt>,
-	) => Promise<Read<A, Exclude<E, Handled>>>;
 }
+
+/** What `useSet` returns: writes the atom, and waits for its result. */
+export type Setter<Handled, A, E, W> = (
+	value: Exclude<W, Atom.Reset | Atom.Interrupt>,
+) => Promise<Read<A, Exclude<E, Handled>>>;
 
 /** The errors a boundary and the ones above it catch. */
 export type HandledBy<B> = B extends Boundary<infer H> ? H : never;
@@ -392,7 +386,7 @@ const useRead = (boundary: Impl, atom: Atom.Atom<AnyResult>): unknown => {
 
 const never = new Promise<never>(() => {});
 
-const useSetter = (boundary: Impl, atom: Atom.Writable<AnyResult, unknown>) => {
+const useWrite = (boundary: Impl, atom: Atom.Writable<AnyResult, unknown>) => {
 	useMounted(boundary);
 	const registry = React.useContext(RegistryContext);
 	useAtomMount(atom);
@@ -456,8 +450,6 @@ const make = (options: {
 	Provider.displayName = options.name;
 
 	const useBoundary = (atom: Atom.Atom<AnyResult>) => useRead(impl, atom);
-	const useSet = (atom: Atom.Writable<AnyResult, unknown>) =>
-		useSetter(impl, atom);
 
 	// SAFETY: `Boundary` and `Hook` type what is erased here: `settle` hands
 	// back only failures no boundary in the chain catches, and `catchErrors`'
@@ -466,7 +458,7 @@ const make = (options: {
 		[TypeId]: impl,
 	}) as Boundary<unknown>;
 	// SAFETY: see `boundary`.
-	const hook = Object.assign(useBoundary, { useSet }) as Hook<unknown>;
+	const hook = useBoundary as Hook<unknown>;
 	return [boundary, hook];
 };
 
@@ -518,4 +510,23 @@ export const catchErrors = <Handled, const S extends ReadonlyArray<Catchable>>(
 		Boundary<Handled | S[number]["Type"]>,
 		Hook<Handled | S[number]["Type"]>,
 	];
+};
+
+/**
+ * A function that writes to an `AsyncResult` function atom (a mutation, say)
+ * through `boundary`, which must be mounted above, and waits for its result.
+ * Errors a boundary in the chain catches go there, and the promise never
+ * settles; the rest come back as an `Unhandled`, as a read's do.
+ *
+ * A hook of its own, rather than a method of the boundary's hook: React
+ * Compiler treats any property of a `use…` function as a hook used as a value.
+ */
+export const useSet = <Handled, A, E, W>(
+	boundary: Boundary<Handled>,
+	atom: Atom.Writable<AsyncResult.AsyncResult<A, E>, W>,
+): Setter<Handled, A, E, W> => {
+	// SAFETY: `atom`'s types were checked by the signature; at runtime they are erased.
+	const erased = atom as Atom.Writable<AnyResult, unknown>;
+	// SAFETY: see `make`.
+	return useWrite(implOf(boundary), erased) as Setter<Handled, A, E, W>;
 };
