@@ -142,7 +142,9 @@ describe("Boundary", () => {
 		const onCaughtError: RenderOptions["onCaughtError"] = (error) => {
 			const by = Boundary.caughtBy(error);
 			caught.push(
-				by === undefined ? "other" : `${by.boundary.name}: ${String(by.error)}`,
+				by === undefined
+					? "other"
+					: `${by.name}${by.root ? " (root)" : ""}: ${String(by.error)}`,
 			);
 		};
 		const forbidden = setup("forbidden");
@@ -165,8 +167,15 @@ describe("Boundary", () => {
 	it("sends defects to the root", async () => {
 		const app = setup("die");
 		const Title = () => <p>{title(app.useDoc(app.docs.docAtom(1)))}</p>;
-		using _view = await mount(tree(app, <Title />));
+		const caught: Array<string> = [];
+		using _view = await mount(tree(app, <Title />), {
+			onCaughtError: (error) => {
+				const by = Boundary.caughtBy(error);
+				caught.push(`${by?.name} ${by?.root} ${String(by?.error)}`);
+			},
+		});
 		expect(screen.getByText(/crashed: Error: doc 1 exploded/)).toBeDefined();
+		expect(caught).toEqual(["App true undefined"]);
 	});
 
 	it("retry refreshes what the boundary caught, once, and suspends while it does", async () => {

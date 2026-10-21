@@ -164,6 +164,10 @@ export interface Caught {
 	readonly cause: Cause.Cause<unknown>;
 	/** The typed failure, or `undefined` when the root caught a defect or an interrupt. */
 	readonly error: unknown;
+	/** The boundary's `name`. */
+	readonly name: string;
+	/** Whether the root caught it. */
+	readonly root: boolean;
 }
 
 /**
@@ -173,7 +177,13 @@ export interface Caught {
  */
 export const caughtBy = (u: unknown): Caught | undefined =>
 	isOwn(u)
-		? { boundary: u.boundary, cause: u.cause, error: u.error }
+		? {
+				boundary: u.boundary,
+				cause: u.cause,
+				error: u.error,
+				name: u.boundary.name,
+				root: u.boundary.parent === undefined,
+			}
 		: undefined;
 
 interface Impl extends Info {
