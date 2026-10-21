@@ -30,7 +30,7 @@ const Live = () => {
 						<Frame catches="RpcClientError" name="Network" tone="network">
 							<Session>
 								<Frame catches="Unauthorized" name="Session" tone="session">
-									<div className="grid gap-3 md:grid-cols-[220px_1fr]">
+									<div className="grid gap-3 @lg:grid-cols-[200px_minmax(0,1fr)]">
 										<Suspense fallback={<Loading />}>
 											<DocList onSelect={setSelected} selected={selected} />
 										</Suspense>
@@ -54,12 +54,16 @@ const Live = () => {
 
 export const Playground = () => (
 	<RegistryProvider defaultIdleTTL={400}>
-		<div className="grid gap-6 lg:grid-cols-[1fr_300px]">
-			<Live />
-			<aside className="space-y-8">
-				<ChaosPanel />
-				<EventLog />
-			</aside>
+		<div className="@container">
+			<div className="grid gap-6 @3xl:grid-cols-[minmax(0,1fr)_300px]">
+				<div className="@container min-w-0">
+					<Live />
+				</div>
+				<aside className="space-y-8">
+					<ChaosPanel />
+					<EventLog />
+				</aside>
+			</div>
 		</div>
 	</RegistryProvider>
 );
