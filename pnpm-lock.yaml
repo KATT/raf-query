@@ -243,6 +243,67 @@ importers:
         specifier: 1.0.0
         version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(svelte@5.57.2(@typescript-eslint/types@8.71.1))(typescript@7.0.2)(yaml@2.9.1)
 
+  .experimental/effect-atom/demo:
+    dependencies:
+      '@effect/atom-react':
+        specifier: 'catalog:'
+        version: 4.0.5(effect@4.0.5)(react@19.3.0)(scheduler@0.28.0)
+      '@examples/ui':
+        specifier: workspace:*
+        version: link:../../../examples/.shared/ui
+      '@raf-query/experimental-effect-atom':
+        specifier: workspace:*
+        version: link:../package
+      cn:
+        specifier: 0.4.0
+        version: 0.4.0
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.5
+      lucide-react:
+        specifier: 1.55.0
+        version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
+      react:
+        specifier: 19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: 19.3.0
+        version: 19.3.0(react@19.3.0)
+      scheduler:
+        specifier: 0.28.0
+        version: 0.28.0
+    devDependencies:
+      '@effect/platform-node':
+        specifier: 'catalog:'
+        version: 4.0.5(effect@4.0.5)(redis@6.3.0)
+      '@tailwindcss/vite':
+        specifier: 4.3.3
+        version: 4.3.3(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))
+      '@types/node':
+        specifier: 26.6.4
+        version: 26.6.4
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      '@vitejs/plugin-react':
+        specifier: 6.1.2
+        version: 6.1.2(@rolldown/plugin-babel@0.2.4(@babel/core@7.29.7)(@babel/runtime@7.29.10)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(rolldown@1.2.13))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(babel-plugin-react-compiler@1.0.0)
+      tailwindcss:
+        specifier: 4.3.3
+        version: 4.3.3
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@1.0.0
+        version: '@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)'
+      vite-plus:
+        specifier: 1.0.0
+        version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(svelte@5.57.2(@typescript-eslint/types@8.71.1))(typescript@7.0.2)(yaml@2.9.1)
+
   .experimental/effect-atom/package:
     devDependencies:
       '@effect/atom-react':
