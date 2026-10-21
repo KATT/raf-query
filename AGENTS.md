@@ -40,6 +40,6 @@ Source for this project's key dependencies is vendored under `.repos/`, pinned t
 
 - `@tanstack/react-query@5.104.1` → `.repos/query`
 - `@tanstack/react-router@1.170.42` → `.repos/router`
-- `effect@4.0.1` → `.repos/effect`
+- `effect@4.0.5` → `.repos/effect`
 
 <!-- vendor-src:end -->

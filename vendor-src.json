@@ -18,8 +18,8 @@
 		"effect": {
 			"packages": ["effect"],
 			"url": "https://github.com/Effect-TS/effect.git",
-			"version": "4.0.1",
-			"ref": "effect@4.0.1",
+			"version": "4.0.5",
+			"ref": "effect@4.0.5",
 			"ignore": [
 				"scratchpad/**",
 				"**/.github/**",
