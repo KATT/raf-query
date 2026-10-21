@@ -432,11 +432,33 @@ describe("declared errors", () => {
 			});
 		}
 		expectTypeOf<ErrorOf<typeof wider>>().toEqualTypeOf<Gone | NotFound>();
+		function widerAfter() {
+			return queryOptions({
+				queryFn: () => Effect.fail(new NotFound()),
+				queryKey: ["wider-after"],
+				// oxlint-disable-next-line perfectionist/sort-objects -- the order is what's tested
+				errors: errorTypes(NotFound, Gone),
+			});
+		}
+		expectTypeOf<ErrorOf<typeof widerAfter>>().toEqualTypeOf<Gone | NotFound>();
 		queryOptions({
 			errors: errorTypes(Gone),
 			// @ts-expect-error NotFound isn't declared
 			queryFn: () => Effect.fail(new NotFound()),
 			queryKey: ["undeclared"],
+		});
+		queryOptions({
+			// @ts-expect-error NotFound isn't declared, only Gone of the two
+			errors: errorTypes(Gone),
+			queryFn: () => Effect.fail<Gone | NotFound>(new NotFound()),
+			queryKey: ["partly-declared"],
+		});
+		queryOptions({
+			queryFn: () => Effect.fail<Gone | NotFound>(new NotFound()),
+			queryKey: ["partly-declared-after"],
+			// oxlint-disable-next-line perfectionist/sort-objects -- the order is what's tested
+			// @ts-expect-error NotFound isn't declared, with the queryFn first
+			errors: errorTypes(Gone),
 		});
 	});
 
