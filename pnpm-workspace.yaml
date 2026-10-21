@@ -11,6 +11,7 @@ packages:
 verifyDepsBeforeRun: install
 
 catalog:
+  "@effect/atom-react": 4.0.5
   "@effect/platform-node": 4.0.5
   "@effect/vitest": 4.0.5
   effect: ^4.0.5
