@@ -37,6 +37,46 @@ tanstack-start/src/docs/query-functions.ts#with-fetch-and-other-clients-that-don
 
 A not-found is often better as a value than an error: return `null` and let the page decide, or throw your router's `notFound()` from the `queryFn` so the route renders its not-found component.
 
+## Declaring errors
+
+A promise can reject with anything, so a promise `queryFn`'s error type is `unknown`. Declare the errors it fails with in `errors`, and the query is typed like an Effect one ([Typed errors](./effect-errors.md)): `useQuery` returns a `Result` to match, on any client, unless the query or the read sets `throwOnError: true`.
+
+Pass the classes or type guards that recognize them, and the type comes from them. A failure none of them accepts, such as a network error, still throws to the nearest error boundary, so a `Result` only ever holds what was declared:
+
+```ts twoslash
+import { Result } from "effect";
+import { use } from "react";
+import {
+	errorTypes,
+	type QueryHandle,
+	queryOptions,
+	useQuery,
+} from "@raf-query/react";
+class PostNotFound extends Error {
+	readonly _tag = "PostNotFound";
+}
+declare function getPost(slug: string): Promise<{ title: string }>;
+declare const handle: QueryHandle<typeof postQuery>;
+// ---cut---
+function postQuery(input: { slug: string }) {
+	return queryOptions({
+		queryKey: ["post", input.slug],
+		queryFn: () => getPost(input.slug),
+		errors: errorTypes(PostNotFound),
+	});
+}
+
+const [postPromise] = useQuery(postQuery, handle);
+const post = use(postPromise);
+//    ^?
+Result.match(post, {
+	onFailure: () => "No such post",
+	onSuccess: (post) => post.title,
+});
+```
+
+`errorTypes<PostNotFound | Unauthorized>()`, with a type argument and nothing to check, trusts that every failure is one of them. On an Effect `queryFn`, `errors` restricts the inferred error: an Effect that can fail with something it doesn't list is a type error.
+
 ## The query function context
 
 Each `queryFn` receives a context object:
