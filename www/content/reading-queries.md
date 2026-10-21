@@ -47,6 +47,61 @@ When the **first** load fails, the promise rejects and `use()` throws to the nea
 
 Effect `queryFn`s can return a typed `Result` in the first tuple slot instead of rejecting — see [Typed errors](./effect-errors.md#in-react).
 
+### Error boundaries typed by the query
+
+`QueryErrorBoundary` is an error boundary for the queries you name. Its `catchTags` takes a handler per tag their errors can have, the way [`Effect.catchTags`](https://effect.website/docs/v4/api/effect/Effect#catchTags) does. The tags come from the factories: an Effect `queryFn`'s inferred error, or a promise `queryFn`'s [declared errors](./query-functions.md#declaring-errors). A tag they can't fail with is a type error, and each handler's `error` is typed by its tag:
+
+```tsx twoslash
+import { Effect, Schema } from "effect";
+import { use } from "react";
+import {
+	type QueryHandle,
+	QueryErrorBoundary,
+	queryOptions,
+	useQuery,
+} from "@raf-query/react";
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
+	"Unauthorized",
+	{},
+) {}
+class IssueNotFound extends Schema.TaggedError<IssueNotFound>()(
+	"IssueNotFound",
+	{ id: Schema.Number },
+) {}
+declare function getIssue(
+	id: number,
+): Effect.Effect<{ title: string }, IssueNotFound | Unauthorized>;
+declare const handle: QueryHandle<typeof issueQuery>;
+// ---cut---
+function issueQuery(input: { id: number }) {
+	return queryOptions({
+		queryKey: ["issue", input.id],
+		queryFn: () => getIssue(input.id),
+		throwOnError: true,
+	});
+}
+
+function IssueTitle(props: { handle: QueryHandle<typeof issueQuery> }) {
+	const [issuePromise] = useQuery(issueQuery, props.handle);
+	const issue = use(issuePromise);
+	return <h1>{issue.title}</h1>;
+}
+
+const page = (
+	<QueryErrorBoundary
+		query={issueQuery}
+		catchTags={{
+			IssueNotFound: (props) => <p>No issue {props.error.id}</p>,
+			//                                          ^?
+		}}
+	>
+		<IssueTitle handle={handle} />
+	</QueryErrorBoundary>
+);
+```
+
+Reads under it throw to it as they would to any error boundary, so an Effect read needs `throwOnError: true` (on the read, the query or the client). An error without a handler, here `Unauthorized`, is re-thrown to the boundaries above. Pass several factories as `query={[issueQuery, assigneeQuery]}` to handle all their tags. `RedactedError`, which a query that failed during server rendering rejects with, can be handled too. Each handler gets `reset`, which renders the children again and refetches a failed first load.
+
 ## Passing promises down
 
 A component can call the hook with a prefetched handle and hand the promise to a child, so only the child suspends:
