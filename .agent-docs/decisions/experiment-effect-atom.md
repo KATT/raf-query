@@ -1,0 +1,16 @@
+# Experiment: effect-atom, typed error boundaries over `effect/reactivity` atoms (human asked, agent designed)
+
+- Human: Option B of three competing experiments for result-rpc-style typed error boundaries (generic errors such as auth caught high, narrower ones low), built on `effect/reactivity` (`Atom`, `AtomRpc`, `AtomRegistry`, `AsyncResult`, `Reactivity`) and `@effect/atom-react`, with the same React-style tuple API as Option A (`effect-query`). Interactive demo and an Experiments page in the docs.
+- Lives in `.experimental/effect-atom/` (`package/`, `demo/` on port 3011, exported as `./live` for the docs page `www/content/effect-atom-boundaries.md`).
+
+Agent decisions:
+
+- **No cache of its own.** A boundary's hook reads an `Atom<AsyncResult<A, E>>` through `@effect/atom-react`'s `RegistryContext` (`useAtomValue`), and suspends with `React.use` on a thenable that settles when the atom stops pending. `AsyncResult.toExit` gives the `Cause`; routing (`Cause.findError` + `Schema.is`, innermost boundary of the chain read through, defects to the root) is the same as Option A's.
+- **The hook returns `A | Unhandled<E>`, not a `Result`.** Whether anything is left is known only to the types, and an atom carries no error schemas, so at runtime the hook can't tell "nothing left" from "something left". A value that is the data or a branded `Unhandled` (`Boundary.isUnhandled`) is right either way, and is plain `A` when nothing is left. Option A instead makes queries list their error schemas so it can return a `Result`.
+- **Services are checked where the atom is made** (`runtime.atom(effect)`), so boundaries take no client and `root` has no `client` option. tsc reports a missing service against `runtime.atom`'s last overload (the `Stream` one); the fixture and the docs say how to read it.
+- **Writes: `Boundary.useSet(boundary, fnAtom)`**, not `useX.useSet(atom)`: React Compiler treats a property of a `use…` function as a hook used as a value (Option A's `useRun` is the same). It writes, then awaits `AtomRegistry.getResult(…, { suspendOnWaiting: true })`; a caught failure is thrown from the next render, and the promise never settles.
+- **`retry` refreshes failed atoms in the registry** (`registry.getNodes()`) that the boundary catches (the root: all), skipping writable atoms so a write isn't sent again, and following `atom.refresh` once so a wrapped atom refreshes once.
+- `Boundary.root({ onCaught })` and `Boundary.caughtBy` report what was caught, as in Option A (`Caught` has `boundary`, `name`, `root`, `error`, `cause`).
+- The docs embed a standalone demo kind (`defineStandaloneDemo` in `www/src/demo-kit/define.ts`): the demo brings its own `RegistryProvider` instead of the demo kit's query client and fake server.
+
+Compared with Option A: atoms give request dedupe per key (`Atom.family`), invalidation by `Reactivity` keys (a mutation's `reactivityKeys` refreshes the queries keyed the same), idle TTL and `keepAlive`, and `AtomRpc` atoms straight from an `RpcGroup`, without a cache to maintain. Costs: no `Result` (above); retry scans every registry node; readers depend on `@effect/atom-react`'s hooks and registry; and no SSR yet (typed failures would need their schemas to cross `HydrationBoundary`).
