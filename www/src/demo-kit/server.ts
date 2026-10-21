@@ -15,8 +15,13 @@ export interface NetworkRequest {
 export interface FakeServer<TDb> {
 	/** The in-memory data, for handlers. Reset with {@link reset}. */
 	readonly db: TDb;
-	/** Fail the next `count` requests. */
-	failNext(count: number): void;
+	/**
+	 * Fail `count` more requests, after the failures already queued, with
+	 * what `error` makes for a request's label, or a plain `Error` like a lost
+	 * connection's.
+	 */
+	failNext(count: number, error?: (label: string) => Error): void;
+	/** How many failures are queued. */
 	readonly failures: number;
 	getRequests(): ReadonlyArray<NetworkRequest>;
 	latency: number;
@@ -26,6 +31,8 @@ export interface FakeServer<TDb> {
 	 * Answer a request after `latency` ms (± 25%). The result is cloned, as a
 	 * response body parsed from JSON would be. A `queryFn` passes its context,
 	 * so the log shows which query sent the request and when it was aborted.
+	 * A handler can throw, as a server answers 404, and the request fails with
+	 * what it threw.
 	 */
 	respond<T>(
 		label: string,
@@ -66,7 +73,7 @@ export const latencies = [
 export function createFakeServer<TDb>(seed: () => TDb): FakeServer<TDb> {
 	let db = seed();
 	let requests: ReadonlyArray<NetworkRequest> = [];
-	let failures = 0;
+	let failures: ReadonlyArray<((label: string) => Error) | undefined> = [];
 	let nextId = 1;
 	let generation = 0;
 	const listeners = new Set<() => void>();
@@ -88,19 +95,19 @@ export function createFakeServer<TDb>(seed: () => TDb): FakeServer<TDb> {
 		get db() {
 			return db;
 		},
-		failNext(count) {
-			failures = count;
+		failNext(count, error) {
+			failures = [...failures, ...Array.from({ length: count }, () => error)];
 			notify();
 		},
 		get failures() {
-			return failures;
+			return failures.length;
 		},
 		getRequests: () => requests,
 		latency: latencies[1].ms,
 		reset() {
 			db = seed();
 			requests = [];
-			failures = 0;
+			failures = [];
 			generation++;
 			notify();
 		},
@@ -129,14 +136,22 @@ export function createFakeServer<TDb>(seed: () => TDb): FakeServer<TDb> {
 			if (started !== generation) {
 				throw new DOMException("The demo was reset", "AbortError");
 			}
-			if (failures > 0) {
-				failures--;
+			const [failure, ...queued] = failures;
+			if (failures.length > 0) {
+				failures = queued;
 				settle(id, "error");
-				throw new Error(`${label} failed (simulated)`);
+				throw failure
+					? failure(label)
+					: new Error(`${label} failed (simulated)`);
 			}
-			const result = structuredClone(handler(db));
-			settle(id, "success");
-			return result;
+			try {
+				const result = structuredClone(handler(db));
+				settle(id, "success");
+				return result;
+			} catch (error) {
+				settle(id, "error");
+				throw error;
+			}
 		},
 		subscribe(listener) {
 			listeners.add(listener);
