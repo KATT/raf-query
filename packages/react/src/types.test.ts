@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "@effect/vitest";
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, Predicate, type Result } from "effect";
 import type { ComponentProps } from "react";
 
 import {
@@ -7,6 +7,7 @@ import {
 	type DataOf,
 	dehydrate,
 	type ErrorOf,
+	errorTypes,
 	HydrationBoundary,
 	type InfiniteData,
 	infiniteQueryOptions,
@@ -376,6 +377,111 @@ describe("types", () => {
 			ComponentProps<typeof QueryClientProvider>["client"]
 		>();
 		expectTypeOf(qc).toExtend<Parameters<typeof dehydrate>[0]>();
+	});
+});
+
+describe("declared errors", () => {
+	class Gone {
+		readonly _tag = "Gone";
+	}
+	const isGone = (error: unknown): error is Gone =>
+		Predicate.isTagged(error, "Gone");
+
+	it("type a promise queryFn's error", () => {
+		function trusted() {
+			return queryOptions({
+				errors: errorTypes<Gone | NotFound>(),
+				queryFn: () => Promise.resolve("a"),
+				queryKey: ["trusted"],
+			});
+		}
+		function guarded() {
+			return queryOptions({
+				errors: errorTypes(NotFound, isGone),
+				queryFn: () => Promise.resolve("a"),
+				queryKey: ["guarded"],
+			});
+		}
+		function pages() {
+			return infiniteQueryOptions({
+				errors: errorTypes(Gone),
+				getNextPageParam: () => null,
+				initialPageParam: 0,
+				queryFn: () => Promise.resolve("a"),
+				queryKey: ["pages"],
+			});
+		}
+		expectTypeOf<ErrorOf<typeof trusted>>().toEqualTypeOf<Gone | NotFound>();
+		expectTypeOf<ErrorOf<typeof guarded>>().toEqualTypeOf<Gone | NotFound>();
+		expectTypeOf<ErrorOf<typeof pages>>().toEqualTypeOf<Gone>();
+		expectTypeOf<ReturnType<typeof trusted>>().toEqualTypeOf<
+			QueryOptions<{
+				data: string;
+				error: Gone | NotFound;
+				key: readonly ["trusted"];
+			}>
+		>();
+	});
+
+	it("restrict an Effect queryFn's error", () => {
+		function wider() {
+			return queryOptions({
+				errors: errorTypes(NotFound, Gone),
+				queryFn: () => Effect.fail(new NotFound()),
+				queryKey: ["wider"],
+			});
+		}
+		expectTypeOf<ErrorOf<typeof wider>>().toEqualTypeOf<Gone | NotFound>();
+		function widerAfter() {
+			return queryOptions({
+				queryFn: () => Effect.fail(new NotFound()),
+				queryKey: ["wider-after"],
+				// oxlint-disable-next-line perfectionist/sort-objects -- the order is what's tested
+				errors: errorTypes(NotFound, Gone),
+			});
+		}
+		expectTypeOf<ErrorOf<typeof widerAfter>>().toEqualTypeOf<Gone | NotFound>();
+		queryOptions({
+			errors: errorTypes(Gone),
+			// @ts-expect-error NotFound isn't declared
+			queryFn: () => Effect.fail(new NotFound()),
+			queryKey: ["undeclared"],
+		});
+		queryOptions({
+			// @ts-expect-error NotFound isn't declared, only Gone of the two
+			errors: errorTypes(Gone),
+			queryFn: () => Effect.fail<Gone | NotFound>(new NotFound()),
+			queryKey: ["partly-declared"],
+		});
+		queryOptions({
+			queryFn: () => Effect.fail<Gone | NotFound>(new NotFound()),
+			queryKey: ["partly-declared-after"],
+			// oxlint-disable-next-line perfectionist/sort-objects -- the order is what's tested
+			// @ts-expect-error NotFound isn't declared, with the queryFn first
+			errors: errorTypes(Gone),
+		});
+	});
+
+	it("let reads pick throwOnError", () => {
+		function declared() {
+			return queryOptions({
+				errors: errorTypes(Gone),
+				queryFn: () => Promise.resolve("a"),
+				queryKey: ["declared"],
+			});
+		}
+		function useTypeOnly(handle: QueryHandle<typeof declared>) {
+			const [result] = useQuery(declared, handle);
+			expectTypeOf(result).resolves.toEqualTypeOf<
+				Result.Result<string, Gone>
+			>();
+			const [data] = useQuery(declared, handle, { throwOnError: true });
+			expectTypeOf(data).resolves.toEqualTypeOf<string>();
+			const postHandle = { input: { slug: "a" }, key: [] };
+			// @ts-expect-error a promise queryFn without declared errors always throws
+			useQuery(postQuery, postHandle, { throwOnError: false });
+		}
+		expect(useTypeOnly).toBeTypeOf("function");
 	});
 });
 

@@ -22,8 +22,9 @@ import { fulfilled, pending, type Thenable } from "./thenable.ts";
 export type UseQueryOptions = QueryObserver.Options;
 
 /**
- * `throwOnError` only when {@link ErrorOf} is typed (Effect `queryFn`).
- * Promise factories always throw; the option is not part of their options.
+ * `throwOnError` only when {@link ErrorOf} is typed (an Effect `queryFn`, or
+ * declared `errors`). Other promise factories always throw; the option is
+ * not part of their options.
  */
 export type UseQueryThrowOptions<TFactory extends QueryFactory> =
 	HasTypedError<TFactory> extends true
@@ -77,8 +78,8 @@ export type UseQueryControls<TFactory extends QueryFactory> =
 		: QueryControls<TFactory>;
 
 /**
- * `true` when the factory's error channel is typed (Effect `queryFn`), not
- * `unknown` (promise / plain value).
+ * `true` when the factory's error channel is typed (an Effect `queryFn`, or
+ * declared `errors`), not `unknown` (promise / plain value).
  */
 export type HasTypedError<TFactory extends QueryFactory> =
 	unknown extends ErrorOf<TFactory> ? false : true;
@@ -107,17 +108,34 @@ export type ThrowsOnError<
  * when its `queryFn` returns a promise or plain value, whose error isn't
  * typed. Otherwise it follows the read's `throwOnError`, else the query's
  * options', else `clientDefault` (pass the client's `throwOnError`). A query
- * whose `queryFn` hasn't run yet follows the flags.
+ * whose `queryFn` hasn't run yet follows the flags. A query that declares
+ * its `errors` is typed whatever its `queryFn` returns, and defaults to not
+ * throwing on every client, as its types do.
  */
 export function throwsOnError<TFactory extends QueryFactory>(
 	query: Query.Query<TFactory>,
 	throwOnError: boolean | undefined,
 	clientDefault = false,
 ): boolean {
+	const options = query.options;
+	if (options?.errors) {
+		return throwOnError ?? options.throwOnError ?? false;
+	}
 	return (
 		Query.returnsEffectUnsafe(query) === false ||
-		(throwOnError ?? query.options?.throwOnError ?? clientDefault)
+		(throwOnError ?? options?.throwOnError ?? clientDefault)
 	);
+}
+
+/**
+ * Which failures a read of `query` settles as a `Result`, when it doesn't
+ * throw: those its declared `errors` accept, or every failure when it
+ * declares none or no guard. The rest reject. For bindings.
+ */
+export function resultErrorsOf<TFactory extends QueryFactory>(
+	query: Query.Query<TFactory>,
+): ((error: unknown) => boolean) | undefined {
+	return query.options?.errors?.is;
 }
 
 /** What a read settles with: the data, or a `Result` when it doesn't throw. */
@@ -183,10 +201,13 @@ const resultThenables = new WeakMap<
 /**
  * A thenable that fulfills with a `Result` when `promise` settles, for reads
  * that don't throw (`throwOnError: false`). Settled already when `promise`
- * is, and the same thenable for the same `promise`. For bindings.
+ * is, and the same thenable for the same `promise`. A failure that `isError`
+ * (pass {@link resultErrorsOf}) doesn't accept rejects the thenable instead,
+ * so it reaches an error boundary. For bindings.
  */
 export function resultThenable<A, E>(
 	promise: Thenable<A>,
+	isError?: (error: unknown) => boolean,
 ): Thenable<Result.Result<A, E>> {
 	const cached = resultThenables.get(promise);
 	if (cached) {
@@ -197,11 +218,18 @@ export function resultThenable<A, E>(
 	if (promise.status === "fulfilled") {
 		next = fulfilled(Result.succeed(promise.value));
 	} else if (promise.status === "rejected") {
+		const reason = promise.reason;
+		if (isError && !isError(reason)) {
+			// SAFETY: a rejected thenable never yields a value, so its value
+			// type is free; `use()` throws its reason.
+			return promise as unknown as Thenable<Result.Result<A, E>>;
+		}
 		next = fulfilled(
 			Result.fail(
 				// SAFETY: rejected reasons are this factory's ErrorOf when Result
-				// mode is on (typed Effect queryFn).
-				promise.reason as E,
+				// mode is on (typed Effect queryFn, or declared errors that
+				// `isError` accepted).
+				reason as E,
 			),
 		);
 	} else {
@@ -211,6 +239,10 @@ export function resultThenable<A, E>(
 				deferred.resolve(Result.succeed(value));
 			},
 			(error: unknown) => {
+				if (isError && !isError(error)) {
+					deferred.reject(error);
+					return;
+				}
 				deferred.resolve(
 					Result.fail(
 						// SAFETY: as above for rejected reasons.

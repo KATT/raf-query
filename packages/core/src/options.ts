@@ -199,6 +199,100 @@ export interface QueryBehavior {
 	readonly structuralSharing?: boolean;
 }
 
+declare const errorType: unique symbol;
+
+/**
+ * A query's declared errors, from {@link errorTypes}. `is` tells them apart
+ * from other failures at runtime; without it, every failure counts as one.
+ */
+export interface ErrorTypes<TError> {
+	/**
+	 * Type-only: the declared error. Never present at runtime. Invariant, so
+	 * that on an Effect `queryFn` the declared error wins inference whatever
+	 * order the options are written in: covariant only, an Effect `queryFn`
+	 * written first would fix the error and an undeclared one would pass.
+	 */
+	readonly [errorType]?: (error: TError) => TError;
+	readonly is: ((error: unknown) => boolean) | undefined;
+}
+
+/** A type guard, or a class whose instances are the error. */
+export type ErrorGuard<TError = unknown> =
+	// oxlint-disable-next-line typescript/no-explicit-any -- any constructor's parameters
+	| (abstract new (...args: any) => TError)
+	| ((error: unknown) => error is TError);
+
+/** The error an {@link ErrorGuard} accepts. */
+export type GuardedError<TGuard> = TGuard extends abstract new (
+	// oxlint-disable-next-line typescript/no-explicit-any -- any constructor's parameters
+	...args: any
+) => infer TError
+	? TError
+	: TGuard extends ((error: unknown) => error is infer TError)
+		? TError
+		: never;
+
+/**
+ * Declares what a query fails with, for a `queryFn` whose error isn't
+ * inferred (a promise or a plain value), as its `errors` option:
+ *
+ * ```ts
+ * queryOptions({
+ *   queryKey: ["post", slug],
+ *   queryFn: () => getPost(slug),
+ *   errors: errorTypes<PostNotFound | Unauthorized>(),
+ * });
+ * ```
+ *
+ * Pass guards or classes instead of a type argument, and the type is
+ * theirs, checked at runtime: `errorTypes(PostNotFound, isUnauthorized)`.
+ * A read that settles with a `Result` then holds only failures a guard
+ * accepts, and throws any other.
+ *
+ * On an Effect `queryFn`, the list restricts the inferred error: the Effect
+ * may fail only with what it declares.
+ */
+export function errorTypes<TError>(): ErrorTypes<TError>;
+export function errorTypes<const TGuards extends ReadonlyArray<ErrorGuard>>(
+	...guards: TGuards
+): ErrorTypes<GuardedError<TGuards[number]>>;
+export function errorTypes(
+	...guards: ReadonlyArray<ErrorGuard>
+): ErrorTypes<unknown> {
+	if (guards.length === 0) {
+		return { is: undefined };
+	}
+	const checks = guards.map((guard): ((error: unknown) => boolean) => {
+		if (!isClass(guard)) {
+			return guard;
+		}
+		const AnError = guard;
+		return (error) => error instanceof AnError;
+	});
+	return { is: (error) => checks.some((check) => check(error)) };
+}
+
+function isClass(
+	guard: ErrorGuard,
+	// oxlint-disable-next-line typescript/no-explicit-any -- any constructor's parameters
+): guard is abstract new (...args: any) => unknown {
+	return (
+		typeof guard.prototype === "object" &&
+		guard.prototype !== null &&
+		Function.prototype.toString.call(guard).startsWith("class")
+	);
+}
+
+interface ErrorsField<TError> {
+	/**
+	 * The errors the query fails with, from {@link errorTypes}. A promise
+	 * `queryFn`'s error is `unknown` without it. Reads of a query that
+	 * declares its errors settle with a `Result` unless `throwOnError` says
+	 * otherwise, on any client.
+	 */
+	readonly errors?: ErrorTypes<TError>;
+}
+
 declare const servicesType: unique symbol;
 
 interface ServicesField<TServices> {
@@ -215,14 +309,15 @@ interface ThrowOnErrorField<TThrow> {
 	 * How reads of this query settle on failure when they don't set
 	 * `throwOnError` themselves: `true` rejects (to an error boundary),
 	 * `false` settles with a `Result`. Omit it for the client's default.
-	 * Only an Effect `queryFn`'s typed error reads as a `Result`; a promise
-	 * `queryFn` always rejects.
+	 * Only a typed error reads as a `Result`: an Effect `queryFn`'s, or the
+	 * declared `errors`. Any other promise `queryFn` always rejects.
 	 */
 	readonly throwOnError?: TThrow;
 }
 
 export interface QueryOptions<TTypes extends QueryTypes>
 	extends
+		ErrorsField<ErrorIn<TTypes>>,
 		QueryBehavior,
 		ServicesField<ServicesIn<TTypes>>,
 		ThrowOnErrorField<ThrowIn<TTypes>> {
@@ -257,6 +352,7 @@ interface PageFunctions<TPage, TPageParam, TResult> {
 
 export interface InfiniteQueryOptions<TTypes extends InfiniteQueryTypes>
 	extends
+		ErrorsField<ErrorIn<TTypes>>,
 		PageFunctions<
 			TTypes["page"],
 			TTypes["pageParam"],
@@ -314,7 +410,8 @@ export type AnyQueryOptions =
  * A `queryFn` Effect may need services; they're inferred, and every verb
  * that can start the query requires them. Its error is part of the returned
  * type. A promise or a plain value has no error to infer, so the type leaves
- * `error` out (`ErrorOf` is `unknown`).
+ * `error` out (`ErrorOf` is `unknown`) unless the options declare it with
+ * `errors: errorTypes<E>()`.
  *
  * The key's literal type is kept too (`readonly ["post", string]`), so two
  * factories with the same input and data but different keys have different
@@ -466,8 +563,8 @@ export type DataOf<TFactory extends QueryFactory> =
 			: unknown;
 
 /**
- * The error a factory's request fails with: the `queryFn`'s Effect error
- * type, or `unknown` for promises and plain values.
+ * The error a factory's request fails with: the declared `errors`, else the
+ * `queryFn`'s Effect error type, or `unknown` for promises and plain values.
  */
 export type ErrorOf<TFactory extends QueryFactory> =
 	ReturnType<TFactory> extends InfiniteQueryOptions<infer TTypes>

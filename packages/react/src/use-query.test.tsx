@@ -5,6 +5,7 @@ import { Component, type ReactNode, StrictMode, Suspense, use } from "react";
 
 import {
 	dehydrate,
+	errorTypes,
 	hydrate,
 	type InfiniteData,
 	infiniteQueryOptions,
@@ -1157,6 +1158,170 @@ describe("useQuery", () => {
 				>();
 			};
 			expect(useTypes).toBeTypeOf("function");
+		});
+	});
+
+	describe("declared errors on a promise queryFn", () => {
+		class Missing extends Error {
+			readonly _tag = "Missing";
+			constructor(readonly id: number) {
+				super(`Missing ${id}`);
+			}
+		}
+		function readTitle(id: number) {
+			return new Promise<string>((resolve, reject) => {
+				setTimeout(() => {
+					if (id === 1) {
+						resolve("First");
+					} else if (id === 500) {
+						reject(new TypeError("Failed to fetch"));
+					} else {
+						reject(new Missing(id));
+					}
+				}, 0);
+			});
+		}
+		function trustedQuery(input: { id: number }) {
+			return queryOptions({
+				errors: errorTypes<Missing>(),
+				queryFn: () => readTitle(input.id),
+				queryKey: ["trusted", input.id],
+				retry: false,
+			});
+		}
+		function guardedQuery(input: { id: number }) {
+			return queryOptions({
+				errors: errorTypes(Missing),
+				queryFn: () => readTitle(input.id),
+				queryKey: ["guarded", input.id],
+				retry: false,
+			});
+		}
+		function throwingQuery(input: { id: number }) {
+			return queryOptions({
+				errors: errorTypes(Missing),
+				queryFn: () => readTitle(input.id),
+				queryKey: ["declared-throwing", input.id],
+				retry: false,
+				throwOnError: true,
+			});
+		}
+		function view(client: QueryClient<unknown>, children: ReactNode) {
+			return (
+				<QueryClientProvider client={client}>
+					<Boundary>
+						<Suspense fallback={<p>Loading</p>}>{children}</Suspense>
+					</Boundary>
+				</QueryClientProvider>
+			);
+		}
+		function Title(props: {
+			readonly handle: QueryHandle<typeof guardedQuery>;
+		}) {
+			const [titlePromise] = useQuery(guardedQuery, props.handle);
+			expectTypeOf(titlePromise).toEqualTypeOf<
+				Thenable<Result.Result<string, Missing>>
+			>();
+			return (
+				<p>
+					{Result.match(use(titlePromise), {
+						onFailure: (error) => `missing ${error.id}`,
+						onSuccess: (title) => title,
+					})}
+				</p>
+			);
+		}
+
+		it("reads as a Result on a client without a layer", async () => {
+			const client = new QueryClient({ isServer: false });
+			expect(client.throwOnError).toBe(true);
+			function TrustedTitle(props: {
+				readonly handle: QueryHandle<typeof trustedQuery>;
+			}) {
+				const [titlePromise] = useQuery(trustedQuery, props.handle);
+				expectTypeOf(titlePromise).toEqualTypeOf<
+					Thenable<Result.Result<string, Missing>>
+				>();
+				return (
+					<p>
+						{Result.match(use(titlePromise), {
+							onFailure: (error) => `missing ${error.id}`,
+							onSuccess: (title) => title,
+						})}
+					</p>
+				);
+			}
+			const handle = client.prefetch(trustedQuery, { id: 404 });
+			await mount(view(client, <TrustedTitle handle={handle} />));
+			await waitFor(() => screen.getByText("missing 404"));
+			cleanup();
+		});
+
+		it("settles a failure its guard accepts as a Result", async () => {
+			const client = new QueryClient({ isServer: false });
+			const handle = client.prefetch(guardedQuery, { id: 404 });
+			await mount(view(client, <Title handle={handle} />));
+			await waitFor(() => {
+				expect(screen.getByText("missing 404")).toBeDefined();
+			});
+			cleanup();
+		});
+
+		it("throws a failure no guard accepts to the error boundary", async () => {
+			const client = new QueryClient({ isServer: false });
+			const handle = client.prefetch(guardedQuery, { id: 500 });
+			await mount(view(client, <Title handle={handle} />));
+			await waitFor(() => {
+				expect(
+					screen.getByText("Error: TypeError: Failed to fetch"),
+				).toBeDefined();
+			});
+			cleanup();
+		});
+
+		it("throws a failure no guard accepts when the read starts after it failed", async () => {
+			const client = new QueryClient({ isServer: false });
+			const handle = client.prefetch(guardedQuery, { id: 500 });
+			await new Promise((resolve) => {
+				setTimeout(resolve, 10);
+			});
+			await mount(view(client, <Title handle={handle} />));
+			expect(
+				screen.getByText("Error: TypeError: Failed to fetch"),
+			).toBeDefined();
+			cleanup();
+		});
+
+		it("throws with throwOnError on the query, typed as data", async () => {
+			const client = new QueryClient({ isServer: false, layer: Layer.empty });
+			function ThrowingTitle(props: {
+				readonly handle: QueryHandle<typeof throwingQuery>;
+			}) {
+				const [titlePromise] = useQuery(throwingQuery, props.handle);
+				expectTypeOf(titlePromise).toEqualTypeOf<Thenable<string>>();
+				return <p>{use(titlePromise)}</p>;
+			}
+			const handle = client.prefetch(throwingQuery, { id: 404 });
+			await mount(view(client, <ThrowingTitle handle={handle} />));
+			await waitFor(() => screen.getByText("Error: Error: Missing 404"));
+			cleanup();
+		});
+
+		it("takes the read's throwOnError", async () => {
+			const client = new QueryClient({ isServer: false });
+			function ThrowingTitle(props: {
+				readonly handle: QueryHandle<typeof guardedQuery>;
+			}) {
+				const [titlePromise] = useQuery(guardedQuery, props.handle, {
+					throwOnError: true,
+				});
+				expectTypeOf(titlePromise).toEqualTypeOf<Thenable<string>>();
+				return <p>{use(titlePromise)}</p>;
+			}
+			const handle = client.prefetch(guardedQuery, { id: 1 });
+			await mount(view(client, <ThrowingTitle handle={handle} />));
+			await waitFor(() => screen.getByText("First"));
+			cleanup();
 		});
 	});
 });
