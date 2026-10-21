@@ -114,6 +114,13 @@
 		".experimental/tanstack-query/start": {
 			"ignoreDependencies": ["tailwindcss"],
 		},
+		".experimental/raf-query-boundaries/demo": {
+			"ignoreDependencies": ["tailwindcss"],
+			// The fixtures are compiled by `scripts/type-errors.ts` (tsc over
+			// `type-errors/`), not imported: they show the boundaries' types.
+			"entry": ["type-errors/*.tsx"],
+			"includeEntryExports": false,
+		},
 		"examples/react-router": {
 			// Tailwind resolves from the app root while compiling
 			// `@import "tailwindcss"` in `@examples/ui`.
