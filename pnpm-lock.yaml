@@ -165,14 +165,14 @@ settings:
 catalogs:
   default:
     '@effect/platform-node':
-      specifier: 4.0.1
-      version: 4.0.1
+      specifier: 4.0.5
+      version: 4.0.5
     '@effect/vitest':
-      specifier: 4.0.1
-      version: 4.0.1
+      specifier: 4.0.5
+      version: 4.0.5
     effect:
-      specifier: ^4.0.1
-      version: 4.0.1
+      specifier: ^4.0.5
+      version: 4.0.5
 
 overrides:
   vite@*: npm:@voidzero-dev/vite-plus-core@1.0.0
@@ -184,7 +184,7 @@ importers:
     devDependencies:
       '@effect/platform-node':
         specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(redis@6.3.0)
+        version: 4.0.5(effect@4.0.5)(redis@6.3.0)
       '@release-it/conventional-changelog':
         specifier: 12.0.2
         version: 12.0.2(conventional-commits-filter@6.0.1)(conventional-commits-parser@7.1.3)(release-it@21.1.0(@types/node@26.6.4)(magicast@0.5.5))
@@ -202,7 +202,7 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       effect:
         specifier: 'catalog:'
-        version: 4.0.1
+        version: 4.0.5
       eslint-plugin-no-only-tests:
         specifier: 3.4.0
         version: 3.4.0
@@ -263,7 +263,7 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       effect:
         specifier: 'catalog:'
-        version: 4.0.1
+        version: 4.0.5
       happy-dom:
         specifier: 21.0.1
         version: 21.0.1
@@ -487,7 +487,7 @@ importers:
     devDependencies:
       '@effect/vitest':
         specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
+        version: 4.0.5(effect@4.0.5)(vitest@5.0.1)
       '@types/node':
         specifier: 26.6.4
         version: 26.6.4
@@ -499,7 +499,7 @@ importers:
         version: 2.5.1(@vue/compiler-dom@3.5.44)(@vue/server-renderer@3.5.44)(vue@3.5.44(typescript@7.0.2))
       effect:
         specifier: 'catalog:'
-        version: 4.0.1
+        version: 4.0.5
       happy-dom:
         specifier: 21.0.1
         version: 21.0.1
@@ -891,7 +891,7 @@ importers:
         version: 1.168.61(@types/node@26.6.4)(@vitejs/plugin-rsc@0.5.36(@types/node@26.6.4)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(jiti@2.7.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2)(yaml@2.9.1))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(crossws@0.4.15(srvx@1.0.5))(jiti@2.7.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(rolldown@1.2.13)(typescript@7.0.2)(yaml@2.9.1)
       effect:
         specifier: 'catalog:'
-        version: 4.0.1
+        version: 4.0.5
       lucide-react:
         specifier: 1.55.0
         version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
@@ -946,7 +946,7 @@ importers:
     devDependencies:
       '@effect/vitest':
         specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
+        version: 4.0.5(effect@4.0.5)(vitest@5.0.1)
       '@types/node':
         specifier: 26.6.4
         version: 26.6.4
@@ -955,7 +955,7 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       effect:
         specifier: 'catalog:'
-        version: 4.0.1
+        version: 4.0.5
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -971,7 +971,7 @@ importers:
     devDependencies:
       '@effect/vitest':
         specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
+        version: 4.0.5(effect@4.0.5)(vitest@5.0.1)
       '@tanstack/react-router':
         specifier: 1.170.42
         version: 1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -992,7 +992,7 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       effect:
         specifier: 'catalog:'
-        version: 4.0.1
+        version: 4.0.5
       happy-dom:
         specifier: 21.0.1
         version: 21.0.1
@@ -1028,7 +1028,7 @@ importers:
         version: 1.167.3(@tanstack/query-core@5.104.1)(@tanstack/react-query@5.104.1(react@19.3.0))(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tanstack/router-core@1.171.35)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       effect:
         specifier: 'catalog:'
-        version: 4.0.1
+        version: 4.0.5
       react:
         specifier: 19.3.0
         version: 19.3.0
@@ -1041,7 +1041,7 @@ importers:
         version: 7.29.7
       '@effect/platform-node':
         specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(redis@6.3.0)
+        version: 4.0.5(effect@4.0.5)(redis@6.3.0)
       '@rolldown/plugin-babel':
         specifier: 0.2.4
         version: 0.2.4(@babel/core@7.29.7)(@babel/runtime@7.29.10)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(rolldown@1.2.13)
@@ -1071,14 +1071,14 @@ importers:
     dependencies:
       '@effect/platform-node':
         specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(redis@6.3.0)
+        version: 4.0.5(effect@4.0.5)(redis@6.3.0)
       effect:
         specifier: 'catalog:'
-        version: 4.0.1
+        version: 4.0.5
     devDependencies:
       '@effect/vitest':
         specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
+        version: 4.0.5(effect@4.0.5)(vitest@5.0.1)
       '@types/node':
         specifier: 26.6.4
         version: 26.6.4
@@ -1118,7 +1118,7 @@ importers:
     devDependencies:
       '@effect/vitest':
         specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
+        version: 4.0.5(effect@4.0.5)(vitest@5.0.1)
       '@types/node':
         specifier: 26.6.4
         version: 26.6.4
@@ -1143,10 +1143,10 @@ importers:
     devDependencies:
       '@effect/platform-node':
         specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(redis@6.3.0)
+        version: 4.0.5(effect@4.0.5)(redis@6.3.0)
       '@effect/vitest':
         specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
+        version: 4.0.5(effect@4.0.5)(vitest@5.0.1)
       '@types/node':
         specifier: 26.6.4
         version: 26.6.4
@@ -1161,7 +1161,7 @@ importers:
         version: 0.5.36(@types/node@26.6.4)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(jiti@2.7.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2)(yaml@2.9.1)
       effect:
         specifier: 'catalog:'
-        version: 4.0.1
+        version: 4.0.5
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -1176,14 +1176,14 @@ importers:
     dependencies:
       '@effect/platform-node':
         specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(redis@6.3.0)
+        version: 4.0.5(effect@4.0.5)(redis@6.3.0)
       effect:
         specifier: 'catalog:'
-        version: 4.0.1
+        version: 4.0.5
     devDependencies:
       '@effect/vitest':
         specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
+        version: 4.0.5(effect@4.0.5)(vitest@5.0.1)
       '@types/node':
         specifier: 26.6.4
         version: 26.6.4
@@ -1232,10 +1232,10 @@ importers:
         version: 7.29.7
       '@effect/platform-node':
         specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(redis@6.3.0)
+        version: 4.0.5(effect@4.0.5)(redis@6.3.0)
       '@effect/vitest':
         specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
+        version: 4.0.5(effect@4.0.5)(vitest@5.0.1)
       '@rolldown/plugin-babel':
         specifier: 0.2.4
         version: 0.2.4(@babel/core@7.29.7)(@babel/runtime@7.29.10)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(rolldown@1.2.13)
@@ -1292,7 +1292,7 @@ importers:
         version: 1.0.0
       effect:
         specifier: 'catalog:'
-        version: 4.0.1
+        version: 4.0.5
       github-slugger:
         specifier: 2.0.0
         version: 2.0.0
@@ -1454,7 +1454,7 @@ importers:
         version: 1.168.61(@types/node@26.6.4)(@vitejs/plugin-rsc@0.5.36(@types/node@26.6.4)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(jiti@2.7.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2)(yaml@2.9.1))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(crossws@0.4.15(srvx@1.0.5))(jiti@2.7.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(rolldown@1.2.13)(typescript@7.0.2)(yaml@2.9.1)
       effect:
         specifier: 'catalog:'
-        version: 4.0.1
+        version: 4.0.5
       react:
         specifier: 19.3.0
         version: 19.3.0
@@ -1467,7 +1467,7 @@ importers:
     devDependencies:
       '@effect/vitest':
         specifier: 'catalog:'
-        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
+        version: 4.0.5(effect@4.0.5)(vitest@5.0.1)
       '@testing-library/react':
         specifier: 16.3.3
         version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -1500,7 +1500,7 @@ importers:
         version: 1.168.61(@types/node@26.6.4)(@vitejs/plugin-rsc@0.5.36(@types/node@26.6.4)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(jiti@2.7.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2)(yaml@2.9.1))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(crossws@0.4.15(srvx@1.0.5))(jiti@2.7.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(rolldown@1.2.13)(typescript@7.0.2)(yaml@2.9.1)
       effect:
         specifier: 'catalog:'
-        version: 4.0.1
+        version: 4.0.5
       react:
         specifier: 19.3.0
         version: 19.3.0
@@ -1749,6 +1749,12 @@ packages:
     peerDependencies:
       effect: ^4.0.2
 
+  '@effect/platform-node-shared@4.0.5':
+    resolution: {integrity: sha512-a8rCdEkfZBGe9C6bsIjxVZuRp73svIyK5IHwHdDAVsvZXjrbkxusfI+rZ8WlX31RP1mKizwI/E72GQTNfdMWHw==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      effect: ^4.0.5
+
   '@effect/platform-node@4.0.1':
     resolution: {integrity: sha512-FT0Fu5LO0/XP9zBpj0HqrtJNLluK4StNKqf6TSulUsjp8FPBsDVXGJiDuyoN5J2yVMT7tgvhxSwaDcObWVRIaQ==}
     engines: {node: '>=18.0.0'}
@@ -1756,10 +1762,17 @@ packages:
       effect: ^4.0.1
       redis: '>=5.0.0 <7.0.0'
 
-  '@effect/vitest@4.0.1':
-    resolution: {integrity: sha512-DbY9kf/018zBxRIX7rJwBnPVPzSarnUpcshm0vfYPFiDkSa7AFrXTh2BlDNUbrdrmqcIOBhVZ7GkEtxf8WiQrg==}
+  '@effect/platform-node@4.0.5':
+    resolution: {integrity: sha512-v4KD5fWvEUa4QmWFpZFbBsRhmfnTP6ETCME2r9ifyXVDPjhfpxpTZl41prjgQFMqZBHdWWCl7YC5ImbXv5ui5g==}
+    engines: {node: '>=18.0.0'}
     peerDependencies:
-      effect: ^4.0.1
+      effect: ^4.0.5
+      redis: '>=5.0.0 <7.0.0'
+
+  '@effect/vitest@4.0.5':
+    resolution: {integrity: sha512-q64paZ/i4V2NiRhTyqCmT2KiDbFjlxc2EZrZca8GGt+Nf8844946HyJM5bPk/q+YeRkFSxIrlCs+J+LSfky/wA==}
+    peerDependencies:
+      effect: ^4.0.5
       vitest: 5.0.1
 
   '@emnapi/core@1.11.2':
@@ -4951,6 +4964,9 @@ packages:
   effect@4.0.1:
     resolution: {integrity: sha512-b1VlQG9g8fwxE5QnIZuPoOP/0MsqHJSRKxUijjoM80E5q95FXrX5yWtY5XI8G+GJsBQAVSDbLS458z9a++uVvw==}
 
+  effect@4.0.5:
+    resolution: {integrity: sha512-BY4/28NlpOd99yzmV741xbVGmp+1U7tks4oB7F/Png64bTa5tm5eCA6W0RiXsnuLDDoJpjfVSo4Dnq4BZb/89Q==}
+
   electron-to-chromium@1.5.452:
     resolution: {integrity: sha512-cVvk1YBSj6571VmV6hdJTqj94Y79xSu8cj6Y9t6ae4Y4431z8/7EJFvu3rVp90xhfuv9BpPKUmaLfTo4+FOGBg==}
 
@@ -7784,6 +7800,15 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
+  '@effect/platform-node-shared@4.0.5(effect@4.0.5)':
+    dependencies:
+      '@types/ws': 8.18.2
+      effect: 4.0.5
+      ws: 8.22.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
   '@effect/platform-node@4.0.1(effect@4.0.1)(redis@6.3.0)':
     dependencies:
       '@effect/platform-node-shared': 4.0.2(effect@4.0.1)
@@ -7794,9 +7819,19 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@effect/vitest@4.0.1(effect@4.0.1)(vitest@5.0.1)':
+  '@effect/platform-node@4.0.5(effect@4.0.5)(redis@6.3.0)':
     dependencies:
-      effect: 4.0.1
+      '@effect/platform-node-shared': 4.0.5(effect@4.0.5)
+      effect: 4.0.5
+      redis: 6.3.0
+      undici: 8.11.2
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
+  '@effect/vitest@4.0.5(effect@4.0.5)(vitest@5.0.1)':
+    dependencies:
+      effect: 4.0.5
       vitest: 5.0.1(@types/node@26.6.4)(@vitest/browser-preview@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
 
   '@emnapi/core@1.11.2':
@@ -10745,6 +10780,8 @@ snapshots:
   ee-first@1.1.1: {}
 
   effect@4.0.1: {}
+
+  effect@4.0.5: {}
 
   electron-to-chromium@1.5.452: {}
 
