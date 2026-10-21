@@ -8,7 +8,7 @@ A render-as-you-fetch query cache built only on Effect, for apps whose data come
 - `useSession(query)` returns `Result<A, E minus what the chain catches>`, and when nothing is left, the data itself: no `Result`, so there is no error to get. `Boundary.useRun(Session)` runs mutations with the same narrowing. Handling an error the chain already caught, or catching it twice, is a type error.
 - A query (and a mutation) lists its errors' schemas, like an `Rpc` does, and its Effect can fail with nothing else. The hook needs them at runtime: whether to hand back a `Result` or the data depends on what is left, and types are gone by then.
 
-Not published; version stays `0.0.0`. Browser only: no SSR or hydration yet.
+Not published; version stays `0.0.0`. Browser only: no SSR or hydration yet. The docs site's [Typed error boundaries (experimental)](../../www/content/effect-query-boundaries.md) page embeds the live demo and shows the compiler's errors with Twoslash; its code is `www/samples/effect-query`.
 
 | Path       | Package                                | Role                                                                  |
 | ---------- | -------------------------------------- | --------------------------------------------------------------------- |
@@ -34,5 +34,5 @@ A docs app over an Effect RPC API that runs in the browser (`RpcServer.makeNoSer
 1. Decide between this and the other options (an `effect/reactivity` build, or boundaries inside `@raf-query/react`).
 2. Add SSR: dehydrate each entry's `Exit` with the query's schemas, so typed failures survive the trip.
 3. Move `package/` to `packages/effect-query` under a public name, give it the published fields and add it to the release.
-4. Move the demo to `examples/` or the docs site, and write its guide in `www/content`.
+4. Move the demo to `examples/`, and move the docs page out of the Experiments section.
 5. Remove this folder (or leave a short pointer in `.agent-docs/decisions/`).
