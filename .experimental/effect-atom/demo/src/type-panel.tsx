@@ -169,7 +169,7 @@ export const TypeCode = (props: {
 								</CodeBlockLine>
 								{hovers.map((hover) => (
 									<span
-										className="col-start-2 my-1 block"
+										className="col-start-2 my-1 block min-w-0"
 										key={`hover:${hover.column}`}
 										style={{
 											paddingInlineStart: `${visualColumn(line, hover.column)}ch`,
@@ -178,7 +178,7 @@ export const TypeCode = (props: {
 										<span className="text-muted-foreground select-none">
 											^?{" "}
 										</span>
-										<span className="inline-block max-w-full rounded-md border bg-popover px-2 py-1 align-top whitespace-pre-wrap text-popover-foreground shadow-sm">
+										<span className="inline-block max-w-full rounded-md border bg-popover px-2 py-1 align-top whitespace-pre-wrap wrap-break-word text-popover-foreground shadow-sm">
 											{hover.text}
 										</span>
 										{!compiles || hover.text.includes("Unhandled<") ? null : (
@@ -190,7 +190,7 @@ export const TypeCode = (props: {
 								))}
 								{here.map((error) => (
 									<span
-										className="col-start-2 my-1 block rounded-md bg-destructive/10 px-2 py-1 whitespace-pre-wrap wrap-break-word text-destructive"
+										className="col-start-2 my-1 block min-w-0 rounded-md bg-destructive/10 px-2 py-1 whitespace-pre-wrap wrap-break-word text-destructive"
 										key={`error:${error.column}:${error.code}`}
 									>
 										error TS{error.code}: {error.message}
