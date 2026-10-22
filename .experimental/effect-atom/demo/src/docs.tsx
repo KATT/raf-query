@@ -9,7 +9,13 @@ import { useState } from "react";
 
 import type { Doc } from "./api.ts";
 import { docAtom, docListAtom, renameDocAtom } from "./atoms.ts";
-import { DocAccess, useDocAccess, useSession } from "./boundaries.tsx";
+import {
+	DocAccess,
+	DocAccessAll,
+	useDocAccess,
+	useDocAccessAll,
+	useSession,
+} from "./boundaries.tsx";
 import { Caught } from "./frame.tsx";
 
 /** The type a hook returns here, as the compiler sees it. */
@@ -66,10 +72,14 @@ export const DocList = (props: {
 	);
 };
 
+/** Renames the doc to `title`; resolves to the problem to show, if any. */
+type Save = (title: string) => Promise<string | undefined>;
+
 export const DocPage = (props: { readonly id: number }) => {
 	// Forbidden went to DocAccess, Unauthorized to Session, RpcClientError to
 	// Network: only DocNotFound is left for this component.
 	const doc = useDocAccess(docAtom(props.id));
+	const rename = Boundary.useSet(DocAccess, renameDocAtom);
 	return (
 		<div className="space-y-3">
 			<TypeChip>
@@ -88,13 +98,62 @@ export const DocPage = (props: { readonly id: number }) => {
 					</p>
 				</Caught>
 			) : (
-				<DocView doc={doc} />
+				<DocView
+					doc={doc}
+					save={async (title) => {
+						// Doc | Unhandled<DocNotFound | EmptyTitle>: the rest went to the boundaries.
+						const renamed = await rename({
+							payload: { id: props.id, title },
+							reactivityKeys: ["docs"],
+						});
+						return Boundary.isUnhandled(renamed)
+							? Match.valueTags(renamed.error, {
+									DocNotFound: () => "This doc was deleted meanwhile.",
+									EmptyTitle: () => "A title can’t be empty.",
+								})
+							: undefined;
+					}}
+					saveType="Doc | Unhandled<DocNotFound | EmptyTitle>"
+				/>
 			)}
 		</div>
 	);
 };
 
-const DocView = (props: { readonly doc: Doc }) => (
+/**
+ * The page under `DocAccessAll`, which catches `DocNotFound` too: the hook
+ * returns the doc itself, and a rename can only be left with `EmptyTitle`.
+ */
+export const DocPageAll = (props: { readonly id: number }) => {
+	const doc = useDocAccessAll(docAtom(props.id));
+	const rename = Boundary.useSet(DocAccessAll, renameDocAtom);
+	return (
+		<div className="space-y-3">
+			<TypeChip>useDocAccess(docAtom(id)): Doc</TypeChip>
+			<DocView
+				doc={doc}
+				save={async (title) => {
+					const renamed = await rename({
+						payload: { id: props.id, title },
+						reactivityKeys: ["docs"],
+					});
+					return Boundary.isUnhandled(renamed)
+						? Match.valueTags(renamed.error, {
+								EmptyTitle: () => "A title can’t be empty.",
+							})
+						: undefined;
+				}}
+				saveType="Doc | Unhandled<EmptyTitle>"
+			/>
+		</div>
+	);
+};
+
+const DocView = (props: {
+	readonly doc: Doc;
+	readonly save: Save;
+	readonly saveType: string;
+}) => (
 	<article className="space-y-3">
 		<header>
 			<h2 className="text-xl font-semibold">{props.doc.title}</h2>
@@ -103,13 +162,21 @@ const DocView = (props: { readonly doc: Doc }) => (
 			</p>
 		</header>
 		<p className="text-sm leading-relaxed">{props.doc.body}</p>
-		<RenameForm doc={props.doc} key={props.doc.title} />
+		<RenameForm
+			key={props.doc.title}
+			save={props.save}
+			saveType={props.saveType}
+			title={props.doc.title}
+		/>
 	</article>
 );
 
-const RenameForm = (props: { readonly doc: Doc }) => {
-	const rename = Boundary.useSet(DocAccess, renameDocAtom);
-	const [title, setTitle] = useState(props.doc.title);
+const RenameForm = (props: {
+	readonly save: Save;
+	readonly saveType: string;
+	readonly title: string;
+}) => {
+	const [title, setTitle] = useState(props.title);
 	const [pending, setPending] = useState(false);
 	const [problem, setProblem] = useState<string>();
 	return (
@@ -118,27 +185,14 @@ const RenameForm = (props: { readonly doc: Doc }) => {
 			onSubmit={async (event) => {
 				event.preventDefault();
 				setPending(true);
-				// Doc | Unhandled<DocNotFound | EmptyTitle>: the rest went to the boundaries.
-				const renamed = await rename({
-					payload: { id: props.doc.id, title },
-					reactivityKeys: ["docs"],
-				});
+				const found = await props.save(title);
 				setPending(false);
-				setProblem(
-					Boundary.isUnhandled(renamed)
-						? Match.valueTags(renamed.error, {
-								DocNotFound: () => "This doc was deleted meanwhile.",
-								EmptyTitle: () => "A title can’t be empty.",
-							})
-						: undefined,
-				);
+				setProblem(found);
 			}}
 		>
-			<div className="flex items-center justify-between">
+			<div className="flex flex-wrap items-center justify-between gap-2">
 				<span className="text-sm font-medium">Rename</span>
-				<TypeChip>
-					rename(…): Doc | Unhandled&lt;DocNotFound | EmptyTitle&gt;
-				</TypeChip>
+				<TypeChip>{`rename(…): ${props.saveType}`}</TypeChip>
 			</div>
 			<div className="flex gap-2">
 				<Input

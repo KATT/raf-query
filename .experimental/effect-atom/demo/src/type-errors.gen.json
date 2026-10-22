@@ -45,18 +45,18 @@
 		"title": "You can't handle an error a boundary already caught"
 	},
 	{
-		"description": "`Session` already catches `Unauthorized`, so a boundary inside it that lists `Unauthorized` again would never see one.",
+		"description": "`Session` already catches `Unauthorized`, so a boundary inside it that lists the tag again would never see one. The error names the tag.",
 		"errors": [
 			{
 				"code": "TS2322",
 				"column": 2,
-				"line": 7,
-				"message": "Type '[typeof Unauthorized]' is not assignable to type 'readonly [typeof Unauthorized] & { readonly AlreadyHandledAbove: \"Unauthorized\"; }'.\n  Property 'AlreadyHandledAbove' is missing in type '[typeof Unauthorized]' but required in type '{ readonly AlreadyHandledAbove: \"Unauthorized\"; }'."
+				"line": 8,
+				"message": "Type '[\"DocNotFound\", \"Unauthorized\"]' is not assignable to type 'readonly [\"DocNotFound\", \"Unauthorized\"] & { readonly AlreadyHandledAbove: \"Unauthorized\"; }'.\n  Property 'AlreadyHandledAbove' is missing in type '[\"DocNotFound\", \"Unauthorized\"]' but required in type '{ readonly AlreadyHandledAbove: \"Unauthorized\"; }'."
 			}
 		],
 		"expect": "fails",
 		"file": "4-no-catching-twice.fails.tsx",
-		"source": "import { Boundary } from \"@raf-query/experimental-effect-atom\";\n\nimport { Unauthorized } from \"../src/api.ts\";\nimport { DocAccess } from \"../src/boundaries.tsx\";\n\nexport const [Again, useAgain] = Boundary.catchErrors(DocAccess, {\n\terrors: [Unauthorized],\n\tfallback: () => <p>Sign in again</p>,\n\tname: \"Again\",\n});\n",
+		"source": "import { Boundary } from \"@raf-query/experimental-effect-atom\";\n\nimport { DocAccess } from \"../src/boundaries.tsx\";\n\nexport const [Again, useAgain] = Boundary.catchErrors(DocAccess, {\n\tfallback: () => <p>Sign in again</p>,\n\tname: \"Again\",\n\ttags: [\"DocNotFound\", \"Unauthorized\"],\n});\n",
 		"title": "A boundary can't catch what one above it catches"
 	},
 	{
@@ -90,11 +90,56 @@
 		"title": "A write through a boundary narrows like a read"
 	},
 	{
-		"description": "A boundary that catches `DocNotFound` too leaves nothing, so its hook returns the doc itself: no `Unhandled`, nothing to match. `useSession(docListAtom)` is the same: `Session` and the boundaries above it catch everything `ListDocs` can fail with. This file compiles.",
+		"description": "A boundary that catches `DocNotFound` too leaves nothing, so its hook returns the doc itself: no `Unhandled`, nothing to match. `useSession(docListAtom)` is the same: `Session` and the boundaries above it catch everything `ListDocs` can fail with. The fallback's `error` is the universe's `DocNotFound`, with its `docId`. This file compiles.",
 		"errors": [],
 		"expect": "compiles",
 		"file": "7-nothing-left-to-handle.compiles.tsx",
-		"source": "import { Boundary } from \"@raf-query/experimental-effect-atom\";\n\nimport { DocNotFound } from \"../src/api.ts\";\nimport { docAtom, docListAtom } from \"../src/atoms.ts\";\nimport { DocAccess, useSession } from \"../src/boundaries.tsx\";\n\nexport const [Everything, useEverything] = Boundary.catchErrors(DocAccess, {\n\terrors: [DocNotFound],\n\tfallback: (props) => <p>Doc {props.error.docId} is gone</p>,\n\tname: \"Everything\",\n});\n\nexport const Title = (props: { readonly id: number }) => {\n\tconst doc = useEverything(docAtom(props.id));\n\treturn <h1>{doc.title}</h1>;\n};\n\nexport const Titles = () => {\n\tconst docs = useSession(docListAtom);\n\treturn (\n\t\t<ul>\n\t\t\t{docs.map((doc) => (\n\t\t\t\t<li key={doc.id}>{doc.title}</li>\n\t\t\t))}\n\t\t</ul>\n\t);\n};\n",
+		"source": "import { Boundary } from \"@raf-query/experimental-effect-atom\";\n\nimport { docAtom, docListAtom } from \"../src/atoms.ts\";\nimport { DocAccess, useSession } from \"../src/boundaries.tsx\";\n\nexport const [Everything, useEverything] = Boundary.catchErrors(DocAccess, {\n\tfallback: (props) => <p>Doc {props.error.docId} is gone</p>,\n\tname: \"Everything\",\n\ttags: [\"DocNotFound\"],\n});\n\nexport const Title = (props: { readonly id: number }) => {\n\tconst doc = useEverything(docAtom(props.id));\n\treturn <h1>{doc.title}</h1>;\n};\n\nexport const Titles = () => {\n\tconst docs = useSession(docListAtom);\n\treturn (\n\t\t<ul>\n\t\t\t{docs.map((doc) => (\n\t\t\t\t<li key={doc.id}>{doc.title}</li>\n\t\t\t))}\n\t\t</ul>\n\t);\n};\n",
 		"title": "Once every error is caught, there is no failure to get"
+	},
+	{
+		"description": "The root declares `AppError`, everything a `DocsClient` query can fail with, so a boundary's tags autocomplete from it, and a misspelt one is a type error with a suggestion instead of a boundary that never catches anything.",
+		"errors": [
+			{
+				"code": "TS2820",
+				"column": 9,
+				"line": 8,
+				"message": "Type '\"Forbiden\"' is not assignable to type '\"DocNotFound\" | \"EmptyTitle\" | \"Forbidden\" | \"RpcClientError\" | \"Unauthorized\"'. Did you mean '\"Forbidden\"'?"
+			}
+		],
+		"expect": "fails",
+		"file": "8-tags-come-from-the-universe.fails.tsx",
+		"source": "import { Boundary } from \"@raf-query/experimental-effect-atom\";\n\nimport { Session } from \"../src/boundaries.tsx\";\n\nexport const [Access, useAccess] = Boundary.catchErrors(Session, {\n\tfallback: () => <p>No access</p>,\n\tname: \"Access\",\n\ttags: [\"Forbiden\"],\n});\n",
+		"title": "A tag must be one of the universe's"
+	},
+	{
+		"description": "Boundaries match by `_tag`, so they can't tell two errors with the same tag apart. When the universe has two, say a second API's `Forbidden`, catching that tag is a type error. Tags only one error carries still work.",
+		"errors": [
+			{
+				"code": "TS2322",
+				"column": 2,
+				"line": 20,
+				"message": "Type '[\"Forbidden\"]' is not assignable to type 'readonly [\"Forbidden\"] & { readonly TagSharedByMoreThanOneError: \"Forbidden\"; }'.\n  Property 'TagSharedByMoreThanOneError' is missing in type '[\"Forbidden\"]' but required in type '{ readonly TagSharedByMoreThanOneError: \"Forbidden\"; }'."
+			}
+		],
+		"expect": "fails",
+		"file": "9-one-type-per-tag.fails.tsx",
+		"source": "import { Boundary } from \"@raf-query/experimental-effect-atom\";\n\nimport type { AppError } from \"../src/boundaries.tsx\";\n\n/** Another API's `Forbidden`, about an organization. */\ninterface OrgForbidden {\n\treadonly _tag: \"Forbidden\";\n\treadonly orgId: string;\n}\n\nconst [Root] = Boundary.root({\n\terrors: Boundary.errors<AppError | OrgForbidden>(),\n\tfallback: () => <p>Crashed</p>,\n\tname: \"Root\",\n});\n\nexport const [Access, useAccess] = Boundary.catchErrors(Root, {\n\tfallback: () => <p>No access</p>,\n\tname: \"Access\",\n\ttags: [\"Forbidden\"],\n});\n\nexport const [Missing, useMissing] = Boundary.catchErrors(Root, {\n\tfallback: () => <p>Not found</p>,\n\tname: \"Missing\",\n\ttags: [\"DocNotFound\"],\n});\n",
+		"title": "A tag two errors share can't be caught"
+	},
+	{
+		"description": "`DocAccess`'s fallback expects the universe's `Forbidden`, with a `docId`. An atom outside the universe that fails with its own `Forbidden` would hand that fallback a value its props don't describe, so reading it through `DocAccess` is a type error. Through `Network`, which doesn't catch `Forbidden`, it would come back as an `Unhandled`.",
+		"errors": [
+			{
+				"code": "TS2345",
+				"column": 27,
+				"line": 14,
+				"message": "Argument of type 'Atom<AsyncResult<never, OrgForbidden>>' is not assignable to parameter of type 'Atom<AsyncResult<never, OrgForbidden>> & { readonly CaughtAsAnotherType: \"Forbidden\"; }'.\n  Property 'CaughtAsAnotherType' is missing in type 'Atom<AsyncResult<never, OrgForbidden>>' but required in type '{ readonly CaughtAsAnotherType: \"Forbidden\"; }'."
+			}
+		],
+		"expect": "fails",
+		"file": "10-caught-as-another-type.fails.tsx",
+		"source": "import { Effect } from \"effect\";\nimport { Atom } from \"effect/reactivity\";\n\nimport { useDocAccess } from \"../src/boundaries.tsx\";\n\nclass OrgForbidden {\n\treadonly _tag = \"Forbidden\";\n\treadonly orgId = \"acme\";\n}\n\nconst orgAtom = Atom.make(Effect.fail(new OrgForbidden()));\n\nexport const Org = () => {\n\tconst org = useDocAccess(orgAtom);\n\treturn <p>{String(org)}</p>;\n};\n",
+		"title": "An atom can't carry a caught tag as another type"
 	}
 ]

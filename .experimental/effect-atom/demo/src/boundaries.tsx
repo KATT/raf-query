@@ -1,7 +1,11 @@
 /**
  * The boundary chain, from the outside in. Each is a pair: the Provider to
- * mount, and the hook that reads through it. Each takes its errors off the
- * type of its hook, and of the hooks of the boundaries inside it.
+ * mount, and the hook that reads through it. Each takes the errors it catches
+ * off the type of its hook, and of the hooks of the boundaries inside it.
+ *
+ * Errors are named by tag and checked against `AppError`, a type: this module
+ * imports the contract with `import type` only, so the chain doesn't pull the
+ * RPC schemas into the bundle (the client does, to decode responses).
  *
  * - `App` catches defects (and interrupts), and tells the event log about
  *   every failure a boundary of the chain catches. It needs no client: each
@@ -15,9 +19,9 @@
 import { Button } from "@examples/ui/components/button";
 import { Boundary } from "@raf-query/experimental-effect-atom";
 import { Cause, Predicate } from "effect";
-import { RpcClientError } from "effect/rpc";
+import type { RpcClientError } from "effect/rpc";
 
-import { Forbidden, Unauthorized } from "./api.ts";
+import type { DocNotFound, DocRpcs, Forbidden, Unauthorized } from "./api.ts";
 import { setChaos, toggle, getChaos } from "./chaos.ts";
 import { Caught } from "./frame.tsx";
 import { log } from "./log.ts";
@@ -123,6 +127,21 @@ const RequestAccess = (props: Boundary.FallbackProps<Forbidden>) => {
 	);
 };
 
+const Missing = (props: Boundary.FallbackProps<DocNotFound>) => (
+	<Caught name="DocAccess" tone="access" what="DocNotFound">
+		<p className="text-sm">Doc {props.error.docId} doesn’t exist.</p>
+	</Caught>
+);
+
+const AccessOrMissing = (
+	props: Boundary.FallbackProps<Forbidden | DocNotFound>,
+) =>
+	Predicate.isTagged(props.error, "Forbidden") ? (
+		<RequestAccess error={props.error} retry={props.retry} />
+	) : (
+		<Missing error={props.error} retry={props.retry} />
+	);
+
 const what = (caught: Boundary.Caught) => {
 	if (Predicate.hasProperty(caught.error, "_tag")) {
 		// oxlint-disable-next-line eslint/no-underscore-dangle -- the errors boundaries catch are tagged
@@ -131,7 +150,11 @@ const what = (caught: Boundary.Caught) => {
 	return Cause.hasDies(caught.cause) ? "a defect" : "an interrupt";
 };
 
+/** Everything a `DocsClient` query can fail with: the universe the boundaries' tags come from. */
+export type AppError = Boundary.RpcErrors<typeof DocRpcs>;
+
 export const [App] = Boundary.root({
+	errors: Boundary.errors<AppError>(),
 	fallback: Crashed,
 	name: "App",
 	onCaught: (caught) =>
@@ -139,19 +162,29 @@ export const [App] = Boundary.root({
 });
 
 export const [Network] = Boundary.catchErrors(App, {
-	errors: [RpcClientError.RpcClientError],
 	fallback: Offline,
 	name: "Network",
+	tags: ["RpcClientError"],
 });
 
 export const [Session, useSession] = Boundary.catchErrors(Network, {
-	errors: [Unauthorized],
 	fallback: SignIn,
 	name: "Session",
+	tags: ["Unauthorized"],
 });
 
 export const [DocAccess, useDocAccess] = Boundary.catchErrors(Session, {
-	errors: [Forbidden],
 	fallback: RequestAccess,
 	name: "DocAccess",
+	tags: ["Forbidden"],
+});
+
+/**
+ * `DocAccess` as the type controls reconfigure it when it catches
+ * `DocNotFound` too: nothing is left for the page under it.
+ */
+export const [DocAccessAll, useDocAccessAll] = Boundary.catchErrors(Session, {
+	fallback: AccessOrMissing,
+	name: "DocAccess",
+	tags: ["Forbidden", "DocNotFound"],
 });

@@ -4,18 +4,18 @@
  * A boundary that catches `DocNotFound` too leaves nothing, so its hook returns
  * the doc itself: no `Unhandled`, nothing to match. `useSession(docListAtom)`
  * is the same: `Session` and the boundaries above it catch everything
- * `ListDocs` can fail with. This file compiles.
+ * `ListDocs` can fail with. The fallback's `error` is the universe's
+ * `DocNotFound`, with its `docId`. This file compiles.
  */
 import { Boundary } from "@raf-query/experimental-effect-atom";
 
-import { DocNotFound } from "../src/api.ts";
 import { docAtom, docListAtom } from "../src/atoms.ts";
 import { DocAccess, useSession } from "../src/boundaries.tsx";
 
 export const [Everything, useEverything] = Boundary.catchErrors(DocAccess, {
-	errors: [DocNotFound],
 	fallback: (props) => <p>Doc {props.error.docId} is gone</p>,
 	name: "Everything",
+	tags: ["DocNotFound"],
 });
 
 export const Title = (props: { readonly id: number }) => {
