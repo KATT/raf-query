@@ -70,6 +70,30 @@
 		".experimental/svelte/package": {
 			"includeEntryExports": false,
 		},
+		".experimental/effect-query/package": {
+			"includeEntryExports": false,
+		},
+		".experimental/effect-query/demo": {
+			// `scripts/type-errors.ts` runs tsc over the fixtures; nothing imports them.
+			"entry": ["type-errors/*.tsx"],
+			"ignoreDependencies": ["tailwindcss"],
+			// A fixture exports what it shows, so its code isn't unused locals.
+			"ignoreIssues": {
+				"type-errors/*.tsx": ["exports"],
+			},
+		},
+		".experimental/effect-atom/package": {
+			"includeEntryExports": false,
+		},
+		".experimental/effect-atom/demo": {
+			// `scripts/type-errors.ts` runs tsc over the fixtures; nothing imports them.
+			"entry": ["type-errors/*.tsx"],
+			"ignoreDependencies": ["tailwindcss"],
+			// A fixture exports what it shows, so its code isn't unused locals.
+			"ignoreIssues": {
+				"type-errors/*.tsx": ["exports"],
+			},
+		},
 		".experimental/tanstack-query/package": {
 			// Same surface as `@raf-query/react`, kept for the comparison even
 			// where the experimental apps don't call every export.
@@ -114,6 +138,13 @@
 		".experimental/tanstack-query/start": {
 			"ignoreDependencies": ["tailwindcss"],
 		},
+		".experimental/raf-query-boundaries/demo": {
+			"ignoreDependencies": ["tailwindcss"],
+			// The fixtures are compiled by `scripts/type-errors.ts` (tsc over
+			// `type-errors/`), not imported: they show the boundaries' types.
+			"entry": ["type-errors/*.tsx"],
+			"includeEntryExports": false,
+		},
 		"examples/react-router": {
 			// Tailwind resolves from the app root while compiling
 			// `@import "tailwindcss"` in `@examples/ui`.
@@ -151,6 +182,7 @@
 			// them. `sample:…` imports are a virtual module of
 			// `build/content.ts`.
 			"ignoreDependencies": [
+				"@samples/effect-query",
 				"@samples/nextjs",
 				"@samples/react-router",
 				"@samples/react-router-spa",

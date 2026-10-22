@@ -36,6 +36,7 @@
 			"react-server": "./src/index-react-server.ts",
 			"default": "./src/index.ts"
 		},
+		"./boundary": "./src/boundary/index.ts",
 		"./devtools": "./src/devtools.tsx",
 		"./tanstack-router": {
 			"workerd": "./src/tanstack-router.ts",
@@ -89,6 +90,7 @@
 				"react-server": "./dist/index-react-server.mjs",
 				"default": "./dist/index.mjs"
 			},
+			"./boundary": "./dist/boundary/index.mjs",
 			"./devtools": "./dist/devtools.mjs",
 			"./tanstack-router": {
 				"workerd": "./dist/tanstack-router.mjs",

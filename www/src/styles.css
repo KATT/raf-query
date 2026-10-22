@@ -3,6 +3,8 @@
 @plugin "@tailwindcss/typography";
 
 @source "./";
+/* The embedded effect-atom demo's components. */
+@source "../../.experimental/effect-atom/demo/src";
 
 html {
 	/* Site header (3.5rem) + homepage framework mode bar (~2.75rem). */
@@ -279,6 +281,21 @@ html[data-announcement-dismissed] .announcement-bar {
 
 .twoslash .twoslash-error-line {
 	white-space: pre-wrap;
+}
+
+/* Code that wraps instead of scrolling, so an error reads in place on a
+   narrow screen */
+.code-wrap pre {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.code-wrap .twoslash .twoslash-error-line {
+	width: auto;
+}
+
+.code-wrap .twoslash .twoslash-query-line .twoslash-popup-container {
+	max-width: 100%;
 }
 
 /* Tables scroll instead of overflowing the page */

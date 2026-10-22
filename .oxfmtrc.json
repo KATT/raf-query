@@ -12,6 +12,7 @@
 		".repos/**",
 		"**/routeTree.gen.ts",
 		"**/.next/**",
-		"**/.tanstack/**"
+		"**/.tanstack/**",
+		"**/*.gen.json"
 	]
 }
