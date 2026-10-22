@@ -5,11 +5,12 @@
 	"description": "Documentation site for raf-query, served at raf-query.katt.dev",
 	"type": "module",
 	"scripts": {
-		"build": "vp build && node build/vercel-output.ts",
+		"build": "node build/type-controls.ts --check && vp build && node build/vercel-output.ts",
 		"dev": "vp dev --port 3004",
 		"start": "vp preview --port 3004",
 		"test": "vp test",
-		"typecheck": "tsc"
+		"type-controls": "node build/type-controls.ts",
+		"typecheck": "tsc && node build/type-controls.ts --check"
 	},
 	"dependencies": {
 		"@examples/kit": "workspace:*",
@@ -17,6 +18,7 @@
 		"@raf-query/react": "workspace:*",
 		"@tanstack/react-router": "1.170.42",
 		"@tanstack/react-start": "1.168.61",
+		"effect": "catalog:",
 		"lucide-react": "1.55.0",
 		"next-themes": "0.4.6",
 		"react": "19.3.0",
@@ -45,7 +47,6 @@
 		"@types/react-dom": "19.3.0",
 		"@vitejs/plugin-react": "6.1.2",
 		"babel-plugin-react-compiler": "1.0.0",
-		"effect": "catalog:",
 		"github-slugger": "2.0.0",
 		"hast-util-to-html": "9.0.5",
 		"hast-util-to-string": "3.0.1",

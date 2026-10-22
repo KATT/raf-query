@@ -27,6 +27,8 @@ With a `layer`, the client defaults to `throwOnError: false`. `useQuery` then re
 tanstack-start-effect/src/docs/effect-errors.tsx#in-react
 ```
 
+To handle some failures high in the tree and the rest in the component, by type, read through [typed error boundaries](./typed-error-boundaries.md) instead.
+
 Set `throwOnError: true` on the query, on the call, or on the client to get a rejecting promise again (and throw to an error boundary). The call's option only exists in the type when `ErrorOf` is typed — promise `queryFn`s always throw. On the same client, a query whose `queryFn` returns a promise still reads as plain data: `useQuery` tells the two apart by what the `queryFn` returned, on this client or on the server whose data was hydrated, so Effect and promise queries mix freely.
 
 ### Set it on the query

@@ -631,7 +631,7 @@ function settle(
 		set(entry, { fetchDirection: undefined, isFetching: false });
 		Deferred.doneUnsafe(awaiter, Exit.fail(new CancelledError()));
 	} else {
-		fail(entry, Cause.squash(exit.cause));
+		fail(entry, exit.cause);
 		Deferred.doneUnsafe(awaiter, exit);
 	}
 	scheduleGc(entry);
@@ -698,12 +698,29 @@ function succeed(entry: Entry, next: unknown, updatedAt: number) {
 	return data;
 }
 
-function fail(entry: Entry, error: unknown) {
+/**
+ * The full `Cause` each failed first load's promise rejected with, by
+ * promise. The promise's `reason` and the state's `error` are its squash.
+ */
+const causes = new WeakMap<Thenable<unknown>, Cause.Cause<unknown>>();
+
+/** The `Cause` `promise` rejected with, if it is a first load that failed here. */
+export function causeOf(
+	promise: Thenable<unknown>,
+): Cause.Cause<unknown> | undefined {
+	return causes.get(promise);
+}
+
+function fail(entry: Entry, cause: Cause.Cause<unknown>) {
+	const error = Cause.squash(cause);
 	emit(entry.cache, { error, query: entry, type: "failed" });
 	if (!entry.state.hasData) {
 		const firstLoad = entry.pending;
 		entry.pending = undefined;
-		firstLoad?.reject(error);
+		if (firstLoad) {
+			causes.set(firstLoad.promise, cause);
+			firstLoad.reject(error);
+		}
 		entry.errorShown = false;
 	}
 	set(entry, {
