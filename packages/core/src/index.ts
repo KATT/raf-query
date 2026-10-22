@@ -6,6 +6,7 @@ export {
 	type QueryClientConfig,
 } from "./client.ts";
 export {
+	exitThenable,
 	type HasTypedError,
 	type PagingControls,
 	type PromiseControls,

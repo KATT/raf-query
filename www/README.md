@@ -97,6 +97,8 @@ The name is a file in `src/demos/`, which default-exports `defineDemo({ Componen
 - `DemoRouter` (`src/demo-kit/router.tsx`) runs a TanStack Router route tree in the demo's browser window, on a memory history, with the client as `context.queryClient`. Its Reload starts the variant over on the same URL. `DemoBrowser` is a smaller hand-rolled router that the other demos use.
 - A demo that brings its own client and server (`src/demos/effect-query-boundaries.tsx` runs an Effect RPC server in the page) default-exports `defineStandaloneDemo({ Component, title, hint })` instead. It gets the same box and title, without the kit's client, panels or expanded view.
 - The docs site registers its own router type, so demo routes name theirs: `route.useLoaderData<typeof router>()`, and `Link` with all its type parameters. See `src/demos/starting-queries.tsx`.
+- A demo with more than one file keeps the rest in a folder of the same name (`src/demos/typed-error-boundaries/`); only `src/demos/*.tsx` are demos.
+- The typed error boundaries demo shows what `tsc` says about each configuration of its type switches. `pnpm type-controls` compiles them all and writes `src/demos/typed-error-boundaries/type-controls.gen.json`; `typecheck` and `build` fail when it's out of date.
 - Demos have no tests: the docs site's presentation isn't unit tested. `pnpm test` runs the build's tests (`build/*.test.ts`): sample expansion and code folding.
 
 ## For agents

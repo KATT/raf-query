@@ -94,10 +94,11 @@ Everything from `@raf-query/core`, plus:
 
 Subpath entries:
 
-| Entry                              | Use                                                              |
-| ---------------------------------- | ---------------------------------------------------------------- |
-| `@raf-query/react/tanstack-router` | `setupRouterIntegration`. [TanStack Start](./tanstack-start.md)  |
-| `@raf-query/react/devtools`        | `QueryDevtools`, `QueryDevtoolsPanel`. [Devtools](./devtools.md) |
+| Entry                              | Use                                                                                           |
+| ---------------------------------- | --------------------------------------------------------------------------------------------- |
+| `@raf-query/react/tanstack-router` | `setupRouterIntegration`. [TanStack Start](./tanstack-start.md)                               |
+| `@raf-query/react/devtools`        | `QueryDevtools`, `QueryDevtoolsPanel`. [Devtools](./devtools.md)                              |
+| `@raf-query/react/boundary`        | `Boundary`, experimental. [Typed error boundaries](./typed-error-boundaries.md#api-reference) |
 
 ## @raf-query/core
 
@@ -122,6 +123,7 @@ Framework-agnostic: the Promise `QueryClient` and the Effect cache behind it.
 | `QueryHandle<TFactory>`                                      | Handle type for props fed by `prefetch`: `{ key, input }`                                                                   |
 | `QueryHandleWithData<TFactory>`                              | What `ensure` and `fetch` return: a `QueryHandle` plus the `data` they waited for                                           |
 | `Thenable<T>`                                                | Promise with `status` / `value` / `reason`, read by `use()` or [without Suspense](./comparison.md#reading-without-suspense) |
+| `exitThenable(promise)`                                      | A thenable of the `Exit` a query's promise settles with, keeping a failed first load's `Cause`; for bindings                |
 | `QueryOptions`, `InfiniteQueryOptions`, `InfiniteData`       | Typed by a bag: `QueryOptions<{ data: Post }>`. Effect `queryFn`s add `error` and `services`; `key` is the key's shape      |
 | `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>` | A factory's data, input and error types                                                                                     |
 | `ServicesOf<TFactory>`                                       | The services a factory's `queryFn` Effect needs; `never` for promises                                                       |
