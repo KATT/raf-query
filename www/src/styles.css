@@ -281,6 +281,21 @@ html[data-announcement-dismissed] .announcement-bar {
 	white-space: pre-wrap;
 }
 
+/* Code that wraps instead of scrolling, so an error reads in place on a
+   narrow screen */
+.code-wrap pre {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.code-wrap .twoslash .twoslash-error-line {
+	width: auto;
+}
+
+.code-wrap .twoslash .twoslash-query-line .twoslash-popup-container {
+	max-width: 100%;
+}
+
 /* Tables scroll instead of overflowing the page */
 .prose table:not(:where(.not-prose *)) {
 	display: block;

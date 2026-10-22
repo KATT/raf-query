@@ -38,6 +38,28 @@ type DemoOptions = Pick<DemoDefinition, "createClient" | "hint" | "title"> &
 		| Pick<DemoDefinition, "variants" | "variantsLabel">
 	);
 
+/**
+ * A demo that brings its own client and panels, such as one built on an
+ * experimental library rather than `@raf-query/react`: the frame only gives
+ * it a card with its title and hint.
+ */
+export interface StandaloneDemoDefinition {
+	readonly Component: ComponentType;
+	/** One sentence on what to try. */
+	readonly hint: string;
+	readonly standalone: true;
+	readonly title: string;
+}
+
+/** What a demo module's default export is. */
+export type AnyDemoDefinition = DemoDefinition | StandaloneDemoDefinition;
+
+export function defineStandaloneDemo(
+	demo: Omit<StandaloneDemoDefinition, "standalone">,
+): StandaloneDemoDefinition {
+	return { ...demo, standalone: true };
+}
+
 export function defineDemo(demo: DemoOptions): DemoDefinition {
 	if ("variants" in demo) {
 		return demo;

@@ -1,0 +1,100 @@
+[
+	{
+		"description": "`DocAccess` and the boundaries above it catch `Forbidden`, `Unauthorized` and `RpcClientError`. `GetDoc` can also fail with `DocNotFound`, so `useDocAccess` returns `Doc | Unhandled<DocNotFound>`: reading `.title` without `Boundary.isUnhandled` first doesn't type-check.",
+		"errors": [
+			{
+				"code": "TS2339",
+				"column": 18,
+				"line": 6,
+				"message": "Property 'title' does not exist on type 'Unhandled<DocNotFound> | { readonly body: string; readonly id: number; readonly title: string; readonly updatedBy: string; }'.\n  Property 'title' does not exist on type 'Unhandled<DocNotFound>'."
+			}
+		],
+		"expect": "fails",
+		"file": "1-check-isunhandled-before-the-data.fails.tsx",
+		"source": "import { useDocAccess } from \"../src/boundaries.tsx\";\nimport { docQuery } from \"../src/queries.ts\";\n\nexport const Title = (props: { readonly id: number }) => {\n\tconst doc = useDocAccess(docQuery(props.id));\n\treturn <h1>{doc.title}</h1>;\n};\n",
+		"title": "Check isUnhandled before reading the data"
+	},
+	{
+		"description": "Read through `Session`, a doc can still fail with `Forbidden` or `DocNotFound`: both come back as an `Unhandled`. Forgetting one is a type error that names it.",
+		"errors": [
+			{
+				"code": "TS2345",
+				"column": 35,
+				"line": 11,
+				"message": "Argument of type '{ DocNotFound: () => string; }' is not assignable to parameter of type 'ValueTagHandlers<DocNotFound | Forbidden> & {}'.\n  Property 'Forbidden' is missing in type '{ DocNotFound: () => string; }' but required in type 'ValueTagHandlers<DocNotFound | Forbidden>'."
+			}
+		],
+		"expect": "fails",
+		"file": "2-match-what-is-left.fails.tsx",
+		"source": "import { Boundary } from \"@raf-query/experimental-effect-query\";\nimport { Match } from \"effect\";\n\nimport { useSession } from \"../src/boundaries.tsx\";\nimport { docQuery } from \"../src/queries.ts\";\n\nexport const Title = (props: { readonly id: number }) => {\n\tconst doc = useSession(docQuery(props.id));\n\tif (Boundary.isUnhandled(doc)) {\n\t\treturn (\n\t\t\t<p>{Match.valueTags(doc.error, { DocNotFound: () => \"No such doc\" })}</p>\n\t\t);\n\t}\n\treturn <h1>{doc.title}</h1>;\n};\n",
+		"title": "What's left must be matched exhaustively"
+	},
+	{
+		"description": "Under `DocAccess`, what's left is `DocNotFound` and nothing else. An `Unauthorized` can't reach this component (`Session` caught it), so a case for it is a type error, not dead code.",
+		"errors": [
+			{
+				"code": "TS2322",
+				"column": 6,
+				"line": 14,
+				"message": "Type '() => string' is not assignable to type 'never'."
+			}
+		],
+		"expect": "fails",
+		"file": "3-cannot-handle-what-was-caught.fails.tsx",
+		"source": "import { Boundary } from \"@raf-query/experimental-effect-query\";\nimport { Match } from \"effect\";\n\nimport { useDocAccess } from \"../src/boundaries.tsx\";\nimport { docQuery } from \"../src/queries.ts\";\n\nexport const Title = (props: { readonly id: number }) => {\n\tconst doc = useDocAccess(docQuery(props.id));\n\tif (Boundary.isUnhandled(doc)) {\n\t\treturn (\n\t\t\t<p>\n\t\t\t\t{Match.valueTags(doc.error, {\n\t\t\t\t\tDocNotFound: () => \"No such doc\",\n\t\t\t\t\tUnauthorized: () => \"Sign in\",\n\t\t\t\t})}\n\t\t\t</p>\n\t\t);\n\t}\n\treturn <h1>{doc.title}</h1>;\n};\n",
+		"title": "You can't handle an error a boundary already caught"
+	},
+	{
+		"description": "`Session` already catches `Unauthorized`. Each tag has one place in a chain, so a boundary inside it that lists `Unauthorized` again is a type error that names the tag.",
+		"errors": [
+			{
+				"code": "TS2322",
+				"column": 2,
+				"line": 8,
+				"message": "Type '[\"Unauthorized\"]' is not assignable to type 'readonly [\"Unauthorized\"] & { readonly AlreadyHandledAbove: \"Unauthorized\"; }'.\n  Property 'AlreadyHandledAbove' is missing in type '[\"Unauthorized\"]' but required in type '{ readonly AlreadyHandledAbove: \"Unauthorized\"; }'."
+			}
+		],
+		"expect": "fails",
+		"file": "4-no-catching-twice.fails.tsx",
+		"source": "import { Boundary } from \"@raf-query/experimental-effect-query\";\n\nimport { DocAccess } from \"../src/boundaries.tsx\";\n\nexport const [Again, useAgain] = Boundary.catchErrors(DocAccess, {\n\tfallback: () => <p>Sign in again</p>,\n\tname: \"Again\",\n\ttags: [\"Unauthorized\"],\n});\n",
+		"title": "A boundary can't catch what one above it catches"
+	},
+	{
+		"description": "The root declares, as a type, what its queries can fail with: everything the docs RPC client can. A tag none of those errors has is a type error, and the compiler suggests the one you meant.",
+		"errors": [
+			{
+				"code": "TS2820",
+				"column": 9,
+				"line": 8,
+				"message": "Type '\"Forbiden\"' is not assignable to type '\"DocNotFound\" | \"EmptyTitle\" | \"Forbidden\" | \"RpcClientError\" | \"Unauthorized\"'. Did you mean '\"Forbidden\"'?"
+			}
+		],
+		"expect": "fails",
+		"file": "5-tags-are-the-errors-tags.fails.tsx",
+		"source": "import { Boundary } from \"@raf-query/experimental-effect-query\";\n\nimport { Session } from \"../src/boundaries.tsx\";\n\nexport const [Access, useAccess] = Boundary.catchErrors(Session, {\n\tfallback: () => <p>No access</p>,\n\tname: \"Access\",\n\ttags: [\"Forbiden\"],\n});\n",
+		"title": "A boundary catches tags of the root's errors"
+	},
+	{
+		"description": "The root's client is built from the RPC client's layer. A query that needs another service (`Analytics` here) doesn't type-check at any boundary under it.",
+		"errors": [
+			{
+				"code": "TS2345",
+				"column": 45,
+				"line": 16,
+				"message": "Argument of type 'Query<number, never, Analytics>' is not assignable to parameter of type 'Query<number, never, DocsClient | QueryCache>'.\n  Type 'Analytics' is not assignable to type 'DocsClient | QueryCache'.\n    Type 'Analytics' is not assignable to type 'DocsClient'.\n      Types of property 'Service' are incompatible.\n        Type '{ readonly views: Effect<number, never, never>; }' is missing the following properties from type '{ readonly GetDoc: <const AsQueue extends boolean = false, const Discard = false>(input: { readonly id: number; }, options?: { readonly headers?: Input | undefined; readonly context?: Context<never> | undefined; readonly discard?: Discard | undefined; } | undefined) => Effect<...>; readonly ListDocs: <const AsQueue ...': GetDoc, ListDocs, RenameDoc"
+			}
+		],
+		"expect": "fails",
+		"file": "6-services-come-from-the-client.fails.tsx",
+		"source": "import { Context, Effect } from \"effect\";\nimport { Query } from \"@raf-query/experimental-effect-query\";\n\nimport { useDocAccess } from \"../src/boundaries.tsx\";\n\nclass Analytics extends Context.Service<\n\tAnalytics,\n\t{ readonly views: Effect.Effect<number> }\n>()(\"Analytics\") {}\n\nconst views = Query.make({\n\teffect: Effect.flatMap(Analytics, (analytics) => analytics.views),\n\tkey: [\"views\"],\n});\n\nexport const Views = () => <p>{useDocAccess(views)} views</p>;\n",
+		"title": "A query can only use services the client provides"
+	},
+	{
+		"description": "A boundary that catches `DocNotFound` too leaves nothing, so its hook returns the doc itself: no `Unhandled`, nothing to check or match. `useSession(docList)` is the same: `Session` and the boundaries above it catch everything `ListDocs` can fail with. This file compiles.",
+		"errors": [],
+		"expect": "compiles",
+		"file": "7-nothing-left-to-handle.compiles.tsx",
+		"source": "import { Boundary } from \"@raf-query/experimental-effect-query\";\n\nimport { DocAccess, useSession } from \"../src/boundaries.tsx\";\nimport { docList, docQuery } from \"../src/queries.ts\";\n\nexport const [Everything, useEverything] = Boundary.catchErrors(DocAccess, {\n\tfallback: (props) => <p>Doc {props.error.docId} is gone</p>,\n\tname: \"Everything\",\n\ttags: [\"DocNotFound\"],\n});\n\nexport const Title = (props: { readonly id: number }) => {\n\tconst doc = useEverything(docQuery(props.id));\n\treturn <h1>{doc.title}</h1>;\n};\n\nexport const Titles = () => {\n\tconst docs = useSession(docList);\n\treturn (\n\t\t<ul>\n\t\t\t{docs.map((doc) => (\n\t\t\t\t<li key={doc.id}>{doc.title}</li>\n\t\t\t))}\n\t\t</ul>\n\t);\n};\n",
+		"title": "Once every error is caught, the hook returns the data"
+	}
+]
