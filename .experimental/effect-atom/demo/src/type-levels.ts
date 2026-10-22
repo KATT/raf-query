@@ -77,7 +77,7 @@ export const applies = (levels: Levels, id: SwitchId): boolean => {
 };
 
 /** `levels` with the switches that don't apply turned off, so equal code has one key. */
-export const effective = (levels: Levels): Levels => ({
+const effective = (levels: Levels): Levels => ({
 	...levels,
 	matchNotFound: levels.matchNotFound && applies(levels, "matchNotFound"),
 	typo: levels.typo && applies(levels, "typo"),

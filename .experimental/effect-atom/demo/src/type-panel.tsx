@@ -28,7 +28,7 @@ import {
 
 const compiled = new Map<string, Compiled>(Object.entries(compiledJson));
 
-export const compiledFor = (levels: Levels): Compiled | undefined =>
+const compiledFor = (levels: Levels): Compiled | undefined =>
 	compiled.get(keyOf(levels));
 
 /** The live demo's chain for `levels`, when they compile and it has one. */
