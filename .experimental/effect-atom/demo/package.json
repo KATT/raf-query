@@ -8,11 +8,12 @@
 		"./live": "./src/live.tsx"
 	},
 	"scripts": {
-		"build": "vp build",
+		"build": "node scripts/type-levels.ts --check && vp build",
 		"dev": "vp dev --port 3011",
 		"start": "vp preview --port 3011",
 		"type-errors": "node scripts/type-errors.ts",
-		"typecheck": "tsc && node scripts/type-errors.ts --check"
+		"type-levels": "node scripts/type-levels.ts",
+		"typecheck": "tsc && node scripts/type-errors.ts --check && node scripts/type-levels.ts --check"
 	},
 	"dependencies": {
 		"@effect/atom-react": "catalog:",
@@ -34,6 +35,7 @@
 		"@vitejs/plugin-react": "6.1.2",
 		"tailwindcss": "4.3.3",
 		"typescript": "7.0.2",
+		"typescript6": "npm:typescript@6.0.3",
 		"vite": "8.3.4",
 		"vite-plus": "1.0.0"
 	}
