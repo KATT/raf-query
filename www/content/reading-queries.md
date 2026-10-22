@@ -100,6 +100,47 @@ const page = (
 );
 ```
 
+A misspelled tag, or one the queries can't fail with, is a type error:
+
+```tsx twoslash
+// @errors: 2561
+import { Effect, Schema } from "effect";
+import { QueryErrorBoundary, queryOptions } from "@raf-query/react";
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
+	"Unauthorized",
+	{},
+) {}
+class IssueNotFound extends Schema.TaggedError<IssueNotFound>()(
+	"IssueNotFound",
+	{ id: Schema.Number },
+) {}
+declare function getIssue(
+	id: number,
+): Effect.Effect<{ title: string }, IssueNotFound | Unauthorized>;
+function issueQuery(input: { id: number }) {
+	return queryOptions({
+		queryKey: ["issue", input.id],
+		queryFn: () => getIssue(input.id),
+		throwOnError: true,
+	});
+}
+// ---cut---
+const page = (
+	<QueryErrorBoundary
+		query={issueQuery}
+		catchTags={{
+			IssueNotFond: () => <p>No such issue</p>,
+		}}
+	/>
+);
+```
+
+In the demo, the post's Effect can fail with `PostNotFound`, `Unauthorized` or `Offline`. The boundary handles the first two, so `Offline` goes past it to the error boundary above, where it's `unknown` again. Open the deleted post, then fail a request each way:
+
+```demo
+query-error-boundary
+```
+
 Reads under it throw to it as they would to any error boundary, so an Effect read needs `throwOnError: true` (on the read, the query or the client). An error without a handler, here `Unauthorized`, is re-thrown to the boundaries above. Pass several factories as `query={[issueQuery, assigneeQuery]}` to handle all their tags. `RedactedError`, which a query that failed during server rendering rejects with, can be handled too. Each handler gets `reset`, which renders the children again and refetches a failed first load.
 
 ## Passing promises down
