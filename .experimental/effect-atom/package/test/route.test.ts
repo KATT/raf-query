@@ -4,9 +4,13 @@ import { Cause } from "effect";
 import { type Link, route } from "../src/route.ts";
 import { Forbidden, NotFound, Unauthorized } from "./fixtures.ts";
 
-const root: Link = { errors: [], name: "Root", parent: undefined };
-const auth: Link = { errors: [Unauthorized], name: "Auth", parent: root };
-const doc: Link = { errors: [Forbidden], name: "Doc", parent: auth };
+const root: Link = { name: "Root", parent: undefined, tags: new Set() };
+const auth: Link = {
+	name: "Auth",
+	parent: root,
+	tags: new Set(["Unauthorized"]),
+};
+const doc: Link = { name: "Doc", parent: auth, tags: new Set(["Forbidden"]) };
 
 describe("route", () => {
 	it("sends a typed failure to the innermost boundary that catches it", () => {
@@ -34,10 +38,17 @@ describe("route", () => {
 		);
 	});
 
-	it("matches the schema, not just the tag", () => {
-		expect(route(doc, Cause.fail({ _tag: "Forbidden", id: 1 })).kind).toBe(
-			"uncaught",
-		);
+	it("matches the tag, not the type", () => {
+		expect(route(doc, Cause.fail({ _tag: "Forbidden", id: 1 }))).toMatchObject({
+			boundary: doc,
+			kind: "caught",
+		});
+	});
+
+	it("hands back failures with no string tag", () => {
+		expect(route(doc, Cause.fail(new Error("untagged"))).kind).toBe("uncaught");
+		expect(route(doc, Cause.fail({ _tag: 1 })).kind).toBe("uncaught");
+		expect(route(doc, Cause.fail("Forbidden")).kind).toBe("uncaught");
 	});
 
 	it("sends defects and interrupts to the root", () => {

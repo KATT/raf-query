@@ -1,32 +1,38 @@
 import { describe, expectTypeOf, it } from "@effect/vitest";
-import { Context, Effect, Layer, Match } from "effect";
-import { AsyncResult, Atom } from "effect/reactivity";
+import { Context, Effect, Layer, Match, Schema } from "effect";
+import { AsyncResult, Atom, AtomRpc } from "effect/reactivity";
+import { Rpc, type RpcClientError, RpcGroup, RpcMiddleware } from "effect/rpc";
 
 import { Boundary } from "../src/index.ts";
 import {
 	type Doc,
-	Forbidden,
+	type DocError,
+	type Forbidden,
 	makeDocs,
-	NotFound,
-	Unauthorized,
+	type NotFound,
+	type Unauthorized,
 } from "./fixtures.ts";
 
 const docs = makeDocs("ok");
-const [App, useApp] = Boundary.root({ fallback: () => null, name: "App" });
+const [App, useApp] = Boundary.root({
+	errors: Boundary.errors<DocError>(),
+	fallback: () => null,
+	name: "App",
+});
 const [Auth, useAuth] = Boundary.catchErrors(App, {
-	errors: [Unauthorized],
 	fallback: () => null,
 	name: "Auth",
+	tags: ["Unauthorized"],
 });
 const [DocBoundary, useDoc] = Boundary.catchErrors(Auth, {
-	errors: [Forbidden],
 	fallback: () => null,
 	name: "Doc",
+	tags: ["Forbidden"],
 });
 const [Everything, useEverything] = Boundary.catchErrors(DocBoundary, {
-	errors: [NotFound],
 	fallback: () => null,
 	name: "All",
+	tags: ["NotFound"],
 });
 
 class Other extends Context.Service<Other, { readonly name: string }>()(
@@ -34,6 +40,17 @@ class Other extends Context.Service<Other, { readonly name: string }>()(
 ) {}
 
 const needsOther = Effect.map(Other, (other) => other.name);
+
+/** Another error that calls itself `Forbidden`. */
+interface OrgForbidden {
+	readonly _tag: "Forbidden";
+	readonly orgId: string;
+}
+
+declare const orgAtom: Atom.Atom<AsyncResult.AsyncResult<string, OrgForbidden>>;
+declare const looseAtom: Atom.Atom<
+	AsyncResult.AsyncResult<string, { readonly _tag: string }>
+>;
 
 describe("Boundary types", () => {
 	it("an atom's errors are its Effect's", () => {
@@ -44,7 +61,7 @@ describe("Boundary types", () => {
 		>();
 	});
 
-	it("each boundary takes its errors off what its hook hands back", () => {
+	it("each boundary takes its tags off what its hook hands back", () => {
 		function useTypeOnly() {
 			expectTypeOf(useApp(docs.docAtom(1))).toEqualTypeOf<
 				Doc | Boundary.Unhandled<Unauthorized | Forbidden | NotFound>
@@ -108,37 +125,109 @@ describe("Boundary types", () => {
 		expectTypeOf(useTypeOnly).toBeFunction();
 	});
 
+	it("tags must be the universe's", () => {
+		expectTypeOf<Boundary.Catchable<typeof App>>().toEqualTypeOf<
+			ReadonlyArray<"Unauthorized" | "Forbidden" | "NotFound">
+		>();
+		Boundary.catchErrors(App, {
+			fallback: () => null,
+			name: "Typo",
+			// @ts-expect-error -- TS2820: Did you mean '"Forbidden"'?
+			tags: ["Forbiden"],
+		});
+	});
+
 	it("a boundary can't catch what one above it already catches", () => {
 		Boundary.catchErrors(DocBoundary, {
-			// @ts-expect-error -- Auth already catches Unauthorized
-			errors: [Unauthorized],
 			fallback: () => null,
 			name: "Again",
+			// @ts-expect-error -- AlreadyHandledAbove: "Unauthorized"
+			tags: ["NotFound", "Unauthorized"],
 		});
 		expectTypeOf<
-			Boundary.NotYetHandled<
-				[typeof Unauthorized, typeof NotFound],
-				Unauthorized | Forbidden
-			>
+			Boundary.TagChecks<DocError, "Unauthorized", "NotFound" | "Unauthorized">
 		>().toEqualTypeOf<{ readonly AlreadyHandledAbove: "Unauthorized" }>();
 	});
 
-	it("the fallback gets the boundary's own errors", () => {
+	it("a boundary catches at least one tag", () => {
+		Boundary.catchErrors(App, {
+			fallback: () => null,
+			name: "Nothing",
+			// @ts-expect-error -- AtLeastOneTag
+			tags: [],
+		});
+		expectTypeOf<Boundary.TagChecks<DocError, never, never>>().toEqualTypeOf<{
+			readonly AtLeastOneTag: true;
+		}>();
+	});
+
+	it("a tag two errors of the universe share can't be caught", () => {
+		const [Shared] = Boundary.root({
+			errors: Boundary.errors<DocError | OrgForbidden>(),
+			fallback: () => null,
+			name: "Shared",
+		});
+		Boundary.catchErrors(Shared, {
+			fallback: () => null,
+			name: "Ambiguous",
+			// @ts-expect-error -- TagSharedByMoreThanOneError: "Forbidden"
+			tags: ["Forbidden"],
+		});
+		Boundary.catchErrors(Shared, {
+			fallback: () => null,
+			name: "Fine",
+			tags: ["NotFound"],
+		});
+		expectTypeOf<
+			Boundary.SharedTags<DocError | OrgForbidden, "Forbidden" | "NotFound">
+		>().toEqualTypeOf<"Forbidden">();
+	});
+
+	it("an atom can't carry a caught tag as another type", () => {
+		function useTypeOnly() {
+			// @ts-expect-error -- CaughtAsAnotherType: "Forbidden"
+			useDoc(orgAtom);
+			// @ts-expect-error -- a `_tag: string` could be any caught tag
+			useDoc(looseAtom);
+			expectTypeOf(useApp(orgAtom)).toEqualTypeOf<
+				string | Boundary.Unhandled<OrgForbidden>
+			>();
+		}
+		expectTypeOf(useTypeOnly).toBeFunction();
+	});
+
+	it("without a universe, nothing can be caught, and the error says why", () => {
+		const [Bare] = Boundary.root({ fallback: () => null, name: "Bare" });
+		expectTypeOf<Boundary.Catchable<typeof Bare>>().toEqualTypeOf<
+			ReadonlyArray<Boundary.NoUniverse>
+		>();
+		Boundary.catchErrors(Bare, {
+			fallback: () => null,
+			name: "Lost",
+			// @ts-expect-error -- NoUniverse
+			tags: ["Unauthorized"],
+		});
+	});
+
+	it("the fallback gets the universe's types for its tags", () => {
 		Boundary.catchErrors(Auth, {
-			errors: [Forbidden, NotFound],
 			fallback: (props) => {
 				expectTypeOf(props.error).toEqualTypeOf<Forbidden | NotFound>();
 				return null;
 			},
 			name: "Two",
+			tags: ["Forbidden", "NotFound"],
 		});
 	});
 
-	it("HandledBy reads a boundary's errors", () => {
+	it("HandledBy reads a boundary's tags", () => {
 		expectTypeOf<Boundary.HandledBy<typeof App>>().toEqualTypeOf<never>();
 		expectTypeOf<Boundary.HandledBy<typeof DocBoundary>>().toEqualTypeOf<
-			Unauthorized | Forbidden
+			"Unauthorized" | "Forbidden"
 		>();
+		expectTypeOf<
+			Boundary.UniverseOf<typeof DocBoundary>
+		>().toEqualTypeOf<DocError>();
 	});
 
 	it("an atom's services are checked against its runtime when it is made", () => {
@@ -164,5 +253,38 @@ describe("Boundary types", () => {
 			>();
 		}
 		expectTypeOf(useTypeOnly).toBeFunction();
+	});
+});
+
+class Denied extends Schema.TaggedError<Denied>()("Denied", {}) {}
+class Missing extends Schema.TaggedError<Missing>()("Missing", {}) {}
+class Gate extends RpcMiddleware.Service<Gate>()("test/Gate", {
+	error: Denied,
+}) {}
+const Rpcs = RpcGroup.make(
+	Rpc.make("Get", { error: Missing, success: Schema.String }),
+	Rpc.make("List", { success: Schema.Array(Schema.String) }),
+).middleware(Gate);
+
+class Client extends AtomRpc.Service<Client>()("test/Client", {
+	group: Rpcs,
+	makeEffect: Effect.die("type only"),
+	protocol: Layer.empty,
+}) {}
+
+describe("RpcErrors", () => {
+	it("is every procedure's errors, the middlewares', and the transport's", () => {
+		expectTypeOf<Boundary.RpcErrors<typeof Rpcs>>().toEqualTypeOf<
+			Missing | Denied | RpcClientError.RpcClientError
+		>();
+	});
+
+	it("covers what an AtomRpc query fails with", () => {
+		const get = Client.query("Get", undefined);
+		type Failure =
+			typeof get extends Atom.Atom<AsyncResult.AsyncResult<infer _A, infer E>>
+				? E
+				: never;
+		expectTypeOf<Failure>().toExtend<Boundary.RpcErrors<typeof Rpcs>>();
 	});
 });

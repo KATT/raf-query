@@ -19,10 +19,22 @@ export interface Doc {
 	readonly title: string;
 }
 
-/** What `Docs.get` does for each id; tests change it between reads. */
-export type Behavior = "ok" | "unauthorized" | "forbidden" | "missing" | "die";
+/**
+ * What `Docs.get` does for each id; tests change it between reads. The
+ * `lie-…` ones fail with something `DocError` doesn't describe, as a
+ * hand-written Effect can through a cast.
+ */
+export type Behavior =
+	| "ok"
+	| "unauthorized"
+	| "forbidden"
+	| "missing"
+	| "die"
+	| "die-tagged"
+	| "lie-plain-forbidden"
+	| "lie-untagged";
 
-type DocError = Unauthorized | Forbidden | NotFound;
+export type DocError = Unauthorized | Forbidden | NotFound;
 
 class Docs extends Context.Service<
 	Docs,
@@ -44,6 +56,18 @@ const answer = (
 			return Effect.fail(new NotFound({ id }));
 		case "die":
 			return Effect.die(new Error(`doc ${id} exploded`));
+		case "die-tagged":
+			return Effect.die(new Forbidden({ id }));
+		case "lie-plain-forbidden": {
+			// SAFETY: a lie on purpose: a plain object, not a `Forbidden` instance.
+			const plain = { _tag: "Forbidden", id } as unknown as Forbidden;
+			return Effect.fail(plain);
+		}
+		case "lie-untagged": {
+			// SAFETY: a lie on purpose: an untagged error.
+			const untagged = new Error("untagged") as unknown as NotFound;
+			return Effect.fail(untagged);
+		}
 	}
 };
 

@@ -13,12 +13,7 @@ import { Suspense } from "react";
 import { describe, expect, it, vi } from "@effect/vitest";
 
 import { Boundary } from "../src/index.ts";
-import {
-	type Behavior,
-	Forbidden,
-	makeDocs,
-	Unauthorized,
-} from "./fixtures.ts";
+import { type Behavior, type DocError, makeDocs } from "./fixtures.ts";
 
 const setup = (
 	initial: Behavior,
@@ -26,6 +21,7 @@ const setup = (
 ) => {
 	const docs = makeDocs(initial);
 	const [App, useApp] = Boundary.root({
+		errors: Boundary.errors<DocError>(),
 		fallback: (props) => (
 			<button onClick={props.retry} type="button">
 				crashed: {Cause.pretty(props.cause).split("\n")[0]}
@@ -35,22 +31,22 @@ const setup = (
 		onCaught,
 	});
 	const [Auth, useAuth] = Boundary.catchErrors(App, {
-		errors: [Unauthorized],
 		fallback: (props) => (
 			<button onClick={props.retry} type="button">
 				sign in
 			</button>
 		),
 		name: "Auth",
+		tags: ["Unauthorized"],
 	});
 	const [Doc, useDoc] = Boundary.catchErrors(Auth, {
-		errors: [Forbidden],
 		fallback: (props) => (
 			<button onClick={props.retry} type="button">
 				forbidden {props.error.id}
 			</button>
 		),
 		name: "Doc",
+		tags: ["Forbidden"],
 	});
 	const registry = AtomRegistry.make();
 	return { App, Auth, Doc, docs, registry, useApp, useAuth, useDoc };
@@ -196,6 +192,27 @@ describe("Boundary", () => {
 		};
 		using _view = await mount(tree(crashing, <Crash />));
 		expect(caught).toEqual(["App true undefined"]);
+	});
+
+	it("catches by tag: a plain object with a caught tag reaches that boundary", async () => {
+		const app = setup("lie-plain-forbidden");
+		const Title = () => <p>{title(app.useDoc(app.docs.docAtom(1)))}</p>;
+		using _view = await mount(tree(app, <Title />));
+		expect(screen.getByText("forbidden 1")).toBeDefined();
+	});
+
+	it("hands back a failure with no tag, whatever its type says", async () => {
+		const app = setup("lie-untagged");
+		const Title = () => <p>{title(app.useDoc(app.docs.docAtom(1)))}</p>;
+		using _view = await mount(tree(app, <Title />));
+		expect(screen.getByText("unhandled")).toBeDefined();
+	});
+
+	it("sends a tagged defect to the root, not the boundary for its tag", async () => {
+		const app = setup("die-tagged");
+		const Title = () => <p>{title(app.useDoc(app.docs.docAtom(1)))}</p>;
+		using _view = await mount(tree(app, <Title />));
+		expect(screen.getByText(/crashed: Forbidden/)).toBeDefined();
 	});
 
 	it("sends defects to the root", async () => {

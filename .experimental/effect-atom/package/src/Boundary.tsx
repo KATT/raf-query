@@ -6,16 +6,25 @@
  * so the chain needs no client: mount it under `@effect/atom-react`'s
  * `RegistryProvider`.
  *
+ * Errors are named by `_tag`, checked against the error universe the root
+ * declares as a type, so the modules that declare boundaries import their
+ * errors with `import type`:
+ *
  * ```tsx
- * const [App, useApp] = Boundary.root({ name: "App", fallback: Crashed });
+ * type AppError = Boundary.RpcErrors<typeof DocRpcs>;
+ * const [App, useApp] = Boundary.root({
+ *   name: "App",
+ *   errors: Boundary.errors<AppError>(),
+ *   fallback: Crashed,
+ * });
  * const [Session, useSession] = Boundary.catchErrors(App, {
  *   name: "Session",
- *   errors: [Unauthorized],
+ *   tags: ["Unauthorized"],
  *   fallback: SignIn,
  * });
  *
  * // Under <App><Session>:
- * const doc = useSession(DocsClient.query("GetDoc", { id })); // Doc | Unhandled<Forbidden | DocNotFound>
+ * const doc = useSession(DocsClient.query("GetDoc", { id })); // Doc | Unhandled<Forbidden | DocNotFound | RpcClientError>
  * ```
  *
  * The types come from the boundary a component reads through, so they are only
@@ -30,16 +39,18 @@ import { Cause, Effect, Exit, Option, Predicate, Result } from "effect";
 import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
 import * as React from "react";
 
-import {
-	type Catchable,
-	catches,
-	type Link,
-	rootOf,
-	route,
-	type TagsOf,
-} from "./route.ts";
+import type {
+	Errors,
+	Left,
+	MatchesUniverse,
+	NoUniverse,
+	TagChecks,
+	TagsOf,
+	WithTag,
+} from "./errors.ts";
+import { catches, type Link, rootOf, route } from "./route.ts";
 
-export type { Catchable } from "./route.ts";
+export * from "./errors.ts";
 
 export const TypeId = "~@raf-query/experimental-effect-atom/Boundary";
 
@@ -77,26 +88,6 @@ export const isUnhandled = <A, E>(
  */
 export type Read<A, E> = [E] extends [never] ? A : A | Unhandled<E>;
 
-/** `errors`' type when a boundary above already catches one of them. */
-export type NotYetHandled<S extends ReadonlyArray<Catchable>, Handled> = [
-	Extract<S[number]["Type"], Handled>,
-] extends [never]
-	? unknown
-	: {
-			readonly AlreadyHandledAbove: TagsOf<Extract<S[number]["Type"], Handled>>;
-		};
-
-export interface CatchOptions<S extends ReadonlyArray<Catchable>, Handled> {
-	/** The error classes this boundary catches, such as `Schema.TaggedError`s. */
-	readonly errors: S & NotYetHandled<S, Handled>;
-	/** Rendered instead of the children while a caught failure stands. A component, so it can use hooks. */
-	readonly fallback: (
-		props: FallbackProps<S[number]["Type"]>,
-	) => React.ReactNode;
-	/** For error messages and React DevTools. */
-	readonly name: string;
-}
-
 /** Who a boundary is: what routing, mounting and `caughtBy` need. */
 export interface Info extends Link {
 	readonly parent: Info | undefined;
@@ -104,31 +95,62 @@ export interface Info extends Link {
 
 /**
  * Element 0 of `root` and `catchErrors`: the component that mounts the
- * boundary, and the handle `catchErrors` builds the next one from.
+ * boundary, and the handle `catchErrors` builds the next one from. `U` is the
+ * root's error universe; `Handled`, the tags this boundary and the ones above
+ * it catch.
  */
-export interface Boundary<Handled> {
+export interface Boundary<U, Handled extends string> {
 	(props: { readonly children?: React.ReactNode }): React.ReactNode;
-	/** Type only: the errors this boundary and the ones above it catch. */
-	readonly "~handled"?: (_: never) => Handled;
+	/** Type only. */
+	readonly "~types"?: {
+		readonly handled: () => Handled;
+		readonly universe: () => U;
+	};
 	readonly [TypeId]: Info;
 }
 
+export type AnyBoundary = Boundary<unknown, string>;
+
+/** The error universe a boundary's root declares. */
+export type UniverseOf<B> =
+	B extends Boundary<infer U, infer _Handled> ? U : never;
+
+/** The tags a boundary and the ones above it catch. */
+export type HandledBy<B> =
+	B extends Boundary<infer _U, infer Handled> ? Handled : never;
+
 /** Element 1 of `root` and `catchErrors`: reads atoms through the boundary. */
-export interface Hook<Handled> {
+export interface Hook<U, Handled extends string> {
 	/**
 	 * Reads an `AsyncResult` atom, suspending until it has a result. Errors a
 	 * boundary in the chain catches go there; the rest come back as an
 	 * `Unhandled`. When the chain catches them all, it returns the data.
 	 */
 	<A, E>(
-		atom: Atom.Atom<AsyncResult.AsyncResult<A, E>>,
-	): Read<A, Exclude<E, Handled>>;
+		atom: Atom.Atom<AsyncResult.AsyncResult<A, E>> &
+			MatchesUniverse<E, Handled, U>,
+	): Read<A, Left<E, Handled>>;
 }
 
-/** The errors a boundary and the ones above it catch. */
-export type HandledBy<B> = B extends Boundary<infer H> ? H : never;
+type CatchableTags<B> = [TagsOf<UniverseOf<B>>] extends [never]
+	? NoUniverse
+	: TagsOf<UniverseOf<B>>;
 
-export const isBoundary = (u: unknown): u is Boundary<unknown> =>
+/** `tags`' constraint: each one a tag of the universe. */
+export type Catchable<B> = ReadonlyArray<CatchableTags<B>>;
+
+export interface CatchOptions<B, T extends ReadonlyArray<string>> {
+	/** Rendered instead of the children while a caught failure stands. A component, so it can use hooks. */
+	readonly fallback: (
+		props: FallbackProps<Extract<UniverseOf<B>, WithTag<T[number]>>>,
+	) => React.ReactNode;
+	/** For error messages and React DevTools. */
+	readonly name: string;
+	/** The `_tag`s this boundary catches: tags of the universe that no boundary above catches. */
+	readonly tags: T & TagChecks<UniverseOf<B>, HandledBy<B>, T[number]>;
+}
+
+export const isBoundary = (u: unknown): u is AnyBoundary =>
 	Predicate.hasProperty(u, TypeId);
 
 const MountedContext = React.createContext<ReadonlySet<Info>>(new Set());
@@ -445,21 +467,21 @@ const useWrite = (boundary: Impl, atom: Atom.Writable<AnyResult, unknown>) => {
 	return set;
 };
 
-const make = (options: {
-	readonly errors: ReadonlyArray<Catchable>;
+const make = <U, Handled extends string>(options: {
 	readonly fallback: (props: FallbackProps<unknown>) => React.ReactNode;
 	readonly name: string;
 	readonly onCaught: ((caught: Caught) => void) | undefined;
 	readonly parent: Impl | undefined;
 	readonly rootFallback: (props: RootFallbackProps) => React.ReactNode;
-}): readonly [Boundary<unknown>, Hook<unknown>] => {
+	readonly tags: ReadonlyArray<string>;
+}): readonly [Boundary<U, Handled>, Hook<U, Handled>] => {
 	const impl: Impl = {
-		errors: options.errors,
 		fallback: options.fallback,
 		name: options.name,
 		onCaught: options.onCaught,
 		parent: options.parent,
 		rootFallback: options.rootFallback,
+		tags: new Set(options.tags),
 	};
 
 	const Provider = (props: { readonly children?: React.ReactNode }) => {
@@ -486,13 +508,13 @@ const make = (options: {
 	// types say which those are.
 	const boundary = Object.assign(Provider, {
 		[TypeId]: impl,
-	}) as Boundary<unknown>;
+	}) as Boundary<U, Handled>;
 	// SAFETY: see `boundary`.
-	const hook = useBoundary as Hook<unknown>;
+	const hook = useBoundary as Hook<U, Handled>;
 	return [boundary, hook];
 };
 
-const implOf = (boundary: Boundary<unknown>): Impl => {
+const implOf = (boundary: AnyBoundary): Impl => {
 	const info = boundary[TypeId];
 	// SAFETY: every `Boundary` comes from `make`, whose info is an `Impl`.
 	return info as Impl;
@@ -500,50 +522,52 @@ const implOf = (boundary: Boundary<unknown>): Impl => {
 
 /**
  * The outermost boundary. It catches what no typed boundary can: defects,
- * interrupts, and anything else thrown while rendering.
+ * interrupts, and anything else thrown while rendering. `errors` declares,
+ * as a type, the errors the boundaries under it can catch.
  */
-export const root = (options: {
+export const root = <U = never,>(options: {
+	/** The error universe, as a type: `Boundary.errors<Boundary.RpcErrors<typeof Rpcs>>()`, say. */
+	readonly errors?: Errors<U> | undefined;
 	readonly fallback: (props: RootFallbackProps) => React.ReactNode;
 	readonly name: string;
 	/** Called once for each failure a boundary of this chain renders its fallback for. */
 	readonly onCaught?: ((caught: Caught) => void) | undefined;
-}): readonly [Boundary<never>, Hook<never>] =>
-	// SAFETY: see `make`; the root catches nothing typed.
+}): readonly [Boundary<U, never>, Hook<U, never>] =>
 	make({
-		errors: [],
 		fallback: () => null,
 		name: options.name,
 		onCaught: options.onCaught,
 		parent: undefined,
 		rootFallback: options.fallback,
-	}) as readonly [Boundary<never>, Hook<never>];
+		tags: [],
+	});
 
 /**
- * A boundary inside `parent` that also catches `errors`: `Effect.catchTags`
- * for the subtree it wraps. It can't catch what a boundary above catches.
+ * A boundary inside `parent` that also catches the errors tagged `tags`:
+ * `Effect.catchTags` for the subtree it wraps. Each tag must be one of the
+ * universe's, carried by one type only, and not caught by a boundary above.
  */
-export const catchErrors = <Handled, const S extends ReadonlyArray<Catchable>>(
-	parent: Boundary<Handled>,
-	options: CatchOptions<S, NoInfer<Handled>>,
+export const catchErrors = <
+	P extends AnyBoundary,
+	const T extends Catchable<P>,
+>(
+	parent: P,
+	options: CatchOptions<P, T>,
 ): readonly [
-	Boundary<Handled | S[number]["Type"]>,
-	Hook<Handled | S[number]["Type"]>,
+	Boundary<UniverseOf<P>, HandledBy<P> | T[number]>,
+	Hook<UniverseOf<P>, HandledBy<P> | T[number]>,
 ] => {
 	const above = implOf(parent);
-	// SAFETY: the Catcher only renders it with an error one of `errors` accepted.
+	// SAFETY: the Catcher only renders it with an error carrying one of `tags`.
 	const fallback = options.fallback as Impl["fallback"];
-	// SAFETY: see `make`.
 	return make({
-		errors: options.errors,
 		fallback,
 		name: options.name,
 		onCaught: undefined,
 		parent: above,
 		rootFallback: above.rootFallback,
-	}) as readonly [
-		Boundary<Handled | S[number]["Type"]>,
-		Hook<Handled | S[number]["Type"]>,
-	];
+		tags: options.tags,
+	});
 };
 
 /**
@@ -555,16 +579,17 @@ export const catchErrors = <Handled, const S extends ReadonlyArray<Catchable>>(
  * A hook of its own, rather than a method of the boundary's hook: React
  * Compiler treats any property of a `use…` function as a hook used as a value.
  */
-export const useSet = <Handled, A, E, W>(
-	boundary: Boundary<Handled>,
-	atom: Atom.Writable<AsyncResult.AsyncResult<A, E>, W>,
+export const useSet = <U, Handled extends string, A, E, W>(
+	boundary: Boundary<U, Handled>,
+	atom: Atom.Writable<AsyncResult.AsyncResult<A, E>, W> &
+		MatchesUniverse<E, Handled, U>,
 ): ((
 	value: Exclude<W, Atom.Reset | Atom.Interrupt>,
-) => Promise<Read<A, Exclude<E, Handled>>>) => {
+) => Promise<Read<A, Left<E, Handled>>>) => {
 	// SAFETY: `atom`'s types were checked by the signature; at runtime they are erased.
 	const erased = atom as Atom.Writable<AnyResult, unknown>;
 	// SAFETY: see `make`.
 	return useWrite(implOf(boundary), erased) as (
 		value: Exclude<W, Atom.Reset | Atom.Interrupt>,
-	) => Promise<Read<A, Exclude<E, Handled>>>;
+	) => Promise<Read<A, Left<E, Handled>>>;
 };
