@@ -1,8 +1,8 @@
 ---
-title: Typed error boundaries (experimental)
+title: Typed error boundaries in raf-query
 description: A chain of error boundaries that each catch some of an Effect query's errors, by tag. A read returns the data, or what no boundary caught, and plain data once nothing is left.
-section: Integrations
-order: 7
+section: Experiments
+order: 4
 ---
 
 > [!WARNING]

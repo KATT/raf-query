@@ -2,7 +2,7 @@
 title: Typed error boundaries over atoms
 description: "Experiment: React error boundaries that catch typed Effect failures from effect/reactivity atoms, broad ones high in the tree and narrow ones low, and take what they catch off the type of every read below them."
 section: Experiments
-order: 1
+order: 3
 ---
 
 > [!WARNING]

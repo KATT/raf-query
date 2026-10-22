@@ -1,8 +1,8 @@
 ---
-title: Typed error boundaries (experimental)
+title: Typed error boundaries on an Effect cache
 description: An experimental render-as-you-fetch cache built only on Effect, whose error boundaries are typed. Catch auth at the top and narrower errors further down; what no boundary catches comes back to the component as an Unhandled, and when nothing is left, the read is plain data.
 section: Experiments
-order: 1
+order: 2
 ---
 
 > [!WARNING]

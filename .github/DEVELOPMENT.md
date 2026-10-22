@@ -7,7 +7,7 @@ This is a Vite+ / pnpm monorepo. The publishable packages live in `packages/`:
 | `packages/core`  | `@raf-query/core`  |
 | `packages/react` | `@raf-query/react` |
 
-Experiments live under top-level `.experimental/<topic>/`, each with a README and its package/apps underneath. The release and the root `./packages/*` / `./examples/*` globs don't reach them. `.experimental/tanstack-query/` is raf-query's API on TanStack Query (`package/`, plus `start/` and `nextjs/` apps). `.experimental/vue/` and `.experimental/svelte/` are the Vue and Svelte bindings (each a `package/`, a `sample/` app and the draft `docs/`). `.experimental/raf-query-boundaries/` demos typed error boundaries (`@raf-query/react/boundary`). Private, like every experiment: not published, version `0.0.0`. See [the experiment READMEs](../.experimental/).
+Experiments live under top-level `.experimental/<topic>/`, each with a README and its package/apps underneath. The release and the root `./packages/*` / `./examples/*` globs don't reach them. `.experimental/tanstack-query/` is raf-query's API on TanStack Query (`package/`, plus `start/` and `nextjs/` apps). `.experimental/vue/` and `.experimental/svelte/` are the Vue and Svelte bindings (each a `package/`, a `sample/` app and the draft `docs/`). Typed error boundaries are three competing experiments: `.experimental/effect-query/` (an Effect-only query cache), `.experimental/effect-atom/` (on `effect/reactivity` atoms), and `.experimental/raf-query-boundaries/` (a demo of `@raf-query/react/boundary`). Private, like every experiment: not published, version `0.0.0`. See [the experiment READMEs](../.experimental/).
 
 Each package has its own `README.md`, shown on npm. Root `LICENSE.md` / `CHANGELOG.md` are shared: each package's `prepack` runs [`scripts/sync-package-docs.ts`](../scripts/sync-package-docs.ts), which copies them into the package so the npm tarball includes them without a second copy in git.
 
@@ -41,6 +41,8 @@ pnpm build
 | `examples/tanstack-start-effect`          | TanStack Start app written with Effect and Effect RPC, <http://localhost:3005>     |
 | `.experimental/tanstack-query/start`      | TanStack Start app on TanStack Query, <http://localhost:3002>                      |
 | `.experimental/tanstack-query/nextjs`     | Next.js App Router app on TanStack Query, <http://localhost:3003>                  |
+| `.experimental/effect-query/demo`         | Typed error boundaries on effect-query, <http://localhost:3010>                    |
+| `.experimental/effect-atom/demo`          | Typed error boundaries over atoms, <http://localhost:3011>                         |
 | `.experimental/raf-query-boundaries/demo` | Typed error boundaries over in-browser Effect RPC, <http://localhost:3012>         |
 | `examples/.shared/ui`                     | Vanilla shadcn/ui (Base UI) and the Tailwind theme (`@examples/ui`)                |
 | `examples/.shared/kit`                    | UI helpers and markup the apps share (rows, menus), no data code (`@examples/kit`) |
