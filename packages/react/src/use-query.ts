@@ -80,6 +80,9 @@ export function useObservedQuery<TFactory extends QueryFactory>(
 	handle: QueryHandle<TFactory>,
 	options: UseQueryOptions,
 ) {
+	// Reads the cache's current state on every render: an app that compiles
+	// this source with React Compiler (a workspace link) must not memoize it.
+	"use no memo";
 	const client = useQueryClient();
 	const query = QueryBinding.queryFor(client, factory, handle);
 	assertSent(client, query);
