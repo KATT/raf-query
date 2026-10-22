@@ -7,7 +7,8 @@ import {
 	type RenderOptions,
 	screen,
 } from "@testing-library/react";
-import { Cause, Context, Effect, Layer, Match, Result, Schema } from "effect";
+import { Cause, Context, Data, Effect, Layer, Schema } from "effect";
+import { Rpc, type RpcClientError, RpcGroup, RpcMiddleware } from "effect/rpc";
 import { type ReactNode, StrictMode, Suspense } from "react";
 
 import {
@@ -28,9 +29,10 @@ class Forbidden extends Schema.TaggedError<Forbidden>()("Forbidden", {
 	id: Schema.Number,
 }) {}
 
-class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {
-	id: Schema.Number,
-}) {}
+// Tags need no schema: any `{ readonly _tag: "…" }` type can be caught.
+class NotFound extends Data.TaggedError("NotFound")<{ readonly id: number }> {}
+
+type AppError = Forbidden | NotFound | Unauthorized;
 
 interface Doc {
 	readonly id: number;
@@ -38,14 +40,18 @@ interface Doc {
 }
 
 /** What `Docs.get` does; tests change it between reads. */
-type Behavior = "die" | "forbidden" | "missing" | "ok" | "unauthorized";
+type Behavior =
+	| "die"
+	| "forbidden"
+	| "forbidden-object"
+	| "missing"
+	| "ok"
+	| "unauthorized";
 
 class Docs extends Context.Service<
 	Docs,
 	{
-		readonly get: (
-			id: number,
-		) => Effect.Effect<Doc, Forbidden | NotFound | Unauthorized>;
+		readonly get: (id: number) => Effect.Effect<Doc, AppError>;
 		readonly list: Effect.Effect<ReadonlyArray<Doc>, Unauthorized>;
 	}
 >()("test/Docs") {}
@@ -53,23 +59,27 @@ class Docs extends Context.Service<
 function docsLayer(state: { behavior: Behavior; calls: number }) {
 	return Layer.succeed(Docs, {
 		get: (id) =>
-			Effect.suspend(
-				(): Effect.Effect<Doc, Forbidden | NotFound | Unauthorized> => {
-					state.calls++;
-					switch (state.behavior) {
-						case "ok":
-							return Effect.succeed({ id, title: `Doc ${id}` });
-						case "unauthorized":
-							return Effect.fail(new Unauthorized());
-						case "forbidden":
-							return Effect.fail(new Forbidden({ id }));
-						case "missing":
-							return Effect.fail(new NotFound({ id }));
-						case "die":
-							return Effect.die(new Error(`doc ${id} exploded`));
+			Effect.suspend((): Effect.Effect<Doc, AppError> => {
+				state.calls++;
+				switch (state.behavior) {
+					case "ok":
+						return Effect.succeed({ id, title: `Doc ${id}` });
+					case "unauthorized":
+						return Effect.fail(new Unauthorized());
+					case "forbidden":
+						return Effect.fail(new Forbidden({ id }));
+					case "forbidden-object": {
+						// SAFETY: a test of what tag matching trusts: a value that only claims the type.
+						// oxlint-disable-next-line anti-slop-effect/no-manual-tagged-construction -- the point of the test
+						const claimed = { _tag: "Forbidden", id } as Forbidden;
+						return Effect.fail(claimed);
 					}
-				},
-			),
+					case "missing":
+						return Effect.fail(new NotFound({ id }));
+					case "die":
+						return Effect.die(new Error(`doc ${id} exploded`));
+				}
+			}),
 		list: Effect.suspend(() =>
 			state.behavior === "unauthorized"
 				? Effect.fail(new Unauthorized())
@@ -99,11 +109,24 @@ function docListQuery() {
 	});
 }
 
+/** A `queryFn` that returns a promise: its error is `unknown`. */
+function plainQuery(input: { reason: unknown }) {
+	return queryOptions({
+		queryFn: () =>
+			input.reason === undefined
+				? Promise.resolve("plain")
+				: Promise.reject(input.reason),
+		queryKey: ["plain", String(input.reason)],
+		retry: false,
+	});
+}
+
 function setup(initial: Behavior) {
 	const state = { behavior: initial, calls: 0 };
 	const client = new QueryClient({ isServer: false, layer: docsLayer(state) });
 	const [App, useApp] = Boundary.root({
 		client,
+		errors: Boundary.errors<AppError>(),
 		fallback: (props) => (
 			<button onClick={props.retry} type="button">
 				crashed: {Cause.pretty(props.cause).split("\n")[0]}
@@ -112,18 +135,18 @@ function setup(initial: Behavior) {
 		name: "App",
 	});
 	const [Auth, useAuth] = Boundary.catchErrors(App, {
-		errors: [Unauthorized],
 		fallback: (props) => (
 			<button onClick={props.retry} type="button">
 				sign in
 			</button>
 		),
 		name: "Auth",
+		tags: ["Unauthorized"],
 	});
 	const [DocAccess, useDocAccess] = Boundary.catchErrors(Auth, {
-		errors: [Forbidden],
 		fallback: (props) => <p>forbidden {props.error.id}</p>,
 		name: "DocAccess",
+		tags: ["Forbidden"],
 	});
 	const doc = client.prefetch(docQuery, { id: 1 });
 	const list = client.prefetch(docListQuery);
@@ -153,6 +176,8 @@ function setup(initial: Behavior) {
 	};
 }
 
+type Test = ReturnType<typeof setup>;
+
 function settle() {
 	return act(
 		() =>
@@ -179,13 +204,22 @@ async function mount(
 	};
 }
 
+/** Reads doc 1 through DocAccess; a NotFound comes back inline. */
+function titleOf(test: Test) {
+	return function Title() {
+		const doc = test.useDocAccess(docQuery, test.doc);
+		return Boundary.isUnhandled(doc) ? (
+			<p>no doc {doc.error.id}</p>
+		) : (
+			<p>{doc.title}</p>
+		);
+	};
+}
+
 describe("Boundary", () => {
 	it("renders the data once the query loads", async () => {
 		const test = setup("ok");
-		function Title() {
-			const doc = test.DocAccess.useResult(docQuery, test.doc);
-			return <p>{Result.getOrThrow(doc).title}</p>;
-		}
+		const Title = titleOf(test);
 		function List() {
 			const docs = test.useAuth(docListQuery, test.list);
 			return <p>{docs.length} docs</p>;
@@ -202,43 +236,50 @@ describe("Boundary", () => {
 		expect(screen.getByText("1 docs")).toBeDefined();
 	});
 
-	it("sends a typed failure to the boundary that catches it", async () => {
+	it("sends a typed failure to the boundary that lists its tag", async () => {
 		const test = setup("unauthorized");
-		function Title() {
-			const doc = test.DocAccess.useResult(docQuery, test.doc);
-			return <p>{Result.getOrThrow(doc).title}</p>;
-		}
+		const Title = titleOf(test);
 		using _view = await mount(test.view(<Title />));
 		expect(screen.getByText("sign in")).toBeDefined();
 	});
 
-	it("hands back the failures nothing in the chain catches", async () => {
+	it("hands back the failures nothing in the chain catches, as an Unhandled", async () => {
 		const test = setup("missing");
-		function Title() {
-			const doc = test.DocAccess.useResult(docQuery, test.doc);
-			return Result.match(doc, {
-				onFailure: (error) =>
-					Match.valueTags(error, {
-						NotFound: (missing) => <p>no doc {missing.id}</p>,
-					}),
-				onSuccess: (found) => <p>{found.title}</p>,
-			});
-		}
+		const Title = titleOf(test);
 		using _view = await mount(test.view(<Title />));
 		expect(screen.getByText("no doc 1")).toBeDefined();
+	});
+
+	it("hands back the same Unhandled on every render", async () => {
+		const test = setup("missing");
+		const seen = new Set<unknown>();
+		function Title() {
+			const doc = test.useDocAccess(docQuery, test.doc);
+			seen.add(doc);
+			return <p>{Boundary.isUnhandled(doc) ? "missing" : doc.title}</p>;
+		}
+		using _view = await mount(<StrictMode>{test.view(<Title />)}</StrictMode>);
+		expect(screen.getByText("missing")).toBeDefined();
+		expect(seen.size).toBe(1);
 	});
 
 	it("routes by the chain a component reads through, not by what is rendered around it", async () => {
 		const test = setup("forbidden");
 		function Title() {
-			const doc = test.Auth.useResult(docQuery, test.doc);
-			return Result.match(doc, {
-				onFailure: (error) => <p>inline {error._tag}</p>,
-				onSuccess: (found) => <p>{found.title}</p>,
-			});
+			const doc = test.useAuth(docQuery, test.doc);
+			return (
+				<p>{Boundary.isUnhandled(doc) ? `inline ${doc.error._tag}` : "ok"}</p>
+			);
 		}
 		using _view = await mount(test.view(<Title />));
 		expect(screen.getByText("inline Forbidden")).toBeDefined();
+	});
+
+	it("matches by tag alone: it trusts the typed failure channel", async () => {
+		const test = setup("forbidden-object");
+		const Title = titleOf(test);
+		using _view = await mount(test.view(<Title />));
+		expect(screen.getByText("forbidden 1")).toBeDefined();
 	});
 
 	it("tells onCaughtError which boundary caught what, once", async () => {
@@ -249,13 +290,10 @@ describe("Boundary", () => {
 			caught.push(
 				by === undefined
 					? "other"
-					: `${by.boundary.displayName}: ${Schema.is(Forbidden)(by.error) ? by.error._tag : "?"}`,
+					: `${by.boundary.displayName}: ${Schema.is(Forbidden)(by.error) ? "Forbidden" : "?"}`,
 			);
 		};
-		function Title() {
-			const doc = test.DocAccess.useResult(docQuery, test.doc);
-			return <p>{Result.getOrThrow(doc).title}</p>;
-		}
+		const Title = titleOf(test);
 		using _view = await mount(<StrictMode>{test.view(<Title />)}</StrictMode>, {
 			onCaughtError,
 		});
@@ -265,12 +303,24 @@ describe("Boundary", () => {
 
 	it("sends defects to the root, past every typed boundary", async () => {
 		const test = setup("die");
-		function Title() {
-			const doc = test.DocAccess.useResult(docQuery, test.doc);
-			return <p>{Result.getOrThrow(doc).title}</p>;
-		}
+		const Title = titleOf(test);
 		using _view = await mount(test.view(<Title />));
 		expect(screen.getByText(/crashed: Error: doc 1 exploded/)).toBeDefined();
+	});
+
+	it("sends a promise queryFn's failure to the root, even one with a tag a boundary lists", async () => {
+		const test = setup("ok");
+		const tagged = test.client.prefetch(plainQuery, {
+			// oxlint-disable-next-line anti-slop-effect/no-manual-tagged-construction -- a rejection that only looks tagged
+			reason: { _tag: "Unauthorized" },
+		});
+		function Plain() {
+			const value = test.useDocAccess(plainQuery, tagged);
+			return <p>{value}</p>;
+		}
+		using _view = await mount(test.view(<Plain />));
+		expect(screen.getByText(/crashed/)).toBeDefined();
+		expect(screen.queryByText("sign in")).toBeNull();
 	});
 
 	it("sends a failure hydrated from a server to the root: it has no Cause to route by", async () => {
@@ -283,34 +333,17 @@ describe("Boundary", () => {
 		});
 		const handle = test.client.prefetch(docQuery, { id: 3 });
 		function Title() {
-			const doc = test.DocAccess.useResult(docQuery, handle);
-			return <p>{Result.getOrThrow(doc).title}</p>;
+			const doc = test.useDocAccess(docQuery, handle);
+			return <p>{Boundary.isUnhandled(doc) ? "missing" : doc.title}</p>;
 		}
 		using _view = await mount(test.view(<Title />));
 		expect(screen.getByText(/crashed: Forbidden/)).toBeDefined();
 		expect(screen.queryByText("forbidden 3")).toBeNull();
 	});
 
-	it("sends a failure the types said was caught, and wasn't, to the root", async () => {
-		const test = setup("missing");
-		// SAFETY: a test of the runtime when the types are wrong.
-		const useEverything = test.useAuth as unknown as Boundary.UseBoundary<
-			Forbidden | NotFound | Unauthorized
-		>;
-		function Title() {
-			const doc = useEverything(docQuery, test.doc);
-			return <p>{doc.title}</p>;
-		}
-		using _view = await mount(test.view(<Title />));
-		expect(screen.getByText(/crashed: NotFound/)).toBeDefined();
-	});
-
 	it("retry renders the children again, which refetches what failed", async () => {
 		const test = setup("unauthorized");
-		function Title() {
-			const doc = test.DocAccess.useResult(docQuery, test.doc);
-			return <p>{Result.getOrThrow(doc).title}</p>;
-		}
+		const Title = titleOf(test);
 		using _view = await mount(test.view(<Title />));
 		expect(test.state.calls).toBe(1);
 		test.state.behavior = "ok";
@@ -322,10 +355,7 @@ describe("Boundary", () => {
 
 	it("retry refetches every failed query read under the boundary, not only the one it caught", async () => {
 		const test = setup("unauthorized");
-		function Title() {
-			const doc = test.DocAccess.useResult(docQuery, test.doc);
-			return <p>{Result.getOrThrow(doc).title}</p>;
-		}
+		const Title = titleOf(test);
 		function List() {
 			const docs = test.useAuth(docListQuery, test.list);
 			return <p>{docs.length} docs</p>;
@@ -352,10 +382,7 @@ describe("Boundary", () => {
 
 	it("root's retry refetches a defect's query", async () => {
 		const test = setup("die");
-		function Title() {
-			const doc = test.DocAccess.useResult(docQuery, test.doc);
-			return <p>{Result.getOrThrow(doc).title}</p>;
-		}
+		const Title = titleOf(test);
 		using _view = await mount(test.view(<Title />));
 		test.state.behavior = "ok";
 		await act(async () => fireEvent.click(screen.getByText(/crashed/)));
@@ -365,10 +392,7 @@ describe("Boundary", () => {
 
 	it("a hook throws without its boundary above it", async () => {
 		const test = setup("ok");
-		function Title() {
-			const doc = test.DocAccess.useResult(docQuery, test.doc);
-			return <p>{Result.getOrThrow(doc).title}</p>;
-		}
+		const Title = titleOf(test);
 		using _view = await mount(
 			<Suspense fallback={null}>
 				<test.App>
@@ -421,14 +445,14 @@ describe("Boundary", () => {
 			isServer: false,
 			layer: docsLayer(state),
 		});
-		const [App] = Boundary.root<Docs>({
+		const [App, useApp] = Boundary.root<Docs, AppError>({
 			fallback: () => <p>crashed</p>,
 			name: "App",
 		});
 		const handle = client.prefetch(docQuery, { id: 2 });
 		function Title() {
-			const doc = App.useResult(docQuery, handle);
-			return <p>{Result.getOrThrow(doc).title}</p>;
+			const doc = useApp(docQuery, handle);
+			return <p>{Boundary.isUnhandled(doc) ? "failed" : doc.title}</p>;
 		}
 		using _view = await mount(
 			<QueryClientProvider client={client}>
@@ -446,12 +470,12 @@ describe("Boundary", () => {
 		const test = setup("missing");
 		const results: Array<string> = [];
 		function Rename() {
-			const run = test.DocAccess.useRun();
+			const run = Boundary.useRun(test.DocAccess);
 			return (
 				<button
 					onClick={async () => {
-						const result = await run.result(getDoc(1));
-						results.push(Result.isFailure(result) ? result.failure._tag : "ok");
+						const doc = await run(getDoc(1));
+						results.push(Boundary.isUnhandled(doc) ? doc.error._tag : "ok");
 					}}
 					type="button"
 				>
@@ -480,7 +504,7 @@ describe("Boundary", () => {
 			return fetched.data;
 		}).pipe(Effect.catchTag("CancelledError", () => Effect.succeed([])));
 		function Refresh() {
-			const run = test.Auth.useRun();
+			const run = Boundary.useRun(test.Auth);
 			return (
 				<button
 					onClick={async () => {
@@ -508,62 +532,139 @@ describe("Boundary types", () => {
 
 	it("narrows what is left by the chain read through", () => {
 		expectTypeOf(() =>
-			test.DocAccess.useResult(docQuery, handle),
-		).returns.toEqualTypeOf<Result.Result<Doc, NotFound>>();
-		expectTypeOf(() =>
-			test.Auth.useResult(docQuery, handle),
-		).returns.toEqualTypeOf<Result.Result<Doc, Forbidden | NotFound>>();
-		expectTypeOf(() =>
-			test.App.useResult(docQuery, handle),
-		).returns.toEqualTypeOf<
-			Result.Result<Doc, Forbidden | NotFound | Unauthorized>
+			test.useDocAccess(docQuery, handle),
+		).returns.toEqualTypeOf<Doc | Boundary.Unhandled<NotFound>>();
+		expectTypeOf(() => test.useAuth(docQuery, handle)).returns.toEqualTypeOf<
+			Doc | Boundary.Unhandled<Forbidden | NotFound>
+		>();
+		expectTypeOf(() => test.useApp(docQuery, handle)).returns.toEqualTypeOf<
+			Doc | Boundary.Unhandled<AppError>
 		>();
 		expectTypeOf<Boundary.HandledBy<typeof test.DocAccess>>().toEqualTypeOf<
-			Forbidden | Unauthorized
+			"Forbidden" | "Unauthorized"
 		>();
 	});
 
-	it("returns the data only when nothing is left", () => {
+	it("returns plain data only when nothing is left", () => {
 		expectTypeOf(() =>
 			test.useAuth(docListQuery, listHandle),
 		).returns.toEqualTypeOf<ReadonlyArray<Doc>>();
-		expectTypeOf(() =>
-			test.Auth.useResult(docListQuery, listHandle),
-		).returns.toEqualTypeOf<Result.Result<ReadonlyArray<Doc>, never>>();
-		expectTypeOf(() =>
-			// @ts-expect-error -- NotFound is left
-			test.useDocAccess(docQuery, handle),
-		).toBeFunction();
-		expectTypeOf(() =>
-			// @ts-expect-error -- Unauthorized is left
-			test.useApp(docListQuery, listHandle),
-		).toBeFunction();
+		expectTypeOf(() => {
+			const doc = test.useDocAccess(docQuery, handle);
+			// @ts-expect-error -- NotFound is left: check `isUnhandled` first
+			return doc.title;
+		}).toBeFunction();
+		expectTypeOf(() => {
+			const doc = test.useDocAccess(docQuery, handle);
+			return Boundary.isUnhandled(doc) ? doc.error : doc.title;
+		}).returns.toEqualTypeOf<NotFound | string>();
 	});
 
-	it("rejects a boundary that catches what one above it catches", () => {
+	it("reads a promise queryFn's data plainly: its failures go to the root", () => {
+		const plain = test.client.prefetch(plainQuery, { reason: undefined });
+		expectTypeOf(() =>
+			test.useApp(plainQuery, plain),
+		).returns.toEqualTypeOf<string>();
+	});
+
+	it("gives the fallback the universe's type for its tags", () => {
+		Boundary.catchErrors(test.Auth, {
+			fallback: (props) => {
+				expectTypeOf(props.error).toEqualTypeOf<Forbidden | NotFound>();
+				return null;
+			},
+			name: "Both",
+			tags: ["Forbidden", "NotFound"],
+		});
+	});
+
+	it("rejects tags caught above, tags not in the universe, and no tags", () => {
 		expectTypeOf(() =>
 			Boundary.catchErrors(test.DocAccess, {
-				// @ts-expect-error -- Auth catches Unauthorized
-				errors: [Unauthorized],
 				fallback: () => null,
 				name: "Again",
+				// @ts-expect-error -- Auth catches Unauthorized
+				tags: ["NotFound", "Unauthorized"],
+			}),
+		).toBeFunction();
+		expectTypeOf(() =>
+			Boundary.catchErrors(test.DocAccess, {
+				fallback: () => null,
+				name: "Typo",
+				// @ts-expect-error -- not a tag of the universe
+				tags: ["NotFund"],
+			}),
+		).toBeFunction();
+		expectTypeOf(() =>
+			Boundary.catchErrors(test.DocAccess, {
+				fallback: () => null,
+				name: "Empty",
+				// @ts-expect-error -- at least one tag
+				tags: [],
 			}),
 		).toBeFunction();
 	});
 
-	it("narrows useRun the same way", () => {
-		const get = getDoc(1);
-		const list = listDocs;
+	it("rejects a tag two errors of the universe share", () => {
+		class OrgForbidden extends Data.TaggedError("Forbidden")<{
+			readonly orgId: string;
+		}> {}
+		const [Shared] = Boundary.root({
+			client: test.client,
+			errors: Boundary.errors<Forbidden | OrgForbidden>(),
+			fallback: () => null,
+			name: "Shared",
+		});
 		expectTypeOf(() =>
-			test.DocAccess.useRun().result(get),
-		).returns.toEqualTypeOf<Promise<Result.Result<Doc, NotFound>>>();
-		expectTypeOf(() => test.DocAccess.useRun()(list)).returns.toEqualTypeOf<
-			Promise<ReadonlyArray<Doc>>
-		>();
-		expectTypeOf(() =>
-			// @ts-expect-error -- NotFound is left
-			test.DocAccess.useRun()(get),
+			Boundary.catchErrors(Shared, {
+				fallback: () => null,
+				name: "Which",
+				// @ts-expect-error -- Forbidden and OrgForbidden both carry "Forbidden"
+				tags: ["Forbidden"],
+			}),
 		).toBeFunction();
+	});
+
+	it("needs a universe to catch anything", () => {
+		const [Bare] = Boundary.root({
+			client: test.client,
+			fallback: () => null,
+			name: "Bare",
+		});
+		expectTypeOf(() =>
+			Boundary.catchErrors(Bare, {
+				fallback: () => null,
+				name: "Nothing",
+				// @ts-expect-error -- the root declares no errors
+				tags: ["Unauthorized"],
+			}),
+		).toBeFunction();
+	});
+
+	it("rejects a read whose query carries a caught tag as another type", () => {
+		class OrgForbidden extends Data.TaggedError("Forbidden")<{
+			readonly orgId: string;
+		}> {}
+		function orgQuery() {
+			return queryOptions({
+				queryFn: () => Effect.fail(new OrgForbidden({ orgId: "o" })),
+				queryKey: ["org"],
+			});
+		}
+		const org = test.client.prefetch(orgQuery);
+		expectTypeOf(() =>
+			// @ts-expect-error -- DocAccess's fallback expects the universe's Forbidden
+			test.useDocAccess(orgQuery, org),
+		).toBeFunction();
+	});
+
+	it("narrows useRun the same way", () => {
+		expectTypeOf(() =>
+			Boundary.useRun(test.DocAccess)(getDoc(1)),
+		).returns.toEqualTypeOf<Promise<Doc | Boundary.Unhandled<NotFound>>>();
+		expectTypeOf(() =>
+			Boundary.useRun(test.DocAccess)(listDocs),
+		).returns.toEqualTypeOf<Promise<ReadonlyArray<Doc>>>();
 	});
 
 	it("only runs Effects whose services the root provides", () => {
@@ -572,7 +673,23 @@ describe("Boundary types", () => {
 		) {}
 		expectTypeOf(() =>
 			// @ts-expect-error -- the client's layer doesn't provide Analytics
-			test.DocAccess.useRun()(Effect.service(Analytics)),
+			Boundary.useRun(test.DocAccess)(Effect.service(Analytics)),
 		).toBeFunction();
+	});
+
+	it("RpcErrors is what a group's client calls can fail with", () => {
+		class Session extends RpcMiddleware.Service<Session>()("test/Session", {
+			error: Unauthorized,
+		}) {}
+		const Rpcs = RpcGroup.make(
+			Rpc.make("GetDoc", {
+				error: Schema.Union([Forbidden]),
+				payload: { id: Schema.Number },
+				success: Schema.String,
+			}),
+		).middleware(Session);
+		expectTypeOf<Boundary.RpcErrors<typeof Rpcs>>().toEqualTypeOf<
+			Forbidden | RpcClientError.RpcClientError | Unauthorized
+		>();
 	});
 });
