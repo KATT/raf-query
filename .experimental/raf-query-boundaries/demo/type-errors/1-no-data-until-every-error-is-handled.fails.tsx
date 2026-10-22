@@ -1,10 +1,10 @@
 /**
- * No data until every error is handled
+ * No plain data until every error is handled
  *
  * `DocAccess` and the boundaries above it catch `Forbidden`, `Unauthorized` and
- * `RpcClientError`. `GetDoc` can also fail with `DocNotFound`, so reading
- * through `useDocAccess`, which returns the data itself, doesn't type-check,
- * and the error names what's left. `DocAccess.useResult` hands it back instead.
+ * `RpcClientError`. `GetDoc` can also fail with `DocNotFound`, so the read is
+ * `Doc | Unhandled<DocNotFound>`: there's no `title` to read until
+ * `Boundary.isUnhandled` has ruled the failure out.
  */
 import type { QueryHandle } from "@raf-query/react";
 

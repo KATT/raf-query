@@ -1,16 +1,18 @@
 /**
  * An action's errors are checked the same way
  *
- * `useRun()` runs an Effect with the client's services. Called directly, it
- * resolves with the success, so it only type-checks when the chain catches
- * everything: `RenameDoc` can also fail with `DocNotFound` and `EmptyTitle`.
- * `run.result` hands those back in a `Result`.
+ * `Boundary.useRun(DocAccess)` runs an Effect with the client's services, and
+ * resolves with what a read through `DocAccess` would return: `RenameDoc` can
+ * also fail with `DocNotFound` and `EmptyTitle`, so the result is
+ * `Doc | Unhandled<DocNotFound | EmptyTitle>`.
  */
+import { Boundary } from "@raf-query/react/boundary";
+
 import { DocAccess } from "../src/boundaries.tsx";
 import { renameDoc } from "../src/queries.ts";
 
 export const Rename = (props: { readonly id: number }) => {
-	const run = DocAccess.useRun();
+	const run = Boundary.useRun(DocAccess);
 	return (
 		<button
 			onClick={async () => {

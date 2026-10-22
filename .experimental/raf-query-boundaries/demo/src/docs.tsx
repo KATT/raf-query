@@ -3,12 +3,13 @@ import { Button } from "@examples/ui/components/button";
 import { Input } from "@examples/ui/components/input";
 import type { QueryHandle } from "@raf-query/react";
 import { cn } from "cn";
-import { Match, Result } from "effect";
+import { Boundary } from "@raf-query/react/boundary";
+import { Match } from "effect";
 import { FileText, Lock } from "lucide-react";
 import { useState } from "react";
 
 import type { Doc } from "./api.ts";
-import { DocAccess, useSession } from "./boundaries.tsx";
+import { DocAccess, useDocAccess, useSession } from "./boundaries.tsx";
 import { Caught } from "./frame.tsx";
 import { docListQuery, docQuery, renameDoc } from "./queries.ts";
 
@@ -71,28 +72,27 @@ export const DocPage = (props: {
 	readonly doc: QueryHandle<typeof docQuery>;
 }) => {
 	// Forbidden goes to DocAccess, Unauthorized to Session, RpcClientError to
-	// Network: only DocNotFound is left for this component. `useDocAccess`
-	// itself wouldn't type-check here; `useResult` hands back what's left.
-	const result = DocAccess.useResult(docQuery, props.doc);
+	// Network: only DocNotFound is left for this component, as an Unhandled.
+	const doc = useDocAccess(docQuery, props.doc);
 	return (
 		<div className="space-y-3">
 			<TypeChip>
-				DocAccess.useResult(docQuery, doc): Result&lt;Doc, DocNotFound&gt;
+				useDocAccess(docQuery, doc): Doc | Unhandled&lt;DocNotFound&gt;
 			</TypeChip>
-			{Result.isSuccess(result) ? (
-				<DocView doc={result.success} />
-			) : (
+			{Boundary.isUnhandled(doc) ? (
 				<Caught name="DocPage" tone="inline" what="DocNotFound, inline">
 					<p className="text-sm">
 						{/* Exhaustive: give GetDoc another error, and this stops compiling. */}
-						{Match.valueTags(result.failure, {
+						{Match.valueTags(doc.error, {
 							DocNotFound: (missing) => `Doc ${missing.docId} doesn’t exist.`,
 						})}{" "}
-						No boundary catches <code>DocNotFound</code>, so it came back as the{" "}
-						<code>Result</code>’s failure, and <code>Match.valueTags</code> had
-						to handle it.
+						No boundary catches <code>DocNotFound</code>, so it came back as an{" "}
+						<code>Unhandled</code>, and <code>Match.valueTags</code> had to
+						handle it.
 					</p>
 				</Caught>
+			) : (
+				<DocView doc={doc} />
 			)}
 		</div>
 	);
@@ -112,7 +112,7 @@ const DocView = (props: { readonly doc: Doc }) => (
 );
 
 const RenameForm = (props: { readonly doc: Doc }) => {
-	const run = DocAccess.useRun();
+	const run = Boundary.useRun(DocAccess);
 	const [title, setTitle] = useState(props.doc.title);
 	const [pending, setPending] = useState(false);
 	const [problem, setProblem] = useState<string>();
@@ -122,23 +122,23 @@ const RenameForm = (props: { readonly doc: Doc }) => {
 			onSubmit={async (event) => {
 				event.preventDefault();
 				setPending(true);
-				// Result<Doc, DocNotFound | EmptyTitle>: the rest went to the boundaries.
-				const result = await run.result(renameDoc(props.doc.id, title));
+				// Doc | Unhandled<DocNotFound | EmptyTitle>: the rest went to the boundaries.
+				const renamed = await run(renameDoc(props.doc.id, title));
 				setPending(false);
 				setProblem(
-					Result.isSuccess(result)
-						? undefined
-						: Match.valueTags(result.failure, {
+					Boundary.isUnhandled(renamed)
+						? Match.valueTags(renamed.error, {
 								DocNotFound: () => "This doc was deleted meanwhile.",
 								EmptyTitle: () => "A title can’t be empty.",
-							}),
+							})
+						: undefined,
 				);
 			}}
 		>
 			<div className="flex items-center justify-between">
 				<span className="text-sm font-medium">Rename</span>
 				<TypeChip>
-					run.result(renameDoc): Result&lt;Doc, DocNotFound | EmptyTitle&gt;
+					run(renameDoc): Doc | Unhandled&lt;DocNotFound | EmptyTitle&gt;
 				</TypeChip>
 			</div>
 			<div className="flex gap-2">

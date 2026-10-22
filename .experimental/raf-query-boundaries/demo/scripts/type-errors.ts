@@ -88,7 +88,7 @@ const program = Effect.gen(function* () {
 	const diagnostics = parse(yield* tsc(root));
 	const files = (yield* fs.readDirectory(dir))
 		.filter((file) => file.endsWith(".tsx"))
-		.toSorted();
+		.toSorted((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10));
 
 	const fixtures = yield* Effect.forEach(files, (file) =>
 		Effect.gen(function* () {

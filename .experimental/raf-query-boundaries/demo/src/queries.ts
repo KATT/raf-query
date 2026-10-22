@@ -2,7 +2,7 @@
  * The queries and the mutation. Their error types are the RPC client's: each
  * procedure's `error`, the `Session` middleware's `Unauthorized`, and the
  * transport's `RpcClientError`. No list of errors to keep in sync: the
- * boundaries hold the schemas.
+ * boundaries name the tags they catch.
  */
 import { QueryCache, queryOptions } from "@raf-query/react";
 import { Effect } from "effect";

@@ -3,6 +3,10 @@
  * mount, and the hook that reads through it. Each takes its errors off the
  * type of its hook, and of the hooks of the boundaries inside it.
  *
+ * Errors are named by tag and checked against `AppError`, a type: this module
+ * imports the contract with `import type` only. (The client imports it at
+ * runtime, to build the RPC client from the group.)
+ *
  * - `App` mounts the client and catches defects (and interrupts).
  * - `Network` catches the transport's `RpcClientError`.
  * - `Session` catches the session middleware's `Unauthorized`.
@@ -13,9 +17,9 @@
 import { Button } from "@examples/ui/components/button";
 import { Boundary } from "@raf-query/react/boundary";
 import { Cause } from "effect";
-import { RpcClientError } from "effect/rpc";
+import type { RpcClientError } from "effect/rpc";
 
-import { Forbidden, Unauthorized } from "./api.ts";
+import type { DocRpcs, Forbidden, Unauthorized } from "./api.ts";
 import { getChaos, setChaos, toggle } from "./chaos.ts";
 import { client } from "./client.ts";
 import { Caught } from "./frame.tsx";
@@ -25,7 +29,7 @@ const Crashed = (props: Boundary.RootFallbackProps) => {
 		? "a defect"
 		: Cause.hasInterrupts(props.cause)
 			? "an interrupt"
-			: "a failure nothing caught";
+			: "a failure with no typed error";
 	return (
 		<Caught
 			actions={
@@ -125,26 +129,30 @@ const RequestAccess = (props: Boundary.FallbackProps<Forbidden>) => {
 	);
 };
 
+/** Everything a `DocsClient` call can fail with. */
+export type AppError = Boundary.RpcErrors<typeof DocRpcs>;
+
 export const [App] = Boundary.root({
 	client,
+	errors: Boundary.errors<AppError>(),
 	fallback: Crashed,
 	name: "App",
 });
 
 export const [Network] = Boundary.catchErrors(App, {
-	errors: [RpcClientError.RpcClientError],
 	fallback: Offline,
 	name: "Network",
+	tags: ["RpcClientError"],
 });
 
 export const [Session, useSession] = Boundary.catchErrors(Network, {
-	errors: [Unauthorized],
 	fallback: SignIn,
 	name: "Session",
+	tags: ["Unauthorized"],
 });
 
 export const [DocAccess, useDocAccess] = Boundary.catchErrors(Session, {
-	errors: [Forbidden],
 	fallback: RequestAccess,
 	name: "DocAccess",
+	tags: ["Forbidden"],
 });

@@ -5,6 +5,7 @@
  * another service (`Analytics` here) can't be run under any boundary of that
  * client.
  */
+import { Boundary } from "@raf-query/react/boundary";
 import { Context, Effect } from "effect";
 
 import { DocAccess } from "../src/boundaries.tsx";
@@ -15,7 +16,7 @@ class Analytics extends Context.Service<
 >()("Analytics") {}
 
 export const Count = () => {
-	const run = DocAccess.useRun();
+	const run = Boundary.useRun(DocAccess);
 	return (
 		<button
 			onClick={() =>
