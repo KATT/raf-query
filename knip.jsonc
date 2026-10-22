@@ -70,6 +70,18 @@
 		".experimental/svelte/package": {
 			"includeEntryExports": false,
 		},
+		".experimental/effect-atom/demo": {
+			// `scripts/type-errors.ts` runs tsc over the fixtures; nothing imports them.
+			"entry": ["type-errors/*.tsx"],
+			"ignoreDependencies": ["tailwindcss"],
+			// A fixture exports what it shows, so its code isn't unused locals.
+			"ignoreIssues": {
+				"type-errors/*.tsx": ["exports"],
+			},
+		},
+		".experimental/effect-atom/package": {
+			"includeEntryExports": false,
+		},
 		".experimental/tanstack-query/package": {
 			// Same surface as `@raf-query/react`, kept for the comparison even
 			// where the experimental apps don't call every export.

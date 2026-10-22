@@ -12,6 +12,7 @@
 		"typecheck": "tsc"
 	},
 	"dependencies": {
+		"@examples/experimental-effect-atom": "workspace:*",
 		"@examples/kit": "workspace:*",
 		"@examples/ui": "workspace:*",
 		"@raf-query/react": "workspace:*",

@@ -3,6 +3,8 @@
 @plugin "@tailwindcss/typography";
 
 @source "./";
+/* The embedded effect-atom demo's components. */
+@source "../../.experimental/effect-atom/demo/src";
 
 html {
 	/* Site header (3.5rem) + homepage framework mode bar (~2.75rem). */

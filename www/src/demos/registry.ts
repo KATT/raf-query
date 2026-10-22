@@ -1,12 +1,10 @@
 import { queryOptions } from "@raf-query/react";
 
-import type { DemoDefinition } from "~/demo-kit/define.ts";
+import type { DemoDefinition, StandaloneDemo } from "~/demo-kit/define.ts";
 
-const modules = import.meta.glob<{ default: DemoDefinition }>([
-	"./*.tsx",
-	"!./*.test.tsx",
-	"!./registry.ts",
-]);
+const modules = import.meta.glob<{
+	default: DemoDefinition | StandaloneDemo;
+}>(["./*.tsx", "!./*.test.tsx", "!./registry.ts"]);
 
 /**
  * A demo's code, loaded on demand. Each page's loader prefetches the demos
