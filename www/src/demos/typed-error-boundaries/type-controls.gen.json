@@ -1,0 +1,768 @@
+{
+	"variants": {
+		"10000": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [Session, useSession] = Boundary.catchErrors(Network, {\n\tfallback: SignIn,\n\tname: \"Session\",\n\ttags: [\"Unauthorized\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useSession(docQuery, props.doc);\n\t//    ^?\n\tif (Boundary.isUnhandled(doc)) {\n\t\treturn (\n\t\t\t<p>\n\t\t\t\t{Match.valueTags(doc.error, {\n\t\t\t\t\tDocNotFound: (missing) => `No doc ${missing.docId}`,\n\t\t\t\t})}\n\t\t\t</p>\n\t\t);\n\t}\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": false,
+				"exists": false,
+				"session": true,
+				"twice": false,
+				"unchecked": false
+			},
+			"diagnostics": [
+				{
+					"code": 2345,
+					"column": 33,
+					"length": 65,
+					"line": 31,
+					"message": "Argument of type '{ DocNotFound: (missing: DocNotFound) => string; }' is not assignable to parameter of type 'ValueTagHandlers<Forbidden | DocNotFound> & {}'.\n  Property 'Forbidden' is missing in type '{ DocNotFound: (missing: DocNotFound) => string; }' but required in type 'ValueTagHandlers<Forbidden | DocNotFound>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 27,
+					"text": "const doc: Doc | Boundary.Unhandled<Forbidden | DocNotFound>"
+				}
+			]
+		},
+		"10001": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [Session, useSession] = Boundary.catchErrors(Network, {\n\tfallback: SignIn,\n\tname: \"Session\",\n\ttags: [\"Unauthorized\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useSession(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": false,
+				"exists": false,
+				"session": true,
+				"twice": false,
+				"unchecked": true
+			},
+			"diagnostics": [
+				{
+					"code": 2339,
+					"column": 18,
+					"length": 5,
+					"line": 28,
+					"message": "Property 'title' does not exist on type 'Doc | Unhandled<Forbidden | DocNotFound>'.\n  Property 'title' does not exist on type 'Unhandled<Forbidden | DocNotFound>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 27,
+					"text": "const doc: Doc | Boundary.Unhandled<Forbidden | DocNotFound>"
+				}
+			]
+		},
+		"10010": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [Session] = Boundary.catchErrors(Network, {\n\tfallback: SignIn,\n\tname: \"Session\",\n\ttags: [\"Unauthorized\"],\n});\n\nconst [DocExists, useDocExists] = Boundary.catchErrors(Session, {\n\tfallback: Restore,\n\tname: \"DocExists\",\n\ttags: [\"DocNotFound\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocExists(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": false,
+				"exists": true,
+				"session": true,
+				"twice": false,
+				"unchecked": false
+			},
+			"diagnostics": [
+				{
+					"code": 2339,
+					"column": 18,
+					"length": 5,
+					"line": 34,
+					"message": "Property 'title' does not exist on type 'Doc | Unhandled<Forbidden>'.\n  Property 'title' does not exist on type 'Unhandled<Forbidden>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 33,
+					"text": "const doc: Doc | Boundary.Unhandled<Forbidden>"
+				}
+			]
+		},
+		"10100": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [Session] = Boundary.catchErrors(Network, {\n\tfallback: SignIn,\n\tname: \"Session\",\n\ttags: [\"Unauthorized\"],\n});\n\nconst [DocAccess, useDocAccess] = Boundary.catchErrors(Session, {\n\tfallback: SignIn,\n\tname: \"DocAccess\",\n\ttags: [\"Unauthorized\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocAccess(docQuery, props.doc);\n\t//    ^?\n\tif (Boundary.isUnhandled(doc)) {\n\t\treturn (\n\t\t\t<p>\n\t\t\t\t{Match.valueTags(doc.error, {\n\t\t\t\t\tDocNotFound: (missing) => `No doc ${missing.docId}`,\n\t\t\t\t})}\n\t\t\t</p>\n\t\t);\n\t}\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": false,
+				"exists": false,
+				"session": true,
+				"twice": true,
+				"unchecked": false
+			},
+			"diagnostics": [
+				{
+					"code": 2322,
+					"column": 2,
+					"length": 4,
+					"line": 26,
+					"message": "Type '[\"Unauthorized\"]' is not assignable to type 'readonly [\"Unauthorized\"] & { readonly AlreadyHandledAbove: \"Unauthorized\"; }'.\n  Property 'AlreadyHandledAbove' is missing in type '[\"Unauthorized\"]' but required in type '{ readonly AlreadyHandledAbove: \"Unauthorized\"; }'."
+				},
+				{
+					"code": 2345,
+					"column": 33,
+					"length": 65,
+					"line": 37,
+					"message": "Argument of type '{ DocNotFound: (missing: DocNotFound) => string; }' is not assignable to parameter of type 'ValueTagHandlers<Forbidden | DocNotFound> & {}'.\n  Property 'Forbidden' is missing in type '{ DocNotFound: (missing: DocNotFound) => string; }' but required in type 'ValueTagHandlers<Forbidden | DocNotFound>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 33,
+					"text": "const doc: Doc | Boundary.Unhandled<Forbidden | DocNotFound>"
+				}
+			]
+		},
+		"10101": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [Session] = Boundary.catchErrors(Network, {\n\tfallback: SignIn,\n\tname: \"Session\",\n\ttags: [\"Unauthorized\"],\n});\n\nconst [DocAccess, useDocAccess] = Boundary.catchErrors(Session, {\n\tfallback: SignIn,\n\tname: \"DocAccess\",\n\ttags: [\"Unauthorized\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocAccess(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": false,
+				"exists": false,
+				"session": true,
+				"twice": true,
+				"unchecked": true
+			},
+			"diagnostics": [
+				{
+					"code": 2322,
+					"column": 2,
+					"length": 4,
+					"line": 26,
+					"message": "Type '[\"Unauthorized\"]' is not assignable to type 'readonly [\"Unauthorized\"] & { readonly AlreadyHandledAbove: \"Unauthorized\"; }'.\n  Property 'AlreadyHandledAbove' is missing in type '[\"Unauthorized\"]' but required in type '{ readonly AlreadyHandledAbove: \"Unauthorized\"; }'."
+				},
+				{
+					"code": 2339,
+					"column": 18,
+					"length": 5,
+					"line": 34,
+					"message": "Property 'title' does not exist on type 'Doc | Unhandled<Forbidden | DocNotFound>'.\n  Property 'title' does not exist on type 'Unhandled<Forbidden | DocNotFound>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 33,
+					"text": "const doc: Doc | Boundary.Unhandled<Forbidden | DocNotFound>"
+				}
+			]
+		},
+		"10110": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [Session] = Boundary.catchErrors(Network, {\n\tfallback: SignIn,\n\tname: \"Session\",\n\ttags: [\"Unauthorized\"],\n});\n\nconst [DocAccess] = Boundary.catchErrors(Session, {\n\tfallback: SignIn,\n\tname: \"DocAccess\",\n\ttags: [\"Unauthorized\"],\n});\n\nconst [DocExists, useDocExists] = Boundary.catchErrors(DocAccess, {\n\tfallback: Restore,\n\tname: \"DocExists\",\n\ttags: [\"DocNotFound\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocExists(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": false,
+				"exists": true,
+				"session": true,
+				"twice": true,
+				"unchecked": false
+			},
+			"diagnostics": [
+				{
+					"code": 2322,
+					"column": 2,
+					"length": 4,
+					"line": 26,
+					"message": "Type '[\"Unauthorized\"]' is not assignable to type 'readonly [\"Unauthorized\"] & { readonly AlreadyHandledAbove: \"Unauthorized\"; }'.\n  Property 'AlreadyHandledAbove' is missing in type '[\"Unauthorized\"]' but required in type '{ readonly AlreadyHandledAbove: \"Unauthorized\"; }'."
+				},
+				{
+					"code": 2339,
+					"column": 18,
+					"length": 5,
+					"line": 40,
+					"message": "Property 'title' does not exist on type 'Doc | Unhandled<Forbidden>'.\n  Property 'title' does not exist on type 'Unhandled<Forbidden>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 39,
+					"text": "const doc: Doc | Boundary.Unhandled<Forbidden>"
+				}
+			]
+		},
+		"11000": {
+			"chain": "session-inline",
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [Session] = Boundary.catchErrors(Network, {\n\tfallback: SignIn,\n\tname: \"Session\",\n\ttags: [\"Unauthorized\"],\n});\n\nconst [DocAccess, useDocAccess] = Boundary.catchErrors(Session, {\n\tfallback: RequestAccess,\n\tname: \"DocAccess\",\n\ttags: [\"Forbidden\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocAccess(docQuery, props.doc);\n\t//    ^?\n\tif (Boundary.isUnhandled(doc)) {\n\t\treturn (\n\t\t\t<p>\n\t\t\t\t{Match.valueTags(doc.error, {\n\t\t\t\t\tDocNotFound: (missing) => `No doc ${missing.docId}`,\n\t\t\t\t})}\n\t\t\t</p>\n\t\t);\n\t}\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": true,
+				"exists": false,
+				"session": true,
+				"twice": false,
+				"unchecked": false
+			},
+			"diagnostics": [],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 33,
+					"text": "const doc: Doc | Boundary.Unhandled<DocNotFound>"
+				}
+			]
+		},
+		"11001": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [Session] = Boundary.catchErrors(Network, {\n\tfallback: SignIn,\n\tname: \"Session\",\n\ttags: [\"Unauthorized\"],\n});\n\nconst [DocAccess, useDocAccess] = Boundary.catchErrors(Session, {\n\tfallback: RequestAccess,\n\tname: \"DocAccess\",\n\ttags: [\"Forbidden\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocAccess(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": true,
+				"exists": false,
+				"session": true,
+				"twice": false,
+				"unchecked": true
+			},
+			"diagnostics": [
+				{
+					"code": 2339,
+					"column": 18,
+					"length": 5,
+					"line": 34,
+					"message": "Property 'title' does not exist on type 'Doc | Unhandled<DocNotFound>'.\n  Property 'title' does not exist on type 'Unhandled<DocNotFound>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 33,
+					"text": "const doc: Doc | Boundary.Unhandled<DocNotFound>"
+				}
+			]
+		},
+		"11010": {
+			"chain": "session-exists",
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [Session] = Boundary.catchErrors(Network, {\n\tfallback: SignIn,\n\tname: \"Session\",\n\ttags: [\"Unauthorized\"],\n});\n\nconst [DocAccess] = Boundary.catchErrors(Session, {\n\tfallback: RequestAccess,\n\tname: \"DocAccess\",\n\ttags: [\"Forbidden\"],\n});\n\nconst [DocExists, useDocExists] = Boundary.catchErrors(DocAccess, {\n\tfallback: Restore,\n\tname: \"DocExists\",\n\ttags: [\"DocNotFound\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocExists(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": true,
+				"exists": true,
+				"session": true,
+				"twice": false,
+				"unchecked": false
+			},
+			"diagnostics": [],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 39,
+					"text": "const doc: Doc"
+				}
+			]
+		},
+		"11100": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [Session] = Boundary.catchErrors(Network, {\n\tfallback: SignIn,\n\tname: \"Session\",\n\ttags: [\"Unauthorized\"],\n});\n\nconst [DocAccess, useDocAccess] = Boundary.catchErrors(Session, {\n\tfallback: RequestAccessOrSignIn,\n\tname: \"DocAccess\",\n\ttags: [\"Forbidden\", \"Unauthorized\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocAccess(docQuery, props.doc);\n\t//    ^?\n\tif (Boundary.isUnhandled(doc)) {\n\t\treturn (\n\t\t\t<p>\n\t\t\t\t{Match.valueTags(doc.error, {\n\t\t\t\t\tDocNotFound: (missing) => `No doc ${missing.docId}`,\n\t\t\t\t})}\n\t\t\t</p>\n\t\t);\n\t}\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": true,
+				"exists": false,
+				"session": true,
+				"twice": true,
+				"unchecked": false
+			},
+			"diagnostics": [
+				{
+					"code": 2322,
+					"column": 2,
+					"length": 4,
+					"line": 26,
+					"message": "Type '[\"Forbidden\", \"Unauthorized\"]' is not assignable to type 'readonly [\"Forbidden\", \"Unauthorized\"] & { readonly AlreadyHandledAbove: \"Unauthorized\"; }'.\n  Property 'AlreadyHandledAbove' is missing in type '[\"Forbidden\", \"Unauthorized\"]' but required in type '{ readonly AlreadyHandledAbove: \"Unauthorized\"; }'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 33,
+					"text": "const doc: Doc | Boundary.Unhandled<DocNotFound>"
+				}
+			]
+		},
+		"11101": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [Session] = Boundary.catchErrors(Network, {\n\tfallback: SignIn,\n\tname: \"Session\",\n\ttags: [\"Unauthorized\"],\n});\n\nconst [DocAccess, useDocAccess] = Boundary.catchErrors(Session, {\n\tfallback: RequestAccessOrSignIn,\n\tname: \"DocAccess\",\n\ttags: [\"Forbidden\", \"Unauthorized\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocAccess(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": true,
+				"exists": false,
+				"session": true,
+				"twice": true,
+				"unchecked": true
+			},
+			"diagnostics": [
+				{
+					"code": 2322,
+					"column": 2,
+					"length": 4,
+					"line": 26,
+					"message": "Type '[\"Forbidden\", \"Unauthorized\"]' is not assignable to type 'readonly [\"Forbidden\", \"Unauthorized\"] & { readonly AlreadyHandledAbove: \"Unauthorized\"; }'.\n  Property 'AlreadyHandledAbove' is missing in type '[\"Forbidden\", \"Unauthorized\"]' but required in type '{ readonly AlreadyHandledAbove: \"Unauthorized\"; }'."
+				},
+				{
+					"code": 2339,
+					"column": 18,
+					"length": 5,
+					"line": 34,
+					"message": "Property 'title' does not exist on type 'Doc | Unhandled<DocNotFound>'.\n  Property 'title' does not exist on type 'Unhandled<DocNotFound>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 33,
+					"text": "const doc: Doc | Boundary.Unhandled<DocNotFound>"
+				}
+			]
+		},
+		"11110": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [Session] = Boundary.catchErrors(Network, {\n\tfallback: SignIn,\n\tname: \"Session\",\n\ttags: [\"Unauthorized\"],\n});\n\nconst [DocAccess] = Boundary.catchErrors(Session, {\n\tfallback: RequestAccessOrSignIn,\n\tname: \"DocAccess\",\n\ttags: [\"Forbidden\", \"Unauthorized\"],\n});\n\nconst [DocExists, useDocExists] = Boundary.catchErrors(DocAccess, {\n\tfallback: Restore,\n\tname: \"DocExists\",\n\ttags: [\"DocNotFound\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocExists(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": true,
+				"exists": true,
+				"session": true,
+				"twice": true,
+				"unchecked": false
+			},
+			"diagnostics": [
+				{
+					"code": 2322,
+					"column": 2,
+					"length": 4,
+					"line": 26,
+					"message": "Type '[\"Forbidden\", \"Unauthorized\"]' is not assignable to type 'readonly [\"Forbidden\", \"Unauthorized\"] & { readonly AlreadyHandledAbove: \"Unauthorized\"; }'.\n  Property 'AlreadyHandledAbove' is missing in type '[\"Forbidden\", \"Unauthorized\"]' but required in type '{ readonly AlreadyHandledAbove: \"Unauthorized\"; }'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 39,
+					"text": "const doc: Doc"
+				}
+			]
+		},
+		"01110": {
+			"chain": "twice-exists",
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [DocAccess] = Boundary.catchErrors(Network, {\n\tfallback: RequestAccessOrSignIn,\n\tname: \"DocAccess\",\n\ttags: [\"Forbidden\", \"Unauthorized\"],\n});\n\nconst [DocExists, useDocExists] = Boundary.catchErrors(DocAccess, {\n\tfallback: Restore,\n\tname: \"DocExists\",\n\ttags: [\"DocNotFound\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocExists(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": true,
+				"exists": true,
+				"session": false,
+				"twice": true,
+				"unchecked": false
+			},
+			"diagnostics": [],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 33,
+					"text": "const doc: Doc"
+				}
+			]
+		},
+		"01101": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [DocAccess, useDocAccess] = Boundary.catchErrors(Network, {\n\tfallback: RequestAccessOrSignIn,\n\tname: \"DocAccess\",\n\ttags: [\"Forbidden\", \"Unauthorized\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocAccess(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": true,
+				"exists": false,
+				"session": false,
+				"twice": true,
+				"unchecked": true
+			},
+			"diagnostics": [
+				{
+					"code": 2339,
+					"column": 18,
+					"length": 5,
+					"line": 28,
+					"message": "Property 'title' does not exist on type 'Doc | Unhandled<DocNotFound>'.\n  Property 'title' does not exist on type 'Unhandled<DocNotFound>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 27,
+					"text": "const doc: Doc | Boundary.Unhandled<DocNotFound>"
+				}
+			]
+		},
+		"01100": {
+			"chain": "twice-inline",
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [DocAccess, useDocAccess] = Boundary.catchErrors(Network, {\n\tfallback: RequestAccessOrSignIn,\n\tname: \"DocAccess\",\n\ttags: [\"Forbidden\", \"Unauthorized\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocAccess(docQuery, props.doc);\n\t//    ^?\n\tif (Boundary.isUnhandled(doc)) {\n\t\treturn (\n\t\t\t<p>\n\t\t\t\t{Match.valueTags(doc.error, {\n\t\t\t\t\tDocNotFound: (missing) => `No doc ${missing.docId}`,\n\t\t\t\t})}\n\t\t\t</p>\n\t\t);\n\t}\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": true,
+				"exists": false,
+				"session": false,
+				"twice": true,
+				"unchecked": false
+			},
+			"diagnostics": [],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 27,
+					"text": "const doc: Doc | Boundary.Unhandled<DocNotFound>"
+				}
+			]
+		},
+		"01010": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [DocAccess] = Boundary.catchErrors(Network, {\n\tfallback: RequestAccess,\n\tname: \"DocAccess\",\n\ttags: [\"Forbidden\"],\n});\n\nconst [DocExists, useDocExists] = Boundary.catchErrors(DocAccess, {\n\tfallback: Restore,\n\tname: \"DocExists\",\n\ttags: [\"DocNotFound\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocExists(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": true,
+				"exists": true,
+				"session": false,
+				"twice": false,
+				"unchecked": false
+			},
+			"diagnostics": [
+				{
+					"code": 2339,
+					"column": 18,
+					"length": 5,
+					"line": 34,
+					"message": "Property 'title' does not exist on type 'Doc | Unhandled<Unauthorized>'.\n  Property 'title' does not exist on type 'Unhandled<Unauthorized>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 33,
+					"text": "const doc: Doc | Boundary.Unhandled<Unauthorized>"
+				}
+			]
+		},
+		"01001": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [DocAccess, useDocAccess] = Boundary.catchErrors(Network, {\n\tfallback: RequestAccess,\n\tname: \"DocAccess\",\n\ttags: [\"Forbidden\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocAccess(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": true,
+				"exists": false,
+				"session": false,
+				"twice": false,
+				"unchecked": true
+			},
+			"diagnostics": [
+				{
+					"code": 2339,
+					"column": 18,
+					"length": 5,
+					"line": 28,
+					"message": "Property 'title' does not exist on type 'Doc | Unhandled<DocNotFound | Unauthorized>'.\n  Property 'title' does not exist on type 'Unhandled<DocNotFound | Unauthorized>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 27,
+					"text": "const doc: Doc | Boundary.Unhandled<DocNotFound | Unauthorized>"
+				}
+			]
+		},
+		"01000": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [DocAccess, useDocAccess] = Boundary.catchErrors(Network, {\n\tfallback: RequestAccess,\n\tname: \"DocAccess\",\n\ttags: [\"Forbidden\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocAccess(docQuery, props.doc);\n\t//    ^?\n\tif (Boundary.isUnhandled(doc)) {\n\t\treturn (\n\t\t\t<p>\n\t\t\t\t{Match.valueTags(doc.error, {\n\t\t\t\t\tDocNotFound: (missing) => `No doc ${missing.docId}`,\n\t\t\t\t})}\n\t\t\t</p>\n\t\t);\n\t}\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": true,
+				"exists": false,
+				"session": false,
+				"twice": false,
+				"unchecked": false
+			},
+			"diagnostics": [
+				{
+					"code": 2345,
+					"column": 33,
+					"length": 65,
+					"line": 31,
+					"message": "Argument of type '{ DocNotFound: (missing: DocNotFound) => string; }' is not assignable to parameter of type 'ValueTagHandlers<DocNotFound | Unauthorized> & {}'.\n  Property 'Unauthorized' is missing in type '{ DocNotFound: (missing: DocNotFound) => string; }' but required in type 'ValueTagHandlers<DocNotFound | Unauthorized>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 27,
+					"text": "const doc: Doc | Boundary.Unhandled<DocNotFound | Unauthorized>"
+				}
+			]
+		},
+		"00110": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [DocAccess] = Boundary.catchErrors(Network, {\n\tfallback: SignIn,\n\tname: \"DocAccess\",\n\ttags: [\"Unauthorized\"],\n});\n\nconst [DocExists, useDocExists] = Boundary.catchErrors(DocAccess, {\n\tfallback: Restore,\n\tname: \"DocExists\",\n\ttags: [\"DocNotFound\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocExists(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": false,
+				"exists": true,
+				"session": false,
+				"twice": true,
+				"unchecked": false
+			},
+			"diagnostics": [
+				{
+					"code": 2339,
+					"column": 18,
+					"length": 5,
+					"line": 34,
+					"message": "Property 'title' does not exist on type 'Doc | Unhandled<Forbidden>'.\n  Property 'title' does not exist on type 'Unhandled<Forbidden>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 33,
+					"text": "const doc: Doc | Boundary.Unhandled<Forbidden>"
+				}
+			]
+		},
+		"00101": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [DocAccess, useDocAccess] = Boundary.catchErrors(Network, {\n\tfallback: SignIn,\n\tname: \"DocAccess\",\n\ttags: [\"Unauthorized\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocAccess(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": false,
+				"exists": false,
+				"session": false,
+				"twice": true,
+				"unchecked": true
+			},
+			"diagnostics": [
+				{
+					"code": 2339,
+					"column": 18,
+					"length": 5,
+					"line": 28,
+					"message": "Property 'title' does not exist on type 'Doc | Unhandled<Forbidden | DocNotFound>'.\n  Property 'title' does not exist on type 'Unhandled<Forbidden | DocNotFound>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 27,
+					"text": "const doc: Doc | Boundary.Unhandled<Forbidden | DocNotFound>"
+				}
+			]
+		},
+		"00100": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [DocAccess, useDocAccess] = Boundary.catchErrors(Network, {\n\tfallback: SignIn,\n\tname: \"DocAccess\",\n\ttags: [\"Unauthorized\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocAccess(docQuery, props.doc);\n\t//    ^?\n\tif (Boundary.isUnhandled(doc)) {\n\t\treturn (\n\t\t\t<p>\n\t\t\t\t{Match.valueTags(doc.error, {\n\t\t\t\t\tDocNotFound: (missing) => `No doc ${missing.docId}`,\n\t\t\t\t})}\n\t\t\t</p>\n\t\t);\n\t}\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": false,
+				"exists": false,
+				"session": false,
+				"twice": true,
+				"unchecked": false
+			},
+			"diagnostics": [
+				{
+					"code": 2345,
+					"column": 33,
+					"length": 65,
+					"line": 31,
+					"message": "Argument of type '{ DocNotFound: (missing: DocNotFound) => string; }' is not assignable to parameter of type 'ValueTagHandlers<Forbidden | DocNotFound> & {}'.\n  Property 'Forbidden' is missing in type '{ DocNotFound: (missing: DocNotFound) => string; }' but required in type 'ValueTagHandlers<Forbidden | DocNotFound>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 27,
+					"text": "const doc: Doc | Boundary.Unhandled<Forbidden | DocNotFound>"
+				}
+			]
+		},
+		"00010": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nconst [DocExists, useDocExists] = Boundary.catchErrors(Network, {\n\tfallback: Restore,\n\tname: \"DocExists\",\n\ttags: [\"DocNotFound\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useDocExists(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": false,
+				"exists": true,
+				"session": false,
+				"twice": false,
+				"unchecked": false
+			},
+			"diagnostics": [
+				{
+					"code": 2339,
+					"column": 18,
+					"length": 5,
+					"line": 28,
+					"message": "Property 'title' does not exist on type 'Doc | Unhandled<Forbidden | Unauthorized>'.\n  Property 'title' does not exist on type 'Unhandled<Forbidden | Unauthorized>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 27,
+					"text": "const doc: Doc | Boundary.Unhandled<Forbidden | Unauthorized>"
+				}
+			]
+		},
+		"00001": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network, useNetwork] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useNetwork(docQuery, props.doc);\n\t//    ^?\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": false,
+				"exists": false,
+				"session": false,
+				"twice": false,
+				"unchecked": true
+			},
+			"diagnostics": [
+				{
+					"code": 2339,
+					"column": 18,
+					"length": 5,
+					"line": 22,
+					"message": "Property 'title' does not exist on type 'Doc | Unhandled<Forbidden | DocNotFound | Unauthorized>'.\n  Property 'title' does not exist on type 'Unhandled<Forbidden | DocNotFound | Unauthorized>'."
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 21,
+					"text": "const doc: Doc | Boundary.Unhandled<Forbidden | DocNotFound | Unauthorized>"
+				}
+			]
+		},
+		"00000": {
+			"chain": null,
+			"code": "import type { DocRpcs } from \"./api.ts\";\n\ntype AppError = Boundary.RpcErrors<typeof DocRpcs>;\n//   ^?\n\nconst [App] = Boundary.root<DocsClient, AppError>({\n\tfallback: Crashed,\n\tname: \"App\",\n});\n\nconst [Network, useNetwork] = Boundary.catchErrors(App, {\n\tfallback: Offline,\n\tname: \"Network\",\n\ttags: [\"RpcClientError\"],\n});\n\nexport function DocPage(props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) {\n\tconst doc = useNetwork(docQuery, props.doc);\n\t//    ^?\n\tif (Boundary.isUnhandled(doc)) {\n\t\treturn (\n\t\t\t<p>\n\t\t\t\t{Match.valueTags(doc.error, {\n\t\t\t\t\tDocNotFound: (missing) => `No doc ${missing.docId}`,\n\t\t\t\t})}\n\t\t\t</p>\n\t\t);\n\t}\n\treturn <h1>{doc.title}</h1>;\n}\n",
+			"config": {
+				"access": false,
+				"exists": false,
+				"session": false,
+				"twice": false,
+				"unchecked": false
+			},
+			"diagnostics": [
+				{
+					"code": 2345,
+					"column": 33,
+					"length": 65,
+					"line": 25,
+					"message": "Argument of type '{ DocNotFound: (missing: DocNotFound) => string; }' is not assignable to parameter of type 'ValueTagHandlers<Forbidden | DocNotFound | Unauthorized> & {}'.\n  Type '{ DocNotFound: (missing: DocNotFound) => string; }' is missing the following properties from type 'ValueTagHandlers<Forbidden | DocNotFound | Unauthorized>': Forbidden, Unauthorized"
+				}
+			],
+			"queries": [
+				{
+					"column": 6,
+					"line": 4,
+					"text": "type AppError = Forbidden | DocNotFound | Unauthorized | RpcClientError"
+				},
+				{
+					"column": 8,
+					"line": 21,
+					"text": "const doc: Doc | Boundary.Unhandled<Forbidden | DocNotFound | Unauthorized>"
+				}
+			]
+		}
+	}
+}
