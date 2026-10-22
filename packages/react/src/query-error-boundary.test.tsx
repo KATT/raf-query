@@ -30,10 +30,12 @@ type Outcome = "found" | "missing" | "signed-out";
 
 function createBackend() {
 	const outcomes = new Map<number, Outcome>();
+	const requests = { count: 0 };
 	function issueQuery(input: { id: number }) {
 		return queryOptions({
 			queryFn: () =>
 				Effect.gen(function* () {
+					requests.count++;
 					switch (outcomes.get(input.id) ?? "found") {
 						case "missing":
 							return yield* Effect.fail(new IssueNotFound({ id: input.id }));
@@ -48,7 +50,7 @@ function createBackend() {
 			throwOnError: true,
 		});
 	}
-	return { issueQuery, outcomes };
+	return { issueQuery, outcomes, requests };
 }
 
 function assigneeQuery(input: { userId: string }) {
@@ -142,6 +144,7 @@ describe("QueryErrorBoundary", () => {
 		await mount(test.view(<test.Title handle={handle} />));
 		await settle();
 		expect(screen.getByText(/^Outer: Unauthorized/)).toBeDefined();
+		expect(test.backend.requests.count).toBe(1);
 		cleanup();
 	});
 
