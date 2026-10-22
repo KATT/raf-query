@@ -5,13 +5,13 @@
 			{
 				"code": "TS2345",
 				"column": 37,
-				"line": 7,
+				"line": 9,
 				"message": "Argument of type 'QueryHandle<(input: { readonly id: number; }) => QueryOptions<Flat<{ data: { readonly body: string; readonly id: number; readonly title: string; readonly updatedBy: string; }; key: readonly [\"docs\", number]; } & { error: DocNotFound | Forbidden | RpcClientError | Unauthorized; } & { ...; }>>>' is not assignable to parameter of type 'QueryHandle<(input: { readonly id: number; }) => QueryOptions<Flat<{ data: { readonly body: string; readonly id: number; readonly title: string; readonly updatedBy: string; }; key: readonly [\"docs\", number]; } & { error: DocNotFound | ... 2 more ... | Unauthorized; } & { ...; }>>> & { ...; }'.\n  Property 'UnhandledErrors' is missing in type 'QueryHandle<(input: { readonly id: number; }) => QueryOptions<Flat<{ data: { readonly body: string; readonly id: number; readonly title: string; readonly updatedBy: string; }; key: readonly [\"docs\", number]; } & { error: DocNotFound | Forbidden | RpcClientError | Unauthorized; } & { ...; }>>>' but required in type '{ readonly UnhandledErrors: \"DocNotFound\"; }'."
 			}
 		],
 		"expect": "fails",
 		"file": "1-no-data-until-every-error-is-handled.fails.tsx",
-		"source": "import type { QueryHandle } from \"@raf-query/react\";\n\nimport { useDocAccess } from \"../src/boundaries.tsx\";\nimport { docQuery } from \"../src/queries.ts\";\n\nexport const Title = (props: { readonly doc: QueryHandle<typeof docQuery> }) => {\n\tconst doc = useDocAccess(docQuery, props.doc);\n\treturn <h1>{doc.title}</h1>;\n};\n",
+		"source": "import type { QueryHandle } from \"@raf-query/react\";\n\nimport { useDocAccess } from \"../src/boundaries.tsx\";\nimport { docQuery } from \"../src/queries.ts\";\n\nexport const Title = (props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) => {\n\tconst doc = useDocAccess(docQuery, props.doc);\n\treturn <h1>{doc.title}</h1>;\n};\n",
 		"title": "No data until every error is handled"
 	},
 	{
@@ -94,7 +94,7 @@
 		"errors": [],
 		"expect": "compiles",
 		"file": "7-nothing-left-to-handle.compiles.tsx",
-		"source": "import type { QueryHandle } from \"@raf-query/react\";\nimport { Boundary } from \"@raf-query/react/boundary\";\n\nimport { DocNotFound } from \"../src/api.ts\";\nimport { DocAccess, useSession } from \"../src/boundaries.tsx\";\nimport { docListQuery, docQuery } from \"../src/queries.ts\";\n\nexport const [Everything, useEverything] = Boundary.catchErrors(DocAccess, {\n\terrors: [DocNotFound],\n\tfallback: (props) => <p>Doc {props.error.docId} is gone</p>,\n\tname: \"Everything\",\n});\n\nexport const Title = (props: { readonly doc: QueryHandle<typeof docQuery> }) => {\n\tconst doc = useEverything(docQuery, props.doc);\n\treturn <h1>{doc.title}</h1>;\n};\n\nexport const Titles = (props: {\n\treadonly list: QueryHandle<typeof docListQuery>;\n}) => {\n\tconst docs = useSession(docListQuery, props.list);\n\treturn (\n\t\t<ul>\n\t\t\t{docs.map((doc) => (\n\t\t\t\t<li key={doc.id}>{doc.title}</li>\n\t\t\t))}\n\t\t</ul>\n\t);\n};\n",
+		"source": "import type { QueryHandle } from \"@raf-query/react\";\nimport { Boundary } from \"@raf-query/react/boundary\";\n\nimport { DocNotFound } from \"../src/api.ts\";\nimport { DocAccess, useSession } from \"../src/boundaries.tsx\";\nimport { docListQuery, docQuery } from \"../src/queries.ts\";\n\nexport const [Everything, useEverything] = Boundary.catchErrors(DocAccess, {\n\terrors: [DocNotFound],\n\tfallback: (props) => <p>Doc {props.error.docId} is gone</p>,\n\tname: \"Everything\",\n});\n\nexport const Title = (props: {\n\treadonly doc: QueryHandle<typeof docQuery>;\n}) => {\n\tconst doc = useEverything(docQuery, props.doc);\n\treturn <h1>{doc.title}</h1>;\n};\n\nexport const Titles = (props: {\n\treadonly list: QueryHandle<typeof docListQuery>;\n}) => {\n\tconst docs = useSession(docListQuery, props.list);\n\treturn (\n\t\t<ul>\n\t\t\t{docs.map((doc) => (\n\t\t\t\t<li key={doc.id}>{doc.title}</li>\n\t\t\t))}\n\t\t</ul>\n\t);\n};\n",
 		"title": "Once every error is caught, there is no failure to get"
 	}
 ]
