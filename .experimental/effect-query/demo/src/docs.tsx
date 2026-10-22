@@ -8,7 +8,7 @@ import { FileText, Lock } from "lucide-react";
 import { useState } from "react";
 
 import type { Doc } from "./api.ts";
-import { DocAccess, useDocAccess, useSession } from "./boundaries.tsx";
+import { DocAccess, useDocAccessResult, useSession } from "./boundaries.tsx";
 import { Caught } from "./frame.tsx";
 import { docList, docQuery, renameDoc } from "./queries.ts";
 
@@ -69,11 +69,11 @@ export const DocList = (props: {
 export const DocPage = (props: { readonly id: number }) => {
 	// Forbidden went to DocAccess, Unauthorized to Session, RpcClientError to
 	// Network: only DocNotFound is left for this component.
-	const result = useDocAccess(docQuery(props.id));
+	const result = useDocAccessResult(docQuery(props.id));
 	return (
 		<div className="space-y-3">
 			<TypeChip>
-				useDocAccess(docQuery(id)): Result&lt;Doc, DocNotFound&gt;
+				useDocAccessResult(docQuery(id)): Result&lt;Doc, DocNotFound&gt;
 			</TypeChip>
 			{Result.isSuccess(result) ? (
 				<DocView doc={result.success} />

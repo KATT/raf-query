@@ -1,14 +1,11 @@
 /**
- * A query is a key, the Effect that loads it, and the schemas of the errors
- * it can fail with, like an `Rpc`'s. There is no options bag for retries,
- * timeouts or fallbacks: write them on the Effect (`Effect.retry`,
- * `Effect.timeout`, `Effect.catchTag`), and the error type follows. The cache
- * only adds what an Effect can't say about itself: how long a result stays
- * fresh.
+ * A query is a key and the Effect that loads it; its error type is the
+ * Effect's. There is no options bag for retries, timeouts or fallbacks:
+ * write them on the Effect (`Effect.retry`, `Effect.timeout`,
+ * `Effect.catchTag`), and the error type follows. The cache only adds what an
+ * Effect can't say about itself: how long a result stays fresh.
  */
 import { Duration, type Effect, Pipeable, Predicate } from "effect";
-
-import type { Catchable } from "./route.ts";
 
 export const TypeId = "~@raf-query/experimental-effect-query/Query";
 
@@ -20,8 +17,6 @@ export type Key = ReadonlyArray<unknown>;
 export interface Query<out A, out E = never, out R = never>
 	extends Pipeable.Pipeable {
 	readonly effect: Effect.Effect<A, E, R>;
-	/** The schemas of `E`'s members: what a boundary's hook checks to know whether anything is left. */
-	readonly errors: ReadonlyArray<Catchable>;
 	/** `key` as a string, for the cache's map. */
 	readonly hash: string;
 	readonly key: Key;
@@ -58,26 +53,15 @@ const Proto = {
 export const isQuery = (u: unknown): u is Any =>
 	Predicate.hasProperty(u, TypeId);
 
-export const make = <
-	A,
-	R = never,
-	const S extends ReadonlyArray<Catchable> = [],
->(options: {
-	readonly effect: Effect.Effect<A, S[number]["Type"], R>;
-	/**
-	 * The query's errors: a schema for each error the Effect can fail with,
-	 * such as its `Schema.TaggedError` classes, or `[]` when it can't fail.
-	 * The Effect must fail with nothing else.
-	 */
-	readonly errors: S;
+export const make = <A, E = never, R = never>(options: {
+	readonly effect: Effect.Effect<A, E, R>;
 	readonly key: Key;
 	readonly staleTime?: Duration.Input | undefined;
-}): Query<A, S[number]["Type"], R> => {
+}): Query<A, E, R> => {
 	const self = Object.create(Proto);
 	self.key = options.key;
 	self.hash = hashKey(options.key);
 	self.effect = options.effect;
-	self.errors = options.errors;
 	self.staleTime = Duration.fromInputUnsafe(options.staleTime ?? 0);
 	return self;
 };

@@ -2,20 +2,18 @@
  * Where a failure goes, given the boundary a component read through. Only a
  * typed failure (`Cause.findError`) can reach a typed boundary; defects and
  * interrupts always go to the root. A typed failure goes to the innermost
- * boundary in the chain whose schemas accept it, or back to the component.
+ * boundary in the chain that lists its `_tag`, or back to the component.
+ *
+ * Matching trusts the failure channel: no schema check. Effect RPC decodes
+ * every failure it hands back, so its errors are what their type says.
  */
-import { Cause, Result, Schema } from "effect";
-
-/** An error class a boundary catches: a schema of tagged values, such as a `Schema.TaggedError`. */
-export type Catchable = Schema.Top & {
-	readonly Type: { readonly _tag: string };
-};
+import { Cause, Predicate, Result } from "effect";
 
 /** The part of a boundary routing needs. */
 export interface Link {
-	readonly errors: ReadonlyArray<Catchable>;
 	readonly name: string;
 	readonly parent: Link | undefined;
+	readonly tags: ReadonlySet<string>;
 }
 
 export type Route<L extends Link> =
@@ -23,8 +21,15 @@ export type Route<L extends Link> =
 	| { readonly error: unknown; readonly kind: "uncaught" }
 	| { readonly kind: "defect" };
 
-export const catches = (link: Link, error: unknown): boolean =>
-	link.errors.some((schema) => Schema.is(schema)(error));
+/** Whether `link` catches `error`: it carries a string `_tag` the boundary lists. */
+export const catches = (link: Link, error: unknown): boolean => {
+	if (!Predicate.hasProperty(error, "_tag")) {
+		return false;
+	}
+	// oxlint-disable-next-line eslint/no-underscore-dangle -- boundaries match errors by tag
+	const tag = error._tag;
+	return Predicate.isString(tag) && link.tags.has(tag);
+};
 
 export const route = <L extends Link>(
 	boundary: L,
@@ -57,6 +62,3 @@ export const rootOf = <L extends Link>(boundary: L): L => {
 	// SAFETY: see `route`.
 	return link as L;
 };
-
-/** The tags of the errors left over, for type errors that name them. */
-export type TagsOf<E> = E extends { readonly _tag: infer Tag } ? Tag : E;

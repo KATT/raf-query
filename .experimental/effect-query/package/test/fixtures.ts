@@ -59,9 +59,11 @@ export const docsLayer = (behavior: (id: number) => Behavior) =>
 		};
 	});
 
+/** Every error the test apps' queries can fail with: their roots' universe. */
+export type DocError = Unauthorized | Forbidden | NotFound;
+
 export const docQuery = (id: number) =>
 	Query.make({
 		effect: Effect.flatMap(Docs, (docs) => docs.get(id)),
-		errors: [Unauthorized, Forbidden, NotFound],
 		key: ["doc", id],
 	});

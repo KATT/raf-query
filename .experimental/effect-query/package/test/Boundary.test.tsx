@@ -10,22 +10,28 @@ import { Cause, Effect, Layer, Match, Result } from "effect";
 import { Suspense } from "react";
 import { describe, expect, it, vi } from "@effect/vitest";
 
-import { Boundary, Mutation, QueryCache, QueryClient } from "../src/index.ts";
+import {
+	Boundary,
+	Mutation,
+	Query,
+	QueryCache,
+	QueryClient,
+} from "../src/index.ts";
 import {
 	type Behavior,
+	type Doc,
+	type DocError,
 	docQuery,
 	docsLayer,
-	Forbidden,
-	NotFound,
-	Unauthorized,
 } from "./fixtures.ts";
 
 const setup = (initial: Behavior) => {
 	const state = { behavior: initial };
 	const caught: Array<string> = [];
 	const client = QueryClient.make(docsLayer(() => state.behavior));
-	const [App, useApp] = Boundary.root({
+	const [App] = Boundary.root({
 		client,
+		errors: Boundary.errors<DocError>(),
 		fallback: (props) => (
 			<button onClick={props.retry} type="button">
 				crashed: {Cause.pretty(props.cause).split("\n")[0]}
@@ -33,27 +39,29 @@ const setup = (initial: Behavior) => {
 		),
 		name: "App",
 		onCaught: (by) => {
-			caught.push(`${by.name}: ${by.root ? "defect" : String(by.error)}`);
+			caught.push(
+				`${by.name}: ${by.error === undefined ? "defect" : String(by.error)}`,
+			);
 		},
 	});
-	const [Auth, useAuth] = Boundary.catchErrors(App, {
-		errors: [Unauthorized],
+	const [Auth, , useAuthResult] = Boundary.catchErrors(App, {
 		fallback: (props) => (
 			<button onClick={props.retry} type="button">
 				sign in
 			</button>
 		),
 		name: "Auth",
+		tags: ["Unauthorized"],
 	});
-	const [Doc, useDoc] = Boundary.catchErrors(Auth, {
-		errors: [Forbidden],
+	const [Doc, , useDocResult] = Boundary.catchErrors(Auth, {
 		fallback: (props) => <p>forbidden {props.error.id}</p>,
 		name: "Doc",
+		tags: ["Forbidden"],
 	});
 	const [All, useAll] = Boundary.catchErrors(Doc, {
-		errors: [NotFound],
 		fallback: (props) => <p>gone {props.error.id}</p>,
 		name: "All",
+		tags: ["NotFound"],
 	});
 	return {
 		All,
@@ -64,9 +72,8 @@ const setup = (initial: Behavior) => {
 		Doc,
 		state,
 		useAll,
-		useApp,
-		useAuth,
-		useDoc,
+		useAuthResult,
+		useDocResult,
 	};
 };
 
@@ -81,6 +88,11 @@ const tree = (app: Setup, children: React.ReactNode) => (
 		</app.App>
 	</Suspense>
 );
+
+/** An Effect typed as never failing, whatever it does: what a cast in a hand-written Effect can do. */
+const lie = <A,>(effect: Effect.Effect<unknown, unknown>): Effect.Effect<A> =>
+	// SAFETY: deliberately false, to test what a boundary does with a lying Effect.
+	effect as Effect.Effect<A>;
 
 const settle = () =>
 	act(() => new Promise((resolve) => setTimeout(resolve, 0)));
@@ -106,7 +118,7 @@ describe("Boundary", () => {
 	it("renders data once the query loads", async () => {
 		const app = setup("ok");
 		const Title = () => (
-			<p>{app.useDoc(docQuery(1)).pipe(Result.getOrThrow).title}</p>
+			<p>{app.useDocResult(docQuery(1)).pipe(Result.getOrThrow).title}</p>
 		);
 		using _view = await mount(tree(app, <Title />));
 		expect(screen.getByText("Doc 1")).toBeDefined();
@@ -129,7 +141,7 @@ describe("Boundary", () => {
 	it("sends a typed failure to the boundary that catches it", async () => {
 		const app = setup("unauthorized");
 		const Title = () => (
-			<p>{Result.getOrThrow(app.useDoc(docQuery(1))).title}</p>
+			<p>{Result.getOrThrow(app.useDocResult(docQuery(1))).title}</p>
 		);
 		using _view = await mount(tree(app, <Title />));
 		expect(screen.getByText("sign in")).toBeDefined();
@@ -138,7 +150,7 @@ describe("Boundary", () => {
 	it("hands back the failures nothing above catches", async () => {
 		const app = setup("missing");
 		const Title = () =>
-			Result.match(app.useDoc(docQuery(1)), {
+			Result.match(app.useDocResult(docQuery(1)), {
 				onFailure: (error) =>
 					Match.valueTags(error, {
 						NotFound: (missing) => <p>no doc {missing.id}</p>,
@@ -152,7 +164,7 @@ describe("Boundary", () => {
 	it("routes by the chain a component reads through, not by what is mounted", async () => {
 		const app = setup("forbidden");
 		const Title = () =>
-			Result.match(app.useAuth(docQuery(1)), {
+			Result.match(app.useAuthResult(docQuery(1)), {
 				onFailure: (error) => <p>inline {error._tag}</p>,
 				onSuccess: (doc) => <p>{doc.title}</p>,
 			});
@@ -170,7 +182,7 @@ describe("Boundary", () => {
 			);
 		};
 		const Title = () => (
-			<p>{Result.getOrThrow(app.useDoc(docQuery(1))).title}</p>
+			<p>{Result.getOrThrow(app.useDocResult(docQuery(1))).title}</p>
 		);
 		using _view = await mount(tree(app, <Title />), { onCaughtError });
 		expect(caught).toEqual(["Doc: Forbidden"]);
@@ -180,17 +192,36 @@ describe("Boundary", () => {
 	it("sends defects to the root", async () => {
 		const app = setup("die");
 		const Title = () => (
-			<p>{Result.getOrThrow(app.useDoc(docQuery(1))).title}</p>
+			<p>{Result.getOrThrow(app.useDocResult(docQuery(1))).title}</p>
 		);
 		using _view = await mount(tree(app, <Title />));
 		expect(screen.getByText(/crashed: Error: doc 1 exploded/)).toBeDefined();
 		expect(app.caught).toEqual(["App: defect"]);
 	});
 
+	it("a data hook sends a failure its chain doesn't catch to the root", async () => {
+		const app = setup("missing");
+		const lying = Query.make({
+			effect: lie<Doc>(Effect.fail({ _tag: "Gone" })),
+			key: ["lying"],
+		});
+		const Title = () => <p>{app.useAll(lying).title}</p>;
+		using _view = await mount(
+			tree(
+				app,
+				<app.All>
+					<Title />
+				</app.All>,
+			),
+		);
+		expect(screen.getByText(/crashed: Error: \{"_tag":"Gone"\}/)).toBeDefined();
+		expect(app.caught).toEqual(["App: [object Object]"]);
+	});
+
 	it("retry refetches what the boundary caught", async () => {
 		const app = setup("unauthorized");
 		const Title = () => (
-			<p>{Result.getOrThrow(app.useDoc(docQuery(1))).title}</p>
+			<p>{Result.getOrThrow(app.useDocResult(docQuery(1))).title}</p>
 		);
 		using _view = await mount(tree(app, <Title />));
 		app.state.behavior = "ok";
@@ -202,7 +233,7 @@ describe("Boundary", () => {
 	it("a hook throws without its boundary above it", async () => {
 		const app = setup("ok");
 		const Title = () => (
-			<p>{Result.getOrThrow(app.useDoc(docQuery(1))).title}</p>
+			<p>{Result.getOrThrow(app.useDocResult(docQuery(1))).title}</p>
 		);
 		using _view = await mount(
 			<Suspense fallback={null}>
@@ -233,10 +264,7 @@ describe("Boundary", () => {
 	it("useRun hands back uncaught failures and escalates caught ones", async () => {
 		const app = setup("missing");
 		const results: Array<string> = [];
-		const fetchDoc = Mutation.make({
-			effect: QueryCache.fetch(docQuery(1)),
-			errors: [Unauthorized, Forbidden, NotFound],
-		});
+		const fetchDoc = Mutation.make({ effect: QueryCache.fetch(docQuery(1)) });
 		const Rename = () => {
 			const run = Boundary.useRun(app.Doc);
 			const onClick = async () => {
@@ -264,17 +292,14 @@ describe("Boundary", () => {
 		expect(results).toEqual(["NotFound"]);
 	});
 
-	it("useRun resolves with the data itself when nothing is left", async () => {
+	it("useRun resolves with a Result even when nothing is left", async () => {
 		const app = setup("ok");
 		const titles: Array<string> = [];
-		const fetchDoc = Mutation.make({
-			effect: QueryCache.fetch(docQuery(1)),
-			errors: [Unauthorized, Forbidden, NotFound],
-		});
+		const fetchDoc = Mutation.make({ effect: QueryCache.fetch(docQuery(1)) });
 		const Load = () => {
 			const run = Boundary.useRun(app.All);
 			const onClick = async () => {
-				titles.push((await run(fetchDoc)).title);
+				titles.push(Result.getOrThrow(await run(fetchDoc)).title);
 			};
 			return (
 				<button onClick={onClick} type="button">

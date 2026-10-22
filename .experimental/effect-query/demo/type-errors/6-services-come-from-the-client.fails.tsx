@@ -17,7 +17,6 @@ class Analytics extends Context.Service<
 
 const views = Query.make({
 	effect: Effect.flatMap(Analytics, (analytics) => analytics.views),
-	errors: [],
 	key: ["views"],
 });
 

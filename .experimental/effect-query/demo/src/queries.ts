@@ -1,12 +1,14 @@
+/**
+ * Each query's and mutation's errors are its Effect's: what the RPC client
+ * says the procedure can fail with. Nothing here imports an error class.
+ */
 import { Effect } from "effect";
-import { RpcClientError } from "effect/rpc";
 import {
 	Mutation,
 	Query,
 	QueryCache,
 } from "@raf-query/experimental-effect-query";
 
-import { DocNotFound, EmptyTitle, Forbidden, Unauthorized } from "./api.ts";
 import { DocsClient } from "./client.ts";
 
 export const docList = Query.make({
@@ -14,7 +16,6 @@ export const docList = Query.make({
 		const docs = yield* DocsClient;
 		return yield* docs.ListDocs();
 	}),
-	errors: [Unauthorized, RpcClientError.RpcClientError],
 	key: ["docs"],
 	staleTime: "10 seconds",
 });
@@ -25,12 +26,6 @@ export const docQuery = (id: number) =>
 			const docs = yield* DocsClient;
 			return yield* docs.GetDoc({ id });
 		}),
-		errors: [
-			Forbidden,
-			DocNotFound,
-			Unauthorized,
-			RpcClientError.RpcClientError,
-		],
 		key: ["docs", id],
 		staleTime: "10 seconds",
 	});
@@ -43,11 +38,4 @@ export const renameDoc = (id: number, title: string) =>
 			yield* QueryCache.invalidate(["docs"]);
 			return doc;
 		}),
-		errors: [
-			Forbidden,
-			DocNotFound,
-			EmptyTitle,
-			Unauthorized,
-			RpcClientError.RpcClientError,
-		],
 	});

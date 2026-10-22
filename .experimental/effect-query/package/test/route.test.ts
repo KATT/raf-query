@@ -4,12 +4,16 @@ import { Cause } from "effect";
 import { type Link, route } from "../src/route.ts";
 import { Forbidden, NotFound, Unauthorized } from "./fixtures.ts";
 
-const root: Link = { errors: [], name: "Root", parent: undefined };
-const auth: Link = { errors: [Unauthorized], name: "Auth", parent: root };
-const doc: Link = { errors: [Forbidden], name: "Doc", parent: auth };
+const root: Link = { name: "Root", parent: undefined, tags: new Set() };
+const auth: Link = {
+	name: "Auth",
+	parent: root,
+	tags: new Set(["Unauthorized"]),
+};
+const doc: Link = { name: "Doc", parent: auth, tags: new Set(["Forbidden"]) };
 
 describe("route", () => {
-	it("sends a typed failure to the innermost boundary that catches it", () => {
+	it("sends a typed failure to the innermost boundary that lists its tag", () => {
 		expect(route(doc, Cause.fail(new Forbidden({ id: 1 })))).toEqual({
 			boundary: doc,
 			error: new Forbidden({ id: 1 }),
@@ -28,19 +32,26 @@ describe("route", () => {
 		});
 	});
 
-	it("hands back a typed failure no boundary catches", () => {
+	it("hands back a typed failure no boundary lists", () => {
 		expect(route(doc, Cause.fail(new NotFound({ id: 1 }))).kind).toBe(
 			"uncaught",
 		);
 	});
 
-	it("matches the schema, not just the tag", () => {
-		expect(route(doc, Cause.fail({ _tag: "Forbidden", id: 1 })).kind).toBe(
-			"uncaught",
-		);
+	it("matches the tag, whatever carries it", () => {
+		expect(route(doc, Cause.fail({ _tag: "Forbidden", id: 1 }))).toMatchObject({
+			boundary: doc,
+			kind: "caught",
+		});
 	});
 
-	it("sends defects and interrupts to the root", () => {
+	it("hands back failures without a string tag", () => {
+		expect(route(doc, Cause.fail(new Error("plain"))).kind).toBe("uncaught");
+		expect(route(doc, Cause.fail({ _tag: 1 })).kind).toBe("uncaught");
+		expect(route(doc, Cause.fail("Forbidden")).kind).toBe("uncaught");
+	});
+
+	it("sends defects and interrupts to the root, tagged or not", () => {
 		expect(route(doc, Cause.die(new Forbidden({ id: 1 }))).kind).toBe("defect");
 		expect(route(doc, Cause.interrupt()).kind).toBe("defect");
 	});

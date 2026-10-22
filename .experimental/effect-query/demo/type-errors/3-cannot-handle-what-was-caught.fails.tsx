@@ -7,11 +7,11 @@
  */
 import { Match, Result } from "effect";
 
-import { useDocAccess } from "../src/boundaries.tsx";
+import { useDocAccessResult } from "../src/boundaries.tsx";
 import { docQuery } from "../src/queries.ts";
 
 export const Title = (props: { readonly id: number }) =>
-	Result.match(useDocAccess(docQuery(props.id)), {
+	Result.match(useDocAccessResult(docQuery(props.id)), {
 		onFailure: (error) =>
 			Match.valueTags(error, {
 				DocNotFound: () => <p>No such doc</p>,

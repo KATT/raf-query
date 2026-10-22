@@ -8,9 +8,7 @@ import {
 	Docs,
 	docQuery,
 	docsLayer,
-	Forbidden,
 	NotFound,
-	Unauthorized,
 } from "./fixtures.ts";
 
 const provide = (behavior: (id: number) => Behavior) =>
@@ -31,7 +29,6 @@ describe("QueryCache", () => {
 		Effect.gen(function* () {
 			const query = Query.make({
 				effect: Effect.flatMap(Docs, (docs) => docs.get(1)),
-				errors: [Unauthorized, Forbidden, NotFound],
 				key: ["doc", 1],
 				staleTime: "1 minute",
 			});
@@ -62,7 +59,6 @@ describe("QueryCache", () => {
 		Effect.gen(function* () {
 			const query = Query.make({
 				effect: Effect.sleep("1 second").pipe(Effect.as("done")),
-				errors: [],
 				key: ["slow"],
 			});
 			const cache = yield* QueryCache.QueryCache;
@@ -101,7 +97,6 @@ describe("QueryCache", () => {
 				let title = "first";
 				const query = Query.make({
 					effect: Effect.sleep("1 second").pipe(Effect.map(() => title)),
-					errors: [],
 					key: ["title"],
 				});
 				const cache = yield* QueryCache.QueryCache;

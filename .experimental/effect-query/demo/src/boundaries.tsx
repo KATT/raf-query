@@ -1,27 +1,40 @@
 /**
- * The boundary chain, from the outside in. Each is a pair: the Provider to
- * mount, and the hook that reads through it. Each takes its errors off the
- * type of its hook, and of the hooks of the boundaries inside it.
+ * The boundary chain, from the outside in. Each is a triple: the Provider to
+ * mount, a hook that reads the data, and one that reads a `Result`. Each
+ * catches errors by `_tag`, and takes them off the types of its hooks and of
+ * the hooks of the boundaries inside it.
  *
- * - `App` mounts the client and catches defects (and interrupts).
+ * - `App` mounts the client, declares what its queries can fail with, and
+ *   catches defects, interrupts and failures nothing else catches.
  * - `Network` catches the transport's `RpcClientError`.
  * - `Session` catches the session middleware's `Unauthorized`.
  * - `DocAccess` catches `Forbidden`, around one document.
  *
- * `DocNotFound` and `EmptyTitle` are left to the components.
+ * `DocNotFound` and `EmptyTitle` are left to the components. The errors are
+ * only types here: this module imports none of `api.ts`'s classes.
  */
 import { Button } from "@examples/ui/components/button";
 import { Boundary } from "@raf-query/experimental-effect-query";
 import { Cause } from "effect";
-import { RpcClientError } from "effect/rpc";
+import type { RpcClientError } from "effect/rpc";
 
-import { Forbidden, Unauthorized } from "./api.ts";
+import type { DocRpcs, Forbidden, Unauthorized } from "./api.ts";
 import { setChaos, toggle, getChaos } from "./chaos.ts";
 import { client } from "./client.ts";
 import { Caught } from "./frame.tsx";
 
+/** Everything a call of the docs RPC client can fail with. */
+export type AppError = Boundary.RpcErrors<typeof DocRpcs>;
+
+const whatCrashed = (cause: Cause.Cause<unknown>) => {
+	if (Cause.hasFails(cause)) {
+		return "a failure nothing caught";
+	}
+	return Cause.hasDies(cause) ? "a defect" : "an interrupt";
+};
+
 const Crashed = (props: Boundary.RootFallbackProps) => {
-	const what = Cause.hasDies(props.cause) ? "a defect" : "an interrupt";
+	const what = whatCrashed(props.cause);
 	return (
 		<Caught
 			actions={
@@ -39,8 +52,9 @@ const Crashed = (props: Boundary.RootFallbackProps) => {
 			what={what}
 		>
 			<p className="text-sm">
-				No typed boundary can catch a defect: it isn’t in any error type. It
-				skipped every boundary on the way up.
+				{Cause.hasFails(props.cause)
+					? "No boundary in the chain catches this error’s tag, and the component read through a data hook, so it came here."
+					: "No typed boundary can catch a defect: it isn’t in any error type. It skipped every boundary on the way up."}
 			</p>
 			<pre className="max-h-40 overflow-auto rounded-md bg-muted p-3 font-mono text-xs">
 				{Cause.pretty(props.cause)}
@@ -123,24 +137,25 @@ const RequestAccess = (props: Boundary.FallbackProps<Forbidden>) => {
 
 export const [App] = Boundary.root({
 	client,
+	errors: Boundary.errors<AppError>(),
 	fallback: Crashed,
 	name: "App",
 });
 
 export const [Network] = Boundary.catchErrors(App, {
-	errors: [RpcClientError.RpcClientError],
 	fallback: Offline,
 	name: "Network",
+	tags: ["RpcClientError"],
 });
 
-export const [Session, useSession] = Boundary.catchErrors(Network, {
-	errors: [Unauthorized],
-	fallback: SignIn,
-	name: "Session",
-});
+export const [Session, useSession, useSessionResult] = Boundary.catchErrors(
+	Network,
+	{ fallback: SignIn, name: "Session", tags: ["Unauthorized"] },
+);
 
-export const [DocAccess, useDocAccess] = Boundary.catchErrors(Session, {
-	errors: [Forbidden],
-	fallback: RequestAccess,
-	name: "DocAccess",
-});
+export const [DocAccess, useDocAccess, useDocAccessResult] =
+	Boundary.catchErrors(Session, {
+		fallback: RequestAccess,
+		name: "DocAccess",
+		tags: ["Forbidden"],
+	});
