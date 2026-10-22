@@ -12,6 +12,7 @@ export default defineConfig({
 			"**/routeTree.gen.ts",
 			"**/.next/**",
 			"**/.tanstack/**",
+			"**/*.gen.json",
 		],
 		printWidth: 80,
 		sortPackageJson: false,

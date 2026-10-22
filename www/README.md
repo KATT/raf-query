@@ -79,7 +79,7 @@ Compiling every block is most of a build, so each result is kept in `node_module
 
 Code outside the pages imports a region instead of writing a fence: `import hero from "sample:tanstack-start/src/routes/blog.$slug.tsx#hero"` gives `hero.segments`, the region rendered as a `sample` fence renders it (the homepage's walkthrough does this).
 
-The sample apps are workspace packages in `samples/`: `tanstack-start` (`@samples/tanstack-start`) for the pages built on TanStack Start, `tanstack-start-effect` (`@samples/tanstack-start-effect`) for the Effect pages, `nextjs` (`@samples/nextjs`) for the React Server Components page, and `react-router` (`@samples/react-router`, with `app/` in place of `src/`) for the React Router page. Each declares the dependencies its files import, `pnpm typecheck` runs its `tsc`, and `pnpm lint` lints it (`src/docs/` files are page fragments, so some app rules are off there). The build regenerates their route trees and React Router's route types (`react-router typegen`).
+The sample apps are workspace packages in `samples/`: `tanstack-start` (`@samples/tanstack-start`) for the pages built on TanStack Start, `tanstack-start-effect` (`@samples/tanstack-start-effect`) for the Effect pages, `nextjs` (`@samples/nextjs`) for the React Server Components page, `react-router` (`@samples/react-router`, with `app/` in place of `src/`) for the React Router page, and `effect-query` (`@samples/effect-query`) for the experimental typed error boundaries page. Each declares the dependencies its files import, `pnpm typecheck` runs its `tsc`, and `pnpm lint` lints it (`src/docs/` files are page fragments, so some app rules are off there). The build regenerates their route trees and React Router's route types (`react-router typegen`).
 
 ## Demos
 
@@ -95,6 +95,7 @@ The name is a file in `src/demos/`, which default-exports `defineDemo({ Componen
 
 - To compare ways of doing the same thing, pass `variants` (each a `Component`, `server`, `label` and `description`) instead of `Component` and `server`. The frame shows a switch and gives each variant its own client. Every variant opened stays mounted in a hidden `<Activity>`, so switching back finds its page and requests as they were.
 - `DemoRouter` (`src/demo-kit/router.tsx`) runs a TanStack Router route tree in the demo's browser window, on a memory history, with the client as `context.queryClient`. Its Reload starts the variant over on the same URL. `DemoBrowser` is a smaller hand-rolled router that the other demos use.
+- A demo that brings its own client and server (`src/demos/effect-query-boundaries.tsx` runs an Effect RPC server in the page) default-exports `defineStandaloneDemo({ Component, title, hint })` instead. It gets the same box and title, without the kit's client, panels or expanded view.
 - The docs site registers its own router type, so demo routes name theirs: `route.useLoaderData<typeof router>()`, and `Link` with all its type parameters. See `src/demos/starting-queries.tsx`.
 - Demos have no tests: the docs site's presentation isn't unit tested. `pnpm test` runs the build's tests (`build/*.test.ts`): sample expansion and code folding.
 
