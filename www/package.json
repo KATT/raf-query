@@ -13,6 +13,7 @@
 		"typecheck": "tsc && node build/effect-query-configs.ts --check"
 	},
 	"dependencies": {
+		"@examples/experimental-effect-atom": "workspace:*",
 		"@examples/kit": "workspace:*",
 		"@examples/ui": "workspace:*",
 		"@raf-query/experimental-effect-query": "workspace:*",
