@@ -181,7 +181,7 @@ export const TypeCode = (props: {
 										<span className="inline-block max-w-full rounded-md border bg-popover px-2 py-1 align-top whitespace-pre-wrap text-popover-foreground shadow-sm">
 											{hover.text}
 										</span>
-										{hover.text.includes("Unhandled<") ? null : (
+										{!compiles || hover.text.includes("Unhandled<") ? null : (
 											<Badge className="ms-2 align-top" variant="secondary">
 												plain data
 											</Badge>
