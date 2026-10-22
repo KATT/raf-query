@@ -1,8 +1,14 @@
 import type { QueryHandle } from "@raf-query/react";
 import { Boundary } from "@raf-query/react/boundary";
-import { Cause, Effect, Match, Result } from "effect";
+import { Cause, type Effect, Match } from "effect";
 import { Suspense, useState } from "react";
-import { IssueApi, IssueNotFound, Unauthorized } from "~/issues.ts";
+import type {
+	EmptyTitle,
+	Issue,
+	IssueApi,
+	IssueNotFound,
+	Unauthorized,
+} from "~/issues.ts";
 import { issueQuery } from "~/queries.ts";
 
 declare function signIn(): Promise<void>;
@@ -35,22 +41,25 @@ function NoSuchIssue(props: Boundary.FallbackProps<IssueNotFound>) {
 	return <p>Issue {props.error.id} doesn't exist.</p>;
 }
 
-// The client comes from the QueryClientProvider above; `IssueApi` is what its layer provides.
-export const [App, useApp] = Boundary.root<IssueApi>({
+/** Everything the app's queries can fail with. */
+type AppError = EmptyTitle | IssueNotFound | Unauthorized;
+
+// The client comes from the QueryClientProvider above: its layer provides `IssueApi`.
+export const [App, useApp] = Boundary.root<IssueApi, AppError>({
 	fallback: Crashed,
 	name: "App",
 });
 
 export const [Session, useSession] = Boundary.catchErrors(App, {
-	errors: [Unauthorized],
 	fallback: SignIn,
 	name: "Session",
+	tags: ["Unauthorized"],
 });
 
 export const [IssueExists, useIssueExists] = Boundary.catchErrors(Session, {
-	errors: [IssueNotFound],
 	fallback: NoSuchIssue,
 	name: "IssueExists",
+	tags: ["IssueNotFound"],
 });
 // #endregion
 
@@ -72,15 +81,18 @@ export function IssuePage(props: {
 
 // #region what-is-left
 function Title(props: { readonly issue: QueryHandle<typeof issueQuery> }) {
-	const issue = Session.useResult(issueQuery, props.issue);
+	const issue = useSession(issueQuery, props.issue);
 	//    ^?
-	return Result.match(issue, {
-		onFailure: (error) =>
-			Match.valueTags(error, {
-				IssueNotFound: (missing) => <p>No issue {missing.id}</p>,
-			}),
-		onSuccess: (found) => <h1>{found.title}</h1>,
-	});
+	if (Boundary.isUnhandled(issue)) {
+		return (
+			<p>
+				{Match.valueTags(issue.error, {
+					IssueNotFound: (missing) => `No issue ${missing.id}`,
+				})}
+			</p>
+		);
+	}
+	return <h1>{issue.title}</h1>;
 }
 // #endregion
 
@@ -94,25 +106,24 @@ export function IssueTitle(props: {
 }
 // #endregion
 
-const renameIssue = (input: { readonly id: number; readonly title: string }) =>
-	Effect.flatMap(IssueApi, (api) => api.rename(input));
+declare function renameIssue(input: {
+	readonly id: number;
+	readonly title: string;
+}): Effect.Effect<Issue, EmptyTitle | Unauthorized, IssueApi>;
 
 // #region run
 export function RenameForm(props: { readonly id: number }) {
-	const run = Session.useRun();
+	const run = Boundary.useRun(Session);
 	const [message, setMessage] = useState<string>();
 	return (
 		<form
 			action={async (formData) => {
-				const renamed = await run.result(
+				const renamed = await run(
 					renameIssue({ id: props.id, title: String(formData.get("title")) }),
 				);
 				// Unauthorized went to Session: only EmptyTitle is left.
 				setMessage(
-					Result.match(renamed, {
-						onFailure: () => "A title can't be empty.",
-						onSuccess: () => undefined,
-					}),
+					Boundary.isUnhandled(renamed) ? "A title can't be empty." : undefined,
 				);
 			}}
 		>
@@ -124,8 +135,8 @@ export function RenameForm(props: { readonly id: number }) {
 }
 // #endregion
 
-declare const run: Boundary.Run<Unauthorized, IssueApi>;
+declare const run: Boundary.Run<AppError, "Unauthorized", IssueApi>;
 // #region run-types
-const renamed = run.result(renameIssue({ id: 1, title: "" }));
+const renamed = run(renameIssue({ id: 1, title: "" }));
 //    ^?
 // #endregion
