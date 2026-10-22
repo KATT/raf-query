@@ -38,9 +38,9 @@ export const switches = [
 		label: "DocPage matches DocNotFound",
 	},
 	{
-		hint: "No Result: what’s left goes to App",
-		key: "dataHook",
-		label: "DocPage uses the data hook",
+		hint: "Reads doc.title as is: compiles only when nothing’s left",
+		key: "unchecked",
+		label: "DocPage skips isUnhandled",
 	},
 ] as const;
 
@@ -52,16 +52,16 @@ export type Config = { readonly [K in SwitchKey]: boolean };
 export const defaultConfig: Config = {
 	accessNotFound: false,
 	accessUnauthorized: false,
-	dataHook: false,
 	forbidden: true,
 	match: true,
 	network: true,
 	session: true,
+	unchecked: false,
 };
 
-/** With the data hook, there is no `Result` to match. */
+/** Without the `isUnhandled` check, there is no error to match. */
 export const matters = (config: Config, key: SwitchKey): boolean =>
-	key !== "match" || !config.dataHook;
+	key !== "match" || !config.unchecked;
 
 /** Its key in `type-configs.gen.json`: a bit per switch, `0` for one that doesn't matter. */
 export const idOf = (config: Config): string =>
@@ -78,11 +78,11 @@ export const allConfigs = (): ReadonlyArray<Config> => {
 		const config: Config = {
 			accessNotFound: on("accessNotFound"),
 			accessUnauthorized: on("accessUnauthorized"),
-			dataHook: on("dataHook"),
 			forbidden: on("forbidden"),
 			match: on("match"),
 			network: on("network"),
 			session: on("session"),
+			unchecked: on("unchecked"),
 		};
 		configs.set(idOf(config), config);
 	}
@@ -191,56 +191,35 @@ export const leftOf = (
 	return errorsOf[reader].filter((tag) => !caught.has(tag));
 };
 
-const hooksOf = (name: Name, layout: Layout, config: Config) => {
-	const data =
-		layout.list === name || (layout.page === name && config.dataHook);
-	const result = layout.page === name && !config.dataHook;
-	if (result) {
-		return data
-			? `${name}, use${name}, use${name}Result`
-			: `${name}, , use${name}Result`;
-	}
-	return data ? `${name}, use${name}` : name;
-};
+const hooksOf = (name: Name, layout: Layout) =>
+	layout.list === name || layout.page === name ? `${name}, use${name}` : name;
 
 /** The module a combination stands for: the chain, and the two components that read through it. */
 export const codeOf = (config: Config): string => {
 	const layout = layoutOf(config);
-	const page = config.dataHook
-		? [
-				"export function DocPage(props: { id: number }) {",
-				`\tconst doc = use${layout.page}(docQuery(props.id));`,
-				"\t//    ^?",
-				"\treturn <h1>{doc.title}</h1>;",
-				"}",
-			]
+	const check = config.unchecked
+		? []
 		: [
-				"export function DocPage(props: { id: number }) {",
-				`\tconst result = use${layout.page}Result(docQuery(props.id));`,
-				"\t//    ^?",
-				"\treturn Result.match(result, {",
-				"\t\tonSuccess: (doc) => <h1>{doc.title}</h1>,",
-				"\t\tonFailure: (error) =>",
+				"\tif (Boundary.isUnhandled(doc)) {",
 				...(config.match
 					? [
-							"\t\t\tMatch.valueTags(error, {",
-							"\t\t\t\tDocNotFound: (gone) => <p>Doc {gone.docId} is gone.</p>,",
-							"\t\t\t}),",
+							"\t\treturn Match.valueTags(doc.error, {",
+							"\t\t\tDocNotFound: (gone) => <p>Doc {gone.docId} is gone.</p>,",
+							"\t\t});",
 						]
-					: ["\t\t\tMatch.valueTags(error, {}),"]),
-				"\t});",
-				"}",
+					: ["\t\treturn Match.valueTags(doc.error, {});"]),
+				"\t}",
 			];
 	return [
 		'import { Boundary } from "@raf-query/experimental-effect-query";',
-		...(config.dataHook ? [] : ['import { Match, Result } from "effect";']),
+		...(config.unchecked ? [] : ['import { Match } from "effect";']),
 		"",
 		'import type { AppError } from "~/boundaries.tsx";',
 		'import { client } from "~/client.ts";',
 		'import { Caught, Crashed } from "~/fallbacks.tsx";',
 		'import { docList, docQuery } from "~/queries.ts";',
 		"",
-		`export const [${hooksOf("App", layout, config)}] = Boundary.root({`,
+		`export const [${hooksOf("App", layout)}] = Boundary.root({`,
 		'\tname: "App",',
 		"\tclient,",
 		"\terrors: Boundary.errors<AppError>(),",
@@ -248,7 +227,7 @@ export const codeOf = (config: Config): string => {
 		"});",
 		...layout.links.flatMap((link) => [
 			"",
-			`export const [${hooksOf(link.name, layout, config)}] = Boundary.catchErrors(${link.parent}, {`,
+			`export const [${hooksOf(link.name, layout)}] = Boundary.catchErrors(${link.parent}, {`,
 			`\tname: "${link.name}",`,
 			`\ttags: [${link.tags.map((tag) => `"${tag}"`).join(", ")}],`,
 			"\tfallback: Caught,",
@@ -261,6 +240,11 @@ export const codeOf = (config: Config): string => {
 		"\treturn docs.map((doc) => <li key={doc.id}>{doc.title}</li>);",
 		"}",
 		"",
-		...page,
+		"export function DocPage(props: { id: number }) {",
+		`\tconst doc = use${layout.page}(docQuery(props.id));`,
+		"\t//    ^?",
+		...check,
+		"\treturn <h1>{doc.title}</h1>;",
+		"}",
 	].join("\n");
 };

@@ -9,12 +9,8 @@ import {
 	chainOf,
 	type Link,
 } from "./effect-query-boundaries/boundaries.tsx";
-import { type Config, idOf } from "./effect-query-boundaries/configs.ts";
-import {
-	DocList,
-	DocPageData,
-	DocPageResult,
-} from "./effect-query-boundaries/docs.tsx";
+import { idOf } from "./effect-query-boundaries/configs.ts";
+import { DocList, DocPage } from "./effect-query-boundaries/docs.tsx";
 import { Frame, type Tone } from "./effect-query-boundaries/frame.tsx";
 import { ChaosPanel, EventLog } from "./effect-query-boundaries/panel.tsx";
 import { useConfig } from "./effect-query-boundaries/switches.ts";
@@ -68,17 +64,13 @@ const nest = (links: ReadonlyArray<Link>, inside: ReactNode) =>
 	);
 
 /** The app, mounted through the chain the switches make. */
-function Live(props: { readonly chain: Chain; readonly config: Config }) {
+function Live(props: { readonly chain: Chain }) {
 	const [selected, setSelected] = useState(1);
 	const outer = props.chain.links.filter((link) => link.name !== "DocAccess");
 	const access = props.chain.links.filter((link) => link.name === "DocAccess");
 	const page = (
 		<Suspense fallback={<Loading />}>
-			{props.config.dataHook ? (
-				<DocPageData id={selected} />
-			) : (
-				<DocPageResult id={selected} />
-			)}
+			<DocPage id={selected} />
 		</Suspense>
 	);
 	return (
@@ -122,7 +114,7 @@ function EffectQueryBoundaries() {
 		<div className="grid gap-6 @4xl:grid-cols-[minmax(0,1fr)_16rem]">
 			<div className="min-w-0 space-y-3">
 				<Rejected errors={errorsIn(config)} />
-				<Live chain={chainOf(config)} config={config} key={idOf(config)} />
+				<Live chain={chainOf(config)} key={idOf(config)} />
 			</div>
 			<aside className="grid content-start gap-6 @xl:grid-cols-2 @4xl:grid-cols-1">
 				<div className="space-y-6">

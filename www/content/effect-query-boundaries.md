@@ -1,6 +1,6 @@
 ---
 title: Typed error boundaries (experimental)
-description: An experimental render-as-you-fetch cache built only on Effect, whose error boundaries are typed. Catch auth at the top and narrower errors further down; what no boundary catches comes back to the component as a Result, and when nothing is left, as plain data.
+description: An experimental render-as-you-fetch cache built only on Effect, whose error boundaries are typed. Catch auth at the top and narrower errors further down; what no boundary catches comes back to the component as an Unhandled, and when nothing is left, the read is plain data.
 section: Experiments
 order: 1
 ---
@@ -11,8 +11,8 @@ order: 1
 A render-as-you-fetch query cache written only in Effect, for apps whose data comes from Effects, such as an [Effect RPC](https://effect.website/docs/v4/api/effect/rpc/RpcClient) client. Every query is an Effect, so every failure has a type, and the cache keeps each query's whole [`Exit`](https://effect.website/docs/v4/api/effect/Exit). [Error boundaries](https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary) route on its `Cause`, and the compiler knows which errors each component can still get:
 
 - Catch a generic error (`Unauthorized`) high in the tree and narrower ones (`Forbidden` for one document) further down.
-- What no boundary catches comes back to the component as a [`Result`](https://effect.website/docs/v4/data-types/result), and matching it must be exhaustive.
-- When the boundaries above a component catch everything, it gets the data itself: there is no error to get.
+- What no boundary catches comes back to the component as an `Unhandled`, which it must check for before it reads the data, and matching its error must be exhaustive.
+- When the boundaries above a component catch everything, it gets the data itself: there is nothing to check.
 
 ## Try it
 
@@ -30,12 +30,13 @@ effect-query-boundaries
 
 ### Change the types
 
-The **Types** switches change which tags each boundary catches, and whether `DocPage` reads a `Result` or the data. Each combination is a file in this page's sample app, shown under the demo. TypeScript compiled all of them when the site was built: the squiggles, the errors under their lines and the types under each `// ^?` are what it reported. The app remounts with that chain and runs it with its types erased, so a combination that doesn't compile shows what the compiler is stopping:
+The **Types** switches change which tags each boundary catches, and how `DocPage` reads what it gets. Each combination is a file in this page's sample app, shown under the demo. TypeScript compiled all of them when the site was built: the squiggles, the errors under their lines and the types under each `// ^?` are what it reported. The app remounts with that chain and runs it with its types erased, so a combination that doesn't compile shows what the compiler is stopping:
 
-- Turn off **Session catches Unauthorized**: both reads have `Unauthorized` left, and `DocList`'s data hook doesn't take its query. Sign out, and the failure skips every boundary to the root.
+- Turn off **Session catches Unauthorized**: both reads have `Unauthorized` left. `DocList` maps over what it read without checking, so `.map` is an error, and `DocPage`'s match has a case missing. Sign out, and `DocList` gets an `Unhandled`: `.map` throws, and the root catches it as a defect.
 - Turn on **DocAccess also catches Unauthorized**: `Session` already does, and the error on `tags` says so.
 - Turn off **DocPage matches DocNotFound**: the match has a case missing. Open the doc that doesn't exist, and `Match.valueTags` throws.
-- Turn on **DocAccess also catches DocNotFound**: there is nothing left to match, so the match's case is an error. Turn on **DocPage uses the data hook** as well, and it compiles: `DocPage` gets the document itself.
+- Turn on **DocPage skips isUnhandled**: `DocPage` reads `doc.title` straight away, and with `DocNotFound` left, `title` isn't on its type. Open the doc that doesn't exist, and the page renders blank: an `Unhandled` has no title.
+- Turn on **DocAccess also catches DocNotFound**: there is nothing left to match, so the match's case is an error. Turn on **DocPage skips isUnhandled** as well, and it compiles: `DocPage` gets the document itself.
 
 ## The mental model
 
@@ -47,14 +48,14 @@ A component reads through one boundary, and its query's `Exit` goes where the `C
 | ----------------------------------------------------------- | ------------------------------------------------------------------------ |
 | A success                                                   | The component                                                            |
 | A typed failure a boundary in the chain catches             | The innermost one whose `tags` list the failure's `_tag`: its `fallback` |
-| A typed failure no boundary in the chain catches            | The component, as the `Result`'s failure                                 |
+| A typed failure no boundary in the chain catches            | The component, as an `Unhandled`                                         |
 | A defect, an interrupt, or a client layer that didn't build | The root's `fallback`                                                    |
 
 The typed failure is [`Cause.findError`](https://effect.website/docs/v4/api/effect/Cause#findError)'s. The chain is the one the component reads through, not whatever happens to be mounted: every hook checks that its boundary is above it, and every boundary checks that its parent is.
 
 ## Declare the chain
 
-Each boundary is a triple, destructured like [`useState`](https://react.dev/reference/react/useState)'s pair. The first element is the Provider you mount, and the handle the next boundary is made from. The second is the data hook, which reads a query when nothing is left for the component to handle. The third is the `Result` hook, which hands back what's left:
+Each boundary is a pair, destructured like [`useState`](https://react.dev/reference/react/useState)'s. The first element is the Provider you mount, and the handle the next boundary is made from. The second is the hook that reads a query through it:
 
 ```sample
 effect-query/src/boundaries.tsx#chain
@@ -90,7 +91,7 @@ effect-query/src/docs/effect-query-boundaries.tsx#mount
 
 ## Read through a boundary
 
-Both hooks suspend until the query's first result, through [`use`](https://react.dev/reference/react/use). Read through `DocAccess`, a document can still fail with `DocNotFound`, the one error no boundary in the chain catches. Its `Result` hook hands it back as the `Result`'s failure, and [`Match.valueTags`](https://effect.website/docs/v4/api/effect/Match#valueTags) must handle it:
+A boundary's hook suspends until the query's first result, through [`use`](https://react.dev/reference/react/use). Read through `DocAccess`, a document can still fail with `DocNotFound`, the one error no boundary in the chain catches. The hook hands it back as an `Unhandled`, so it returns `Doc | Unhandled<DocNotFound>`. `Boundary.isUnhandled` tells the two apart, and [`Match.valueTags`](https://effect.website/docs/v4/api/effect/Match#valueTags) must handle the `Unhandled`'s `error`; its `cause` is the whole `Cause`:
 
 ```sample
 effect-query/src/docs/effect-query-boundaries.tsx#what-is-left
@@ -98,7 +99,7 @@ effect-query/src/docs/effect-query-boundaries.tsx#what-is-left
 
 ### Nothing left: plain data
 
-`ListDocs` fails with `Unauthorized` or `RpcClientError`, and `Session` and `Network` catch both. Read through `Session`, there is nothing left, so its data hook takes the query and returns the documents themselves:
+`ListDocs` fails with `Unauthorized` or `RpcClientError`, and `Session` and `Network` catch both. Read through `Session`, there is nothing left, so its hook returns the documents themselves, with no `Unhandled` to check for:
 
 ```sample
 effect-query/src/docs/effect-query-boundaries.tsx#nothing-left
@@ -116,16 +117,10 @@ These blocks don't compile, and the error under each one is TypeScript's. [Chang
 
 ### An error left unhandled
 
-While an error is left, the data hook doesn't take the query, and the error names the tags nothing catches:
+While an error is left, the read may be an `Unhandled`, so the data's fields aren't on its type until `Boundary.isUnhandled` rules it out. The error names what's left:
 
 ```sample
 effect-query/src/docs/effect-query-boundaries.errors.tsx#unhandled
-```
-
-The `Result` hook takes it, and the data is behind the `Result`:
-
-```sample
-effect-query/src/docs/effect-query-boundaries.errors.tsx#result
 ```
 
 ### A match that misses one
@@ -173,7 +168,7 @@ effect-query/src/docs/effect-query-boundaries.errors.tsx#shared-tag
 A boundary matches a failure by its `_tag`, against the tags it lists. The error classes stay where they're defined, and the modules that declare boundaries and read through them need only their types. This page's sample and demo import them with `import type` alone: their `boundaries.tsx`, `queries.ts` and components import nothing at runtime from the module that defines the RPC group and its errors. What that relies on:
 
 - **Each tag names one type.** Matching by tag is only as good as the tags: the compiler rejects a boundary whose tag more than one of the root's errors carries ([Two errors with one tag](#two-errors-with-one-tag)), and a tag that isn't one of them.
-- **The failure is what its type says.** The RPC client decodes each failure with its procedure's schemas, so what reaches a boundary is an instance of the declared error. An Effect you write yourself can claim an error type it doesn't fail with, through a cast, and its boundary would render a fallback whose `error` isn't what its props say. Decode untrusted values with [`Schema`](https://effect.website/docs/v4/api/effect/Schema) where the Effect is built, not in the boundary.
+- **The failure is what its type says.** The RPC client decodes each failure with its procedure's schemas, so what reaches a boundary is an instance of the declared error. An Effect you write yourself can claim an error type it doesn't fail with, through a cast: its boundary would render a fallback whose `error` isn't what its props say, or a read whose type is the data alone would return an `Unhandled`. Decode untrusted values with [`Schema`](https://effect.website/docs/v4/api/effect/Schema) where the Effect is built, not in the boundary.
 - **The schemas still ship.** The RPC client decodes with them, so the client bundle includes them either way. Only the boundaries and the components that read through them don't import them.
 
 ## Mutations
@@ -188,7 +183,7 @@ effect-query/src/queries.ts#mutation
 effect-query/src/docs/effect-query-boundaries.tsx#run
 ```
 
-The promise resolves with a `Result` of what's left after the chain, narrowed the same way a read is, even when nothing is: a form needs to know when the mutation is done. A failure a boundary catches goes to that boundary, and the promise never settles.
+The promise resolves the way a read returns: with the mutation's value, or an `Unhandled` of what's left after the chain, and with the value alone when nothing is. A failure a boundary catches goes to that boundary, and the promise never settles.
 
 ## Which boundary caught what
 
@@ -208,20 +203,22 @@ effect-query/src/docs/effect-query-boundaries.tsx#caught-by
 
 ### Boundary
 
-| Export                                                          | Use                                                                                                                                                                                                                                                                                                 |
-| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Boundary.root({ name, client, errors?, fallback, onCaught? })` | The outermost boundary: `[Provider, useData, useResult]`. Mounts `client`, suspends until its layer is built, and catches defects, interrupts, a layer that failed to build, a failure a data hook got though its types said nothing was left, and anything else thrown while rendering             |
-| `Boundary.errors<E>()`                                          | The root's `errors`: declares, as a type only, every error its boundaries may catch                                                                                                                                                                                                                 |
-| `Boundary.RpcErrors<typeof Rpcs>`                               | What a call of an RPC group's client can fail with: each procedure's error, its middleware's, and `RpcClientError`                                                                                                                                                                                  |
-| `Boundary.catchErrors(parent, { name, tags, fallback })`        | A boundary inside `parent` that also catches the root's errors whose `_tag` is in `tags`: `[Provider, useData, useResult]`. A tag the root doesn't declare, one a boundary above catches (`AlreadyHandledAbove`) or one more than one error carries (`TagSharedByMoreThanOneError`) is a type error |
-| `useData(query)`                                                | Reads a query, suspending until its first result, and returns the data. Compiles only when the chain catches every error the query can fail with (`UnhandledErrors` names the rest)                                                                                                                 |
-| `useResult(query)`                                              | Reads a query, suspending until its first result: `Result<A, Left<E, Handled>>`                                                                                                                                                                                                                     |
-| `Boundary.useRun(boundary)`                                     | `(mutation) => Promise<Result<A, Left<E, Handled>>>`. Failures a boundary in the chain catches go there                                                                                                                                                                                             |
-| `Boundary.Left<E, Handled>`                                     | The members of `E` whose `_tag` isn't in `Handled`                                                                                                                                                                                                                                                  |
-| `Boundary.HandledBy<typeof Provider>`                           | The tags a boundary and the ones above it catch                                                                                                                                                                                                                                                     |
-| `Boundary.FallbackProps<E>`                                     | A boundary's fallback's props: `error` (one of its own errors) and `retry()`                                                                                                                                                                                                                        |
-| `Boundary.RootFallbackProps`                                    | The root's fallback's props: `cause` and `retry()`, which refetches every failed query                                                                                                                                                                                                              |
-| `Boundary.caughtBy(error)`                                      | For `onCaughtError`: `{ boundary, name, root, error, cause }`, or `undefined`. `onCaught` gets the same                                                                                                                                                                                             |
+| Export                                                          | Use                                                                                                                                                                                                                                                                                   |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Boundary.root({ name, client, errors?, fallback, onCaught? })` | The outermost boundary: `[Provider, useX]`. Mounts `client`, suspends until its layer is built, and catches defects, interrupts, a layer that failed to build, and anything else thrown while rendering                                                                               |
+| `Boundary.errors<E>()`                                          | The root's `errors`: declares, as a type only, every error its boundaries may catch                                                                                                                                                                                                   |
+| `Boundary.RpcErrors<typeof Rpcs>`                               | What a call of an RPC group's client can fail with: each procedure's error, its middleware's, and `RpcClientError`                                                                                                                                                                    |
+| `Boundary.catchErrors(parent, { name, tags, fallback })`        | A boundary inside `parent` that also catches the root's errors whose `_tag` is in `tags`: `[Provider, useX]`. A tag the root doesn't declare, one a boundary above catches (`AlreadyHandledAbove`) or one more than one error carries (`TagSharedByMoreThanOneError`) is a type error |
+| `useX(query)`                                                   | Reads a query, suspending until its first result: `Read<A, Left<E, Handled>>`. Failures a boundary in the chain catches go there                                                                                                                                                      |
+| `Boundary.Read<A, E>`                                           | `A` when `E` is `never`, else `A \| Unhandled<E>`                                                                                                                                                                                                                                     |
+| `Boundary.Unhandled<E>`                                         | A failure no boundary in the chain catches, handed back to the component: `error` (an `E`) and `cause`                                                                                                                                                                                |
+| `Boundary.isUnhandled(read)`                                    | Narrows a read to its `Unhandled`                                                                                                                                                                                                                                                     |
+| `Boundary.useRun(boundary)`                                     | `(mutation) => Promise<Read<A, Left<E, Handled>>>`. Failures a boundary in the chain catches go there, and the promise never settles                                                                                                                                                  |
+| `Boundary.Left<E, Handled>`                                     | The members of `E` whose `_tag` isn't in `Handled`                                                                                                                                                                                                                                    |
+| `Boundary.HandledBy<typeof Provider>`                           | The tags a boundary and the ones above it catch                                                                                                                                                                                                                                       |
+| `Boundary.FallbackProps<E>`                                     | A boundary's fallback's props: `error` (one of its own errors) and `retry()`                                                                                                                                                                                                          |
+| `Boundary.RootFallbackProps`                                    | The root's fallback's props: `cause` and `retry()`, which refetches every failed query                                                                                                                                                                                                |
+| `Boundary.caughtBy(error)`                                      | For `onCaughtError`: `{ boundary, name, root, error, cause }`, or `undefined`. `onCaught` gets the same                                                                                                                                                                               |
 
 ### Queries and the cache
 

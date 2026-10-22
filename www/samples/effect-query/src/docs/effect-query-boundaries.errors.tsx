@@ -1,57 +1,43 @@
 import { Boundary } from "@raf-query/experimental-effect-query";
-import { Match, Result } from "effect";
+import { Match } from "effect";
 
 import type { AppError } from "~/boundaries.tsx";
-import {
-	DocAccess,
-	Session,
-	useDocAccess,
-	useDocAccessResult,
-	useSessionResult,
-} from "~/boundaries.tsx";
+import { DocAccess, Session, useDocAccess, useSession } from "~/boundaries.tsx";
 import { client } from "~/client.ts";
 import { docQuery } from "~/queries.ts";
 
 // #region unhandled
 export function Title(props: { id: number }) {
-	// @ts-expect-error -- 2345: DocNotFound is left, so the data hook doesn't take the query
 	const doc = useDocAccess(docQuery(props.id));
-	return <h1>{doc.title}</h1>;
-}
-// #endregion
-
-// #region result
-export function ResultTitle(props: { id: number }) {
-	const doc = useDocAccessResult(docQuery(props.id));
-	// @ts-expect-error -- 2339: `doc` is a Result, with DocNotFound left
+	// @ts-expect-error -- 2339: DocNotFound is left, so `doc` may be an Unhandled
 	return <h1>{doc.title}</h1>;
 }
 // #endregion
 
 // #region non-exhaustive
 export function Heading(props: { id: number }) {
-	const result = useSessionResult(docQuery(props.id));
-	if (Result.isSuccess(result)) {
-		return <h1>{result.success.title}</h1>;
+	const doc = useSession(docQuery(props.id));
+	if (Boundary.isUnhandled(doc)) {
+		// @ts-expect-error -- 2345: Forbidden has no case
+		return Match.valueTags(doc.error, {
+			DocNotFound: () => <p>No such doc</p>,
+		});
 	}
-	// @ts-expect-error -- 2345: Forbidden has no case
-	return Match.valueTags(result.failure, {
-		DocNotFound: () => <p>No such doc</p>,
-	});
+	return <h1>{doc.title}</h1>;
 }
 // #endregion
 
 // #region already-caught
 export function Page(props: { id: number }) {
-	const result = useDocAccessResult(docQuery(props.id));
-	if (Result.isSuccess(result)) {
-		return <h1>{result.success.title}</h1>;
+	const doc = useDocAccess(docQuery(props.id));
+	if (Boundary.isUnhandled(doc)) {
+		return Match.valueTags(doc.error, {
+			DocNotFound: () => <p>No such doc</p>,
+			// @ts-expect-error -- 2322: Session caught it, so it can't get here
+			Unauthorized: () => <p>Sign in</p>,
+		});
 	}
-	return Match.valueTags(result.failure, {
-		DocNotFound: () => <p>No such doc</p>,
-		// @ts-expect-error -- 2322: Session caught it, so it can't get here
-		Unauthorized: () => <p>Sign in</p>,
-	});
+	return <h1>{doc.title}</h1>;
 }
 // #endregion
 

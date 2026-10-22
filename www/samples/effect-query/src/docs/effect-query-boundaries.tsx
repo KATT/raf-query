@@ -1,5 +1,5 @@
 import { Boundary } from "@raf-query/experimental-effect-query";
-import { Match, Result } from "effect";
+import { Match } from "effect";
 import { Suspense, useState } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -8,7 +8,7 @@ import {
 	DocAccess,
 	Network,
 	Session,
-	useDocAccessResult,
+	useDocAccess,
 	useSession,
 } from "~/boundaries.tsx";
 import { client } from "~/client.ts";
@@ -54,15 +54,14 @@ function DocList() {
 
 // #region what-is-left
 function DocPage(props: { id: number }) {
-	const result = useDocAccessResult(docQuery(props.id));
+	const doc = useDocAccess(docQuery(props.id));
 	//    ^?
-	return Result.match(result, {
-		onSuccess: (doc) => <h1>{doc.title}</h1>,
-		onFailure: (error) =>
-			Match.valueTags(error, {
-				DocNotFound: (missing) => <p>Doc {missing.docId} doesn’t exist.</p>,
-			}),
-	});
+	if (Boundary.isUnhandled(doc)) {
+		return Match.valueTags(doc.error, {
+			DocNotFound: (missing) => <p>Doc {missing.docId} doesn’t exist.</p>,
+		});
+	}
+	return <h1>{doc.title}</h1>;
 }
 // #endregion
 
@@ -71,15 +70,15 @@ export function Rename(props: { id: number }) {
 	const run = Boundary.useRun(DocAccess);
 	const [problem, setProblem] = useState<string>();
 	const save = async (title: string) => {
-		const result = await run(renameDoc(props.id, title));
+		const renamed = await run(renameDoc(props.id, title));
 		//    ^?
 		setProblem(
-			Result.isSuccess(result)
-				? undefined
-				: Match.valueTags(result.failure, {
+			Boundary.isUnhandled(renamed)
+				? Match.valueTags(renamed.error, {
 						DocNotFound: () => "This doc was deleted meanwhile.",
 						EmptyTitle: () => "A title can’t be empty.",
-					}),
+					})
+				: undefined,
 		);
 	};
 	return (

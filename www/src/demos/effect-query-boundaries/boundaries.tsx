@@ -1,11 +1,11 @@
 /**
- * The boundary chain, from the outside in. Each boundary is a triple: the
- * Provider to mount, a hook that reads the data, and one that reads a
- * `Result`. Each catches errors by `_tag`, and takes them off the types of
- * its hooks and of the hooks of the boundaries inside it.
+ * The boundary chain, from the outside in. Each boundary is a pair: the
+ * Provider to mount, and the hook that reads through it. Each catches errors
+ * by `_tag`, and takes them off the type of its hook and of the hooks of the
+ * boundaries inside it; what's left comes back as an `Unhandled`.
  *
  * - `App` mounts the client, declares what its queries can fail with, and
- *   catches defects, interrupts and failures nothing else catches.
+ *   catches defects and interrupts.
  * - `Network` catches the transport's `RpcClientError`.
  * - `Session` catches the session middleware's `Unauthorized`.
  * - `DocAccess` catches `Forbidden`, around one document.
@@ -21,7 +21,7 @@ import {
 	type Mutation,
 	type Query,
 } from "@raf-query/experimental-effect-query";
-import { Cause, Match, Predicate, type Result } from "effect";
+import { Cause, Match, Predicate } from "effect";
 import type { ReactNode } from "react";
 
 import type { DocRpcs } from "./api.ts";
@@ -34,25 +34,20 @@ import { log } from "./log.ts";
 /** Everything a call of the docs RPC client can fail with. */
 export type AppError = Boundary.RpcErrors<typeof DocRpcs>;
 
+const whatCrashed = (cause: Cause.Cause<unknown>) => {
+	if (Cause.hasFails(cause)) {
+		return "the client’s layer failed";
+	}
+	return Cause.hasDies(cause) ? "a defect" : "an interrupt";
+};
+
 /** What the event log says a boundary caught: the error's tag, or what kind of crash. */
 const describe = (caught: Boundary.Caught) => {
 	if (Predicate.hasProperty(caught.error, "_tag")) {
 		// oxlint-disable-next-line eslint/no-underscore-dangle -- the errors boundaries catch are tagged
-		const tag = String(caught.error._tag);
-		return caught.root ? `${tag}, which nothing caught` : tag;
+		return String(caught.error._tag);
 	}
-	return Cause.hasDies(caught.cause) ? "a defect" : "an interrupt";
-};
-
-const whatCrashed = (cause: Cause.Cause<unknown>) => {
-	if (!Cause.hasFails(cause)) {
-		return Cause.hasDies(cause) ? "a defect" : "an interrupt";
-	}
-	const error = Cause.squash(cause);
-	return Predicate.hasProperty(error, "_tag")
-		? // oxlint-disable-next-line eslint/no-underscore-dangle -- the errors boundaries catch are tagged
-			`${String(error._tag)}, which nothing caught`
-		: "a failure nothing caught";
+	return whatCrashed(caught.cause);
 };
 
 const Crashed = (props: Boundary.RootFallbackProps) => (
@@ -73,8 +68,8 @@ const Crashed = (props: Boundary.RootFallbackProps) => (
 	>
 		<p className="text-sm">
 			{Cause.hasFails(props.cause)
-				? "No boundary in the chain catches this error’s tag, and the component read it through a data hook, so it came here. The compiler rejects that read."
-				: "No typed boundary can catch a defect: it isn’t in any error type. It skipped every boundary on the way up."}
+				? "The client’s services couldn’t be built, so nothing under App can run."
+				: "No typed boundary can catch a defect: it isn’t in any error type. It skipped every boundary on the way up. A server bug is one; so is reading the data off an Unhandled, which the compiler rejects."}
 		</p>
 		<pre className="max-h-40 overflow-auto rounded-md bg-muted p-3 font-mono text-xs">
 			{Cause.pretty(props.cause)}
@@ -152,7 +147,7 @@ const fallbacks = {
 	Session: fallbackFor("Session", "session"),
 } satisfies Record<Exclude<Name, "App">, Fallback>;
 
-const [App, useApp, useAppResult] = Boundary.root({
+const [App, useApp] = Boundary.root({
 	client,
 	errors: Boundary.errors<AppError>(),
 	fallback: Crashed,
@@ -169,30 +164,21 @@ export interface Link {
 	readonly name: Name;
 	readonly Provider: Boundary.AnyBoundary;
 	readonly tags: ReadonlyArray<Tag>;
-	readonly useData: <A>(query: Query.Query<A, AppError, Services>) => A;
-	readonly useResult: <A>(
+	readonly useRead: <A>(
 		query: Query.Query<A, AppError, Services>,
-	) => Result.Result<A, AppError>;
+	) => A | Boundary.Unhandled<AppError>;
 }
 
-type Erased = readonly [
-	Boundary.AnyBoundary,
-	Link["useData"],
-	Link["useResult"],
-];
+type Erased = readonly [Boundary.AnyBoundary, Link["useRead"]];
 
-// SAFETY: the switches make reads the compiler rejects, and the code panel shows what it says; at runtime the hooks are type-erased.
-const useAppErased = useApp as unknown as Link["useData"];
-
-// SAFETY: as `useAppErased`.
-const useAppResultErased = useAppResult as unknown as Link["useResult"];
+// SAFETY: the switches make reads the compiler rejects, and the code panel shows what it says; at runtime the hook is type-erased.
+const useAppErased = useApp as unknown as Link["useRead"];
 
 const root: Link = {
 	name: "App",
 	Provider: App,
 	tags: [],
-	useData: useAppErased,
-	useResult: useAppResultErased,
+	useRead: useAppErased,
 };
 
 // SAFETY: the switches make chains the compiler rejects, and the code panel shows what it says; at runtime `catchErrors` only reads `tags`.
@@ -232,12 +218,12 @@ const linkOf = (
 	if (existing !== undefined) {
 		return existing;
 	}
-	const [Provider, useData, useResult] = catchErased(parent.Provider, {
+	const [Provider, useRead] = catchErased(parent.Provider, {
 		fallback: fallbacks[name],
 		name,
 		tags,
 	});
-	const link: Link = { name, Provider, tags, useData, useResult };
+	const link: Link = { name, Provider, tags, useRead };
 	links.set(key, link);
 	return link;
 };
@@ -264,4 +250,4 @@ export const useRunErased = Boundary.useRun as unknown as (
 	boundary: Boundary.AnyBoundary,
 ) => <A>(
 	mutation: Mutation.Mutation<A, AppError, Services>,
-) => Promise<Result.Result<A, AppError>>;
+) => Promise<A | Boundary.Unhandled<AppError>>;
