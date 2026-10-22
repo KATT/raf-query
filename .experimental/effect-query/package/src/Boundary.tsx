@@ -8,18 +8,18 @@
  * the root declares as a type, so the modules that declare boundaries and
  * read through them import errors with `import type` only.
  *
- * Each boundary is a triple: the Provider, which is also the boundary's
- * handle, a hook that reads the data, and one that reads a `Result`.
+ * Each boundary is a pair: the Provider, which is also the boundary's
+ * handle, and the hook that reads through it.
  *
  * ```tsx
  * type AppError = Boundary.RpcErrors<typeof DocRpcs>;
- * const [App, useApp, useAppResult] = Boundary.root({ name: "App", client, errors: Boundary.errors<AppError>(), fallback: Crashed });
- * const [Session, useSession, useSessionResult] = Boundary.catchErrors(App, { name: "Session", tags: ["Unauthorized"], fallback: SignIn });
+ * const [App, useApp] = Boundary.root({ name: "App", client, errors: Boundary.errors<AppError>(), fallback: Crashed });
+ * const [Session, useSession] = Boundary.catchErrors(App, { name: "Session", tags: ["Unauthorized"], fallback: SignIn });
  *
  * // Under <App><Session>:
- * const docs = useSession(docList); // DocSummary[]: compiles only when nothing is left
- * const result = useSessionResult(docQuery(id)); // Result<Doc, Forbidden | DocNotFound | RpcClientError>
- * const run = Boundary.useRun(Session); // runs mutations: Promise<Result<A, what's left>>
+ * const docs = useSession(docList); // DocSummary[]: nothing left
+ * const doc = useSession(docQuery(id)); // Doc | Unhandled<Forbidden | DocNotFound | RpcClientError>
+ * const run = Boundary.useRun(Session); // runs mutations: Promise<A | Unhandled<what's left>>
  * ```
  *
  * The types come from the boundary a component reads through, so they are only
@@ -36,7 +36,6 @@ import { catches, type Link, rootOf, route } from "./route.ts";
 import type {
 	Catchable,
 	Errors,
-	Exhausted,
 	Left,
 	MatchesUniverse,
 	TagChecks,
@@ -47,7 +46,6 @@ export { errors } from "./tags.ts";
 export type {
 	Catchable,
 	Errors,
-	Exhausted,
 	Left,
 	MatchesUniverse,
 	NoUniverse,
@@ -70,11 +68,30 @@ export interface FallbackProps<E> {
 }
 
 export interface RootFallbackProps {
-	/** Why it failed: a defect, an interrupt, or a typed failure nothing caught. */
+	/** Why it failed: a defect, an interrupt, or anything else thrown while rendering. */
 	readonly cause: Cause.Cause<unknown>;
 	/** Refetches every failed query, and renders the app again. */
 	readonly retry: () => void;
 }
+
+const UnhandledTypeId = "~@raf-query/experimental-effect-query/Unhandled";
+
+/** A failure no boundary in the chain catches, handed back to the component that read it. */
+export interface Unhandled<E> {
+	readonly cause: Cause.Cause<E>;
+	readonly error: E;
+	readonly [UnhandledTypeId]: typeof UnhandledTypeId;
+}
+
+export const isUnhandled = <A, E>(
+	value: A | Unhandled<E>,
+): value is Unhandled<E> => Predicate.hasProperty(value, UnhandledTypeId);
+
+/**
+ * What a read gives back: the data when the chain catches every error the
+ * query can fail with, or else the data or what's left, as an `Unhandled`.
+ */
+export type Read<A, E> = [E] extends [never] ? A : A | Unhandled<E>;
 
 export interface CatchOptions<
 	U,
@@ -134,40 +151,27 @@ export type HandledBy<B> =
 export type ServicesOf<B> =
 	B extends Boundary<infer _U, infer _Handled, infer R> ? R : never;
 
-/**
- * A boundary's data hook. It reads a query, suspending until its first
- * result, and compiles only when the boundary and the ones above it catch
- * every error the query can fail with: there is no failure to hand back.
- */
-export interface UseData<U, Handled extends string, R> {
-	<A, E, Q extends R>(
-		query: Query.Query<A, E, Q> &
-			MatchesUniverse<E, Handled, U> &
-			Exhausted<E, Handled>,
-	): A;
-}
-
-/**
- * A boundary's `Result` hook. It reads a query, suspending until its first
- * result. Errors a boundary in the chain catches go there; the rest come back
- * as the `Result`'s failure.
- */
-export interface UseResult<U, Handled extends string, R> {
+/** Element 1 of `root` and `catchErrors`: reads queries through the boundary. */
+export interface Hook<U, Handled extends string, R> {
+	/**
+	 * Reads a query, suspending until its first result. Errors a boundary in
+	 * the chain catches go there; the rest come back as an `Unhandled`. When
+	 * the chain catches them all, it returns the data.
+	 */
 	<A, E, Q extends R>(
 		query: Query.Query<A, E, Q> & MatchesUniverse<E, Handled, U>,
-	): Result.Result<A, Left<E, Handled>>;
+	): Read<A, Left<E, Handled>>;
 }
 
 /** What `useRun` returns: runs a mutation through the boundary. */
 export type Run<U, Handled extends string, R> = <A, E, Q extends R>(
 	mutation: Mutation.Mutation<A, E, Q> & MatchesUniverse<E, Handled, U>,
-) => Promise<Result.Result<A, Left<E, Handled>>>;
+) => Promise<Read<A, Left<E, Handled>>>;
 
-/** What `root` and `catchErrors` return: the Provider, its data hook and its `Result` hook. */
-export type Triple<B> = readonly [
+/** What `root` and `catchErrors` return: the Provider, and its hook. */
+export type Pair<B> = readonly [
 	B,
-	UseData<UniverseOf<B>, HandledBy<B>, ServicesOf<B>>,
-	UseResult<UniverseOf<B>, HandledBy<B>, ServicesOf<B>>,
+	Hook<UniverseOf<B>, HandledBy<B>, ServicesOf<B>>,
 ];
 
 /** The boundary `catchErrors(parent, { tags })` makes. */
@@ -356,41 +360,29 @@ const useMounted = (boundary: Impl, hook: string): Mounted => {
 
 const never = new Promise<never>(() => {});
 
-/**
- * The success, the failure to hand back, or a throw to the boundary that
- * catches it. A failure no boundary catches goes to the root unless
- * `returnsUncaught`: the data hook's types said nothing was left.
- */
-const settle = (
-	boundary: Impl,
-	exit: Exit.Exit<unknown, unknown>,
-	returnsUncaught: boolean,
-): Result.Result<unknown, unknown> => {
+/** The data, the failure to hand back, or a throw to the boundary that catches it. */
+const settle = (boundary: Impl, exit: Exit.Exit<unknown, unknown>) => {
 	if (Exit.isSuccess(exit)) {
-		return Result.succeed(exit.value);
+		return exit.value;
 	}
 	const routed = route(boundary, exit.cause);
 	if (routed.kind === "caught") {
 		throw new Escalation(routed.boundary, routed.error, exit.cause);
 	}
-	if (routed.kind === "uncaught" && returnsUncaught) {
-		return Result.fail(routed.error);
+	if (routed.kind === "uncaught") {
+		return {
+			cause: exit.cause,
+			error: routed.error,
+			[UnhandledTypeId]: UnhandledTypeId,
+		} satisfies Unhandled<unknown>;
 	}
-	throw new Escalation(
-		rootOf(boundary),
-		routed.kind === "uncaught" ? routed.error : undefined,
-		exit.cause,
-	);
+	throw new Escalation(rootOf(boundary), undefined, exit.cause);
 };
 
-/** The hooks' query, with its types erased: `UseData`'s and `UseResult`'s signatures checked them. */
+/** The hook's query, with its types erased: `Hook`'s signature checked them. */
 type Erased = Query.Query<unknown, unknown, never>;
 
-const useRead = (
-	boundary: Impl,
-	query: Erased,
-	returnsUncaught: boolean,
-): Result.Result<unknown, unknown> => {
+const useRead = (boundary: Impl, query: Erased): unknown => {
 	const mounted = useMounted(boundary, "hook");
 	const cache = mounted.cache;
 	// By hash: a query is a value, and two with the same hash are the same query.
@@ -410,7 +402,7 @@ const useRead = (
 		snapshot = getSnapshot();
 		React.use(snapshot.promise);
 	}
-	return settle(boundary, snapshot.exit, returnsUncaught);
+	return settle(boundary, snapshot.exit);
 };
 
 const useRunImpl = (boundary: Impl) => {
@@ -420,7 +412,7 @@ const useRunImpl = (boundary: Impl) => {
 		(mutation: Mutation.Mutation<unknown, unknown, never>) =>
 			client.runtime.runPromiseExit(mutation.effect).then((exit) => {
 				try {
-					return settle(boundary, exit, true);
+					return settle(boundary, exit);
 				} catch (error) {
 					if (!isOwn(error)) {
 						throw error;
@@ -521,17 +513,14 @@ const make = (options: {
 	const self: Impl = { ...options, Provider: boundary };
 	impls.set(boundary, self);
 
-	const useData = (query: Erased) =>
-		Result.getOrThrow(useRead(self, query, false));
-	const useResult = (query: Erased) => useRead(self, query, true);
-	return [boundary, useData, useResult] as const;
+	const useBoundary = (query: Erased) => useRead(self, query);
+	return [boundary, useBoundary] as const;
 };
 
 /**
  * The outermost boundary. It mounts `client` (and suspends until its layer is
  * built) and catches what no typed boundary can: defects, interrupts, a layer
- * that failed to build, a failure a data hook got though its types said
- * nothing was left, and anything else thrown while rendering.
+ * that failed to build, and anything else thrown while rendering.
  *
  * `errors` declares, as a type, the errors the boundaries below may catch:
  * `Boundary.errors<Boundary.RpcErrors<typeof Rpcs>>()` for an RPC client's.
@@ -543,8 +532,8 @@ export const root = <R, ER, U = never>(options: {
 	readonly name: string;
 	/** Called once for each failure a boundary of this chain renders its fallback for. */
 	readonly onCaught?: ((caught: Caught) => void) | undefined;
-}): Triple<Boundary<U, never, R | QueryCache.QueryCache>> =>
-	// SAFETY: the triple is typed by `Triple`; at runtime the hooks are
+}): Pair<Boundary<U, never, R | QueryCache.QueryCache>> =>
+	// SAFETY: the pair is typed by `Pair`; at runtime the hook is
 	// type-erased, the root catches nothing typed, and its client provides `R`.
 	make({
 		client: options.client,
@@ -554,7 +543,7 @@ export const root = <R, ER, U = never>(options: {
 		parent: undefined,
 		rootFallback: options.fallback,
 		tags: new Set(),
-	}) as unknown as Triple<Boundary<U, never, R | QueryCache.QueryCache>>;
+	}) as unknown as Pair<Boundary<U, never, R | QueryCache.QueryCache>>;
 
 /** A boundary inside `parent` that also catches the errors with `tags`. Mount it under `parent`. */
 export const catchErrors = <
@@ -563,7 +552,7 @@ export const catchErrors = <
 >(
 	parent: P,
 	options: CatchOptions<UniverseOf<P>, HandledBy<P>, T>,
-): Triple<Inner<P, T>> => {
+): Pair<Inner<P, T>> => {
 	const above = implOf(parent);
 	// SAFETY: the Catcher only renders it with an error whose tag is one of `tags`.
 	const fallback = options.fallback as Impl["fallback"];
@@ -576,14 +565,14 @@ export const catchErrors = <
 		parent: above,
 		rootFallback: above.rootFallback,
 		tags: new Set(options.tags),
-	}) as unknown as Triple<Inner<P, T>>;
+	}) as unknown as Pair<Inner<P, T>>;
 };
 
 /**
  * A function that runs a mutation with the client's services, through
  * `boundary`, which must be mounted above. Errors a boundary in its chain
- * catches go there, and the promise never settles; the rest come back as the
- * `Result`'s failure, handled where the mutation was run.
+ * catches go there, and the promise never settles; the rest come back as an
+ * `Unhandled`, as a read's do, handled where the mutation was run.
  *
  * A hook of its own, rather than a method of the boundary's hook: the React
  * Compiler treats any property of a `use…` function as a hook used as a

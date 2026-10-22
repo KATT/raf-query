@@ -1,8 +1,8 @@
 /**
- * Once every error is caught, the data hook returns the data
+ * Once every error is caught, the hook returns the data
  *
- * A boundary that catches `DocNotFound` too leaves nothing, so its data hook
- * takes the query and returns the doc itself: no `Result`, nothing to match.
+ * A boundary that catches `DocNotFound` too leaves nothing, so its hook
+ * returns the doc itself: no `Unhandled`, nothing to check or match.
  * `useSession(docList)` is the same: `Session` and the boundaries above it
  * catch everything `ListDocs` can fail with. This file compiles.
  */

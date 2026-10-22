@@ -1,11 +1,11 @@
 /**
- * The boundary chain, from the outside in. Each is a triple: the Provider to
- * mount, a hook that reads the data, and one that reads a `Result`. Each
- * catches errors by `_tag`, and takes them off the types of its hooks and of
- * the hooks of the boundaries inside it.
+ * The boundary chain, from the outside in. Each is a pair: the Provider to
+ * mount, and the hook that reads through it. Each catches errors by `_tag`,
+ * and takes them off the type of its hook and of the hooks of the boundaries
+ * inside it; what's left comes back to the component as an `Unhandled`.
  *
  * - `App` mounts the client, declares what its queries can fail with, and
- *   catches defects, interrupts and failures nothing else catches.
+ *   catches defects and interrupts.
  * - `Network` catches the transport's `RpcClientError`.
  * - `Session` catches the session middleware's `Unauthorized`.
  * - `DocAccess` catches `Forbidden`, around one document.
@@ -28,7 +28,7 @@ export type AppError = Boundary.RpcErrors<typeof DocRpcs>;
 
 const whatCrashed = (cause: Cause.Cause<unknown>) => {
 	if (Cause.hasFails(cause)) {
-		return "a failure nothing caught";
+		return "the client’s layer failed";
 	}
 	return Cause.hasDies(cause) ? "a defect" : "an interrupt";
 };
@@ -53,7 +53,7 @@ const Crashed = (props: Boundary.RootFallbackProps) => {
 		>
 			<p className="text-sm">
 				{Cause.hasFails(props.cause)
-					? "No boundary in the chain catches this error’s tag, and the component read through a data hook, so it came here."
+					? "The client’s services couldn’t be built, so nothing under App can run."
 					: "No typed boundary can catch a defect: it isn’t in any error type. It skipped every boundary on the way up."}
 			</p>
 			<pre className="max-h-40 overflow-auto rounded-md bg-muted p-3 font-mono text-xs">
@@ -148,14 +148,14 @@ export const [Network] = Boundary.catchErrors(App, {
 	tags: ["RpcClientError"],
 });
 
-export const [Session, useSession, useSessionResult] = Boundary.catchErrors(
-	Network,
-	{ fallback: SignIn, name: "Session", tags: ["Unauthorized"] },
-);
+export const [Session, useSession] = Boundary.catchErrors(Network, {
+	fallback: SignIn,
+	name: "Session",
+	tags: ["Unauthorized"],
+});
 
-export const [DocAccess, useDocAccess, useDocAccessResult] =
-	Boundary.catchErrors(Session, {
-		fallback: RequestAccess,
-		name: "DocAccess",
-		tags: ["Forbidden"],
-	});
+export const [DocAccess, useDocAccess] = Boundary.catchErrors(Session, {
+	fallback: RequestAccess,
+	name: "DocAccess",
+	tags: ["Forbidden"],
+});

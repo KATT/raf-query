@@ -3,12 +3,12 @@ import { Button } from "@examples/ui/components/button";
 import { Input } from "@examples/ui/components/input";
 import { cn } from "cn";
 import { Boundary } from "@raf-query/experimental-effect-query";
-import { Match, Result } from "effect";
+import { Match } from "effect";
 import { FileText, Lock } from "lucide-react";
 import { useState } from "react";
 
 import type { Doc } from "./api.ts";
-import { DocAccess, useDocAccessResult, useSession } from "./boundaries.tsx";
+import { DocAccess, useDocAccess, useSession } from "./boundaries.tsx";
 import { Caught } from "./frame.tsx";
 import { docList, docQuery, renameDoc } from "./queries.ts";
 
@@ -24,7 +24,7 @@ export const DocList = (props: {
 	readonly selected: number;
 }) => {
 	// Session and the boundaries above it catch everything ListDocs can fail
-	// with, so the hook returns the docs themselves: there is no failure here.
+	// with, so the hook returns the docs themselves: nothing comes back unhandled.
 	const docs = useSession(docList);
 	return (
 		<nav className="space-y-2">
@@ -69,26 +69,26 @@ export const DocList = (props: {
 export const DocPage = (props: { readonly id: number }) => {
 	// Forbidden went to DocAccess, Unauthorized to Session, RpcClientError to
 	// Network: only DocNotFound is left for this component.
-	const result = useDocAccessResult(docQuery(props.id));
+	const doc = useDocAccess(docQuery(props.id));
 	return (
 		<div className="space-y-3">
 			<TypeChip>
-				useDocAccessResult(docQuery(id)): Result&lt;Doc, DocNotFound&gt;
+				useDocAccess(docQuery(id)): Doc | Unhandled&lt;DocNotFound&gt;
 			</TypeChip>
-			{Result.isSuccess(result) ? (
-				<DocView doc={result.success} />
-			) : (
+			{Boundary.isUnhandled(doc) ? (
 				<Caught name="DocPage" tone="inline" what="DocNotFound, inline">
 					<p className="text-sm">
 						{/* Exhaustive: give GetDoc another error, and this stops compiling. */}
-						{Match.valueTags(result.failure, {
+						{Match.valueTags(doc.error, {
 							DocNotFound: (missing) => `Doc ${missing.docId} doesn’t exist.`,
 						})}{" "}
-						No boundary catches <code>DocNotFound</code>, so it came back as the{" "}
-						<code>Result</code>’s failure, and <code>Match.valueTags</code> had
-						to handle it.
+						No boundary catches <code>DocNotFound</code>, so it came back as an{" "}
+						<code>Unhandled</code>, and <code>Match.valueTags</code> had to
+						handle its error.
 					</p>
 				</Caught>
+			) : (
+				<DocView doc={doc} />
 			)}
 		</div>
 	);
@@ -118,23 +118,23 @@ const RenameForm = (props: { readonly doc: Doc }) => {
 			onSubmit={async (event) => {
 				event.preventDefault();
 				setPending(true);
-				// Result<Doc, DocNotFound | EmptyTitle>: the rest went to the boundaries.
-				const result = await run(renameDoc(props.doc.id, title));
+				// Doc | Unhandled<DocNotFound | EmptyTitle>: the rest went to the boundaries.
+				const renamed = await run(renameDoc(props.doc.id, title));
 				setPending(false);
 				setProblem(
-					Result.isSuccess(result)
-						? undefined
-						: Match.valueTags(result.failure, {
+					Boundary.isUnhandled(renamed)
+						? Match.valueTags(renamed.error, {
 								DocNotFound: () => "This doc was deleted meanwhile.",
 								EmptyTitle: () => "A title can’t be empty.",
-							}),
+							})
+						: undefined,
 				);
 			}}
 		>
 			<div className="flex items-center justify-between">
 				<span className="text-sm font-medium">Rename</span>
 				<TypeChip>
-					run(renameDoc): Result&lt;Doc, DocNotFound | EmptyTitle&gt;
+					run(renameDoc): Doc | Unhandled&lt;DocNotFound | EmptyTitle&gt;
 				</TypeChip>
 			</div>
 			<div className="flex gap-2">

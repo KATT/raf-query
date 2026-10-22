@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from "@effect/vitest";
-import { Context, Effect, Layer, Match, Result, Schema } from "effect";
+import { Context, Effect, Layer, Match, Schema } from "effect";
 
 import {
 	Boundary,
@@ -19,30 +19,27 @@ import {
 } from "./fixtures.ts";
 
 const client = QueryClient.make(docsLayer(() => "ok"));
-const [App, useApp, useAppResult] = Boundary.root({
+const [App, useApp] = Boundary.root({
 	client,
 	errors: Boundary.errors<DocError>(),
 	fallback: () => null,
 	name: "App",
 });
-const [Auth, useAuth, useAuthResult] = Boundary.catchErrors(App, {
+const [Auth, useAuth] = Boundary.catchErrors(App, {
 	fallback: () => null,
 	name: "Auth",
 	tags: ["Unauthorized"],
 });
-const [DocBoundary, useDoc, useDocResult] = Boundary.catchErrors(Auth, {
+const [DocBoundary, useDoc] = Boundary.catchErrors(Auth, {
 	fallback: () => null,
 	name: "Doc",
 	tags: ["Forbidden"],
 });
-const [Everything, useEverything, useEverythingResult] = Boundary.catchErrors(
-	DocBoundary,
-	{
-		fallback: () => null,
-		name: "All",
-		tags: ["NotFound"],
-	},
-);
+const [Everything, useEverything] = Boundary.catchErrors(DocBoundary, {
+	fallback: () => null,
+	name: "All",
+	tags: ["NotFound"],
+});
 
 class Other extends Context.Service<Other, { readonly name: string }>()(
 	"test/Other",
@@ -80,44 +77,42 @@ describe("Boundary types", () => {
 		expectTypeOf(rename).toEqualTypeOf<Mutation.Mutation<never, NotFound>>();
 	});
 
-	it("each boundary's Result hook takes its chain's tags off the failure", () => {
+	it("each boundary's hook takes its chain's tags off what comes back unhandled", () => {
 		function useTypeOnly() {
-			expectTypeOf(useAppResult(docQuery(1))).toEqualTypeOf<
-				Result.Result<Doc, Unauthorized | Forbidden | NotFound>
+			expectTypeOf(useApp(docQuery(1))).toEqualTypeOf<
+				Doc | Boundary.Unhandled<Unauthorized | Forbidden | NotFound>
 			>();
-			expectTypeOf(useAuthResult(docQuery(1))).toEqualTypeOf<
-				Result.Result<Doc, Forbidden | NotFound>
+			expectTypeOf(useAuth(docQuery(1))).toEqualTypeOf<
+				Doc | Boundary.Unhandled<Forbidden | NotFound>
 			>();
-			expectTypeOf(useDocResult(docQuery(1))).toEqualTypeOf<
-				Result.Result<Doc, NotFound>
-			>();
-			expectTypeOf(useEverythingResult(docQuery(1))).toEqualTypeOf<
-				Result.Result<Doc, never>
+			expectTypeOf(useDoc(docQuery(1))).toEqualTypeOf<
+				Doc | Boundary.Unhandled<NotFound>
 			>();
 		}
 		expectTypeOf(useTypeOnly).toBeFunction();
+		expectTypeOf<Boundary.Read<Doc, NotFound>>().toEqualTypeOf<
+			Doc | Boundary.Unhandled<NotFound>
+		>();
 	});
 
-	it("the data hook returns the data, and compiles only when nothing is left", () => {
+	it("when the chain catches everything, the hook returns the data", () => {
 		function useTypeOnly() {
 			expectTypeOf(useEverything(docQuery(1))).toEqualTypeOf<Doc>();
-			// @ts-expect-error -- UnhandledErrors: "NotFound"
-			useDoc(docQuery(1));
-			// @ts-expect-error -- UnhandledErrors: "Forbidden" | "NotFound"
-			useAuth(docQuery(1));
-			// @ts-expect-error -- UnhandledErrors: "Unauthorized" | "Forbidden" | "NotFound"
-			useApp(docQuery(1));
+			expectTypeOf(useEverything(docQuery(1)).title).toBeString();
 		}
 		expectTypeOf(useTypeOnly).toBeFunction();
-		expectTypeOf<
-			Boundary.Exhausted<DocError, "Unauthorized" | "Forbidden">
-		>().toEqualTypeOf<{ readonly UnhandledErrors: "NotFound" }>();
+		expectTypeOf<Boundary.Read<Doc, never>>().toEqualTypeOf<Doc>();
 	});
 
-	it("while errors are left, the data is behind the Result", () => {
+	it("while errors are left, the data is behind an isUnhandled check", () => {
 		function useTypeOnly() {
-			const doc = useDocResult(docQuery(1));
-			// @ts-expect-error -- NotFound is left, so this is a Result, not a Doc
+			const doc = useDoc(docQuery(1));
+			// @ts-expect-error -- 2339: 'title' does not exist on type 'Doc | Unhandled<NotFound>'
+			expectTypeOf(doc.title).toBeString();
+			if (Boundary.isUnhandled(doc)) {
+				expectTypeOf(doc.error).toEqualTypeOf<NotFound>();
+				return;
+			}
 			expectTypeOf(doc.title).toBeString();
 		}
 		expectTypeOf(useTypeOnly).toBeFunction();
@@ -125,11 +120,11 @@ describe("Boundary types", () => {
 
 	it("matching what's left must be exhaustive", () => {
 		function useTypeOnly() {
-			const result = useAuthResult(docQuery(1));
-			if (Result.isFailure(result)) {
+			const doc = useAuth(docQuery(1));
+			if (Boundary.isUnhandled(doc)) {
 				// @ts-expect-error -- Forbidden is missing
-				Match.valueTags(result.failure, { NotFound: () => "missing" });
-				Match.valueTags(result.failure, {
+				Match.valueTags(doc.error, { NotFound: () => "missing" });
+				Match.valueTags(doc.error, {
 					Forbidden: () => "no access",
 					NotFound: () => "missing",
 				});
@@ -235,10 +230,10 @@ describe("Boundary types", () => {
 		});
 		function useTypeOnly() {
 			// @ts-expect-error -- CaughtAsAnotherType: "Forbidden"
-			useDocResult(orgQuery);
+			useDoc(orgQuery);
 			// Through Auth nothing catches "Forbidden", so it's the component's.
-			expectTypeOf(useAuthResult(orgQuery)).toEqualTypeOf<
-				Result.Result<never, OrgForbidden>
+			expectTypeOf(useAuth(orgQuery)).toEqualTypeOf<
+				Boundary.Unhandled<OrgForbidden>
 			>();
 		}
 		expectTypeOf(useTypeOnly).toBeFunction();
@@ -253,8 +248,8 @@ describe("Boundary types", () => {
 			key: ["other"],
 		});
 		function useTypeOnly() {
-			expectTypeOf(useDocResult(other)).toEqualTypeOf<
-				Result.Result<never, Plain | { readonly _tag: "HttpError" }>
+			expectTypeOf(useDoc(other)).toEqualTypeOf<
+				Boundary.Unhandled<Plain | { readonly _tag: "HttpError" }>
 			>();
 		}
 		expectTypeOf(useTypeOnly).toBeFunction();
@@ -273,13 +268,13 @@ describe("Boundary types", () => {
 	it("a query needs only services the root's client provides", () => {
 		function useTypeOnly() {
 			// @ts-expect-error -- Other is not in the client's layer
-			useAppResult(needsOther);
+			useApp(needsOther);
 			expectTypeOf(useWithOther(needsOther)).toEqualTypeOf<string>();
 		}
 		expectTypeOf(useTypeOnly).toBeFunction();
 	});
 
-	it("useRun runs mutations that use the cache, and always resolves with a Result", () => {
+	it("useRun runs mutations that use the cache, and resolves as a read returns", () => {
 		const rename = Mutation.make({
 			effect: Effect.gen(function* () {
 				const doc = yield* QueryCache.fetch(docQuery(1));
@@ -290,12 +285,10 @@ describe("Boundary types", () => {
 		function useTypeOnly() {
 			const run = Boundary.useRun(DocBoundary);
 			expectTypeOf(run(rename)).toEqualTypeOf<
-				Promise<Result.Result<Doc, NotFound>>
+				Promise<Doc | Boundary.Unhandled<NotFound>>
 			>();
 			const runAll = Boundary.useRun(Everything);
-			expectTypeOf(runAll(rename)).toEqualTypeOf<
-				Promise<Result.Result<Doc, never>>
-			>();
+			expectTypeOf(runAll(rename)).toEqualTypeOf<Promise<Doc>>();
 		}
 		expectTypeOf(useTypeOnly).toBeFunction();
 	});

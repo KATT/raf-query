@@ -1,7 +1,7 @@
 /**
  * A mutation is an Effect to run from an event, like a query without a key.
  * `Boundary.useRun(boundary)` runs it: the errors the boundary's chain
- * catches go there, and the rest come back as a `Result`.
+ * catches go there, and the rest come back as an `Unhandled`.
  */
 import { type Effect, Pipeable, Predicate } from "effect";
 

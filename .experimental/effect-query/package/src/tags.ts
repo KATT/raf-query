@@ -59,9 +59,6 @@ export interface WithTag<Tags extends string> {
 	readonly _tag: Tags;
 }
 
-/** For messages: the tag of each error left, or the type itself when it has none. */
-type NamesOf<E> = E extends { readonly _tag: infer T } ? T : E;
-
 type UnionToIntersection<U> = (
 	U extends unknown ? (_: U) => void : never
 ) extends (_: infer I) => void
@@ -106,13 +103,6 @@ export type Catchable<U> = ReadonlyArray<
 
 /** What's left of `E` once a chain catches `Handled`: by tag, as at runtime. */
 export type Left<E, Handled extends string> = Exclude<E, WithTag<Handled>>;
-
-/** The data hook's extra argument type: names the tags nothing catches. */
-export type Exhausted<E, Handled extends string> = [Left<E, Handled>] extends [
-	never,
-]
-	? unknown
-	: { readonly UnhandledErrors: NamesOf<Left<E, Handled>> };
 
 /**
  * Tags a chain catches that `E` carries under a type the universe doesn't
