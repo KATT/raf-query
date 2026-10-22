@@ -240,6 +240,51 @@ importers:
         specifier: 1.0.0
         version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(svelte@5.57.2(@typescript-eslint/types@8.71.1))(typescript@7.0.2)(yaml@2.9.1)
 
+  .experimental/atom/package:
+    devDependencies:
+      '@effect/atom-react':
+        specifier: 4.0.1
+        version: 4.0.1(effect@4.0.1)(react@19.3.0)(scheduler@0.27.0)
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 4.0.1(effect@4.0.1)(vitest@5.0.1)
+      '@testing-library/react':
+        specifier: 16.3.3
+        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@types/node':
+        specifier: 26.6.4
+        version: 26.6.4
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      '@vitest/coverage-v8':
+        specifier: 5.0.1
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.1
+      happy-dom:
+        specifier: 21.0.1
+        version: 21.0.1
+      react:
+        specifier: 19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: 19.3.0
+        version: 19.3.0(react@19.3.0)
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite-plus:
+        specifier: 1.0.0
+        version: 1.0.0(@types/node@26.6.4)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(happy-dom@21.0.1)(jiti@2.7.0)(svelte@5.57.2(@typescript-eslint/types@8.71.1))(typescript@7.0.2)(yaml@2.9.1)
+      vitest:
+        specifier: 5.0.1
+        version: 5.0.1(@types/node@26.6.4)(@vitest/browser-preview@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(happy-dom@21.0.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
+
   .experimental/svelte/package:
     dependencies:
       '@raf-query/core':
@@ -1742,6 +1787,13 @@ packages:
 
   '@dotenvx/primitives@0.8.0':
     resolution: {integrity: sha512-VYJy0uhFm9zTJ1TxBaW/pA8bjbOM/OttaNMwZ1RHG4JKyRG7DhSdiqD1ipQoAyoD22olUtxbP78W9xY3Wd11bg==}
+
+  '@effect/atom-react@4.0.1':
+    resolution: {integrity: sha512-V/vcbFCVY2AV7PvjhmOP37Cr4NofrtxBBGW6M1ckBIBxmpi3sMwdPTxj2obPNE4Ho3gkeEQzRC9zEIQ4BDNdQg==}
+    peerDependencies:
+      effect: ^4.0.1
+      react: '>=19.0.0 <20.0.0'
+      scheduler: '>=0.25.0 <0.28.0'
 
   '@effect/platform-node-shared@4.0.2':
     resolution: {integrity: sha512-xn8aDw9p/QUPt1Yi0C3HUMcycT+MjHfAe19FDUDrUuzcwq0xxskkamVSqbdykF/Dsuus4aZTsCBZA/vkhHIfbQ==}
@@ -6748,6 +6800,9 @@ packages:
   safer-buffer@2.1.2:
     resolution: {integrity: sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==}
 
+  scheduler@0.27.0:
+    resolution: {integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==}
+
   scheduler@0.28.0:
     resolution: {integrity: sha512-juorfCmIkIw8tT+p5BXSm6PJjQF/ycEYmKyzURCIt/RaZIhL+PulbQ9Yu2z1HdOJDdqDTlxA1+xKBmHXJsczAw==}
 
@@ -7774,6 +7829,12 @@ snapshots:
       yocto-spinner: 1.2.2
 
   '@dotenvx/primitives@0.8.0': {}
+
+  '@effect/atom-react@4.0.1(effect@4.0.1)(react@19.3.0)(scheduler@0.27.0)':
+    dependencies:
+      effect: 4.0.1
+      react: 19.3.0
+      scheduler: 0.27.0
 
   '@effect/platform-node-shared@4.0.2(effect@4.0.1)':
     dependencies:
@@ -12880,6 +12941,8 @@ snapshots:
   safe-buffer@5.2.1: {}
 
   safer-buffer@2.1.2: {}
+
+  scheduler@0.27.0: {}
 
   scheduler@0.28.0: {}
 
