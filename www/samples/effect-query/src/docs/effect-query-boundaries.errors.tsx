@@ -1,22 +1,36 @@
-import { Boundary, Query } from "@raf-query/experimental-effect-query";
-import { Effect, Match, Result } from "effect";
+import { Boundary } from "@raf-query/experimental-effect-query";
+import { Match, Result } from "effect";
 
-import { DocNotFound, Forbidden, Unauthorized } from "~/api.ts";
-import { DocAccess, useDocAccess, useSession } from "~/boundaries.tsx";
-import { DocsClient } from "~/client.ts";
+import type { AppError } from "~/boundaries.tsx";
+import {
+	DocAccess,
+	Session,
+	useDocAccess,
+	useDocAccessResult,
+	useSessionResult,
+} from "~/boundaries.tsx";
+import { client } from "~/client.ts";
 import { docQuery } from "~/queries.ts";
 
 // #region unhandled
 export function Title(props: { id: number }) {
+	// @ts-expect-error -- 2345: DocNotFound is left, so the data hook doesn't take the query
 	const doc = useDocAccess(docQuery(props.id));
-	// @ts-expect-error -- 2339: DocNotFound is left, so `doc` is a Result
+	return <h1>{doc.title}</h1>;
+}
+// #endregion
+
+// #region result
+export function ResultTitle(props: { id: number }) {
+	const doc = useDocAccessResult(docQuery(props.id));
+	// @ts-expect-error -- 2339: `doc` is a Result, with DocNotFound left
 	return <h1>{doc.title}</h1>;
 }
 // #endregion
 
 // #region non-exhaustive
 export function Heading(props: { id: number }) {
-	const result = useSession(docQuery(props.id));
+	const result = useSessionResult(docQuery(props.id));
 	if (Result.isSuccess(result)) {
 		return <h1>{result.success.title}</h1>;
 	}
@@ -29,7 +43,7 @@ export function Heading(props: { id: number }) {
 
 // #region already-caught
 export function Page(props: { id: number }) {
-	const result = useDocAccess(docQuery(props.id));
+	const result = useDocAccessResult(docQuery(props.id));
 	if (Result.isSuccess(result)) {
 		return <h1>{result.success.title}</h1>;
 	}
@@ -42,28 +56,48 @@ export function Page(props: { id: number }) {
 // #endregion
 
 // #region catch-twice
-export const [Again, useAgain] = Boundary.catchErrors(DocAccess, {
+export const [Again] = Boundary.catchErrors(DocAccess, {
 	name: "Again",
 	// @ts-expect-error -- 2322: Session already catches Unauthorized
-	errors: [Unauthorized],
+	tags: ["Unauthorized"],
 	fallback: () => <p>Sign in again</p>,
 });
 // #endregion
 
-// #region undeclared
-export const draftQuery = (id: number) =>
-	Query.make({
-		key: ["drafts", id],
-		// @ts-expect-error -- 2322: DocNotFound and RpcClientError have no schema
-		effect: Effect.flatMap(DocsClient, (docs) => docs.GetDoc({ id })),
-		errors: [Forbidden, Unauthorized],
-	});
+// #region typo
+export const [Access] = Boundary.catchErrors(Session, {
+	name: "Access",
+	// @ts-expect-error -- 2820: not a tag of the root's errors
+	tags: ["Forbiden"],
+	fallback: () => <p>No access</p>,
+});
+// #endregion
+
+// #region shared-tag
+interface OrgForbidden {
+	readonly _tag: "Forbidden";
+	readonly orgId: string;
+}
+
+export const [Org] = Boundary.root({
+	name: "Org",
+	client,
+	errors: Boundary.errors<AppError | OrgForbidden>(),
+	fallback: () => <p>Something broke.</p>,
+});
+
+export const [OrgAccess] = Boundary.catchErrors(Org, {
+	name: "OrgAccess",
+	// @ts-expect-error -- 2322: a doc's Forbidden and an org's share the tag
+	tags: ["Forbidden"],
+	fallback: () => <p>No access</p>,
+});
 // #endregion
 
 // #region everything
 export const [Everything, useEverything] = Boundary.catchErrors(DocAccess, {
 	name: "Everything",
-	errors: [DocNotFound],
+	tags: ["DocNotFound"],
 	fallback: (props) => <p>Doc {props.error.docId} is gone.</p>,
 });
 

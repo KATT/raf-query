@@ -5,11 +5,12 @@
 	"description": "Documentation site for raf-query, served at raf-query.katt.dev",
 	"type": "module",
 	"scripts": {
-		"build": "vp build && node build/vercel-output.ts",
+		"build": "node build/effect-query-configs.ts --check && vp build && node build/vercel-output.ts",
 		"dev": "vp dev --port 3004",
+		"effect-query-configs": "node build/effect-query-configs.ts",
 		"start": "vp preview --port 3004",
 		"test": "vp test",
-		"typecheck": "tsc"
+		"typecheck": "tsc && node build/effect-query-configs.ts --check"
 	},
 	"dependencies": {
 		"@examples/kit": "workspace:*",

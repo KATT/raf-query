@@ -8,7 +8,7 @@ import {
 	DocAccess,
 	Network,
 	Session,
-	useDocAccess,
+	useDocAccessResult,
 	useSession,
 } from "~/boundaries.tsx";
 import { client } from "~/client.ts";
@@ -54,7 +54,7 @@ function DocList() {
 
 // #region what-is-left
 function DocPage(props: { id: number }) {
-	const result = useDocAccess(docQuery(props.id));
+	const result = useDocAccessResult(docQuery(props.id));
 	//    ^?
 	return Result.match(result, {
 		onSuccess: (doc) => <h1>{doc.title}</h1>,

@@ -15,20 +15,32 @@ const change = (patch: Partial<Chaos>) => {
 	QueryClient.runFork(client, QueryCache.invalidate([]));
 };
 
-const Toggle = (props: {
+export const Toggle = (props: {
 	readonly checked: boolean;
 	readonly children: ReactNode;
-	readonly hint: string;
+	readonly disabled?: boolean;
+	readonly hint?: ReactNode;
 	readonly onChange: (checked: boolean) => void;
 }) => (
-	<Label className="flex items-start justify-between gap-3">
+	<Label
+		className={cn(
+			"flex items-start justify-between gap-3",
+			props.disabled === true && "opacity-60",
+		)}
+	>
 		<span className="space-y-0.5">
 			<span className="block text-sm font-medium">{props.children}</span>
-			<span className="block text-xs font-normal text-muted-foreground">
-				{props.hint}
-			</span>
+			{props.hint === undefined ? null : (
+				<span className="block text-xs font-normal text-muted-foreground">
+					{props.hint}
+				</span>
+			)}
 		</span>
-		<Switch checked={props.checked} onCheckedChange={props.onChange} />
+		<Switch
+			checked={props.checked}
+			disabled={props.disabled}
+			onCheckedChange={props.onChange}
+		/>
 	</Label>
 );
 

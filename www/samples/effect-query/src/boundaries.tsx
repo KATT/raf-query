@@ -1,18 +1,9 @@
 import { Boundary } from "@raf-query/experimental-effect-query";
-import { Cause } from "effect";
-import { RpcClientError } from "effect/rpc";
+import type { RpcClientError } from "effect/rpc";
 
-import { Forbidden, Unauthorized } from "./api.ts";
+import type { DocRpcs, Forbidden, Unauthorized } from "./api.ts";
 import { client } from "./client.ts";
-
-function Crashed(props: Boundary.RootFallbackProps) {
-	return (
-		<div role="alert">
-			<pre>{Cause.pretty(props.cause)}</pre>
-			<button onClick={props.retry}>Try again</button>
-		</div>
-	);
-}
+import { Crashed } from "./fallbacks.tsx";
 
 function Offline(props: Boundary.FallbackProps<RpcClientError.RpcClientError>) {
 	return (
@@ -31,27 +22,29 @@ function RequestAccess(props: Boundary.FallbackProps<Forbidden>) {
 }
 
 // #region chain
-export const [App, useApp] = Boundary.root({
+export type AppError = Boundary.RpcErrors<typeof DocRpcs>;
+
+export const [App, useApp, useAppResult] = Boundary.root({
 	name: "App",
 	client,
+	errors: Boundary.errors<AppError>(),
 	fallback: Crashed,
 });
 
-export const [Network, useNetwork] = Boundary.catchErrors(App, {
-	name: "Network",
-	errors: [RpcClientError.RpcClientError],
-	fallback: Offline,
-});
+export const [Network, useNetwork, useNetworkResult] = Boundary.catchErrors(
+	App,
+	{ name: "Network", tags: ["RpcClientError"], fallback: Offline },
+);
 
-export const [Session, useSession] = Boundary.catchErrors(Network, {
-	name: "Session",
-	errors: [Unauthorized],
-	fallback: SignIn,
-});
+export const [Session, useSession, useSessionResult] = Boundary.catchErrors(
+	Network,
+	{ name: "Session", tags: ["Unauthorized"], fallback: SignIn },
+);
 
-export const [DocAccess, useDocAccess] = Boundary.catchErrors(Session, {
-	name: "DocAccess",
-	errors: [Forbidden],
-	fallback: RequestAccess,
-});
+export const [DocAccess, useDocAccess, useDocAccessResult] =
+	Boundary.catchErrors(Session, {
+		name: "DocAccess",
+		tags: ["Forbidden"],
+		fallback: RequestAccess,
+	});
 // #endregion
