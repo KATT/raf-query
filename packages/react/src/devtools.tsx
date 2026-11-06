@@ -43,6 +43,7 @@ export interface QueryDevtoolsProps {
 interface Row {
 	readonly entry: Entry;
 	readonly readers: number;
+	readonly state: Entry["state"];
 	readonly status: keyof typeof colors;
 	readonly updatedAt: number;
 }
@@ -74,6 +75,7 @@ function snapshotOf(client: QueryClient): Snapshot {
 			.map((entry) => ({
 				entry,
 				readers: entry.readers.size,
+				state: entry.state,
 				status: statusOf(entry),
 				updatedAt: entry.state.updatedAt,
 			}))
@@ -212,11 +214,7 @@ function Panel(
 								: "never"}
 						</div>
 						<pre style={{ whiteSpace: "pre-wrap" }}>
-							{JSON.stringify(
-								row.entry.state.error ?? row.entry.state.data,
-								null,
-								2,
-							)}
+							{JSON.stringify(row.state.error ?? row.state.data, null, 2)}
 						</pre>
 					</>
 				) : (

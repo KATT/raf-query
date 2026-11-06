@@ -138,8 +138,7 @@ function asResult(
  * waterfall handle, or of a query the cache dropped. On a React Server
  * Components SSR client, that request belongs to the browser instead.
  */
-function startIfMissing(entry: Entry, waterfall: boolean) {
-	const state = entry.state;
+function startIfMissing(entry: Entry, state: State, waterfall: boolean) {
 	if (state.hasData || entry.run || state.status === "error") {
 		return;
 	}
@@ -157,14 +156,16 @@ function startIfMissing(entry: Entry, waterfall: boolean) {
 	void fetchEntry(entry);
 }
 
+type State = Entry["state"];
+
 const disabledReads = new WeakMap<Entry, Thenable<unknown>>();
 
 /**
  * On the server, a disabled query without data reads as a rejection: a
  * `use()` of it inside Suspense leaves that boundary to the browser.
  */
-function readOf(entry: Entry): Thenable<unknown> {
-	if (!entry.client.isServer || isEnabled(entry) || entry.state.hasData) {
+function readOf(entry: Entry, state: State): Thenable<unknown> {
+	if (!entry.client.isServer || isEnabled(entry) || state.hasData) {
 		return entry.thenable;
 	}
 	let read = disabledReads.get(entry);
@@ -175,19 +176,17 @@ function readOf(entry: Entry): Thenable<unknown> {
 	return read;
 }
 
-function pagesAround(entry: Entry) {
+function pagesAround(entry: Entry, state: State) {
 	const options = entry.options;
 	const paged =
-		options !== undefined &&
-		"getNextPageParam" in options &&
-		entry.state.hasData;
+		options !== undefined && "getNextPageParam" in options && state.hasData;
 	const has = (direction: "next" | "previous") =>
 		paged &&
 		pageParamAfter(
 			// SAFETY: options with `getNextPageParam` come from `infiniteQueryOptions`.
 			options as never,
 			// SAFETY: and so does the data they fetched.
-			entry.state.data as never,
+			state.data as never,
 			direction,
 		) !== undefined;
 	return { hasNextPage: has("next"), hasPreviousPage: has("previous") };
@@ -237,19 +236,24 @@ export function useQuery<
 	if (shown !== current && state.hasData) {
 		setShown(current);
 	}
+	const shownState = shown.state;
 	const isPrevious =
 		options?.whilePending === "previous" &&
 		!state.hasData &&
 		shown !== current &&
-		shown.state.hasData;
+		shownState.hasData;
 	const entry = isPrevious ? shown : current;
-	startIfMissing(current, isWaterfallHandle(handle));
+	// Reads of `entry` below take its state as an argument. Core writes a new
+	// state object with every write (and the thenable that carries it), so a
+	// compiler that memoizes those reads recomputes them.
+	const entryState = isPrevious ? shownState : state;
+	startIfMissing(current, state, isWaterfallHandle(handle));
 	const caches = useState(() => ({
 		result: new WeakMap(),
 		select: new WeakMap(),
 	}))[0];
 	const select = entry.options?.select;
-	const read = readOf(entry);
+	const read = readOf(entry, entryState);
 	let thenable: Thenable<unknown> = select
 		? mapThenable(caches.select, read, select)
 		: read;
@@ -259,7 +263,7 @@ export function useQuery<
 	const value =
 		"defined" in handle && handle.defined ? use(thenable) : thenable;
 	const controls = {
-		...pagesAround(entry),
+		...pagesAround(entry, entryState),
 		error: state.error,
 		fetchNextPage: () => settled(fetchEntry(entry, { direction: "next" })),
 		fetchPreviousPage: () =>
@@ -267,8 +271,8 @@ export function useQuery<
 		hash: current.hash,
 		input: handle.input,
 		isFetching: state.isFetching,
-		isFetchingNextPage: entry.state.fetchingDirection === "next",
-		isFetchingPreviousPage: entry.state.fetchingDirection === "previous",
+		isFetchingNextPage: entryState.fetchingDirection === "next",
+		isFetchingPreviousPage: entryState.fetchingDirection === "previous",
 		isPending: !state.hasData,
 		isPrevious,
 		isStale: isStale(current),

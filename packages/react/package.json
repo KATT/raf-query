@@ -52,7 +52,7 @@
 	"scripts": {
 		"prepack": "node ../../scripts/sync-package-docs.ts",
 		"build": "vp pack",
-		"test": "vp test",
+		"test": "vp test --config vitest.compiler.config.ts && vp test",
 		"typecheck": "tsc && tsc -p tsconfig.no-node.json",
 		"publish:npm": "pnpm pack --out package.tgz && npm publish package.tgz --access public && rm package.tgz"
 	},
@@ -69,12 +69,16 @@
 		}
 	},
 	"devDependencies": {
+		"@babel/core": "7.29.7",
+		"@rolldown/plugin-babel": "0.2.4",
 		"@tanstack/react-router": "1.170.42",
 		"@testing-library/react": "16.3.3",
 		"@types/node": "26.6.4",
 		"@types/react": "19.3.0",
 		"@types/react-dom": "19.3.0",
+		"@vitejs/plugin-react": "6.1.2",
 		"@vitest/coverage-v8": "5.0.1",
+		"babel-plugin-react-compiler": "1.0.0",
 		"happy-dom": "21.0.1",
 		"react": "19.3.0",
 		"react-dom": "19.3.0",

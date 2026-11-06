@@ -22,7 +22,7 @@ export default defineConfig({
 			thresholds: { 100: true },
 		},
 		environment: "happy-dom",
-		exclude: ["dist", "node_modules"],
+		exclude: ["dist", "node_modules", "src/**/*.compiler.test.tsx"],
 		setupFiles: ["./vitest.setup.ts"],
 		unstubGlobals: true,
 	},
