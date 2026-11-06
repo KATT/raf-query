@@ -260,10 +260,12 @@ export async function load<const TEntries extends Record<string, LoadEntry>>(
 	return [handles, data] as unknown as Loaded<TEntries>;
 }
 
-const waterfallHandles = new WeakSet<QueryHandle>();
+const waterfallHandles = new WeakSet<object>();
 
 /** Whether a handle came from `waterfallHandle()`: reading it is expected to fetch. */
-export function isWaterfallHandle(handle: QueryHandle): boolean {
+export function isWaterfallHandle(
+	handle: Pick<QueryHandle, "queryKey">,
+): boolean {
 	return waterfallHandles.has(handle);
 }
 

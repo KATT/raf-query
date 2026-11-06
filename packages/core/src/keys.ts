@@ -136,7 +136,7 @@ export function expandTags(tags: ReadonlyArray<Tag>): ReadonlyArray<string> {
 }
 
 /** Any function that returns a query's options. */
-export type AnyFactory = (input?: never) => {
+export type AnyFactory = (input: never) => {
 	readonly queryKey: QueryKeyOption;
 };
 

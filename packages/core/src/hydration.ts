@@ -229,9 +229,9 @@ export function hydrate(client: QueryClient, state: DehydratedState): void {
 		if (entry.tags.length === 0 && sent.tags) {
 			entry.tags = sent.tags;
 		}
-		if (sent.updatedAt > 0) {
+		if (sent.promise === undefined) {
 			takeNewer(entry, sent);
-		} else if (sent.promise) {
+		} else {
 			const result = Promise.resolve(sent.promise);
 			if (!entry.state.hasData && !entry.run) {
 				adopt(

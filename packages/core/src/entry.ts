@@ -191,6 +191,7 @@ export function entryOf(
 	entry.factory = factory;
 	entry.input = input;
 	entry.options = options;
+	scheduleGc(entry);
 	return entry;
 }
 
@@ -459,6 +460,9 @@ export function adopt(
 		startedAt: entry.client["~seq"],
 	};
 	entry.run = run;
+	if (!entry.state.hasData && !entry.pendingThenable) {
+		newPending(entry);
+	}
 	setState(entry, { isFetching: true });
 	Promise.resolve(promise).then(
 		(sent) => {

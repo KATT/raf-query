@@ -24,7 +24,7 @@ function wait(clock: Clock, ms: number, signal: AbortSignal): Promise<void> {
 }
 
 function whenOnline(signal: AbortSignal): Promise<void> {
-	if (!("navigator" in globalThis) || navigator.onLine) {
+	if (!("navigator" in globalThis) || navigator.onLine !== false) {
 		return Promise.resolve();
 	}
 	return new Promise((resolve) => {

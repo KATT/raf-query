@@ -45,9 +45,10 @@
 	"devDependencies": {
 		"@types/node": "26.6.4",
 		"@vitest/coverage-v8": "5.0.1",
+		"fast-check": "catalog:",
 		"typescript": "7.0.2",
 		"vite-plus": "1.0.0",
-		"fast-check": "catalog:"
+		"vitest": "5.0.1"
 	},
 	"publishConfig": {
 		"access": "public",

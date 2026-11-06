@@ -103,7 +103,10 @@ export function queryOptions(options: QueryOptions): QueryOptions {
 }
 
 /** A function of the query's input that returns its options. */
-export type QueryFactory = (input?: never) => QueryOptions;
+export type QueryFactory = (input: never) => {
+	readonly queryFn: (context: never) => unknown;
+	readonly queryKey: QueryKeyOption;
+};
 
 /** Call a factory with an input its caller's types already checked. */
 export function optionsOf(factory: AnyFactory, input: unknown): QueryOptions {
@@ -114,22 +117,13 @@ export function optionsOf(factory: AnyFactory, input: unknown): QueryOptions {
 
 /** What a reader gets: the `select`ed data, or else the `queryFn`'s. */
 export type DataOf<TFactory extends QueryFactory> =
-	ReturnType<TFactory> extends QueryOptions<
-		QueryKeyOption,
-		unknown,
-		unknown,
-		infer TData
-	>
+	ReturnType<TFactory> extends { readonly [dataTag]?: infer TData }
 		? TData
 		: never;
 
 /** The `fail()` values a factory's `queryFn` returns. */
 export type ErrorOf<TFactory extends QueryFactory> =
-	ReturnType<TFactory> extends QueryOptions<
-		QueryKeyOption,
-		unknown,
-		infer TFail
-	>
+	ReturnType<TFactory> extends { readonly [failTag]?: infer TFail }
 		? TFail
 		: never;
 
