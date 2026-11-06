@@ -145,9 +145,6 @@ function startIfMissing(entry: Entry, waterfall: boolean) {
 	}
 	const client = entry.client;
 	if (!isEnabled(entry)) {
-		if (client.isServer) {
-			throw new QueryDisabledError(`Query ${entry.hash} is disabled`);
-		}
 		return;
 	}
 	assertStartsRequests(client, entry.hash);
@@ -158,6 +155,24 @@ function startIfMissing(entry: Entry, waterfall: boolean) {
 		);
 	}
 	void fetchEntry(entry);
+}
+
+const disabledReads = new WeakMap<Entry, Thenable<unknown>>();
+
+/**
+ * On the server, a disabled query without data reads as a rejection: a
+ * `use()` of it inside Suspense leaves that boundary to the browser.
+ */
+function readOf(entry: Entry): Thenable<unknown> {
+	if (!entry.client.isServer || isEnabled(entry) || entry.state.hasData) {
+		return entry.thenable;
+	}
+	let read = disabledReads.get(entry);
+	if (!read) {
+		read = rejected(new QueryDisabledError(`Query ${entry.hash} is disabled`));
+		disabledReads.set(entry, read);
+	}
+	return read;
 }
 
 function pagesAround(entry: Entry) {
@@ -234,9 +249,10 @@ export function useQuery<
 		select: new WeakMap(),
 	}))[0];
 	const select = entry.options?.select;
+	const read = readOf(entry);
 	let thenable: Thenable<unknown> = select
-		? mapThenable(caches.select, entry.thenable, select)
-		: entry.thenable;
+		? mapThenable(caches.select, read, select)
+		: read;
 	if (options?.result) {
 		thenable = asResult(caches.result, thenable);
 	}

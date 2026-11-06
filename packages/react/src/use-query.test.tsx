@@ -12,7 +12,7 @@ import {
 	waterfallHandle,
 } from "@raf-query/core";
 import { act, fireEvent, screen } from "@testing-library/react";
-import { use } from "react";
+import { Suspense, use } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -394,10 +394,43 @@ describe("useQuery", () => {
 	});
 
 	describe("on the server", () => {
-		it("throws for a disabled query", () => {
+		it("hands a plain read of a disabled query to the browser", async () => {
+			vi.spyOn(console, "error").mockImplementation(() => {});
 			const backend = createBackend();
 			const client = createQueryClient({ isServer: true });
 			const handle = waterfallHandle(backend.disabledQuery, { id: 1 });
+			const reads: Array<Promise<unknown>> = [];
+			function Child(props: { readonly issue: Promise<unknown> }) {
+				use(props.issue);
+				return <p>loaded</p>;
+			}
+			function Disabled() {
+				const [issue] = useQuery(backend.disabledQuery, handle);
+				reads.push(issue);
+				return (
+					<Suspense fallback={<p>in the browser</p>}>
+						<Child issue={issue} />
+					</Suspense>
+				);
+			}
+			const html = renderToString(
+				<QueryClientProvider client={client}>
+					<Disabled />
+				</QueryClientProvider>,
+			);
+
+			expect(html).toContain("in the browser");
+			await expect(reads[0]).rejects.toThrow(QueryDisabledError);
+			expect(backend.requests).toHaveLength(0);
+		});
+
+		it("throws for a defined read of a disabled query", () => {
+			const backend = createBackend();
+			const client = createQueryClient({ isServer: true });
+			const handle = {
+				...waterfallHandle(backend.disabledQuery, { id: 1 }),
+				defined: true as const,
+			};
 			function Disabled() {
 				useQuery(backend.disabledQuery, handle);
 				return null;

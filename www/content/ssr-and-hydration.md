@@ -47,7 +47,7 @@ tanstack-start/src/docs/ssr-and-hydration.ts#browser-only-queries
 
 A server client never starts a disabled query and never sends it. A loader that also runs on the server starts it with a prefetch entry: `load` returns its handle on the server too, and the browser starts the request when the loader or the first read runs there. Fetch and ensure entries can't wait for it on the server, so `load` rejects with `QueryDisabledError`.
 
-On the server, `useQuery` throws `QueryDisabledError` for a disabled query with no data. Put the reader inside a Suspense boundary: React sends the fallback from the server and renders the content in the browser.
+On the server, a disabled query with no data reads as a promise that rejects with `QueryDisabledError`: `useQuery` with a plain handle returns it, and a defined handle throws it. Put the component that `use()`s it inside a Suspense boundary: React sends the fallback from the server and renders the content in the browser.
 
 ```sample
 tanstack-start/src/docs/ssr-and-hydration.tsx#push-state
