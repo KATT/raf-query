@@ -416,10 +416,12 @@ describe("useQuery", () => {
 			const html = renderToString(
 				<QueryClientProvider client={client}>
 					<Disabled />
+					<Disabled />
 				</QueryClientProvider>,
 			);
 
 			expect(html).toContain("in the browser");
+			expect(reads[1]).toBe(reads[0]);
 			await expect(reads[0]).rejects.toThrow(QueryDisabledError);
 			expect(backend.requests).toHaveLength(0);
 		});
