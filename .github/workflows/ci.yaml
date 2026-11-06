@@ -58,7 +58,6 @@ jobs:
           key: nextjs-build-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.run_id }}
           path: |
             examples/nextjs/.next/cache
-            .experimental/tanstack-query/nextjs/.next/cache
           restore-keys: |
             nextjs-build-${{ hashFiles('pnpm-lock.yaml') }}-
             nextjs-build-
