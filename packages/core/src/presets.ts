@@ -2,17 +2,19 @@ import { invalidateOnAction } from "./action.ts";
 import type { Feature, Link } from "./client.ts";
 import {
 	focusRefetch,
+	type FocusRefetchMeta,
 	polling,
 	type PollingMeta,
 	reconnectRefetch,
+	type ReconnectRefetchMeta,
 } from "./features.ts";
 import { retry, type RetryMeta } from "./links.ts";
 
 /** What `recommended()` returns: its parts keep the `meta` they declare. */
 export interface Recommended {
 	readonly features: readonly [
-		Feature,
-		Feature,
+		Feature<{ readonly meta: FocusRefetchMeta }>,
+		Feature<{ readonly meta: ReconnectRefetchMeta }>,
 		Feature<{ readonly meta: PollingMeta }>,
 		Feature,
 	];

@@ -186,6 +186,8 @@ describe("root types", () => {
 		>().toEqualTypeOf<{
 			readonly meta: {
 				readonly refetchInterval: number | false | undefined;
+				readonly refetchOnReconnect: boolean | undefined;
+				readonly refetchOnWindowFocus: boolean | undefined;
 				readonly retry: number | false | undefined;
 			};
 		}>();

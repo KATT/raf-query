@@ -30,7 +30,11 @@ function browser() {
 	return { document, window };
 }
 
-function counter(options?: { readonly refetchInterval?: number }) {
+function counter(options?: {
+	readonly refetchInterval?: number;
+	readonly refetchOnReconnect?: boolean;
+	readonly refetchOnWindowFocus?: boolean;
+}) {
 	let calls = 0;
 	const factory = () =>
 		queryOptions({
@@ -68,6 +72,25 @@ describe("focusRefetch", () => {
 		const source = counter();
 		await fetchEntry(entryOf(client, source.factory, undefined));
 		globals.window.dispatchEvent(new Event("focus"));
+
+		expect(source.calls()).toBe(1);
+	});
+
+	it("skips queries that opt out in their meta", async () => {
+		const globals = browser();
+		const client = testClient({
+			features: [focusRefetch(), reconnectRefetch()],
+		});
+		using _mounted = { [Symbol.dispose]: mount(client) };
+		const source = counter({
+			refetchOnReconnect: false,
+			refetchOnWindowFocus: false,
+		});
+		const read = entryOf(client, source.factory, undefined);
+		await fetchEntry(read);
+		using _reader = { [Symbol.dispose]: subscribeEntry(read, () => {}) };
+		globals.window.dispatchEvent(new Event("focus"));
+		globals.window.dispatchEvent(new Event("online"));
 
 		expect(source.calls()).toBe(1);
 	});

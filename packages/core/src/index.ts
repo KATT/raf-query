@@ -31,9 +31,11 @@ export {
 } from "./fail.ts";
 export {
 	focusRefetch,
+	type FocusRefetchMeta,
 	polling,
 	type PollingMeta,
 	reconnectRefetch,
+	type ReconnectRefetchMeta,
 } from "./features.ts";
 export {
 	type InfiniteData,
