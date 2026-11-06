@@ -63,6 +63,14 @@ jobs:
             nextjs-build-
       - run: pnpm build:examples
 
+  bundle_size:
+    name: Bundle Size
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - run: pnpm bundle-size
+
   engines_check:
     name: Engines Check
     runs-on: ubuntu-latest

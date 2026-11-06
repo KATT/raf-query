@@ -105,8 +105,8 @@
 		},
 		"tooling/bundle-size": {
 			// Fixtures are bundled by path from `measure.ts`. `analyze.ts` is
-			// a CLI. Their exports are the measured surface.
-			"entry": ["src/analyze.ts", "fixtures/**/*.{ts,tsx}"],
+			// a CLI.
+			"entry": ["src/analyze.ts", "fixtures/*.{ts,tsx}"],
 			"includeEntryExports": false,
 		},
 		"tooling/rsc-frameworks": {
