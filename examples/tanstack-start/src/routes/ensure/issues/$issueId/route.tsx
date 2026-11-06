@@ -8,7 +8,12 @@ import { AssigneeCardSkeleton } from "@examples/kit/components/user";
 import { Button, buttonVariants } from "@examples/ui/components/button";
 import { cn } from "@examples/ui/lib/utils";
 import { Separator } from "@examples/ui/components/separator";
-import { allKeyed, type QueryHandleWithData, useQuery } from "@raf-query/react";
+import {
+	type DefinedQueryHandle,
+	ensureEntry,
+	load,
+	useQuery,
+} from "@raf-query/react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Suspense } from "react";
@@ -30,12 +35,12 @@ export const Route = createFileRoute("/ensure/issues/$issueId")({
 		}
 		// `ensure` waits for data the cache doesn't have. Cached data, even
 		// stale, comes back at once and refetches behind the page.
-		const handles = await allKeyed({
-			assignee: qc.ensure(assigneeQuery, { issueId: id }),
-			comments: qc.ensure(commentsQuery, { issueId: id }),
-			issue: qc.ensure(issueQuery, { id }),
+		const [handles, data] = await load(qc, {
+			assignee: ensureEntry(assigneeQuery, { issueId: id }),
+			comments: ensureEntry(commentsQuery, { issueId: id }),
+			issue: ensureEntry(issueQuery, { id }),
 		});
-		if (handles.issue.data === null) {
+		if (data.issue === null) {
 			throw notFound();
 		}
 		return handles;
@@ -132,7 +137,7 @@ function IssueNav(props: { readonly id: number }) {
 	);
 }
 
-function useIssue(handle: QueryHandleWithData<typeof issueQuery>) {
+function useIssue(handle: DefinedQueryHandle<typeof issueQuery>) {
 	const [issue] = useQuery(issueQuery, handle);
 	if (!issue) {
 		throw notFound();
@@ -141,7 +146,7 @@ function useIssue(handle: QueryHandleWithData<typeof issueQuery>) {
 }
 
 function IssueBody(props: {
-	readonly handle: QueryHandleWithData<typeof issueQuery>;
+	readonly handle: DefinedQueryHandle<typeof issueQuery>;
 }) {
 	const issue = useIssue(props.handle);
 
@@ -157,7 +162,7 @@ function IssueBody(props: {
 }
 
 function IssueStatus(props: {
-	readonly handle: QueryHandleWithData<typeof issueQuery>;
+	readonly handle: DefinedQueryHandle<typeof issueQuery>;
 }) {
 	const issue = useIssue(props.handle);
 	return <StatusSelect align="end" issueId={issue.id} status={issue.status} />;

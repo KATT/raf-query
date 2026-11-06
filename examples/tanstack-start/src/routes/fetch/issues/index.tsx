@@ -1,7 +1,7 @@
 import { IssueListInput } from "@examples/db/types";
 import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { allKeyed } from "@raf-query/react";
+import { fetchEntry, load } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense } from "react";
 
@@ -13,14 +13,15 @@ import { StatusFilter } from "./-components/status-filter.tsx";
 export const Route = createFileRoute("/fetch/issues/")({
 	validateSearch: IssueListInput,
 	loaderDeps: (args) => args.search,
-	loader: (args) => {
+	loader: async (args) => {
 		const qc = args.context.queryClient;
 		// `fetch` waits for fresh data: on a cache miss, and when the cached
 		// data is stale.
-		return allKeyed({
-			counts: qc.fetch(issueCountsQuery),
-			issues: qc.fetch(issueListQuery, args.deps),
+		const [handles] = await load(qc, {
+			counts: fetchEntry(issueCountsQuery),
+			issues: fetchEntry(issueListQuery, args.deps),
 		});
+		return handles;
 	},
 	component: IssuesPage,
 });

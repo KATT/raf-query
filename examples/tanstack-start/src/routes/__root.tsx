@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import { removeAll } from "@raf-query/react";
 import type { QueryTimeDefaults } from "@examples/db/types";
 import { AppHeader } from "@examples/kit/components/app-header";
 import { Logo } from "@examples/kit/components/logo";
@@ -87,7 +88,7 @@ function RootDocument(props: { readonly children: ReactNode }) {
 									setPrefetch(next);
 								}}
 								onReset={() => {
-									router.options.context.queryClient.clear();
+									removeAll(router.options.context.queryClient);
 									router.clearCache();
 									window.location.reload();
 								}}

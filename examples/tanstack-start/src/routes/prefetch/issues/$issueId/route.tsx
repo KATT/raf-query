@@ -8,7 +8,12 @@ import { AssigneeCardSkeleton } from "@examples/kit/components/user";
 import { Button, buttonVariants } from "@examples/ui/components/button";
 import { cn } from "@examples/ui/lib/utils";
 import { Separator } from "@examples/ui/components/separator";
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import {
+	load,
+	prefetchEntry,
+	type QueryHandle,
+	useQuery,
+} from "@raf-query/react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Suspense, use } from "react";
@@ -22,7 +27,7 @@ import { AssigneeCard } from "./-components/assignee-card.tsx";
 import { Comments } from "./-components/comments.tsx";
 
 export const Route = createFileRoute("/prefetch/issues/$issueId")({
-	loader: (args) => {
+	loader: async (args) => {
 		const qc = args.context.queryClient;
 		const id = Number(args.params.issueId);
 		if (!IssueId.safeParse(id).success) {
@@ -31,11 +36,12 @@ export const Route = createFileRoute("/prefetch/issues/$issueId")({
 		// `prefetch` starts each query and returns its handle at once. The
 		// page shows skeletons until the data lands, and finds out about a
 		// missing issue when it reads it.
-		return {
-			assignee: qc.prefetch(assigneeQuery, { issueId: id }),
-			comments: qc.prefetch(commentsQuery, { issueId: id }),
-			issue: qc.prefetch(issueQuery, { id }),
-		};
+		const [handles] = await load(qc, {
+			assignee: prefetchEntry(assigneeQuery, { issueId: id }),
+			comments: prefetchEntry(commentsQuery, { issueId: id }),
+			issue: prefetchEntry(issueQuery, { id }),
+		});
+		return handles;
 	},
 	component: IssuePage,
 	// Previous and next stay on this route, so a new id mounts a fresh page.
