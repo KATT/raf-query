@@ -1,6 +1,9 @@
 import {
+	createQueryClient,
+	ensureEntry,
 	HydrationBoundary,
-	QueryClient,
+	load,
+	prefetchEntry,
 	QueryProvider,
 } from "@raf-query/react";
 import { Suspense } from "react";
@@ -11,17 +14,19 @@ import { commentsQuery, postQuery, queryClientConfig } from "./queries.ts";
 
 /** The docs' Next.js page and root layout, as one server component. */
 export async function Page() {
-	const qc = new QueryClient(queryClientConfig);
-	const comments = qc.prefetch(commentsQuery, { slug: "hello" });
-	const post = await qc.ensure(postQuery, { slug: "hello" });
+	const qc = createQueryClient(queryClientConfig);
+	const [handles] = await load(qc, {
+		comments: prefetchEntry(commentsQuery, { slug: "hello" }),
+		post: ensureEntry(postQuery, { slug: "hello" }),
+	});
 	return (
 		<html lang="en">
 			<body>
 				<QueryProvider config={queryClientConfig}>
 					<HydrationBoundary client={qc}>
-						<Post handle={post} />
+						<Post handle={handles.post} />
 						<Suspense fallback={<p>Loading comments…</p>}>
-							<Comments handle={comments} />
+							<Comments handle={handles.comments} />
 						</Suspense>
 					</HydrationBoundary>
 				</QueryProvider>

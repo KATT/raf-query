@@ -1,4 +1,13 @@
-import { QueryClient, QueryClientProvider, useQuery } from "@raf-query/react";
+import {
+	createQueryClient,
+	ensureEntry,
+	load,
+	prefetchEntry,
+	type QueryClient,
+	QueryClientProvider,
+	recommended,
+	useQuery,
+} from "@raf-query/react";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import {
 	createRootRouteWithContext,
@@ -16,21 +25,29 @@ const rootRoute = createRootRouteWithContext<{
 	readonly queryClient: QueryClient;
 }>()({ component: Outlet });
 
+async function loadIssue(args: {
+	readonly context: { readonly queryClient: QueryClient };
+	readonly params: { readonly issueId: string };
+}) {
+	const qc = args.context.queryClient;
+	const id = Number(args.params.issueId);
+	const [handles] = await load(qc, {
+		comments: prefetchEntry(commentsQuery, { issueId: id }),
+		issue: ensureEntry(issueQuery, { id }),
+	});
+	return handles;
+}
+
 const issueRoute = createRoute({
 	component: IssuePage,
 	getParentRoute: () => rootRoute,
-	loader: async (args) => {
-		const qc = args.context.queryClient;
-		const id = Number(args.params.issueId);
-		const comments = qc.prefetch(commentsQuery, { issueId: id });
-		const issue = await qc.ensure(issueQuery, { id });
-		return { comments, issue };
-	},
+	loader: loadIssue,
 	path: "/issues/$issueId",
 });
 
 function IssuePage() {
-	const data = issueRoute.useLoaderData();
+	const data: Awaited<ReturnType<typeof loadIssue>> =
+		issueRoute.useLoaderData();
 	const [issue] = useQuery(issueQuery, data.issue);
 	return (
 		<article>
@@ -42,9 +59,9 @@ function IssuePage() {
 	);
 }
 
-/** The Start example's setup: loaders start queries, the integration streams them. */
+/** The Start example's setup: recommended behaviors, loaders start queries, the integration streams them. */
 export function createAppRouter() {
-	const queryClient = new QueryClient({ defaults: { staleTime: 5000 } });
+	const queryClient = createQueryClient({ ...recommended(), staleTime: 5000 });
 	const router = createRouter({
 		context: { queryClient },
 		defaultPreload: "intent",

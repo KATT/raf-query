@@ -1,4 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+	dehydrate,
+	HydrationBoundary,
+	QueryClient,
+	QueryClientProvider,
+} from "@tanstack/react-query";
 import { Suspense } from "react";
 
 import { Comments } from "./comments.tsx";
@@ -50,6 +55,23 @@ export async function actionsApp() {
 			<Suspense fallback="Loading">
 				<Comments issueId={1} />
 			</Suspense>
+		</QueryClientProvider>
+	);
+}
+
+/** The first app, rendered on a server and hydrated in the browser: both halves. */
+export async function hydratedApp() {
+	const server = new QueryClient();
+	await server.query(issueQuery({ id: 1 })).catch(noop);
+	const state = dehydrate(server);
+	const queryClient = new QueryClient();
+	return (
+		<QueryClientProvider client={queryClient}>
+			<HydrationBoundary state={state}>
+				<Suspense fallback="Loading">
+					<IssueTitle id={1} />
+				</Suspense>
+			</HydrationBoundary>
 		</QueryClientProvider>
 	);
 }

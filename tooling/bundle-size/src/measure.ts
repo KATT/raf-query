@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 /**
- * Bundle the same small apps written with TanStack Query, with raf-query's
- * experimental TanStack-backed package, and with raf-query, and print their
- * minified / gzip sizes as Markdown. The fixtures (`fixtures/*`) mirror the
+ * Bundle the same small apps written with TanStack Query and with raf-query,
+ * and print their minified / gzip sizes as Markdown. The fixtures (`fixtures/*`) mirror the
  * TanStack Start example: factories built with `queryOptions`, loaders that
  * prefetch, components that read with `useQuery`, form actions that
  * invalidate. They build with the Start example's bundler setup: Vite
  * (Rolldown) with `@vitejs/plugin-react` and the React Compiler. React and
  * TanStack Router are external, since an app ships them either way.
  *
- * The full Start example apps are built and measured too (client JS only).
+ * The first app is raf-query's budget: a client-only base (no links,
+ * features or hydration) must stay under 5 kB gzip, and the run fails past
+ * it. The full Start example app is built and measured too (client JS only).
  *
  * Usage: node src/measure.ts [--dist] [--no-apps]
  *   --dist     bundle the packages' built `dist/` (run `pnpm build` first),
@@ -25,14 +26,13 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { Console, Effect, FileSystem, Path } from "effect";
 import { build } from "vite";
 
-type Library = "raf-on-tanstack" | "raf-query" | "tanstack-query";
+type Library = "raf-query" | "tanstack-query";
 
 const libraries: ReadonlyArray<{
 	readonly id: Library;
 	readonly name: string;
 }> = [
 	{ id: "tanstack-query", name: "TanStack Query" },
-	{ id: "raf-on-tanstack", name: "raf-query on TanStack (experimental)" },
 	{ id: "raf-query", name: "raf-query" },
 ];
 
@@ -62,28 +62,26 @@ const scenarios: ReadonlyArray<Scenario> = [
 		name: "+ form action that invalidates",
 	},
 	{
-		app: { export: "createAppRouter", module: "router.tsx" },
+		app: { export: "hydratedApp", module: "apps.tsx" },
 		libraries: allLibraries,
-		name: "TanStack Router app (loaders + SSR integration)",
+		name: "First app + server dehydrate and `HydrationBoundary`",
 	},
 	{
-		app: { export: "effectApp", module: "effect.tsx" },
-		libraries: ["raf-query"],
-		name: "Effect `queryFn` + `Schedule` retry",
+		app: { export: "createAppRouter", module: "router.tsx" },
+		libraries: allLibraries,
+		name: "TanStack Router app (recommended behaviors, loaders + SSR integration)",
 	},
 ];
 
+/** gzip budget of raf-query's first app: the client-only base. */
+const baseBudget = 5 * 1024;
+
 const exampleApps = [
-	{
-		dir: ".experimental/tanstack-query/start",
-		library: "raf-on-tanstack",
-	},
 	{ dir: "examples/tanstack-start", library: "raf-query" },
 ] as const;
 
 const reactExternal = /^(react|react-dom|scheduler)($|\/)/;
 const routerExternal = /^@tanstack\/(history|react-router|router-core)($|\/)/;
-const effectExternal = /^effect($|\/)/;
 
 interface Size {
 	readonly gzip: number;
@@ -138,7 +136,15 @@ Effect.gen(function* () {
 	const alias = dist
 		? [
 				{ find: /^@raf-query\/core$/, replacement: source("core", "index") },
+				{
+					find: /^@raf-query\/core\/(groups|hydration|internal)$/,
+					replacement: source("core", "$1"),
+				},
 				{ find: /^@raf-query\/react$/, replacement: source("react", "index") },
+				{
+					find: /^@raf-query\/react\/(groups|hydration)$/,
+					replacement: source("react", "$1"),
+				},
 				{
 					find: /^@raf-query\/react\/tanstack-router$/,
 					replacement: source("react", "tanstack-router-browser"),
@@ -186,7 +192,6 @@ Effect.gen(function* () {
 	const rows = [];
 	for (const [index, scenario] of scenarios.entries()) {
 		const sizes = new Map<Library, Size>();
-		let effectShare: number | undefined;
 		for (const library of scenario.libraries) {
 			const appModule = path.join(
 				packageDir,
@@ -198,38 +203,34 @@ Effect.gen(function* () {
 			const external = [reactExternal, routerExternal];
 			const size = yield* bundle(`${index}-${library}`, code, external);
 			sizes.set(library, size);
-			if (library === "raf-query") {
-				const withoutEffect = yield* bundle(
-					`${index}-${library}-no-effect`,
-					code,
-					[...external, effectExternal],
-				);
-				effectShare = size.gzip - withoutEffect.gzip;
-			}
 		}
-		rows.push({ effectShare, name: scenario.name, sizes });
+		rows.push({ name: scenario.name, sizes });
 	}
 
 	const header = libraries.map((library) => library.name);
 	yield* Console.log(
 		`Fixture apps, ${dist ? "packages' dist/" : "packages' src/"}, gzip (minified in parentheses):\n`,
 	);
-	yield* Console.log(
-		`| App | ${header.join(" | ")} | Effect's share of raf-query |`,
-	);
-	yield* Console.log(`| --- | ${header.map(() => "--:").join(" | ")} | --: |`);
+	yield* Console.log(`| App | ${header.join(" | ")} |`);
+	yield* Console.log(`| --- | ${header.map(() => "--:").join(" | ")} |`);
 	for (const row of rows) {
 		const cells = libraries.map((library) => {
 			const size = row.sizes.get(library.id);
 			return size ? `${kb(size.gzip)} (${kb(size.min)})` : "—";
 		});
-		yield* Console.log(
-			`| ${row.name} | ${cells.join(" | ")} | ${row.effectShare === undefined ? "—" : kb(row.effectShare)} |`,
-		);
+		yield* Console.log(`| ${row.name} | ${cells.join(" | ")} |`);
 	}
 	yield* Console.log(
 		"\nApp code is identical across columns; only the query library differs.",
 	);
+	const base = rows[0]?.sizes.get("raf-query");
+	if (base !== undefined && base.gzip > baseBudget) {
+		return yield* Effect.fail(
+			new Error(
+				`raf-query's client-only base is ${kb(base.gzip)} gzip, over its ${kb(baseBudget)} budget`,
+			),
+		);
+	}
 
 	if (process.argv.includes("--no-apps")) {
 		return;

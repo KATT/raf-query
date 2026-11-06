@@ -10,8 +10,8 @@ export function issueQuery(input: { readonly id: number }) {
 }
 
 export function commentsQuery(input: { readonly issueId: number }) {
-	return infiniteQueryOptions<CommentPage, number>({
-		getNextPageParam: (lastPage) => lastPage.nextCursor,
+	return infiniteQueryOptions({
+		getNextPageParam: (lastPage: CommentPage) => lastPage.nextCursor,
 		initialPageParam: 0,
 		queryFn: (context) =>
 			listComments({ cursor: context.pageParam, issueId: input.issueId }),

@@ -66,7 +66,7 @@ describe("@vitejs/plugin-rsc", () => {
 				// The pending entry crossed as a promise, resolved later in the
 				// stream.
 				expect(payload).toMatch(
-					/"key":\["comments","hello"\],"promise":"\$@\w+"/,
+					/"queryKey":\["comments","hello"\],"promise":"\$@\w+"/,
 				);
 				expect(payload).toContain('"data":["First comment on hello"]');
 				expect(globalThis.queryFnCalls).toEqual([

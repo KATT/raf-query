@@ -1,4 +1,9 @@
-import { type QueryHandle, useQuery, useQueryClient } from "@raf-query/react";
+import {
+	invalidateOne,
+	type QueryHandle,
+	useQuery,
+	useQueryClient,
+} from "@raf-query/react";
 import { use } from "react";
 
 import { type Issue, renameIssue } from "../shared/api.ts";
@@ -21,7 +26,7 @@ export function EditTitle(props: { readonly issue: Issue }) {
 			action={async (formData) => {
 				const title = String(formData.get("title") ?? "");
 				await renameIssue({ id: props.issue.id, title });
-				await queryClient.invalidate(issueQuery, { id: props.issue.id });
+				await invalidateOne(queryClient, issueQuery, { id: props.issue.id });
 			}}
 		>
 			<input defaultValue={props.issue.title} name="title" />
