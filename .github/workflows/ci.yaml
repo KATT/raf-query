@@ -113,9 +113,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare
-      # Coverage stays available locally (`pnpm test --coverage`); CI stopped
-      # uploading because Codecov rejected every run with HTTP 429 (no token).
-      - run: pnpm test
+      # `--coverage` enforces each package's thresholds (100%). Nothing is
+      # uploaded: Codecov rejected every run with HTTP 429 (no token).
+      - run: pnpm test --coverage
 
   type_check:
     name: Type Check

@@ -8,9 +8,15 @@ export default defineConfig({
 	test: {
 		clearMocks: true,
 		coverage: {
-			include: ["src"],
+			exclude: ["src/**/*.test.{ts,tsx}", "src/test-utils.{ts,tsx}"],
+			include: ["src/**/*.{ts,tsx}"],
 			reporter: ["html", "lcov", "text-summary"],
-			thresholds: { 100: true },
+			thresholds: {
+				branches: 100,
+				functions: 100,
+				lines: 100,
+				statements: 100,
+			},
 		},
 		environment: "happy-dom",
 		exclude: ["dist", "node_modules"],
