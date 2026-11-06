@@ -1,0 +1,14 @@
+{
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"buildCommand": "",
+	"framework": null,
+	"installCommand": "",
+	"outputDirectory": ".",
+	"redirects": [
+		{
+			"destination": "https://raf-query.katt.dev/docs/examples",
+			"permanent": true,
+			"source": "/(.*)"
+		}
+	]
+}
