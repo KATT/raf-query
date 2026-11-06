@@ -80,7 +80,7 @@ Effect.gen(function* () {
 		const over =
 			base === undefined || row === base || row.scenario.imports.length === 0
 				? "—"
-				: `+${kb(row.gzip - base.gzip)}`;
+				: `+${kb(row.gzip - base.gzip)} (+${Math.round(((row.gzip - base.gzip) / base.gzip) * 100)}%)`;
 		yield* Console.log(
 			`| ${row.scenario.name} | ${kb(row.gzip)} | ${over} | ${row.found.join(", ") || "none"} |`,
 		);

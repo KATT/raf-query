@@ -88,9 +88,14 @@ export const scenarios: ReadonlyArray<Scenario> = [
 		name: "+ `polling()`",
 	},
 	{
-		fixture: "refetch.tsx",
-		imports: ["hooks", "focusRefetch", "reconnectRefetch"],
-		name: "+ `focusRefetch()`, `reconnectRefetch()`",
+		fixture: "focus-refetch.tsx",
+		imports: ["hooks", "focusRefetch"],
+		name: "+ `focusRefetch()`",
+	},
+	{
+		fixture: "reconnect-refetch.tsx",
+		imports: ["hooks", "reconnectRefetch"],
+		name: "+ `reconnectRefetch()`",
 	},
 	{
 		fixture: "groups.tsx",
@@ -106,6 +111,18 @@ export const scenarios: ReadonlyArray<Scenario> = [
 		fixture: "boundary.tsx",
 		imports: ["hooks", "boundary"],
 		name: "+ `QueryBoundary`",
+	},
+	{
+		fixture: "tanstack-defaults.tsx",
+		imports: [
+			"hooks",
+			"hydration",
+			"retry",
+			"polling",
+			"focusRefetch",
+			"reconnectRefetch",
+		],
+		name: "TanStack defaults (`retry()`, focus and reconnect refetch, `polling()`, hydration)",
 	},
 	{
 		fixture: "everything.tsx",
