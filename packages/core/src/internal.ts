@@ -8,7 +8,10 @@ export {
 	entryOf,
 	fetchEntry,
 	isEnabled,
+	isInvalidated,
 	isStale,
+	remove,
+	reset,
 	subscribeEntry,
 } from "./entry.ts";
 export { pageParamAfter } from "./infinite.ts";
@@ -20,4 +23,4 @@ export {
 	prefetch,
 	readData,
 } from "./load.ts";
-export { mapThenable, type Thenable } from "./thenable.ts";
+export { fulfilled, mapThenable, pending, rejected } from "./thenable.ts";

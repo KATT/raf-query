@@ -199,7 +199,8 @@ export function isEnabled(entry: Entry): boolean {
 	return entry.options?.enabled !== false;
 }
 
-function isInvalidated(entry: Entry): boolean {
+/** Whether an invalidation newer than the entry's data covers it. */
+export function isInvalidated(entry: Entry): boolean {
 	return entry.client["~stamps"].some(
 		(stamp) => stamp.at > entry.requestedAt && matches(entry, stamp),
 	);

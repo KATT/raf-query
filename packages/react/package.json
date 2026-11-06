@@ -37,6 +37,7 @@
 			"default": "./src/index.ts"
 		},
 		"./devtools": "./src/devtools.tsx",
+		"./hydration": "./src/hydration.ts",
 		"./tanstack-router": {
 			"workerd": "./src/tanstack-router.ts",
 			"worker": "./src/tanstack-router.ts",
@@ -59,7 +60,6 @@
 	},
 	"peerDependencies": {
 		"@tanstack/react-router": "^1.170.0",
-		"effect": "^4.0.0",
 		"react": "^19.2.0"
 	},
 	"peerDependenciesMeta": {
@@ -68,19 +68,18 @@
 		}
 	},
 	"devDependencies": {
-		"@effect/vitest": "catalog:",
 		"@tanstack/react-router": "1.170.42",
 		"@testing-library/react": "16.3.3",
 		"@types/node": "26.6.4",
 		"@types/react": "19.3.0",
 		"@types/react-dom": "19.3.0",
 		"@vitest/coverage-v8": "5.0.1",
-		"effect": "catalog:",
 		"happy-dom": "21.0.1",
 		"react": "19.3.0",
 		"react-dom": "19.3.0",
 		"typescript": "7.0.2",
-		"vite-plus": "1.0.0"
+		"vite-plus": "1.0.0",
+		"vitest": "5.0.1"
 	},
 	"publishConfig": {
 		"access": "public",
@@ -90,6 +89,7 @@
 				"default": "./dist/index.mjs"
 			},
 			"./devtools": "./dist/devtools.mjs",
+			"./hydration": "./dist/hydration.mjs",
 			"./tanstack-router": {
 				"workerd": "./dist/tanstack-router.mjs",
 				"worker": "./dist/tanstack-router.mjs",

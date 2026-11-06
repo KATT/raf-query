@@ -6,6 +6,7 @@ export default defineConfig({
 			"src/index.ts",
 			"src/index-react-server.ts",
 			"src/devtools.tsx",
+			"src/hydration.ts",
 			"src/tanstack-router.ts",
 			"src/tanstack-router-browser.ts",
 		],
@@ -15,7 +16,8 @@ export default defineConfig({
 		clearMocks: true,
 		coverage: {
 			include: ["src"],
-			reporter: ["html", "lcov"],
+			reporter: ["html", "lcov", "text-summary"],
+			thresholds: { 100: true },
 		},
 		environment: "happy-dom",
 		exclude: ["dist", "node_modules"],

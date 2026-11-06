@@ -70,6 +70,7 @@ export {
 	type StreamOptions,
 } from "./options.ts";
 export { recommended } from "./presets.ts";
+export type { Thenable } from "./thenable.ts";
 export {
 	getData,
 	invalidateAll,
