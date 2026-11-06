@@ -78,7 +78,7 @@ cd /tmp/codesandbox/examples/nextjs && pnpm install && pnpm dev
 | `examples/nextjs`         | <https://nextjs.raf-query.katt.dev>         |
 | `examples/react-router`   | <https://react-router.raf-query.katt.dev>   |
 
-`examples/tanstack-start-effect` holds only a `vercel.json` (no `package.json`, so it isn't a workspace package): the retired Effect example's Vercel project redirects every path to the docs' examples page, which keeps its required check passing.
+`examples/tanstack-start-effect` holds only a `vercel.json` (no `package.json`, so it isn't a workspace package): the `raf-query-tanstack-start-effect` Vercel project builds it and redirects every path to the docs' examples page, so that project's required check passes.
 
 The Start app builds with Nitro's `nitro()` Vite plugin, which writes Vercel Build Output on Vercel and a Node server in `.output/` elsewhere. Each deployment's database lives in the memory of the function instance that serves it, so edits reset whenever an instance starts, and two instances can show different data.
 
