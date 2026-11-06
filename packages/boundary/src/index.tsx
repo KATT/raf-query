@@ -22,7 +22,9 @@ type Caught<TFactory extends QueryFactory> = [ErrorOf<TFactory>] extends [never]
  */
 export type CatchHandlers<TError extends { readonly _tag: string }> = {
 	readonly [TTag in TError["_tag"]]?: (
-		error: Extract<TError, { readonly _tag: TTag }>,
+		error: string extends TError["_tag"]
+			? TError
+			: Extract<TError, { readonly _tag: TTag }>,
 		retry: () => void,
 	) => ReactNode;
 };
