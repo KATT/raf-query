@@ -87,74 +87,60 @@ interface Side {
 }
 
 interface Link {
-	raf?: Side;
+	raf?: Side | undefined;
 	/** The newest raf invalidation already passed on. */
 	stamp: number;
-	tanstack?: Side;
+	tanstack?: Side | undefined;
 }
 
-function rafSide(entry: Entry): Side {
-	const state = entry.state;
-	return {
-		data: state.data,
-		error: state.status === "error" ? state.error : undefined,
-		hasData: state.hasData,
-		updatedAt: state.updatedAt,
-	};
+function sideOf(
+	state: {
+		readonly data: unknown;
+		readonly error: unknown;
+		readonly status: string;
+	},
+	hasData: boolean,
+	updatedAt: number,
+): Side {
+	const error = state.status === "error" ? state.error : undefined;
+	return { data: state.data, error, hasData, updatedAt };
 }
 
-function tanstackSide(query: QueryLike): Side {
-	const state = query.state;
-	return {
-		data: state.data,
-		error: state.status === "error" ? state.error : undefined,
-		hasData: state.data !== undefined,
-		updatedAt: state.dataUpdatedAt,
-	};
-}
+const rafSide = (entry: Entry | undefined) =>
+	entry && sideOf(entry.state, entry.state.hasData, entry.state.updatedAt);
 
-function newData(now: Side | undefined, before: Side | undefined): boolean {
-	return (
-		now !== undefined &&
-		now.hasData &&
-		(before?.hasData !== true ||
-			now.data !== before.data ||
-			now.updatedAt !== before.updatedAt)
+const tanstackSide = (query: QueryLike | undefined) =>
+	query &&
+	sideOf(
+		query.state,
+		query.state.data !== undefined,
+		query.state.dataUpdatedAt,
 	);
-}
 
-function newError(now: Side | undefined, before: Side | undefined): boolean {
-	return now?.error !== undefined && now.error !== before?.error;
-}
+const newData = (now?: Side, before?: Side): now is Side =>
+	now?.hasData === true &&
+	(before?.hasData !== true ||
+		now.data !== before.data ||
+		now.updatedAt !== before.updatedAt);
 
-function lostData(now: Side | undefined, before: Side | undefined): boolean {
-	return now !== undefined && !now.hasData && before?.hasData === true;
-}
+const newError = (now?: Side, before?: Side) =>
+	now?.error !== undefined && now.error !== before?.error;
+
+const lostData = (now?: Side, before?: Side) =>
+	now?.hasData === false && before?.hasData === true;
 
 /** The newest invalidation that covers the entry's data, or `0`. */
 function latestStamp(entry: Entry): number {
 	let latest = 0;
 	for (const stamp of entry.client["~stamps"]) {
 		if (
-			stamp.at > entry.requestedAt &&
-			stamp.at > latest &&
+			stamp.at > Math.max(entry.requestedAt, latest) &&
 			matches(entry, stamp)
 		) {
 			latest = stamp.at;
 		}
 	}
 	return latest;
-}
-
-/** Whether raf refetches the entry when it's invalidated: it's read and has options. */
-function refetchesOnInvalidate(entry: Entry): boolean {
-	return (
-		entry.readers.size > 0 && entry.options !== undefined && isEnabled(entry)
-	);
-}
-
-function errorToRaf(entry: Entry, error: unknown) {
-	failWith(entry, isQueryFailure(error) ? error.fail : error);
 }
 
 /**
@@ -179,11 +165,11 @@ export function tanstackQuerySync(
 	return feature((client, signal) => {
 		const cache = queryClient.getQueryCache();
 		const filter = options.filter ?? (() => true);
+		const entries = client["~entries"];
 		const queries = new Map<string, QueryLike>();
 		const links = new Map<string, Link>();
-		/** Keys whose raf entry or TanStack query the sync created: removing a mirror doesn't remove the original. */
-		const rafMirrors = new Set<string>();
-		const tanstackMirrors = new Set<string>();
+		/** Entries and queries the sync created. Removing one doesn't remove its original. */
+		const mirrors = new WeakSet<object>();
 		/** Set while the sync writes to either cache, so its own writes don't echo back. */
 		let applying = false;
 
@@ -196,42 +182,6 @@ export function tanstackQuerySync(
 			}
 		};
 
-		const toTanStack = (hash: string, entry: Entry) => {
-			const query = queries.get(hash);
-			const data = entry.state.data;
-			queryClient.setQueryData(query?.queryKey ?? entry.key, () => data, {
-				updatedAt: entry.state.updatedAt,
-			});
-			if (!query && queries.has(hash)) {
-				tanstackMirrors.add(hash);
-			}
-		};
-
-		const toRaf = (hash: string, query: QueryLike) => {
-			if (!client["~entries"].has(hash)) {
-				rafMirrors.add(hash);
-			}
-			const entry = entryForKey(client, query.queryKey);
-			write(
-				entry,
-				query.state.data,
-				query.state.dataUpdatedAt,
-				++client["~seq"],
-			);
-		};
-
-		const errorToTanStack = (
-			hash: string,
-			query: QueryLike,
-			error: unknown,
-		) => {
-			query.setState({
-				error: isFailValue(error) ? new QueryFailure(error, hash) : error,
-				errorUpdatedAt: client.clock.now(),
-				status: "error",
-			});
-		};
-
 		const linkOf = (hash: string) => {
 			const link = links.get(hash) ?? { stamp: 0 };
 			links.set(hash, link);
@@ -240,26 +190,37 @@ export function tanstackQuerySync(
 
 		const reconcile = (hash: string) => {
 			const link = linkOf(hash);
-			const entry = client["~entries"].get(hash);
+			const entry = entries.get(hash);
 			const query = queries.get(hash);
-			const raf = entry && rafSide(entry);
-			const tanstack = query && tanstackSide(query);
-			let stamp = link.stamp;
+			const raf = rafSide(entry);
+			const tanstack = tanstackSide(query);
 			apply(() => {
-				const rafData = newData(raf, link.raf);
 				const tanstackData = newData(tanstack, link.tanstack);
 				if (
 					entry &&
-					rafData &&
-					!(
-						tanstackData &&
-						tanstack &&
-						tanstack.updatedAt > entry.state.updatedAt
-					)
+					newData(raf, link.raf) &&
+					!(tanstackData && tanstack.updatedAt > entry.state.updatedAt)
 				) {
-					toTanStack(hash, entry);
+					const data = entry.state.data;
+					queryClient.setQueryData(query?.queryKey ?? entry.key, () => data, {
+						updatedAt: entry.state.updatedAt,
+					});
+					const created = queries.get(hash);
+					if (!query && created) {
+						mirrors.add(created);
+					}
 				} else if (query && tanstackData) {
-					toRaf(hash, query);
+					const existed = entries.has(hash);
+					const target = entryForKey(client, query.queryKey);
+					if (!existed) {
+						mirrors.add(target);
+					}
+					write(
+						target,
+						query.state.data,
+						query.state.dataUpdatedAt,
+						++client["~seq"],
+					);
 				} else if (query && lostData(raf, link.raf) && tanstack?.hasData) {
 					void queryClient.resetQueries({
 						exact: true,
@@ -269,73 +230,69 @@ export function tanstackQuerySync(
 					void reset(entry);
 				}
 				if (query && newError(raf, link.raf)) {
-					errorToTanStack(hash, query, raf?.error);
+					const error = raf?.error;
+					query.setState({
+						error: isFailValue(error) ? new QueryFailure(error, hash) : error,
+						errorUpdatedAt: client.clock.now(),
+						status: "error",
+					});
 				} else if (entry && newError(tanstack, link.tanstack)) {
-					errorToRaf(entry, tanstack?.error);
+					const error = tanstack?.error;
+					failWith(entry, isQueryFailure(error) ? error.fail : error);
 				}
-				const current = client["~entries"].get(hash);
-				if (current) {
-					const latest = latestStamp(current);
-					const target = queries.get(hash);
-					if (latest > stamp && target) {
-						void queryClient.invalidateQueries({
-							exact: true,
-							queryKey: target.queryKey,
-							refetchType: refetchesOnInvalidate(current) ? "none" : "active",
-						});
-					}
-					stamp = Math.max(stamp, latest);
+				const current = entries.get(hash);
+				const target = queries.get(hash);
+				const latest = current ? latestStamp(current) : 0;
+				if (current && target && latest > link.stamp) {
+					const refetches =
+						current.readers.size > 0 && current.options && isEnabled(current);
+					void queryClient.invalidateQueries({
+						exact: true,
+						queryKey: target.queryKey,
+						refetchType: refetches ? "none" : "active",
+					});
 				}
+				link.stamp = Math.max(link.stamp, latest);
 			});
-			const entryNow = client["~entries"].get(hash);
-			const queryNow = queries.get(hash);
-			link.raf = entryNow && rafSide(entryNow);
-			link.tanstack = queryNow && tanstackSide(queryNow);
-			link.stamp = stamp;
+			link.raf = rafSide(entries.get(hash));
+			link.tanstack = tanstackSide(queries.get(hash));
 		};
 
-		const invalidateInRaf = (hash: string, query: QueryLike) => {
-			const entry = client["~entries"].get(hash);
-			if (!entry) {
-				return;
+		cache.getAll().forEach((query) => {
+			if (filter(query.queryKey)) {
+				queries.set(hashKey(query.queryKey), query);
 			}
-			if (query.isActive()) {
-				client["~stamps"].push(entryStamp(hash, ++client["~seq"]));
-			} else {
-				void invalidate(client, (at) => [entryStamp(hash, at)]);
-			}
-			linkOf(hash).stamp = client["~seq"];
-		};
-
-		const forget = (hash: string) => {
-			links.delete(hash);
-		};
-
-		const onTanStack = (event: QueryCacheEventLike) => {
+		});
+		const unsubscribe = cache.subscribe((event) => {
 			const query = event.query;
 			if (!filter(query.queryKey)) {
 				return;
 			}
 			const hash = hashKey(query.queryKey);
+			const action = event.action?.type;
 			if (event.type === "removed") {
 				queries.delete(hash);
-				forget(hash);
-				const mirror = tanstackMirrors.delete(hash);
-				const entry = client["~entries"].get(hash);
-				if (!applying && !mirror && entry && entry.readers.size === 0) {
+				links.delete(hash);
+				const entry = entries.get(hash);
+				if (!applying && !mirrors.has(query) && entry?.readers.size === 0) {
 					apply(() => remove(entry));
 				}
-				return;
-			}
-			if (event.type === "added") {
+			} else if (event.type === "added") {
 				queries.set(hash, query);
 			}
-			if (applying) {
+			const entry = entries.get(hash);
+			if (applying || event.type === "removed") {
 				return;
 			}
-			const action = event.action?.type;
 			if (action === "invalidate") {
-				invalidateInRaf(hash, query);
+				if (entry) {
+					if (query.isActive()) {
+						client["~stamps"].push(entryStamp(hash, ++client["~seq"]));
+					} else {
+						void invalidate(client, (at) => entryStamp(hash, at));
+					}
+					linkOf(hash).stamp = client["~seq"];
+				}
 			} else if (
 				event.type === "added" ||
 				action === "success" ||
@@ -344,44 +301,40 @@ export function tanstackQuerySync(
 			) {
 				reconcile(hash);
 			}
-		};
-
-		const onRaf = (entry: Entry, type: string) => {
-			if (!filter(entry.key)) {
-				return;
-			}
-			const hash = entry.hash;
-			if (type === "removed") {
-				forget(hash);
-				const mirror = rafMirrors.delete(hash);
-				const query = queries.get(hash);
-				if (!applying && !mirror && query && query.getObserversCount() === 0) {
-					apply(() => cache.remove(query));
-				}
-				return;
-			}
-			const current = client["~entries"].get(hash) === entry;
-			if (current && !applying && type !== "readers") {
-				reconcile(hash);
-			}
-		};
-
-		for (const query of cache.getAll()) {
-			if (filter(query.queryKey)) {
-				queries.set(hashKey(query.queryKey), query);
-			}
-		}
-		const unsubscribe = cache.subscribe(onTanStack);
+		});
 		signal.addEventListener("abort", unsubscribe, { once: true });
-		client.subscribe((event) => onRaf(event.entry, event.type), { signal });
-		const hashes = new Set(queries.keys());
-		for (const entry of client["~entries"].values()) {
+		client.subscribe(
+			(event) => {
+				const entry = event.entry;
+				const hash = entry.hash;
+				if (!filter(entry.key)) {
+					return;
+				}
+				if (event.type === "removed") {
+					links.delete(hash);
+					const query = queries.get(hash);
+					if (
+						!applying &&
+						!mirrors.has(entry) &&
+						query?.getObserversCount() === 0
+					) {
+						apply(() => cache.remove(query));
+					}
+				} else if (
+					!applying &&
+					event.type !== "readers" &&
+					entries.get(hash) === entry
+				) {
+					reconcile(hash);
+				}
+			},
+			{ signal },
+		);
+		queries.forEach((_query, hash) => reconcile(hash));
+		entries.forEach((entry) => {
 			if (filter(entry.key)) {
-				hashes.add(entry.hash);
+				reconcile(entry.hash);
 			}
-		}
-		for (const hash of hashes) {
-			reconcile(hash);
-		}
+		});
 	});
 }

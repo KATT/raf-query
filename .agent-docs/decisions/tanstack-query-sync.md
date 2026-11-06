@@ -1,5 +1,10 @@
-# TanStack Query sync ships on #231 (agent)
+# TanStack Query sync is a core subpath feature, typed by shape (human decided)
 
-- Two-way cache sync ships on stacked pull request [#231](https://github.com/KATT/raf-query/pull/231) (`cursor/tanstack-query-sync-d7b8`). It is not in [#230](https://github.com/KATT/raf-query/pull/230)'s runtime: this branch has no `tanstackQuerySync` and no `@raf-query/*/tanstack-query` subpath.
-- Gaps on #231: `where` targets over `meta` and factory invalidation only reach entries raf has read; a raf entry still loading its first data has no TanStack copy; a TanStack key whose first segment is not a string cannot come from a group.
-- Whether #231 merges into #230 is open ([open-questions.md](../open-questions.md)).
+- `tanstackQuerySync(queryClient)` lives at `@raf-query/core/tanstack-query`, re-exported at `@raf-query/react/tanstack-query`. Not a package of its own (human). `pnpm bundle-size` has an entry for it, and every other entry fails if it holds `core/tanstack-query`. Groups, hydration and the devtools moved onto the main entry ([one-entry-point.md](./one-entry-point.md)); the sync stays a subpath so a migration bridge never lands in an app that doesn't import it.
+- No `@tanstack/*` dependency, runtime or types (human): it takes `QueryClientLike`, a structural shim of the TanStack methods it calls. `@tanstack/query-core` is a core devDependency for the tests only, and a test fails if the module imports an `@tanstack/` package.
+- It's a feature, so it runs while a provider mounts the client: on the server, each cache dehydrates and hydrates on its own, and the sync merges them on mount (newer `updatedAt` wins).
+- Matching is by raf's `hashKey` of each side's `queryKey` (TanStack's default hash is the same JSON), so a custom TanStack `queryKeyHashFn` doesn't break it.
+- Echo guard: per key, the last state the sync saw on each side (data reference, `updatedAt`, error). A side counts as changed only against that snapshot, which survives structural sharing keeping a different reference on each side. Synchronous re-entry is blocked by an `applying` flag. raf emits `updated` per microtask, so raf→TanStack lands a microtask later; TanStack→raf is synchronous.
+- Invalidation: one side refetches, not both. raf→TanStack passes `refetchType: "none"` when raf has a reader; TanStack→raf only stamps the entry stale when TanStack has an active observer.
+- Removal goes from an original to its mirror (the copy the sync created) when nothing reads the mirror; removing or gc'ing a mirror leaves the original.
+- Where: `packages/core/src/tanstack-query.ts`, `www/content/tanstack-query.md`.

@@ -41,6 +41,10 @@ export const features = {
 		label: "`retry()`",
 		marker: { module: "core/links/retry/retry" },
 	},
+	tanstackQuery: {
+		label: "`tanstackQuerySync()`",
+		marker: { module: "core/tanstack-query" },
+	},
 } satisfies Record<string, { readonly label: string; readonly marker: Marker }>;
 
 export type Feature = keyof typeof features;
@@ -55,6 +59,7 @@ export const featureIds: ReadonlyArray<Feature> = [
 	"reconnectRefetch",
 	"paging",
 	"devtools",
+	"tanstackQuery",
 ];
 
 /** Typed as `Marker`, so a string marker stays possible when every feature has a module. */
@@ -135,6 +140,11 @@ export const scenarios: ReadonlyArray<Scenario> = [
 		name: "+ devtools behind a development check, in production",
 	},
 	{
+		fixture: "tanstack-query.tsx",
+		imports: ["hooks", "tanstackQuery"],
+		name: "+ `tanstackQuerySync()` (`/tanstack-query`)",
+	},
+	{
 		fixture: "tanstack-defaults.tsx",
 		imports: [
 			"hooks",
@@ -148,7 +158,9 @@ export const scenarios: ReadonlyArray<Scenario> = [
 	},
 	{
 		fixture: "everything.tsx",
-		imports: featureIds.filter((feature) => feature !== "devtools"),
+		imports: featureIds.filter(
+			(feature) => feature !== "devtools" && feature !== "tanstackQuery",
+		),
 		name: "Everything (`recommended()`, `timeout()`, hydration, paging)",
 	},
 ];
