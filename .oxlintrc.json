@@ -503,6 +503,34 @@
 			}
 		},
 		{
+			// The TanStack Query sync takes a client by its shape, so apps bring
+			// their own TanStack Query version.
+			"files": ["packages/core/src/tanstack-query.ts"],
+			"rules": {
+				"no-restricted-imports": [
+					"error",
+					{
+						"paths": [
+							{
+								"name": "effect",
+								"message": "Published packages don't depend on Effect. Use it in tooling, build steps and CI only."
+							}
+						],
+						"patterns": [
+							{
+								"group": ["effect/*", "@effect/*"],
+								"message": "Published packages don't depend on Effect. Use it in tooling, build steps and CI only."
+							},
+							{
+								"group": ["@tanstack/*"],
+								"message": "Type against the QueryClientLike shims: the sync depends on no TanStack package."
+							}
+						]
+					}
+				]
+			}
+		},
+		{
 			"files": [
 				"examples/*/src/**/*.{ts,tsx}",
 				"examples/*/app/**/*.{ts,tsx}",

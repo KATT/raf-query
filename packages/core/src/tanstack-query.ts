@@ -280,19 +280,16 @@ export function tanstackQuerySync(
 			} else if (event.type === "added") {
 				queries.set(hash, query);
 			}
-			const entry = entries.get(hash);
 			if (applying || event.type === "removed") {
 				return;
 			}
 			if (action === "invalidate") {
-				if (entry) {
-					if (query.isActive()) {
-						client["~stamps"].push(entryStamp(hash, ++client["~seq"]));
-					} else {
-						void invalidate(client, (at) => entryStamp(hash, at));
-					}
-					linkOf(hash).stamp = client["~seq"];
+				if (query.isActive()) {
+					client["~stamps"].push(entryStamp(hash, ++client["~seq"]));
+				} else {
+					void invalidate(client, (at) => [entryStamp(hash, at)]);
 				}
+				linkOf(hash).stamp = client["~seq"];
 			} else if (
 				event.type === "added" ||
 				action === "success" ||

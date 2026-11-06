@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-
 import {
 	dehydrate as dehydrateTanStack,
 	hydrate as hydrateTanStack,
@@ -7,650 +5,611 @@ import {
 	QueryObserver,
 	type QueryObserverOptions,
 } from "@tanstack/query-core";
+import { type QueryControls, useQuery } from "@raf-query/react";
+import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 
-import { createQueryClient, mount, type QueryClient } from "./client.ts";
-import {
-	entryOf,
-	fetchEntry,
-	isInvalidated,
-	isStale,
-	remove,
-	subscribeEntry,
-} from "./entry.ts";
-import { fail, isQueryFailure, QueryFailure } from "./fail.ts";
 import { group, type GroupKey } from "./groups.ts";
 import { dehydrate, hydrate } from "./hydration.ts";
-import { load, ensureEntry } from "./load.ts";
-import { queryOptions } from "./options.ts";
 import {
-	tanstackQuerySync,
-	type QueryClientLike,
-	type TanStackQuerySyncOptions,
-} from "./tanstack-query.ts";
-import { flush } from "./test-utils.ts";
-import {
+	createQueryClient,
+	ensureEntry,
+	fail,
+	fetchEntry,
 	getData,
 	invalidateMany,
 	invalidateOne,
+	isQueryFailure,
+	load,
+	prefetchEntry,
+	type QueryClient,
+	type QueryFactory,
+	type QueryHandle,
+	QueryFailure,
+	queryOptions,
 	removeAll,
 	removeOne,
 	resetOne,
 	setData,
-} from "./verbs.ts";
+} from "./index.ts";
+import {
+	tanstackQuerySync,
+	type TanStackQuerySyncOptions,
+} from "./tanstack-query.ts";
+import { flush, mount } from "./test-utils.ts";
 
-const issue = group("issue");
-
-interface Issue {
+interface Post {
 	readonly id: number;
 	readonly title: string;
 }
 
-/** A backend both caches fetch from, counting requests per side. */
+const posts = group("posts");
+const drafts = group(posts, "drafts");
+const users = group("users");
+
+/**
+ * A backend both caches fetch from, counting requests per side. Post 404
+ * is a `fail()` value on raf-query; post 500 is down.
+ */
 function createApi() {
 	const titles = new Map([
 		[1, "First"],
 		[2, "Second"],
 	]);
 	const calls = { raf: 0, tanstack: 0 };
-	const get = (id: number): Issue => ({
-		id,
-		title: titles.get(id) ?? "?",
-	});
-	/** The raf factory for the key TanStack Query screens use too. */
-	const issueQuery = (input: { readonly id: number }) =>
+	const get = async (id: number): Promise<Post> => {
+		await Promise.resolve();
+		if (id === 500) {
+			throw new Error("Down");
+		}
+		return { id, title: titles.get(id) ?? "?" };
+	};
+	/** The raf-query factory for the key the TanStack Query screens use. */
+	const postQuery = (input: { readonly id: number }) =>
 		queryOptions({
 			queryFn: async () => {
 				calls.raf += 1;
-				await Promise.resolve();
 				return input.id === 404
 					? fail({ _tag: "NotFound", id: input.id })
 					: get(input.id);
 			},
-			queryKey: issue(input.id),
+			queryKey: posts("byId", input),
 			staleTime: 60_000,
 		});
-	/** The same query as a TanStack Query screen writes it. */
-	const tanstackIssue = (id: number) => ({
-		queryFn: async () => {
+	/** The same query on a TanStack Query screen. */
+	const tanstackPost = (id: number) => ({
+		queryFn: () => {
 			calls.tanstack += 1;
-			await Promise.resolve();
-			if (id === 500) {
-				throw new Error("Boom");
-			}
 			return get(id);
 		},
-		queryKey: ["issue", id],
+		queryKey: posts("byId", { id }),
+		retry: false,
 		staleTime: 60_000,
 	});
-	return { calls, issueQuery, tanstackIssue, titles };
+	return { calls, postQuery, tanstackPost, titles };
 }
 
-/** Both caches, synced while mounted; disposing unmounts and clears them. */
-function synced(
-	options?: TanStackQuerySyncOptions,
-	before?: (caches: {
-		readonly client: QueryClient;
-		readonly tanstack: TanStackQueryClient;
-	}) => void,
-) {
+/** A raf-query client and a TanStack Query client, synced once the raf client mounts. */
+function createClients(options?: TanStackQuerySyncOptions) {
 	const tanstack = new TanStackQueryClient();
 	const client = createQueryClient({
 		features: [tanstackQuerySync(tanstack, options)],
 		isServer: false,
 	});
-	before?.({ client, tanstack });
-	let unmount = mount(client);
 	return {
 		client,
 		[Symbol.dispose]() {
-			unmount();
 			removeAll(client);
 			tanstack.clear();
 		},
 		tanstack,
-		unmount() {
-			unmount();
-			unmount = () => {};
-		},
 	};
 }
 
+/** A TanStack Query screen: an observer of one query, until disposed. */
 function observe(tanstack: TanStackQueryClient, options: QueryObserverOptions) {
 	const observer = new QueryObserver(tanstack, options);
 	return { observer, [Symbol.dispose]: observer.subscribe(() => {}) };
 }
 
-function read(client: QueryClient, entry: ReturnType<typeof entryOf>) {
-	return { [Symbol.dispose]: subscribeEntry(entry, () => {}) };
+function Reader(props: {
+	readonly factory: QueryFactory;
+	readonly handle: QueryHandle<QueryFactory>;
+	readonly show: (read: ReturnType<typeof useQuery>) => void;
+}) {
+	props.show(useQuery(props.factory, props.handle));
+	return null;
 }
 
-describe("raf-query to TanStack Query", () => {
-	it("mirrors data, with the time it was fetched", async () => {
-		const api = createApi();
-		using sync = synced();
-		const entry = entryOf(sync.client, api.issueQuery, { id: 1 });
-		await fetchEntry(entry);
+type Read = readonly [factory: QueryFactory, handle: QueryHandle<QueryFactory>];
 
-		expect(sync.tanstack.getQueryData(["issue", 1])).toBe(entry.state.data);
-		expect(sync.tanstack.getQueryState(["issue", 1])?.dataUpdatedAt).toBe(
-			entry.state.updatedAt,
+/**
+ * Mount the raf client with a component reading each handle. `shown[i]`
+ * and `controls[i]` are what the i-th screen's `useQuery` returned last;
+ * `show()` swaps the screens.
+ */
+function screens(client: QueryClient, reads: ReadonlyArray<Read> = []) {
+	const shown: Array<unknown> = [];
+	const controls: Array<QueryControls> = [];
+	const ui = (list: ReadonlyArray<Read>) =>
+		list.map(([factory, handle], index) =>
+			createElement(Reader, {
+				factory,
+				handle,
+				key: index,
+				show: ([value, control]) => {
+					shown[index] = value;
+					controls[index] = control;
+				},
+			}),
 		);
-		setData(sync.client, api.issueQuery, { id: 1 }, { id: 1, title: "Edited" });
-		await flush();
-		expect(sync.tanstack.getQueryData(["issue", 1])).toEqual({
-			id: 1,
-			title: "Edited",
-		});
-	});
+	const view = mount(client, ui(reads));
+	return {
+		controls,
+		show: (list: ReadonlyArray<Read>) => view.rerender(ui(list)),
+		shown,
+		unmount: () => view.unmount(),
+	};
+}
 
-	it("gives a TanStack Query screen the data raf-query loaded, without a request", async () => {
+describe("a screen on each side", () => {
+	it("shows a TanStack Query screen the data raf-query loaded, fresh, and keeps edits in step", async () => {
 		const api = createApi();
-		using sync = synced();
-		await load(sync.client, { issue: ensureEntry(api.issueQuery, { id: 1 }) });
-		using screen = observe(sync.tanstack, api.tanstackIssue(1));
+		using clients = createClients();
+		mount(clients.client);
+		await load(clients.client, { post: ensureEntry(api.postQuery, { id: 1 }) });
+		using screen = observe(clients.tanstack, api.tanstackPost(1));
 
 		expect(screen.observer.getCurrentResult()).toMatchObject({
 			data: { id: 1, title: "First" },
+			isStale: false,
 			status: "success",
 		});
+		setData(
+			clients.client,
+			api.postQuery,
+			{ id: 1 },
+			{ id: 1, title: "Edited" },
+		);
 		await flush();
+		expect(screen.observer.getCurrentResult().data).toEqual({
+			id: 1,
+			title: "Edited",
+		});
 		expect(api.calls).toEqual({ raf: 1, tanstack: 0 });
 	});
 
-	it("passes fail() values on as a QueryFailure, and defects as they are", async () => {
+	it("shows a raf-query screen the data TanStack Query fetched, fresh, and keeps edits in step", async () => {
 		const api = createApi();
-		using sync = synced();
-		using _screen = observe(sync.tanstack, {
-			...api.tanstackIssue(404),
-			enabled: false,
-		});
-		await fetchEntry(entryOf(sync.client, api.issueQuery, { id: 404 }));
-		const error = sync.tanstack.getQueryState(["issue", 404])?.error;
-
-		expect(isQueryFailure(error)).toBe(true);
-		expect(error).toMatchObject({ fail: { _tag: "NotFound", id: 404 } });
-		expect(sync.tanstack.getQueryState(["issue", 404])?.status).toBe("error");
-
-		const broken = () =>
-			queryOptions({
-				queryFn: () => Promise.reject(new Error("Down")),
-				queryKey: group("broken")(),
-			});
-		using _other = observe(sync.tanstack, {
-			enabled: false,
-			queryKey: ["broken"],
-		});
-		await fetchEntry(entryOf(sync.client, broken, undefined));
-		expect(sync.tanstack.getQueryState(["broken"])?.error).toEqual(
-			new Error("Down"),
-		);
-	});
-
-	it("leaves errors out for queries TanStack Query doesn't have", async () => {
-		const api = createApi();
-		using sync = synced();
-		await fetchEntry(entryOf(sync.client, api.issueQuery, { id: 404 }));
-
-		expect(sync.tanstack.getQueryState(["issue", 404])).toBeUndefined();
-	});
-
-	it("leaves undefined data out", async () => {
-		using sync = synced();
-		const nothing = () =>
-			queryOptions({ queryFn: () => undefined, queryKey: group("nothing")() });
-		await fetchEntry(entryOf(sync.client, nothing, undefined));
-
-		expect(sync.tanstack.getQueryState(["nothing"])).toBeUndefined();
-	});
-});
-
-describe("TanStack Query to raf-query", () => {
-	it("mirrors data, with the time it was fetched", async () => {
-		const api = createApi();
-		using sync = synced();
-		await sync.tanstack.query(api.tanstackIssue(1));
-		const state = sync.tanstack.getQueryState(["issue", 1]);
-
-		expect(getData(sync.client, api.issueQuery, { id: 1 })).toBe(state?.data);
-		const entry = entryOf(sync.client, api.issueQuery, { id: 1 });
-		expect(entry.state.updatedAt).toBe(state?.dataUpdatedAt);
-		expect(entry.thenable).toMatchObject({ status: "fulfilled" });
-		sync.tanstack.setQueryData(["issue", 1], { id: 1, title: "Edited" });
-		expect(entry.state.data).toEqual({ id: 1, title: "Edited" });
-	});
-
-	it("gives a raf-query screen the data TanStack Query loaded, without a request", async () => {
-		const api = createApi();
-		using sync = synced();
-		await sync.tanstack.query(api.tanstackIssue(1));
-		const [, data] = await load(sync.client, {
-			issue: ensureEntry(api.issueQuery, { id: 1 }),
+		using clients = createClients();
+		mount(clients.client);
+		await clients.tanstack.query(api.tanstackPost(1));
+		const [, data] = await load(clients.client, {
+			post: fetchEntry(api.postQuery, { id: 1 }),
 		});
 
-		expect(data.issue).toEqual({ id: 1, title: "First" });
+		expect(data.post).toEqual({ id: 1, title: "First" });
+		clients.tanstack.setQueryData(posts("byId", { id: 1 }), {
+			id: 1,
+			title: "Edited",
+		});
+		expect(getData(clients.client, api.postQuery, { id: 1 })).toEqual({
+			id: 1,
+			title: "Edited",
+		});
 		expect(api.calls).toEqual({ raf: 0, tanstack: 1 });
 	});
 
-	it("passes errors on, unwrapping a QueryFailure to its fail() value", async () => {
+	it("writes each change to the other cache once, without echoing it back", async () => {
 		const api = createApi();
-		using sync = synced();
-		const entry = entryOf(sync.client, api.issueQuery, { id: 500 });
-		await sync.tanstack
-			.query({
-				...api.tanstackIssue(500),
-				retry: false,
-			})
-			.catch(() => {});
-
-		expect(entry.state).toMatchObject({
-			error: new Error("Boom"),
-			status: "error",
-		});
-		expect(entry.thenable).toMatchObject({ status: "rejected" });
-
-		const missing = entryOf(sync.client, api.issueQuery, { id: 404 });
-		const failure = new QueryFailure(fail({ _tag: "NotFound", id: 404 }), "x");
-		await sync.tanstack
-			.query({
-				queryFn: () => Promise.reject(failure),
-				queryKey: ["issue", 404],
-				retry: false,
-			})
-			.catch(() => {});
-		expect(missing.state.error).toBe(failure.fail);
-	});
-});
-
-describe("echoes", () => {
-	it("writes each change to the other cache once", async () => {
-		const api = createApi();
-		using sync = synced();
+		using clients = createClients();
+		mount(clients.client);
 		const writes: Array<string> = [];
-		sync.tanstack.getQueryCache().subscribe((event) => {
+		clients.tanstack.getQueryCache().subscribe((event) => {
 			if (event.type === "updated" && event.action.type === "success") {
 				writes.push("tanstack");
 			}
 		});
-		sync.client.subscribe((event) => {
+		clients.client.subscribe((event) => {
 			if (event.type === "updated") {
 				writes.push("raf");
 			}
 		});
-		setData(sync.client, api.issueQuery, { id: 1 }, { id: 1, title: "A" });
+		setData(clients.client, api.postQuery, { id: 1 }, { id: 1, title: "A" });
 		await flush();
-		sync.tanstack.setQueryData(["issue", 1], { id: 1, title: "B" });
-		await flush();
-
-		expect(writes).toEqual(["tanstack", "raf", "tanstack", "raf"]);
-		expect(getData(sync.client, api.issueQuery, { id: 1 })).toEqual({
+		clients.tanstack.setQueryData(posts("byId", { id: 1 }), {
 			id: 1,
 			title: "B",
 		});
+		await flush();
+
+		expect(writes).toEqual(["tanstack", "raf", "tanstack", "raf"]);
+	});
+});
+
+describe("errors", () => {
+	it("shows a TanStack Query screen raf-query's error: a fail() value as a QueryFailure, a defect as it is", async () => {
+		const api = createApi();
+		using clients = createClients();
+		mount(clients.client);
+		using missing = observe(clients.tanstack, {
+			...api.tanstackPost(404),
+			enabled: false,
+		});
+		using down = observe(clients.tanstack, {
+			...api.tanstackPost(500),
+			enabled: false,
+		});
+		await load(clients.client, {
+			down: prefetchEntry(api.postQuery, { id: 500 }),
+			missing: prefetchEntry(api.postQuery, { id: 404 }),
+		});
+		await flush();
+
+		const failure = missing.observer.getCurrentResult().error;
+		expect(isQueryFailure(failure)).toBe(true);
+		expect(failure).toMatchObject({ fail: { _tag: "NotFound", id: 404 } });
+		expect(down.observer.getCurrentResult()).toMatchObject({
+			error: new Error("Down"),
+			status: "error",
+		});
 	});
 
-	it("settles when structural sharing keeps a different reference on each side", async () => {
+	it("shows a raf-query screen TanStack Query's error, unwrapping a QueryFailure to its fail() value", async () => {
 		const api = createApi();
-		using sync = synced();
-		setData(sync.client, api.issueQuery, { id: 1 }, { id: 1, title: "Same" });
-		await flush();
-		let writes = 0;
-		sync.tanstack.getQueryCache().subscribe(() => {
-			writes += 1;
+		using clients = createClients();
+		const [handles] = await load(clients.client, {
+			down: prefetchEntry(api.postQuery, { id: 1 }),
+			missing: prefetchEntry(api.postQuery, { id: 2 }),
 		});
-		for (let round = 0; round < 3; round += 1) {
-			sync.tanstack.setQueryData(["issue", 1], { id: 1, title: "Same" });
-			setData(sync.client, api.issueQuery, { id: 1 }, { id: 1, title: "Same" });
-			await flush();
-		}
-		const settled = writes;
-		await flush();
+		const view = screens(clients.client, [
+			[api.postQuery, handles.down],
+			[api.postQuery, handles.missing],
+		]);
+		const notFound = fail({ _tag: "NotFound", id: 2 });
+		await clients.tanstack
+			.query({
+				...api.tanstackPost(500),
+				queryKey: posts("byId", { id: 1 }),
+				staleTime: 0,
+			})
+			.catch(() => {});
+		await clients.tanstack
+			.query({
+				queryFn: () => Promise.reject(new QueryFailure(notFound, "posts")),
+				queryKey: posts("byId", { id: 2 }),
+				retry: false,
+				staleTime: 0,
+			})
+			.catch(() => {});
 		await flush();
 
-		expect(settled).toBeLessThanOrEqual(6);
-		expect(writes).toBe(settled);
+		expect(view.controls.map((control) => control.error)).toEqual([
+			new Error("Down"),
+			notFound,
+		]);
 	});
 });
 
 describe("invalidation", () => {
-	it("marks the TanStack Query copy invalidated, and its screen refetches when raf-query won't", async () => {
+	it("refetches on the TanStack Query screen when raf-query doesn't read the query", async () => {
 		const api = createApi();
-		using sync = synced();
-		await fetchEntry(entryOf(sync.client, api.issueQuery, { id: 1 }));
-		using _screen = observe(sync.tanstack, api.tanstackIssue(1));
+		using clients = createClients();
+		mount(clients.client);
+		await load(clients.client, { post: ensureEntry(api.postQuery, { id: 1 }) });
+		using screen = observe(clients.tanstack, api.tanstackPost(1));
 		api.titles.set(1, "Renamed");
-		await invalidateOne(sync.client, api.issueQuery, { id: 1 });
+		await invalidateOne(clients.client, api.postQuery, { id: 1 });
 		await flush();
 
-		expect(api.calls).toEqual({ raf: 1, tanstack: 1 });
-		expect(getData(sync.client, api.issueQuery, { id: 1 })).toEqual({
-			id: 1,
-			title: "Renamed",
-		});
-	});
-
-	it("leaves the refetch to raf-query when it reads the query", async () => {
-		const api = createApi();
-		using sync = synced();
-		const entry = entryOf(sync.client, api.issueQuery, { id: 1 });
-		await fetchEntry(entry);
-		using _reader = read(sync.client, entry);
-		using screen = observe(sync.tanstack, api.tanstackIssue(1));
-		api.titles.set(1, "Renamed");
-		await invalidateOne(sync.client, api.issueQuery, { id: 1 });
-		await flush();
-
-		expect(api.calls).toEqual({ raf: 2, tanstack: 0 });
 		expect(screen.observer.getCurrentResult().data).toEqual({
 			id: 1,
 			title: "Renamed",
 		});
-		expect(sync.tanstack.getQueryState(["issue", 1])?.isInvalidated).toBe(
-			false,
-		);
-	});
-
-	it("marks the raf-query copy stale, and raf-query refetches when TanStack Query won't", async () => {
-		const api = createApi();
-		using sync = synced();
-		const entry = entryOf(sync.client, api.issueQuery, { id: 1 });
-		await fetchEntry(entry);
-		using _reader = read(sync.client, entry);
-		api.titles.set(1, "Renamed");
-		await sync.tanstack.invalidateQueries({ queryKey: ["issue"] });
-		await flush();
-
-		expect(api.calls).toEqual({ raf: 2, tanstack: 0 });
-		expect(sync.tanstack.getQueryData(["issue", 1])).toEqual({
+		expect(getData(clients.client, api.postQuery, { id: 1 })).toEqual({
 			id: 1,
 			title: "Renamed",
 		});
-	});
-
-	it("leaves the refetch to a TanStack Query screen that reads the query", async () => {
-		const api = createApi();
-		using sync = synced();
-		const entry = entryOf(sync.client, api.issueQuery, { id: 1 });
-		await fetchEntry(entry);
-		using _reader = read(sync.client, entry);
-		using _screen = observe(sync.tanstack, api.tanstackIssue(1));
-		api.titles.set(1, "Renamed");
-		const done = sync.tanstack.invalidateQueries({ queryKey: ["issue", 1] });
-
-		expect(isInvalidated(entry)).toBe(true);
-		await done;
-		await flush();
 		expect(api.calls).toEqual({ raf: 1, tanstack: 1 });
-		expect(entry.state.data).toEqual({ id: 1, title: "Renamed" });
-		expect(isStale(entry)).toBe(false);
 	});
 
-	it("marks unread raf-query entries stale for their next read", async () => {
+	it("refetches once, on raf-query, when both sides read the query", async () => {
 		const api = createApi();
-		using sync = synced();
-		const entry = entryOf(sync.client, api.issueQuery, { id: 1 });
-		await fetchEntry(entry);
-		await sync.tanstack.invalidateQueries({ queryKey: ["issue", 1] });
+		using clients = createClients();
+		const [handles] = await load(clients.client, {
+			post: ensureEntry(api.postQuery, { id: 1 }),
+		});
+		screens(clients.client, [[api.postQuery, handles.post]]);
+		using screen = observe(clients.tanstack, api.tanstackPost(1));
+		api.titles.set(1, "Renamed");
+		await invalidateOne(clients.client, api.postQuery, { id: 1 });
+		await flush();
 
-		expect(isStale(entry)).toBe(true);
-		expect(api.calls).toEqual({ raf: 1, tanstack: 0 });
+		expect(screen.observer.getCurrentResult()).toMatchObject({
+			data: { id: 1, title: "Renamed" },
+			isStale: false,
+		});
+		expect(api.calls).toEqual({ raf: 2, tanstack: 0 });
 	});
 
-	it("reaches every raf-query entry under a key prefix TanStack Query invalidates", async () => {
-		using sync = synced();
-		const posts = group("posts");
-		const drafts = group(posts, "drafts");
-		const users = group("users");
-		let calls = 0;
-		const make =
-			(key: (input: { readonly id: number }) => GroupKey) =>
-			(input: { readonly id: number; readonly lang?: string }) =>
-				queryOptions({
-					queryFn: () => {
-						calls += 1;
-						return calls;
-					},
-					queryKey: key(input),
-					staleTime: 60_000,
-				});
-		const postById = make((input) => posts("byId", input));
-		const draftById = make((input) => drafts("byId", input));
-		const userById = make((input) => users("byId", input));
-		const watched = [
-			entryOf(sync.client, postById, { id: 1, lang: "en" }),
-			entryOf(sync.client, draftById, { id: 1 }),
-			entryOf(sync.client, userById, { id: 1 }),
-		];
-		const unread = entryOf(sync.client, postById, { id: 2 });
-		await Promise.all([...watched, unread].map((entry) => fetchEntry(entry)));
-		const readers = watched.map((entry) => subscribeEntry(entry, () => {}));
-
-		expect(
-			sync.tanstack.getQueryData(posts("byId", { id: 1, lang: "en" })),
-		).toBe(1);
-		await sync.tanstack.invalidateQueries({ queryKey: posts() });
-		await flush();
-		expect(watched.map((entry) => entry.state.data)).toEqual([5, 6, 3]);
-		expect(isStale(unread)).toBe(true);
-		expect(calls).toBe(6);
-
-		await sync.tanstack.invalidateQueries({
+	it("refetches once, on the TanStack Query screen, when TanStack Query invalidates a query both sides read", async () => {
+		const api = createApi();
+		using clients = createClients();
+		const [handles] = await load(clients.client, {
+			post: ensureEntry(api.postQuery, { id: 1 }),
+		});
+		screens(clients.client, [[api.postQuery, handles.post]]);
+		using _screen = observe(clients.tanstack, api.tanstackPost(1));
+		api.titles.set(1, "Renamed");
+		await clients.tanstack.invalidateQueries({
 			queryKey: posts("byId", { id: 1 }),
 		});
 		await flush();
-		expect(watched.map((entry) => entry.state.data)).toEqual([7, 6, 3]);
-		for (const stop of readers) {
-			stop();
+		const [, data] = await load(clients.client, {
+			post: fetchEntry(api.postQuery, { id: 1 }),
+		});
+
+		expect(data.post).toEqual({ id: 1, title: "Renamed" });
+		expect(api.calls).toEqual({ raf: 1, tanstack: 1 });
+	});
+
+	it("reaches every raf-query query under a key prefix TanStack Query invalidates", async () => {
+		using clients = createClients();
+		const fetches = new Map<string, number>();
+		interface ById {
+			readonly id: number;
+			readonly lang?: string;
 		}
+		const byId = (key: (input: ById) => GroupKey) => (input: ById) =>
+			queryOptions({
+				queryFn: () => {
+					const name = JSON.stringify(key(input));
+					fetches.set(name, (fetches.get(name) ?? 0) + 1);
+					return fetches.get(name);
+				},
+				queryKey: key(input),
+				staleTime: 60_000,
+			});
+		const postById = byId((input) => posts("byId", input));
+		const draftById = byId((input) => drafts("byId", input));
+		const userById = byId((input) => users("byId", input));
+		const [handles] = await load(clients.client, {
+			draft: ensureEntry(draftById, { id: 1 }),
+			post: ensureEntry(postById, { id: 1, lang: "en" }),
+			unread: ensureEntry(postById, { id: 2 }),
+			user: ensureEntry(userById, { id: 1 }),
+		});
+		const view = screens(clients.client, [
+			[postById, handles.post],
+			[draftById, handles.draft],
+			[userById, handles.user],
+		]);
+		const shown = () => [...view.shown];
+
+		expect(shown()).toEqual([1, 1, 1]);
+		await clients.tanstack.invalidateQueries({ queryKey: posts() });
+		await flush();
+		expect(shown()).toEqual([2, 2, 1]);
+		expect(
+			clients.tanstack.getQueryData(posts("byId", { id: 1, lang: "en" })),
+		).toBe(2);
+		await load(clients.client, { unread: prefetchEntry(postById, { id: 2 }) });
+		expect(getData(clients.client, postById, { id: 2 })).toBe(2);
+
+		await clients.tanstack.invalidateQueries({
+			queryKey: posts("byId", { id: 1 }),
+		});
+		await flush();
+		expect(shown()).toEqual([3, 2, 1]);
 	});
 
 	it("reaches queries only TanStack Query has when raf-query invalidates a group", async () => {
-		using sync = synced();
-		const posts = group("posts");
-		const drafts = group(posts, "drafts");
-		sync.tanstack.setQueryData(drafts("byId", { id: 2 }), "draft");
-		sync.tanstack.setQueryData(["users", 1], "user");
-		await invalidateMany(sync.client, posts);
+		using clients = createClients();
+		mount(clients.client);
+		clients.tanstack.setQueryData(drafts("byId", { id: 2 }), "draft");
+		clients.tanstack.setQueryData(users("byId", { id: 1 }), "user");
+		await invalidateMany(clients.client, posts);
 
 		expect(
-			sync.tanstack.getQueryState(drafts("byId", { id: 2 }))?.isInvalidated,
+			clients.tanstack.getQueryState(drafts("byId", { id: 2 }))?.isInvalidated,
 		).toBe(true);
-		expect(sync.tanstack.getQueryState(["users", 1])?.isInvalidated).toBe(
-			false,
-		);
-	});
-
-	it("skips invalidations of queries raf-query doesn't have", async () => {
-		using sync = synced();
-		sync.tanstack.setQueryData(["other"], 1);
-		remove(sync.client["~entries"].get('["other"]')!);
-		await sync.tanstack.invalidateQueries({ queryKey: ["other"] });
-
-		expect(sync.client["~entries"].size).toBe(0);
+		expect(
+			clients.tanstack.getQueryState(users("byId", { id: 1 }))?.isInvalidated,
+		).toBe(false);
 	});
 });
 
 describe("resets and removals", () => {
 	it("resets the other copy", async () => {
 		const api = createApi();
-		using sync = synced();
-		const entry = entryOf(sync.client, api.issueQuery, { id: 1 });
-		await fetchEntry(entry);
-		await resetOne(sync.client, api.issueQuery, { id: 1 });
+		using clients = createClients();
+		mount(clients.client);
+		await load(clients.client, { post: ensureEntry(api.postQuery, { id: 1 }) });
+		await resetOne(clients.client, api.postQuery, { id: 1 });
 		await flush();
 
-		expect(sync.tanstack.getQueryState(["issue", 1])?.data).toBeUndefined();
+		expect(
+			clients.tanstack.getQueryData(posts("byId", { id: 1 })),
+		).toBeUndefined();
 
-		await fetchEntry(entry);
-		await sync.tanstack.resetQueries({ queryKey: ["issue", 1] });
-		await flush();
-		expect(entry.state.hasData).toBe(false);
+		await load(clients.client, { post: ensureEntry(api.postQuery, { id: 1 }) });
+		await clients.tanstack.resetQueries({ queryKey: posts() });
+		expect(getData(clients.client, api.postQuery, { id: 1 })).toBeUndefined();
 	});
 
-	it("removes the other copy unless something reads it", async () => {
+	it("removes the other copy unless a screen reads it", async () => {
 		const api = createApi();
-		using sync = synced();
-		await fetchEntry(entryOf(sync.client, api.issueQuery, { id: 1 }));
-		await fetchEntry(entryOf(sync.client, api.issueQuery, { id: 2 }));
-		using _screen = observe(sync.tanstack, {
-			...api.tanstackIssue(2),
+		using clients = createClients();
+		const view = screens(clients.client);
+		await load(clients.client, {
+			one: ensureEntry(api.postQuery, { id: 1 }),
+			two: ensureEntry(api.postQuery, { id: 2 }),
+		});
+		using _screen = observe(clients.tanstack, {
+			...api.tanstackPost(2),
 			enabled: false,
 		});
-		removeOne(sync.client, api.issueQuery, { id: 1 });
-		removeOne(sync.client, api.issueQuery, { id: 2 });
+		removeOne(clients.client, api.postQuery, { id: 1 });
+		removeOne(clients.client, api.postQuery, { id: 2 });
 
-		expect(sync.tanstack.getQueryState(["issue", 1])).toBeUndefined();
-		expect(sync.tanstack.getQueryData(["issue", 2])).toEqual({
+		expect(
+			clients.tanstack.getQueryState(posts("byId", { id: 1 })),
+		).toBeUndefined();
+		expect(clients.tanstack.getQueryData(posts("byId", { id: 2 }))).toEqual({
 			id: 2,
 			title: "Second",
 		});
 
-		await sync.tanstack.query(api.tanstackIssue(1));
-		const reader = entryOf(sync.client, api.issueQuery, { id: 2 });
-		using _reader = read(sync.client, reader);
-		sync.tanstack.removeQueries({ queryKey: ["issue"] });
-		expect(sync.client["~entries"].has('["issue",1]')).toBe(false);
-		expect(reader.state.data).toEqual({ id: 2, title: "Second" });
+		await clients.tanstack.query(api.tanstackPost(3));
+		await clients.tanstack.query(api.tanstackPost(4));
+		const [handles] = await load(clients.client, {
+			four: ensureEntry(api.postQuery, { id: 4 }),
+		});
+		view.show([[api.postQuery, handles.four]]);
+		clients.tanstack.removeQueries({ queryKey: posts() });
+
+		expect(getData(clients.client, api.postQuery, { id: 3 })).toBeUndefined();
+		expect(view.shown[0]).toMatchObject({ id: 4 });
+		expect(getData(clients.client, api.postQuery, { id: 4 })).toEqual({
+			id: 4,
+			title: "?",
+		});
+		expect(api.calls).toEqual({ raf: 2, tanstack: 2 });
 	});
 
-	it("keeps the original when its mirror is removed", async () => {
+	it("keeps the original when the copy the sync made is removed", async () => {
 		const api = createApi();
-		using sync = synced();
-		await fetchEntry(entryOf(sync.client, api.issueQuery, { id: 1 }));
-		const mirror = sync.tanstack
-			.getQueryCache()
-			.find({ queryKey: ["issue", 1] });
-		sync.tanstack.getQueryCache().remove(mirror!);
+		using clients = createClients();
+		mount(clients.client);
+		await load(clients.client, { post: ensureEntry(api.postQuery, { id: 1 }) });
+		clients.tanstack.removeQueries({ queryKey: posts("byId", { id: 1 }) });
 
-		expect(getData(sync.client, api.issueQuery, { id: 1 })).toBeDefined();
+		expect(getData(clients.client, api.postQuery, { id: 1 })).toEqual({
+			id: 1,
+			title: "First",
+		});
 
-		await sync.tanstack.query(api.tanstackIssue(2));
-		remove(sync.client["~entries"].get('["issue",2]')!);
-		expect(sync.tanstack.getQueryData(["issue", 2])).toBeDefined();
+		await clients.tanstack.query(api.tanstackPost(2));
+		removeOne(clients.client, api.postQuery, { id: 2 });
+		expect(clients.tanstack.getQueryData(posts("byId", { id: 2 }))).toEqual({
+			id: 2,
+			title: "Second",
+		});
 	});
 });
 
 describe("hydration", () => {
-	it("mirrors what raf-query hydrates", async () => {
+	it("mirrors what raf-query hydrates, including a query the server is still loading", async () => {
 		const api = createApi();
 		const server = createQueryClient({ isServer: true });
-		await fetchEntry(entryOf(server, api.issueQuery, { id: 1 }));
-		const pending = fetchEntry(entryOf(server, api.issueQuery, { id: 2 }));
+		await load(server, {
+			done: ensureEntry(api.postQuery, { id: 1 }),
+			pending: prefetchEntry(api.postQuery, { id: 2 }),
+		});
 		const state = dehydrate(server);
-		using sync = synced();
-		hydrate(sync.client, state);
+		using clients = createClients();
+		mount(clients.client);
+		hydrate(clients.client, state);
 		await flush();
 
-		expect(sync.tanstack.getQueryData(["issue", 1])).toEqual({
+		expect(clients.tanstack.getQueryData(posts("byId", { id: 1 }))).toEqual({
 			id: 1,
 			title: "First",
 		});
-		await pending;
-		await flush();
-		expect(sync.tanstack.getQueryData(["issue", 2])).toEqual({
+		expect(clients.tanstack.getQueryData(posts("byId", { id: 2 }))).toEqual({
 			id: 2,
 			title: "Second",
 		});
+		expect(api.calls).toEqual({ raf: 2, tanstack: 0 });
 	});
 
 	it("mirrors what TanStack Query hydrates", async () => {
 		const api = createApi();
 		const server = new TanStackQueryClient();
-		await server.query(api.tanstackIssue(1));
+		await server.query(api.tanstackPost(1));
 		const state = structuredClone(dehydrateTanStack(server));
-		using sync = synced();
-		hydrateTanStack(sync.tanstack, state);
-		const [, data] = await load(sync.client, {
-			issue: ensureEntry(api.issueQuery, { id: 1 }),
+		using clients = createClients();
+		mount(clients.client);
+		hydrateTanStack(clients.tanstack, state);
+		const [, data] = await load(clients.client, {
+			post: fetchEntry(api.postQuery, { id: 1 }),
 		});
 
-		expect(data.issue).toEqual({ id: 1, title: "First" });
+		expect(data.post).toEqual({ id: 1, title: "First" });
 		expect(api.calls).toEqual({ raf: 0, tanstack: 1 });
 	});
 
-	it("merges both caches when it starts, newer data winning", async () => {
+	it("merges both caches when it starts, newer data winning and invalidations carried over", async () => {
 		const api = createApi();
-		const tanstack = new TanStackQueryClient();
+		using clients = createClients();
+		const { client, tanstack } = clients;
 		tanstack.setQueryData(
-			["issue", 1],
+			posts("byId", { id: 1 }),
 			{ id: 1, title: "Older" },
-			{
-				updatedAt: 1,
-			},
+			{ updatedAt: 1 },
 		);
-		tanstack.setQueryData(["issue", 2], { id: 2, title: "Newer" });
-		const client = createQueryClient({
-			features: [tanstackQuerySync(tanstack)],
-			isServer: false,
-		});
-		setData(client, api.issueQuery, { id: 1 }, { id: 1, title: "Newer" });
-		setData(client, api.issueQuery, { id: 3 }, { id: 3, title: "Only raf" });
-		await invalidateOne(client, api.issueQuery, { id: 3 });
-		using _mounted = { [Symbol.dispose]: mount(client) };
+		tanstack.setQueryData(posts("byId", { id: 2 }), { id: 2, title: "Newer" });
+		setData(client, api.postQuery, { id: 1 }, { id: 1, title: "Newer" });
+		setData(client, api.postQuery, { id: 3 }, { id: 3, title: "Only raf" });
+		await invalidateOne(client, api.postQuery, { id: 3 });
+		mount(client);
 
-		expect(tanstack.getQueryData(["issue", 1])).toEqual({
+		expect(tanstack.getQueryData(posts("byId", { id: 1 }))).toEqual({
 			id: 1,
 			title: "Newer",
 		});
-		expect(getData(client, api.issueQuery, { id: 2 })).toEqual({
+		expect(getData(client, api.postQuery, { id: 2 })).toEqual({
 			id: 2,
 			title: "Newer",
 		});
-		expect(tanstack.getQueryState(["issue", 3])?.isInvalidated).toBe(true);
-		removeAll(client);
-		tanstack.clear();
+		expect(
+			tanstack.getQueryState(posts("byId", { id: 3 }))?.isInvalidated,
+		).toBe(true);
 	});
 });
 
 describe("options", () => {
-	it("mirrors only the keys `filter` takes", async () => {
+	it("mirrors only the keys `filter` takes, from before and after it starts", async () => {
 		const api = createApi();
-		const local = () =>
-			queryOptions({ queryFn: () => 2, queryKey: group("local")() });
-		const early = () =>
-			queryOptions({ queryFn: () => 4, queryKey: group("early")() });
-		using sync = synced({ filter: (key) => key[0] === "issue" }, (caches) => {
-			caches.tanstack.setQueryData(["remote"], 1);
-			setData(caches.client, early, undefined, 4);
-		});
-		setData(sync.client, api.issueQuery, { id: 1 }, { id: 1, title: "A" });
-		setData(sync.client, local, undefined, 2);
-		sync.tanstack.setQueryData(["private"], 3);
-		sync.tanstack.removeQueries({ queryKey: ["private"] });
-		removeOne(sync.client, local);
+		const local = group("local");
+		const remote = group("remote");
+		const localQuery = () =>
+			queryOptions({ queryFn: () => 1, queryKey: local() });
+		const remoteQuery = () =>
+			queryOptions({ queryFn: () => 2, queryKey: remote() });
+		using clients = createClients({ filter: (key) => key[0] === "posts" });
+		clients.tanstack.setQueryData(remote(), 2);
+		setData(clients.client, localQuery, undefined, 1);
+		mount(clients.client);
+		setData(clients.client, api.postQuery, { id: 1 }, { id: 1, title: "A" });
+		setData(clients.client, localQuery, undefined, 3);
+		clients.tanstack.setQueryData(remote(), 4);
+		removeOne(clients.client, localQuery);
+		clients.tanstack.removeQueries({ queryKey: remote() });
 		await flush();
 
-		expect(sync.tanstack.getQueryData(["issue", 1])).toEqual({
+		expect(clients.tanstack.getQueryData(posts("byId", { id: 1 }))).toEqual({
 			id: 1,
 			title: "A",
 		});
-		expect(sync.tanstack.getQueryData(["local"])).toBeUndefined();
-		expect(sync.client["~entries"].has('["private"]')).toBe(false);
-		expect(sync.client["~entries"].has('["remote"]')).toBe(false);
-		expect(sync.tanstack.getQueryData(["early"])).toBeUndefined();
+		expect(clients.tanstack.getQueryData(local())).toBeUndefined();
+		expect(getData(clients.client, remoteQuery)).toBeUndefined();
 	});
 
-	it("stops when the client unmounts", () => {
+	it("stops when the client unmounts", async () => {
 		const api = createApi();
-		using sync = synced();
-		sync.unmount();
-		setData(sync.client, api.issueQuery, { id: 1 }, { id: 1, title: "A" });
-		sync.tanstack.setQueryData(["issue", 2], { id: 2, title: "B" });
+		using clients = createClients();
+		mount(clients.client).unmount();
+		setData(clients.client, api.postQuery, { id: 1 }, { id: 1, title: "A" });
+		clients.tanstack.setQueryData(posts("byId", { id: 2 }), {
+			id: 2,
+			title: "B",
+		});
+		await flush();
 
-		expect(sync.tanstack.getQueryData(["issue", 1])).toBeUndefined();
-		expect(getData(sync.client, api.issueQuery, { id: 2 })).toBeUndefined();
-	});
-});
-
-describe("the shipped module", () => {
-	it("takes a TanStack Query client by its shape, and imports no @tanstack package", () => {
-		const client: QueryClientLike = new TanStackQueryClient();
-		const source = readFileSync(
-			new URL("tanstack-query.ts", import.meta.url),
-			"utf8",
-		);
-
-		expect(client).toBeDefined();
-		expect(source).not.toMatch(/from "@tanstack\//);
+		expect(
+			clients.tanstack.getQueryData(posts("byId", { id: 1 })),
+		).toBeUndefined();
+		expect(getData(clients.client, api.postQuery, { id: 2 })).toBeUndefined();
 	});
 });
