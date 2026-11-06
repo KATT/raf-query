@@ -43,7 +43,7 @@ function counter(options?: {
 				calls += 1;
 				return calls;
 			},
-			queryKey: [issues, "count"],
+			queryKey: issues("count"),
 		});
 	return { calls: () => calls, factory };
 }

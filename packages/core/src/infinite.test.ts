@@ -70,7 +70,7 @@ describe("paged queries", () => {
 				initialPageParam: 5,
 				maxPages: 2,
 				queryFn: (context) => context.pageParam,
-				queryKey: [issues, "numbers"],
+				queryKey: issues("numbers"),
 			});
 		const entry = entryOf(client, numbers, undefined);
 		await fetchEntry(entry);
@@ -92,7 +92,7 @@ describe("paged queries", () => {
 					context.pageParam === input.at
 						? fail({ _tag: "Gone" })
 						: context.pageParam,
-				queryKey: [issues, "failing", input],
+				queryKey: issues("failing", input),
 			});
 		const atFirst = entryOf(client, failing, { at: 0 });
 		const atSecond = entryOf(client, failing, { at: 1 });

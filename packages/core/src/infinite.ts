@@ -1,6 +1,6 @@
 import type { Operation } from "./client.ts";
 import { type Fail, isFailValue } from "./fail.ts";
-import type { QueryKeyOption } from "./keys.ts";
+import type { QueryKey, QueryKeyOption } from "./keys.ts";
 import type {
 	BaseOptions,
 	QueryFunctionContext,
@@ -15,7 +15,7 @@ export interface InfiniteData<TPage, TParam = unknown> {
 }
 
 export interface InfiniteQueryFunctionContext<
-	TKey extends QueryKeyOption,
+	TKey extends QueryKey,
 	TParam,
 > extends QueryFunctionContext<TKey> {
 	readonly direction: "backward" | "forward";
@@ -67,7 +67,7 @@ export type InfiniteQueryOptions<
  * ```ts
  * export const issueList = (input: { status: Status }) =>
  *   infiniteQueryOptions({
- *     queryKey: [issues, "list", input],
+ *     queryKey: issues("list", input),
  *     queryFn: ({ pageParam, signal }) => listIssues({ ...input, cursor: pageParam }, { signal }),
  *     initialPageParam: 0,
  *     getNextPageParam: (lastPage) => lastPage.nextCursor,
@@ -117,7 +117,7 @@ interface PagedSource {
 	readonly initialPageParam: unknown;
 	readonly maxPages?: number;
 	readonly queryFn: (
-		context: InfiniteQueryFunctionContext<QueryKeyOption, unknown>,
+		context: InfiniteQueryFunctionContext<QueryKey, unknown>,
 	) => unknown;
 }
 

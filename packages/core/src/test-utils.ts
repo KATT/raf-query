@@ -66,7 +66,7 @@ function fakeClock(start = 1_000_000): FakeClock {
 }
 
 export const issues = group("issues");
-export const drafts = group("drafts", issues);
+export const drafts = group(issues, "drafts");
 export const users = group("users");
 export const author = tag<string>("author");
 export const featured = tag("featured");
@@ -108,7 +108,7 @@ export function createBackend() {
 				const issue = await get(input.id, context.signal);
 				return issue ?? fail({ _tag: "NotFound", id: input.id });
 			},
-			queryKey: [issues, "byId", input],
+			queryKey: issues("byId", input),
 		});
 
 	const draftQuery = (input: { readonly id: number }) =>
@@ -116,7 +116,7 @@ export function createBackend() {
 			meta: { tags: [featured()] },
 			queryFn: async (context) =>
 				JSON.stringify(await get(input.id, context.signal)),
-			queryKey: [drafts, "byId", input],
+			queryKey: drafts("byId", input),
 		});
 
 	const pageQuery = (input: { readonly size: number }) =>
@@ -134,7 +134,7 @@ export function createBackend() {
 					(_, index) => context.pageParam + index,
 				);
 			},
-			queryKey: [issues, "pages", input],
+			queryKey: issues("pages", input),
 		});
 
 	return {

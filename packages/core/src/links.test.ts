@@ -20,7 +20,7 @@ function flaky(
 				}
 				return calls;
 			},
-			queryKey: [issues, "flaky"],
+			queryKey: issues("flaky"),
 		});
 	return { calls: () => calls, factory };
 }
@@ -81,7 +81,7 @@ describe("retry", () => {
 					calls += 1;
 					throw new Response(null, { status: 307 });
 				},
-				queryKey: [issues, "redirecting"],
+				queryKey: issues("redirecting"),
 			});
 
 		await expect(
@@ -141,7 +141,7 @@ describe("timeout", () => {
 					signal = context.signal;
 					return new Promise<number>(() => {});
 				},
-				queryKey: [issues, "slow"],
+				queryKey: issues("slow"),
 			});
 		const done = fetchEntry(entryOf(client, slow, undefined));
 		advance(client, 100);
@@ -156,7 +156,7 @@ describe("timeout", () => {
 	it("lets fast requests through and clears its timer", async () => {
 		const client = testClient({ links: [timeout(100)] });
 		const fast = () =>
-			queryOptions({ queryFn: () => 1, queryKey: [issues, "fast"] });
+			queryOptions({ queryFn: () => 1, queryKey: issues("fast") });
 
 		await expect(fetchEntry(entryOf(client, fast, undefined))).resolves.toEqual(
 			{ ok: true },

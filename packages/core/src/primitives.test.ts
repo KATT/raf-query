@@ -10,7 +10,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { systemClock } from "./client.ts";
 import { fail, failOf, isFail, QueryFailure } from "./fail.ts";
-import { hashKey, matches, stampFor } from "./keys.ts";
+import { group } from "./groups.ts";
+import { type Group, hashKey, matches, stampFor } from "./keys.ts";
 import { replaceEqualDeep } from "./share.ts";
 import { listeners } from "./subscribe.ts";
 import {
@@ -96,21 +97,47 @@ describe("keys", () => {
 		);
 	});
 
-	it("make groups plain, frozen data that survives any serializer", () => {
-		const key = [drafts, "list"] as const;
-		expect(drafts).toEqual({ group: "issues/drafts" });
-		expect(Object.isFrozen(drafts)).toBe(true);
-		expect(hashKey(key)).toBe('[{"group":"issues/drafts"},"list"]');
+	it("build flat, plain keys that survive any serializer", () => {
+		const key = drafts("list", { id: 1 });
+
+		expect(key).toEqual(["issues", "drafts", "list", { id: 1 }]);
+		expect(Object.getPrototypeOf(key)).toBe(Array.prototype);
+		expect(drafts.path).toEqual(["issues", "drafts"]);
+		expect(hashKey(key)).toBe('["issues","drafts","list",{"id":1}]');
 		expect(structuredClone(key)).toEqual(key);
+		expect(JSON.parse(hashKey(key))).toEqual(key);
+	});
+
+	it("throw in development when a subgroup and a query share a name", () => {
+		const shop = group("shop");
+		group(shop, "cart");
+		expect(() => shop("cart", { id: 1 })).toThrow(
+			'"shop/cart" is both a subgroup and a query key',
+		);
+		const store = group("store");
+		store("cart", { id: 1 });
+		expect(() => group(store, "cart")).toThrow(
+			'"store/cart" is both a subgroup and a query key',
+		);
+		expect(() => store("cart", { id: 2 })).not.toThrow();
+		expect(() => store()).not.toThrow();
+	});
+
+	it("skip the name check in production builds", () => {
+		vi.stubEnv("NODE_ENV", "production");
+		const shop = group("shop");
+		group(shop, "cart");
+		expect(() => shop("cart", { id: 1 })).not.toThrow();
+		vi.unstubAllEnvs();
 	});
 
 	it("match a factory's input by its parts, arrays included", () => {
-		const factory = () => ({ queryKey: [issues, "list"] as const });
+		const factory = () => ({ queryKey: issues("list") });
 		const entry = {
 			factory,
 			hash: "",
 			input: undefined,
-			key: [issues, "list", { ids: [1, 2], status: "open" }] as const,
+			key: issues("list", { ids: [1, 2], status: "open" }),
 			options: undefined,
 			state: { data: undefined },
 		};
@@ -129,7 +156,7 @@ describe("keys", () => {
 		expect(author.tag).toBe("author");
 	});
 
-	it("match groups by path prefix", () => {
+	it("match groups as a prefix of the key", () => {
 		const keyed = (key: ReadonlyArray<unknown>) => ({
 			factory: undefined,
 			hash: "",
@@ -138,14 +165,15 @@ describe("keys", () => {
 			options: undefined,
 			state: { data: undefined },
 		});
-		const covers = (key: ReadonlyArray<unknown>, target: typeof issues) =>
+		const covers = (key: ReadonlyArray<unknown>, target: Group) =>
 			matches(keyed(key), stampFor(target, undefined, 1));
 
-		expect(covers([drafts], drafts)).toBe(true);
-		expect(covers([{ group: "issues/drafts" }], issues)).toBe(true);
-		expect(covers([issues], drafts)).toBe(false);
-		expect(covers([{ group: "issues-archive" }], issues)).toBe(false);
-		expect(covers(["issues"], issues)).toBe(false);
+		expect(covers(drafts("list"), drafts)).toBe(true);
+		expect(covers(drafts("list"), issues)).toBe(true);
+		expect(covers(["issues", "drafts"], issues)).toBe(true);
+		expect(covers(issues("list"), drafts)).toBe(false);
+		expect(covers(["issues-archive", "list"], issues)).toBe(false);
+		expect(covers(["users", "issues"], issues)).toBe(false);
 		expect(covers([], issues)).toBe(false);
 	});
 

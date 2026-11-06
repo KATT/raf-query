@@ -61,7 +61,7 @@ describe("entries", () => {
 		const fresh = () =>
 			queryOptions({
 				queryFn: () => ({ value: 1 }),
-				queryKey: [issues, "fresh"],
+				queryKey: issues("fresh"),
 			});
 		const entry = entryOf(client, fresh, undefined);
 		await fetchEntry(entry);
@@ -148,7 +148,7 @@ describe("entries", () => {
 			queryOptions({
 				enabled: false,
 				queryFn: () => 1,
-				queryKey: [issues, "off"],
+				queryKey: issues("off"),
 			});
 		const entry = entryOf(client, disabled, undefined);
 
@@ -200,7 +200,7 @@ describe("entries", () => {
 		const fresh = () =>
 			queryOptions({
 				queryFn: () => 1,
-				queryKey: [issues, "fresh"],
+				queryKey: issues("fresh"),
 				staleTime: 100,
 			});
 		const entry = entryOf(client, fresh, undefined);
@@ -281,7 +281,7 @@ describe("streams", () => {
 					await gate.promise;
 					yield "b";
 				},
-				queryKey: [issues, "words"],
+				queryKey: issues("words"),
 				stream: {
 					initial: "",
 					reduce: (text: string, chunk: string) => text + chunk,
@@ -302,7 +302,7 @@ describe("streams", () => {
 			queryOptions({
 				// oxlint-disable-next-line require-yield -- a stream with no chunks
 				async *queryFn() {},
-				queryKey: [issues, "empty"],
+				queryKey: issues("empty"),
 				stream: {
 					initial: 0,
 					reduce: (total: number, chunk: number) => total + chunk,
@@ -322,7 +322,7 @@ describe("streams", () => {
 					yield 1;
 					throw new Error("cut");
 				},
-				queryKey: [issues, "broken"],
+				queryKey: issues("broken"),
 				stream: {
 					initial: 0,
 					reduce: (total: number, chunk: number) => total + chunk,
@@ -349,7 +349,7 @@ describe("streams", () => {
 					await gate.promise;
 					throw new Error("late");
 				},
-				queryKey: [issues, "failing"],
+				queryKey: issues("failing"),
 				stream: {
 					initial: 0,
 					reduce: (total: number, chunk: number) => total + chunk,
@@ -373,7 +373,7 @@ describe("streams", () => {
 					yield 1;
 					await gate.promise;
 				},
-				queryKey: [issues, "ending"],
+				queryKey: issues("ending"),
 				stream: {
 					initial: 0,
 					reduce: (total: number, chunk: number) => total + chunk,
@@ -401,7 +401,7 @@ describe("streams", () => {
 					yield 10;
 					throw new Error("late");
 				},
-				queryKey: [issues, "counting"],
+				queryKey: issues("counting"),
 				stream: {
 					initial: 0,
 					reduce: (total: number, chunk: number) => total + chunk,

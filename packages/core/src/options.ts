@@ -1,10 +1,8 @@
 import type { Fail } from "./fail.ts";
-import type { AnyFactory, QueryKeyOption } from "./keys.ts";
+import type { AnyFactory, QueryKey, QueryKeyOption } from "./keys.ts";
 import type { AnyRoot, DefaultTypes, Def, RootTypes } from "./root.ts";
 
-export interface QueryFunctionContext<
-	TKey extends QueryKeyOption = QueryKeyOption,
-> {
+export interface QueryFunctionContext<TKey extends QueryKey = QueryKey> {
 	/** The query's `meta`, typed by its root where the query is defined. */
 	readonly meta: object;
 	readonly queryKey: TKey;
@@ -71,7 +69,7 @@ type Awaitable<T> = PromiseLike<T> | T;
  * ```ts
  * export const issueQuery = (input: { id: number }) =>
  *   queryOptions({
- *     queryKey: [issues, "byId", input],
+ *     queryKey: issues("byId", input),
  *     queryFn: ({ signal }) => getIssue(input.id, { signal }),
  *   });
  * ```

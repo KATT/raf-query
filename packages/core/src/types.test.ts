@@ -9,7 +9,7 @@ import {
 } from "./client.ts";
 import type { Fail } from "./fail.ts";
 import { group, groups, tag } from "./groups.ts";
-import type { QueryInfo } from "./keys.ts";
+import type { KeyTuple, QueryInfo, QueryKey } from "./keys.ts";
 import { retry } from "./links.ts";
 import {
 	type DefinedQueryHandle,
@@ -36,12 +36,12 @@ const client = createQueryClient({ features: [groups()] });
 const settings = () =>
 	queryOptions({
 		queryFn: () => ({ theme: "dark" }),
-		queryKey: [issues, "settings"],
+		queryKey: issues("settings"),
 	});
 const titles = (input: { readonly id: number }) =>
 	queryOptions({
 		queryFn: () => ({ title: `${input.id}` }),
-		queryKey: [issues, "title", input],
+		queryKey: issues("title", input),
 		select: (issue) => issue.title,
 	});
 
@@ -60,6 +60,41 @@ describe("factory types", () => {
 		expectTypeOf<InputOf<typeof titles>>().toEqualTypeOf<{
 			readonly id: number;
 		}>();
+	});
+});
+
+describe("group keys", () => {
+	it("type a group's path and the flat keys it builds", () => {
+		const drafts = group(issues, "drafts");
+
+		expectTypeOf(drafts.path).toEqualTypeOf<readonly ["issues", "drafts"]>();
+		expectTypeOf<
+			KeyTuple<ReturnType<typeof drafts<["byId", 1]>>>
+		>().toEqualTypeOf<readonly ["issues", "drafts", "byId", 1]>();
+		expectTypeOf(drafts("byId", 1)).toExtend<QueryKey>();
+	});
+
+	it("take only group-built keys in queryOptions", () => {
+		const wrong = () => {
+			queryOptions({
+				queryFn: () => 1,
+				// @ts-expect-error -- a hand-written key has no group
+				queryKey: ["issues", "list"],
+			});
+			queryOptions({
+				queryFn: () => 1,
+				// @ts-expect-error -- nor does an `as const` one
+				queryKey: ["issues", "list"] as const,
+			});
+			queryOptions({
+				queryFn: () => 1,
+				// @ts-expect-error -- a spread loses the brand
+				queryKey: [...issues(), "list"],
+			});
+			// @ts-expect-error -- a subgroup's name is a string
+			group(issues, 1);
+		};
+		expectTypeOf(wrong).toBeFunction();
 	});
 });
 
@@ -106,8 +141,9 @@ describe("inline factory makers", () => {
 		name: string,
 		get: (input: TInput) => Promise<TData>,
 	) {
+		const own = group(name);
 		return (input: TInput) =>
-			queryOptions({ queryFn: () => get(input), queryKey: [name, input] });
+			queryOptions({ queryFn: () => get(input), queryKey: own(input) });
 	}
 	const getPost = async (input: { readonly id: number }) => ({
 		title: `${input.id}`,
@@ -156,8 +192,10 @@ describe("verb types", () => {
 			void invalidateOne(client, author, "ada");
 			// @ts-expect-error -- raw strings aren't targets
 			void invalidateMany(client, "issues");
-			// @ts-expect-error -- nor are hand-written groups: they come from group()
-			void invalidateMany(client, { group: "issues" });
+			// @ts-expect-error -- nor are hand-written tuples: groups come from group()
+			void invalidateMany(client, ["issues"] as const);
+			// @ts-expect-error -- nor are keys
+			void invalidateMany(client, issues("list"));
 		};
 		expectTypeOf(wrong).toBeFunction();
 		expectTypeOf(author("ada")).toEqualTypeOf<string>();
@@ -197,7 +235,7 @@ describe("root types", () => {
 				tags: [writer(input.authorId)],
 			},
 			queryFn: async () => ({ title: "x" }),
-			queryKey: [posts, "byId", input],
+			queryKey: posts("byId", input),
 		});
 
 	it("give a root the meta its parts declare", () => {
@@ -253,14 +291,14 @@ describe("root types", () => {
 				// @ts-expect-error -- no link or feature in the root reads `cacheFor`
 				meta: { cacheFor: 1000 },
 				queryFn: async () => 1,
-				queryKey: [posts, "x"],
+				queryKey: posts("x"),
 			});
 			queryOptions({
 				def: defType<typeof makeQueryClient>(),
 				// @ts-expect-error -- meta fields have their part's types
 				meta: { owner: "nobody" },
 				queryFn: async () => 1,
-				queryKey: [posts, "y"],
+				queryKey: posts("y"),
 			});
 		};
 		expectTypeOf(wrong).toBeFunction();
@@ -317,7 +355,7 @@ describe("root types", () => {
 			queryOptions({
 				def: defType<typeof fewer>(),
 				queryFn: async () => 1,
-				queryKey: ["fewer"],
+				queryKey: group("fewer")(),
 			});
 		const wrong = () => {
 			// @ts-expect-error -- a root with more parts isn't the same root

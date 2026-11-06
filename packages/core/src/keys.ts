@@ -6,10 +6,11 @@
  * Core knows three kinds of target:
  *
  * - A factory, matched by identity, optionally with part of its input.
- * - A group: plain data, `{ group: "posts/drafts" }`, made by `group()` in
- *   `@raf-query/core/groups`. It matches keys whose first segment is that
- *   group or one inside it, so keys look the same in memory, on the wire
- *   and in devtools.
+ * - A group, made by `group()` in `@raf-query/core/groups`: a function that
+ *   builds flat keys under its path, `drafts("byId", input)` is
+ *   `["posts", "drafts", "byId", input]`. It matches every key that starts
+ *   with its path, so it covers its subgroups and their queries. Keys are
+ *   plain arrays, the same in memory, on the wire and in devtools.
  * - Any object with `where(query, param)`, typed by the client's root
  *   `meta`: tags and one-off predicates. They read `meta`, never the key.
  *
@@ -19,27 +20,50 @@
  * which always goes through their factory, so `where` sees their `meta`.
  */
 
-import { isString } from "./guards.ts";
 import type { QueryMeta } from "./root.ts";
 
-/** A query's key. Any serializable array. */
-export type QueryKeyOption = ReadonlyArray<unknown>;
-
 /** A key as handles and hydration carry it. Plain and serializable. */
-export type QueryKey = QueryKeyOption;
+export type QueryKey = ReadonlyArray<unknown>;
+
+declare const groupKeyBrand: unique symbol;
+
+/**
+ * A key a group built: a plain array at runtime. The brand is a type only,
+ * so `queryOptions` takes no hand-written or spread key.
+ */
+export type GroupKey<
+	TKey extends QueryKey = QueryKey,
+	TPath extends ReadonlyArray<string> = ReadonlyArray<string>,
+> = TKey & {
+	readonly [groupKeyBrand]: { readonly key: TKey; readonly path: TPath };
+};
+
+/** A key's plain tuple, without its brand. */
+export type KeyTuple<TKey> = TKey extends {
+	readonly [groupKeyBrand]: { readonly key: infer TTuple };
+}
+	? TTuple
+	: TKey;
+
+/** A query's key, as `queryOptions` takes it: built by a group. */
+export type QueryKeyOption = GroupKey;
 
 declare const groupBrand: unique symbol;
 
 /**
- * A named set of queries: those whose key starts with it or with a group
- * inside it. Plain data at runtime (`{ group: "posts/drafts" }`); the brand
- * is in the types only, so verbs take groups from `group()`, never a
- * hand-written object.
+ * A named set of queries: those whose key starts with its path. Call it
+ * for a key under that path; a subgroup's path extends its parent's, so a
+ * group covers its subgroups and their queries.
  */
-export interface Group {
-	/** The group's path: its parents' names and its own, joined by `/`. */
-	readonly group: string;
-	readonly [groupBrand]: true;
+export interface Group<
+	TPath extends ReadonlyArray<string> = ReadonlyArray<string>,
+> {
+	<const TRest extends QueryKey>(
+		...rest: TRest
+	): GroupKey<readonly [...TPath, ...TRest], TPath>;
+	readonly [groupBrand]: TPath;
+	/** Its parents' names and its own. */
+	readonly path: TPath;
 }
 
 function isPlainRecord(
@@ -149,7 +173,11 @@ export type Stamp =
 			readonly kind: "factory";
 			readonly partial: unknown;
 	  }
-	| { readonly at: number; readonly group: string; readonly kind: "group" }
+	| {
+			readonly at: number;
+			readonly kind: "group";
+			readonly path: ReadonlyArray<string>;
+	  }
 	| {
 			readonly at: number;
 			readonly kind: "target";
@@ -169,15 +197,9 @@ export function stampFor(
 	if ("where" in target) {
 		return { at, kind: "target", param: arg, target };
 	}
-	return "group" in target
-		? { at, group: target.group, kind: "group" }
+	return "path" in target
+		? { at, kind: "group", path: target.path }
 		: { at, factory: target, kind: "factory", partial: arg };
-}
-
-function groupOf(segment: unknown): string | undefined {
-	return isPlainRecord(segment) && isString(segment.group)
-		? segment.group
-		: undefined;
 }
 
 /** A stamp for exactly one entry. */
@@ -207,10 +229,8 @@ export function matches(entry: Matchable, stamp: Stamp): boolean {
 				(stamp.partial === undefined ||
 					partialMatch(entry.key.at(-1), stamp.partial))
 			);
-		case "group": {
-			const own = groupOf(entry.key[0]);
-			return own !== undefined && `${own}/`.startsWith(`${stamp.group}/`);
-		}
+		case "group":
+			return stamp.path.every((segment, i) => entry.key[i] === segment);
 		case "target": {
 			// SAFETY: the verb typed `param` and the meta against this target.
 			const where = stamp.target.where as (

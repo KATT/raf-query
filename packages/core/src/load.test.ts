@@ -41,11 +41,11 @@ describe("load", () => {
 		expect(handles.first).toEqual({
 			defined: true,
 			input: { id: 1 },
-			queryKey: [{ group: "issues" }, "byId", { id: 1 }],
+			queryKey: ["issues", "byId", { id: 1 }],
 		});
 		expect(handles.third).toEqual({
 			input: { id: 3 },
-			queryKey: [{ group: "issues" }, "byId", { id: 3 }],
+			queryKey: ["issues", "byId", { id: 3 }],
 		});
 	});
 
@@ -152,7 +152,7 @@ describe("load", () => {
 			queryOptions({
 				enabled: false,
 				queryFn: () => 1,
-				queryKey: [issues, "disabled"],
+				queryKey: issues("disabled"),
 			});
 
 		await expect(load(client, { value: fetchEntry(disabled) })).rejects.toThrow(
@@ -206,7 +206,7 @@ describe("load", () => {
 		const titled = () =>
 			queryOptions({
 				queryFn: () => ({ title: "hello" }),
-				queryKey: [issues, "titled"],
+				queryKey: issues("titled"),
 				select: (issue) => issue.title.toUpperCase(),
 			});
 		const [, data] = await load(client, { title: fetchEntry(titled) });
@@ -242,7 +242,7 @@ describe("load", () => {
 			{
 				entries: [
 					{
-						hash: '[{"group":"issues"},"byId",{"id":1}]',
+						hash: '["issues","byId",{"id":1}]',
 						kind: "prefetch",
 						name: "issue",
 					},
@@ -267,7 +267,7 @@ describe("waterfallHandle", () => {
 
 		expect(handle).toEqual({
 			input: { id: 1 },
-			queryKey: [{ group: "issues" }, "byId", { id: 1 }],
+			queryKey: ["issues", "byId", { id: 1 }],
 		});
 		expect(isWaterfallHandle(handle)).toBe(true);
 		expect(isWaterfallHandle({ ...handle })).toBe(false);

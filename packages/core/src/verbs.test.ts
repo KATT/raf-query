@@ -122,7 +122,12 @@ describe("invalidation", () => {
 			entries: [
 				{
 					data: { author: "ada", id: 1, title: "First" },
-					queryKey: structuredClone([issues, "byId", { id: 1 }]),
+					queryKey: structuredClone(issues("byId", { id: 1 })),
+					updatedAt: client.clock.now(),
+				},
+				{
+					data: '{"id":1}',
+					queryKey: structuredClone(drafts("byId", { id: 1 })),
 					updatedAt: client.clock.now(),
 				},
 			],
@@ -136,6 +141,7 @@ describe("invalidation", () => {
 
 		const backend = createBackend();
 		expect(isStale(entryOf(client, backend.issueQuery, { id: 1 }))).toBe(true);
+		expect(isStale(entryOf(client, backend.draftQuery, { id: 1 }))).toBe(true);
 	});
 
 	it("matches hydrated entries by tag once a factory reads them", async () => {

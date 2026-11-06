@@ -39,7 +39,7 @@ describe("dehydrate and hydrate", () => {
 		expect(state.entries).toEqual([
 			{
 				data: { author: "ada", id: 1, title: "First" },
-				queryKey: [{ group: "issues" }, "byId", { id: 1 }],
+				queryKey: ["issues", "byId", { id: 1 }],
 				updatedAt: server.clock.now(),
 			},
 		]);
@@ -63,7 +63,7 @@ describe("dehydrate and hydrate", () => {
 			entries: [
 				{
 					data: { author: "old", id: 1, title: "Old" },
-					queryKey: [issues, "byId", { id: 1 }],
+					queryKey: issues("byId", { id: 1 }),
 					updatedAt: 1,
 				},
 			],
@@ -166,12 +166,12 @@ describe("pending entries", () => {
 			entries: [
 				{
 					promise: later.promise,
-					queryKey: [issues, "byId", { id: 1 }],
+					queryKey: issues("byId", { id: 1 }),
 					updatedAt: 0,
 				},
 				{
 					promise: failing.promise,
-					queryKey: [issues, "byId", { id: 1 }],
+					queryKey: issues("byId", { id: 1 }),
 					updatedAt: 0,
 				},
 			],
@@ -198,7 +198,7 @@ describe("pending entries", () => {
 			entries: [
 				{
 					promise: Promise.resolve({ data: { id: 1 }, updatedAt: 5 }),
-					queryKey: [issues, "byId", { id: 1 }],
+					queryKey: issues("byId", { id: 1 }),
 					updatedAt: 0,
 				},
 			],
@@ -219,7 +219,7 @@ describe("pending entries", () => {
 			entries: [
 				{
 					fail: fail({ _tag: "NotFound" }),
-					queryKey: [issues, "byId", { id: 1 }],
+					queryKey: issues("byId", { id: 1 }),
 					updatedAt: 5,
 				},
 			],
@@ -240,7 +240,7 @@ describe("pending entries", () => {
 			entries: [
 				{
 					fail: fail({ _tag: "NotFound" }),
-					queryKey: [issues, "byId", { id: 1 }],
+					queryKey: issues("byId", { id: 1 }),
 					updatedAt: 5,
 				},
 			],
