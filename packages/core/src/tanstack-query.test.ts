@@ -19,6 +19,7 @@ import {
 	subscribeEntry,
 } from "./entry.ts";
 import { fail, isQueryFailure, QueryFailure } from "./fail.ts";
+import { group, type GroupKey } from "./groups.ts";
 import { dehydrate, hydrate } from "./hydration.ts";
 import { load, ensureEntry } from "./load.ts";
 import { queryOptions } from "./options.ts";
@@ -30,12 +31,15 @@ import {
 import { flush } from "./test-utils.ts";
 import {
 	getData,
+	invalidateMany,
 	invalidateOne,
 	removeAll,
 	removeOne,
 	resetOne,
 	setData,
 } from "./verbs.ts";
+
+const issue = group("issue");
 
 interface Issue {
 	readonly id: number;
@@ -63,7 +67,7 @@ function createApi() {
 					? fail({ _tag: "NotFound", id: input.id })
 					: get(input.id);
 			},
-			queryKey: ["issue", input.id],
+			queryKey: issue(input.id),
 			staleTime: 60_000,
 		});
 	/** The same query as a TanStack Query screen writes it. */
@@ -171,7 +175,7 @@ describe("raf-query to TanStack Query", () => {
 		const broken = () =>
 			queryOptions({
 				queryFn: () => Promise.reject(new Error("Down")),
-				queryKey: ["broken"],
+				queryKey: group("broken")(),
 			});
 		using _other = observe(sync.tanstack, {
 			enabled: false,
@@ -194,7 +198,7 @@ describe("raf-query to TanStack Query", () => {
 	it("leaves undefined data out", async () => {
 		using sync = synced();
 		const nothing = () =>
-			queryOptions({ queryFn: () => undefined, queryKey: ["nothing"] });
+			queryOptions({ queryFn: () => undefined, queryKey: group("nothing")() });
 		await fetchEntry(entryOf(sync.client, nothing, undefined));
 
 		expect(sync.tanstack.getQueryState(["nothing"])).toBeUndefined();
@@ -392,6 +396,70 @@ describe("invalidation", () => {
 		expect(api.calls).toEqual({ raf: 1, tanstack: 0 });
 	});
 
+	it("reaches every raf-query entry under a key prefix TanStack Query invalidates", async () => {
+		using sync = synced();
+		const posts = group("posts");
+		const drafts = group(posts, "drafts");
+		const users = group("users");
+		let calls = 0;
+		const make =
+			(key: (input: { readonly id: number }) => GroupKey) =>
+			(input: { readonly id: number; readonly lang?: string }) =>
+				queryOptions({
+					queryFn: () => {
+						calls += 1;
+						return calls;
+					},
+					queryKey: key(input),
+					staleTime: 60_000,
+				});
+		const postById = make((input) => posts("byId", input));
+		const draftById = make((input) => drafts("byId", input));
+		const userById = make((input) => users("byId", input));
+		const watched = [
+			entryOf(sync.client, postById, { id: 1, lang: "en" }),
+			entryOf(sync.client, draftById, { id: 1 }),
+			entryOf(sync.client, userById, { id: 1 }),
+		];
+		const unread = entryOf(sync.client, postById, { id: 2 });
+		await Promise.all([...watched, unread].map((entry) => fetchEntry(entry)));
+		const readers = watched.map((entry) => subscribeEntry(entry, () => {}));
+
+		expect(
+			sync.tanstack.getQueryData(posts("byId", { id: 1, lang: "en" })),
+		).toBe(1);
+		await sync.tanstack.invalidateQueries({ queryKey: posts() });
+		await flush();
+		expect(watched.map((entry) => entry.state.data)).toEqual([5, 6, 3]);
+		expect(isStale(unread)).toBe(true);
+		expect(calls).toBe(6);
+
+		await sync.tanstack.invalidateQueries({
+			queryKey: posts("byId", { id: 1 }),
+		});
+		await flush();
+		expect(watched.map((entry) => entry.state.data)).toEqual([7, 6, 3]);
+		for (const stop of readers) {
+			stop();
+		}
+	});
+
+	it("reaches queries only TanStack Query has when raf-query invalidates a group", async () => {
+		using sync = synced();
+		const posts = group("posts");
+		const drafts = group(posts, "drafts");
+		sync.tanstack.setQueryData(drafts("byId", { id: 2 }), "draft");
+		sync.tanstack.setQueryData(["users", 1], "user");
+		await invalidateMany(sync.client, posts);
+
+		expect(
+			sync.tanstack.getQueryState(drafts("byId", { id: 2 }))?.isInvalidated,
+		).toBe(true);
+		expect(sync.tanstack.getQueryState(["users", 1])?.isInvalidated).toBe(
+			false,
+		);
+	});
+
 	it("skips invalidations of queries raf-query doesn't have", async () => {
 		using sync = synced();
 		sync.tanstack.setQueryData(["other"], 1);
@@ -537,8 +605,10 @@ describe("hydration", () => {
 describe("options", () => {
 	it("mirrors only the keys `filter` takes", async () => {
 		const api = createApi();
-		const local = () => queryOptions({ queryFn: () => 2, queryKey: ["local"] });
-		const early = () => queryOptions({ queryFn: () => 4, queryKey: ["early"] });
+		const local = () =>
+			queryOptions({ queryFn: () => 2, queryKey: group("local")() });
+		const early = () =>
+			queryOptions({ queryFn: () => 4, queryKey: group("early")() });
 		using sync = synced({ filter: (key) => key[0] === "issue" }, (caches) => {
 			caches.tanstack.setQueryData(["remote"], 1);
 			setData(caches.client, early, undefined, 4);

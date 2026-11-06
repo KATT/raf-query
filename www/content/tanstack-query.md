@@ -23,7 +23,7 @@ On the server, make the pair once per request, like any query client. The sync i
 
 ## Moving a screen
 
-The two caches match queries by key. Write the raf-query factory with the **same `queryKey`** the TanStack Query screens use:
+The two caches match queries by key. raf-query builds every key with a [group](./query-keys.md#groups), and the key a group builds is a plain array, so a factory can have the **same `queryKey`** the TanStack Query screens use. Make a group for the key's first segments and pass it the rest: `posts("detail", slug)` is `["posts", "detail", slug]`.
 
 ```sample
 tanstack-start/src/docs/tanstack-query.tsx#same-key
@@ -35,7 +35,7 @@ The screen on raf-query starts the query in its loader, as any raf-query route d
 tanstack-start/src/docs/tanstack-query.tsx#loader
 ```
 
-A screen still on TanStack Query keeps its [`useQuery`](https://tanstack.com/query/latest/docs/framework/react/reference/functions/useQuery) as it is:
+A screen still on TanStack Query keeps its [`useQuery`](https://tanstack.com/query/latest/docs/framework/react/reference/functions/useQuery) as it is. It can also build its key with the group, `queryKey: posts("detail", slug)`, so the two can't drift apart:
 
 ```sample
 tanstack-start/src/docs/tanstack-query.tanstack.tsx#screen
@@ -49,11 +49,11 @@ Both read one copy of the post:
 
 TanStack Query refetches a query when a screen mounts if its data is stale, and its default `staleTime` is `0`. Give it a `staleTime` (the setup above sets one for every query), so a screen that mounts on data raf-query just loaded doesn't fetch it again.
 
-Keep the key as TanStack Query has it until the last screen that reads the query is on raf-query. Then you can move it under a [group](./query-keys.md#groups), which `invalidateMany` matches by the key's first segment.
+A group's path is strings, so a TanStack Query key that starts with anything else, such as `[{ scope: "posts" }]`, can't come from a group. Give it a string first segment on the TanStack Query side before moving its screens, or leave it out of the sync with `filter`.
 
 ## Invalidation
 
-Invalidate from whichever side the code is on. The other cache marks its copy stale too:
+Invalidate from whichever side the code is on. The other cache marks its copy stale too. A group and a TanStack Query key prefix match the same queries, every key that starts with the group's path, so these two lines reach the same posts on both sides:
 
 ```sample
 tanstack-start/src/docs/tanstack-query.tsx#invalidate
@@ -63,9 +63,9 @@ Only one cache refetches. When raf-query reads the query, raf-query refetches it
 
 What each side's invalidation reaches:
 
-- TanStack Query's [`invalidateQueries`](https://tanstack.com/query/latest/docs/reference/QueryClient#invalidatequeries) with a key prefix reaches every matching query in its cache, and the sync passes each one on.
-- raf-query's `invalidateOne` and groups match by key, so they reach copies the sync made too.
-- raf-query's `invalidateMany(queryClient, factory)` matches by factory, so it reaches only the entries that factory has read on this client. A query that only TanStack Query screens have read isn't covered. While both sides show a factory's queries, invalidate them by key: `invalidateOne`, a group, or `invalidateQueries`.
+- TanStack Query's [`invalidateQueries`](https://tanstack.com/query/latest/docs/reference/QueryClient#invalidatequeries) reaches every query in its cache that its `queryKey` matches, by prefix and by the fields of an object segment, and the sync passes each one on. A raf-query entry still loading its first data has no copy in TanStack Query yet, so it isn't reached.
+- raf-query's groups and `invalidateOne` match by key, so they reach the copies the sync made too, including queries only TanStack Query screens have read.
+- raf-query's tags and `invalidateMany(queryClient, factory)` match by what raf-query knows of a query, its factory and `meta`, so they reach only the entries raf-query has read. While both sides show a set of queries, invalidate it by group.
 
 ## What syncs
 

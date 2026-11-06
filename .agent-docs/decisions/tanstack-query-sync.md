@@ -5,6 +5,7 @@
 - It's a feature, so it runs while a provider mounts the client: on the server, each cache dehydrates and hydrates on its own, and the sync merges them on mount (newer `updatedAt` wins).
 - Matching is by raf's `hashKey` of each side's `queryKey` (TanStack's default hash is the same JSON), so a custom TanStack `queryKeyHashFn` doesn't break it.
 - Echo guard: per key, the last state the sync saw on each side (data reference, `updatedAt`, error). A side counts as changed only against that snapshot, which survives structural sharing keeping a different reference on each side. Synchronous re-entry is blocked by an `applying` flag. raf emits `updated` per microtask, so raf→TanStack lands a microtask later; TanStack→raf is synchronous.
+- Keys: a group builds a plain array, so the raf factory's key and the TanStack key are the same array. A raf group stamp matches mirrors by key prefix, as `invalidateQueries({ queryKey: prefix })` does on the TanStack side; factory and tag stamps don't, because a mirror has no factory or `meta` until raf reads it.
 - Invalidation: one side refetches, not both. raf→TanStack passes `refetchType: "none"` when raf has a reader; TanStack→raf only stamps the entry stale when TanStack has an active observer.
 - Removal goes from an original to its mirror (the copy the sync created) when nothing reads the mirror; removing or gc'ing a mirror leaves the original.
 - Where: `packages/core/src/tanstack-query.ts`, `www/content/tanstack-query.md`.

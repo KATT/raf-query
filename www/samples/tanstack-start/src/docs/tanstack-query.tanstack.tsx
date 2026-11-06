@@ -4,7 +4,7 @@ import { getPost } from "~/api.ts";
 // #region screen
 export function PostSidebar(props: { slug: string }) {
 	const { data } = useQuery({
-		queryKey: ["post", props.slug],
+		queryKey: ["posts", "detail", props.slug],
 		queryFn: () => getPost(props.slug),
 	});
 	return <aside>{data?.title}</aside>;

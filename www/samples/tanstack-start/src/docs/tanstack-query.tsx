@@ -1,12 +1,13 @@
 import {
 	createQueryClient,
 	ensureEntry,
-	invalidateOne,
+	invalidateMany,
 	load,
 	QueryClientProvider,
 	queryOptions,
 	recommended,
 } from "@raf-query/react";
+import { group } from "@raf-query/react/groups";
 import { tanstackQuerySync } from "@raf-query/react/tanstack-query";
 import {
 	QueryClient,
@@ -47,11 +48,13 @@ const { queryClient, tanstackQueryClient } = makeQueryClients();
 declare const slug: string;
 
 // #region same-key
+export const posts = group("posts");
+
 // The TanStack Query screens read this as
-// useQuery({ queryKey: ["post", slug], queryFn: () => getPost(slug) }).
+// useQuery({ queryKey: ["posts", "detail", slug], queryFn: () => getPost(slug) }).
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: ["post", input.slug],
+		queryKey: posts("detail", input.slug),
 		queryFn: () => getPost(input.slug),
 	});
 }
@@ -64,10 +67,10 @@ const [handles, data] = await load(queryClient, {
 // #endregion
 
 // #region invalidate
-// In an action on raf-query:
-await invalidateOne(queryClient, postQuery, { slug });
-// In code still on TanStack Query:
-await tanstackQueryClient.invalidateQueries({ queryKey: ["post", slug] });
+// In an action on raf-query: every key that starts with "posts".
+await invalidateMany(queryClient, posts);
+// In code still on TanStack Query, the same queries:
+await tanstackQueryClient.invalidateQueries({ queryKey: ["posts"] });
 // #endregion
 
 // #region filter
