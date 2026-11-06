@@ -16,10 +16,6 @@ export const features = {
 		label: "`focusRefetch()`",
 		marker: { code: "visibilitychange" },
 	},
-	groups: {
-		label: "`groups()`",
-		marker: { module: "core/groups" },
-	},
 	hooks: {
 		label: "React hooks",
 		marker: { module: "react/use-query" },
@@ -34,6 +30,7 @@ export const features = {
 		marker: { code: "refetchOnReconnect" },
 	},
 	retry: { label: "`retry()`", marker: { code: "[object Response]" } },
+	tags: { label: "tags", marker: { code: ".tags" } },
 } satisfies Record<string, { readonly label: string; readonly marker: Marker }>;
 
 export type Feature = keyof typeof features;
@@ -46,7 +43,7 @@ export const featureIds: ReadonlyArray<Feature> = [
 	"polling",
 	"focusRefetch",
 	"reconnectRefetch",
-	"groups",
+	"tags",
 	"boundary",
 ];
 
@@ -98,9 +95,9 @@ export const scenarios: ReadonlyArray<Scenario> = [
 		name: "+ `reconnectRefetch()`",
 	},
 	{
-		fixture: "groups.tsx",
-		imports: ["hooks", "groups"],
-		name: "+ `groups()`, `group`, `tag`",
+		fixture: "tags.tsx",
+		imports: ["hooks", "tags"],
+		name: "+ tags (`groups()`, `tag`)",
 	},
 	{
 		fixture: "streams.tsx",
@@ -127,6 +124,6 @@ export const scenarios: ReadonlyArray<Scenario> = [
 	{
 		fixture: "everything.tsx",
 		imports: featureIds,
-		name: "Everything (`recommended()`, `timeout()`, groups, hydration, boundary)",
+		name: "Everything (`recommended()`, `timeout()`, tags, hydration, boundary)",
 	},
 ];

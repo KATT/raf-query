@@ -6,14 +6,14 @@ import {
 	recommended,
 	timeout,
 } from "@raf-query/react";
-import { group, groups } from "@raf-query/react/groups";
+import { groups, tag } from "@raf-query/react/groups";
 import type { DehydratedState } from "@raf-query/react/hydration";
 
 import { issueQuery, render } from "./render.tsx";
 
 declare const state: DehydratedState;
 
-const issues = group("issues");
+const author = tag<string>("author");
 const behaviors = recommended();
 const client = createQueryClient({
 	features: [...behaviors.features, groups()],
@@ -27,5 +27,5 @@ await render(client, (children) => (
 	</HydrationBoundary>
 ));
 document.addEventListener("click", () => {
-	void invalidateMany(client, issues);
+	void invalidateMany(client, author, "ada");
 });
