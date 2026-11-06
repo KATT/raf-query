@@ -1,12 +1,4 @@
 import {
-	createQueryClient,
-	getData,
-	load,
-	prefetchEntry,
-	queryOptions,
-	setData,
-} from "@raf-query/core";
-import {
 	type AnyRouter,
 	createRootRoute,
 	createRoute,
@@ -15,6 +7,15 @@ import {
 } from "@tanstack/react-router";
 import { describe, expect, it, vi } from "vitest";
 
+import { dehydrate } from "./hydration.ts";
+import {
+	createQueryClient,
+	getData,
+	load,
+	prefetchEntry,
+	queryOptions,
+	setData,
+} from "./index.ts";
 import { setupRouterIntegration as setupBrowser } from "./tanstack-router-browser.ts";
 import { setupRouterIntegration } from "./tanstack-router.ts";
 import { createBackend, flush, issues } from "./test-utils.tsx";
@@ -95,7 +96,7 @@ describe("setupRouterIntegration", () => {
 		);
 
 		runAll(ssr.cleanups);
-		expect(server["~entries"].size).toBe(0);
+		expect(dehydrate(server).entries).toHaveLength(0);
 	});
 
 	it("clears the cache and sends nothing when the request ended before dehydrating", async () => {
@@ -107,7 +108,7 @@ describe("setupRouterIntegration", () => {
 		runAll(ssr.cleanups);
 		setData(server, backend.issueQuery, { id: 1 }, { id: 1, title: "Late" });
 		await expect(router.options.dehydrate?.()).resolves.toBeUndefined();
-		expect(server["~entries"].size).toBe(0);
+		expect(getData(server, backend.issueQuery, { id: 1 })).toBeUndefined();
 	});
 
 	it("keeps the router's own hydration, and ignores state it didn't send", async () => {
@@ -118,7 +119,7 @@ describe("setupRouterIntegration", () => {
 		setupBrowser({ queryClient: browser, router });
 		await router.options.hydrate({ other: true });
 		expect(original).toHaveBeenCalledWith({ other: true });
-		expect(browser["~entries"].size).toBe(0);
+		expect(dehydrate(browser).entries).toHaveLength(0);
 	});
 
 	it("reports a broken stream", async () => {

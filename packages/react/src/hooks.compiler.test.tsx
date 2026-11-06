@@ -1,14 +1,16 @@
+import { act, fireEvent, screen } from "@testing-library/react";
+import { use } from "react";
+import { describe, expect, it } from "vitest";
+
 import {
 	fetchEntry,
 	load,
 	prefetchEntry,
 	type QueryHandle,
 	setData,
-} from "@raf-query/core";
-import { act, fireEvent, screen } from "@testing-library/react";
-import { use } from "react";
-import { describe, expect, it } from "vitest";
-
+	useIsFetching,
+	useQuery,
+} from "./index.ts";
 import {
 	createBackend,
 	flush,
@@ -16,8 +18,6 @@ import {
 	renderWith,
 	testClient,
 } from "./test-utils.tsx";
-import { useIsFetching } from "./use-is-fetching.ts";
-import { useQuery } from "./use-query.ts";
 
 type Backend = ReturnType<typeof createBackend>;
 
@@ -31,12 +31,9 @@ async function prefetched<THandle>(
 }
 
 describe("hooks compiled by the React Compiler", () => {
-	it("are compiled", () => {
+	it("render every write to a query", async () => {
 		// The compiler caches render values in slots of its memo cache, `$[i]`.
 		expect(String(useQuery)).toMatch(/\$\[\d+\]/);
-	});
-
-	it("render every write to a query", async () => {
 		const backend = createBackend();
 		const client = testClient();
 		const handle = await prefetched(backend, async () => {

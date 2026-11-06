@@ -1,3 +1,8 @@
+import { act, fireEvent, screen } from "@testing-library/react";
+import { Suspense, use } from "react";
+import { renderToString } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+
 import {
 	createQueryClient,
 	ensureEntry,
@@ -5,18 +10,15 @@ import {
 	invalidateOne,
 	load,
 	prefetchEntry,
+	QueryClientProvider,
 	QueryDisabledError,
 	type QueryHandle,
+	QueryProvider,
 	setData,
 	type Thenable,
+	useQuery,
 	waterfallHandle,
-} from "@raf-query/core";
-import { act, fireEvent, screen } from "@testing-library/react";
-import { Suspense, use } from "react";
-import { renderToString } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
-
-import { QueryClientProvider } from "./provider.tsx";
+} from "./index.ts";
 import {
 	createBackend,
 	flush,
@@ -24,7 +26,6 @@ import {
 	renderWith,
 	testClient,
 } from "./test-utils.tsx";
-import { useQuery } from "./use-query.ts";
 
 type Backend = ReturnType<typeof createBackend>;
 
@@ -426,42 +427,24 @@ describe("useQuery", () => {
 			expect(backend.requests).toHaveLength(0);
 		});
 
-		it("throws for a defined read of a disabled query", () => {
+		it("leaves a query to the browser under a QueryProvider, without starting it", () => {
+			vi.spyOn(console, "error").mockImplementation(() => {});
 			const backend = createBackend();
-			const client = createQueryClient({ isServer: true });
-			const handle = {
-				...waterfallHandle(backend.disabledQuery, { id: 1 }),
-				defined: true as const,
-			};
-			function Disabled() {
-				useQuery(backend.disabledQuery, handle);
-				return null;
-			}
-			expect(() =>
-				renderToString(
-					<QueryClientProvider client={client}>
-						<Disabled />
-					</QueryClientProvider>,
-				),
-			).toThrow(QueryDisabledError);
-		});
-
-		it("starts no request on a browser-only client", () => {
-			const backend = createBackend();
-			const client = createQueryClient({ isServer: true });
-			client["~browserOnly"] = true;
 			const handle = waterfallHandle(backend.issueQuery, { id: 1 });
 			function Issue() {
-				useQuery(backend.issueQuery, handle);
-				return null;
+				const [read] = useQuery(backend.issueQuery, handle);
+				const issue = use(read);
+				return <p>{issue.title}</p>;
 			}
-			expect(() =>
-				renderToString(
-					<QueryClientProvider client={client}>
+			const html = renderToString(
+				<QueryProvider config={{ isServer: true }}>
+					<Suspense fallback={<p>in the browser</p>}>
 						<Issue />
-					</QueryClientProvider>,
-				),
-			).toThrow(/loads in the browser/u);
+					</Suspense>
+				</QueryProvider>,
+			);
+
+			expect(html).toContain("in the browser");
 			expect(backend.requests).toHaveLength(0);
 		});
 

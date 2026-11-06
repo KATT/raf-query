@@ -1,21 +1,21 @@
-import {
-	createQueryClient,
-	fetchEntry,
-	getData,
-	load,
-	prefetchEntry,
-	setData,
-	waterfallHandle,
-} from "@raf-query/core";
-import { dehydrate } from "@raf-query/core/hydration";
 import { screen } from "@testing-library/react";
 import { use } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import { dehydrate } from "../hydration.ts";
+import { HydrationBoundary as ServerHydrationBoundary } from "../index-react-server.ts";
+import {
+	createQueryClient,
+	fetchEntry,
+	getData,
+	HydrationBoundary,
+	load,
+	prefetchEntry,
+	setData,
+	useQuery,
+	waterfallHandle,
+} from "../index.ts";
 import { createBackend, renderWith, testClient } from "../test-utils.tsx";
-import { useQuery } from "../use-query.ts";
-import { HydrationBoundary as ServerHydrationBoundary } from "./hydration-boundary-react-server.tsx";
-import { HydrationBoundary } from "./hydration-boundary.tsx";
 
 type Backend = ReturnType<typeof createBackend>;
 

@@ -1,16 +1,17 @@
-import {
-	fetchEntry,
-	fail,
-	load,
-	prefetchEntry,
-	queryOptions,
-} from "@raf-query/core";
-import { subscribeEntry } from "@raf-query/core/internal";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { QueryDevtools, QueryDevtoolsPanel } from "./devtools.tsx";
-import { QueryClientProvider } from "./provider.tsx";
+import {
+	fail,
+	fetchEntry,
+	load,
+	prefetchEntry,
+	QueryClientProvider,
+	queryOptions,
+	useQuery,
+	waterfallHandle,
+} from "./index.ts";
 import { createBackend, flush, issues, testClient } from "./test-utils.tsx";
 
 async function loadedClient() {
@@ -74,9 +75,10 @@ describe("QueryDevtoolsPanel", () => {
 		const loaded = await loadedClient();
 		const client = loaded.client;
 		const backend = loaded.backend;
-		const entry = [...client["~entries"].values()][0];
-		if (entry) {
-			subscribeEntry(entry, () => {});
+		const handle = waterfallHandle(backend.issueQuery, { id: 1 });
+		function Issue() {
+			useQuery(backend.issueQuery, handle);
+			return null;
 		}
 		await act(async () => {
 			backend.requests.splice(0)[0]?.fail(new Error("gone"));
@@ -91,6 +93,7 @@ describe("QueryDevtoolsPanel", () => {
 		await load(client, { idle: prefetchEntry(pendingQuery) });
 		render(
 			<QueryClientProvider client={client}>
+				<Issue />
 				<QueryDevtoolsPanel />
 			</QueryClientProvider>,
 		);

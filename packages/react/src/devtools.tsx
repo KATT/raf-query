@@ -94,11 +94,15 @@ function snapshotStore(client: QueryClient) {
 			}
 			return snapshot;
 		},
-		subscribe: (onChange: () => void) =>
-			client.subscribe(() => {
+		subscribe: (onChange: () => void) => {
+			// Readers that mounted between the render and this subscription
+			// changed the cache without an event this store saw.
+			changed = true;
+			return client.subscribe(() => {
 				changed = true;
 				onChange();
-			}),
+			});
+		},
 	};
 }
 

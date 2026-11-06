@@ -1,22 +1,25 @@
+import { act, render, screen } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+
 import {
 	createQueryClient,
 	type Feature,
 	load,
 	prefetchEntry,
-} from "@raf-query/core";
-import { act, render, screen } from "@testing-library/react";
-import { renderToString } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
-
-import { QueryClientProvider, useQueryClient } from "./provider.tsx";
-import { QueryProvider } from "./query-provider.tsx";
+	QueryClientProvider,
+	QueryProvider,
+	useIsFetching,
+	useQuery,
+	useQueryClient,
+	waterfallHandle,
+} from "./index.ts";
 import {
 	createBackend,
 	issues,
 	renderWith,
 	testClient,
 } from "./test-utils.tsx";
-import { useIsFetching } from "./use-is-fetching.ts";
 
 describe("QueryClientProvider", () => {
 	it("runs the client's features while mounted", () => {
@@ -42,24 +45,21 @@ describe("QueryClientProvider", () => {
 });
 
 describe("QueryProvider", () => {
-	it("creates a browser-only client from config", () => {
-		const seen: Array<boolean | undefined> = [];
-		function Reader() {
-			const client = useQueryClient();
-			seen.push(client["~browserOnly"]);
-			return <p>{String(client.isServer)}</p>;
+	it("makes a client from config that loads queries in the browser", async () => {
+		const backend = createBackend();
+		const handle = waterfallHandle(backend.issueQuery, { id: 1 });
+		function Issue() {
+			const [, controls] = useQuery(backend.issueQuery, handle);
+			return <p>{String(controls.isFetching)}</p>;
 		}
-		renderToString(
-			<QueryProvider config={{ isServer: true }}>
-				<Reader />
-			</QueryProvider>,
-		);
 		render(
-			<QueryProvider>
-				<Reader />
+			<QueryProvider config={{ staleTime: 1000 }}>
+				<Issue />
 			</QueryProvider>,
 		);
-		expect(seen).toEqual([true, true]);
+
+		expect(screen.getByText("true")).toBeTruthy();
+		await backend.respondAll();
 		expect(screen.getByText("false")).toBeTruthy();
 	});
 });

@@ -1,16 +1,16 @@
+import { act, render, type RenderResult } from "@testing-library/react";
+import { type ReactNode, Suspense } from "react";
+
+import { group } from "./groups.ts";
 import {
 	createQueryClient,
 	fail,
 	infiniteQueryOptions,
 	type QueryClient,
 	type QueryClientConfig,
+	QueryClientProvider,
 	queryOptions,
-} from "@raf-query/core";
-import { group } from "@raf-query/core/groups";
-import { act, render, type RenderResult } from "@testing-library/react";
-import { type ReactNode, Suspense } from "react";
-
-import { QueryClientProvider } from "./provider.tsx";
+} from "./index.ts";
 
 export interface Issue {
 	readonly id: number;
