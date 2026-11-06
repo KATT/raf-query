@@ -239,11 +239,20 @@ export function QueryDevtoolsPanel(props: QueryDevtoolsPanelProps) {
 	return <Panel {...props} client={client} />;
 }
 
+const corners = {
+	"bottom-left": { bottom: 12, left: 12 },
+	"bottom-right": { bottom: 12, right: 12 },
+	"top-left": { left: 12, top: 12 },
+	"top-right": { right: 12, top: 12 },
+} satisfies Record<
+	NonNullable<QueryDevtoolsProps["buttonPosition"]>,
+	CSSProperties
+>;
+
 /** A toggle button that opens the devtools panel over the page. */
 export function QueryDevtools(props: QueryDevtoolsProps) {
 	const [open, setOpen] = useState(props.initialIsOpen ?? false);
-	const corner = props.buttonPosition ?? "bottom-right";
-	const [vertical, horizontal] = corner.split("-");
+	const corner = corners[props.buttonPosition ?? "bottom-right"];
 	return (
 		<>
 			{open ? (
@@ -264,12 +273,7 @@ export function QueryDevtools(props: QueryDevtoolsProps) {
 			) : (
 				<button
 					onClick={() => setOpen(true)}
-					style={{
-						[horizontal ?? "right"]: 12,
-						position: "fixed",
-						[vertical ?? "bottom"]: 12,
-						zIndex: 99_999,
-					}}
+					style={{ ...corner, position: "fixed", zIndex: 99_999 }}
 					type="button"
 				>
 					raf-query

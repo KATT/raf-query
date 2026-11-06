@@ -15,12 +15,14 @@ export default defineConfig({
 	test: {
 		clearMocks: true,
 		coverage: {
+			exclude: ["src/test-utils.tsx"],
 			include: ["src"],
 			reporter: ["html", "lcov", "text-summary"],
 			thresholds: { 100: true },
 		},
 		environment: "happy-dom",
 		exclude: ["dist", "node_modules"],
+		setupFiles: ["./vitest.setup.ts"],
 		unstubGlobals: true,
 	},
 });

@@ -14,6 +14,7 @@ export default defineConfig({
 		},
 		environment: "happy-dom",
 		exclude: ["dist", "node_modules"],
+		setupFiles: ["./vitest.setup.ts"],
 		unstubGlobals: true,
 	},
 });
