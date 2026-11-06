@@ -204,6 +204,39 @@ describe("action", () => {
 		expect([isStale(loud), isStale(calm)]).toEqual([true, false]);
 	});
 
+	it("never reaches server clients, so requests don't cross", async () => {
+		const requestA = testClient({
+			features: [invalidateOnAction()],
+			isServer: true,
+			staleTime: Infinity,
+		});
+		const requestB = testClient({
+			features: [invalidateOnAction()],
+			isServer: true,
+			staleTime: Infinity,
+		});
+		const tab = testClient({
+			features: [invalidateOnAction()],
+			staleTime: Infinity,
+		});
+		using _a = { [Symbol.dispose]: mount(requestA) };
+		using _b = { [Symbol.dispose]: mount(requestB) };
+		using _tab = { [Symbol.dispose]: mount(tab) };
+		const source = counter();
+		const entries = [requestA, requestB, tab].map((client) =>
+			entryOf(client, source.factory, undefined),
+		);
+		await Promise.all(entries.map((entry) => fetchEntry(entry)));
+		await action(async () => {}, { invalidates: [source.factory] })();
+		await action(async () => {})();
+
+		expect(entries.map((entry) => isStale(entry))).toEqual([
+			false,
+			false,
+			true,
+		]);
+	});
+
 	it("does nothing for clients that didn't opt in", async () => {
 		const client = testClient({ staleTime: Infinity });
 		const source = counter();

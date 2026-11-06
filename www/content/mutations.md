@@ -27,13 +27,15 @@ tanstack-start/src/docs/mutations.tsx#intro
 
 ### The invalidateOnAction feature
 
-Actions bust the cache of the clients that have the `invalidateOnAction()` feature, on its own or through `recommended()`. Without it, actions invalidate nothing:
+Actions bust the cache of the browser clients that have the `invalidateOnAction()` feature, on its own or through `recommended()`. Without it, actions invalidate nothing:
 
 ```sample
 tanstack-start/src/docs/mutations.ts#the-invalidateonaction-feature
 ```
 
 An action without `invalidates` refetches everything on screen and marks the rest stale, the way routers rerun their loaders after an action. Pass `invalidateOnAction({ default: "none" })` to have such actions invalidate nothing.
+
+Server clients never take part: each belongs to one request, so one request's action can't reach another request's cache.
 
 ## Invalidating by hand
 

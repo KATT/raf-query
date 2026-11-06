@@ -26,15 +26,15 @@ tanstack-start/src/docs/api-reference.ts#createqueryclient
 
 Links and features:
 
-| Export                              | Kind    | Use                                                                                                                                                  |
-| ----------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `retry({ attempts, delay, when }?)` | link    | Retry failed requests: 3 attempts, doubling from 1 s up to 30 s. `meta.retry` per query. [Retries](./retries.md)                                     |
-| `timeout(ms)`                       | link    | Fail a request with `QueryTimeoutError`, and abort its `signal`, when it takes longer than `ms`                                                      |
-| `focusRefetch()`                    | feature | Refetch read, stale queries on window focus; `meta.refetchOnWindowFocus: false` opts out. [Window focus refetching](./window-focus-refetching.md)    |
-| `reconnectRefetch()`                | feature | Refetch read, stale queries when the browser comes back online; `meta.refetchOnReconnect: false` opts out                                            |
-| `polling()`                         | feature | Refetch read queries every `meta.refetchInterval` ms. [Polling](./polling.md)                                                                        |
-| `invalidateOnAction({ default }?)`  | feature | Lets `action()` invalidate this client's queries. `default: "active"` (the default) refetches every read query after an action without `invalidates` |
-| `groups()`                          | feature | From `@raf-query/react/groups`: gives queries `meta.tags`. [Query invalidation](./query-invalidation.md#tags)                                        |
+| Export                              | Kind    | Use                                                                                                                                                                                           |
+| ----------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `retry({ attempts, delay, when }?)` | link    | Retry failed requests: 3 attempts, doubling from 1 s up to 30 s. `meta.retry` per query. [Retries](./retries.md)                                                                              |
+| `timeout(ms)`                       | link    | Fail a request with `QueryTimeoutError`, and abort its `signal`, when it takes longer than `ms`                                                                                               |
+| `focusRefetch()`                    | feature | Refetch read, stale queries on window focus; `meta.refetchOnWindowFocus: false` opts out. [Window focus refetching](./window-focus-refetching.md)                                             |
+| `reconnectRefetch()`                | feature | Refetch read, stale queries when the browser comes back online; `meta.refetchOnReconnect: false` opts out                                                                                     |
+| `polling()`                         | feature | Refetch read queries every `meta.refetchInterval` ms. [Polling](./polling.md)                                                                                                                 |
+| `invalidateOnAction({ default }?)`  | feature | Lets `action()` invalidate this browser client's queries (server clients never take part). `default: "active"` (the default) refetches every read query after an action without `invalidates` |
+| `groups()`                          | feature | From `@raf-query/react/groups`: gives queries `meta.tags`. [Query invalidation](./query-invalidation.md#tags)                                                                                 |
 
 ## Query factories
 

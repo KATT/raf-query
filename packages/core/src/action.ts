@@ -28,12 +28,16 @@ export interface InvalidateOnActionOptions {
 
 /**
  * Lets `action()` bust this client's cache. Opt-in: without it, actions
- * invalidate nothing.
+ * invalidate nothing. Only browser clients take part: a server client
+ * belongs to one request, so another request's action must never reach it.
  */
 export function invalidateOnAction(
 	options: InvalidateOnActionOptions = {},
 ): Feature {
 	return (client, signal) => {
+		if (client.isServer) {
+			return;
+		}
 		const registration = {
 			client,
 			invalidateAfterEach: (options.default ?? "active") === "active",
