@@ -1,19 +1,19 @@
+import { applyStaleTime, queryTimeDefaults } from "@examples/db/types";
 import {
-	applyStaleTime,
-	DEFAULT_STALE_TIME,
-	queryTimeDefaults,
-} from "@examples/db/types";
-import { createQueryClient, type QueryClient } from "@raf-query/react";
+	createQueryClient,
+	type QueryClient,
+	recommended,
+} from "@raf-query/react";
 import { createContext } from "react-router";
 
-import { readStaleTime } from "./settings.ts";
-
 /** A query client for one server request (or the browser tab), with the bar's stale time. */
-export function createAppQueryClient() {
-	const staleTime = readStaleTime() ?? DEFAULT_STALE_TIME;
+export function createAppQueryClient(staleTime: number) {
 	const queryDefaults = queryTimeDefaults(staleTime);
-	const queryClient = createQueryClient(queryDefaults);
-	// The client reads its config live. A server client leaves `gcTime` unset.
+	// The client reads its config live, so the settings panel can change
+	// `staleTime` without a new client. A server client leaves `gcTime` unset.
+	const queryClient = createQueryClient(
+		Object.assign(queryDefaults, recommended()),
+	);
 	if (!queryClient.isServer) {
 		applyStaleTime(queryDefaults, staleTime);
 	}

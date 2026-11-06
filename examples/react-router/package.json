@@ -8,6 +8,7 @@
 		"build": "react-router build",
 		"dev": "react-router dev --port 3006",
 		"start": "PORT=3006 react-router-serve ./build/server/index.js",
+		"test": "vp test --config vitest.config.ts",
 		"typecheck": "react-router typegen && tsc"
 	},
 	"dependencies": {
@@ -32,6 +33,8 @@
 		"@types/react-dom": "19.3.0",
 		"tailwindcss": "4.3.3",
 		"typescript": "7.0.2",
-		"vite": "8.3.4"
+		"vite": "8.3.4",
+		"vite-plus": "1.0.0",
+		"vitest": "5.0.1"
 	}
 }
