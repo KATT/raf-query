@@ -60,6 +60,10 @@
 		"packages/core": {
 			// `src/index.ts` is the published API.
 			"includeEntryExports": false,
+			// The tests read queries through React's hooks, aliased to
+			// `packages/react/src` in `vite.config.ts` and `tsconfig.json`. A
+			// devDependency would make a workspace cycle, which pnpm refuses.
+			"ignoreDependencies": ["@raf-query/react"],
 		},
 		"packages/react": {
 			"includeEntryExports": false,

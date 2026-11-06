@@ -1,35 +1,36 @@
 import { describe, expectTypeOf, it } from "vitest";
 
-import { action } from "./action.ts";
 import {
+	action,
 	createQueryClient,
-	feature,
-	link,
-	type QueryClient,
-} from "./client.ts";
-import type { Fail } from "./fail.ts";
-import { group, groups, tag } from "./groups.ts";
-import type { KeyTuple, QueryInfo, QueryKey } from "./keys.ts";
-import { retry } from "./links.ts";
-import {
+	type DataOf,
 	type DefinedQueryHandle,
+	defType,
 	ensureEntry,
+	type ErrorOf,
+	type Fail,
+	feature,
 	fetchEntry,
+	getData,
+	type InputOf,
+	invalidateMany,
+	invalidateOne,
+	link,
 	load,
 	prefetchEntry,
+	type QueryClient,
 	type QueryHandle,
-	waterfallHandle,
-} from "./load.ts";
-import {
-	type DataOf,
-	type ErrorOf,
-	type InputOf,
+	type QueryInfo,
+	type QueryKey,
 	queryOptions,
-} from "./options.ts";
-import type { Recommended } from "./presets.ts";
-import { defType, type RootOf } from "./root.ts";
+	type Recommended,
+	retry,
+	type RootOf,
+	setData,
+	waterfallHandle,
+} from "./index.ts";
+import { group, groups, tag } from "./groups.ts";
 import { author, createBackend, featured, issues } from "./test-utils.ts";
-import { getData, invalidateMany, invalidateOne, setData } from "./verbs.ts";
 
 const backend = createBackend();
 const client = createQueryClient({ features: [groups()] });
@@ -68,9 +69,9 @@ describe("group keys", () => {
 		const drafts = group(issues, "drafts");
 
 		expectTypeOf(drafts.path).toEqualTypeOf<readonly ["issues", "drafts"]>();
-		expectTypeOf<
-			KeyTuple<ReturnType<typeof drafts<["byId", 1]>>>
-		>().toEqualTypeOf<readonly ["issues", "drafts", "byId", 1]>();
+		expectTypeOf(drafts("byId", 1)).toExtend<
+			readonly ["issues", "drafts", "byId", 1]
+		>();
 		expectTypeOf(drafts("byId", 1)).toExtend<QueryKey>();
 	});
 

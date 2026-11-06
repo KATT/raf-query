@@ -423,6 +423,7 @@
 		{
 			"files": [
 				"**/*.test.{js,jsx,ts,tsx}",
+				"**/*.test-d.{ts,tsx}",
 				"**/*.spec.{js,jsx,ts,tsx}",
 				"**/test/**/*.{js,jsx,ts,tsx}",
 				"**/tests/**/*.{js,jsx,ts,tsx}"

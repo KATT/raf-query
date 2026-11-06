@@ -1,13 +1,28 @@
 import {
+	QueryClientProvider,
+	useQuery,
+	type UseQueryOptions,
+} from "@raf-query/react";
+import {
+	act,
+	render,
+	renderHook,
+	type RenderResult,
+} from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
+
+import {
 	type Clock,
 	createQueryClient,
+	fail,
+	infiniteQueryOptions,
 	type QueryClient,
 	type QueryClientConfig,
-} from "./client.ts";
-import { fail } from "./fail.ts";
+	type QueryFactory,
+	type QueryHandle,
+	queryOptions,
+} from "./index.ts";
 import { group, tag } from "./groups.ts";
-import { infiniteQueryOptions } from "./infinite.ts";
-import { queryOptions } from "./options.ts";
 
 export interface Issue {
 	readonly author: string;
@@ -20,15 +35,14 @@ interface Timer {
 	readonly callback: () => void;
 }
 
-export interface FakeClock extends Clock {
-	/** Move time forward, firing due timers in order. */
+interface FakeClock extends Clock {
 	advance(ms: number): void;
 	readonly timers: number;
 }
 
-/** A clock whose timers fire only when the test advances it. */
-function fakeClock(start = 1_000_000): FakeClock {
-	let now = start;
+/** A clock whose timers fire only when the test moves it forward. */
+function fakeClock(epoch = 1_000_000): FakeClock {
+	let now = epoch;
 	const timers = new Set<Timer>();
 	return {
 		advance(ms) {
@@ -79,7 +93,7 @@ interface Request {
 }
 
 /**
- * An in-memory backend whose requests settle only when the test says so, so
+ * An in-memory server whose requests settle only when the test says so, so
  * tests can observe the cache mid-request.
  */
 export function createBackend() {
@@ -125,7 +139,6 @@ export function createBackend() {
 				const last = Math.max(...page);
 				return last < 9 ? last + 1 : undefined;
 			},
-			getPreviousPageParam: () => undefined,
 			initialPageParam: 0,
 			queryFn: async (context) => {
 				await get(context.pageParam, context.signal);
@@ -142,24 +155,42 @@ export function createBackend() {
 		issueQuery,
 		pageQuery,
 		requests,
-		/** Settle every open request. */
-		respondAll() {
+		/** Settle every open request, and let what they started run. */
+		async respondAll() {
 			for (const request of requests.splice(0)) {
 				request.respond();
 			}
+			await flush();
 		},
 		store,
 	};
 }
 
-/** Let queued microtasks and promise callbacks run. */
-export function flush() {
-	return new Promise<void>((resolve) => {
-		setTimeout(resolve, 0);
-	});
+/** Let queued microtasks, promise callbacks and the renders they cause run. */
+export function flush(): Promise<void> {
+	return act(
+		() =>
+			new Promise<void>((resolve) => {
+				setTimeout(resolve, 0);
+			}),
+	);
 }
 
-/** A browser-side client on a fake clock. */
+/**
+ * Start something that changes what's on screen, render what it changed so
+ * far, and hand back its promise without waiting for it to settle.
+ */
+export async function start<T>(
+	run: () => Promise<T>,
+): Promise<readonly [done: Promise<T>]> {
+	let done!: Promise<T>;
+	await act(async () => {
+		done = run();
+	});
+	return [done];
+}
+
+/** A browser client on a fake clock. */
 export function testClient(config: QueryClientConfig = {}): QueryClient {
 	return createQueryClient({ clock: fakeClock(), isServer: false, ...config });
 }
@@ -169,12 +200,49 @@ function clockOf(client: QueryClient): FakeClock {
 	return client.clock as FakeClock;
 }
 
-/** Move a test client's clock forward. */
-export function advance(client: QueryClient, ms: number) {
-	clockOf(client).advance(ms);
+/** Move a test client's clock forward, firing its due timers. */
+export function advance(client: QueryClient, ms: number): void {
+	act(() => {
+		clockOf(client).advance(ms);
+	});
 }
 
-/** How many timers a test client has pending. */
+/** How many timers a test client has scheduled. */
 export function timersOf(client: QueryClient): number {
 	return clockOf(client).timers;
+}
+
+function provider(client: QueryClient) {
+	return (props: { readonly children?: ReactNode }) =>
+		createElement(QueryClientProvider, { client }, props.children);
+}
+
+/**
+ * Read a query the way a component does, with `useQuery` under a provider:
+ * it has a reader, and the client's features run, until `unmount()`.
+ * `renders()` counts the renders so far.
+ */
+export function read<
+	TFactory extends QueryFactory,
+	const THandle extends QueryHandle<TFactory>,
+>(
+	client: QueryClient,
+	factory: TFactory,
+	handle: THandle,
+	options?: UseQueryOptions,
+) {
+	let renders = 0;
+	const hook = renderHook(
+		() => {
+			renders += 1;
+			return useQuery(factory, handle, options);
+		},
+		{ wrapper: provider(client) },
+	);
+	return Object.assign(hook, { renders: () => renders });
+}
+
+/** Mount a client under a provider with nothing reading, so its features run. */
+export function mount(client: QueryClient, ui: ReactNode = null): RenderResult {
+	return render(ui, { wrapper: provider(client) });
 }

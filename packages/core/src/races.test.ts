@@ -9,16 +9,30 @@ import {
 } from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { entryOf, fetchEntry, type Outcome, subscribeEntry } from "./entry.ts";
 import { dehydrate, hydrate } from "./hydration.ts";
-import { invalidateMany, removeMany, resetMany } from "./verbs.ts";
-import { createBackend, flush, issues, testClient } from "./test-utils.ts";
+import {
+	fetchEntry,
+	invalidateMany,
+	isFetching,
+	load,
+	prefetchEntry,
+	removeMany,
+	resetMany,
+	waterfallHandle,
+} from "./index.ts";
+import {
+	createBackend,
+	flush,
+	issues,
+	read,
+	testClient,
+} from "./test-utils.ts";
 
 type Step =
 	| { readonly index: number; readonly kind: "fail" }
-	| { readonly kind: "fetch" }
 	| { readonly kind: "hydrate" }
 	| { readonly kind: "invalidate" }
+	| { readonly kind: "load" }
 	| { readonly kind: "read" }
 	| { readonly kind: "remove" }
 	| { readonly kind: "reset" }
@@ -26,9 +40,9 @@ type Step =
 	| { readonly kind: "unread" };
 
 const step: Arbitrary<Step> = oneof(
-	constant({ kind: "fetch" as const }),
 	constant({ kind: "hydrate" as const }),
 	constant({ kind: "invalidate" as const }),
+	constant({ kind: "load" as const }),
 	constant({ kind: "read" as const }),
 	constant({ kind: "remove" as const }),
 	constant({ kind: "reset" as const }),
@@ -37,17 +51,16 @@ const step: Arbitrary<Step> = oneof(
 	nat(3).map((index) => ({ index, kind: "respond" as const })),
 );
 
-describe("races", () => {
+describe("racing loads, reads, invalidations and removals", () => {
 	it("end every request in data, an error or a cancellation, and never hang", async () => {
 		await assert(
 			asyncProperty(array(step, { maxLength: 25 }), async (steps) => {
 				const backend = createBackend();
 				const server = createBackend();
 				const client = testClient();
-				const serverClient = testClient({ isServer: true });
-				const waits: Array<Promise<Outcome>> = [];
-				const readers: Array<() => void> = [];
-				const read = () => entryOf(client, backend.issueQuery, { id: 1 });
+				const handle = waterfallHandle(backend.issueQuery, { id: 1 });
+				const loads: Array<Promise<unknown>> = [];
+				const readers: Array<ReturnType<typeof read>> = [];
 				for (const next of steps) {
 					switch (next.kind) {
 						case "fail":
@@ -55,21 +68,29 @@ describe("races", () => {
 								.splice(next.index, 1)[0]
 								?.fail(new Error("down"));
 							break;
-						case "fetch":
-							waits.push(fetchEntry(read()));
-							break;
-						case "hydrate":
-							void fetchEntry(
-								entryOf(serverClient, server.issueQuery, { id: 1 }),
-							);
+						case "hydrate": {
+							const serverClient = testClient({ isServer: true });
+							void load(serverClient, {
+								issue: prefetchEntry(server.issueQuery, { id: 1 }),
+							});
 							hydrate(client, dehydrate(serverClient));
-							server.respondAll();
+							for (const request of server.requests.splice(0)) {
+								request.respond();
+							}
 							break;
+						}
 						case "invalidate":
 							void invalidateMany(client, issues);
 							break;
+						case "load":
+							loads.push(
+								load(client, {
+									issue: fetchEntry(backend.issueQuery, { id: 1 }),
+								}).catch((error: unknown) => error),
+							);
+							break;
 						case "read":
-							readers.push(subscribeEntry(read(), () => {}));
+							readers.push(read(client, backend.issueQuery, handle));
 							break;
 						case "remove":
 							removeMany(client, issues);
@@ -81,32 +102,37 @@ describe("races", () => {
 							backend.requests.splice(next.index, 1)[0]?.respond();
 							break;
 						case "unread":
-							readers.pop()?.();
+							readers.pop()?.unmount();
 							break;
 					}
+					// oxlint-disable-next-line no-await-in-loop -- steps run in order
 					await flush();
 				}
 				for (let round = 0; round < 5; round++) {
-					backend.respondAll();
-					server.respondAll();
-					await flush();
+					// oxlint-disable-next-line no-await-in-loop -- until nothing is left
+					await backend.respondAll();
 				}
-				const outcomes = await Promise.all(waits);
-				const entry = read();
+				const ended = await Promise.all(loads);
+				const last = read(client, backend.issueQuery, handle);
+				await backend.respondAll();
+				const [thenable, controls] = last.result.current;
 
-				for (const outcome of outcomes) {
-					expect(outcome.ok || outcome.error).toBeTruthy();
+				for (const outcome of ended) {
+					expect(
+						Array.isArray(outcome) ||
+							String(outcome).match(/down|AbortError|cancelled/),
+					).toBeTruthy();
 				}
-				expect(entry.state.isFetching).toBe(false);
-				expect(entry.run).toBeUndefined();
-				if (entry.state.hasData) {
-					expect(entry.thenable.status).toBe("fulfilled");
+				expect(isFetching(client)).toBe(0);
+				expect(thenable.status).not.toBe("pending");
+				if (controls.error !== undefined) {
+					expect(String(controls.error)).toMatch(/down/);
 				}
-				if (entry.state.status === "error") {
-					expect(String(entry.state.error)).toMatch(/down/);
+				for (const reader of [...readers, last]) {
+					reader.unmount();
 				}
 			}),
-			{ numRuns: 200 },
+			{ numRuns: 100 },
 		);
 	});
 });

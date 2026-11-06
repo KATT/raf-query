@@ -1,15 +1,21 @@
+import { assert, asyncProperty, type JsonValue, jsonValue } from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { entryOf, fetchEntry, isStale, subscribeEntry } from "./entry.ts";
-import { isObject } from "./guards.ts";
+import { group } from "./groups.ts";
 import { hydrate } from "./hydration.ts";
-import type { QueryInfo } from "./keys.ts";
 import {
+	ensureEntry,
+	fetchEntry,
 	getData,
 	invalidateAll,
 	invalidateMany,
 	invalidateOne,
 	isFetching,
+	load,
+	prefetchEntry,
+	type PartialInput,
+	type QueryInfo,
+	queryOptions,
 	removeAll,
 	removeMany,
 	removeOne,
@@ -17,236 +23,354 @@ import {
 	resetMany,
 	resetOne,
 	setData,
-} from "./verbs.ts";
+} from "./index.ts";
 import {
 	author,
 	createBackend,
 	drafts,
 	featured,
 	issues,
+	read,
 	testClient,
 	users,
 } from "./test-utils.ts";
 
-async function loaded() {
+/** A client with issues 1 and 2 and draft 3 cached and fresh forever. */
+async function cached() {
 	const backend = createBackend();
 	const client = testClient({ staleTime: Infinity });
-	const one = entryOf(client, backend.issueQuery, { id: 1 });
-	const two = entryOf(client, backend.issueQuery, { id: 2 });
-	const draft = entryOf(client, backend.draftQuery, { id: 3 });
-	const done = Promise.all([
-		fetchEntry(one),
-		fetchEntry(two),
-		fetchEntry(draft),
-	]);
-	backend.respondAll();
-	await done;
-	return { backend, client, draft, one, two };
+	const loading = load(client, {
+		draft: fetchEntry(backend.draftQuery, { id: 3 }),
+		one: fetchEntry(backend.issueQuery, { id: 1 }),
+		two: fetchEntry(backend.issueQuery, { id: 2 }),
+	});
+	await backend.respondAll();
+	const [handles] = await loading;
+	/** Which of them the next fetch entries refetch: the stale ones. */
+	const refetched = async () => {
+		void load(client, {
+			draft: fetchEntry(backend.draftQuery, { id: 3 }),
+			one: fetchEntry(backend.issueQuery, { id: 1 }),
+			two: fetchEntry(backend.issueQuery, { id: 2 }),
+		});
+		const ids = backend.requests.map((request) =>
+			request.id === 3 ? "draft" : request.id === 1 ? "one" : "two",
+		);
+		await backend.respondAll();
+		return ids;
+	};
+	return { backend, client, handles, refetched };
 }
 
 describe("invalidation", () => {
-	it("invalidates one query, refetching it if read", async () => {
-		const cache = await loaded();
-		using _reader = { [Symbol.dispose]: subscribeEntry(cache.one, () => {}) };
+	it("refetches a read query at once, and leaves the rest for their next load", async () => {
+		const cache = await cached();
+		const reader = read(
+			cache.client,
+			cache.backend.issueQuery,
+			cache.handles.one,
+		);
 		const invalidating = invalidateOne(cache.client, cache.backend.issueQuery, {
 			id: 1,
 		});
 
 		expect(cache.backend.requests.map((request) => request.id)).toEqual([1]);
-		expect(isStale(cache.two)).toBe(false);
-		cache.backend.respondAll();
+		await cache.backend.respondAll();
 		await invalidating;
-		expect(isStale(cache.one)).toBe(false);
-	});
-
-	it("marks unread queries stale without fetching", async () => {
-		const cache = await loaded();
-		await invalidateOne(cache.client, cache.backend.issueQuery, { id: 1 });
-
+		reader.unmount();
+		await invalidateOne(cache.client, cache.backend.issueQuery, { id: 2 });
 		expect(cache.backend.requests).toHaveLength(0);
-		expect(isStale(cache.one)).toBe(true);
+		expect(await cache.refetched()).toEqual(["two"]);
 	});
 
 	it("covers a group's subgroups, but not other groups", async () => {
-		const cache = await loaded();
+		const cache = await cached();
 		await invalidateMany(cache.client, drafts);
+		expect(await cache.refetched()).toEqual(["draft"]);
 
-		expect(isStale(cache.draft)).toBe(true);
-		expect(isStale(cache.one)).toBe(false);
 		await invalidateMany(cache.client, users);
+		expect(await cache.refetched()).toEqual([]);
 		await invalidateMany(cache.client, issues);
-		expect(isStale(cache.one)).toBe(true);
+		expect(await cache.refetched()).toEqual(["draft", "one", "two"]);
+	});
+
+	it("matches a group by its whole name, not a prefix of it", async () => {
+		const client = testClient({ staleTime: Infinity });
+		let calls = 0;
+		const archived = () =>
+			queryOptions({
+				queryFn: () => (calls += 1),
+				queryKey: group("issues-archive")("list"),
+			});
+		await load(client, { list: fetchEntry(archived) });
+		await invalidateMany(client, issues);
+		await load(client, { list: fetchEntry(archived) });
+
+		expect(calls).toBe(1);
 	});
 
 	it("matches a factory's queries, optionally by part of their input", async () => {
-		const cache = await loaded();
+		const cache = await cached();
 		await invalidateMany(cache.client, cache.backend.issueQuery, { id: 2 });
+		expect(await cache.refetched()).toEqual(["two"]);
 
-		expect([isStale(cache.one), isStale(cache.two)]).toEqual([false, true]);
 		await invalidateMany(cache.client, cache.backend.issueQuery);
-		expect([isStale(cache.one), isStale(cache.draft)]).toEqual([true, false]);
+		expect(await cache.refetched()).toEqual(["one", "two"]);
+	});
+
+	it("matches part of an input with nested objects and arrays", async () => {
+		const client = testClient({ staleTime: Infinity });
+		let calls = 0;
+		const list = (input: {
+			readonly filter: {
+				readonly ids: ReadonlyArray<number>;
+				readonly open: boolean;
+			};
+		}) =>
+			queryOptions({
+				queryFn: () => (calls += 1),
+				queryKey: issues("list", input),
+			});
+		const input = { filter: { ids: [1, 2], open: true } };
+		await load(client, { list: fetchEntry(list, input) });
+		const refetches = async (partial: PartialInput<typeof list>) => {
+			const before = calls;
+			await invalidateMany(client, list, partial);
+			await load(client, { list: fetchEntry(list, input) });
+			return calls > before;
+		};
+
+		expect(await refetches({ filter: { ids: [1, 2] } })).toBe(true);
+		expect(await refetches({ filter: { ids: [1] } })).toBe(false);
+		expect(await refetches({ filter: { ids: [1, 3] } })).toBe(false);
+		expect(await refetches({ filter: { open: false } })).toBe(false);
+		expect(await refetches({ filter: { open: true } })).toBe(true);
 	});
 
 	it("matches tags with or without their parameter", async () => {
-		const cache = await loaded();
+		const cache = await cached();
 		await invalidateMany(cache.client, author, "bob");
+		expect(await cache.refetched()).toEqual(["two"]);
 
-		expect([isStale(cache.one), isStale(cache.two)]).toEqual([false, true]);
 		await invalidateMany(cache.client, author);
-		expect(isStale(cache.one)).toBe(true);
-		expect(isStale(cache.draft)).toBe(false);
+		expect(await cache.refetched()).toEqual(["one", "two"]);
 		await invalidateMany(cache.client, featured);
-		expect(isStale(cache.draft)).toBe(true);
-	});
-
-	it("invalidates everything", async () => {
-		const cache = await loaded();
-		await invalidateAll(cache.client);
-
-		expect([isStale(cache.one), isStale(cache.draft)]).toEqual([true, true]);
-	});
-
-	it("doesn't count data that arrived after the invalidation", async () => {
-		const cache = await loaded();
-		await invalidateMany(cache.client, issues);
-		const refetch = fetchEntry(cache.one);
-		cache.backend.respondAll();
-		await refetch;
-
-		expect(isStale(cache.one)).toBe(false);
-	});
-
-	function hydratedClient() {
-		const client = testClient({ staleTime: Infinity });
-		hydrate(client, {
-			entries: [
-				{
-					data: { author: "ada", id: 1, title: "First" },
-					queryKey: structuredClone(issues("byId", { id: 1 })),
-					updatedAt: client.clock.now(),
-				},
-				{
-					data: '{"id":1}',
-					queryKey: structuredClone(drafts("byId", { id: 1 })),
-					updatedAt: client.clock.now(),
-				},
-			],
-		});
-		return client;
-	}
-
-	it("matches hydrated entries by group before a factory reads them", async () => {
-		const client = hydratedClient();
-		await invalidateMany(client, issues);
-
-		const backend = createBackend();
-		expect(isStale(entryOf(client, backend.issueQuery, { id: 1 }))).toBe(true);
-		expect(isStale(entryOf(client, backend.draftQuery, { id: 1 }))).toBe(true);
-	});
-
-	it("matches hydrated entries by tag once a factory reads them", async () => {
-		const client = hydratedClient();
-		await invalidateMany(client, author, "bob");
-		await invalidateMany(client, author, "ada");
-
-		const backend = createBackend();
-		expect(isStale(entryOf(client, backend.issueQuery, { id: 1 }))).toBe(true);
+		expect(await cache.refetched()).toEqual(["draft"]);
 	});
 
 	it("matches a one-off where target with its parameter", async () => {
-		const cache = await loaded();
+		const cache = await cached();
 		const byTitle = {
 			where: (query: QueryInfo, title: string) =>
-				isObject(query.data) &&
-				"title" in query.data &&
-				query.data.title === title,
+				// SAFETY: every query this test caches holds an issue or a draft string.
+				(query.data as { readonly title?: string } | undefined)?.title ===
+				title,
 		};
 		await invalidateMany(cache.client, byTitle, "Second");
 
-		expect([isStale(cache.one), isStale(cache.two)]).toEqual([false, true]);
+		expect(await cache.refetched()).toEqual(["two"]);
+	});
+
+	it("invalidates everything", async () => {
+		const cache = await cached();
+		await invalidateAll(cache.client);
+
+		expect(await cache.refetched()).toEqual(["draft", "one", "two"]);
+	});
+
+	it("doesn't count data that was requested after the invalidation", async () => {
+		const cache = await cached();
+		await invalidateMany(cache.client, issues);
+		expect(await cache.refetched()).toEqual(["draft", "one", "two"]);
+
+		expect(await cache.refetched()).toEqual([]);
+	});
+
+	it("applies invalidations to hydrated queries once a factory reads them", async () => {
+		const backend = createBackend();
+		const client = testClient({ staleTime: Infinity });
+		const issue = (id: number, by: string) => ({
+			data: { author: by, id, title: `Issue ${id}` },
+			queryKey: issues("byId", { id }),
+			updatedAt: client.clock.now(),
+		});
+		hydrate(client, { entries: [issue(1, "ada"), issue(2, "bob")] });
+		await invalidateMany(client, author, "ada");
+		const loading = load(client, {
+			one: fetchEntry(backend.issueQuery, { id: 1 }),
+			two: fetchEntry(backend.issueQuery, { id: 2 }),
+		});
+
+		expect(backend.requests.map((request) => request.id)).toEqual([1]);
+		await backend.respondAll();
+		await loading;
+		expect(getData(client, backend.issueQuery, { id: 1 })?.title).toBe("First");
+		expect(getData(client, backend.issueQuery, { id: 2 })?.title).toBe(
+			"Issue 2",
+		);
 	});
 });
 
 describe("reset and remove", () => {
-	it("resets one query, a target's, or all", async () => {
-		const cache = await loaded();
+	it("reset one query, a target's, or all of them", async () => {
+		const cache = await cached();
 		await resetOne(cache.client, cache.backend.issueQuery, { id: 1 });
 		await resetOne(cache.client, cache.backend.issueQuery, { id: 7 });
+		const has = () =>
+			[
+				getData(cache.client, cache.backend.issueQuery, { id: 1 }),
+				getData(cache.client, cache.backend.issueQuery, { id: 2 }),
+				getData(cache.client, cache.backend.draftQuery, { id: 3 }),
+			].map((data) => data !== undefined);
 
-		expect([cache.one.state.hasData, cache.two.state.hasData]).toEqual([
-			false,
-			true,
-		]);
-		await resetMany(cache.client, author);
-		expect(cache.two.state.hasData).toBe(false);
-		await resetAll(cache.client);
-		expect(cache.draft.state.hasData).toBe(false);
-	});
-
-	it("resets a factory's queries matching part of their input", async () => {
-		const cache = await loaded();
+		expect(has()).toEqual([false, true, true]);
 		await resetMany(cache.client, cache.backend.issueQuery, { id: 2 });
-
-		expect([cache.one.state.hasData, cache.two.state.hasData]).toEqual([
-			true,
-			false,
-		]);
+		expect(has()).toEqual([false, false, true]);
+		await resetAll(cache.client);
+		expect(has()).toEqual([false, false, false]);
 	});
 
-	it("removes one query, a target's, or all", async () => {
-		const cache = await loaded();
+	it("reset a query loading for nobody by starting it over", async () => {
+		const backend = createBackend();
+		const client = testClient();
+		void load(client, { issue: prefetchEntry(backend.issueQuery, { id: 1 }) });
+		const [old] = backend.requests;
+		const resetting = resetMany(client, issues);
+
+		expect(old?.signal.aborted).toBe(true);
+		await backend.respondAll();
+		await resetting;
+		expect(getData(client, backend.issueQuery, { id: 1 })?.title).toBe("First");
+	});
+
+	it("remove one query, a target's, or all, aborting their requests", async () => {
+		const cache = await cached();
 		removeOne(cache.client, cache.backend.issueQuery, { id: 1 });
 		removeOne(cache.client, cache.backend.issueQuery, { id: 7 });
+		const has = () =>
+			[
+				getData(cache.client, cache.backend.issueQuery, { id: 1 }),
+				getData(cache.client, cache.backend.issueQuery, { id: 2 }),
+				getData(cache.client, cache.backend.draftQuery, { id: 3 }),
+			].map((data) => data !== undefined);
 
-		expect(cache.client["~entries"].size).toBe(2);
+		expect(has()).toEqual([false, true, true]);
 		removeMany(cache.client, drafts);
-		expect(cache.client["~entries"].size).toBe(1);
-		removeMany(cache.client, cache.backend.issueQuery, { id: 2 });
-		expect(cache.client["~entries"].size).toBe(0);
-		entryOf(cache.client, cache.backend.issueQuery, { id: 1 });
+		expect(has()).toEqual([false, true, false]);
+		const loading = load(cache.client, {
+			one: ensureEntry(cache.backend.issueQuery, { id: 1 }),
+		}).catch((error: unknown) => error);
 		removeAll(cache.client);
-		expect(cache.client["~entries"].size).toBe(0);
+		expect(has()).toEqual([false, false, false]);
+		expect(cache.backend.requests[0]?.signal.aborted).toBe(true);
+		expect(await loading).toMatchObject({ name: "AbortError" });
 	});
 });
 
+/** What these tests write with `setData`. */
+type Data = Date | JsonValue | ReadonlyArray<number>;
+
+const any = () =>
+	queryOptions({ queryFn: (): Data => null, queryKey: issues("any") });
+
 describe("data", () => {
-	it("writes and reads a query's data", async () => {
-		const cache = await loaded();
+	it("writes a query's data from its previous data, or outright", async () => {
+		const cache = await cached();
 		setData(cache.client, cache.backend.issueQuery, { id: 1 }, (issue) => ({
 			author: "ada",
 			id: 1,
 			title: `${issue?.title} edited`,
 		}));
-
-		expect(
-			getData(cache.client, cache.backend.issueQuery, { id: 1 })?.title,
-		).toBe("First edited");
+		setData(cache.client, cache.backend.issueQuery, { id: 5 }, (issue) => ({
+			author: "cy",
+			id: 5,
+			title: issue?.title ?? "Fifth",
+		}));
 		setData(
 			cache.client,
 			cache.backend.issueQuery,
-			{ id: 5 },
+			{ id: 6 },
 			{
 				author: "cy",
-				id: 5,
-				title: "Fifth",
+				id: 6,
+				title: "Sixth",
 			},
 		);
+
 		expect(
-			getData(cache.client, cache.backend.issueQuery, { id: 5 })?.title,
-		).toBe("Fifth");
-		expect(
-			getData(cache.client, cache.backend.issueQuery, { id: 6 }),
-		).toBeUndefined();
+			[1, 5, 6, 7].map(
+				(id) => getData(cache.client, cache.backend.issueQuery, { id })?.title,
+			),
+		).toEqual(["First edited", "Fifth", "Sixth", undefined]);
+		expect(await cache.refetched()).toEqual([]);
 	});
 
-	it("counts queries with a request in flight", async () => {
-		const cache = await loaded();
+	it("reads nothing for a query that is cached without data", async () => {
+		const backend = createBackend();
+		const client = testClient();
+		void load(client, { issue: prefetchEntry(backend.issueQuery, { id: 1 }) });
+
+		expect(getData(client, backend.issueQuery, { id: 1 })).toBeUndefined();
+		await backend.respondAll();
+	});
+
+	it("keeps the identity of every part of new data that equals the old", async () => {
+		await assert(
+			asyncProperty(jsonValue(), jsonValue(), async (previous, next) => {
+				const client = testClient();
+				setData(client, any, undefined, previous);
+				setData(client, any, undefined, structuredClone(next));
+				const written = getData(client, any);
+				setData(client, any, undefined, structuredClone(next));
+
+				expect(written).toEqual(next);
+				expect(getData(client, any)).toBe(written);
+			}),
+		);
+		const client = testClient();
+		const list = { a: { b: 1 }, list: [{ id: 1 }, { id: 2 }] };
+		setData(client, any, undefined, list);
+		setData(client, any, undefined, {
+			a: { b: 1 },
+			list: [{ id: 1 }, { id: 3 }],
+		});
+		expect(getData(client, any)).toMatchObject({
+			a: list.a,
+			list: [list.list[0], { id: 3 }],
+		});
+	});
+
+	it("replaces data it can't compare part by part", () => {
+		const client = testClient();
+		// A list with a hole at 1, which structural sharing doesn't treat as plain.
+		const sparse = (): Array<number> =>
+			Object.assign([], { 0: 1, 2: 3, length: 3 });
+		for (const [previous, next] of [
+			[new Date(0), new Date(0)],
+			[sparse(), sparse()],
+			[{ a: undefined }, { b: undefined }],
+		]) {
+			setData(client, any, undefined, previous);
+			setData(client, any, undefined, next);
+			expect(getData(client, any)).not.toBe(previous);
+			expect(getData(client, any)).toEqual(next);
+		}
+	});
+
+	it("counts the queries with a request in flight, of all or of a target", async () => {
+		const cache = await cached();
 
 		expect(isFetching(cache.client)).toBe(0);
-		void fetchEntry(cache.one);
+		void invalidateAll(cache.client);
+		const reader = read(
+			cache.client,
+			cache.backend.issueQuery,
+			cache.handles.one,
+		);
 		expect(isFetching(cache.client)).toBe(1);
 		expect(isFetching(cache.client, drafts)).toBe(0);
 		expect(isFetching(cache.client, cache.backend.issueQuery)).toBe(1);
-		cache.backend.respondAll();
+		await cache.backend.respondAll();
+		reader.unmount();
 	});
 });

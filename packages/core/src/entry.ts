@@ -1,5 +1,6 @@
 import type { Operation, QueryClient } from "./client.ts";
 import { isFailValue, QueryFailure } from "./fail.ts";
+import { isObject } from "./guards.ts";
 import {
 	type AnyFactory,
 	hashKey,
@@ -274,9 +275,7 @@ function finish(entry: Entry, run: Run, outcome: Outcome) {
 }
 
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
-	return (
-		typeof value === "object" && value !== null && Symbol.asyncIterator in value
-	);
+	return isObject(value) && Symbol.asyncIterator in value;
 }
 
 async function pump(

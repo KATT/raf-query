@@ -1,287 +1,232 @@
+import { useQuery } from "@raf-query/react";
+import { act } from "@testing-library/react";
+import { createElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { action, invalidateOnAction } from "./action.ts";
-import { feature, mount } from "./client.ts";
+import { groups } from "./groups.ts";
 import {
-	entryOf,
-	fetchEntry,
-	isStale,
-	remove,
-	subscribeEntry,
-} from "./entry.ts";
-import { focusRefetch, polling, reconnectRefetch } from "./features.ts";
-import { queryOptions } from "./options.ts";
-import { recommended } from "./presets.ts";
+	action,
+	focusRefetch,
+	type FocusRefetchMeta,
+	invalidateOnAction,
+	polling,
+	type PollingMeta,
+	type QueryClient,
+	queryOptions,
+	reconnectRefetch,
+	type ReconnectRefetchMeta,
+	removeOne,
+	waterfallHandle,
+} from "./index.ts";
 import {
-	createBackend,
+	advance,
 	flush,
 	issues,
+	mount,
+	read,
 	testClient,
-	advance,
+	users,
 } from "./test-utils.ts";
 
-function browser() {
-	const window = new EventTarget();
-	const document = Object.assign(new EventTarget(), {
-		visibilityState: "visible",
-	});
-	vi.stubGlobal("window", window);
-	vi.stubGlobal("document", document);
-	return { document, window };
-}
+type Meta = {
+	readonly refetchInterval?: PollingMeta["refetchInterval"];
+	readonly refetchOnReconnect?: ReconnectRefetchMeta["refetchOnReconnect"];
+	readonly refetchOnWindowFocus?: FocusRefetchMeta["refetchOnWindowFocus"];
+};
 
-function counter(options?: {
-	readonly refetchInterval?: number;
-	readonly refetchOnReconnect?: boolean;
-	readonly refetchOnWindowFocus?: boolean;
-}) {
-	let calls = 0;
-	const factory = () =>
+/** Queries that count their requests, each with its own `meta`. */
+function counted() {
+	const calls = new Map<string, number>();
+	const query = (input: { readonly meta?: Meta; readonly name: string }) =>
 		queryOptions({
-			meta: options,
+			enabled: input.name !== "disabled",
+			meta: input.meta,
 			queryFn: () => {
-				calls += 1;
-				return calls;
+				const count = (calls.get(input.name) ?? 0) + 1;
+				calls.set(input.name, count);
+				return count;
 			},
-			queryKey: issues("count"),
+			queryKey: issues("counted", input.name),
 		});
-	return { calls: () => calls, factory };
+	/** Read the named query in a component, under its own provider; it loads at once. */
+	const show = async (client: QueryClient, name: string, meta?: Meta) => {
+		const reader = read(client, query, waterfallHandle(query, { meta, name }));
+		await flush();
+		return reader;
+	};
+	return { calls: (name: string) => calls.get(name) ?? 0, query, show };
 }
 
-describe("focusRefetch", () => {
-	it("refetches read, stale queries when the window regains focus", async () => {
-		const globals = browser();
-		const client = testClient({ features: [focusRefetch()] });
-		using _mounted = { [Symbol.dispose]: mount(client) };
-		const source = counter();
-		const read = entryOf(client, source.factory, undefined);
-		await fetchEntry(read);
-		using _reader = { [Symbol.dispose]: subscribeEntry(read, () => {}) };
-		globals.window.dispatchEvent(new Event("focus"));
+function focus(state: DocumentVisibilityState = "visible") {
+	vi.spyOn(document, "visibilityState", "get").mockReturnValue(state);
+	act(() => {
+		document.dispatchEvent(new Event("visibilitychange"));
+		window.dispatchEvent(new Event("focus"));
+	});
+}
 
-		expect(source.calls()).toBe(2);
-		globals.document.visibilityState = "hidden";
-		globals.document.dispatchEvent(new Event("visibilitychange"));
-		expect(source.calls()).toBe(2);
+describe("focus refetching", () => {
+	it("refetches read, stale queries when the window becomes visible", async () => {
+		const counter = counted();
+		const client = testClient({ features: [focusRefetch()], staleTime: 10 });
+		await counter.show(client, "stale");
+		advance(client, 10);
+		focus("hidden");
+		await flush();
+		expect(counter.calls("stale")).toBe(1);
+
+		focus();
+		await flush();
+		expect(counter.calls("stale")).toBe(2);
 	});
 
-	it("leaves unread and disabled queries alone", async () => {
-		const globals = browser();
-		const client = testClient({ features: [focusRefetch()] });
-		using _mounted = { [Symbol.dispose]: mount(client) };
-		const source = counter();
-		await fetchEntry(entryOf(client, source.factory, undefined));
-		globals.window.dispatchEvent(new Event("focus"));
+	it("leaves fresh, unread and disabled queries alone, and those that opt out", async () => {
+		const counter = counted();
+		const client = testClient({ features: [focusRefetch()], staleTime: 10 });
+		const unread = await counter.show(client, "unread");
+		unread.unmount();
+		await counter.show(client, "disabled");
+		await counter.show(client, "opted out", { refetchOnWindowFocus: false });
+		await counter.show(client, "other meta", { refetchOnReconnect: false });
+		advance(client, 10);
+		await counter.show(client, "fresh");
+		focus();
+		await flush();
 
-		expect(source.calls()).toBe(1);
-	});
-
-	it("skips queries that opt out in their meta", async () => {
-		const globals = browser();
-		const client = testClient({
-			features: [focusRefetch(), reconnectRefetch()],
-		});
-		using _mounted = { [Symbol.dispose]: mount(client) };
-		const source = counter({
-			refetchOnReconnect: false,
-			refetchOnWindowFocus: false,
-		});
-		const read = entryOf(client, source.factory, undefined);
-		await fetchEntry(read);
-		using _reader = { [Symbol.dispose]: subscribeEntry(read, () => {}) };
-		globals.window.dispatchEvent(new Event("focus"));
-		globals.window.dispatchEvent(new Event("online"));
-
-		expect(source.calls()).toBe(1);
+		expect(
+			["unread", "disabled", "opted out", "other meta", "fresh"].map(
+				counter.calls,
+			),
+		).toEqual([1, 0, 1, 2, 1]);
 	});
 });
 
-describe("reconnectRefetch", () => {
+describe("reconnect refetching", () => {
 	it("refetches read, stale queries when the browser comes back online", async () => {
-		const globals = browser();
+		const counter = counted();
 		const client = testClient({ features: [reconnectRefetch()] });
-		using _mounted = { [Symbol.dispose]: mount(client) };
-		const source = counter();
-		const read = entryOf(client, source.factory, undefined);
-		await fetchEntry(read);
-		using _reader = { [Symbol.dispose]: subscribeEntry(read, () => {}) };
-		globals.window.dispatchEvent(new Event("online"));
+		await counter.show(client, "stale");
+		await counter.show(client, "opted out", { refetchOnReconnect: false });
+		act(() => {
+			window.dispatchEvent(new Event("online"));
+		});
+		await flush();
 
-		expect(source.calls()).toBe(2);
+		expect(counter.calls("stale")).toBe(2);
+		expect(counter.calls("opted out")).toBe(1);
 	});
 });
 
 describe("polling", () => {
-	it("refetches read queries every refetchInterval", async () => {
-		const client = testClient({ features: [polling()] });
-		const source = counter({ refetchInterval: 100 });
-		const entry = entryOf(client, source.factory, undefined);
-		const stop = mount(client);
-		const reader = subscribeEntry(entry, () => {});
-		const second = subscribeEntry(entry, () => {});
-		second();
-		advance(client, 100);
+	it("refetches a read query every refetchInterval, until nothing reads it", async () => {
+		const counter = counted();
+		const client = testClient({ features: [polling(), groups()] });
+		const handle = waterfallHandle(counter.query, {
+			meta: { refetchInterval: 100 },
+			name: "polled",
+		});
+		function Poll() {
+			useQuery(counter.query, handle);
+			return null;
+		}
+		const app = mount(client, createElement(Poll));
 		await flush();
 		advance(client, 100);
-
-		expect(source.calls()).toBe(2);
-		reader();
-		advance(client, 500);
-		expect(source.calls()).toBe(2);
-		subscribeEntry(entry, () => {});
-		stop();
-		advance(client, 500);
-		expect(source.calls()).toBe(2);
-	});
-
-	it("picks up queries that were read before it started, and stops for removed ones", () => {
-		const client = testClient({ features: [polling()] });
-		const source = counter({ refetchInterval: 100 });
-		const entry = entryOf(client, source.factory, undefined);
-		subscribeEntry(entry, () => {});
-		using _mounted = { [Symbol.dispose]: mount(client) };
-		advance(client, 100);
-
-		expect(source.calls()).toBe(1);
-		remove(entry);
-		advance(client, 500);
-		expect(source.calls()).toBe(1);
-	});
-
-	it("leaves queries without an interval alone, next to declaration-only features", () => {
-		const client = testClient({ features: [polling(), feature()] });
-		const source = counter();
-		subscribeEntry(entryOf(client, source.factory, undefined), () => {});
-		using _mounted = { [Symbol.dispose]: mount(client) };
-		advance(client, 500);
-
-		expect(source.calls()).toBe(0);
-	});
-});
-
-describe("action", () => {
-	it("invalidates what it names, and resolves after the refetches", async () => {
-		const backend = createBackend();
-		const client = testClient({ features: [invalidateOnAction()] });
-		using _mounted = { [Symbol.dispose]: mount(client) };
-		const entry = entryOf(client, backend.issueQuery, { id: 1 });
-		const first = fetchEntry(entry);
-		backend.respondAll();
-		await first;
-		using _reader = { [Symbol.dispose]: subscribeEntry(entry, () => {}) };
-		const rename = action(
-			async (title: string) => {
-				backend.store.set(1, { author: "ada", id: 1, title });
-				return title.length;
-			},
-			{ invalidates: [issues] },
-		);
-		const running = rename("Renamed");
 		await flush();
-		backend.respondAll();
-
-		await expect(running).resolves.toBe(7);
-		expect(entry.state.data).toMatchObject({ title: "Renamed" });
-	});
-
-	it("invalidates everything by default, or nothing when told", async () => {
-		const busting = testClient({
-			features: [invalidateOnAction()],
-			staleTime: Infinity,
-		});
-		const quiet = testClient({
-			features: [invalidateOnAction({ default: "none" })],
-			staleTime: Infinity,
-		});
-		using _busting = { [Symbol.dispose]: mount(busting) };
-		using _quiet = { [Symbol.dispose]: mount(quiet) };
-		const source = counter();
-		const loud = entryOf(busting, source.factory, undefined);
-		const calm = entryOf(quiet, source.factory, undefined);
-		await Promise.all([fetchEntry(loud), fetchEntry(calm)]);
-		await action(async () => {})();
-
-		expect([isStale(loud), isStale(calm)]).toEqual([true, false]);
-	});
-
-	it("never reaches server clients, so requests don't cross", async () => {
-		const requestA = testClient({
-			features: [invalidateOnAction()],
-			isServer: true,
-			staleTime: Infinity,
-		});
-		const requestB = testClient({
-			features: [invalidateOnAction()],
-			isServer: true,
-			staleTime: Infinity,
-		});
-		const tab = testClient({
-			features: [invalidateOnAction()],
-			staleTime: Infinity,
-		});
-		using _a = { [Symbol.dispose]: mount(requestA) };
-		using _b = { [Symbol.dispose]: mount(requestB) };
-		using _tab = { [Symbol.dispose]: mount(tab) };
-		const source = counter();
-		const entries = [requestA, requestB, tab].map((client) =>
-			entryOf(client, source.factory, undefined),
-		);
-		await Promise.all(entries.map((entry) => fetchEntry(entry)));
-		await action(async () => {}, { invalidates: [source.factory] })();
-		await action(async () => {})();
-
-		expect(entries.map((entry) => isStale(entry))).toEqual([
-			false,
-			false,
-			true,
+		app.rerender([
+			createElement(Poll, { key: 1 }),
+			createElement(Poll, { key: 2 }),
 		]);
+		advance(client, 100);
+		await flush();
+
+		expect(counter.calls("polled")).toBe(3);
+		app.unmount();
+		advance(client, 500);
+		expect(counter.calls("polled")).toBe(3);
 	});
 
-	it("reaches only its client when bound to one", async () => {
-		const shell = testClient({
-			features: [invalidateOnAction()],
-			staleTime: Infinity,
-		});
-		const widget = testClient({
-			features: [invalidateOnAction()],
-			staleTime: Infinity,
-		});
-		using _shell = { [Symbol.dispose]: mount(shell) };
-		using _widget = { [Symbol.dispose]: mount(widget) };
-		const source = counter();
-		const entries = [shell, widget].map((client) =>
-			entryOf(client, source.factory, undefined),
-		);
-		await Promise.all(entries.map((entry) => fetchEntry(entry)));
-		await action(async () => {}, {
-			client: widget,
-			invalidates: [source.factory],
-		})();
-		await action(async () => {}, { client: widget })();
+	it("stops for a query that is removed or no longer read", async () => {
+		const counter = counted();
+		const client = testClient({ features: [polling()] });
+		await counter.show(client, "removed", { refetchInterval: 100 });
+		const left = await counter.show(client, "left", { refetchInterval: 100 });
+		removeOne(client, counter.query, { name: "removed" });
+		left.unmount();
+		advance(client, 500);
 
-		expect(entries.map((entry) => isStale(entry))).toEqual([false, true]);
-
-		await action(async () => {}, { invalidates: [source.factory] })();
-
-		expect(isStale(entries[0]!)).toBe(true);
+		expect(counter.calls("removed")).toBe(1);
+		expect(counter.calls("left")).toBe(1);
 	});
 
-	it("does nothing for clients that didn't opt in", async () => {
-		const client = testClient({ staleTime: Infinity });
-		const source = counter();
-		const entry = entryOf(client, source.factory, undefined);
-		await fetchEntry(entry);
-		await action(async () => {})();
+	it("leaves queries without an interval alone", async () => {
+		const counter = counted();
+		const client = testClient({ features: [polling()] });
+		const intervals: Array<PollingMeta["refetchInterval"]> = [
+			undefined,
+			false,
+			0,
+		];
+		for (const refetchInterval of intervals) {
+			// oxlint-disable-next-line no-await-in-loop -- one query at a time
+			await counter.show(client, String(refetchInterval), { refetchInterval });
+		}
+		advance(client, 500);
 
-		expect(isStale(entry)).toBe(false);
+		expect(["undefined", "false", "0"].map(counter.calls)).toEqual([1, 1, 1]);
 	});
 });
 
-describe("recommended", () => {
-	it("bundles the common links and features", () => {
-		const preset = recommended();
+describe("actions", () => {
+	it("invalidate what they name, and resolve once the refetches settle", async () => {
+		const counter = counted();
+		const client = testClient({ features: [invalidateOnAction()] });
+		await counter.show(client, "issues");
+		const save = action(async (title: string) => title.toUpperCase(), {
+			invalidates: [issues],
+		});
+		const other = action(async () => {}, { invalidates: [users] });
 
-		expect(preset.links).toHaveLength(1);
-		expect(preset.features).toHaveLength(4);
+		await act(async () => {
+			expect(await save("done")).toBe("DONE");
+		});
+		expect(counter.calls("issues")).toBe(2);
+		await act(() => other());
+		expect(counter.calls("issues")).toBe(2);
+	});
+
+	it("invalidate every read query by default, and never a server's", async () => {
+		const counter = counted();
+		const active = testClient({ features: [invalidateOnAction()] });
+		const named = testClient({
+			features: [invalidateOnAction({ default: "none" })],
+		});
+		const server = testClient({
+			features: [invalidateOnAction()],
+			isServer: true,
+		});
+		await counter.show(active, "active");
+		await counter.show(named, "named");
+		await counter.show(testClient(), "unregistered");
+		await counter.show(server, "server");
+		await act(() => action(async () => {})());
+
+		expect(
+			["active", "named", "unregistered", "server"].map(counter.calls),
+		).toEqual([2, 1, 1, 1]);
+	});
+
+	it("reach only their client when bound to one", async () => {
+		const counter = counted();
+		const bound = testClient({ features: [invalidateOnAction()] });
+		await counter.show(bound, "bound");
+		await counter.show(
+			testClient({ features: [invalidateOnAction()] }),
+			"other",
+		);
+		await act(() => action(async () => {}, { client: bound })());
+
+		expect(counter.calls("bound")).toBe(2);
+		expect(counter.calls("other")).toBe(1);
 	});
 });

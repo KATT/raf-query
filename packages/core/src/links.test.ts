@@ -1,166 +1,269 @@
+import { act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { entryOf, fetchEntry, remove } from "./entry.ts";
-import { QueryTimeoutError, retry, timeout } from "./links.ts";
-import { queryOptions } from "./options.ts";
-import { flush, issues, testClient, advance, timersOf } from "./test-utils.ts";
+import {
+	createQueryClient,
+	defType,
+	ensureEntry,
+	fail,
+	isQueryFailure,
+	link,
+	load,
+	type QueryClient,
+	type LoadEntry,
+	QueryTimeoutError,
+	queryOptions,
+	recommended,
+	removeOne,
+	retry,
+	timeout,
+} from "./index.ts";
+import { advance, flush, issues, testClient } from "./test-utils.ts";
 
-function flaky(
-	failures: number,
-	options: { readonly retry?: false | number } = {},
-) {
-	let calls = 0;
-	const factory = () =>
+/** A query that fails with `errors` in turn, then answers with how many attempts it took. */
+function flaky(errors: ReadonlyArray<unknown>) {
+	const signals: Array<AbortSignal> = [];
+	const query = () =>
 		queryOptions({
-			meta: options,
-			queryFn: () => {
-				calls += 1;
-				if (calls <= failures) {
-					throw new Error(`failure ${calls}`);
+			queryFn: async (context) => {
+				signals.push(context.signal);
+				const error = errors[signals.length - 1];
+				if (error !== undefined) {
+					throw error;
 				}
-				return calls;
+				return signals.length;
 			},
 			queryKey: issues("flaky"),
 		});
-	return { calls: () => calls, factory };
+	return { attempts: () => signals.length, query, signals };
 }
 
-describe("retry", () => {
-	it("retries with growing delays", async () => {
-		const client = testClient({ links: [retry()] });
-		const source = flaky(2);
-		const done = fetchEntry(entryOf(client, source.factory, undefined));
-		await flush();
+interface Outcome {
+	done?: boolean;
+	error?: unknown;
+	value?: unknown;
+}
 
-		expect(source.calls()).toBe(1);
-		advance(client, 1000);
-		await flush();
-		expect(source.calls()).toBe(2);
-		advance(client, 1999);
-		await flush();
-		expect(source.calls()).toBe(2);
-		advance(client, 1);
-		await expect(done).resolves.toEqual({ ok: true });
+/** Start loading `entry` and report how it ends, without waiting for it. */
+async function ensure(client: QueryClient, entry: LoadEntry) {
+	const outcome: Outcome = {};
+	load(client, { value: entry }).then(
+		([handles]) => Object.assign(outcome, { done: true, value: handles }),
+		(error: unknown) => Object.assign(outcome, { done: true, error }),
+	);
+	await flush();
+	return outcome;
+}
+
+const down = new Error("down");
+
+describe("retry", () => {
+	it("retries after growing delays, and gives up after its attempts", async () => {
+		const flakes = flaky([down, down, down, down]);
+		const client = testClient({ links: [retry()] });
+		const outcome = await ensure(client, ensureEntry(flakes.query));
+
+		for (const [wait, attempts] of [
+			[999, 1],
+			[1, 2],
+			[2000, 3],
+			[4000, 4],
+		] as const) {
+			advance(client, wait);
+			// oxlint-disable-next-line no-await-in-loop -- one retry at a time
+			await flush();
+			expect(flakes.attempts()).toBe(attempts);
+		}
+		expect(outcome.error).toBe(down);
 	});
 
-	it("gives up after its attempts", async () => {
+	it("retries until it succeeds, with its own attempts and delays", async () => {
+		const flakes = flaky([down, down]);
 		const client = testClient({
-			links: [retry({ attempts: 1, delay: () => 10 })],
+			links: [retry({ attempts: 2, delay: () => 10 })],
 		});
-		const source = flaky(5);
-		const done = fetchEntry(entryOf(client, source.factory, undefined));
+		const outcome = await ensure(client, ensureEntry(flakes.query));
+		advance(client, 10);
 		await flush();
 		advance(client, 10);
+		await flush();
 
-		await expect(done).resolves.toMatchObject({ ok: false });
-		expect(source.calls()).toBe(2);
+		expect(outcome.done).toBe(true);
+		expect(flakes.attempts()).toBe(3);
 	});
 
-	it("follows a query's own retry option, and its predicate", async () => {
-		const client = testClient({ links: [retry({ when: () => false })] });
-		const never = flaky(1, { retry: false });
-		const skipped = flaky(1);
-
-		await expect(
-			fetchEntry(entryOf(client, never.factory, undefined)),
-		).resolves.toMatchObject({
-			ok: false,
-		});
-		expect(never.calls()).toBe(1);
-		const other = testClient({ links: [retry({ when: () => false })] });
-		await fetchEntry(entryOf(other, skipped.factory, undefined));
-		expect(skipped.calls()).toBe(1);
-	});
-
-	it("doesn't retry a thrown Response, such as a router redirect", async () => {
-		const client = testClient({ links: [retry()] });
-		let calls = 0;
-		const redirecting = () =>
-			queryOptions({
-				queryFn: () => {
-					calls += 1;
-					throw new Response(null, { status: 307 });
-				},
-				queryKey: issues("redirecting"),
+	it("follows a query's own attempts, typed by its client's links", async () => {
+		const makeClient = () =>
+			createQueryClient({
+				clock: testClient().clock,
+				isServer: false,
+				links: [retry({ delay: () => 0 })],
 			});
-
-		await expect(
-			fetchEntry(entryOf(client, redirecting, undefined)),
-		).resolves.toMatchObject({ ok: false });
-		expect(calls).toBe(1);
-	});
-
-	it("never retries on the server", async () => {
-		const client = testClient({ isServer: true, links: [retry()] });
-		const source = flaky(1);
-
-		await expect(
-			fetchEntry(entryOf(client, source.factory, undefined)),
-		).resolves.toMatchObject({
-			ok: false,
-		});
-	});
-
-	it("stops waiting when the request is aborted", async () => {
-		const client = testClient({ links: [retry()] });
-		const source = flaky(1);
-		const entry = entryOf(client, source.factory, undefined);
-		void fetchEntry(entry);
-		await flush();
-		remove(entry);
-		advance(client, 1000);
-		await flush();
-
-		expect(source.calls()).toBe(1);
-	});
-
-	it("waits to be online before retrying", async () => {
-		const events = new EventTarget();
-		vi.stubGlobal("navigator", { onLine: false });
-		vi.stubGlobal("window", events);
-		const client = testClient({ links: [retry({ delay: () => 0 })] });
-		const source = flaky(1);
-		const done = fetchEntry(entryOf(client, source.factory, undefined));
-		await flush();
+		const attempts = new Map<string, number>();
+		const failing = (input: { readonly retry: number | false }) =>
+			queryOptions({
+				def: defType<typeof makeClient>(),
+				meta: { retry: input.retry },
+				queryFn: async () => {
+					const name = String(input.retry);
+					attempts.set(name, (attempts.get(name) ?? 0) + 1);
+					throw down;
+				},
+				queryKey: issues("failing", input),
+			});
+		const client = makeClient();
+		const once = await ensure(client, ensureEntry(failing, { retry: 1 }));
+		const never = await ensure(client, ensureEntry(failing, { retry: false }));
 		advance(client, 0);
 		await flush();
 
-		expect(source.calls()).toBe(1);
-		events.dispatchEvent(new Event("online"));
-		await expect(done).resolves.toEqual({ ok: true });
+		expect([once.error, never.error]).toEqual([down, down]);
+		expect(Object.fromEntries(attempts)).toEqual({ 1: 2, false: 1 });
+	});
+
+	it("doesn't retry an expected error, a thrown Response, or what `when` rules out", async () => {
+		const response = flaky([new Response(null, { status: 302 })]);
+		const ruledOut = flaky([down]);
+		await ensure(testClient({ links: [retry()] }), ensureEntry(response.query));
+		await ensure(
+			testClient({ links: [retry({ when: (error) => error !== down })] }),
+			ensureEntry(ruledOut.query),
+		);
+		let goneCalls = 0;
+		const gone = () =>
+			queryOptions({
+				queryFn: () => {
+					goneCalls += 1;
+					return fail({ _tag: "Gone" });
+				},
+				queryKey: issues("expected"),
+			});
+		const expected = await ensure(
+			testClient({ links: [retry()] }),
+			ensureEntry(gone),
+		);
+
+		expect([response.attempts(), ruledOut.attempts(), goneCalls]).toEqual([
+			1, 1, 1,
+		]);
+		expect(expected.error).toSatisfy(isQueryFailure);
+	});
+
+	it("never retries on the server", async () => {
+		const flakes = flaky([down]);
+		const outcome = await ensure(
+			testClient({ isServer: true, links: [retry({ delay: () => 0 })] }),
+			ensureEntry(flakes.query),
+		);
+
+		expect(outcome.error).toBe(down);
+		expect(flakes.attempts()).toBe(1);
+	});
+
+	it("stops when the query is removed, waiting or mid-request", async () => {
+		const flakes = flaky([down, down]);
+		const client = testClient({ links: [retry({ delay: () => 10 })] });
+		await ensure(client, ensureEntry(flakes.query));
+		removeOne(client, flakes.query);
+		advance(client, 100);
+		await flush();
+		expect(flakes.attempts()).toBe(1);
+
+		const aborted = Promise.withResolvers<never>();
+		const slow = () =>
+			queryOptions({
+				queryFn: (context) => {
+					context.signal.addEventListener("abort", () =>
+						aborted.reject(context.signal.reason),
+					);
+					return aborted.promise;
+				},
+				queryKey: issues("slow"),
+			});
+		let calls = 0;
+		const counting = testClient({
+			links: [
+				retry({ delay: () => 0 }),
+				link((op, next) => {
+					calls += 1;
+					return next(op);
+				}),
+			],
+		});
+		await ensure(counting, ensureEntry(slow));
+		removeOne(counting, slow);
+		advance(counting, 100);
+		await flush();
+		expect(calls).toBe(1);
+	});
+
+	it("waits until the browser is back online", async () => {
+		const flakes = flaky([down]);
+		const client = testClient({ links: [retry({ delay: () => 0 })] });
+		const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+		const outcome = await ensure(client, ensureEntry(flakes.query));
+		advance(client, 100);
+		await flush();
+		expect(flakes.attempts()).toBe(1);
+
+		online.mockReturnValue(true);
+		act(() => {
+			window.dispatchEvent(new Event("online"));
+		});
+		await flush();
+		expect(outcome.done).toBe(true);
+		expect(flakes.attempts()).toBe(2);
 	});
 });
 
 describe("timeout", () => {
-	it("fails and aborts a slow request", async () => {
-		const client = testClient({ links: [timeout(100)] });
-		let signal: AbortSignal | undefined;
-		const slow = () =>
+	it("fails and aborts a request that takes too long", async () => {
+		const hanging = () =>
 			queryOptions({
-				queryFn: (context) => {
-					signal = context.signal;
-					return new Promise<number>(() => {});
-				},
-				queryKey: issues("slow"),
+				queryFn: () => new Promise<never>(() => {}),
+				queryKey: issues("hanging"),
 			});
-		const done = fetchEntry(entryOf(client, slow, undefined));
+		let signal: AbortSignal | undefined;
+		const client = testClient({
+			links: [
+				timeout(100),
+				link((op, next) => {
+					signal = op.signal;
+					return next(op);
+				}),
+			],
+		});
+		const outcome = await ensure(client, ensureEntry(hanging));
 		advance(client, 100);
-		const outcome = await done;
+		await flush();
 
-		expect(outcome.ok ? undefined : outcome.error).toBeInstanceOf(
-			QueryTimeoutError,
-		);
-		expect(signal?.aborted).toBe(true);
+		expect(outcome.error).toBeInstanceOf(QueryTimeoutError);
+		expect(signal?.reason).toBe(outcome.error);
 	});
 
-	it("lets fast requests through and clears its timer", async () => {
+	it("lets faster requests and their errors through", async () => {
 		const client = testClient({ links: [timeout(100)] });
-		const fast = () =>
-			queryOptions({ queryFn: () => 1, queryKey: issues("fast") });
-
-		await expect(fetchEntry(entryOf(client, fast, undefined))).resolves.toEqual(
-			{ ok: true },
+		const fast = await ensure(client, ensureEntry(flaky([]).query));
+		const failing = await ensure(
+			testClient({ links: [timeout(100)] }),
+			ensureEntry(flaky([down]).query),
 		);
-		expect(timersOf(client)).toBe(1);
+		advance(client, 200);
+
+		expect(fast.value).toBeDefined();
+		expect(failing.error).toBe(down);
+	});
+});
+
+describe("the recommended setup", () => {
+	it("retries failed requests", async () => {
+		const flakes = flaky([down]);
+		const client = testClient(recommended());
+		const outcome = await ensure(client, ensureEntry(flakes.query));
+		advance(client, 1000);
+		await flush();
+
+		expect(outcome.done).toBe(true);
+		expect(flakes.attempts()).toBe(2);
 	});
 });
