@@ -1,0 +1,10 @@
+# Callable groups build flat keys (human picked, 2026-11-06)
+
+- Human picked "tuple groups with flat keys", option A (a callable group): a group is a function. `group("posts")` and `group(posts, "drafts")` return one; `drafts("byId", input)` returns the plain array `["posts", "drafts", "byId", input]`.
+- **Every key comes from a group.** `queryOptions` takes a `GroupKey`, an array branded in the types only, so a hand-written key, a spread or an `as const` array is a type error. Handles and `KeyOf` carry the key without the brand (`KeyTuple`), so router serializers (React Router's loader-data types) keep its tuple type.
+- **A group matches as a prefix**: `path.every((segment, i) => key[i] === segment)`, so it reaches every subgroup and query below it, hydrated entries included. Keys look the same in memory, on the wire, in devtools and to TanStack Query filters.
+- **Nesting only as `group(parent, name)`**, never `group(posts("drafts"))`: the dev check needs the parent link.
+- **Dev-only name check.** A subgroup and a query sharing a name under one parent would share a prefix, so invalidating the subgroup would reach the query. `group()` throws at whichever comes second, behind `process.env.NODE_ENV !== "production"` (typed by a module-local `declare const process`), so production bundles drop it.
+- Size (esbuild, `NODE_ENV=production`, gzip): `group()` 152 B alone, 62 B next to core; the dev check 0 B; core 48 B under matching object groups. Every bundle carries `group()`, so `tooling/bundle-size` marks tags by their `meta.tags` read instead of the `core/groups` module.
+- Lost: object groups (`{ group: "posts/drafts" }` as a key's first segment), and string keys in examples and docs.
+- Code: `packages/core/src/groups.ts` (`group`, the check), `keys.ts` (`Group`, `GroupKey`, `KeyTuple`, the matcher). Tests: `primitives.test.ts` ("build flat, plain keys…", "throw in development…", "skip the name check in production builds", "match groups as a prefix of the key"), `types.test.ts` ("group keys"). Docs: `www/content/query-keys.md#groups`.

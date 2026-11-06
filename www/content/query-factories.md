@@ -79,7 +79,7 @@ To name a factory's types elsewhere:
 tanstack-start/src/docs/query-factories.one-input-serializable.ts#type-helpers
 ```
 
-`ErrorOf` is the union of the [`fail()` values](./query-functions.md#expected-errors) the `queryFn` returns, and `never` when it returns none. The key's shape is part of the factory's type too (`readonly [Group, "bySlug", string]`), so handles of two factories with the same input and data are still [different types](./handles.md).
+`ErrorOf` is the union of the [`fail()` values](./query-functions.md#expected-errors) the `queryFn` returns, and `never` when it returns none. The key's shape is part of the factory's type too (`readonly ["posts", "bySlug", string]`), so handles of two factories with the same input and data are still [different types](./handles.md).
 
 ## Factory makers
 

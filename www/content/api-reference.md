@@ -122,7 +122,7 @@ The promise is a `Thenable<Data>`: read its `status`, `value` and `reason` to re
 
 ## Changing the cache
 
-Each verb takes the client first. A factory matches the queries it built: all of them, or those whose input matches a partial input. A group matches the keys that start with it. A target (`{ where }`, such as a tag) matches the queries its `where` picks. [Query invalidation](./query-invalidation.md)
+Each verb takes the client first. A factory matches the queries it built: all of them, or those whose input matches a partial input. A group matches the keys that start with its path. A target (`{ where }`, such as a tag) matches the queries its `where` picks. [Query invalidation](./query-invalidation.md)
 
 | Export                                                                                       | Use                                                                                                                                            |
 | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -163,7 +163,7 @@ Each verb takes the client first. A factory matches the queries it built: all of
 
 | Entry                              | Exports                                                                                                                                                   |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@raf-query/react/groups`          | `group(name, parent?)`, `tag(name)`, `groups()`, `Group`, `Tag`, `TagsMeta`. [Query keys](./query-keys.md#groups)                                         |
+| `@raf-query/react/groups`          | `group(name)`, `group(parent, name)`, `tag(name)`, `groups()`, `Group`, `GroupKey`, `Tag`, `TagsMeta`. [Query keys](./query-keys.md#groups)               |
 | `@raf-query/react/hydration`       | `dehydrate`, `dehydrateStream`, `hydrate`, `canDehydrate`, `RedactedError`, and their option and state types. [SSR and hydration](./ssr-and-hydration.md) |
 | `@raf-query/react/tanstack-router` | `setupRouterIntegration({ queryClient, router, dehydrateOptions?, handleRedirects? })`. [TanStack Start](./tanstack-start.md)                             |
 | `@raf-query/react/devtools`        | `QueryDevtools`, `QueryDevtoolsPanel`. [Devtools](./devtools.md)                                                                                          |

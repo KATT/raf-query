@@ -21,17 +21,21 @@ A query is a factory. The loader and the component call the same one. A paged li
 
 ```tsx
 import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
+import { group } from "@raf-query/react/groups";
+
+const posts = group("posts");
+const comments = group(posts, "comments");
 
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: ["post", input.slug],
+		queryKey: posts("bySlug", input.slug),
 		queryFn: () => getPost(input.slug),
 	});
 }
 
 export function commentsQuery(input: { slug: string }) {
 	return infiniteQueryOptions({
-		queryKey: ["comments", input.slug],
+		queryKey: comments(input.slug),
 		queryFn: (context) =>
 			listComments({ cursor: context.pageParam, slug: input.slug }),
 		initialPageParam: 0,

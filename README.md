@@ -16,10 +16,13 @@ The cache's mechanics (dedupe, staleness, infinite paging, SSR hydration) follow
 ## A taste
 
 ```tsx
+// Keys come from a group, so one call can invalidate every post query.
+const posts = group("posts");
+
 // A query is a factory: the loader and the component call the same one.
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: ["post", input.slug],
+		queryKey: posts("bySlug", input.slug),
 		queryFn: () => getPost(input.slug),
 	});
 }

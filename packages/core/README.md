@@ -1,6 +1,6 @@
 # @raf-query/core
 
-The framework-agnostic query client behind [raf-query](https://raf-query.katt.dev): a small cache that dedupes requests, keeps entries fresh, and hands out serializable handles. Retries, timeouts, refetch on focus or reconnect, polling, hydration, and groups and tags are opt-in links, features and subpaths, so a client bundles only what it turns on.
+The framework-agnostic query client behind [raf-query](https://raf-query.katt.dev): a small cache that dedupes requests, keeps entries fresh, and hands out serializable handles. Retries, timeouts, refetch on focus or reconnect, polling, hydration and tags are opt-in links, features and subpaths, so a client bundles only what it turns on.
 
 **[Documentation](https://raf-query.katt.dev)** · [API reference](https://raf-query.katt.dev/docs/api-reference#raf-querycore) · [GitHub](https://github.com/KATT/raf-query)
 
@@ -26,10 +26,13 @@ import {
 	queryOptions,
 	retry,
 } from "@raf-query/core";
+import { group } from "@raf-query/core/groups";
+
+const issues = group("issues");
 
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
-		queryKey: ["issue", input.id],
+		queryKey: issues("byId", input.id),
 		queryFn: () => getIssue(input.id),
 	});
 }

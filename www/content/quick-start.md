@@ -37,7 +37,7 @@ A query is a **factory**: a function of at most one argument that returns `query
 tanstack-start/src/queries.ts#todos
 ```
 
-The key starts with a **group**, `todos`, so one call can [invalidate](./query-invalidation.md) every todo query at once.
+The key comes from a **group**, `todos`, so one call can [invalidate](./query-invalidation.md) every todo query at once.
 
 ## 3. Start it in the loader
 

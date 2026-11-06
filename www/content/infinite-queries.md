@@ -11,7 +11,7 @@ Lists that load more data onto what's already shown, such as "load more" buttons
 tanstack-start/src/docs/infinite-queries.ts#intro
 ```
 
-- `comments` is a [group](./query-keys.md#groups): the first segment of every comments key.
+- `comments` is a [group](./query-keys.md#groups): it builds every comments key.
 - `initialPageParam` is the first page's param.
 - `getNextPageParam(lastPage, pages, lastPageParam)` returns the next page's param, or `null` / `undefined` when there are no more pages.
 - The `queryFn` receives the param as `context.pageParam`, next to `signal`.

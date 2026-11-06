@@ -102,7 +102,7 @@ tanstack-start/src/docs/comparison.tsx#component
 - **Nothing is on by default.** A bare client doesn't retry, refetch on focus or reconnect, or poll. Spread `recommended()` for those, or pick the links and features you want.
 - **No refetch on mount.** Mounting a component that reads a query never fetches; whatever started the query decides. Loaders run on every navigation, so returning to a page still revalidates it.
 - **The URL is the input.** There is no option to change a read's input. Anything that changes what a query fetches lives in the route, so the loader starts the right query. [URL state and pagination](./url-state-and-pagination.md) shows the pattern.
-- **Queries are matched by factory, not by key prefix.** `invalidateMany(qc, postQuery)` covers the queries that factory built. Groups at the start of a key cover a set of factories, and tags and `where` pick queries by `meta` or data.
+- **Queries are matched by factory or group, never by a hand-written key.** `invalidateMany(qc, postQuery)` covers the queries that factory built. A group builds its queries' keys and covers every key that starts with its path, the way a TanStack Query key prefix does. Tags and `where` pick queries by `meta` or data.
 - **Expected errors are values.** A `queryFn` returns `fail({ _tag: "NotFound" })`, and its type says which errors a reader can get. Thrown errors stay defects.
 - **`meta` is typed by the client.** Links and features declare the `meta` fields they read, and factories tied to that client with `def` are checked against them.
 - **`undefined` is a valid result.** A `queryFn` typed `Promise<User | undefined>` caches `undefined` like any other value. TanStack Query treats it as an error.

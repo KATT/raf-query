@@ -63,8 +63,11 @@ const [settings] = useQuery(settingsQuery, loaderData.settings, {
 ````md
 ```ts twoslash
 import { useIsFetching } from "@raf-query/react";
+import { group } from "@raf-query/react/groups";
+
+const comments = group("comments");
 // ---cut---
-const savingComments = useIsFetching({ queryKey: ["comments"] });
+const savingComments = useIsFetching(comments);
 ```
 ````
 
