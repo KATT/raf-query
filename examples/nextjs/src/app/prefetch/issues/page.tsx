@@ -1,7 +1,7 @@
 import { IssueListInput } from "@examples/db/types";
 import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { HydrationBoundary } from "@raf-query/react";
+import { HydrationBoundary, load, prefetchEntry } from "@raf-query/react";
 import { Suspense } from "react";
 
 import { issueCountsQuery, issueListQuery } from "~/queries.ts";
@@ -19,10 +19,10 @@ export default async function IssuesPage(props: {
 	const qc = getQueryClient();
 	// `prefetch` starts each query and returns its handle at once. The page
 	// streams in behind skeletons as the data lands.
-	const handles = {
-		counts: qc.prefetch(issueCountsQuery),
-		issues: qc.prefetch(issueListQuery, input),
-	};
+	const [handles] = await load(qc, {
+		counts: prefetchEntry(issueCountsQuery),
+		issues: prefetchEntry(issueListQuery, input),
+	});
 
 	return (
 		<HydrationBoundary client={qc}>

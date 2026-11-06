@@ -9,7 +9,7 @@ import { AssigneeCardSkeleton } from "@examples/kit/components/user";
 import { Button, buttonVariants } from "@examples/ui/components/button";
 import { cn } from "@examples/ui/lib/utils";
 import { Separator } from "@examples/ui/components/separator";
-import { type QueryHandleWithData, useQuery } from "@raf-query/react";
+import { type DefinedQueryHandle, useQuery } from "@raf-query/react";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -24,9 +24,9 @@ import { AssigneeCard } from "./assignee-card.tsx";
 import { Comments } from "./comments.tsx";
 
 export function IssuePage(props: {
-	readonly assignee: QueryHandleWithData<typeof assigneeQuery>;
-	readonly comments: QueryHandleWithData<typeof commentsQuery>;
-	readonly issue: QueryHandleWithData<typeof issueQuery>;
+	readonly assignee: DefinedQueryHandle<typeof assigneeQuery>;
+	readonly comments: DefinedQueryHandle<typeof commentsQuery>;
+	readonly issue: DefinedQueryHandle<typeof issueQuery>;
 }) {
 	const id = props.issue.input.id;
 
@@ -111,7 +111,7 @@ function IssueNav(props: { readonly id: number }) {
 	);
 }
 
-function useIssue(handle: QueryHandleWithData<typeof issueQuery>) {
+function useIssue(handle: DefinedQueryHandle<typeof issueQuery>) {
 	const [issue] = useQuery(issueQuery, handle);
 	if (!issue) {
 		notFound();
@@ -120,7 +120,7 @@ function useIssue(handle: QueryHandleWithData<typeof issueQuery>) {
 }
 
 function IssueBody(props: {
-	readonly handle: QueryHandleWithData<typeof issueQuery>;
+	readonly handle: DefinedQueryHandle<typeof issueQuery>;
 }) {
 	const issue = useIssue(props.handle);
 
@@ -136,7 +136,7 @@ function IssueBody(props: {
 }
 
 function IssueStatus(props: {
-	readonly handle: QueryHandleWithData<typeof issueQuery>;
+	readonly handle: DefinedQueryHandle<typeof issueQuery>;
 }) {
 	const issue = useIssue(props.handle);
 	return <StatusSelect align="end" issueId={issue.id} status={issue.status} />;

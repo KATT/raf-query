@@ -3,7 +3,7 @@ import {
 	DEFAULT_STALE_TIME,
 	queryTimeDefaults,
 } from "@examples/db/types";
-import { QueryClient } from "@raf-query/react";
+import { createQueryClient, type QueryClient } from "@raf-query/react";
 import { createContext } from "react-router";
 
 import { readStaleTime } from "./settings.ts";
@@ -12,8 +12,8 @@ import { readStaleTime } from "./settings.ts";
 export function createAppQueryClient() {
 	const staleTime = readStaleTime() ?? DEFAULT_STALE_TIME;
 	const queryDefaults = queryTimeDefaults(staleTime);
-	const queryClient = new QueryClient({ defaults: queryDefaults });
-	// The cache reads this object live. A server client leaves `gcTime` unset.
+	const queryClient = createQueryClient(queryDefaults);
+	// The client reads its config live. A server client leaves `gcTime` unset.
 	if (!queryClient.isServer) {
 		applyStaleTime(queryDefaults, staleTime);
 	}

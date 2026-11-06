@@ -5,23 +5,28 @@ import {
 	type QueryTimeDefaults,
 	queryTimeDefaults,
 } from "@examples/db/types";
-import { QueryProvider, useQueryClient } from "@raf-query/react";
+import { QueryProvider, recommended, useQueryClient } from "@raf-query/react";
 import { createContext, type ReactNode, use, useState } from "react";
 
 const StaleTimeDefaultsContext = createContext<QueryTimeDefaults | null>(null);
 
 /**
- * The browser's query client. Its defaults object is the one the settings
- * menu mutates, so a new stale time applies to the cache already on screen.
+ * The browser's query client. The client reads its config live, and that
+ * config is the object the settings menu mutates, so a new stale time
+ * applies to the cache already on screen. Built here, in a client
+ * component, because its links and features are functions a server
+ * component can't pass.
  */
 export function AppQueryProvider(props: {
 	readonly children: ReactNode;
 	readonly staleTime: number;
 }) {
-	const [defaults] = useState(() => queryTimeDefaults(props.staleTime));
+	const [defaults] = useState(() =>
+		Object.assign(queryTimeDefaults(props.staleTime), recommended()),
+	);
 	return (
 		<StaleTimeDefaultsContext value={defaults}>
-			<QueryProvider config={{ defaults }}>
+			<QueryProvider config={defaults}>
 				<BrowserGcTime defaults={defaults} staleTime={props.staleTime} />
 				{props.children}
 			</QueryProvider>

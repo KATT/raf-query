@@ -1,8 +1,8 @@
 import { IssueListInput } from "@examples/db/types";
 import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { allKeyed, dehydrate } from "@raf-query/react";
-import { HydrationBoundary } from "@raf-query/react";
+import { fetchEntry, HydrationBoundary, load } from "@raf-query/react";
+import { dehydrate } from "@raf-query/react/hydration";
 import { Suspense } from "react";
 
 import { queryClientContext } from "~/query-client.ts";
@@ -21,9 +21,9 @@ export async function loader(args: Route.LoaderArgs) {
 		const queryClient = args.context.get(queryClientContext);
 		// `fetch` waits for fresh data: on a cache miss, and when the cached
 		// data is stale.
-		const handles = await allKeyed({
-			counts: queryClient.fetch(issueCountsQuery),
-			issues: queryClient.fetch(issueListQuery, input),
+		const [handles] = await load(queryClient, {
+			counts: fetchEntry(issueCountsQuery),
+			issues: fetchEntry(issueListQuery, input),
 		});
 		return {
 			counts: handles.counts,

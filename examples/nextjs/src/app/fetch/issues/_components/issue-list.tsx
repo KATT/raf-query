@@ -10,14 +10,14 @@ import {
 } from "@examples/kit/components/issue-list";
 import { LoadMore } from "@examples/kit/components/load-more";
 import { cn } from "@examples/ui/lib/utils";
-import { type QueryHandleWithData, useQuery } from "@raf-query/react";
+import { type DefinedQueryHandle, useQuery } from "@raf-query/react";
 
 import { AppLink } from "~/components/settings.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
 import { issueListQuery } from "~/queries.ts";
 
 export function IssueList(props: {
-	readonly handle: QueryHandleWithData<typeof issueListQuery>;
+	readonly handle: DefinedQueryHandle<typeof issueListQuery>;
 }) {
 	const [pages, list] = useQuery(issueListQuery, props.handle, {
 		whilePending: "previous",

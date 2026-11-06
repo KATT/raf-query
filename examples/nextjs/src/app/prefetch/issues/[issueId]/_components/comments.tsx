@@ -9,10 +9,15 @@ import {
 } from "@examples/kit/components/comments";
 import { LoadMore } from "@examples/kit/components/load-more";
 import { warnMockDbWrite } from "@examples/kit/lib/mock-db-toast";
-import { type QueryHandle, useQuery, useQueryClient } from "@raf-query/react";
+import {
+	invalidateMany,
+	type QueryHandle,
+	useQuery,
+	useQueryClient,
+} from "@raf-query/react";
 import { use, useOptimistic, useRef } from "react";
 
-import { commentsQuery } from "~/queries.ts";
+import { commentsQuery, issues } from "~/queries.ts";
 
 export function Comments(props: {
 	readonly handle: QueryHandle<typeof commentsQuery>;
@@ -68,7 +73,7 @@ export function Comments(props: {
 							param: { id: String(issueId) },
 						}),
 					);
-					await queryClient.invalidate({ queryKey: ["issues"] });
+					await invalidateMany(queryClient, issues);
 				}}
 				className="grid gap-2"
 				ref={formRef}

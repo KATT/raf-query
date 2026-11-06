@@ -1,5 +1,5 @@
 import { IssueId } from "@examples/db/types";
-import { allKeyed, HydrationBoundary } from "@raf-query/react";
+import { ensureEntry, HydrationBoundary, load } from "@raf-query/react";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -22,12 +22,12 @@ export default async function Page(props: {
 	const qc = getQueryClient();
 	// `ensure` waits for data the cache doesn't have. The server renders
 	// every navigation with a new client, so here it waits like `fetch`.
-	const handles = await allKeyed({
-		assignee: qc.ensure(assigneeQuery, { issueId: id }),
-		comments: qc.ensure(commentsQuery, { issueId: id }),
-		issue: qc.ensure(issueQuery, { id }),
+	const [handles, data] = await load(qc, {
+		assignee: ensureEntry(assigneeQuery, { issueId: id }),
+		comments: ensureEntry(commentsQuery, { issueId: id }),
+		issue: ensureEntry(issueQuery, { id }),
 	});
-	if (handles.issue.data === null) {
+	if (data.issue === null) {
 		notFound();
 	}
 

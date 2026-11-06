@@ -1,4 +1,4 @@
-import { type QueryHandleWithData, useQuery } from "@raf-query/react";
+import { type DefinedQueryHandle, useQuery } from "@raf-query/react";
 import { Card } from "@examples/ui/components/card";
 import {
 	IssueListSummary,
@@ -15,7 +15,7 @@ import { StatusSelect } from "~/components/status-select.tsx";
 import { issueListQuery } from "~/queries.ts";
 
 export function IssueList(props: {
-	readonly handle: QueryHandleWithData<typeof issueListQuery>;
+	readonly handle: DefinedQueryHandle<typeof issueListQuery>;
 }) {
 	const [pages, list] = useQuery(issueListQuery, props.handle, {
 		whilePending: "previous",

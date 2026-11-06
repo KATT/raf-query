@@ -1,8 +1,8 @@
 import { IssueListInput } from "@examples/db/types";
 import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { allKeyed, dehydrate } from "@raf-query/react";
-import { HydrationBoundary } from "@raf-query/react";
+import { ensureEntry, HydrationBoundary, load } from "@raf-query/react";
+import { dehydrate } from "@raf-query/react/hydration";
 import { Suspense } from "react";
 
 import { queryClientContext } from "~/query-client.ts";
@@ -21,9 +21,9 @@ export async function loader(args: Route.LoaderArgs) {
 		const queryClient = args.context.get(queryClientContext);
 		// `ensure` waits for data the cache doesn't have. Every request gets a new
 		// client, so here it waits like `fetch`.
-		const handles = await allKeyed({
-			counts: queryClient.ensure(issueCountsQuery),
-			issues: queryClient.ensure(issueListQuery, input),
+		const [handles] = await load(queryClient, {
+			counts: ensureEntry(issueCountsQuery),
+			issues: ensureEntry(issueListQuery, input),
 		});
 		return {
 			counts: handles.counts,

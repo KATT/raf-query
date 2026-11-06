@@ -1,7 +1,7 @@
 import { IssueListInput } from "@examples/db/types";
 import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { allKeyed, HydrationBoundary } from "@raf-query/react";
+import { fetchEntry, HydrationBoundary, load } from "@raf-query/react";
 import { Suspense } from "react";
 
 import { issueCountsQuery, issueListQuery } from "~/queries.ts";
@@ -19,9 +19,9 @@ export default async function IssuesPage(props: {
 	const qc = getQueryClient();
 	// `fetch` waits for fresh data: on a cache miss, and when the cached
 	// data is stale.
-	const handles = await allKeyed({
-		counts: qc.fetch(issueCountsQuery),
-		issues: qc.fetch(issueListQuery, input),
+	const [handles] = await load(qc, {
+		counts: fetchEntry(issueCountsQuery),
+		issues: fetchEntry(issueListQuery, input),
 	});
 
 	return (

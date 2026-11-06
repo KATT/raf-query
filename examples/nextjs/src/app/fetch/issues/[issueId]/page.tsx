@@ -1,5 +1,5 @@
 import { IssueId } from "@examples/db/types";
-import { allKeyed, HydrationBoundary } from "@raf-query/react";
+import { fetchEntry, HydrationBoundary, load } from "@raf-query/react";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -22,12 +22,12 @@ export default async function Page(props: {
 	const qc = getQueryClient();
 	// `fetch` waits for fresh data: on a cache miss, and when the cached
 	// data is stale.
-	const handles = await allKeyed({
-		assignee: qc.fetch(assigneeQuery, { issueId: id }),
-		comments: qc.fetch(commentsQuery, { issueId: id }),
-		issue: qc.fetch(issueQuery, { id }),
+	const [handles, data] = await load(qc, {
+		assignee: fetchEntry(assigneeQuery, { issueId: id }),
+		comments: fetchEntry(commentsQuery, { issueId: id }),
+		issue: fetchEntry(issueQuery, { id }),
 	});
-	if (handles.issue.data === null) {
+	if (data.issue === null) {
 		notFound();
 	}
 

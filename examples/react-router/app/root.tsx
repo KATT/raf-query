@@ -13,8 +13,10 @@ import { ThemeProvider } from "@examples/kit/components/theme-provider";
 import { Toaster } from "@examples/ui/components/sonner";
 import { logoUrl } from "@examples/kit/lib/logo";
 import {
-	QueryClient,
+	createQueryClient,
 	QueryClientProvider,
+	recommended,
+	removeAll,
 	useQueryClient,
 } from "@raf-query/react";
 import { QueryDevtools } from "@raf-query/react/devtools";
@@ -85,8 +87,9 @@ export function Layout(props: { readonly children: React.ReactNode }) {
 export default function App(props: Route.ComponentProps) {
 	const [{ queryClient, queryDefaults }] = useState(() => {
 		const defaults = queryTimeDefaults(props.loaderData.staleTime);
-		const client = new QueryClient({ defaults });
-		// The cache reads this object live. A server client leaves `gcTime` unset.
+		// The client reads its config live, so the settings panel can change
+		// `staleTime` without a new client. A server client leaves `gcTime` unset.
+		const client = createQueryClient(Object.assign(defaults, recommended()));
 		if (!client.isServer) {
 			applyStaleTime(defaults, props.loaderData.staleTime);
 		}
@@ -145,7 +148,7 @@ function AppSettings(props: {
 		<Settings
 			onPrefetchChange={props.onPrefetchChange}
 			onReset={() => {
-				queryClient.clear();
+				removeAll(queryClient);
 				window.location.reload();
 			}}
 			prefetch={props.prefetch}

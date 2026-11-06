@@ -7,13 +7,13 @@ import {
 } from "@examples/db/types";
 import { statusLabel } from "@examples/kit/components/status-badge";
 import { cn } from "@examples/ui/lib/utils";
-import { type QueryHandleWithData, useQuery } from "@raf-query/react";
+import { type DefinedQueryHandle, useQuery } from "@raf-query/react";
 
 import { AppLink } from "~/components/settings.tsx";
 import { issueCountsQuery } from "~/queries.ts";
 
 export function StatusFilter(props: {
-	readonly counts: QueryHandleWithData<typeof issueCountsQuery>;
+	readonly counts: DefinedQueryHandle<typeof issueCountsQuery>;
 	readonly current: IssueListInput;
 }) {
 	const [counts] = useQuery(issueCountsQuery, props.counts);

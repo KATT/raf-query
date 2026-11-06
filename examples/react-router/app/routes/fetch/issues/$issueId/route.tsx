@@ -9,12 +9,13 @@ import { Button, buttonVariants } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
 import { cn } from "@examples/ui/lib/utils";
 import {
-	allKeyed,
-	dehydrate,
-	type QueryHandleWithData,
+	type DefinedQueryHandle,
+	fetchEntry,
+	HydrationBoundary,
+	load,
 	useQuery,
 } from "@raf-query/react";
-import { HydrationBoundary } from "@raf-query/react";
+import { dehydrate } from "@raf-query/react/hydration";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Suspense } from "react";
 import { isRouteErrorResponse } from "react-router";
@@ -41,12 +42,12 @@ export async function loader(args: Route.LoaderArgs) {
 		const queryClient = args.context.get(queryClientContext);
 		// `fetch` waits for fresh data: on a cache miss, and when the cached
 		// data is stale.
-		const handles = await allKeyed({
-			assignee: queryClient.fetch(assigneeQuery, { issueId: id }),
-			comments: queryClient.fetch(commentsQuery, { issueId: id }),
-			issue: queryClient.fetch(issueQuery, { id }),
+		const [handles, data] = await load(queryClient, {
+			assignee: fetchEntry(assigneeQuery, { issueId: id }),
+			comments: fetchEntry(commentsQuery, { issueId: id }),
+			issue: fetchEntry(issueQuery, { id }),
 		});
-		if (handles.issue.data === null) {
+		if (data.issue === null) {
 			throw new Response("Not Found", { status: 404 });
 		}
 		return {
@@ -162,7 +163,7 @@ function IssueNav(props: { readonly id: number }) {
  */
 const issueNotFound = new Response("Not Found", { status: 404 });
 
-function useIssue(handle: QueryHandleWithData<typeof issueQuery>) {
+function useIssue(handle: DefinedQueryHandle<typeof issueQuery>) {
 	const [issue] = useQuery(issueQuery, handle);
 	if (!issue) {
 		throw issueNotFound;
@@ -171,7 +172,7 @@ function useIssue(handle: QueryHandleWithData<typeof issueQuery>) {
 }
 
 function IssueBody(props: {
-	readonly handle: QueryHandleWithData<typeof issueQuery>;
+	readonly handle: DefinedQueryHandle<typeof issueQuery>;
 }) {
 	const issue = useIssue(props.handle);
 
@@ -187,7 +188,7 @@ function IssueBody(props: {
 }
 
 function IssueStatus(props: {
-	readonly handle: QueryHandleWithData<typeof issueQuery>;
+	readonly handle: DefinedQueryHandle<typeof issueQuery>;
 }) {
 	const issue = useIssue(props.handle);
 	return <StatusSelect align="end" issueId={issue.id} status={issue.status} />;
