@@ -22,14 +22,14 @@ Your components never deal with this. A handle only carries a key and an input, 
 
 `createQueryClient` makes a server client where `window` doesn't exist (set `isServer` to choose). A server client renders once, so it behaves differently:
 
-| Behavior            | Browser                                                          | Server                                                          |
-| ------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------- |
-| Retries             | With the `retry()` link                                          | None, even with `retry()`                                       |
-| `gcTime`            | 5 minutes by default                                             | Never collected: the cache lives as long as the request         |
-| Stale cached data   | Refetched (ensure entries resolve with it and refetch alongside) | Reused by prefetch and ensure entries; fetch entries refetch it |
-| Focus and reconnect | Refetch read, stale queries, with their feature                  | Not watched: features start when a provider mounts              |
+| Behavior            | Browser                                                          | Server                                                                                     |
+| ------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Retries             | With the `retry()` link                                          | None, even with `retry()`                                                                  |
+| `gcTime`            | 5 minutes by default                                             | Never collected: the cache lives as long as the request                                    |
+| Stale cached data   | Refetched (ensure entries resolve with it and refetch alongside) | Reused: `staleTime` doesn't apply within a request; fetch entries refetch invalidated data |
+| Focus and reconnect | Refetch read, stale queries, with their feature                  | Not watched: features start when a provider mounts                                         |
 
-So in a server render, prefetch and ensure entries make at most one request per query, whatever its `staleTime`.
+So in a server render, every entry makes at most one request per query, whatever its `staleTime`, unless a write invalidates the query and a fetch entry reads it again.
 
 ## Errors
 

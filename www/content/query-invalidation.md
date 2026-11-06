@@ -96,4 +96,4 @@ When the server's response has everything the cache needs, write it with `setDat
 
 ## Invalidation on the server
 
-A server render's client never revalidates cached data, because it renders once: `prefetchEntry` and `ensureEntry` use what the cache has, even after an invalidation. A `fetchEntry` waits for fresh data, so it refetches an invalidated entry on the server too. This matters in Next.js server actions that render again after a write.
+A server render's client never revalidates cached data, because it renders once: `prefetchEntry` and `ensureEntry` use what the cache has, even after an invalidation. A `fetchEntry` refetches an invalidated entry, so it sees the write. This matters in Next.js server actions that render again after a write.

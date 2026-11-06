@@ -18,6 +18,7 @@ import {
 	testClient,
 	advance,
 } from "./test-utils.ts";
+import { invalidateOne } from "./verbs.ts";
 
 describe("load", () => {
 	it("starts every entry before it waits for any", async () => {
@@ -173,6 +174,31 @@ describe("load", () => {
 		await load(client, { issue: prefetchEntry(backend.issueQuery, { id: 1 }) });
 
 		expect(backend.requests).toHaveLength(0);
+	});
+
+	it("reuses a server request's data in a fetch entry until it's invalidated", async () => {
+		const backend = createBackend();
+		const client = testClient({ isServer: true });
+		const first = load(client, {
+			issue: fetchEntry(backend.issueQuery, { id: 1 }),
+		});
+		backend.respondAll();
+		await first;
+		advance(client, 60_000);
+		await load(client, { issue: fetchEntry(backend.issueQuery, { id: 1 }) });
+
+		expect(backend.requests).toHaveLength(0);
+
+		await invalidateOne(client, backend.issueQuery, { id: 1 });
+		const after = load(client, {
+			issue: fetchEntry(backend.issueQuery, { id: 1 }),
+		});
+		await flush();
+
+		expect(backend.requests).toHaveLength(1);
+
+		backend.respondAll();
+		await after;
 	});
 
 	it("applies select to the data it resolves", async () => {

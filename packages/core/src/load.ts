@@ -4,6 +4,7 @@ import {
 	entryOf,
 	fetchEntry as request,
 	isEnabled,
+	isInvalidated,
 	isStale,
 	type Outcome,
 	QueryDisabledError,
@@ -181,11 +182,22 @@ export function prefetch(entry: Entry): void {
 	}
 }
 
+/**
+ * Whether `fetchEntry` can use the entry's data. A server client belongs to
+ * one request, so what it fetched is fresh for that request until a write
+ * invalidates it.
+ */
+function isFresh(entry: Entry): boolean {
+	return entry.client.isServer
+		? entry.state.hasData && !isInvalidated(entry)
+		: !isStale(entry);
+}
+
 function waitFresh(entry: Entry, pages: number | undefined): Promise<Outcome> {
 	if (!isEnabled(entry)) {
 		return disabled(entry);
 	}
-	if (!isStale(entry)) {
+	if (isFresh(entry)) {
 		return Promise.resolve({ ok: true });
 	}
 	return request(entry, { pages });
