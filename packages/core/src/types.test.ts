@@ -100,6 +100,40 @@ describe("waterfall types", () => {
 	});
 });
 
+describe("inline factory makers", () => {
+	function makeFactory<TInput extends { readonly id: number }, TData>(
+		name: string,
+		get: (input: TInput) => Promise<TData>,
+	) {
+		return (input: TInput) =>
+			queryOptions({ queryFn: () => get(input), queryKey: [name, input] });
+	}
+	const getPost = async (input: { readonly id: number }) => ({
+		title: `${input.id}`,
+	});
+
+	it("infer their own type parameters in entries, handles and verbs", async () => {
+		const [handles, data] = await load(client, {
+			ensured: ensureEntry(makeFactory("post", getPost), { id: 1 }),
+			fetched: fetchEntry(makeFactory("post", getPost), { id: 1 }),
+			prefetched: prefetchEntry(makeFactory("post", getPost), { id: 1 }),
+		});
+		const handle = waterfallHandle(makeFactory("post", getPost), { id: 1 });
+
+		expectTypeOf(data.ensured).toEqualTypeOf<{ title: string }>();
+		expectTypeOf(data.fetched).toEqualTypeOf<{ title: string }>();
+		expectTypeOf(handles.prefetched.input).toEqualTypeOf<{
+			readonly id: number;
+		}>();
+		expectTypeOf(handle.input).toEqualTypeOf<{ readonly id: number }>();
+		await invalidateOne(client, makeFactory("post", getPost), { id: 1 });
+		// @ts-expect-error -- the input still has the maker's type
+		ensureEntry(makeFactory("post", getPost), { id: "1" });
+		// @ts-expect-error -- and so does a waterfall handle's
+		waterfallHandle(makeFactory("post", getPost), { id: "1" });
+	});
+});
+
 describe("verb types", () => {
 	it("check inputs, partial inputs and tag parameters", () => {
 		void invalidateOne(client, titles, { id: 1 });

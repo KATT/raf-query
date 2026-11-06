@@ -116,11 +116,19 @@ export function queryOptions(options: QueryOptions): QueryOptions {
 	return options;
 }
 
-/** A function of the query's input that returns its options. */
-export type QueryFactory = (input: never) => {
-	readonly queryFn: (context: never) => unknown;
-	readonly queryKey: QueryKeyOption;
-};
+/**
+ * A function of the query's input that returns its options. The input is a
+ * method parameter typed `unknown`, which TypeScript checks bivariantly:
+ * every factory fits, and an inline generic factory maker passed where a
+ * `QueryFactory` is expected infers its own type parameters instead of
+ * `never`.
+ */
+export type QueryFactory = {
+	factory(input: unknown): {
+		readonly queryFn: (context: never) => unknown;
+		readonly queryKey: QueryKeyOption;
+	};
+}["factory"];
 
 /** Call a factory with an input its caller's types already checked. */
 export function optionsOf(factory: AnyFactory, input: unknown): QueryOptions {
