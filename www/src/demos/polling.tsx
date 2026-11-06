@@ -13,6 +13,9 @@ import { DemoBrowser } from "~/demo-kit/browser.tsx";
 import { formatTime, Segmented, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
+import { group } from "@raf-query/react/groups";
+
+const stats = group("stats");
 
 const server = createFakeServer(() => ({ history: [42] }));
 
@@ -38,7 +41,7 @@ function visitorsQuery(input: { readonly interval: number | false }) {
 				},
 				context,
 			),
-		queryKey: ["stats", "visitors", input.interval],
+		queryKey: stats("visitors", input.interval),
 	});
 }
 

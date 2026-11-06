@@ -28,6 +28,9 @@ import {
 } from "~/demo-kit/fixtures.ts";
 import { DemoRouter } from "~/demo-kit/router.tsx";
 import { createFakeServer } from "~/demo-kit/server.ts";
+import { group } from "@raf-query/react/groups";
+
+const posts = group("posts");
 
 /**
  * A blog's server and the factories that query it. Each variant gets its
@@ -54,7 +57,7 @@ function createBlog() {
 						}),
 						context,
 					),
-				queryKey: ["posts", input.postId, "comments"],
+				queryKey: posts(input.postId, "comments"),
 				staleTime: 5000,
 			}),
 		postQuery: (input: { id: number }) =>
@@ -65,7 +68,7 @@ function createBlog() {
 						(db) => db.posts.find((post) => post.id === input.id),
 						context,
 					),
-				queryKey: ["posts", input.id],
+				queryKey: posts(input.id),
 				staleTime: 5000,
 			}),
 		postsQuery: () =>
@@ -83,7 +86,7 @@ function createBlog() {
 						}),
 						context,
 					),
-				queryKey: ["posts"],
+				queryKey: posts(),
 				staleTime: 5000,
 			}),
 		server,

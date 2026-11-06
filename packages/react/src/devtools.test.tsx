@@ -33,7 +33,7 @@ describe("QueryDevtoolsPanel", () => {
 		const failing = () =>
 			queryOptions({
 				queryFn: async () => fail({ _tag: "Nope" }),
-				queryKey: [issues, "failing"],
+				queryKey: issues("failing"),
 			});
 		await load(client, { failing: prefetchEntry(failing) });
 		await flush();
@@ -86,7 +86,7 @@ describe("QueryDevtoolsPanel", () => {
 			queryOptions({
 				enabled: false,
 				queryFn: async () => 1,
-				queryKey: [issues, "idle"],
+				queryKey: issues("idle"),
 			});
 		await load(client, { idle: prefetchEntry(pendingQuery) });
 		render(

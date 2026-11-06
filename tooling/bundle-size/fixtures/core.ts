@@ -7,11 +7,14 @@ import {
 } from "@raf-query/core";
 
 import { getIssue } from "./api.ts";
+import { group } from "@raf-query/core/groups";
+
+const issues = group("issues");
 
 const issueQuery = (input: { readonly id: number }) =>
 	queryOptions({
 		queryFn: () => getIssue(input.id),
-		queryKey: ["issues", input.id],
+		queryKey: issues(input.id),
 	});
 
 const client = createQueryClient();

@@ -17,14 +17,18 @@ import { Segmented } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { seedComments, seedPosts } from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
+import { group } from "@raf-query/react/groups";
 
-const authors = ["Ada", "Grace", "Linus", "Margaret", "Ken", "Barbara"];
+const posts = group("posts");
+const authors = group("authors");
+
+const authorNames = ["Ada", "Grace", "Linus", "Margaret", "Ken", "Barbara"];
 
 const server = createFakeServer(() => ({
 	comments: seedComments(),
 	posts: seedPosts().map((post, index) => ({
 		...post,
-		authorId: index % authors.length,
+		authorId: index % authorNames.length,
 	})),
 }));
 
@@ -36,7 +40,7 @@ function postQuery(input: { readonly id: number }) {
 				(db) => db.posts.find((post) => post.id === input.id),
 				context,
 			),
-		queryKey: ["posts", input.id],
+		queryKey: posts(input.id),
 		staleTime: 30_000,
 	});
 }
@@ -46,10 +50,10 @@ function authorQuery(input: { readonly id: number }) {
 		queryFn: (context) =>
 			server.respond(
 				`GET /authors/${input.id}`,
-				() => authors[input.id],
+				() => authorNames[input.id],
 				context,
 			),
-		queryKey: ["authors", input.id],
+		queryKey: authors(input.id),
 		staleTime: 30_000,
 	});
 }
@@ -61,12 +65,12 @@ function postAuthorQuery(input: { readonly postId: number }) {
 			server.respond(
 				`GET /posts/${input.postId}/author`,
 				(db) =>
-					authors[
+					authorNames[
 						db.posts.find((post) => post.id === input.postId)?.authorId ?? 0
 					],
 				context,
 			),
-		queryKey: ["posts", input.postId, "author"],
+		queryKey: posts(input.postId, "author"),
 		staleTime: 30_000,
 	});
 }
@@ -95,7 +99,7 @@ function commentsQuery(input: { readonly postId: number }) {
 				}),
 				context,
 			),
-		queryKey: ["posts", input.postId, "comments"],
+		queryKey: posts(input.postId, "comments"),
 		staleTime: 30_000,
 	});
 }

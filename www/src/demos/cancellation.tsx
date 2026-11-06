@@ -15,6 +15,9 @@ import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
 import { formatTime, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
+import { group } from "@raf-query/react/groups";
+
+const inbox = group("inbox");
 
 const server = createFakeServer(() => ({
 	messages: [
@@ -47,7 +50,7 @@ function inboxQuery() {
 				(db) => ({ items: db.messages, nextCursor: null }),
 				context,
 			),
-		queryKey: ["inbox"],
+		queryKey: inbox(),
 		staleTime: 60_000,
 	});
 }
@@ -63,10 +66,10 @@ function Inbox(props: {
 	readonly handle: DefinedQueryHandle<typeof inboxQuery>;
 }) {
 	const queryClient = useQueryClient();
-	const [pages, inbox] = useQuery(inboxQuery, props.handle);
+	const [pages, controls] = useQuery(inboxQuery, props.handle);
 	const messages = pages.pages.flatMap((page) => page.items);
 	return (
-		<div aria-busy={inbox.isFetching} className="grid gap-3">
+		<div aria-busy={controls.isFetching} className="grid gap-3">
 			<ul className="grid gap-1.5">
 				{messages.map((message) => (
 					<li
@@ -80,9 +83,9 @@ function Inbox(props: {
 			</ul>
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
-					disabled={inbox.isFetching}
+					disabled={controls.isFetching}
 					onClick={() => {
-						void inbox.refetch();
+						void controls.refetch();
 					}}
 					size="xs"
 					variant="outline"
@@ -99,8 +102,8 @@ function Inbox(props: {
 					<RotateCcw /> Invalidate
 				</Button>
 				<span className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
-					{inbox.isFetching ? <Spinner /> : null}
-					Fetched at {formatTime(inbox.updatedAt)}
+					{controls.isFetching ? <Spinner /> : null}
+					Fetched at {formatTime(controls.updatedAt)}
 				</span>
 			</div>
 		</div>

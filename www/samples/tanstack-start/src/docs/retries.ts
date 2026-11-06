@@ -19,7 +19,7 @@ const withEverything = createQueryClient({ ...recommended() });
 // #region attempts-per-query
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: [posts, "bySlug", input.slug],
+		queryKey: posts("bySlug", input.slug),
 		queryFn: () => getPost(input.slug),
 		meta: { retry: 5 }, // or `false`
 	});

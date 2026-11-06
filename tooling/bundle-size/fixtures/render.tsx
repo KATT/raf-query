@@ -11,11 +11,14 @@ import { type ReactNode, Suspense, use } from "react";
 import { createRoot } from "react-dom/client";
 
 import { getIssue } from "./api.ts";
+import { group } from "@raf-query/react/groups";
+
+const issues = group("issues");
 
 export const issueQuery = (input: { readonly id: number }) =>
 	queryOptions({
 		queryFn: () => getIssue(input.id),
-		queryKey: ["issues", input.id],
+		queryKey: issues(input.id),
 	});
 
 function IssueTitle(props: {

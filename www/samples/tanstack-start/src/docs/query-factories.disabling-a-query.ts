@@ -1,4 +1,7 @@
 import { queryOptions } from "@raf-query/react";
+import { group } from "@raf-query/react/groups";
+
+const invoices = group("invoices");
 
 interface Invoice {
 	readonly id: string;
@@ -12,7 +15,7 @@ declare function listInvoices(orgId: string): Promise<ReadonlyArray<Invoice>>;
 // #region disabling-a-query
 export function invoicesQuery(input: { orgId: string }) {
 	return queryOptions({
-		queryKey: ["invoices", input.orgId],
+		queryKey: invoices(input.orgId),
 		queryFn: () => listInvoices(input.orgId),
 		enabled: flags.billing,
 	});

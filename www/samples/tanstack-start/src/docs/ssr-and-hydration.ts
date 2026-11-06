@@ -3,12 +3,14 @@ import { group } from "@raf-query/react/groups";
 import { canDehydrate } from "@raf-query/react/hydration";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 
+const pushState = group("pushState");
+
 declare function detectPushState(channel: string): Promise<"on" | "off">;
 
 // #region browser-only-queries
 export function pushStateQuery(input: { channel: string }) {
 	return queryOptions({
-		queryKey: ["pushState", input.channel],
+		queryKey: pushState(input.channel),
 		queryFn: () => detectPushState(input.channel),
 		enabled: typeof window !== "undefined",
 	});
@@ -25,7 +27,7 @@ const demos = group("demos");
 
 setupRouterIntegration({
 	dehydrateOptions: {
-		filter: (entry) => entry.key[0] !== demos && canDehydrate(entry),
+		filter: (entry) => entry.key[0] !== demos.path[0] && canDehydrate(entry),
 	},
 	queryClient,
 	router,

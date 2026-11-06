@@ -18,11 +18,14 @@ import { DemoBrowser } from "~/demo-kit/browser.tsx";
 import { Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
+import { group } from "@raf-query/react/groups";
+
+const stats = group("stats");
 
 const server = createFakeServer(() => ({ requests: 0 }));
 
-const stats = ["orders", "signups", "tickets"] as const;
-type Stat = (typeof stats)[number];
+const statNames = ["orders", "signups", "tickets"] as const;
+type Stat = (typeof statNames)[number];
 
 function statQuery(input: { readonly stat: Stat }) {
 	return queryOptions({
@@ -35,7 +38,7 @@ function statQuery(input: { readonly stat: Stat }) {
 				},
 				context,
 			),
-		queryKey: ["stats", input.stat],
+		queryKey: stats(input.stat),
 		staleTime: Infinity,
 	});
 }
@@ -101,7 +104,7 @@ function Dashboard(props: { readonly data: PageData }) {
 		<div className="grid gap-3">
 			<GlobalIndicator />
 			<div className="grid gap-2 sm:grid-cols-3">
-				{stats.map((stat) => (
+				{statNames.map((stat) => (
 					<StatCard handle={props.data[stat]} key={stat} stat={stat} />
 				))}
 			</div>

@@ -5,6 +5,11 @@ import {
 	queryOptions,
 } from "@raf-query/react";
 import type { Post, Todo } from "~/api.ts";
+import { group } from "@raf-query/react/groups";
+
+const todos = group("todos");
+const posts = group("posts");
+const builds = group("builds");
 
 declare function fetchAllTodos(): Promise<ReadonlyArray<Todo>>;
 
@@ -20,18 +25,18 @@ infiniteQueryOptions({
 	}) => lastPage.nextCursor,
 	initialPageParam: 0,
 	queryFn: async () => ({ items: await fetchAllTodos(), nextCursor: null }),
-	queryKey: ["todos"],
+	queryKey: todos(),
 });
-queryOptions({ queryKey: ["todos", id], queryFn: () => fetchTodoById(id) });
+queryOptions({ queryKey: todos(id), queryFn: () => fetchTodoById(id) });
 queryOptions({
-	queryKey: ["todos", id],
+	queryKey: todos(id),
 	queryFn: async () => {
 		const data = await fetchTodoById(id);
 		return data;
 	},
 });
 queryOptions({
-	queryKey: ["todos", id],
+	queryKey: todos(id),
 	queryFn: (context) => fetchTodoById(context.queryKey[1]),
 });
 // #endregion
@@ -44,7 +49,7 @@ declare const data: unknown;
 
 // #region handling-and-throwing-errors
 queryOptions({
-	queryKey: ["todos", id],
+	queryKey: todos(id),
 	queryFn: async () => {
 		if (somethingGoesWrong) {
 			throw new Error("Oh no!");
@@ -60,7 +65,7 @@ queryOptions({
 // #region expected-errors
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: ["posts", input.slug],
+		queryKey: posts(input.slug),
 		queryFn: async (context) => {
 			const response = await fetch(`/api/posts/${input.slug}`, {
 				signal: context.signal,
@@ -82,7 +87,7 @@ type PostError = ErrorOf<typeof postQuery>;
 
 // #region with-fetch-and-other-clients-that-dont-throw
 queryOptions({
-	queryKey: ["todos", id],
+	queryKey: todos(id),
 	queryFn: async (context) => {
 		const response = await fetch(`/todos/${id}`, { signal: context.signal });
 		if (!response.ok) {
@@ -98,7 +103,7 @@ declare function streamLines(signal: AbortSignal): AsyncIterable<string>;
 // #region streaming
 export function logQuery(input: { buildId: string }) {
 	return queryOptions({
-		queryKey: ["builds", "log", input],
+		queryKey: builds("log", input),
 		queryFn: (context) => streamLines(context.signal),
 		stream: {
 			initial: [] as ReadonlyArray<string>,

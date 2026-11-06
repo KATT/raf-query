@@ -6,13 +6,16 @@ import {
 } from "@raf-query/react";
 
 import { getPost } from "~/api.ts";
+import { group } from "@raf-query/react/groups";
+
+const posts = group("posts");
 
 const qc = createQueryClient();
 
 // #region two-parameters
 function postPageQuery(slug: string, page: number) {
 	return queryOptions({
-		queryKey: ["posts", slug, page],
+		queryKey: posts(slug, page),
 		queryFn: () => getPost(slug),
 	});
 }

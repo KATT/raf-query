@@ -1,15 +1,19 @@
 import { listTodos } from "~/api.ts";
+import { group } from "@raf-query/react/groups";
 
 declare function listInvoices(input: { orgId: string }): Promise<unknown>;
 
 declare const toast: { error(message: string): void };
+
+const settings = group("settings");
+const invoices = group("invoices");
 
 // #region intro
 import { queryOptions } from "@raf-query/react";
 
 export function settingsQuery() {
 	return queryOptions({
-		queryKey: ["settings"],
+		queryKey: settings(),
 		queryFn: () => listTodos(),
 		// Read by `retry()` and `focusRefetch()`, which `recommended()` includes.
 		meta: { retry: 1, refetchOnWindowFocus: false },
@@ -55,7 +59,7 @@ import { defType } from "@raf-query/react";
 export function invoicesQuery(input: { orgId: string }) {
 	return queryOptions({
 		def: defType<typeof makeQueryClient>(),
-		queryKey: ["invoices", input],
+		queryKey: invoices(input),
 		queryFn: () => listInvoices(input),
 		meta: {
 			errorMessage: "Couldn't load invoices",
@@ -69,7 +73,7 @@ export function invoicesQuery(input: { orgId: string }) {
 // #region def-errors
 queryOptions({
 	def: defType<typeof makeQueryClient>(),
-	queryKey: ["invoices", "all"],
+	queryKey: invoices("all"),
 	queryFn: () => listInvoices({ orgId: "all" }),
 	// @ts-expect-error -- 2769: no link or feature of the root reads `cacheFor`
 	meta: { cacheFor: 60_000 },

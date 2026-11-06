@@ -60,7 +60,7 @@ function todosQuery(input: { readonly status: Status }) {
 				}),
 				context,
 			),
-		queryKey: [todos, "list", input],
+		queryKey: todos("list", input),
 		staleTime: Infinity,
 	});
 }
@@ -75,7 +75,7 @@ function usersQuery() {
 				(db) => ({ items: db.users, nextCursor: null }),
 				context,
 			),
-		queryKey: [users, "list"],
+		queryKey: users("list"),
 		staleTime: Infinity,
 	});
 }

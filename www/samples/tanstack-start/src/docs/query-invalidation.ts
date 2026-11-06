@@ -11,7 +11,7 @@ import { postQuery, posts } from "~/queries.ts";
 declare const slug: string;
 
 // #region tags
-import { group, groups, tag } from "@raf-query/react/groups";
+import { groups, tag } from "@raf-query/react/groups";
 
 export const author = tag<string>("author");
 
@@ -22,7 +22,7 @@ export function makeQueryClient() {
 
 export function postBySlugQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: [group("posts"), "bySlug", input.slug],
+		queryKey: posts("bySlug", input.slug),
 		queryFn: () => getPost(input.slug),
 		meta: { tags: (post: Post) => [author(post.authorId)] },
 	});

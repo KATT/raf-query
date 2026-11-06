@@ -13,7 +13,7 @@ declare function getRegionShapes(input: {
 
 // #region structural-sharing
 queryOptions({
-	queryKey: [maps, "shapes", input.region],
+	queryKey: maps("shapes", input.region),
 	queryFn: () => getRegionShapes(input),
 	structuralSharing: false,
 });
@@ -22,7 +22,7 @@ queryOptions({
 // #region selecting-data
 export function postTitleQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: [posts, "title", input.slug],
+		queryKey: posts("title", input.slug),
 		queryFn: () => getPost(input.slug),
 		select: (post) => post.title,
 	});

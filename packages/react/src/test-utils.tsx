@@ -47,13 +47,13 @@ export function createBackend() {
 		queryOptions({
 			queryFn: async () =>
 				(await get(input.id)) ?? fail({ _tag: "NotFound", id: input.id }),
-			queryKey: [issues, "byId", input],
+			queryKey: issues("byId", input),
 		});
 
 	const titleQuery = (input: { readonly id: number }) =>
 		queryOptions({
 			queryFn: async () => (await get(input.id))?.title ?? "",
-			queryKey: [issues, "title", input],
+			queryKey: issues("title", input),
 			select: (title: string) => title.toUpperCase(),
 		});
 
@@ -61,7 +61,7 @@ export function createBackend() {
 		queryOptions({
 			enabled: false,
 			queryFn: async () => get(input.id),
-			queryKey: [issues, "disabled", input],
+			queryKey: issues("disabled", input),
 		});
 
 	const pageQuery = (input: { readonly size: number }) =>
@@ -79,7 +79,7 @@ export function createBackend() {
 				await get(context.pageParam);
 				return Array.from({ length: input.size }, () => context.pageParam);
 			},
-			queryKey: [issues, "pages", input],
+			queryKey: issues("pages", input),
 		});
 
 	return {

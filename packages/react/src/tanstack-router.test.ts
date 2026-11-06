@@ -151,7 +151,7 @@ describe("setupRouterIntegration", () => {
 				queryFn: () => {
 					throw redirect({ to: "/login" });
 				},
-				queryKey: [issues, "private"],
+				queryKey: issues("private"),
 			});
 		await load(browser, { secret: prefetchEntry(privateQuery) });
 		await flush();
@@ -173,7 +173,7 @@ describe("setupRouterIntegration", () => {
 				queryFn: () => {
 					throw redirect({ to: "/login" });
 				},
-				queryKey: [issues, "private"],
+				queryKey: issues("private"),
 			});
 		await load(browser, { secret: prefetchEntry(privateQuery) });
 		await flush();

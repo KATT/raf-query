@@ -28,7 +28,7 @@ function createBackend() {
 				}
 				return title ?? fail({ _tag: "NotFound", id: input.id });
 			},
-			queryKey: [issues, "byId", input],
+			queryKey: issues("byId", input),
 		});
 	return { calls: () => calls, issueQuery, titles };
 }

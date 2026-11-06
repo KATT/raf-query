@@ -13,6 +13,9 @@ import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
 import { formatTime, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
+import { group } from "@raf-query/react/groups";
+
+const todos = group("todos");
 
 interface Todo {
 	readonly done: boolean;
@@ -48,7 +51,7 @@ function todosQuery() {
 				(db) => ({ items: db.todos, nextCursor: null }),
 				context,
 			),
-		queryKey: ["todos"],
+		queryKey: todos(),
 		staleTime: 5000,
 	});
 }
@@ -69,14 +72,14 @@ function TodosSkeleton() {
 }
 
 function Todos(props: { readonly handle: QueryHandle<typeof todosQuery> }) {
-	const [pagesPromise, todos] = useQuery(todosQuery, props.handle);
+	const [pagesPromise, controls] = useQuery(todosQuery, props.handle);
 	const pages = use(pagesPromise);
 	const list = pages.pages.flatMap((page) => page.items);
 	return (
-		<div aria-busy={todos.isFetching} className="grid gap-2">
+		<div aria-busy={controls.isFetching} className="grid gap-2">
 			<p className="flex items-center gap-2 text-xs text-muted-foreground">
-				Fetched at {formatTime(todos.updatedAt)}
-				{todos.isFetching ? (
+				Fetched at {formatTime(controls.updatedAt)}
+				{controls.isFetching ? (
 					<>
 						<Spinner /> refetching in the background
 					</>

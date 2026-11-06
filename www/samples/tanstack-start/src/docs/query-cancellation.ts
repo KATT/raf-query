@@ -12,7 +12,7 @@ export const search = group("search");
 
 export function searchQuery(input: { q: string }) {
 	return queryOptions({
-		queryKey: [search, input.q],
+		queryKey: search(input.q),
 		queryFn: async (context) => {
 			const response = await fetch(
 				`/api/search?q=${encodeURIComponent(input.q)}`,
@@ -32,7 +32,7 @@ declare const input: { id: number };
 
 // #region using-axios-or-other-clients
 queryOptions({
-	queryKey: [todos, "byId", input.id],
+	queryKey: todos("byId", input.id),
 	queryFn: (context) =>
 		axios.get(`/api/todos/${input.id}`, { signal: context.signal }),
 });
@@ -47,7 +47,7 @@ declare const client: {
 
 // #region abort-listener
 queryOptions({
-	queryKey: [todos, "byId", input.id],
+	queryKey: todos("byId", input.id),
 	queryFn: (context) => {
 		const request = client.get(`/todos/${input.id}`);
 		context.signal.addEventListener("abort", () => request.cancel());

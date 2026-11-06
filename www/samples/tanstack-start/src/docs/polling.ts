@@ -10,7 +10,7 @@ import { builds } from "~/queries.ts";
 // #region intro
 export function buildQuery(input: { id: string }) {
 	return queryOptions({
-		queryKey: [builds, input.id],
+		queryKey: builds(input.id),
 		queryFn: () => getBuild(input.id),
 		meta: { refetchInterval: 2000 },
 	});
@@ -26,7 +26,7 @@ const sameWithMore = createQueryClient({ ...recommended() });
 // #region the-interval-per-input
 export function buildLogQuery(input: { id: string; live: boolean }) {
 	return queryOptions({
-		queryKey: [builds, "log", input],
+		queryKey: builds("log", input),
 		queryFn: () => getBuild(input.id),
 		meta: { refetchInterval: input.live ? 1000 : false },
 	});

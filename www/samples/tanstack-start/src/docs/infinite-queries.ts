@@ -6,7 +6,7 @@ import { comments } from "~/queries.ts";
 // #region intro
 export function commentsQuery(input: { slug: string }) {
 	return infiniteQueryOptions({
-		queryKey: [comments, input.slug],
+		queryKey: comments(input.slug),
 		queryFn: (context) =>
 			listComments({ slug: input.slug, cursor: context.pageParam }),
 		initialPageParam: 0,
@@ -33,7 +33,7 @@ const messages = group("messages");
 
 // #region bidirectional-lists
 infiniteQueryOptions({
-	queryKey: [messages, input.channel],
+	queryKey: messages(input.channel),
 	queryFn: (context) =>
 		listMessages({
 			channel: input.channel,

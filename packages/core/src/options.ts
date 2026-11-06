@@ -1,5 +1,5 @@
 import type { Fail } from "./fail.ts";
-import type { AnyFactory, QueryKey, QueryKeyOption } from "./keys.ts";
+import type { AnyFactory, KeyTuple, QueryKey, QueryKeyOption } from "./keys.ts";
 import type { AnyRoot, DefaultTypes, Def, RootTypes } from "./root.ts";
 
 export interface QueryFunctionContext<TKey extends QueryKey = QueryKey> {
@@ -159,8 +159,10 @@ export type InputArgs<TFactory extends QueryFactory> =
 			? [input: TInput]
 			: [input?: Parameters<TFactory>[0]];
 
-export type KeyOf<TFactory extends QueryFactory> =
-	ReturnType<TFactory>["queryKey"];
+/** A factory's key as a plain tuple, the way handles carry it. */
+export type KeyOf<TFactory extends QueryFactory> = KeyTuple<
+	ReturnType<TFactory>["queryKey"]
+>;
 
 /** A factory's root, from its `def`; any root without one. */
 export type RootOfFactory<TFactory extends QueryFactory> =

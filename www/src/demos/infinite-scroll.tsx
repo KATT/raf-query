@@ -11,6 +11,9 @@ import { use } from "react";
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
+import { group } from "@raf-query/react/groups";
+
+const messages = group("messages");
 
 type Filter = "all" | "questions";
 
@@ -66,7 +69,7 @@ function messagesQuery(input: { readonly filter: Filter }) {
 		// After `queryFn`: TypeScript infers the page type from it.
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
 		initialPageParam: 0,
-		queryKey: ["messages", input],
+		queryKey: messages(input),
 		staleTime: 30_000,
 	});
 }
@@ -90,7 +93,7 @@ function MessageSkeletons() {
 function Messages(props: {
 	readonly handle: QueryHandle<typeof messagesQuery>;
 }) {
-	const [pagesPromise, messages] = useQuery(messagesQuery, props.handle);
+	const [pagesPromise, controls] = useQuery(messagesQuery, props.handle);
 	const data = use(pagesPromise);
 	const items = data.pages.flatMap((page) => page.items);
 	return (
@@ -111,13 +114,13 @@ function Messages(props: {
 						</span>
 					</li>
 				))}
-				{messages.isFetchingNextPage ? <MessageSkeletons /> : null}
+				{controls.isFetchingNextPage ? <MessageSkeletons /> : null}
 			</ul>
-			{messages.hasNextPage && !messages.isFetchingNextPage ? (
+			{controls.hasNextPage && !controls.isFetchingNextPage ? (
 				<button
 					className="mt-2 w-full rounded-md border py-1.5 text-xs text-muted-foreground hover:bg-accent"
 					onClick={() => {
-						void messages.fetchNextPage();
+						void controls.fetchNextPage();
 					}}
 					ref={(button) => {
 						if (button === null) {
@@ -127,7 +130,7 @@ function Messages(props: {
 							(entries) => {
 								if (entries.some((entry) => entry.isIntersecting)) {
 									observer.disconnect();
-									void messages.fetchNextPage();
+									void controls.fetchNextPage();
 								}
 							},
 							{
@@ -145,7 +148,7 @@ function Messages(props: {
 					Load more
 				</button>
 			) : null}
-			{messages.hasNextPage ? null : (
+			{controls.hasNextPage ? null : (
 				<p className="py-2 text-center text-xs text-muted-foreground">
 					That’s all {items.length} messages.
 				</p>

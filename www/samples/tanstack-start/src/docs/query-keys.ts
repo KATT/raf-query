@@ -4,14 +4,27 @@ import {
 	invalidateMany,
 	queryOptions,
 } from "@raf-query/react";
+import { group } from "@raf-query/react/groups";
 import { getTodo, listTodos } from "~/api.ts";
 
 declare function getSpecial(): Promise<unknown>;
 
+// #region groups
+export const todos = group("todos");
+export const archived = group(todos, "archived");
+
+const key = archived("list");
+//    ^?
+archived.path;
+//       ^?
+// #endregion
+
 // #region simple-keys
+const settings = group("settings");
+
 // A list of todos
 infiniteQueryOptions({
-	queryKey: ["todos"],
+	queryKey: todos("list"),
 	queryFn: async () => ({
 		items: await listTodos(),
 		nextCursor: null,
@@ -22,35 +35,23 @@ infiniteQueryOptions({
 
 // Something else, whatever!
 queryOptions({
-	queryKey: ["something", "special"],
+	queryKey: settings(),
 	queryFn: () => getSpecial(),
 });
-// #endregion
-
-// #region groups
-import { group } from "@raf-query/react/groups";
-
-export const todos = group("todos");
-export const archived = group("archived", todos);
-
-todos;
-// ^?
-archived.group;
-//       ^?
 // #endregion
 
 declare function queryFn(): Promise<unknown>;
 
 // #region keys-with-variables
 // An individual todo
-queryOptions({ queryKey: [todos, "byId", 5], queryFn: () => getTodo(5) });
+queryOptions({ queryKey: todos("byId", 5), queryFn: () => getTodo(5) });
 
 // An individual todo in a "preview" format
-queryOptions({ queryKey: [todos, "byId", 5, { preview: true }], queryFn });
+queryOptions({ queryKey: todos("byId", 5, { preview: true }), queryFn });
 
 // A list of archived todos that are "done"
 infiniteQueryOptions({
-	queryKey: [archived, "list", { status: "done" }],
+	queryKey: archived("list", { status: "done" }),
 	queryFn: async () => ({
 		items: await queryFn(),
 		nextCursor: null,
@@ -65,15 +66,15 @@ declare const status: string;
 declare const page: number;
 
 // #region keys-are-hashed-deterministically
-[todos, { status, page }];
-[todos, { page, status }];
-[todos, { page, status, other: undefined }];
+todos("list", { status, page });
+todos("list", { page, status });
+todos("list", { page, status, other: undefined });
 // #endregion
 
 // #region array-order-matters
-[todos, status, page];
-[todos, page, status];
-[todos, undefined, page, status];
+todos("list", status, page);
+todos("list", page, status);
+todos("list", undefined, page, status);
 // #endregion
 
 // #region put-the-input-in-the-key
@@ -82,7 +83,7 @@ export function todoListQuery(input: {
 	page: number;
 }) {
 	return queryOptions({
-		queryKey: [todos, "list", input],
+		queryKey: todos("list", input),
 		queryFn: () => listTodos(input),
 	});
 }

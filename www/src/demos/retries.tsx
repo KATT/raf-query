@@ -23,6 +23,9 @@ import { FailNextButton, formatTime, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { seedPosts } from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
+import { group } from "@raf-query/react/groups";
+
+const posts = group("posts");
 
 const server = createFakeServer(() => ({ posts: seedPosts() }));
 
@@ -34,7 +37,7 @@ function postQuery(input: { readonly id: number }) {
 				(db) => db.posts.find((post) => post.id === input.id),
 				context,
 			),
-		queryKey: ["posts", input.id],
+		queryKey: posts(input.id),
 	});
 }
 

@@ -1,18 +1,22 @@
 // #region home
 import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
+import { group } from "@raf-query/react/groups";
 
 import { getPost, listComments } from "./api.ts";
 
+const post = group("post");
+const comments = group("comments");
+
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: ["post", input.slug],
+		queryKey: post(input.slug),
 		queryFn: () => getPost(input.slug),
 	});
 }
 
 export function commentsQuery(input: { slug: string }) {
 	return infiniteQueryOptions({
-		queryKey: ["comments", input.slug],
+		queryKey: comments(input.slug),
 		queryFn: (context) =>
 			listComments({ cursor: context.pageParam, slug: input.slug }),
 		initialPageParam: 0,

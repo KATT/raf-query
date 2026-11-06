@@ -5,20 +5,24 @@ import {
 	queryOptions,
 } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
+import { group } from "@raf-query/react/groups";
+
+const user = group("user");
+const org = group("org");
 
 declare function getCurrentUser(): Promise<{ orgId: string }>;
 declare function getOrg(input: { orgId: string }): Promise<{ id: string }>;
 
 function currentUserQuery() {
 	return queryOptions({
-		queryKey: ["user", "current"],
+		queryKey: user("current"),
 		queryFn: () => getCurrentUser(),
 	});
 }
 
 function orgQuery(input: { orgId: string }) {
 	return queryOptions({
-		queryKey: ["org", input.orgId],
+		queryKey: org(input.orgId),
 		queryFn: () => getOrg(input),
 	});
 }

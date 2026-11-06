@@ -5,6 +5,7 @@ import {
 	queryOptions,
 	useQuery,
 } from "@raf-query/react";
+import { group } from "@raf-query/react/groups";
 
 interface Endpoint<TArgs, TData> {
 	readonly name: string;
@@ -27,9 +28,10 @@ const qc = createQueryClient();
 
 // #region factory-makers
 function endpointQuery<TArgs, TData>(endpoint: Endpoint<TArgs, TData>) {
+	const own = group(endpoint.name);
 	return (args: TArgs) =>
 		queryOptions({
-			queryKey: [endpoint.name, args],
+			queryKey: own(args),
 			queryFn: (): Promise<TData> => call(endpoint, args),
 		});
 }

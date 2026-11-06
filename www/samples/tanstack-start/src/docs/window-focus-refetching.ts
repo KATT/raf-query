@@ -30,7 +30,7 @@ const withoutFocus = createQueryClient({
 // #region per-query
 export function settingsQuery() {
 	return queryOptions({
-		queryKey: [account, "settings"],
+		queryKey: account("settings"),
 		queryFn: () => getSettings(),
 		meta: { refetchOnWindowFocus: false },
 	});

@@ -17,6 +17,9 @@ import { DemoBrowser } from "~/demo-kit/browser.tsx";
 import { FailNextButton, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
+import { group } from "@raf-query/react/groups";
+
+const todos = group("todos");
 
 interface Todo {
 	readonly id: number;
@@ -52,7 +55,7 @@ function todosQuery() {
 				(db) => ({ items: db.todos, nextCursor: null }),
 				context,
 			),
-		queryKey: ["todos"],
+		queryKey: todos(),
 	});
 }
 
@@ -88,13 +91,13 @@ function TodoList(props: {
 }) {
 	const [pages] = useQuery(todosQuery, props.handle);
 	const serverTodos = pages.pages.flatMap((page) => page.items);
-	const [todos, addOptimistic] = useOptimistic<ReadonlyArray<Todo>, string>(
-		serverTodos,
-		(current, text) => [
-			...current,
-			{ id: -current.length - 1, pending: true, text },
-		],
-	);
+	const [shownTodos, addOptimistic] = useOptimistic<
+		ReadonlyArray<Todo>,
+		string
+	>(serverTodos, (current, text) => [
+		...current,
+		{ id: -current.length - 1, pending: true, text },
+	]);
 	const [message, formAction] = useActionState<string | null, FormData>(
 		async (_previous, formData) => {
 			const text = String(formData.get("text")).trim();
@@ -115,7 +118,7 @@ function TodoList(props: {
 	return (
 		<div className="grid gap-3">
 			<ul className="grid gap-1.5">
-				{todos.map((todo) => (
+				{shownTodos.map((todo) => (
 					<li
 						className={cn(
 							"flex items-center justify-between rounded-md border px-3 py-1.5 text-sm",

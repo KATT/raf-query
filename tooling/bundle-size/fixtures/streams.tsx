@@ -9,6 +9,9 @@ import {
 } from "@raf-query/react";
 import { Suspense, use } from "react";
 import { createRoot } from "react-dom/client";
+import { group } from "@raf-query/react/groups";
+
+const builds = group("builds");
 
 const logQuery = (input: { readonly id: number }) =>
 	queryOptions({
@@ -19,7 +22,7 @@ const logQuery = (input: { readonly id: number }) =>
 				yield* body;
 			}
 		},
-		queryKey: ["builds", input.id, "log"],
+		queryKey: builds(input.id, "log"),
 		stream: {
 			initial: "",
 			reduce: (log: string, chunk: string) => log + chunk,

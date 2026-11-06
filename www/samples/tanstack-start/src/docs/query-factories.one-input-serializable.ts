@@ -6,12 +6,15 @@ import {
 } from "@raf-query/react";
 import { postQuery } from "~/queries.ts";
 import { type CommentPage, listComments } from "~/api.ts";
+import { group } from "@raf-query/react/groups";
 
 const qc = createQueryClient();
+const issues = group("issues");
+const comments = group("comments");
 
 function issuesQuery() {
 	return infiniteQueryOptions({
-		queryKey: ["issues"],
+		queryKey: issues(),
 		queryFn: async () => ({
 			items: [] as Array<never>,
 			nextCursor: null,
@@ -34,7 +37,7 @@ const commentsOptions = infiniteQueryOptions({
 	initialPageParam: 0,
 	queryFn: (context) =>
 		listComments({ cursor: context.pageParam, slug: "hello-world" }),
-	queryKey: ["comments", "hello-world"],
+	queryKey: comments("hello-world"),
 });
 commentsOptions;
 // ^?

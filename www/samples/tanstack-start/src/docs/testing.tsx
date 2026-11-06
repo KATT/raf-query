@@ -16,6 +16,9 @@ import { act, render, screen } from "@testing-library/react";
 import { type ReactNode, Suspense } from "react";
 import { afterEach, beforeEach, expect, test } from "./testing.vitest.ts";
 import { postQuery } from "~/queries.ts";
+import { group } from "@raf-query/react/groups";
+
+const count = group("count");
 
 declare function Post(props: {
 	handle: QueryHandle<typeof postQuery>;
@@ -59,7 +62,7 @@ test("shows the post", async () => {
 test("refetches on focus", async () => {
 	let calls = 0;
 	const countQuery = () =>
-		queryOptions({ queryKey: ["count"], queryFn: async () => ++calls });
+		queryOptions({ queryKey: count(), queryFn: async () => ++calls });
 	function Count(props: { handle: DefinedQueryHandle<typeof countQuery> }) {
 		const [count] = useQuery(countQuery, props.handle);
 		return <p>{count}</p>;

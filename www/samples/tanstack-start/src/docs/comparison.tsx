@@ -7,6 +7,9 @@ import {
 } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense } from "react";
+import { group } from "@raf-query/react/groups";
+
+const permission = group("permission");
 
 declare function NotificationsToggle(props: {
 	readonly permission: PermissionState | undefined;
@@ -15,7 +18,7 @@ declare function NotificationsToggle(props: {
 // #region queries
 export function permissionQuery(input: { name: PermissionName }) {
 	return queryOptions({
-		queryKey: ["permission", input.name],
+		queryKey: permission(input.name),
 		queryFn: async () => {
 			const status = await navigator.permissions.query(input);
 			return status.state;

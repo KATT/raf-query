@@ -13,6 +13,9 @@ import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
 import { Segmented, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
+import { group } from "@raf-query/react/groups";
+
+const projects = group("projects");
 
 const pageSize = 4;
 const pageCount = 5;
@@ -38,7 +41,7 @@ function projectsQuery(input: { readonly page: number }) {
 				}),
 				context,
 			),
-		queryKey: ["projects", input],
+		queryKey: projects(input),
 		staleTime: 5000,
 	});
 }
@@ -64,7 +67,7 @@ function Projects(props: {
 	readonly data: PageData;
 	readonly whilePending: WhilePending;
 }) {
-	const [projectsPromise, projects] = useQuery(
+	const [projectsPromise, controls] = useQuery(
 		projectsQuery,
 		props.data.projects,
 		{ whilePending: props.whilePending },
@@ -74,10 +77,10 @@ function Projects(props: {
 	return (
 		<div className="grid gap-3">
 			<ul
-				aria-busy={projects.isPrevious}
+				aria-busy={controls.isPrevious}
 				className={cn(
 					"grid gap-1.5 transition-opacity",
-					projects.isPrevious && "opacity-50",
+					controls.isPrevious && "opacity-50",
 				)}
 			>
 				{result.items.map((project) => (
@@ -100,7 +103,7 @@ function Projects(props: {
 				) : null}
 				<span className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
 					Page {page} of {pageCount}
-					{projects.isFetching ? <Spinner /> : null}
+					{controls.isFetching ? <Spinner /> : null}
 				</span>
 				{page < pageCount ? (
 					<DemoLink
