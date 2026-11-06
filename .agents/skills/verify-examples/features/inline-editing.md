@@ -34,5 +34,5 @@ Commands:
 
 - `$CE fill` selects all and types, so the field gets exactly `--value`. `$CE press Tab` is the blur.
 - Read saved values after a fresh `$CE open`: the page shows the optimistic value right away, which proves nothing about the server.
-- REST apps: `curl -s $U/api/issues/3` shows `title` and `body`. `tanstack-start-effect` has no `/api`; reload instead.
+- `curl -s $U/api/issues/3` shows `title` and `body`.
 - An edit left behind changes what other recipes assert (titles in [server rendering](server-rendering.md) and [issue detail](issue-detail.md)). Always put both fields back.

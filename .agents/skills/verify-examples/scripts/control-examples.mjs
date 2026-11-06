@@ -18,7 +18,6 @@ const apps = {
 	nextjs: { port: 3001, script: "dev:next" },
 	"react-router": { port: 3006, script: "dev:react-router" },
 	"tanstack-start": { port: 3000, script: "dev:start" },
-	"tanstack-start-effect": { port: 3005, script: "dev:effect" },
 };
 
 const usage = `control-examples <command> [options]

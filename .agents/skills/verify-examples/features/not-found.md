@@ -27,6 +27,6 @@ Commands:
 
 ## Gotchas
 
-- For a missing issue the status code isn't 404 in every app: the page has started streaming before the issue query answers. `curl` gets `200` from `tanstack-start`, `tanstack-start-effect` and `nextjs`, and `500` from `react-router` (its server waits for the whole page for bots such as `curl`, and the empty issue fails that render). Assert on what's shown.
-- In dev, a missing issue logs React's "The above error occurred in the <IssueBody> component" in `tanstack-start`, `tanstack-start-effect` and `react-router`: that's the not-found being thrown and caught.
+- For a missing issue the status code isn't 404 in every app: the page has started streaming before the issue query answers. `curl` gets `200` from `tanstack-start` and `nextjs`, and `500` from `react-router` (its server waits for the whole page for bots such as `curl`, and the empty issue fails that render). Assert on what's shown.
+- In dev, a missing issue logs React's "The above error occurred in the <IssueBody> component" in `tanstack-start` and `react-router`: that's the not-found being thrown and caught.
 - `nextjs` dev logs a `Failed to execute 'measure' on 'Performance'` exception and a script-tag warning on `/issues/abc`. It comes from Next.js's dev tooling, also on a clean checkout.

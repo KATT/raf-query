@@ -30,5 +30,4 @@ Commands:
 ## Gotchas
 
 - Two clicks: the trigger, then the item. With the keyboard, opening the menu focuses the menu itself; `ArrowDown` moves to `Open`, and further arrows wrap around (`ArrowUp` from `Open` is `Closed`). `Enter` picks the focused item. Read `document.activeElement.innerText` before pressing `Enter`.
-- `tanstack-start-effect` has no `/api`; prove persistence by reloading.
 - Counts lag the badge by one round trip: they update when the list refetches after the write. Wait for the new count, don't read it right after the click.
