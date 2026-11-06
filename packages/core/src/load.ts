@@ -18,6 +18,9 @@ import {
 	type QueryFactory,
 } from "./options.ts";
 
+/** Bundlers replace `process.env.NODE_ENV`; typed here so consumers need no Node types. */
+declare const process: { readonly env: { readonly NODE_ENV?: string } };
+
 /**
  * A small serializable reference to a query: its key and its factory's
  * input. It carries no data; readers get that from the cache. Handles of

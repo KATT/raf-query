@@ -53,7 +53,7 @@
 		"prepack": "node ../../scripts/sync-package-docs.ts",
 		"build": "vp pack",
 		"test": "vp test",
-		"typecheck": "tsc",
+		"typecheck": "tsc && tsc -p tsconfig.no-node.json",
 		"publish:npm": "pnpm pack --out package.tgz && npm publish package.tgz --access public && rm package.tgz"
 	},
 	"dependencies": {

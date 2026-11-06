@@ -29,6 +29,9 @@ import { use, useCallback, useState, useSyncExternalStore } from "react";
 import { assertStartsRequests } from "./browser-only.ts";
 import { useQueryClient } from "./provider.tsx";
 
+/** Bundlers replace `process.env.NODE_ENV`; typed here so consumers need no Node types. */
+declare const process: { readonly env: { readonly NODE_ENV?: string } };
+
 export interface UseQueryOptions<TResult extends boolean = boolean> {
 	/**
 	 * Read the query's expected errors (`fail()`) as a `Result` instead of
