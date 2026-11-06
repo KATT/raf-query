@@ -1,5 +1,6 @@
 import { describe, expectTypeOf, it } from "vitest";
 
+import { action } from "./action.ts";
 import {
 	createQueryClient,
 	feature,
@@ -285,6 +286,26 @@ describe("root types", () => {
 			void invalidateMany(bare, writer, "a");
 		};
 		void invalidateMany(bare, posts);
+		expectTypeOf(wrong).toBeFunction();
+	});
+
+	it("check a bound action's targets against its client's root", () => {
+		const qc = makeQueryClient();
+		const save = async () => {};
+		const owned = {
+			where: (query: QueryInfo<{ readonly owner: string | undefined }>) =>
+				query.meta.owner === "users-team",
+		};
+		action(save, { client: qc, invalidates: [posts, postById, writer, owned] });
+		action(save, { invalidates: [writer, owned] });
+		const bare = createQueryClient({ links: [retry()] });
+		const wrong = () => {
+			// @ts-expect-error -- `writer` reads meta.tags, which nothing in this root declares
+			action(save, { client: bare, invalidates: [writer] });
+			// @ts-expect-error -- nor does anything declare meta.owner
+			action(save, { client: bare, invalidates: [owned] });
+		};
+		action(save, { client: bare, invalidates: [posts, titles] });
 		expectTypeOf(wrong).toBeFunction();
 	});
 

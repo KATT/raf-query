@@ -237,6 +237,35 @@ describe("action", () => {
 		]);
 	});
 
+	it("reaches only its client when bound to one", async () => {
+		const shell = testClient({
+			features: [invalidateOnAction()],
+			staleTime: Infinity,
+		});
+		const widget = testClient({
+			features: [invalidateOnAction()],
+			staleTime: Infinity,
+		});
+		using _shell = { [Symbol.dispose]: mount(shell) };
+		using _widget = { [Symbol.dispose]: mount(widget) };
+		const source = counter();
+		const entries = [shell, widget].map((client) =>
+			entryOf(client, source.factory, undefined),
+		);
+		await Promise.all(entries.map((entry) => fetchEntry(entry)));
+		await action(async () => {}, {
+			client: widget,
+			invalidates: [source.factory],
+		})();
+		await action(async () => {}, { client: widget })();
+
+		expect(entries.map((entry) => isStale(entry))).toEqual([false, true]);
+
+		await action(async () => {}, { invalidates: [source.factory] })();
+
+		expect(isStale(entries[0]!)).toBe(true);
+	});
+
 	it("does nothing for clients that didn't opt in", async () => {
 		const client = testClient({ staleTime: Infinity });
 		const source = counter();

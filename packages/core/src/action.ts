@@ -1,13 +1,9 @@
 import type { Feature, QueryClient } from "./client.ts";
 import { invalidate } from "./entry.ts";
-import {
-	type AnyInvalidation,
-	type AnyTarget,
-	type Group,
-	stampFor,
-} from "./keys.ts";
+import { type AnyInvalidation, type Group, stampFor } from "./keys.ts";
 import type { QueryFactory } from "./options.ts";
-import { invalidateAll } from "./verbs.ts";
+import type { AnyRoot, RootTypes } from "./root.ts";
+import { invalidateAll, type TargetFor } from "./verbs.ts";
 
 interface Registration {
 	readonly client: QueryClient;
@@ -47,9 +43,20 @@ export function invalidateOnAction(
 	};
 }
 
-export interface ActionOptions {
-	/** What the action changes: factories or targets (groups, tags), never raw keys. */
-	readonly invalidates?: ReadonlyArray<AnyTarget | Group | QueryFactory>;
+export interface ActionOptions<TTypes extends RootTypes = AnyRoot> {
+	/**
+	 * The one client the action invalidates, for pages that mount several
+	 * (micro-frontends, say). Without it, every mounted browser client with
+	 * `invalidateOnAction()` reacts.
+	 */
+	readonly client?: QueryClient<TTypes>;
+	/**
+	 * What the action changes: factories or targets (groups, tags), never raw
+	 * keys. With `client`, a target's `where` reads that client's `meta`.
+	 */
+	readonly invalidates?: ReadonlyArray<
+		Group | QueryFactory | TargetFor<TTypes, never>
+	>;
 }
 
 /**
@@ -62,16 +69,24 @@ export interface ActionOptions {
  * const save = action(updateIssue, { invalidates: [issues] });
  * ```
  */
-export function action<TArgs extends Array<unknown>, TResult>(
+export function action<
+	TArgs extends Array<unknown>,
+	TResult,
+	TTypes extends RootTypes = AnyRoot,
+>(
 	write: (...args: TArgs) => Promise<TResult>,
-	options: ActionOptions = {},
+	options: ActionOptions<TTypes> = {},
 ): (...args: TArgs) => Promise<TResult> {
 	return async (...args) => {
 		const result = await write(...args);
 		const targets: ReadonlyArray<AnyInvalidation> | undefined =
 			options.invalidates;
+		const bound = options.client;
 		await Promise.all(
 			[...registered].map((registration) => {
+				if (bound && registration.client !== bound) {
+					return undefined;
+				}
 				if (targets) {
 					return Promise.all(
 						targets.map((target) =>

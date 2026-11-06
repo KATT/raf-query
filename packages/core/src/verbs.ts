@@ -57,7 +57,7 @@ export type ClientFor<TFactory extends QueryFactory> = QueryClient<
  * A client typed only as `QueryClient` (from `useQueryClient()`, say) may
  * be of any root, so it takes any target.
  */
-type TargetFor<TTypes extends RootTypes, TParam> =
+export type TargetFor<TTypes extends RootTypes, TParam> =
 	IsAnyRoot<TTypes> extends true
 		? Target<never, TParam>
 		: Target<NoInfer<TTypes["meta"]>, TParam>;

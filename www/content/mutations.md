@@ -37,6 +37,16 @@ An action without `invalidates` refetches everything on screen and marks the res
 
 Server clients never take part: each belongs to one request, so one request's action can't reach another request's cache.
 
+### One client among several
+
+A page that mounts several clients, such as micro-frontends that each bring their own, can bind an action to one of them with `client`. Then only that client's `invalidateOnAction()` reacts, and the `where` of each target in `invalidates` is checked against that client's `meta` types:
+
+```sample
+tanstack-start/src/docs/mutations.ts#one-client-among-several
+```
+
+Without `client`, every mounted browser client with the feature reacts. A server client never does, bound or not.
+
 ## Invalidating by hand
 
 `action()` names what it invalidates up front, and a factory there covers all of its queries. To invalidate one query, or to decide after the write what to invalidate, call a verb yourself:

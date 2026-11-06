@@ -1,4 +1,5 @@
 import {
+	action,
 	createQueryClient,
 	getData,
 	invalidateMany,
@@ -15,6 +16,14 @@ import { postQuery, todosQuery } from "~/queries.ts";
 const queryClient = createQueryClient({ features: [invalidateOnAction()] });
 // or
 const withEverything = createQueryClient({ ...recommended() });
+// #endregion
+
+// #region one-client-among-several
+const widgetClient = createQueryClient({ features: [invalidateOnAction()] });
+const savePost = action(updatePost, {
+	client: widgetClient,
+	invalidates: [postQuery],
+});
 // #endregion
 
 declare const slug: string;
