@@ -3,8 +3,7 @@
  * lives here, so the shape of grouping can change without touching the
  * cache.
  *
- * Provisional (D9, round 2 "V3"): core knows three kinds of target, which
- * Alex hasn't confirmed yet.
+ * Core knows three kinds of target:
  *
  * - A factory, matched by identity, optionally with part of its input.
  * - A group: plain data, `{ group: "posts/drafts" }`, made by `group()` in

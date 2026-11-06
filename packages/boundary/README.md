@@ -14,4 +14,4 @@ import { QueryBoundary } from "@raf-query/boundary";
 </QueryBoundary>;
 ```
 
-See the [typed errors guide](https://raf-query.katt.dev/docs/typed-errors).
+See [expected errors](https://raf-query.katt.dev/docs/query-functions#expected-errors) in the docs.

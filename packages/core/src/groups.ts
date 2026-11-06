@@ -3,8 +3,6 @@
  * data) by key; tags are `where` targets that read `meta.tags`. Core never
  * imports this module, so apps that only invalidate by factory don't ship
  * it.
- *
- * Provisional (D9, round 2 "V3"), like the rest of the keys design.
  */
 
 import { type Feature, feature } from "./client.ts";

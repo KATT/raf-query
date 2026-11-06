@@ -2,8 +2,6 @@
  * Root types, the way tRPC v12 types a client from its links: each link and
  * feature declares the `meta` fields it reads, a client's `meta` is what its
  * parts declare, and factories name their root with a phantom `def`.
- *
- * Provisional (D9, round 2 "V3"), like the rest of the keys design.
  */
 
 /** A query's `meta` when its factory doesn't name a root. */
