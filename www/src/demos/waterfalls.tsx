@@ -1,11 +1,14 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	infiniteQueryOptions,
+	load,
+	prefetchEntry,
 	type QueryHandle,
 	queryOptions,
+	removeAll,
 	useQuery,
 	useQueryClient,
-	useWaterfall,
+	waterfallHandle,
 } from "@raf-query/react";
 import { Suspense, use, useState } from "react";
 
@@ -110,7 +113,7 @@ type PageData =
 	  };
 
 function loaderFor(strategy: Strategy): DemoLoader<PageData> {
-	return (args) => {
+	return async (args) => {
 		const id = Number(args.location.path.split("/")[2]);
 		if (!id) {
 			return { page: "list" };
@@ -118,13 +121,12 @@ function loaderFor(strategy: Strategy): DemoLoader<PageData> {
 		if (strategy === "render") {
 			return { id, page: "render" };
 		}
-		const qc = args.client;
-		return {
-			author: qc.prefetch(postAuthorQuery, { postId: id }),
-			comments: qc.prefetch(commentsQuery, { postId: id }),
-			page: "loader",
-			post: qc.prefetch(postQuery, { id }),
-		};
+		const [handles] = await load(args.client, {
+			author: prefetchEntry(postAuthorQuery, { postId: id }),
+			comments: prefetchEntry(commentsQuery, { postId: id }),
+			post: prefetchEntry(postQuery, { id }),
+		});
+		return { ...handles, page: "loader" };
 	};
 }
 
@@ -197,7 +199,7 @@ function LoaderPost(props: {
 
 /** Each level discovers what it needs only after its parent's data arrives. */
 function RenderPost(props: { readonly id: number }) {
-	const handle = useWaterfall(postQuery, { id: props.id });
+	const handle = waterfallHandle(postQuery, { id: props.id });
 	const [postPromise] = useQuery(postQuery, handle);
 	const post = use(postPromise);
 	return (
@@ -223,7 +225,7 @@ function RenderAuthor(props: {
 	readonly authorId: number;
 	readonly postId: number;
 }) {
-	const handle = useWaterfall(authorQuery, { id: props.authorId });
+	const handle = waterfallHandle(authorQuery, { id: props.authorId });
 	const [authorPromise] = useQuery(authorQuery, handle);
 	const author = use(authorPromise);
 	return (
@@ -237,7 +239,7 @@ function RenderAuthor(props: {
 }
 
 function RenderComments(props: { readonly postId: number }) {
-	const handle = useWaterfall(commentsQuery, { postId: props.postId });
+	const handle = waterfallHandle(commentsQuery, { postId: props.postId });
 	return (
 		<div className="mt-3">
 			<CommentList handle={handle} />
@@ -304,13 +306,13 @@ function Waterfalls() {
 			<Segmented
 				label="Start queries in"
 				onChange={(next) => {
-					qc.clear();
+					removeAll(qc);
 					server.reset();
 					setStrategy(next);
 				}}
 				options={[
 					{ label: "the loader", value: "loader" },
-					{ label: "render (useWaterfall)", value: "render" },
+					{ label: "render (waterfallHandle)", value: "render" },
 				]}
 				value={strategy}
 			/>

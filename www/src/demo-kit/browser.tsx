@@ -26,7 +26,7 @@ function href(location: DemoLocation) {
 }
 
 export type DemoLoader<TData> = (args: {
-	readonly client: QueryClient<unknown>;
+	readonly client: QueryClient;
 	readonly location: DemoLocation;
 }) => TData | Promise<TData>;
 

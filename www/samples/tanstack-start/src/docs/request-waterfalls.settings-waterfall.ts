@@ -1,4 +1,9 @@
-import { queryOptions } from "@raf-query/react";
+import {
+	fetchEntry,
+	load,
+	prefetchEntry,
+	queryOptions,
+} from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 
 declare function getCurrentUser(): Promise<{ orgId: string }>;
@@ -22,11 +27,13 @@ function orgQuery(input: { orgId: string }) {
 export const Route = createFileRoute("/settings")({
 	loader: async (args) => {
 		const qc = args.context.queryClient;
-		const user = await qc.fetch(currentUserQuery);
-		return {
-			org: qc.prefetch(orgQuery, { orgId: user.data.orgId }),
-			user,
-		};
+		const [userHandles, data] = await load(qc, {
+			user: fetchEntry(currentUserQuery),
+		});
+		const [orgHandles] = await load(qc, {
+			org: prefetchEntry(orgQuery, { orgId: data.user.orgId }),
+		});
+		return { ...userHandles, ...orgHandles };
 	},
 });
 // #endregion

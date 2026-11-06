@@ -1,6 +1,6 @@
 ---
 title: Credits
-description: raf-query builds on the design of TanStack Query, and on React, Effect and TanStack Router.
+description: raf-query builds on the design of TanStack Query, and on React and TanStack Router.
 section: Project
 order: 1
 ---
@@ -16,7 +16,7 @@ TanStack Query is [MIT licensed](https://github.com/TanStack/query/blob/main/LIC
 ## Built with
 
 - [React](https://react.dev): `use()`, Suspense, transitions, actions and Server Components are what make render-as-you-fetch practical.
-- [Effect](https://effect.website): the cache is written in it.
+- [tRPC](https://trpc.io): links that wrap every request, and typing options by the client they belong to.
 - [TanStack Router and Start](https://tanstack.com/router): the first integration, and what these docs run on.
 - [Next.js](https://nextjs.org): the React Server Components integration.
 

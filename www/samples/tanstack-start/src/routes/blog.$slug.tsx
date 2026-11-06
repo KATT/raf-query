@@ -1,4 +1,9 @@
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import {
+	load,
+	prefetchEntry,
+	type QueryHandle,
+	useQuery,
+} from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense, use } from "react";
 
@@ -13,13 +18,14 @@ declare function PostSkeleton(): React.ReactNode;
 // #region hero
 // #region route
 export const Route = createFileRoute("/blog/$slug")({
-	loader: (args) => {
-		const qc = args.context.queryClient;
+	loader: async (args) => {
 		const { slug } = args.params;
 		// Never waits: both load while the page renders.
-		const comments = qc.prefetch(commentsQuery, { slug });
-		const post = qc.prefetch(postQuery, { slug });
-		return { comments, post };
+		const [handles] = await load(args.context.queryClient, {
+			comments: prefetchEntry(commentsQuery, { slug }),
+			post: prefetchEntry(postQuery, { slug }),
+		});
+		return handles;
 	},
 	component: PostPage,
 });

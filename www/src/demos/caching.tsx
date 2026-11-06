@@ -2,6 +2,8 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
 	infiniteQueryOptions,
+	load,
+	prefetchEntry,
 	type QueryHandle,
 	useQuery,
 } from "@raf-query/react";
@@ -133,11 +135,15 @@ function Caching() {
 		<DemoBrowser
 			fallback={<TodosSkeleton />}
 			initial={{ path: "/todos" }}
-			loader={(args): PageData =>
-				args.location.path === "/todos"
-					? { page: "todos", todos: args.client.prefetch(todosQuery) }
-					: { page: "about" }
-			}
+			loader={async (args): Promise<PageData> => {
+				if (args.location.path !== "/todos") {
+					return { page: "about" };
+				}
+				const [handles] = await load(args.client, {
+					todos: prefetchEntry(todosQuery),
+				});
+				return { page: "todos", todos: handles.todos };
+			}}
 		>
 			{(route) => <Page data={route.data} />}
 		</DemoBrowser>

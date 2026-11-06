@@ -1,6 +1,12 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
-import { type QueryHandle, queryOptions, useQuery } from "@raf-query/react";
+import {
+	load,
+	prefetchEntry,
+	type QueryHandle,
+	queryOptions,
+	useQuery,
+} from "@raf-query/react";
 import { use, useState } from "react";
 
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
@@ -125,12 +131,12 @@ function Pagination() {
 			<DemoBrowser
 				fallback={<ListSkeleton />}
 				initial={{ path: "/projects", search: { page: 1 } }}
-				loader={(args): PageData => {
+				loader={async (args): Promise<PageData> => {
 					const page = Math.max(1, Number(args.location.search?.page ?? 1));
-					return {
-						page,
-						projects: args.client.prefetch(projectsQuery, { page }),
-					};
+					const [handles] = await load(args.client, {
+						projects: prefetchEntry(projectsQuery, { page }),
+					});
+					return { page, projects: handles.projects };
 				}}
 			>
 				{(route) => <Projects data={route.data} whilePending={whilePending} />}

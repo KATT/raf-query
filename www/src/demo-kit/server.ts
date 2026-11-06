@@ -1,10 +1,10 @@
-import { hashKey, type QueryKey } from "@raf-query/react";
+import type { QueryKey } from "@raf-query/react";
 
 type RequestStatus = "aborted" | "error" | "pending" | "success";
 
 export interface NetworkRequest {
 	readonly endedAt: number | undefined;
-	/** The hash of the query that sent it, or `undefined` for a write. */
+	/** The {@link keyLabel} of the query that sent it, or `undefined` for a write. */
 	readonly hash: string | undefined;
 	readonly id: number;
 	readonly label: string;
@@ -53,6 +53,14 @@ function wait(ms: number, signal: AbortSignal | undefined) {
 		}
 		signal?.addEventListener("abort", abort, { once: true });
 	});
+}
+
+/**
+ * A query key as the demos' panels show it. A query function gets its entry's
+ * own key array, so a request's label matches its entry's.
+ */
+export function keyLabel(queryKey: QueryKey): string {
+	return JSON.stringify(queryKey);
 }
 
 /** The latencies a demo's toolbar offers. A server starts at `3G`. */
@@ -111,7 +119,7 @@ export function createFakeServer<TDb>(seed: () => TDb): FakeServer<TDb> {
 				...requests.slice(-11),
 				{
 					endedAt: undefined,
-					hash: options?.queryKey ? hashKey(options.queryKey) : undefined,
+					hash: options?.queryKey ? keyLabel(options.queryKey) : undefined,
 					id,
 					label,
 					startedAt: Date.now(),

@@ -1,5 +1,5 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import { type QueryHandle, useQuery, waterfallHandle } from "@raf-query/react";
 import { ClientOnly } from "@tanstack/react-router";
 import { Suspense, use } from "react";
 
@@ -21,7 +21,12 @@ function DemoPlaceholder() {
 }
 
 function LoadedDemo(props: { readonly handle: QueryHandle<typeof demoQuery> }) {
-	const [demoPromise] = useQuery(demoQuery, props.handle);
+	// The server doesn't send demo entries (see router.tsx), so after
+	// hydration the browser loads a demo's chunk when it renders.
+	const [demoPromise] = useQuery(
+		demoQuery,
+		waterfallHandle(demoQuery, props.handle.input),
+	);
 	return <DemoFrame demo={use(demoPromise)} />;
 }
 

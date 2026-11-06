@@ -1,11 +1,15 @@
 import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
+	type DefinedQueryHandle,
+	ensureEntry,
 	infiniteQueryOptions,
-	type QueryHandleWithData,
+	invalidateOne,
+	load,
 	useQuery,
+	useQueryClient,
 } from "@raf-query/react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, RotateCcw } from "lucide-react";
 
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
 import { formatTime, Spinner } from "~/demo-kit/controls.tsx";
@@ -50,14 +54,15 @@ function inboxQuery() {
 
 type PageData =
 	| {
-			readonly inbox: QueryHandleWithData<typeof inboxQuery>;
+			readonly inbox: DefinedQueryHandle<typeof inboxQuery>;
 			readonly page: "inbox";
 	  }
 	| { readonly page: "settings" };
 
 function Inbox(props: {
-	readonly handle: QueryHandleWithData<typeof inboxQuery>;
+	readonly handle: DefinedQueryHandle<typeof inboxQuery>;
 }) {
+	const queryClient = useQueryClient();
 	const [pages, inbox] = useQuery(inboxQuery, props.handle);
 	const messages = pages.pages.flatMap((page) => page.items);
 	return (
@@ -83,6 +88,15 @@ function Inbox(props: {
 					variant="outline"
 				>
 					<RefreshCw /> Refetch
+				</Button>
+				<Button
+					onClick={() => {
+						void invalidateOne(queryClient, inboxQuery);
+					}}
+					size="xs"
+					variant="outline"
+				>
+					<RotateCcw /> Invalidate
 				</Button>
 				<span className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
 					{inbox.isFetching ? <Spinner /> : null}
@@ -127,11 +141,15 @@ function Cancellation() {
 		<DemoBrowser
 			fallback={<Skeleton className="h-28 w-full" />}
 			initial={{ path: "/inbox" }}
-			loader={async (args): Promise<PageData> =>
-				args.location.path === "/inbox"
-					? { inbox: await args.client.ensure(inboxQuery), page: "inbox" }
-					: { page: "settings" }
-			}
+			loader={async (args): Promise<PageData> => {
+				if (args.location.path !== "/inbox") {
+					return { page: "settings" };
+				}
+				const [handles] = await load(args.client, {
+					inbox: ensureEntry(inboxQuery),
+				});
+				return { inbox: handles.inbox, page: "inbox" };
+			}}
 		>
 			{(route) => <Page data={route.data} />}
 		</DemoBrowser>
@@ -140,7 +158,7 @@ function Cancellation() {
 
 export default defineDemo({
 	Component: Cancellation,
-	hint: "Pick Slow, press Refetch, then open Settings before it lands: the inbox's last reader left, so the request is aborted and the cached data kept. Come back to find it still cached.",
+	hint: "Pick Slow and press Refetch, then Invalidate before it lands: the request in flight is aborted and a new one starts. Refetch and open Settings instead: the request runs to the end, and the inbox is cached when you come back.",
 	server,
-	title: "Aborting requests nobody needs",
+	title: "Aborting requests that were replaced",
 });

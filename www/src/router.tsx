@@ -1,9 +1,10 @@
 import {
-	canDehydrate,
-	QueryClient,
+	createQueryClient,
 	QueryClientProvider,
+	retry,
 } from "@raf-query/react";
 import { QueryDevtools } from "@raf-query/react/devtools";
+import { canDehydrate } from "@raf-query/react/hydration";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import { createRouter } from "@tanstack/react-router";
 
@@ -11,7 +12,9 @@ import { NotFound } from "./components/not-found.tsx";
 import { routeTree } from "./routeTree.gen.ts";
 
 export function getRouter() {
-	const queryClient = new QueryClient();
+	// Pages and demo code only change with a deploy: nothing to refetch on
+	// focus, and no actions to invalidate after.
+	const queryClient = createQueryClient({ links: [retry()] });
 	const router = createRouter({
 		context: { queryClient },
 		defaultNotFoundComponent: NotFound,
@@ -35,7 +38,7 @@ export function getRouter() {
 		// Demo entries hold components, which can't be serialized; the browser
 		// loads their chunks itself.
 		dehydrateOptions: {
-			filter: (query) => query.key[0] === "doc" && canDehydrate(query),
+			filter: (entry) => entry.key[0] === "doc" && canDehydrate(entry),
 		},
 		queryClient,
 		router,

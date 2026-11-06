@@ -3,10 +3,12 @@ import { Input } from "@examples/ui/components/input";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
+	action,
+	type DefinedQueryHandle,
+	ensureEntry,
 	infiniteQueryOptions,
-	type QueryHandleWithData,
+	load,
 	useQuery,
-	useQueryClient,
 } from "@raf-query/react";
 import { useActionState, useOptimistic } from "react";
 import { useFormStatus } from "react-dom";
@@ -54,7 +56,7 @@ function todosQuery() {
 	});
 }
 
-function addTodo(text: string) {
+function postTodo(text: string) {
 	return server.respond(`POST /todos "${text}"`, (db) => {
 		const todo = {
 			id: Math.max(0, ...db.todos.map((item) => item.id)) + 1,
@@ -65,8 +67,10 @@ function addTodo(text: string) {
 	});
 }
 
+const addTodo = action(postTodo, { invalidates: [todosQuery] });
+
 interface PageData {
-	readonly todos: QueryHandleWithData<typeof todosQuery>;
+	readonly todos: DefinedQueryHandle<typeof todosQuery>;
 }
 
 function SubmitButton() {
@@ -80,9 +84,8 @@ function SubmitButton() {
 }
 
 function TodoList(props: {
-	readonly handle: QueryHandleWithData<typeof todosQuery>;
+	readonly handle: DefinedQueryHandle<typeof todosQuery>;
 }) {
-	const qc = useQueryClient();
 	const [pages] = useQuery(todosQuery, props.handle);
 	const serverTodos = pages.pages.flatMap((page) => page.items);
 	const [todos, addOptimistic] = useOptimistic<ReadonlyArray<Todo>, string>(
@@ -104,7 +107,6 @@ function TodoList(props: {
 			} catch (error) {
 				return error instanceof Error ? error.message : "Something went wrong";
 			}
-			await qc.invalidate(todosQuery);
 			return null;
 		},
 		null,
@@ -152,9 +154,12 @@ function OptimisticUpdates() {
 			<DemoBrowser
 				fallback={<Skeleton className="h-24 w-full" />}
 				initial={{ path: "/todos" }}
-				loader={async (args): Promise<PageData> => ({
-					todos: await args.client.ensure(todosQuery),
-				})}
+				loader={async (args): Promise<PageData> => {
+					const [handles] = await load(args.client, {
+						todos: ensureEntry(todosQuery),
+					});
+					return handles;
+				}}
 			>
 				{(route) => <TodoList handle={route.data.todos} />}
 			</DemoBrowser>

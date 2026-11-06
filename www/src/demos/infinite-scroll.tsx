@@ -1,6 +1,8 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	infiniteQueryOptions,
+	load,
+	prefetchEntry,
 	type QueryHandle,
 	useQuery,
 } from "@raf-query/react";
@@ -182,11 +184,14 @@ function InfiniteScroll() {
 				</ul>
 			}
 			initial={{ path: "/messages", search: { filter: "all" } }}
-			loader={(args): PageData => ({
-				messages: args.client.prefetch(messagesQuery, {
-					filter: filterOf(args.location.search?.filter),
-				}),
-			})}
+			loader={async (args): Promise<PageData> => {
+				const [handles] = await load(args.client, {
+					messages: prefetchEntry(messagesQuery, {
+						filter: filterOf(args.location.search?.filter),
+					}),
+				});
+				return handles;
+			}}
 		>
 			{(route) => <Page data={route.data} />}
 		</DemoBrowser>

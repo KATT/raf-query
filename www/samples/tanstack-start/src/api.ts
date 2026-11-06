@@ -103,8 +103,9 @@ export function getBuild(id: string) {
 	return request<Build>(`/api/builds/${id}`);
 }
 
+/** `null` when signed out. */
 export function getMe() {
-	return request<User>("/api/me");
+	return request<User | null>("/api/me");
 }
 
 export function getCurrentOrg() {

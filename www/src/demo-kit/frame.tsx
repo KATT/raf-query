@@ -13,7 +13,13 @@ import {
 	TabsTrigger,
 } from "@examples/ui/components/tabs";
 import { cn } from "@examples/ui/lib/utils";
-import { QueryClient, QueryClientProvider } from "@raf-query/react";
+import {
+	createQueryClient,
+	type QueryClient,
+	QueryClientProvider,
+	recommended,
+	removeAll,
+} from "@raf-query/react";
 import { QueryDevtoolsPanel } from "@raf-query/react/devtools";
 import { Expand, FlaskConical, Shrink } from "lucide-react";
 import { Activity, type ReactNode, Suspense, useId, useState } from "react";
@@ -22,6 +28,7 @@ import type { DemoDefinition, DemoVariant } from "./define.ts";
 import { QueriesPanel } from "./queries-panel.tsx";
 import { type FakeServer, latencies } from "./server.ts";
 import { DemoSessionContext } from "./session.ts";
+import { trackCache } from "./stores.ts";
 
 interface Session {
 	readonly client: QueryClient;
@@ -42,11 +49,9 @@ function createSession(
 	location?: string,
 ): Session {
 	sessionCount++;
-	const session = {
-		client: demo.createClient?.() ?? new QueryClient(),
-		id: sessionCount,
-		location,
-	};
+	const client = demo.createClient?.() ?? createQueryClient(recommended());
+	trackCache(client);
+	const session = { client, id: sessionCount, location };
 	liveSessions.set(variant, session);
 	return session;
 }
@@ -120,11 +125,6 @@ function Inspector(props: {
 				<QueryDevtoolsPanel
 					client={props.session.client}
 					style={{ borderRadius: 8, height: "100%", minHeight: 360 }}
-					theme={
-						document.documentElement.classList.contains("dark")
-							? "dark"
-							: "light"
-					}
 				/>
 			</TabsContent>
 		</Tabs>
@@ -350,7 +350,10 @@ export function DemoFrame(props: { readonly demo: DemoDefinition }) {
 				if (!reloaded) {
 					return;
 				}
-				void sessions[index]?.client.dispose();
+				const dropped = sessions[index]?.client;
+				if (dropped) {
+					removeAll(dropped);
+				}
 				reloaded.server.reset();
 				setSessions((previous) =>
 					previous.map((each, at) =>

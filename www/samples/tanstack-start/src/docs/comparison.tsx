@@ -1,5 +1,12 @@
-import { type QueryHandle, queryOptions, useQuery } from "@raf-query/react";
+import {
+	load,
+	prefetchEntry,
+	type QueryHandle,
+	queryOptions,
+	useQuery,
+} from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
+import { Suspense } from "react";
 
 declare function NotificationsToggle(props: {
 	readonly permission: PermissionState | undefined;
@@ -21,11 +28,12 @@ export function permissionQuery(input: { name: PermissionName }) {
 
 // #region route
 export const Route = createFileRoute("/settings")({
-	loader: (args) => ({
-		notifications: args.context.queryClient.prefetch(permissionQuery, {
-			name: "notifications",
-		}),
-	}),
+	loader: async ({ context }) => {
+		const [handles] = await load(context.queryClient, {
+			notifications: prefetchEntry(permissionQuery, { name: "notifications" }),
+		});
+		return handles;
+	},
 	component: NotificationsSetting,
 });
 // #endregion route
@@ -36,6 +44,15 @@ declare const loaderData: {
 
 // #region component
 function NotificationsSetting() {
+	// The server can't read a browser-only query: it sends the fallback.
+	return (
+		<Suspense fallback={<NotificationsToggle permission={undefined} />}>
+			<Permission />
+		</Suspense>
+	);
+}
+
+function Permission() {
 	const [promise] = useQuery(permissionQuery, loaderData.notifications);
 	const permission = promise.status === "fulfilled" ? promise.value : undefined;
 	return <NotificationsToggle permission={permission} />;

@@ -1,20 +1,29 @@
-import { QueryClient } from "@raf-query/react";
+import {
+	createQueryClient,
+	ensureEntry,
+	load,
+	prefetchEntry,
+} from "@raf-query/react";
 import { commentsQuery, postQuery } from "~/queries.ts";
 
-const qc = new QueryClient();
+const qc = createQueryClient();
 
 declare const slug: string;
 
 // #region start-every-query-before-awaiting-any
 {
-	// ❌ comments wait for the post
-	const post = await qc.ensure(postQuery, { slug });
-	const comments = qc.prefetch(commentsQuery, { slug });
+	// ❌ the comments wait for the post
+	const [post] = await load(qc, { post: ensureEntry(postQuery, { slug }) });
+	const [comments] = await load(qc, {
+		comments: prefetchEntry(commentsQuery, { slug }),
+	});
 }
 
 {
 	// ✅ both start together
-	const comments = qc.prefetch(commentsQuery, { slug });
-	const post = await qc.ensure(postQuery, { slug });
+	const [handles] = await load(qc, {
+		comments: prefetchEntry(commentsQuery, { slug }),
+		post: ensureEntry(postQuery, { slug }),
+	});
 }
 // #endregion

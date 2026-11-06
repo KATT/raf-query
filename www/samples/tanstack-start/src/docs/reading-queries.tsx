@@ -13,7 +13,7 @@ declare function Comments(props: {
 // #region post-page
 function PostPage() {
 	const loaderData = Route.useLoaderData();
-	// `post` came from `qc.ensure`, `comments` from `qc.prefetch`.
+	// `post` came from `ensureEntry`, `comments` from `prefetchEntry`.
 	const [post, postState] = useQuery(postQuery, loaderData.post);
 
 	return (

@@ -1,8 +1,13 @@
-import { infiniteQueryOptions, QueryClient } from "@raf-query/react";
+import {
+	createQueryClient,
+	infiniteQueryOptions,
+	load,
+	prefetchEntry,
+} from "@raf-query/react";
 import { postQuery } from "~/queries.ts";
 import { type CommentPage, listComments } from "~/api.ts";
 
-const qc = new QueryClient();
+const qc = createQueryClient();
 
 function issuesQuery() {
 	return infiniteQueryOptions({
@@ -17,8 +22,10 @@ function issuesQuery() {
 }
 
 // #region one-input-serializable
-qc.prefetch(postQuery, { slug: "hello-world" });
-qc.prefetch(issuesQuery); // a factory without input
+await load(qc, {
+	post: prefetchEntry(postQuery, { slug: "hello-world" }),
+	issues: prefetchEntry(issuesQuery), // a factory without input
+});
 // #endregion
 
 // #region type-inference
@@ -34,11 +41,13 @@ commentsOptions;
 // #endregion
 
 // #region type-helpers
-import type { DataOf, InputOf, QueryHandle } from "@raf-query/react";
+import type { DataOf, ErrorOf, InputOf, QueryHandle } from "@raf-query/react";
 
-type PostData = DataOf<typeof postQuery>; // what queryFn resolves to
+type PostData = DataOf<typeof postQuery>; // what readers get
 //   ^?
 type PostInput = InputOf<typeof postQuery>;
+//   ^?
+type PostError = ErrorOf<typeof postQuery>; // the fail() values queryFn returns
 //   ^?
 type PostHandle = QueryHandle<typeof postQuery>; // for props
 // #endregion

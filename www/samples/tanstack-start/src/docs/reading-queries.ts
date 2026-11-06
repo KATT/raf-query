@@ -1,5 +1,5 @@
 import {
-	type QueryHandleWithData,
+	type DefinedQueryHandle,
 	type QueryHandle,
 	type UseQueryOptions,
 	useQuery,
@@ -10,7 +10,7 @@ declare const factory: typeof postQuery;
 
 declare const handle: QueryHandle<typeof postQuery>;
 
-declare const handleWithData: QueryHandleWithData<typeof postQuery>;
+declare const definedHandle: DefinedQueryHandle<typeof postQuery>;
 
 declare const options: UseQueryOptions | undefined;
 
@@ -19,6 +19,6 @@ declare const options: UseQueryOptions | undefined;
 	const [promise, controls] = useQuery(factory, handle, options);
 }
 {
-	const [data, controls] = useQuery(factory, handleWithData, options);
+	const [data, controls] = useQuery(factory, definedHandle, options);
 }
 // #endregion

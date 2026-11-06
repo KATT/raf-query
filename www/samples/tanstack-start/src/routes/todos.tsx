@@ -1,14 +1,22 @@
 // #region loader
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import {
+	load,
+	prefetchEntry,
+	type QueryHandle,
+	useQuery,
+} from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense, use } from "react";
 
 import { todosQuery } from "~/queries.ts";
 
 export const Route = createFileRoute("/todos")({
-	loader: (args) => ({
-		todos: args.context.queryClient.prefetch(todosQuery),
-	}),
+	loader: async (args) => {
+		const [handles] = await load(args.context.queryClient, {
+			todos: prefetchEntry(todosQuery),
+		});
+		return handles;
+	},
 	component: TodosPage,
 });
 // #endregion

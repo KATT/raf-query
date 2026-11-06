@@ -1,13 +1,13 @@
 ---
 title: Query functions
-description: What a queryFn may return, how errors are reported, and what the query function context contains.
+description: What a queryFn may return, how expected and unexpected errors are reported, and what the query function context contains.
 section: Guides
 order: 3
 ---
 
-A query function can be literally any function that **returns a value, a promise, or an [Effect](./effect.md)**. The promise should either **resolve the data** or **throw an error**.
+A query function can be literally any function that **returns a value or a promise**. The promise should either **resolve the data**, **resolve an [expected error](#expected-errors)** made with `fail()`, or **throw**.
 
-Unlike TanStack Query, `undefined` is a valid result: a `queryFn` typed `Promise<User | undefined>` caches `undefined` like any other value. So `getData` and a `setData` updater's `previous` are `undefined` both with no data and with `undefined` data; `Query.getUnsafe(qc.getQuery(factory, input)).hasData` tells them apart.
+Unlike TanStack Query, `undefined` is a valid result: a `queryFn` typed `Promise<User | undefined>` caches `undefined` like any other value. So `getData` and a `setData` updater's `previous` are `undefined` both with no data and with `undefined` data; a reader's `controls.isPending` tells them apart.
 
 All of these are valid:
 
@@ -19,31 +19,65 @@ In practice the `queryFn` lives in a [factory](./query-factories.md) and closes 
 
 ## Handling and throwing errors
 
-For raf-query to know a query failed, the query function **must throw** or return a **rejected promise**. The error is kept on the query: the first load's error rejects the promise `useQuery` returns, so `use()` throws it to the nearest error boundary, and a later background error shows up in `controls.error` while the old data stays readable.
+A query function that **throws** or returns a **rejected promise** fails with a **defect**: an error the app didn't plan for. The error is kept on the query: the first load's error rejects the promise `useQuery` returns, so `use()` throws it to the nearest error boundary, and a later background error shows up in `controls.error` while the old data stays readable.
 
 ```sample
 tanstack-start/src/docs/query-functions.ts#handling-and-throwing-errors
 ```
 
-Failed requests are [retried](./retries.md) three times before they count as failed.
+With the `retry()` link, which `recommended()` includes, failed requests are [retried](./retries.md) three times before they count as failed.
+
+## Expected errors
+
+Some failures are part of the data's shape: a post that doesn't exist, a page the user may not see. Return them with `fail()` instead of throwing. A `fail()` value is plain data with a `_tag`, and its type becomes the factory's `ErrorOf`:
+
+```sample
+tanstack-start/src/docs/query-functions.ts#expected-errors
+```
+
+An expected error is never retried, and it crosses SSR and the router's serializer as it is. Where it ends up depends on who reads it:
+
+- A `load` waiting for the query (an `ensureEntry` or `fetchEntry`) rejects with a `QueryFailure`, an `Error` that carries the `fail()` value in `.fail`. `isFail(error, "NotFound")` checks for one by tag:
+
+```sample
+tanstack-start/src/docs/query-functions.expected-errors.tsx#loader
+```
+
+- `useQuery` throws the same `QueryFailure` to the nearest error boundary. Pass `{ result: true }` to read a `Result` instead: `{ ok: true, value }` or `{ ok: false, error }`, where `error` is the `fail()` value. Defects still throw.
+
+```sample
+tanstack-start/src/docs/query-functions.expected-errors.tsx#result
+```
+
+- `QueryBoundary` from `@raf-query/boundary` is a Suspense and error boundary in one. Give it the factory as `query`, and a handler per tag in `catch`, typed from the factory's `fail()` values. Each handler gets the error and a `retry` that refetches the query and renders the children again. Defects and tags without a handler go to the next error boundary.
 
 ## With `fetch` and other clients that don't throw
 
-Many clients, such as axios, throw for unsuccessful HTTP responses. `fetch` doesn't, so throw yourself:
+Many clients, such as axios, throw for unsuccessful HTTP responses. [`fetch`](https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch) doesn't, so throw yourself, or return `fail()` for the statuses you expect:
 
 ```sample
 tanstack-start/src/docs/query-functions.ts#with-fetch-and-other-clients-that-dont-throw
 ```
 
-A not-found is often better as a value than an error: return `null` and let the page decide, or throw your router's `notFound()` from the `queryFn` so the route renders its not-found component.
+A not-found can also be a plain value: return `null` and let the page decide, or throw your router's `notFound()` from the `queryFn` so the route renders its not-found component.
+
+## Streaming
+
+A `queryFn` that returns an [async iterable](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols#the_async_iterator_and_async_iterable_protocols) is a stream. Pass `stream` to fold its chunks into the data: `initial` is the data before the first chunk, and `reduce` adds a chunk to it.
+
+```sample
+tanstack-start/src/docs/query-functions.ts#streaming
+```
+
+Readers get the data after the first chunk, and every later chunk updates it in place. `controls.isFetching` stays `true` until the stream ends.
 
 ## The query function context
 
 Each `queryFn` receives a context object:
 
-- `queryKey: QueryKey`, the query's [key](./query-keys.md)
+- `queryKey`, the query's [key](./query-keys.md), typed as the factory wrote it
 - `signal: AbortSignal`, aborted when the request is cancelled. Pass it to `fetch` so [cancelled requests](./query-cancellation.md) stop using the network.
-- `meta: QueryMeta | undefined`, the query's [`meta`](./query-meta.md)
+- `meta`, the query's [`meta`](./query-meta.md), or `{}` when it has none
 
 [Paged queries](./infinite-queries.md) also get:
 

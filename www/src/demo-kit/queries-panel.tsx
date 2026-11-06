@@ -108,11 +108,26 @@ function ReadersCell(props: { readonly row: Row }) {
 	if (!entry) {
 		return null;
 	}
-	return entry.observers > 0 ? (
-		<span>{entry.observers} reading</span>
+	return entry.readers > 0 ? (
+		<span>{entry.readers} reading</span>
 	) : (
 		<span className="text-muted-foreground">inactive</span>
 	);
+}
+
+/** Failed requests since the last one that didn't fail: a retry's attempts so far. */
+function failedInARow(requests: ReadonlyArray<NetworkRequest>) {
+	let count = 0;
+	for (const request of requests.toReversed()) {
+		if (request.status === "pending") {
+			continue;
+		}
+		if (request.status !== "error") {
+			break;
+		}
+		count++;
+	}
+	return count;
 }
 
 function RequestsCell(props: { readonly row: Row }) {
@@ -120,7 +135,7 @@ function RequestsCell(props: { readonly row: Row }) {
 	if (!last && !props.row.loading) {
 		return <span className="text-muted-foreground">none</span>;
 	}
-	const failures = props.row.entry?.failureCount ?? 0;
+	const failures = failedInARow(props.row.requests);
 	return (
 		<span className="flex flex-wrap items-center gap-x-1.5">
 			<span
@@ -199,7 +214,7 @@ function animateRow(element: HTMLElement | null) {
  * whether it's loading.
  */
 export function QueriesPanel(props: {
-	readonly client: QueryClient<unknown>;
+	readonly client: QueryClient;
 	readonly server: FakeServer<unknown>;
 }) {
 	const entries = useCacheRows(props.client);

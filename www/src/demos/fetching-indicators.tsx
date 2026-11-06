@@ -2,8 +2,10 @@ import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
-	allKeyed,
-	type QueryHandleWithData,
+	type DefinedQueryHandle,
+	ensureEntry,
+	invalidateMany,
+	load,
 	queryOptions,
 	useIsFetching,
 	useQuery,
@@ -38,7 +40,7 @@ function statQuery(input: { readonly stat: Stat }) {
 	});
 }
 
-type PageData = Readonly<Record<Stat, QueryHandleWithData<typeof statQuery>>>;
+type PageData = Readonly<Record<Stat, DefinedQueryHandle<typeof statQuery>>>;
 
 function GlobalIndicator() {
 	const fetching = useIsFetching();
@@ -62,7 +64,7 @@ function GlobalIndicator() {
 }
 
 function StatCard(props: {
-	readonly handle: QueryHandleWithData<typeof statQuery>;
+	readonly handle: DefinedQueryHandle<typeof statQuery>;
 	readonly stat: Stat;
 }) {
 	const [value, stat] = useQuery(statQuery, props.handle);
@@ -107,7 +109,7 @@ function Dashboard(props: { readonly data: PageData }) {
 				className="justify-self-start"
 				onClick={() => {
 					startTransition(async () => {
-						await qc.invalidate({ queryKey: ["stats"] });
+						await invalidateMany(qc, statQuery);
 					});
 				}}
 				size="sm"
@@ -124,13 +126,14 @@ function FetchingIndicators() {
 		<DemoBrowser
 			fallback={<Skeleton className="h-36 w-full" />}
 			initial={{ path: "/dashboard" }}
-			loader={(args): Promise<PageData> =>
-				allKeyed({
-					orders: args.client.ensure(statQuery, { stat: "orders" }),
-					signups: args.client.ensure(statQuery, { stat: "signups" }),
-					tickets: args.client.ensure(statQuery, { stat: "tickets" }),
-				})
-			}
+			loader={async (args): Promise<PageData> => {
+				const [handles] = await load(args.client, {
+					orders: ensureEntry(statQuery, { stat: "orders" }),
+					signups: ensureEntry(statQuery, { stat: "signups" }),
+					tickets: ensureEntry(statQuery, { stat: "tickets" }),
+				});
+				return handles;
+			}}
 		>
 			{(route) => <Dashboard data={route.data} />}
 		</DemoBrowser>

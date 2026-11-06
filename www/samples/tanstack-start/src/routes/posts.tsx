@@ -1,4 +1,4 @@
-import { useQuery } from "@raf-query/react";
+import { load, prefetchEntry, useQuery } from "@raf-query/react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { use } from "react";
 
@@ -16,9 +16,12 @@ const PostsSearch = z.object({
 export const Route = createFileRoute("/posts")({
 	validateSearch: PostsSearch,
 	loaderDeps: (args) => args.search,
-	loader: (args) => ({
-		posts: args.context.queryClient.prefetch(postsQuery, args.deps),
-	}),
+	loader: async (args) => {
+		const [handles] = await load(args.context.queryClient, {
+			posts: prefetchEntry(postsQuery, args.deps),
+		});
+		return handles;
+	},
 	component: PostsPage,
 });
 

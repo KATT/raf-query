@@ -1,18 +1,19 @@
-import { useQueryClient } from "@raf-query/react";
+import { action } from "@raf-query/react";
 
 import { createTodo } from "~/api.ts";
-import { todosQuery } from "~/queries.ts";
+import { todos } from "~/queries.ts";
 
 // #region add-todo
+const addTodo = action(
+	async (formData: FormData) => {
+		await createTodo({ title: String(formData.get("title")) });
+	},
+	{ invalidates: [todos] },
+);
+
 export function AddTodo() {
-	const qc = useQueryClient();
 	return (
-		<form
-			action={async (formData) => {
-				await createTodo({ title: String(formData.get("title")) });
-				await qc.invalidate(todosQuery);
-			}}
-		>
+		<form action={addTodo}>
 			<input name="title" />
 			<button>Add</button>
 		</form>

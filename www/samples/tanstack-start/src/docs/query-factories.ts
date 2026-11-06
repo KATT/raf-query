@@ -2,10 +2,13 @@ import { getPost, listComments } from "~/api.ts";
 
 // #region intro
 import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
+import { group } from "@raf-query/react/groups";
+
+export const posts = group("posts");
 
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: ["post", input.slug],
+		queryKey: [posts, "bySlug", input.slug],
 		queryFn: () => getPost(input.slug),
 		staleTime: 30_000,
 	});
@@ -13,7 +16,7 @@ export function postQuery(input: { slug: string }) {
 
 export function commentsQuery(input: { slug: string }) {
 	return infiniteQueryOptions({
-		queryKey: ["comments", input.slug],
+		queryKey: [posts, "comments", input.slug],
 		queryFn: (context) =>
 			listComments({ slug: input.slug, cursor: context.pageParam }),
 		initialPageParam: 0,

@@ -1,4 +1,10 @@
-import { QueryClient, queryOptions, useQuery } from "@raf-query/react";
+import {
+	createQueryClient,
+	ensureEntry,
+	load,
+	queryOptions,
+	useQuery,
+} from "@raf-query/react";
 
 interface Endpoint<TArgs, TData> {
 	readonly name: string;
@@ -17,7 +23,7 @@ declare const api: {
 
 declare const slug: string;
 
-const qc = new QueryClient();
+const qc = createQueryClient();
 
 // #region factory-makers
 function endpointQuery<TArgs, TData>(endpoint: Endpoint<TArgs, TData>) {
@@ -28,6 +34,10 @@ function endpointQuery<TArgs, TData>(endpoint: Endpoint<TArgs, TData>) {
 		});
 }
 
-const post = await qc.ensure(endpointQuery(api.posts.get), { slug });
-const [postPromise] = useQuery(endpointQuery(api.posts.get), post);
+const getPostQuery = endpointQuery(api.posts.get);
+
+const [handles] = await load(qc, {
+	post: ensureEntry(getPostQuery, { slug }),
+});
+const [post] = useQuery(getPostQuery, handles.post);
 // #endregion

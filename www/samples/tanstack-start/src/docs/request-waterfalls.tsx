@@ -1,5 +1,10 @@
 import { Suspense } from "react";
-import { QueryClient } from "@raf-query/react";
+import {
+	createQueryClient,
+	fetchEntry,
+	load,
+	prefetchEntry,
+} from "@raf-query/react";
 import { authorQuery, postQuery } from "~/queries.ts";
 
 declare function useSuspenseFetch(url: string): { title: string };
@@ -25,11 +30,15 @@ function Post(props: { slug: string }) {
 }
 // #endregion
 
-const qc = new QueryClient();
+const qc = createQueryClient();
 
 declare const slug: string;
 
 // #region fetch-then-prefetch
-const post = await qc.fetch(postQuery, { slug });
-const author = qc.prefetch(authorQuery, { id: post.data.authorId });
+const [postHandles, data] = await load(qc, {
+	post: fetchEntry(postQuery, { slug }),
+});
+const [authorHandles] = await load(qc, {
+	author: prefetchEntry(authorQuery, { id: data.post.authorId }),
+});
 // #endregion

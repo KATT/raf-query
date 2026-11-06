@@ -1,7 +1,10 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
-	allKeyed,
+	ensureEntry,
+	fetchEntry,
 	infiniteQueryOptions,
+	load,
+	prefetchEntry,
 	type QueryClient,
 	queryOptions,
 	useQuery,
@@ -244,20 +247,25 @@ const prefetchRoot = createRootRouteWithContext<RouterContext>()();
 const prefetchPost = createRoute({
 	component: PrefetchedPost,
 	getParentRoute: () => prefetchRoot,
-	loader: (args) => {
-		const qc = args.context.queryClient;
+	loader: async (args) => {
 		const id = Number(args.params.id);
-		return {
-			comments: qc.prefetch(prefetching.commentsQuery, { postId: id }),
-			post: qc.prefetch(prefetching.postQuery, { id }),
-		};
+		const [handles] = await load(args.context.queryClient, {
+			comments: prefetchEntry(prefetching.commentsQuery, { postId: id }),
+			post: prefetchEntry(prefetching.postQuery, { id }),
+		});
+		return handles;
 	},
 	path: "/posts/$id",
 });
 const prefetchList = createRoute({
 	component: PrefetchedList,
 	getParentRoute: () => prefetchRoot,
-	loader: (args) => args.context.queryClient.prefetch(prefetching.postsQuery),
+	loader: async (args) => {
+		const [handles] = await load(args.context.queryClient, {
+			posts: prefetchEntry(prefetching.postsQuery),
+		});
+		return handles.posts;
+	},
 	path: "/posts",
 });
 const prefetchTree = prefetchRoot.addChildren([prefetchList, prefetchPost]);
@@ -321,19 +329,24 @@ const ensurePost = createRoute({
 	component: EnsuredPost,
 	getParentRoute: () => ensureRoot,
 	loader: async (args) => {
-		const qc = args.context.queryClient;
 		const id = Number(args.params.id);
-		return await allKeyed({
-			comments: qc.ensure(ensuring.commentsQuery, { postId: id }),
-			post: qc.ensure(ensuring.postQuery, { id }),
+		const [handles] = await load(args.context.queryClient, {
+			comments: ensureEntry(ensuring.commentsQuery, { postId: id }),
+			post: ensureEntry(ensuring.postQuery, { id }),
 		});
+		return handles;
 	},
 	path: "/posts/$id",
 });
 const ensureList = createRoute({
 	component: EnsuredList,
 	getParentRoute: () => ensureRoot,
-	loader: (args) => args.context.queryClient.ensure(ensuring.postsQuery),
+	loader: async (args) => {
+		const [handles] = await load(args.context.queryClient, {
+			posts: ensureEntry(ensuring.postsQuery),
+		});
+		return handles.posts;
+	},
 	path: "/posts",
 });
 const ensureTree = ensureRoot.addChildren([ensureList, ensurePost]);
@@ -364,19 +377,24 @@ const fetchPost = createRoute({
 	component: FetchedPost,
 	getParentRoute: () => fetchRoot,
 	loader: async (args) => {
-		const qc = args.context.queryClient;
 		const id = Number(args.params.id);
-		return await allKeyed({
-			comments: qc.fetch(fetching.commentsQuery, { postId: id }),
-			post: qc.fetch(fetching.postQuery, { id }),
+		const [handles] = await load(args.context.queryClient, {
+			comments: fetchEntry(fetching.commentsQuery, { postId: id }),
+			post: fetchEntry(fetching.postQuery, { id }),
 		});
+		return handles;
 	},
 	path: "/posts/$id",
 });
 const fetchList = createRoute({
 	component: FetchedList,
 	getParentRoute: () => fetchRoot,
-	loader: (args) => args.context.queryClient.fetch(fetching.postsQuery),
+	loader: async (args) => {
+		const [handles] = await load(args.context.queryClient, {
+			posts: fetchEntry(fetching.postsQuery),
+		});
+		return handles.posts;
+	},
 	path: "/posts",
 });
 const fetchTree = fetchRoot.addChildren([fetchList, fetchPost]);
@@ -402,27 +420,27 @@ function FetchedPost(): ReactNode {
 }
 
 export default defineDemo({
-	hint: "Open a post with each, then switch back and forth: each keeps its own page and queries. The requests start at the same moment every time. Go back and reopen the post after 5 seconds, once its cache is stale, to see ensure and fetch differ.",
-	title: "prefetch, ensure or fetch",
+	hint: "Open a post with each, then switch back and forth: each keeps its own page and queries. The requests start at the same moment every time. Go back and reopen the post after 5 seconds, once its cache is stale, to see ensureEntry and fetchEntry differ.",
+	title: "prefetchEntry, ensureEntry or fetchEntry",
 	variants: [
 		{
 			Component: () => <DemoRouter initial="/posts" routeTree={prefetchTree} />,
 			description: "Opens the post at once, with skeletons.",
-			label: "prefetch",
+			label: "prefetchEntry",
 			server: prefetching.server,
 		},
 		{
 			Component: () => <DemoRouter initial="/posts" routeTree={ensureTree} />,
 			description:
 				"Stays on the list until the post and its comments load. Cached data opens at once and refetches in the background.",
-			label: "ensure",
+			label: "ensureEntry",
 			server: ensuring.server,
 		},
 		{
 			Component: () => <DemoRouter initial="/posts" routeTree={fetchTree} />,
 			description:
 				"Stays on the list until the post and its comments load, and waits for the refetch whenever the cache is stale.",
-			label: "fetch",
+			label: "fetchEntry",
 			server: fetching.server,
 		},
 	],

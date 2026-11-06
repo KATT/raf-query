@@ -10,6 +10,6 @@ export const Route = createFileRoute("/_auth/dashboard")({
 function Dashboard() {
 	const context = Route.useRouteContext();
 	const [me] = useQuery(meQuery, context.me);
-	return <p>{me.name}</p>;
+	return <p>{me?.name}</p>;
 }
 // #endregion

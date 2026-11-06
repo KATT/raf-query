@@ -1,5 +1,6 @@
-import { queryOptions } from "@raf-query/react";
-import { canDehydrate, QueryClient } from "@raf-query/react";
+import { queryOptions, type QueryClient } from "@raf-query/react";
+import { group } from "@raf-query/react/groups";
+import { canDehydrate } from "@raf-query/react/hydration";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 
 declare function detectPushState(channel: string): Promise<"on" | "off">;
@@ -19,9 +20,12 @@ declare const queryClient: QueryClient;
 declare const router: Parameters<typeof setupRouterIntegration>[0]["router"];
 
 // #region serialization
+// Every demo query's key starts with this group.
+const demos = group("demos");
+
 setupRouterIntegration({
 	dehydrateOptions: {
-		filter: (query) => query.key[0] === "doc" && canDehydrate(query),
+		filter: (entry) => entry.key[0] !== demos && canDehydrate(entry),
 	},
 	queryClient,
 	router,

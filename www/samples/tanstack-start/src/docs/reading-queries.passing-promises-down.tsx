@@ -10,7 +10,7 @@ declare const loaderData: { post: QueryHandle<typeof postQuery> };
 
 function Parent() {
 	// #region passing-promises-down
-	const [postPromise] = useQuery(postQuery, loaderData.post); // from `qc.prefetch`
+	const [postPromise] = useQuery(postQuery, loaderData.post); // from `prefetchEntry`
 	return (
 		<Suspense fallback={<Spinner />}>
 			<PostBody post={postPromise} />

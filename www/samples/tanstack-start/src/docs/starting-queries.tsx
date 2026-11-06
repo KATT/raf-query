@@ -1,4 +1,4 @@
-import type { QueryClient } from "@raf-query/react";
+import { load, prefetchEntry, type QueryClient } from "@raf-query/react";
 import { Link } from "@tanstack/react-router";
 import { postQuery } from "~/queries.ts";
 
@@ -12,7 +12,9 @@ declare const title: string;
 <Link
 	to="/posts/$slug"
 	params={{ slug }}
-	onPointerEnter={() => qc.prefetch(postQuery, { slug })}
+	onPointerEnter={() => {
+		void load(qc, { post: prefetchEntry(postQuery, { slug }) });
+	}}
 >
 	{title}
 </Link>;

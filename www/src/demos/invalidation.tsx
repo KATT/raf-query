@@ -2,12 +2,18 @@ import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
-	type QueryCache,
 	infiniteQueryOptions,
+	invalidateAll,
+	invalidateMany,
+	invalidateOne,
+	load,
+	prefetchEntry,
+	type QueryClient,
 	type QueryHandle,
 	useQuery,
 	useQueryClient,
 } from "@raf-query/react";
+import { group } from "@raf-query/react/groups";
 import { Suspense, use, useTransition } from "react";
 
 import { DemoBrowser } from "~/demo-kit/browser.tsx";
@@ -19,13 +25,16 @@ type Status = "all" | "done";
 
 const server = createFakeServer(() => ({
 	todos: [
-		{ done: true, text: "Pick a key" },
-		{ done: false, text: "Invalidate by prefix" },
-		{ done: true, text: "Match exactly" },
-		{ done: false, text: "Try a predicate" },
+		{ done: true, text: "Start keys with a group" },
+		{ done: false, text: "Invalidate the group" },
+		{ done: true, text: "Invalidate one query" },
+		{ done: false, text: "Match part of the input" },
 	],
 	users: ["Ada", "Grace", "Linus"],
 }));
+
+const todos = group("todos");
+const users = group("users");
 
 interface StringPage {
 	readonly items: ReadonlyArray<string>;
@@ -51,7 +60,7 @@ function todosQuery(input: { readonly status: Status }) {
 				}),
 				context,
 			),
-		queryKey: ["todos", input],
+		queryKey: [todos, "list", input],
 		staleTime: Infinity,
 	});
 }
@@ -66,7 +75,7 @@ function usersQuery() {
 				(db) => ({ items: db.users, nextCursor: null }),
 				context,
 			),
-		queryKey: ["users"],
+		queryKey: [users, "list"],
 		staleTime: Infinity,
 	});
 }
@@ -137,11 +146,11 @@ function TodosCard(props: {
 	readonly handle: QueryHandle<typeof todosQuery>;
 	readonly label: string;
 }) {
-	const [todos, state] = useQuery(todosQuery, props.handle);
+	const [items, state] = useQuery(todosQuery, props.handle);
 	return (
 		<Card
 			fetching={state.isFetching}
-			items={todos}
+			items={items}
 			label={props.label}
 			updatedAt={state.updatedAt}
 		/>
@@ -149,12 +158,12 @@ function TodosCard(props: {
 }
 
 function UsersCard(props: { readonly handle: QueryHandle<typeof usersQuery> }) {
-	const [users, state] = useQuery(usersQuery, props.handle);
+	const [items, state] = useQuery(usersQuery, props.handle);
 	return (
 		<Card
 			fetching={state.isFetching}
-			items={users}
-			label='["users"]'
+			items={items}
+			label='[users, "list"]'
 			updatedAt={state.updatedAt}
 		/>
 	);
@@ -162,18 +171,21 @@ function UsersCard(props: { readonly handle: QueryHandle<typeof usersQuery> }) {
 
 const actions: ReadonlyArray<{
 	readonly code: string;
-	readonly filter: QueryCache.Filter;
+	readonly run: (queryClient: QueryClient) => Promise<void>;
 }> = [
-	{ code: '{ queryKey: ["todos"] }', filter: { queryKey: ["todos"] } },
 	{
-		code: '{ queryKey: ["todos", { status: "done" }] }',
-		filter: { queryKey: ["todos", { status: "done" }] },
+		code: "invalidateMany(qc, todos)",
+		run: (qc) => invalidateMany(qc, todos),
 	},
 	{
-		code: '{ queryKey: ["todos"], exact: true }',
-		filter: { exact: true, queryKey: ["todos"] },
+		code: 'invalidateMany(qc, todosQuery, { status: "done" })',
+		run: (qc) => invalidateMany(qc, todosQuery, { status: "done" }),
 	},
-	{ code: "{}", filter: {} },
+	{
+		code: 'invalidateOne(qc, todosQuery, { status: "all" })',
+		run: (qc) => invalidateOne(qc, todosQuery, { status: "all" }),
+	},
+	{ code: "invalidateAll(qc)", run: (qc) => invalidateAll(qc) },
 ];
 
 function InvalidateButtons() {
@@ -188,13 +200,13 @@ function InvalidateButtons() {
 					key={action.code}
 					onClick={() => {
 						startTransition(async () => {
-							await qc.invalidate(action.filter);
+							await action.run(qc);
 						});
 					}}
 					size="sm"
 					variant="outline"
 				>
-					invalidate({action.code})
+					{action.code}
 				</Button>
 			))}
 		</div>
@@ -207,11 +219,11 @@ function Page(props: { readonly data: PageData }) {
 			<div className="grid gap-2 sm:grid-cols-3">
 				<TodosCard
 					handle={props.data.all}
-					label='["todos", { status: "all" }]'
+					label='[todos, "list", { status: "all" }]'
 				/>
 				<TodosCard
 					handle={props.data.done}
-					label='["todos", { status: "done" }]'
+					label='[todos, "list", { status: "done" }]'
 				/>
 				<UsersCard handle={props.data.users} />
 			</div>
@@ -225,11 +237,14 @@ function Invalidation() {
 		<DemoBrowser
 			fallback={<Skeleton className="h-40 w-full" />}
 			initial={{ path: "/dashboard" }}
-			loader={(args): PageData => ({
-				all: args.client.prefetch(todosQuery, { status: "all" }),
-				done: args.client.prefetch(todosQuery, { status: "done" }),
-				users: args.client.prefetch(usersQuery),
-			})}
+			loader={async (args): Promise<PageData> => {
+				const [handles] = await load(args.client, {
+					all: prefetchEntry(todosQuery, { status: "all" }),
+					done: prefetchEntry(todosQuery, { status: "done" }),
+					users: prefetchEntry(usersQuery),
+				});
+				return handles;
+			}}
 		>
 			{(route) => <Page data={route.data} />}
 		</DemoBrowser>
@@ -238,7 +253,7 @@ function Invalidation() {
 
 export default defineDemo({
 	Component: Invalidation,
-	hint: 'Every query here has staleTime: Infinity, so nothing refetches until it\'s invalidated. Try each filter and see which lists refetch. The exact one matches nothing: no key is just ["todos"].',
+	hint: "Every query here has staleTime: Infinity, so nothing refetches until it's invalidated. Invalidate the todos group, a factory's queries with part of an input, one query, or everything, and see which lists refetch.",
 	server,
-	title: "Invalidating with filters",
+	title: "Invalidating by group, factory and query",
 });
