@@ -84,7 +84,7 @@ function flush() {
 }
 
 describe("QueryBoundary", () => {
-	it("shows the fallback, then the children", async () => {
+	it("renders its children once their query loads", async () => {
 		const backend = createBackend();
 		await show(
 			createQueryClient({ isServer: false }),
@@ -129,14 +129,17 @@ describe("QueryBoundary", () => {
 		vi.spyOn(console, "error").mockImplementation(() => {});
 		const backend = createBackend();
 		backend.titles.set(3, "defect");
-		await show(
-			createQueryClient({ isServer: false }),
-			<QueryBoundary fallback={<p>loading</p>}>
-				<Issue backend={backend} id={3} />
-			</QueryBoundary>,
-		);
+		for (const id of [3, 2]) {
+			// oxlint-disable-next-line no-await-in-loop -- one page at a time
+			await show(
+				createQueryClient({ isServer: false }),
+				<QueryBoundary fallback={<p>loading</p>}>
+					<Issue backend={backend} id={id} />
+				</QueryBoundary>,
+			);
+		}
 		await flush();
-		expect(screen.getByText("outer caught")).toBeTruthy();
+		expect(screen.getAllByText("outer caught")).toHaveLength(2);
 	});
 
 	it("handles a fail() value thrown outside a query", async () => {
