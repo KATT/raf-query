@@ -5,7 +5,7 @@ const react = (file: string) =>
 
 export default defineConfig({
 	pack: {
-		entry: ["src/index.ts", "src/internal.ts"],
+		entry: ["src/index.ts", "src/internal.ts", "src/tanstack-query.ts"],
 		// Without the tests, whose `@raf-query/react` path would pull React's
 		// source into the declaration build.
 		tsconfig: "tsconfig.no-node.json",

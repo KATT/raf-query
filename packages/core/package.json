@@ -32,7 +32,8 @@
 	"sideEffects": false,
 	"exports": {
 		".": "./src/index.ts",
-		"./internal": "./src/internal.ts"
+		"./internal": "./src/internal.ts",
+		"./tanstack-query": "./src/tanstack-query.ts"
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/sync-package-docs.ts",
@@ -42,6 +43,7 @@
 		"publish:npm": "pnpm pack --out package.tgz && npm publish package.tgz --access public && rm package.tgz"
 	},
 	"devDependencies": {
+		"@tanstack/query-core": "5.104.1",
 		"@testing-library/react": "16.3.3",
 		"@types/node": "26.6.4",
 		"@types/react": "19.3.0",
@@ -59,7 +61,8 @@
 		"access": "public",
 		"exports": {
 			".": "./dist/index.mjs",
-			"./internal": "./dist/internal.mjs"
+			"./internal": "./dist/internal.mjs",
+			"./tanstack-query": "./dist/tanstack-query.mjs"
 		},
 		"provenance": true
 	},

@@ -36,6 +36,7 @@
 			"react-server": "./src/index-react-server.ts",
 			"default": "./src/index.ts"
 		},
+		"./tanstack-query": "./src/tanstack-query.ts",
 		"./tanstack-router": {
 			"workerd": "./src/tanstack-router.ts",
 			"worker": "./src/tanstack-router.ts",
@@ -90,6 +91,7 @@
 				"react-server": "./dist/index-react-server.mjs",
 				"default": "./dist/index.mjs"
 			},
+			"./tanstack-query": "./dist/tanstack-query.mjs",
 			"./tanstack-router": {
 				"workerd": "./dist/tanstack-router.mjs",
 				"worker": "./dist/tanstack-router.mjs",

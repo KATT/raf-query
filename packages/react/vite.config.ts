@@ -5,6 +5,7 @@ export default defineConfig({
 		entry: [
 			"src/index.ts",
 			"src/index-react-server.ts",
+			"src/tanstack-query.ts",
 			"src/tanstack-router.ts",
 			"src/tanstack-router-browser.ts",
 		],
