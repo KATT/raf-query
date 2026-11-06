@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { entryOf, fetchEntry, isStale, subscribeEntry } from "./entry.ts";
 import { isObject } from "./guards.ts";
 import { hydrate } from "./hydration.ts";
-import { plainKey, type QueryInfo } from "./keys.ts";
+import type { QueryInfo } from "./keys.ts";
 import {
 	getData,
 	invalidateAll,
@@ -122,7 +122,7 @@ describe("invalidation", () => {
 			entries: [
 				{
 					data: { author: "ada", id: 1, title: "First" },
-					queryKey: plainKey([issues, "byId", { id: 1 }]),
+					queryKey: structuredClone([issues, "byId", { id: 1 }]),
 					updatedAt: client.clock.now(),
 				},
 			],

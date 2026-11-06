@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { systemClock } from "./client.ts";
 import { fail, failOf, isFail, QueryFailure } from "./fail.ts";
-import { hashKey, matches, plainKey, stampFor } from "./keys.ts";
+import { hashKey, matches, stampFor } from "./keys.ts";
 import { replaceEqualDeep } from "./share.ts";
 import { listeners } from "./subscribe.ts";
 import {
@@ -96,16 +96,12 @@ describe("keys", () => {
 		);
 	});
 
-	it("hash a group as its names, the same after a JSON round trip", () => {
+	it("make groups plain, frozen data that survives any serializer", () => {
 		const key = [drafts, "list"] as const;
-		expect(hashKey(key)).toBe(
-			'[{"group":"drafts","in":{"group":"issues"}},"list"]',
-		);
-		expect(plainKey(key)).toEqual([
-			{ group: "drafts", in: { group: "issues" } },
-			"list",
-		]);
-		expect(hashKey(plainKey(key))).toBe(hashKey(key));
+		expect(drafts).toEqual({ group: "issues/drafts" });
+		expect(Object.isFrozen(drafts)).toBe(true);
+		expect(hashKey(key)).toBe('[{"group":"issues/drafts"},"list"]');
+		expect(structuredClone(key)).toEqual(key);
 	});
 
 	it("match a factory's input by its parts, arrays included", () => {
@@ -133,22 +129,36 @@ describe("keys", () => {
 		expect(author.tag).toBe("author");
 	});
 
-	it("match groups by path and tags by name", () => {
+	it("match groups by path prefix", () => {
+		const keyed = (key: ReadonlyArray<unknown>) => ({
+			factory: undefined,
+			hash: "",
+			input: undefined,
+			key,
+			options: undefined,
+			state: { data: undefined },
+		});
+		const covers = (key: ReadonlyArray<unknown>, target: typeof issues) =>
+			matches(keyed(key), stampFor(target, undefined, 1));
+
+		expect(covers([drafts], drafts)).toBe(true);
+		expect(covers([{ group: "issues/drafts" }], issues)).toBe(true);
+		expect(covers([issues], drafts)).toBe(false);
+		expect(covers([{ group: "issues-archive" }], issues)).toBe(false);
+		expect(covers(["issues"], issues)).toBe(false);
+		expect(covers([], issues)).toBe(false);
+	});
+
+	it("match tags by name", () => {
 		const info = (
-			queryKey: ReadonlyArray<unknown>,
 			tags?: ReadonlyArray<string> | (() => ReadonlyArray<string>),
-		) => ({ data: undefined, input: undefined, meta: { tags }, queryKey });
-		expect(drafts.where(info([drafts]))).toBe(true);
-		expect(issues.where(info([drafts]))).toBe(true);
-		expect(drafts.where(info([issues]))).toBe(false);
-		expect(issues.where(info([{ group: "issues-archive" }]))).toBe(false);
-		expect(issues.where(info(["issues"]))).toBe(false);
-		expect(author.where(info([], ['author:"ada"']), undefined)).toBe(true);
-		expect(author.where(info([], ["authors"]), undefined)).toBe(false);
-		expect(featured.where(info([], ["featured"]), undefined)).toBe(true);
+		) => ({ data: undefined, input: undefined, meta: { tags }, queryKey: [] });
+		expect(author.where(info(['author:"ada"']), undefined)).toBe(true);
+		expect(author.where(info(["authors"]), undefined)).toBe(false);
+		expect(featured.where(info(["featured"]), undefined)).toBe(true);
 		expect(
 			author.where(
-				info([], () => ["author"]),
+				info(() => ["author"]),
 				undefined,
 			),
 		).toBe(false);

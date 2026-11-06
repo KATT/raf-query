@@ -46,6 +46,7 @@ export {
 export {
 	type AnyFactory,
 	type AnyTarget,
+	type Group,
 	type QueryInfo,
 	type QueryKey,
 	type Target,

@@ -15,7 +15,7 @@ import {
 	write,
 } from "./entry.ts";
 import { type Fail, failOf, isFailValue } from "./fail.ts";
-import { plainKey, type QueryKey } from "./keys.ts";
+import type { QueryKey } from "./keys.ts";
 
 /** What a dehydrated pending entry's promise resolves to. */
 export interface DehydratedResult {
@@ -81,7 +81,7 @@ function dehydrateEntry(
 	options: DehydrateOptions,
 ): DehydratedEntry {
 	const state = entry.state;
-	const base = { queryKey: plainKey(entry.key) };
+	const base = { queryKey: entry.key };
 	if (state.hasData) {
 		return { ...base, data: state.data, updatedAt: state.updatedAt };
 	}

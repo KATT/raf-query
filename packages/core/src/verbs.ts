@@ -10,8 +10,9 @@ import {
 } from "./entry.ts";
 import {
 	type AnyFactory,
-	type AnyTarget,
+	type AnyInvalidation,
 	entryStamp,
+	type Group,
 	hashKey,
 	matches,
 	type ParamArgs,
@@ -100,14 +101,19 @@ export function invalidateOne<TFactory extends QueryFactory>(
 
 /**
  * Mark queries stale: a factory's (optionally only those whose input
- * matches `partial`), or those a target's `where` picks, such as a group or
- * a tag from `@raf-query/core/groups`. Read queries refetch now; the rest
+ * matches `partial`), a group's (keys that start with it or a group inside
+ * it), or those a target's `where` picks, such as a tag. Groups and tags
+ * come from `@raf-query/core/groups`. Read queries refetch now; the rest
  * when next read. Resolves when the refetches settle.
  */
 export function invalidateMany<TFactory extends QueryFactory>(
 	client: ClientFor<TFactory>,
 	factory: TFactory,
 	partial?: PartialInput<TFactory>,
+): Promise<void>;
+export function invalidateMany(
+	client: QueryClient,
+	group: Group,
 ): Promise<void>;
 export function invalidateMany<TTypes extends RootTypes, TParam = never>(
 	client: QueryClient<TTypes>,
@@ -116,7 +122,7 @@ export function invalidateMany<TTypes extends RootTypes, TParam = never>(
 ): Promise<void>;
 export function invalidateMany(
 	client: QueryClient,
-	target: AnyFactory | AnyTarget,
+	target: AnyInvalidation,
 	partial?: unknown,
 ): Promise<void> {
 	return invalidate(client, (at) => stampFor(target, partial, at));
@@ -154,6 +160,7 @@ export function resetMany<TFactory extends QueryFactory>(
 	factory: TFactory,
 	partial?: PartialInput<TFactory>,
 ): Promise<void>;
+export function resetMany(client: QueryClient, group: Group): Promise<void>;
 export function resetMany<TTypes extends RootTypes, TParam = never>(
 	client: QueryClient<TTypes>,
 	target: TargetFor<TTypes, TParam>,
@@ -161,7 +168,7 @@ export function resetMany<TTypes extends RootTypes, TParam = never>(
 ): Promise<void>;
 export function resetMany(
 	client: QueryClient,
-	target: AnyFactory | AnyTarget,
+	target: AnyInvalidation,
 	partial?: unknown,
 ): Promise<void> {
 	return settle(
@@ -192,6 +199,7 @@ export function removeMany<TFactory extends QueryFactory>(
 	factory: TFactory,
 	partial?: PartialInput<TFactory>,
 ): void;
+export function removeMany(client: QueryClient, group: Group): void;
 export function removeMany<TTypes extends RootTypes, TParam = never>(
 	client: QueryClient<TTypes>,
 	target: TargetFor<TTypes, TParam>,
@@ -199,7 +207,7 @@ export function removeMany<TTypes extends RootTypes, TParam = never>(
 ): void;
 export function removeMany(
 	client: QueryClient,
-	target: AnyFactory | AnyTarget,
+	target: AnyInvalidation,
 	partial?: unknown,
 ): void {
 	for (const entry of entriesMatching(client, stampFor(target, partial, 0))) {
@@ -250,10 +258,10 @@ export function getData<TFactory extends QueryFactory>(
 		| undefined;
 }
 
-/** How many queries have a request in flight, optionally only a factory's or a target's. */
+/** How many queries have a request in flight, optionally only a factory's, a group's or a target's. */
 export function isFetching(
 	client: QueryClient,
-	target?: AnyFactory | AnyTarget,
+	target?: AnyInvalidation,
 ): number {
 	const stamp: Stamp =
 		target === undefined

@@ -3,12 +3,16 @@
  * lives here, so the shape of grouping can change without touching the
  * cache.
  *
- * Provisional (D9, round 2 "V3"): core knows two kinds of target, which
+ * Provisional (D9, round 2 "V3"): core knows three kinds of target, which
  * Alex hasn't confirmed yet.
  *
  * - A factory, matched by identity, optionally with part of its input.
+ * - A group: plain data, `{ group: "posts/drafts" }`, made by `group()` in
+ *   `@raf-query/core/groups`. It matches keys whose first segment is that
+ *   group or one inside it, so keys look the same in memory, on the wire
+ *   and in devtools.
  * - Any object with `where(query, param)`, typed by the client's root
- *   `meta`. Groups and tags are such objects, in `@raf-query/core/groups`.
+ *   `meta`: tags and one-off predicates. They read `meta`, never the key.
  *
  * Invalidation records a stamp per target. An entry is invalidated when a
  * matching stamp is newer than the request its data came from. Entries with
@@ -16,6 +20,7 @@
  * which always goes through their factory, so `where` sees their `meta`.
  */
 
+import { isString } from "./guards.ts";
 import type { QueryMeta } from "./root.ts";
 
 /** A query's key. Any serializable array. */
@@ -23,6 +28,20 @@ export type QueryKeyOption = ReadonlyArray<unknown>;
 
 /** A key as handles and hydration carry it. Plain and serializable. */
 export type QueryKey = QueryKeyOption;
+
+declare const groupBrand: unique symbol;
+
+/**
+ * A named set of queries: those whose key starts with it or with a group
+ * inside it. Plain data at runtime (`{ group: "posts/drafts" }`); the brand
+ * is in the types only, so verbs take groups from `group()`, never a
+ * hand-written object.
+ */
+export interface Group {
+	/** The group's path: its parents' names and its own, joined by `/`. */
+	readonly group: string;
+	readonly [groupBrand]: true;
+}
 
 function isPlainRecord(
 	value: unknown,
@@ -48,16 +67,6 @@ function sortFields(_name: string, value: unknown) {
 /** Stable string form of a key: JSON with sorted fields. Functions drop out. */
 export function hashKey(key: QueryKey): string {
 	return JSON.stringify(key, sortFields);
-}
-
-/**
- * A key as plain data, the way handles and hydration carry it: what its
- * hash describes, so functions (such as a group's `where`) drop out and it
- * survives any serializer.
- */
-export function plainKey(key: QueryKey): QueryKey {
-	// SAFETY: a hash is the JSON of an array.
-	return JSON.parse(hashKey(key)) as QueryKey;
 }
 
 /** Whether `actual` matches `expected`: equal, or for objects, every field `expected` has. */
@@ -141,6 +150,7 @@ export type Stamp =
 			readonly kind: "factory";
 			readonly partial: unknown;
 	  }
+	| { readonly at: number; readonly group: string; readonly kind: "group" }
 	| {
 			readonly at: number;
 			readonly kind: "target";
@@ -148,20 +158,27 @@ export type Stamp =
 			readonly target: AnyTarget;
 	  };
 
-/** Whether `value` is a `where` target rather than a factory. Tags are both callable and targets. */
-export function isTarget(value: AnyFactory | AnyTarget): value is AnyTarget {
-	return Object.hasOwn(value, "where");
-}
+/** Anything a verb can invalidate by. */
+export type AnyInvalidation = AnyFactory | AnyTarget | Group;
 
-/** A stamp for `target`. `arg` is a factory's partial input or a target's parameter. */
+/** A stamp for `target`. `arg` is a factory's partial input or a target's parameter. Tags are both callable and `where` targets. */
 export function stampFor(
-	target: AnyFactory | AnyTarget,
+	target: AnyInvalidation,
 	arg: unknown,
 	at: number,
 ): Stamp {
-	return isTarget(target)
-		? { at, kind: "target", param: arg, target }
+	if ("where" in target) {
+		return { at, kind: "target", param: arg, target };
+	}
+	return "group" in target
+		? { at, group: target.group, kind: "group" }
 		: { at, factory: target, kind: "factory", partial: arg };
+}
+
+function groupOf(segment: unknown): string | undefined {
+	return isPlainRecord(segment) && isString(segment.group)
+		? segment.group
+		: undefined;
 }
 
 /** A stamp for exactly one entry. */
@@ -191,6 +208,10 @@ export function matches(entry: Matchable, stamp: Stamp): boolean {
 				(stamp.partial === undefined ||
 					partialMatch(entry.key.at(-1), stamp.partial))
 			);
+		case "group": {
+			const own = groupOf(entry.key[0]);
+			return own !== undefined && `${own}/`.startsWith(`${stamp.group}/`);
+		}
 		case "target": {
 			// SAFETY: the verb typed `param` and the meta against this target.
 			const where = stamp.target.where as (

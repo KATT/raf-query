@@ -1,38 +1,23 @@
 /**
- * Groups and tags: invalidation targets built on `where`, for apps that
- * want them. Core never imports this module, so apps that only invalidate
- * by factory don't ship it.
+ * Groups and tags, for apps that want them. Core matches groups (plain
+ * data) by key; tags are `where` targets that read `meta.tags`. Core never
+ * imports this module, so apps that only invalidate by factory don't ship
+ * it.
  *
  * Provisional (D9, round 2 "V3"), like the rest of the keys design.
  */
 
 import { type Feature, feature } from "./client.ts";
-import { isFunction, isObject } from "./guards.ts";
-import type { ParamArgs, QueryInfo, Target } from "./keys.ts";
+import { isFunction } from "./guards.ts";
+import type { Group, ParamArgs, QueryInfo, Target } from "./keys.ts";
 import type { MetaOfDecl } from "./root.ts";
 
-/**
- * A named set of queries: those whose key starts with it, or with one of
- * its subgroups. Matching goes by name path, so keys that went through
- * hydration (copies of the group) still match.
- */
-export interface Group extends Target<unknown> {
-	readonly group: string;
-	readonly in?: Group;
-	readonly where: (query: QueryInfo<unknown>) => boolean;
-}
-
-function pathOf(segment: unknown): string | undefined {
-	if (!isObject(segment) || !("group" in segment)) {
-		return undefined;
-	}
-	const name = segment.group;
-	const parent = "in" in segment ? pathOf(segment.in) : undefined;
-	return parent === undefined ? String(name) : `${parent}/${String(name)}`;
-}
+export type { Group } from "./keys.ts";
 
 /**
- * A group, optionally inside a parent. Put it first in a query's key:
+ * A group, optionally inside a parent: `{ group: "posts/drafts" }`, frozen.
+ * Put it first in a query's key; invalidating a group covers the groups
+ * inside it.
  *
  * ```ts
  * export const posts = group("posts");
@@ -43,16 +28,9 @@ function pathOf(segment: unknown): string | undefined {
  * ```
  */
 export function group(name: string, parent?: Group): Group {
-	const self: Group = {
-		group: name,
-		in: parent,
-		where: (query) => {
-			const path = pathOf(query.queryKey[0]);
-			const own = pathOf(self);
-			return path === own || (path?.startsWith(`${own}/`) ?? false);
-		},
-	};
-	return self;
+	const path = parent === undefined ? name : `${parent.group}/${name}`;
+	// SAFETY: the brand is a type only.
+	return Object.freeze({ group: path }) as Group;
 }
 
 /** What `groups()` adds to a query's `meta`: its tags, fixed or derived from its data. */

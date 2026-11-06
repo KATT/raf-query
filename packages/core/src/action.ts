@@ -1,6 +1,11 @@
 import type { Feature, QueryClient } from "./client.ts";
 import { invalidate } from "./entry.ts";
-import { type AnyFactory, type AnyTarget, stampFor } from "./keys.ts";
+import {
+	type AnyInvalidation,
+	type AnyTarget,
+	type Group,
+	stampFor,
+} from "./keys.ts";
 import type { QueryFactory } from "./options.ts";
 import { invalidateAll } from "./verbs.ts";
 
@@ -40,7 +45,7 @@ export function invalidateOnAction(
 
 export interface ActionOptions {
 	/** What the action changes: factories or targets (groups, tags), never raw keys. */
-	readonly invalidates?: ReadonlyArray<AnyTarget | QueryFactory>;
+	readonly invalidates?: ReadonlyArray<AnyTarget | Group | QueryFactory>;
 }
 
 /**
@@ -59,7 +64,7 @@ export function action<TArgs extends Array<unknown>, TResult>(
 ): (...args: TArgs) => Promise<TResult> {
 	return async (...args) => {
 		const result = await write(...args);
-		const targets: ReadonlyArray<AnyFactory | AnyTarget> | undefined =
+		const targets: ReadonlyArray<AnyInvalidation> | undefined =
 			options.invalidates;
 		await Promise.all(
 			[...registered].map((registration) => {

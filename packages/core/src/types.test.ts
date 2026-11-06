@@ -121,6 +121,8 @@ describe("verb types", () => {
 			void invalidateOne(client, author, "ada");
 			// @ts-expect-error -- raw strings aren't targets
 			void invalidateMany(client, "issues");
+			// @ts-expect-error -- nor are hand-written groups: they come from group()
+			void invalidateMany(client, { group: "issues" });
 		};
 		expectTypeOf(wrong).toBeFunction();
 		expectTypeOf(author("ada")).toEqualTypeOf<string>();
