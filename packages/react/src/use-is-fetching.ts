@@ -8,9 +8,12 @@ import { useCallback, useSyncExternalStore } from "react";
 
 import { useQueryClient } from "./provider.tsx";
 
+const serverCount = () => 0;
+
 /**
  * How many queries have a request in flight: all of them, or a factory's,
- * a group's or a target's. For a global loading indicator.
+ * a group's or a target's. For a global loading indicator. Always `0` on
+ * the server and while hydrating, so the HTML matches the first browser render.
  */
 export function useIsFetching(target?: AnyFactory | AnyTarget | Group): number {
 	const client = useQueryClient();
@@ -24,5 +27,5 @@ export function useIsFetching(target?: AnyFactory | AnyTarget | Group): number {
 		[client],
 	);
 	const count = () => isFetching(client, target);
-	return useSyncExternalStore(subscribe, count, count);
+	return useSyncExternalStore(subscribe, count, serverCount);
 }

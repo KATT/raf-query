@@ -88,4 +88,23 @@ describe("useIsFetching", () => {
 		await backend.respondAll();
 		expect(screen.getByText("0 0 0")).toBeTruthy();
 	});
+
+	it("renders 0 on the server, so hydration matches", async () => {
+		const backend = createBackend();
+		const client = createQueryClient({ isServer: true });
+		await load(client, {
+			one: prefetchEntry(backend.issueQuery, { id: 1 }),
+		});
+		function Count() {
+			return <p>{useIsFetching()}</p>;
+		}
+
+		expect(
+			renderToString(
+				<QueryClientProvider client={client}>
+					<Count />
+				</QueryClientProvider>,
+			),
+		).toBe("<p>0</p>");
+	});
 });

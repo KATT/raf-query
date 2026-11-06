@@ -15,3 +15,8 @@ export function isObject(value: unknown): value is object {
 export function isString(value: unknown): value is string {
 	return typeof value === "string";
 }
+
+/** A `Response`, also one from another realm or polyfill. */
+export function isResponse(value: unknown): value is Response {
+	return Object.prototype.toString.call(value) === "[object Response]";
+}

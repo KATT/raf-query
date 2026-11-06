@@ -72,6 +72,24 @@ describe("retry", () => {
 		expect(skipped.calls()).toBe(1);
 	});
 
+	it("doesn't retry a thrown Response, such as a router redirect", async () => {
+		const client = testClient({ links: [retry()] });
+		let calls = 0;
+		const redirecting = () =>
+			queryOptions({
+				queryFn: () => {
+					calls += 1;
+					throw new Response(null, { status: 307 });
+				},
+				queryKey: [issues, "redirecting"],
+			});
+
+		await expect(
+			fetchEntry(entryOf(client, redirecting, undefined)),
+		).resolves.toMatchObject({ ok: false });
+		expect(calls).toBe(1);
+	});
+
 	it("never retries on the server", async () => {
 		const client = testClient({ isServer: true, links: [retry()] });
 		const source = flaky(1);

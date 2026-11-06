@@ -73,6 +73,12 @@ const reporting = createQueryClient({ links: [reportErrors, retry()] });
 
 // #region redirects
 const withRedirects = createQueryClient({
-	links: [retry({ when: (error) => !isRedirect(error) })],
+	links: [
+		retry({
+			when: (error) =>
+				!isRedirect(error) &&
+				!(error instanceof HttpError && error.status === 404),
+		}),
+	],
 });
 // #endregion

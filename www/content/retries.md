@@ -33,11 +33,11 @@ The `retry()` link declares the field, so a factory that names its root with `de
 
 `retry({ attempts, delay, when })` sets the defaults for every query of the client:
 
-| Option     | Default                                         |
-| ---------- | ----------------------------------------------- |
-| `attempts` | `3`: retries after the first attempt            |
-| `delay`    | Doubling from 1 second, at most 30 seconds      |
-| `when`     | Every error: whether an error is worth retrying |
+| Option     | Default                                                                                                                              |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `attempts` | `3`: retries after the first attempt                                                                                                 |
+| `delay`    | Doubling from 1 second, at most 30 seconds                                                                                           |
+| `when`     | Every error but a thrown [`Response`](https://developer.mozilla.org/en-US/docs/Web/API/Response): whether an error is worth retrying |
 
 `delay(attempt)` gets the retry's index, from `0`. `when(error)` is the place to skip errors that won't go away:
 
@@ -99,7 +99,7 @@ tanstack-start/src/docs/retries.ts#one-place-for-every-error
 
 In TanStack Start, a `queryFn` can throw the router's [`redirect()`](https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction), for instance when a session has expired. `setupRouterIntegration` turns it into a navigation wherever the query failed: a loader, a render or a background refetch.
 
-`retry()` retries every thrown error unless `when` says otherwise, so skip redirects there:
+A redirect is a thrown `Response`, which `retry()` doesn't retry, so it navigates at once. A `when` of your own replaces that check, so keep it:
 
 ```sample
 tanstack-start/src/docs/retries.ts#redirects
