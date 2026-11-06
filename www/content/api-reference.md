@@ -162,6 +162,14 @@ Also on the main entry. An app that doesn't import them doesn't bundle them.
 
 `@raf-query/core` exports the same, except the devtools, for code that doesn't use React.
 
+## TanStack Query
+
+| Entry                             | Exports                                                                                                                                                 |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@raf-query/react/tanstack-query` | `tanstackQuerySync(queryClient, { filter? })`, `QueryClientLike` and the shim types it's built on. [Migrating from TanStack Query](./tanstack-query.md) |
+
+`@raf-query/core/tanstack-query` exports the same, for code that doesn't use React.
+
 ## TanStack Router
 
 | Entry                              | Exports                                                                                                                       |

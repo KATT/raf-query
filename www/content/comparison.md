@@ -9,6 +9,8 @@ raf-query's cache is modelled on [TanStack Query](https://tanstack.com/query)'s:
 
 What changes is the API around the cache. TanStack Query lets any component start a query by rendering `useQuery`. raf-query moves the start to the route: loaders and server components start queries with `load`, and components only read them. Everything that changes the cache is a function that takes the client, such as `invalidateMany(queryClient, posts)`, instead of a method on it.
 
+To move an app one screen at a time, sync the two caches with `tanstackQuerySync()`: see [Migrating from TanStack Query](./tanstack-query.md).
+
 ## API map
 
 | TanStack Query                                                                                                   | raf-query                                                                       | Notes                                                                                                                                                 |
