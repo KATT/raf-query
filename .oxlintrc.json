@@ -161,7 +161,10 @@
 		"anti-slop/no-unknown-returns": "error",
 		"anti-slop/no-unknown-parameters": "error",
 		"anti-slop/no-runtime-typeof": ["error", { "allowInTypeGuards": true }],
-		"eslint/no-underscore-dangle": ["error", { "allow": ["_exhaustive"] }],
+		"eslint/no-underscore-dangle": [
+			"error",
+			{ "allow": ["_exhaustive", "_tag"] }
+		],
 		// Apps compile with React Compiler; it memoizes for them.
 		"workspace/no-manual-memoization": "error",
 		"workspace/no-use-effect": "error",

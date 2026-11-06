@@ -31,7 +31,9 @@
 	"type": "module",
 	"sideEffects": false,
 	"exports": {
-		".": "./src/index.ts"
+		".": "./src/index.ts",
+		"./hydration": "./src/hydration.ts",
+		"./internal": "./src/internal.ts"
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/sync-package-docs.ts",
@@ -40,21 +42,19 @@
 		"typecheck": "tsc",
 		"publish:npm": "pnpm pack --out package.tgz && npm publish package.tgz --access public && rm package.tgz"
 	},
-	"peerDependencies": {
-		"effect": "^4.0.0"
-	},
 	"devDependencies": {
-		"@effect/vitest": "catalog:",
 		"@types/node": "26.6.4",
 		"@vitest/coverage-v8": "5.0.1",
-		"effect": "catalog:",
 		"typescript": "7.0.2",
-		"vite-plus": "1.0.0"
+		"vite-plus": "1.0.0",
+		"fast-check": "catalog:"
 	},
 	"publishConfig": {
 		"access": "public",
 		"exports": {
-			".": "./dist/index.mjs"
+			".": "./dist/index.mjs",
+			"./hydration": "./dist/hydration.mjs",
+			"./internal": "./dist/internal.mjs"
 		},
 		"provenance": true
 	},

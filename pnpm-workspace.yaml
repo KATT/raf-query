@@ -4,7 +4,6 @@ packages:
   - "examples/*"
   - "examples/.shared/*"
   - "packages/*"
-  - ".experimental/*/*"
   - "tooling/*"
 
 # `pnpm <script>` installs first when node_modules is out of date with the lockfile.
@@ -14,6 +13,7 @@ catalog:
   "@effect/platform-node": 4.0.1
   "@effect/vitest": 4.0.1
   effect: ^4.0.1
+  fast-check: 4.10.2
 
 minimumReleaseAgeExclude:
   - happy-dom@21.0.1

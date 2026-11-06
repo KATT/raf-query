@@ -1,44 +1,45 @@
-import { isPlainRecord } from "./key.ts";
-
 function isPlainArray(value: unknown): value is ReadonlyArray<unknown> {
 	return Array.isArray(value) && value.length === Object.keys(value).length;
 }
 
-function share(previous: unknown, next: unknown, depth: number): unknown {
-	if (previous === next || depth > 500) {
-		return next;
+function isPlainObject(
+	value: unknown,
+): value is { readonly [name: string]: unknown } {
+	if (typeof value !== "object" || value === null) {
+		return false;
 	}
-	if (isPlainArray(previous) && isPlainArray(next)) {
-		let equal = previous.length === next.length;
-		const copy = next.map((item, index) => {
-			const shared = share(previous[index], item, depth + 1);
-			equal &&= shared === previous[index];
-			return shared;
-		});
-		return equal ? previous : copy;
-	}
-	if (isPlainRecord(previous) && isPlainRecord(next)) {
-		const names = Object.keys(next);
-		let equal = names.length === Object.keys(previous).length;
-		const copy: Record<string, unknown> = {};
-		for (const name of names) {
-			const shared = share(previous[name], next[name], depth + 1);
-			equal &&= shared === previous[name] && Object.hasOwn(previous, name);
-			copy[name] = shared;
-		}
-		return equal ? previous : copy;
-	}
-	return next;
+	const prototype = Object.getPrototypeOf(value);
+	return prototype === Object.prototype || prototype === null;
 }
 
 /**
- * `next`, reusing every part of `previous` that is deeply equal to it: all
- * of `previous` when nothing changed, else a copy of `next` whose unchanged
- * subtrees are `previous`'s. Only plain objects and arrays are compared;
- * anything else is taken from `next`. TanStack Query's `replaceEqualDeep`.
+ * `next`, reusing every part of `previous` that is deeply equal to it, so
+ * unchanged objects keep their identity and memoized readers skip work.
  */
-export function replaceEqualDeep<T>(previous: unknown, next: T): T {
-	// SAFETY: `share` returns `next`, or `previous` / a copy only where they
-	// are deeply equal to `next`, so the result has `next`'s shape.
-	return share(previous, next, 0) as T;
+export function replaceEqualDeep(previous: unknown, next: unknown): unknown {
+	if (Object.is(previous, next)) {
+		return previous;
+	}
+	const arrays = isPlainArray(previous) && isPlainArray(next);
+	if (!arrays && !(isPlainObject(previous) && isPlainObject(next))) {
+		return next;
+	}
+	// SAFETY: both are plain arrays or both plain objects, checked above.
+	const before = previous as Record<string, unknown>;
+	// SAFETY: as above.
+	const after = next as Record<string, unknown>;
+	const names = Object.keys(after);
+	const copy: Record<string, unknown> = {};
+	let same = names.length === Object.keys(before).length;
+	for (const name of names) {
+		const value = replaceEqualDeep(before[name], after[name]);
+		copy[name] = value;
+		if (value !== before[name] || !Object.hasOwn(before, name)) {
+			same = false;
+		}
+	}
+	if (same) {
+		return previous;
+	}
+	return arrays ? names.map((name) => copy[name]) : copy;
 }
