@@ -11,9 +11,10 @@ Working memory for coding agents on this repo. **Agents own this folder** — cr
 
 ## Rules of thumb
 
-- Put **product intent and public API** in the docs site's pages, `www/content` (human-facing, “how it works now”). The root and package READMEs only link there; see [decisions/docs-split.md](./decisions/docs-split.md).
+- Put **product intent and public API** in the docs site's pages, `www/content` (human-facing, how it works). The root and package READMEs only link there; see [decisions/docs-split.md](./decisions/docs-split.md).
 - Put **why we did X / don’t do Y** here so future sessions don’t re-litigate or re-discover.
-- When a decision is superseded, update or delete it — don’t accumulate archaeology.
+- When a decision changes, rewrite or delete its file — don’t accumulate archaeology.
+- Write how things are, in the present tense. No before/after wording (“now”, “no longer”, “replaces”, “previously”, “the old X”): history lives in git.
 - Don’t duplicate `.github/DEVELOPMENT.md` (how to build/test) or `AGENTS.md` (session boot instructions).
 
 ## Decisions
@@ -21,7 +22,7 @@ Working memory for coding agents on this repo. **Agents own this folder** — cr
 Many PRs are open at once, so each decision is its own file and PRs rarely touch the same one:
 
 - **A new decision is a new file**: `decisions/<topic>.md`, kebab-case, named by topic. No dates or sequence numbers in the name (parallel PRs would pick the same number), and no index file (every PR would edit it). Changing a decision edits its file; reversing one deletes or rewrites it.
-- Each file starts with `# Title (who)`, then short bullets: what was decided, the reason, what lost, and the files it lives in. The PR's "Alternatives considered" section has the longer case against what lost. `(human …)` marks what the human decided or asked for: don't reverse it without asking. `(agent)` is open to revision with a good reason.
+- Each file starts with `# Title (who)`, then short bullets: the decision, the reason, what lost, and the files it lives in. The PR's "Alternatives considered" section has the longer case against what lost. `(human …)` marks what the human decided or asked for: don't reverse it without asking. `(agent)` is open to revision with a good reason.
 - Find decisions with `head -n 1 .agent-docs/decisions/*.md` for the titles, or `rg <term> .agent-docs/decisions`.
 
 ## Digging deeper with git

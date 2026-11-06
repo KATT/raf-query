@@ -1,6 +1,5 @@
-# What each verb waits for
+# What each load entry waits for
 
-- **Three distinct verbs, matching TanStack Query** (human-picked, 2026-10-13). `prefetch` never waits (`prefetchQuery`, not awaited). `ensure` waits on a cache miss only; stale data resolves at once and revalidates in the background (`ensureQueryData({ revalidateIfStale: true })`). `fetch` also waits on stale data (`fetchQuery`).
-- One rule decides "stale" for both the background refetch and `fetch`'s wait: `Entry.needsRefetch`. On a server cache that's only `isInvalidated` (see `server-verbs-no-revalidate.md`), so `fetch` then `ensure` in a server component is still one request.
-- Before this, `fetch` behaved like `ensure`, which left no reason to pick one over the other beyond the return type.
+- **Three distinct entries, matching TanStack Query** (human-picked, 2026-10-13). `prefetchEntry` never waits (`prefetchQuery`, not awaited). `ensureEntry` waits on a cache miss only; stale data resolves at once and revalidates in the background (`ensureQueryData({ revalidateIfStale: true })`). `fetchEntry` also waits on stale data (`fetchQuery`).
+- One rule decides "stale" for both the background refetch and `fetchEntry`'s wait: `isStale` (`entry.ts`), past `staleTime` or invalidated. On a server client the background refetch never runs (see [server-verbs-no-revalidate.md](./server-verbs-no-revalidate.md)), so `fetchEntry` then `ensureEntry` in a server component is still one request.
 - The table at the top of `www/content/starting-queries.md` is the summary of the differences; keep it in sync.
