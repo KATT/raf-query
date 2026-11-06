@@ -17,7 +17,7 @@ class BrowserRenderError extends Error {
 }
 
 /** Whether a render may start `client`'s requests. */
-export function startsRequests(client: QueryClient): boolean {
+function startsRequests(client: QueryClient): boolean {
 	return !(client.isServer && client["~browserOnly"]);
 }
 

@@ -17,5 +17,3 @@ export function createApi(headers?: RequestHeaders) {
 		headers,
 	});
 }
-
-export const api = createApi();

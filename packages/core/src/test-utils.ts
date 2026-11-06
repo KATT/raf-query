@@ -27,7 +27,7 @@ export interface FakeClock extends Clock {
 }
 
 /** A clock whose timers fire only when the test advances it. */
-export function fakeClock(start = 1_000_000): FakeClock {
+function fakeClock(start = 1_000_000): FakeClock {
 	let now = start;
 	const timers = new Set<Timer>();
 	return {
