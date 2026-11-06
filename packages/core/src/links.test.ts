@@ -12,6 +12,7 @@ function flaky(
 	let calls = 0;
 	const factory = () =>
 		queryOptions({
+			meta: options,
 			queryFn: () => {
 				calls += 1;
 				if (calls <= failures) {
@@ -20,7 +21,6 @@ function flaky(
 				return calls;
 			},
 			queryKey: [issues, "flaky"],
-			...options,
 		});
 	return { calls: () => calls, factory };
 }

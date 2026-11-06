@@ -1,7 +1,7 @@
-import type { Clock, Link } from "./client.ts";
+import { type Clock, type Link, link } from "./client.ts";
 
 export interface RetryOptions {
-	/** Retries after the first attempt. A query's `retry` option wins. Default 3. */
+	/** Retries after the first attempt. A query's `meta.retry` wins. Default 3. */
 	readonly attempts?: number;
 	/** Wait before retry `n` (0-based), in ms. Default: doubling from 1 s, at most 30 s. */
 	readonly delay?: (attempt: number) => number;
@@ -34,14 +34,23 @@ function whenOnline(signal: AbortSignal): Promise<void> {
 
 const defaultDelay = (attempt: number) => Math.min(1000 * 2 ** attempt, 30_000);
 
+/** What `retry()` reads from a query's `meta`. */
+export interface RetryMeta {
+	/** Attempts for this query, or `false`. */
+	readonly retry?: number | false;
+}
+
 /**
  * Retry failed requests. Expected errors (`fail()`) and cancelled requests
  * aren't retried, server clients never retry, and a browser that is offline
- * waits until it's back online before retrying.
+ * waits until it's back online before retrying. A query sets its own
+ * attempts with `meta: { retry }`.
  */
-export function retry(options: RetryOptions = {}): Link {
-	return async (op, next) => {
-		const configured = op.options.retry;
+export function retry(
+	options: RetryOptions = {},
+): Link<{ readonly meta: RetryMeta }> {
+	return link<{ readonly meta: RetryMeta }>(async (op, next) => {
+		const configured = op.meta.retry;
 		const attempts =
 			configured === false ? 0 : (configured ?? options.attempts ?? 3);
 		if (op.client.isServer || attempts === 0) {
@@ -66,7 +75,7 @@ export function retry(options: RetryOptions = {}): Link {
 				await whenOnline(op.signal);
 			}
 		}
-	};
+	});
 }
 
 /** What a request that took too long fails with. */

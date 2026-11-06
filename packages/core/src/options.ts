@@ -1,13 +1,12 @@
 import type { Fail } from "./fail.ts";
-import type { AnyFactory, QueryKeyOption, Tag } from "./keys.ts";
-
-/** Free-form data on a query, for links and features. */
-export type QueryMeta = Readonly<Record<string, unknown>>;
+import type { AnyFactory, QueryKeyOption } from "./keys.ts";
+import type { AnyRoot, DefaultTypes, Def, RootTypes } from "./root.ts";
 
 export interface QueryFunctionContext<
 	TKey extends QueryKeyOption = QueryKeyOption,
 > {
-	readonly meta: QueryMeta | undefined;
+	/** The query's `meta`, typed by its root where the query is defined. */
+	readonly meta: object;
 	readonly queryKey: TKey;
 	/** Aborted when the request is restarted or its entry is removed. */
 	readonly signal: AbortSignal;
@@ -17,25 +16,27 @@ declare const dataTag: unique symbol;
 declare const failTag: unique symbol;
 
 /** Options every query takes. */
-export interface BaseOptions<TKey extends QueryKeyOption, TQueryFnData> {
+export interface BaseOptions<
+	TKey extends QueryKeyOption,
+	TTypes extends RootTypes = RootTypes,
+> {
+	/** The root this factory belongs to: `defType<typeof makeQueryClient>()`. */
+	readonly def?: Def<TTypes>;
 	/** `false`: the query doesn't run. Default `true`. */
 	readonly enabled?: boolean;
 	/** How long an entry with no reader stays cached. Default 5 minutes; never on the server. */
 	readonly gcTime?: number;
-	readonly meta?: QueryMeta;
+	/**
+	 * Settings for the root's links and features, and data for targets: the
+	 * fields the root's parts declare, such as `retry` with the `retry()`
+	 * link.
+	 */
+	readonly meta?: NoInfer<Partial<TTypes["meta"]>>;
 	readonly queryKey: TKey;
-	/** With the `polling()` feature: refetch every `n` ms while read. */
-	readonly refetchInterval?: number | false;
-	/** With the `retry()` link: attempts for this query, or `false`. */
-	readonly retry?: number | false;
 	/** How long data stays fresh, in ms. Default `0`. */
 	readonly staleTime?: number;
 	/** Keep the deeply equal parts of new data, so they keep their identity. Default `true`. */
 	readonly structuralSharing?: boolean;
-	/** Tags to invalidate the query by, fixed or derived from its data. */
-	readonly tags?:
-		| ReadonlyArray<Tag>
-		| ((data: TQueryFnData) => ReadonlyArray<Tag>);
 }
 
 /** What `queryOptions` and `infiniteQueryOptions` return. */
@@ -44,7 +45,8 @@ export interface QueryOptions<
 	TQueryFnData = unknown,
 	TFail = unknown,
 	TData = TQueryFnData,
-> extends BaseOptions<TKey, TQueryFnData> {
+	TTypes extends RootTypes = RootTypes,
+> extends BaseOptions<TKey, TTypes> {
 	/** Set by `infiniteQueryOptions`: runs the request page by page. */
 	readonly "~run"?: (op: never) => Promise<unknown>;
 	readonly [dataTag]?: TData;
@@ -78,26 +80,38 @@ type Awaitable<T> = PromiseLike<T> | T;
  * fold its chunks into the data. Readers get the data after the first chunk,
  * and every later chunk updates it in place.
  */
-export function queryOptions<const TKey extends QueryKeyOption, TChunk, TData>(
-	options: BaseOptions<TKey, TData> & {
+export function queryOptions<
+	const TKey extends QueryKeyOption,
+	TChunk,
+	TData,
+	TTypes extends RootTypes = DefaultTypes,
+>(
+	options: BaseOptions<TKey, TTypes> & {
 		readonly queryFn: (
 			context: QueryFunctionContext<TKey>,
 		) => AsyncIterable<TChunk>;
 		readonly stream: StreamOptions<TData, TChunk>;
 	},
-): QueryOptions<TKey, TData, never, TData>;
+): QueryOptions<TKey, TData, never, TData, TTypes>;
 export function queryOptions<
 	const TKey extends QueryKeyOption,
 	TResult,
 	TData = Exclude<TResult, Fail>,
+	TTypes extends RootTypes = DefaultTypes,
 >(
-	options: BaseOptions<TKey, Exclude<TResult, Fail>> & {
+	options: BaseOptions<TKey, TTypes> & {
 		readonly queryFn: (
 			context: QueryFunctionContext<TKey>,
 		) => Awaitable<TResult>;
 		readonly select?: (data: Exclude<TResult, Fail>) => TData;
 	},
-): QueryOptions<TKey, Exclude<TResult, Fail>, Extract<TResult, Fail>, TData>;
+): QueryOptions<
+	TKey,
+	Exclude<TResult, Fail>,
+	Extract<TResult, Fail>,
+	TData,
+	TTypes
+>;
 export function queryOptions(options: QueryOptions): QueryOptions {
 	return options;
 }
@@ -141,3 +155,11 @@ export type InputArgs<TFactory extends QueryFactory> =
 
 export type KeyOf<TFactory extends QueryFactory> =
 	ReturnType<TFactory>["queryKey"];
+
+/** A factory's root, from its `def`; any root without one. */
+export type RootOfFactory<TFactory extends QueryFactory> =
+	ReturnType<TFactory> extends { readonly def?: Def<infer TTypes> }
+		? TTypes extends DefaultTypes
+			? AnyRoot
+			: TTypes
+		: AnyRoot;

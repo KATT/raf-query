@@ -1,78 +1,28 @@
 /**
- * Groups, tags, keys and invalidation targets. Everything that builds or
- * matches a key lives here, so the shape of groups and tags can change
- * without touching the cache.
+ * Keys and invalidation targets. Everything that builds or matches a key
+ * lives here, so the shape of grouping can change without touching the
+ * cache.
  *
- * Provisional (D9, D9b, D9c): this follows Design 1 and tags T1 of the
- * keys/groups/tags design, which Alex hasn't confirmed yet.
+ * Provisional (D9, round 2 "V3"): core knows two kinds of target, which
+ * Alex hasn't confirmed yet.
  *
- * - Groups and tags are plain object literals, so modules of factories
- *   tree-shake as plain code in every bundler.
- * - A key starts with its group object: `[drafts, "byId", input]`.
- * - Invalidation is by identity: each one records a stamp per target (a
- *   group path, a tag, a factory function or one entry). An entry is
- *   invalidated when a matching stamp is newer than the request its data
- *   came from. Entries with readers refetch at once; the rest are checked
- *   when they are next read, which always goes through their factory.
+ * - A factory, matched by identity, optionally with part of its input.
+ * - Any object with `where(query, param)`, typed by the client's root
+ *   `meta`. Groups and tags are such objects, in `@raf-query/core/groups`.
+ *
+ * Invalidation records a stamp per target. An entry is invalidated when a
+ * matching stamp is newer than the request its data came from. Entries with
+ * readers refetch at once; the rest are checked when they are next read,
+ * which always goes through their factory, so `where` sees their `meta`.
  */
 
-/** A named set of queries. `in` nests it in a parent group. */
-export interface Group {
-	readonly group: string;
-	readonly in?: Group;
-}
+import type { QueryMeta } from "./root.ts";
 
-/** A tag definition. `key` types (and normalizes) the tag's parameter. */
-export interface TagDef<TParam = never> {
-	readonly key?: (param: TParam) => unknown;
-	readonly tag: string;
-}
-
-declare const tagBrand: unique symbol;
-
-/** A tag a query carries, from {@link tagged}. Never a bare string. */
-export type Tag = string & { readonly [tagBrand]: true };
-
-export type ParamOf<TDef> = TDef extends {
-	readonly key: (param: infer TParam) => unknown;
-}
-	? TParam
-	: never;
-
-/**
- * The tag for a definition and its parameter, for a query's `tags`:
- *
- * ```ts
- * export const author = { tag: "author", key: (id: string) => id };
- * tags: [tagged(author, input.authorId)],
- * ```
- */
-export function tagged(def: {
-	readonly key?: undefined;
-	readonly tag: string;
-}): Tag;
-export function tagged<TDef extends TagDef<never>>(
-	def: TDef,
-	param: ParamOf<TDef>,
-): Tag;
-export function tagged(def: TagDef<unknown>, param?: unknown): Tag {
-	const name =
-		param === undefined
-			? def.tag
-			: `${def.tag}:${JSON.stringify(def.key ? def.key(param) : param)}`;
-	// SAFETY: the brand only exists in types; this is the one place tags are made.
-	return name as Tag;
-}
-
-/** A query's key: its group object, then names and input. */
-export type QueryKeyOption = readonly [Group, string, ...Array<unknown>];
+/** A query's key. Any serializable array. */
+export type QueryKeyOption = ReadonlyArray<unknown>;
 
 /** A key as handles and hydration carry it. Plain and serializable. */
 export type QueryKey = QueryKeyOption;
-
-export function pathOf(group: Group): string {
-	return group.in ? `${pathOf(group.in)}/${group.group}` : group.group;
-}
 
 function isPlainRecord(
 	value: unknown,
@@ -95,9 +45,19 @@ function sortFields(_name: string, value: unknown) {
 	return sorted;
 }
 
-/** Stable string form of a key: the group's path, then the rest with sorted fields. */
+/** Stable string form of a key: JSON with sorted fields. Functions drop out. */
 export function hashKey(key: QueryKey): string {
-	return JSON.stringify([pathOf(key[0]), ...key.slice(1)], sortFields);
+	return JSON.stringify(key, sortFields);
+}
+
+/**
+ * A key as plain data, the way handles and hydration carry it: what its
+ * hash describes, so functions (such as a group's `where`) drop out and it
+ * survives any serializer.
+ */
+export function plainKey(key: QueryKey): QueryKey {
+	// SAFETY: a hash is the JSON of an array.
+	return JSON.parse(hashKey(key)) as QueryKey;
 }
 
 /** Whether `actual` matches `expected`: equal, or for objects, every field `expected` has. */
@@ -119,36 +79,56 @@ function partialMatch(actual: unknown, expected: unknown): boolean {
 	return false;
 }
 
-/**
- * The tags an entry carries: each tag, and for a parameterized one also its
- * bare name, so `invalidateMany(author)` reaches `author:"a"`.
- */
-export function expandTags(tags: ReadonlyArray<Tag>): ReadonlyArray<string> {
-	const all = new Set<string>();
-	for (const tag of tags) {
-		all.add(tag);
-		const colon = tag.indexOf(":");
-		if (colon > 0) {
-			all.add(tag.slice(0, colon));
-		}
-	}
-	return [...all];
-}
-
 /** Any function that returns a query's options. */
 export type AnyFactory = (input: never) => {
 	readonly queryKey: QueryKeyOption;
 };
 
-/** What picks out queries: a group, a tag definition, or a factory. */
-export type Target = AnyFactory | Group | TagDef<never>;
+/** What a target's `where` sees of a query. */
+export interface QueryInfo<TMeta = QueryMeta> {
+	/** The query's data, before `select`; `undefined` without data. */
+	readonly data: unknown;
+	readonly input: unknown;
+	/** The `meta` its factory gave it. An entry only hydrated has `{}` until it's read. */
+	readonly meta: TMeta;
+	readonly queryKey: QueryKey;
+}
+
+/**
+ * Picks out queries by what they are: `where` gets each query and the
+ * parameter the verb was called with.
+ *
+ * ```ts
+ * const ownedBy = { where: (query: QueryInfo<AppMeta>, team: Team) => query.meta.owner === team };
+ * await invalidateMany(client, ownedBy, "posts-team");
+ * ```
+ */
+export interface Target<TMeta = QueryMeta, TParam = never> {
+	readonly where: (query: QueryInfo<TMeta>, param: TParam) => boolean;
+}
+
+/** A target of any meta and parameter. */
+export interface AnyTarget {
+	readonly where: (query: never, param: never) => boolean;
+}
+
+/** The arguments after a target: its parameter, if it takes one. */
+export type ParamArgs<TParam> = [TParam] extends [never]
+	? []
+	: unknown extends TParam
+		? []
+		: undefined extends TParam
+			? [param?: TParam]
+			: [param: TParam];
 
 /** What matching needs from a cache entry. */
 export interface Matchable {
 	readonly factory: AnyFactory | undefined;
 	readonly hash: string;
+	readonly input: unknown;
 	readonly key: QueryKey;
-	readonly tags: ReadonlyArray<string>;
+	readonly options: { readonly meta?: object } | undefined;
+	readonly state: { readonly data: unknown };
 }
 
 /** One invalidation, by what it targets. */
@@ -161,35 +141,41 @@ export type Stamp =
 			readonly kind: "factory";
 			readonly partial: unknown;
 	  }
-	| { readonly at: number; readonly kind: "group"; readonly path: string }
-	| { readonly at: number; readonly kind: "tag"; readonly tag: string };
+	| {
+			readonly at: number;
+			readonly kind: "target";
+			readonly param: unknown;
+			readonly target: AnyTarget;
+	  };
 
-function isFactory(target: Target): target is AnyFactory {
-	return typeof target === "function";
+/** Whether `value` is a `where` target rather than a factory. Tags are both callable and targets. */
+export function isTarget(value: AnyFactory | AnyTarget): value is AnyTarget {
+	return Object.hasOwn(value, "where");
 }
 
-function isTagDef(target: Group | TagDef<never>): target is TagDef<never> {
-	return "tag" in target;
-}
-
-/** A stamp for `target`. `arg` is a factory's partial input or a tag's parameter. */
-export function stampFor(target: Target, arg: unknown, at: number): Stamp {
-	if (isFactory(target)) {
-		return { at, factory: target, kind: "factory", partial: arg };
-	}
-	if (isTagDef(target)) {
-		const tag =
-			arg === undefined
-				? target.tag
-				: tagged(target, /* SAFETY: typed at the verb. */ arg as never);
-		return { at, kind: "tag", tag };
-	}
-	return { at, kind: "group", path: pathOf(target) };
+/** A stamp for `target`. `arg` is a factory's partial input or a target's parameter. */
+export function stampFor(
+	target: AnyFactory | AnyTarget,
+	arg: unknown,
+	at: number,
+): Stamp {
+	return isTarget(target)
+		? { at, kind: "target", param: arg, target }
+		: { at, factory: target, kind: "factory", partial: arg };
 }
 
 /** A stamp for exactly one entry. */
 export function entryStamp(hash: string, at: number): Stamp {
 	return { at, hash, kind: "entry" };
+}
+
+function infoOf(entry: Matchable): QueryInfo<object> {
+	return {
+		data: entry.state.data,
+		input: entry.input,
+		meta: entry.options?.meta ?? {},
+		queryKey: entry.key,
+	};
 }
 
 /** Whether a stamp's target covers an entry. */
@@ -205,11 +191,13 @@ export function matches(entry: Matchable, stamp: Stamp): boolean {
 				(stamp.partial === undefined ||
 					partialMatch(entry.key.at(-1), stamp.partial))
 			);
-		case "group": {
-			const path = pathOf(entry.key[0]);
-			return path === stamp.path || path.startsWith(`${stamp.path}/`);
+		case "target": {
+			// SAFETY: the verb typed `param` and the meta against this target.
+			const where = stamp.target.where as (
+				query: QueryInfo<object>,
+				param: unknown,
+			) => boolean;
+			return where(infoOf(entry), stamp.param);
 		}
-		case "tag":
-			return entry.tags.includes(stamp.tag);
 	}
 }

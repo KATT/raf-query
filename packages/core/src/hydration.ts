@@ -15,7 +15,7 @@ import {
 	write,
 } from "./entry.ts";
 import { type Fail, failOf, isFailValue } from "./fail.ts";
-import type { QueryKey } from "./keys.ts";
+import { plainKey, type QueryKey } from "./keys.ts";
 
 /** What a dehydrated pending entry's promise resolves to. */
 export interface DehydratedResult {
@@ -36,7 +36,6 @@ export interface DehydratedEntry {
 	readonly fail?: Fail;
 	readonly promise?: Promise<DehydratedResult>;
 	readonly queryKey: QueryKey;
-	readonly tags?: ReadonlyArray<string>;
 	/** When the data was fetched; `0` while pending. */
 	readonly updatedAt: number;
 }
@@ -82,7 +81,7 @@ function dehydrateEntry(
 	options: DehydrateOptions,
 ): DehydratedEntry {
 	const state = entry.state;
-	const base = { queryKey: entry.key, tags: entry.tags };
+	const base = { queryKey: plainKey(entry.key) };
 	if (state.hasData) {
 		return { ...base, data: state.data, updatedAt: state.updatedAt };
 	}
@@ -226,9 +225,6 @@ function takeNewer(entry: Entry, result: DehydratedResult) {
 export function hydrate(client: QueryClient, state: DehydratedState): void {
 	for (const sent of state.entries) {
 		const entry = entryForKey(client, sent.queryKey);
-		if (entry.tags.length === 0 && sent.tags) {
-			entry.tags = sent.tags;
-		}
 		if (sent.promise === undefined) {
 			takeNewer(entry, sent);
 		} else {

@@ -2,13 +2,11 @@ import type { Operation, QueryClient } from "./client.ts";
 import { isFailValue, QueryFailure } from "./fail.ts";
 import {
 	type AnyFactory,
-	expandTags,
 	hashKey,
 	matches,
 	type QueryKey,
 	type Stamp,
 } from "./keys.ts";
-import { isFunction } from "./guards.ts";
 import { optionsOf, type QueryOptions, type StreamOptions } from "./options.ts";
 import { replaceEqualDeep } from "./share.ts";
 import {
@@ -64,7 +62,6 @@ export interface Entry {
 	requestedAt: number;
 	run: Run | undefined;
 	state: EntryState;
-	tags: ReadonlyArray<string>;
 	thenable: Thenable<unknown>;
 }
 
@@ -161,7 +158,6 @@ function create(client: QueryClient, key: QueryKey, hash: string): Entry {
 		requestedAt: client["~seq"],
 		run: undefined,
 		state: initialState,
-		tags: [],
 		thenable: first.promise,
 	};
 	client["~entries"].set(hash, entry);
@@ -225,14 +221,6 @@ function thrown(entry: Entry, error: unknown): unknown {
 	return isFailValue(error) ? new QueryFailure(error, entry.hash) : error;
 }
 
-function tagsOf(options: QueryOptions | undefined, data: unknown) {
-	const tags = options?.tags;
-	if (tags === undefined) {
-		return [];
-	}
-	return expandTags(isFunction(tags) ? tags(data) : tags);
-}
-
 /** Write data. `startedAt` orders it against invalidations. */
 export function write(
 	entry: Entry,
@@ -248,9 +236,6 @@ export function write(
 	const next =
 		sharing && previous.hasData ? replaceEqualDeep(previous.data, data) : data;
 	entry.requestedAt = Math.max(entry.requestedAt, startedAt);
-	if (entry.options) {
-		entry.tags = tagsOf(entry.options, next);
-	}
 	if (entry.pendingThenable) {
 		entry.pendingThenable.resolve(next);
 		entry.pendingThenable = undefined;
@@ -416,7 +401,7 @@ export function fetchEntry(
 		hasData: state.hasData,
 		hash: entry.hash,
 		input: entry.input,
-		meta: options.meta,
+		meta: options.meta ?? {},
 		options,
 		pages: request.pages,
 		queryKey: entry.key,

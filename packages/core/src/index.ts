@@ -5,11 +5,15 @@ export {
 	type InvalidateOnActionOptions,
 } from "./action.ts";
 export {
+	type AnyFeature,
+	type AnyLink,
 	type Clock,
 	type ClientEvent,
 	createQueryClient,
 	type Feature,
+	feature,
 	type Link,
+	link,
 	type Operation,
 	type QueryClient,
 	type QueryClientConfig,
@@ -25,7 +29,12 @@ export {
 	QueryFailure,
 	type Result,
 } from "./fail.ts";
-export { focusRefetch, polling, reconnectRefetch } from "./features.ts";
+export {
+	focusRefetch,
+	polling,
+	type PollingMeta,
+	reconnectRefetch,
+} from "./features.ts";
 export {
 	type InfiniteData,
 	type InfiniteQueryFunctionContext,
@@ -33,16 +42,16 @@ export {
 	infiniteQueryOptions,
 } from "./infinite.ts";
 export {
-	type Group,
+	type AnyFactory,
+	type AnyTarget,
+	type QueryInfo,
 	type QueryKey,
-	type Tag,
-	type TagDef,
-	tagged,
 	type Target,
 } from "./keys.ts";
 export {
 	QueryTimeoutError,
 	retry,
+	type RetryMeta,
 	type RetryOptions,
 	timeout,
 } from "./links.ts";
@@ -64,14 +73,24 @@ export {
 	type InputOf,
 	type QueryFactory,
 	type QueryFunctionContext,
-	type QueryMeta,
 	type QueryOptions,
 	queryOptions,
 	type StreamOptions,
 } from "./options.ts";
-export { recommended } from "./presets.ts";
+export {
+	type Decl,
+	type DefaultTypes,
+	type Def,
+	defType,
+	type MetaOf,
+	type QueryMeta,
+	type RootOf,
+	type RootTypes,
+} from "./root.ts";
+export { type Recommended, recommended } from "./presets.ts";
 export type { Thenable } from "./thenable.ts";
 export {
+	type ClientFor,
 	getData,
 	invalidateAll,
 	invalidateMany,

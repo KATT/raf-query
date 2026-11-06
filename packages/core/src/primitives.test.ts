@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { systemClock } from "./client.ts";
 import { fail, failOf, isFail, QueryFailure } from "./fail.ts";
-import { hashKey, matches, stampFor, tagged } from "./keys.ts";
+import { hashKey, matches, plainKey, stampFor } from "./keys.ts";
 import { replaceEqualDeep } from "./share.ts";
 import { listeners } from "./subscribe.ts";
 import {
@@ -96,8 +96,16 @@ describe("keys", () => {
 		);
 	});
 
-	it("hash a subgroup's path", () => {
-		expect(hashKey([drafts, "list"])).toBe('["issues/drafts","list"]');
+	it("hash a group as its names, the same after a JSON round trip", () => {
+		const key = [drafts, "list"] as const;
+		expect(hashKey(key)).toBe(
+			'[{"group":"drafts","in":{"group":"issues"}},"list"]',
+		);
+		expect(plainKey(key)).toEqual([
+			{ group: "drafts", in: { group: "issues" } },
+			"list",
+		]);
+		expect(hashKey(plainKey(key))).toBe(hashKey(key));
 	});
 
 	it("match a factory's input by its parts, arrays included", () => {
@@ -105,8 +113,10 @@ describe("keys", () => {
 		const entry = {
 			factory,
 			hash: "",
+			input: undefined,
 			key: [issues, "list", { ids: [1, 2], status: "open" }] as const,
-			tags: [],
+			options: undefined,
+			state: { data: undefined },
 		};
 
 		expect(matches(entry, stampFor(factory, { ids: [1, 2] }, 1))).toBe(true);
@@ -118,11 +128,30 @@ describe("keys", () => {
 	});
 
 	it("make typed tags", () => {
-		expect(tagged(featured)).toBe("featured");
-		expect(tagged(author, "ada")).toBe('author:"ada"');
+		expect(featured()).toBe("featured");
+		expect(author("ada")).toBe('author:"ada"');
+		expect(author.tag).toBe("author");
+	});
+
+	it("match groups by path and tags by name", () => {
+		const info = (
+			queryKey: ReadonlyArray<unknown>,
+			tags?: ReadonlyArray<string> | (() => ReadonlyArray<string>),
+		) => ({ data: undefined, input: undefined, meta: { tags }, queryKey });
+		expect(drafts.where(info([drafts]))).toBe(true);
+		expect(issues.where(info([drafts]))).toBe(true);
+		expect(drafts.where(info([issues]))).toBe(false);
+		expect(issues.where(info([{ group: "issues-archive" }]))).toBe(false);
+		expect(issues.where(info(["issues"]))).toBe(false);
+		expect(author.where(info([], ['author:"ada"']), undefined)).toBe(true);
+		expect(author.where(info([], ["authors"]), undefined)).toBe(false);
+		expect(featured.where(info([], ["featured"]), undefined)).toBe(true);
 		expect(
-			tagged({ tag: "plain" }, /* SAFETY: an untyped parameter. */ 1 as never),
-		).toBe("plain:1");
+			author.where(
+				info([], () => ["author"]),
+				undefined,
+			),
+		).toBe(false);
 	});
 });
 

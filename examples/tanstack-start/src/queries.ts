@@ -1,13 +1,10 @@
 import { api, parseFound, parseResponse } from "~/api.ts";
 import type { IssueListInput } from "@examples/db/types";
-import {
-	type Group,
-	infiniteQueryOptions,
-	queryOptions,
-} from "@raf-query/react";
+import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
+import { group } from "@raf-query/react/groups";
 
 /** Every query here starts its key with this group, so writes can invalidate them together. */
-export const issues: Group = { group: "issues" };
+export const issues = group("issues");
 
 export function issueListQuery(input: IssueListInput) {
 	return infiniteQueryOptions({

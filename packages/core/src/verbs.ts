@@ -10,14 +10,13 @@ import {
 } from "./entry.ts";
 import {
 	type AnyFactory,
+	type AnyTarget,
 	entryStamp,
-	type Group,
 	hashKey,
 	matches,
-	type ParamOf,
+	type ParamArgs,
 	type Stamp,
 	stampFor,
-	type TagDef,
 	type Target,
 } from "./keys.ts";
 import { isFunction } from "./guards.ts";
@@ -26,7 +25,9 @@ import {
 	type KeyOf,
 	optionsOf,
 	type QueryFactory,
+	type RootOfFactory,
 } from "./options.ts";
+import type { IsAnyRoot, RootTypes } from "./root.ts";
 import type { InfiniteData } from "./infinite.ts";
 
 type DeepPartial<T> = T extends object
@@ -41,6 +42,24 @@ type Last<T> = T extends readonly [...Array<unknown>, infer TLast]
 export type PartialInput<TFactory extends QueryFactory> = DeepPartial<
 	Last<KeyOf<TFactory>>
 >;
+
+/**
+ * The clients a factory's verbs take: its root's, or any client for a
+ * factory without `def`.
+ */
+export type ClientFor<TFactory extends QueryFactory> = QueryClient<
+	RootOfFactory<TFactory>
+>;
+
+/**
+ * A target a client's root can match: its `where` reads that root's `meta`.
+ * A client typed only as `QueryClient` (from `useQueryClient()`, say) may
+ * be of any root, so it takes any target.
+ */
+type TargetFor<TTypes extends RootTypes, TParam> =
+	IsAnyRoot<TTypes> extends true
+		? Target<never, TParam>
+		: Target<NoInfer<TTypes["meta"]>, TParam>;
 
 /** The data `setData` writes: plain for a query, paged for an infinite one. */
 type WritableData<TFactory extends QueryFactory> =
@@ -68,50 +87,36 @@ function settle(outcomes: ReadonlyArray<Promise<Outcome>>): Promise<void> {
 }
 
 /**
- * Mark one query stale (a factory and its full input), or every query with
- * one tag (a tag definition and its parameter). Read queries refetch;
- * resolves when they settle.
+ * Mark one query stale: a factory and its full input. If it's read, it
+ * refetches; resolves when that settles.
  */
 export function invalidateOne<TFactory extends QueryFactory>(
-	client: QueryClient,
+	client: ClientFor<TFactory>,
 	factory: TFactory,
 	...input: InputArgs<TFactory>
-): Promise<void>;
-export function invalidateOne<TDef extends TagDef<never>>(
-	client: QueryClient,
-	tag: TDef,
-	param: ParamOf<TDef>,
-): Promise<void>;
-export function invalidateOne(
-	client: QueryClient,
-	target: AnyFactory | TagDef<never>,
-	arg?: unknown,
 ): Promise<void> {
-	return invalidate(client, (at) =>
-		isFunction(target)
-			? entryStamp(hashOf(target, arg), at)
-			: stampFor(target, arg, at),
-	);
+	return invalidate(client, (at) => entryStamp(hashOf(factory, input[0]), at));
 }
 
 /**
- * Mark queries stale: a group's (and its subgroups'), a tag's, or a
- * factory's, optionally only those whose input matches `partial`. Read
- * queries refetch now; the rest refetch when next read. Resolves when the
- * refetches settle.
+ * Mark queries stale: a factory's (optionally only those whose input
+ * matches `partial`), or those a target's `where` picks, such as a group or
+ * a tag from `@raf-query/core/groups`. Read queries refetch now; the rest
+ * when next read. Resolves when the refetches settle.
  */
-export function invalidateMany(
-	client: QueryClient,
-	target: Group | TagDef<never>,
-): Promise<void>;
 export function invalidateMany<TFactory extends QueryFactory>(
-	client: QueryClient,
+	client: ClientFor<TFactory>,
 	factory: TFactory,
 	partial?: PartialInput<TFactory>,
 ): Promise<void>;
+export function invalidateMany<TTypes extends RootTypes, TParam = never>(
+	client: QueryClient<TTypes>,
+	target: TargetFor<TTypes, TParam>,
+	...param: ParamArgs<NoInfer<TParam>>
+): Promise<void>;
 export function invalidateMany(
 	client: QueryClient,
-	target: Target,
+	target: AnyFactory | AnyTarget,
 	partial?: unknown,
 ): Promise<void> {
 	return invalidate(client, (at) => stampFor(target, partial, at));
@@ -135,7 +140,7 @@ function oneEntry(
  * resolves when that settles.
  */
 export function resetOne<TFactory extends QueryFactory>(
-	client: QueryClient,
+	client: ClientFor<TFactory>,
 	factory: TFactory,
 	...input: InputArgs<TFactory>
 ): Promise<void> {
@@ -144,18 +149,19 @@ export function resetOne<TFactory extends QueryFactory>(
 }
 
 /** {@link resetOne} for every query a target covers. */
-export function resetMany(
-	client: QueryClient,
-	target: Group | TagDef<never>,
-): Promise<void>;
 export function resetMany<TFactory extends QueryFactory>(
-	client: QueryClient,
+	client: ClientFor<TFactory>,
 	factory: TFactory,
 	partial?: PartialInput<TFactory>,
 ): Promise<void>;
+export function resetMany<TTypes extends RootTypes, TParam = never>(
+	client: QueryClient<TTypes>,
+	target: TargetFor<TTypes, TParam>,
+	...param: ParamArgs<NoInfer<TParam>>
+): Promise<void>;
 export function resetMany(
 	client: QueryClient,
-	target: Target,
+	target: AnyFactory | AnyTarget,
 	partial?: unknown,
 ): Promise<void> {
 	return settle(
@@ -170,7 +176,7 @@ export function resetAll(client: QueryClient): Promise<void> {
 
 /** Remove one query from the cache, aborting its request. */
 export function removeOne<TFactory extends QueryFactory>(
-	client: QueryClient,
+	client: ClientFor<TFactory>,
 	factory: TFactory,
 	...input: InputArgs<TFactory>
 ): void {
@@ -181,18 +187,19 @@ export function removeOne<TFactory extends QueryFactory>(
 }
 
 /** {@link removeOne} for every query a target covers. */
-export function removeMany(
-	client: QueryClient,
-	target: Group | TagDef<never>,
-): void;
 export function removeMany<TFactory extends QueryFactory>(
-	client: QueryClient,
+	client: ClientFor<TFactory>,
 	factory: TFactory,
 	partial?: PartialInput<TFactory>,
 ): void;
+export function removeMany<TTypes extends RootTypes, TParam = never>(
+	client: QueryClient<TTypes>,
+	target: TargetFor<TTypes, TParam>,
+	...param: ParamArgs<NoInfer<TParam>>
+): void;
 export function removeMany(
 	client: QueryClient,
-	target: Target,
+	target: AnyFactory | AnyTarget,
 	partial?: unknown,
 ): void {
 	for (const entry of entriesMatching(client, stampFor(target, partial, 0))) {
@@ -212,7 +219,7 @@ export function removeAll(client: QueryClient): void {
  * gets the current data, or `undefined` if there is none.
  */
 export function setData<TFactory extends QueryFactory>(
-	client: QueryClient,
+	client: ClientFor<TFactory>,
 	factory: TFactory,
 	input: Parameters<TFactory>[0],
 	updater:
@@ -232,7 +239,7 @@ export function setData<TFactory extends QueryFactory>(
 
 /** A query's cached data (before `select`), or `undefined`. */
 export function getData<TFactory extends QueryFactory>(
-	client: QueryClient,
+	client: ClientFor<TFactory>,
 	factory: TFactory,
 	...input: InputArgs<TFactory>
 ): WritableData<TFactory> | undefined {
@@ -243,8 +250,11 @@ export function getData<TFactory extends QueryFactory>(
 		| undefined;
 }
 
-/** How many queries have a request in flight, optionally only a target's. */
-export function isFetching(client: QueryClient, target?: Target): number {
+/** How many queries have a request in flight, optionally only a factory's or a target's. */
+export function isFetching(
+	client: QueryClient,
+	target?: AnyFactory | AnyTarget,
+): number {
 	const stamp: Stamp =
 		target === undefined
 			? { at: 0, kind: "all" }

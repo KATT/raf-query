@@ -1,12 +1,12 @@
 import {
 	createQueryClient,
 	fail,
-	type Group,
 	infiniteQueryOptions,
 	type QueryClient,
 	type QueryClientConfig,
 	queryOptions,
 } from "@raf-query/core";
+import { group } from "@raf-query/core/groups";
 import { act, render, type RenderResult } from "@testing-library/react";
 import { type ReactNode, Suspense } from "react";
 
@@ -23,7 +23,7 @@ interface Request {
 	respond(): void;
 }
 
-export const issues: Group = { group: "issues" };
+export const issues = group("issues");
 
 /** A backend whose requests settle when the test says so. */
 export function createBackend() {

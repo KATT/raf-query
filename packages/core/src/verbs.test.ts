@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { entryOf, fetchEntry, isStale, subscribeEntry } from "./entry.ts";
+import { isObject } from "./guards.ts";
 import { hydrate } from "./hydration.ts";
-import { tagged } from "./keys.ts";
+import { plainKey, type QueryInfo } from "./keys.ts";
 import {
 	getData,
 	invalidateAll,
@@ -88,7 +89,7 @@ describe("invalidation", () => {
 
 	it("matches tags with or without their parameter", async () => {
 		const cache = await loaded();
-		await invalidateOne(cache.client, author, "bob");
+		await invalidateMany(cache.client, author, "bob");
 
 		expect([isStale(cache.one), isStale(cache.two)]).toEqual([false, true]);
 		await invalidateMany(cache.client, author);
@@ -115,22 +116,48 @@ describe("invalidation", () => {
 		expect(isStale(cache.one)).toBe(false);
 	});
 
-	it("matches hydrated entries by group and tag before a factory reads them", async () => {
+	function hydratedClient() {
 		const client = testClient({ staleTime: Infinity });
 		hydrate(client, {
 			entries: [
 				{
 					data: { author: "ada", id: 1, title: "First" },
-					queryKey: [issues, "byId", { id: 1 }],
-					tags: [tagged(author, "ada"), "author"],
+					queryKey: plainKey([issues, "byId", { id: 1 }]),
 					updatedAt: client.clock.now(),
 				},
 			],
 		});
-		const backend = createBackend();
+		return client;
+	}
+
+	it("matches hydrated entries by group before a factory reads them", async () => {
+		const client = hydratedClient();
 		await invalidateMany(client, issues);
 
+		const backend = createBackend();
 		expect(isStale(entryOf(client, backend.issueQuery, { id: 1 }))).toBe(true);
+	});
+
+	it("matches hydrated entries by tag once a factory reads them", async () => {
+		const client = hydratedClient();
+		await invalidateMany(client, author, "bob");
+		await invalidateMany(client, author, "ada");
+
+		const backend = createBackend();
+		expect(isStale(entryOf(client, backend.issueQuery, { id: 1 }))).toBe(true);
+	});
+
+	it("matches a one-off where target with its parameter", async () => {
+		const cache = await loaded();
+		const byTitle = {
+			where: (query: QueryInfo, title: string) =>
+				isObject(query.data) &&
+				"title" in query.data &&
+				query.data.title === title,
+		};
+		await invalidateMany(cache.client, byTitle, "Second");
+
+		expect([isStale(cache.one), isStale(cache.two)]).toEqual([false, true]);
 	});
 });
 

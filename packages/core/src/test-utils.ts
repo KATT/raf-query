@@ -5,9 +5,8 @@ import {
 	type QueryClientConfig,
 } from "./client.ts";
 import { fail } from "./fail.ts";
+import { group, tag } from "./groups.ts";
 import { infiniteQueryOptions } from "./infinite.ts";
-import type { Group } from "./keys.ts";
-import { tagged } from "./keys.ts";
 import { queryOptions } from "./options.ts";
 
 export interface Issue {
@@ -66,11 +65,11 @@ export function fakeClock(start = 1_000_000): FakeClock {
 	};
 }
 
-export const issues: Group = { group: "issues" };
-export const drafts: Group = { group: "drafts", in: issues };
-export const users: Group = { group: "users" };
-export const author = { key: (name: string) => name, tag: "author" };
-export const featured = { tag: "featured" };
+export const issues = group("issues");
+export const drafts = group("drafts", issues);
+export const users = group("users");
+export const author = tag<string>("author");
+export const featured = tag("featured");
 
 interface Request {
 	fail(error: unknown): void;
@@ -104,20 +103,20 @@ export function createBackend() {
 
 	const issueQuery = (input: { readonly id: number }) =>
 		queryOptions({
+			meta: { tags: (issue: Issue) => [author(issue.author)] },
 			queryFn: async (context) => {
 				const issue = await get(input.id, context.signal);
 				return issue ?? fail({ _tag: "NotFound", id: input.id });
 			},
 			queryKey: [issues, "byId", input],
-			tags: (issue) => [tagged(author, issue.author)],
 		});
 
 	const draftQuery = (input: { readonly id: number }) =>
 		queryOptions({
+			meta: { tags: [featured()] },
 			queryFn: async (context) =>
 				JSON.stringify(await get(input.id, context.signal)),
 			queryKey: [drafts, "byId", input],
-			tags: [tagged(featured)],
 		});
 
 	const pageQuery = (input: { readonly size: number }) =>

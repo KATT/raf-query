@@ -2,7 +2,12 @@ import { defineConfig } from "vite-plus";
 
 export default defineConfig({
 	pack: {
-		entry: ["src/index.ts", "src/hydration.ts", "src/internal.ts"],
+		entry: [
+			"src/index.ts",
+			"src/groups.ts",
+			"src/hydration.ts",
+			"src/internal.ts",
+		],
 		unbundle: true,
 	},
 	test: {

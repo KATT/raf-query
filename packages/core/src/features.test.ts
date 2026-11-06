@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { action, invalidateOnAction } from "./action.ts";
-import { mount } from "./client.ts";
+import { feature, mount } from "./client.ts";
 import {
 	entryOf,
 	fetchEntry,
@@ -30,16 +30,16 @@ function browser() {
 	return { document, window };
 }
 
-function counter(options: { readonly refetchInterval?: number } = {}) {
+function counter(options?: { readonly refetchInterval?: number }) {
 	let calls = 0;
 	const factory = () =>
 		queryOptions({
+			meta: options,
 			queryFn: () => {
 				calls += 1;
 				return calls;
 			},
 			queryKey: [issues, "count"],
-			...options,
 		});
 	return { calls: () => calls, factory };
 }
@@ -123,6 +123,16 @@ describe("polling", () => {
 		remove(entry);
 		advance(client, 500);
 		expect(source.calls()).toBe(1);
+	});
+
+	it("leaves queries without an interval alone, next to declaration-only features", () => {
+		const client = testClient({ features: [polling(), feature()] });
+		const source = counter();
+		subscribeEntry(entryOf(client, source.factory, undefined), () => {});
+		using _mounted = { [Symbol.dispose]: mount(client) };
+		advance(client, 500);
+
+		expect(source.calls()).toBe(0);
 	});
 });
 

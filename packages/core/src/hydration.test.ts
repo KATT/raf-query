@@ -9,9 +9,7 @@ import {
 	hydrate,
 	RedactedError,
 } from "./hydration.ts";
-import { tagged } from "./keys.ts";
 import {
-	author,
 	createBackend,
 	flush,
 	issues,
@@ -30,7 +28,7 @@ function send(state: DehydratedState): DehydratedState {
 }
 
 describe("dehydrate and hydrate", () => {
-	it("moves data, with its key, tags and time", async () => {
+	it("moves data, with its key and time", async () => {
 		const backend = createBackend();
 		const server = testClient({ isServer: true });
 		const done = fetchEntry(entryOf(server, backend.issueQuery, { id: 1 }));
@@ -41,8 +39,7 @@ describe("dehydrate and hydrate", () => {
 		expect(state.entries).toEqual([
 			{
 				data: { author: "ada", id: 1, title: "First" },
-				queryKey: [issues, "byId", { id: 1 }],
-				tags: [tagged(author, "ada"), "author"],
+				queryKey: [{ group: "issues" }, "byId", { id: 1 }],
 				updatedAt: server.clock.now(),
 			},
 		]);

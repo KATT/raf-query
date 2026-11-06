@@ -1,8 +1,15 @@
 import { describe, expectTypeOf, it } from "vitest";
 
-import { createQueryClient } from "./client.ts";
+import {
+	createQueryClient,
+	feature,
+	link,
+	type QueryClient,
+} from "./client.ts";
 import type { Fail } from "./fail.ts";
-import { type Tag, tagged } from "./keys.ts";
+import { group, groups, tag } from "./groups.ts";
+import type { QueryInfo } from "./keys.ts";
+import { retry } from "./links.ts";
 import {
 	type DefinedQueryHandle,
 	ensureEntry,
@@ -18,11 +25,13 @@ import {
 	type InputOf,
 	queryOptions,
 } from "./options.ts";
+import type { Recommended } from "./presets.ts";
+import { defType, type RootOf } from "./root.ts";
 import { author, createBackend, featured, issues } from "./test-utils.ts";
 import { getData, invalidateMany, invalidateOne, setData } from "./verbs.ts";
 
 const backend = createBackend();
-const client = createQueryClient();
+const client = createQueryClient({ features: [groups()] });
 const settings = () =>
 	queryOptions({
 		queryFn: () => ({ theme: "dark" }),
@@ -94,17 +103,27 @@ describe("waterfall types", () => {
 describe("verb types", () => {
 	it("check inputs, partial inputs and tag parameters", () => {
 		void invalidateOne(client, titles, { id: 1 });
-		void invalidateOne(client, author, "ada");
+		void invalidateMany(client, author, "ada");
+		void invalidateMany(client, author);
 		void invalidateMany(client, titles, {});
 		void invalidateMany(client, issues);
 		void invalidateMany(client, featured);
 		// @ts-expect-error -- a partial input still has the factory's types
 		void invalidateMany(client, titles, { id: "1" });
-		// @ts-expect-error -- a tag parameter has its key's type
-		void invalidateOne(client, author, 1);
+		// @ts-expect-error -- a tag parameter is typed
+		void invalidateMany(client, author, 1);
+		// @ts-expect-error -- a group takes no parameter
+		void invalidateMany(client, issues, "x");
 		// @ts-expect-error -- invalidateOne needs the full input
 		void invalidateOne(client, titles);
-		expectTypeOf(tagged(author, "ada")).toEqualTypeOf<Tag>();
+		const wrong = () => {
+			// @ts-expect-error -- invalidateOne takes factories only
+			void invalidateOne(client, author, "ada");
+			// @ts-expect-error -- raw strings aren't targets
+			void invalidateMany(client, "issues");
+		};
+		expectTypeOf(wrong).toBeFunction();
+		expectTypeOf(author("ada")).toEqualTypeOf<string>();
 	});
 
 	it("type data before select", () => {
@@ -114,5 +133,152 @@ describe("verb types", () => {
 		setData(client, titles, { id: 1 }, (previous) => ({
 			title: previous?.title ?? "",
 		}));
+	});
+});
+
+describe("root types", () => {
+	const ownership = feature<{
+		readonly meta: { readonly owner?: "posts-team" | "users-team" };
+	}>();
+	const makeQueryClient = () =>
+		createQueryClient({
+			features: [groups(), ownership],
+			links: [retry()],
+			staleTime: 30_000,
+		});
+	const posts = group("posts");
+	const writer = tag<string>("writer");
+	const postById = (input: {
+		readonly authorId: string;
+		readonly id: string;
+	}) =>
+		queryOptions({
+			def: defType<typeof makeQueryClient>(),
+			meta: {
+				owner: "posts-team",
+				retry: false,
+				tags: [writer(input.authorId)],
+			},
+			queryFn: async () => ({ title: "x" }),
+			queryKey: [posts, "byId", input],
+		});
+
+	it("give a root the meta its parts declare", () => {
+		expectTypeOf<RootOf<typeof makeQueryClient>>().toEqualTypeOf<{
+			readonly meta: {
+				readonly owner: "posts-team" | "users-team" | undefined;
+				readonly retry: number | false | undefined;
+				readonly tags:
+					| ReadonlyArray<string>
+					| ((data: never) => ReadonlyArray<string>)
+					| undefined;
+			};
+		}>();
+		expectTypeOf<
+			RootOf<
+				ReturnType<
+					typeof createQueryClient<
+						Recommended["links"],
+						Recommended["features"]
+					>
+				>
+			>
+		>().toEqualTypeOf<{
+			readonly meta: {
+				readonly refetchInterval: number | false | undefined;
+				readonly retry: number | false | undefined;
+			};
+		}>();
+		expectTypeOf<
+			keyof RootOf<typeof createQueryClient<[], []>>["meta"]
+		>().toEqualTypeOf<never>();
+	});
+
+	it("type a link's op by what it declares", () => {
+		const traced = link<{ readonly meta: { readonly traceId?: string } }>(
+			(op, next) => {
+				expectTypeOf(op.meta.traceId).toEqualTypeOf<string | undefined>();
+				return next(op);
+			},
+		);
+		const qc = () => createQueryClient({ links: [traced] });
+		expectTypeOf<RootOf<typeof qc>>().toEqualTypeOf<{
+			readonly meta: { readonly traceId: string | undefined };
+		}>();
+	});
+
+	it("check meta against the root", () => {
+		const wrong = () => {
+			queryOptions({
+				def: defType<typeof makeQueryClient>(),
+				// @ts-expect-error -- no link or feature in the root reads `cacheFor`
+				meta: { cacheFor: 1000 },
+				queryFn: async () => 1,
+				queryKey: [posts, "x"],
+			});
+			queryOptions({
+				def: defType<typeof makeQueryClient>(),
+				// @ts-expect-error -- meta fields have their part's types
+				meta: { owner: "nobody" },
+				queryFn: async () => 1,
+				queryKey: [posts, "y"],
+			});
+		};
+		expectTypeOf(wrong).toBeFunction();
+		expectTypeOf(postById).returns.toHaveProperty("meta");
+	});
+
+	it("take the root's clients and targets", () => {
+		const qc = makeQueryClient();
+		void invalidateOne(qc, postById, { authorId: "a", id: "1" });
+		void invalidateMany(qc, postById, { authorId: "a" });
+		void invalidateMany(qc, posts);
+		void invalidateMany(qc, writer, "a");
+		void invalidateMany(qc, {
+			where: (query: QueryInfo<{ readonly owner: string | undefined }>) =>
+				query.meta.owner === "users-team",
+		});
+		void invalidateMany(qc, titles);
+		const bare = createQueryClient({ links: [retry()] });
+		const wrong = () => {
+			// @ts-expect-error -- postById belongs to makeQueryClient's root
+			void invalidateMany(bare, postById);
+			// @ts-expect-error -- `writer` reads meta.tags, which nothing in this root declares
+			void invalidateMany(bare, writer, "a");
+		};
+		void invalidateMany(bare, posts);
+		expectTypeOf(wrong).toBeFunction();
+	});
+
+	it("keep roots apart when one has fewer parts", () => {
+		const fewer = () => createQueryClient({ features: [groups()] });
+		const more = () =>
+			createQueryClient({ features: [groups()], links: [retry()] });
+		const ofFewer = () =>
+			queryOptions({
+				def: defType<typeof fewer>(),
+				queryFn: async () => 1,
+				queryKey: ["fewer"],
+			});
+		const wrong = () => {
+			// @ts-expect-error -- a root with more parts isn't the same root
+			void invalidateMany(more(), ofFewer);
+			// @ts-expect-error -- nor is one with fewer
+			expectTypeOf(fewer()).toEqualTypeOf<ReturnType<typeof more>>();
+		};
+		expectTypeOf(wrong).toBeFunction();
+		expectTypeOf<ReturnType<typeof fewer>>().not.toExtend<
+			ReturnType<typeof more>
+		>();
+		expectTypeOf<ReturnType<typeof more>>().not.toExtend<
+			ReturnType<typeof fewer>
+		>();
+	});
+
+	it("take any root on a bare QueryClient", () => {
+		const anyClient: QueryClient = makeQueryClient();
+		void invalidateMany(anyClient, writer, "a");
+		void invalidateMany(anyClient, postById);
+		expectTypeOf(anyClient).toExtend<QueryClient>();
 	});
 });

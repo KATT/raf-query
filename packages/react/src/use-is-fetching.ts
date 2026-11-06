@@ -1,13 +1,13 @@
-import { isFetching, type Target } from "@raf-query/core";
+import { type AnyFactory, type AnyTarget, isFetching } from "@raf-query/core";
 import { useCallback, useSyncExternalStore } from "react";
 
 import { useQueryClient } from "./provider.tsx";
 
 /**
- * How many queries have a request in flight: all of them, or a group's, a
- * tag's or a factory's. For a global loading indicator.
+ * How many queries have a request in flight: all of them, a factory's, or
+ * those a target (such as a group) matches. For a global loading indicator.
  */
-export function useIsFetching(target?: Target): number {
+export function useIsFetching(target?: AnyFactory | AnyTarget): number {
 	const client = useQueryClient();
 	const subscribe = useCallback(
 		(onChange: () => void) =>

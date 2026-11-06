@@ -6,6 +6,7 @@ import type {
 	QueryFunctionContext,
 	QueryOptions,
 } from "./options.ts";
+import type { DefaultTypes, RootTypes } from "./root.ts";
 
 /** A paged query's data. */
 export interface InfiniteData<TPage, TParam = unknown> {
@@ -32,7 +33,8 @@ export interface InfiniteOptions<
 	TPage,
 	TParam,
 	TData,
-> extends BaseOptions<TKey, InfiniteData<TPage, TParam>> {
+	TTypes extends RootTypes = RootTypes,
+> extends BaseOptions<TKey, TTypes> {
 	readonly getNextPageParam: PageParamFn<TPage, TParam>;
 	readonly getPreviousPageParam?: PageParamFn<TPage, TParam>;
 	readonly initialPageParam: TParam;
@@ -48,9 +50,10 @@ export type InfiniteQueryOptions<
 	TParam = unknown,
 	TFail = unknown,
 	TData = InfiniteData<TPage, TParam>,
-> = QueryOptions<TKey, InfiniteData<TPage, TParam>, TFail, TData> &
+	TTypes extends RootTypes = RootTypes,
+> = QueryOptions<TKey, InfiniteData<TPage, TParam>, TFail, TData, TTypes> &
 	Pick<
-		InfiniteOptions<TKey, TPage, TParam, TData>,
+		InfiniteOptions<TKey, TPage, TParam, TData, TTypes>,
 		| "getNextPageParam"
 		| "getPreviousPageParam"
 		| "initialPageParam"
@@ -76,8 +79,15 @@ export function infiniteQueryOptions<
 	TResult,
 	TParam,
 	TData = InfiniteData<Exclude<TResult, Fail>, TParam>,
+	TTypes extends RootTypes = DefaultTypes,
 >(
-	options: InfiniteOptions<TKey, Exclude<TResult, Fail>, TParam, TData> & {
+	options: InfiniteOptions<
+		TKey,
+		Exclude<TResult, Fail>,
+		TParam,
+		TData,
+		TTypes
+	> & {
 		readonly queryFn: (
 			context: InfiniteQueryFunctionContext<TKey, TParam>,
 		) => PromiseLike<TResult> | TResult;
@@ -87,7 +97,8 @@ export function infiniteQueryOptions<
 	Exclude<TResult, Fail>,
 	TParam,
 	Extract<TResult, Fail>,
-	TData
+	TData,
+	TTypes
 > {
 	return {
 		...options,

@@ -8,24 +8,27 @@ import {
 	type Outcome,
 	QueryDisabledError,
 } from "./entry.ts";
-import { hashKey } from "./keys.ts";
+import { hashKey, plainKey, type QueryKey } from "./keys.ts";
 import {
 	type DataOf,
 	type InputArgs,
 	type InputOf,
-	type KeyOf,
 	optionsOf,
 	type QueryFactory,
 } from "./options.ts";
 
+declare const factoryBrand: unique symbol;
+
 /**
- * A small serializable reference to a query: its key and its factory's
- * input. It carries no data; readers get that from the cache. Handles of
- * different factories have different types.
+ * A small serializable reference to a query: its factory's input, and its
+ * key as plain data (functions, like a group's `where`, dropped). It carries
+ * no data; readers get that from the cache. Handles of different factories
+ * have different types.
  */
 export interface QueryHandle<TFactory extends QueryFactory = QueryFactory> {
+	readonly [factoryBrand]?: TFactory;
 	readonly input: InputOf<TFactory>;
-	readonly queryKey: KeyOf<TFactory>;
+	readonly queryKey: QueryKey;
 }
 
 /**
@@ -248,7 +251,7 @@ export async function load<const TEntries extends Record<string, LoadEntry>>(
 	const handles: Record<string, unknown> = {};
 	const data: Record<string, unknown> = {};
 	for (const one of started) {
-		const handle = { input: one.item.input, queryKey: one.entry.key };
+		const handle = { input: one.item.input, queryKey: plainKey(one.entry.key) };
 		if (one.wait) {
 			handles[one.name] = { ...handle, defined: true };
 			data[one.name] = readData(one.entry);
@@ -275,7 +278,10 @@ function toHandle<TFactory extends QueryFactory>(
 ): QueryHandle<TFactory> {
 	const queryKey = optionsOf(factory, input).queryKey;
 	// SAFETY: the key comes from this factory.
-	const handle = { input, queryKey } as QueryHandle<TFactory>;
+	const handle = {
+		input,
+		queryKey: plainKey(queryKey),
+	} as QueryHandle<TFactory>;
 	waterfallHandles.add(handle);
 	return handle;
 }

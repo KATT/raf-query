@@ -1,11 +1,11 @@
 import {
 	createQueryClient,
 	fail,
-	type Group,
 	type QueryClient,
 	queryOptions,
 	waterfallHandle,
 } from "@raf-query/core";
+import { group } from "@raf-query/core/groups";
 import { QueryClientProvider, useQuery } from "@raf-query/react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { Component, type ReactNode, use } from "react";
@@ -13,7 +13,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { QueryBoundary } from "./index.tsx";
 
-const issues: Group = { group: "issues" };
+const issues = group("issues");
 
 function createBackend() {
 	const titles = new Map<number, string>([[1, "First"]]);

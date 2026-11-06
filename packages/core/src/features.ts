@@ -1,6 +1,6 @@
-import type { Feature, QueryClient } from "./client.ts";
+import { type Feature, feature, type QueryClient } from "./client.ts";
 import { type Entry, fetchEntry, isEnabled, isStale } from "./entry.ts";
-import { isNumber } from "./guards.ts";
+import { isNumber, isObject } from "./guards.ts";
 
 function refetchStaleReads(client: QueryClient) {
 	for (const entry of client["~entries"].values()) {
@@ -32,16 +32,29 @@ export function reconnectRefetch(): Feature {
 	};
 }
 
-/** Refetch read queries every `refetchInterval` ms (a query option). */
-export function polling(): Feature {
-	return (client, signal) => {
+/** What `polling()` reads from a query's `meta`. */
+export interface PollingMeta {
+	/** Refetch every `n` ms while the query is read. */
+	readonly refetchInterval?: number | false;
+}
+
+function intervalOf(entry: Entry): unknown {
+	const meta = entry.options?.meta;
+	return isObject(meta) && "refetchInterval" in meta
+		? meta.refetchInterval
+		: undefined;
+}
+
+/** Refetch read queries every `meta.refetchInterval` ms. */
+export function polling(): Feature<{ readonly meta: PollingMeta }> {
+	return feature<{ readonly meta: PollingMeta }>((client, signal) => {
 		const timers = new Map<Entry, unknown>();
 		const stop = (entry: Entry) => {
 			client.clock.clearTimeout(timers.get(entry));
 			timers.delete(entry);
 		};
 		const sync = (entry: Entry) => {
-			const interval = entry.options?.refetchInterval;
+			const interval = intervalOf(entry);
 			const wanted =
 				entry.readers.size > 0 &&
 				isNumber(interval) &&
@@ -73,5 +86,5 @@ export function polling(): Feature {
 				stop(entry);
 			}
 		});
-	};
+	});
 }

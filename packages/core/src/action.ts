@@ -1,7 +1,8 @@
 import type { Feature, QueryClient } from "./client.ts";
-import type { Group, TagDef, Target } from "./keys.ts";
+import { invalidate } from "./entry.ts";
+import { type AnyFactory, type AnyTarget, stampFor } from "./keys.ts";
 import type { QueryFactory } from "./options.ts";
-import { invalidateAll, invalidateMany } from "./verbs.ts";
+import { invalidateAll } from "./verbs.ts";
 
 interface Registration {
 	readonly client: QueryClient;
@@ -38,8 +39,8 @@ export function invalidateOnAction(
 }
 
 export interface ActionOptions {
-	/** What the action changes: groups, tags or factories, never raw keys. */
-	readonly invalidates?: ReadonlyArray<Group | QueryFactory | TagDef<never>>;
+	/** What the action changes: factories or targets (groups, tags), never raw keys. */
+	readonly invalidates?: ReadonlyArray<AnyTarget | QueryFactory>;
 }
 
 /**
@@ -58,16 +59,15 @@ export function action<TArgs extends Array<unknown>, TResult>(
 ): (...args: TArgs) => Promise<TResult> {
 	return async (...args) => {
 		const result = await write(...args);
-		const targets: ReadonlyArray<Target> | undefined = options.invalidates;
+		const targets: ReadonlyArray<AnyFactory | AnyTarget> | undefined =
+			options.invalidates;
 		await Promise.all(
 			[...registered].map((registration) => {
 				if (targets) {
 					return Promise.all(
 						targets.map((target) =>
-							invalidateMany(
-								registration.client,
-								// SAFETY: every target kind goes through the same implementation.
-								target as Group,
+							invalidate(registration.client, (at) =>
+								stampFor(target, undefined, at),
 							),
 						),
 					);
