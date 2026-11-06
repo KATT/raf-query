@@ -1,9 +1,11 @@
 import {
-	dehydrate,
 	HydrationBoundary,
+	load,
+	prefetchEntry,
 	type QueryHandle,
 	useQuery,
 } from "@raf-query/react";
+import { dehydrate } from "@raf-query/react/hydration";
 import { Suspense, use } from "react";
 
 import type { PostComment } from "~/api.ts";
@@ -21,13 +23,15 @@ declare function PostSkeleton(): React.ReactNode;
 
 // #region hero
 // #region loader
-export function loader(args: Route.LoaderArgs) {
+export async function loader(args: Route.LoaderArgs) {
 	const qc = args.context.get(queryClientContext);
 	const { slug } = args.params;
 	// Never waits: both load while the page renders.
-	const comments = qc.prefetch(commentsQuery, { slug });
-	const post = qc.prefetch(postQuery, { slug });
-	return { comments, dehydratedState: dehydrate(qc), post };
+	const [handles] = await load(qc, {
+		comments: prefetchEntry(commentsQuery, { slug }),
+		post: prefetchEntry(postQuery, { slug }),
+	});
+	return { ...handles, dehydratedState: dehydrate(qc) };
 }
 // #endregion loader
 

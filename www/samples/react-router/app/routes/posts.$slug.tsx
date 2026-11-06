@@ -1,10 +1,14 @@
 import {
-	dehydrate,
+	type DefinedQueryHandle,
+	fetchEntry,
 	HydrationBoundary,
-	type QueryHandleWithData,
+	load,
+	prefetchEntry,
 	useQuery,
 } from "@raf-query/react";
+import { dehydrate } from "@raf-query/react/hydration";
 import { Suspense } from "react";
+import { redirect } from "react-router";
 
 import { Comments, CommentsSkeleton } from "~/components/comments.tsx";
 import { commentsQuery, postQuery } from "~/queries.ts";
@@ -16,15 +20,17 @@ import type { Route } from "./+types/posts.$slug";
 export async function loader(args: Route.LoaderArgs) {
 	const qc = args.context.get(queryClientContext);
 	const { slug } = args.params;
-	// Doesn't wait: the comments stream in after the page renders.
-	const comments = qc.prefetch(commentsQuery, { slug });
-	// Waits, so the post is in the page's first HTML.
-	const post = await qc.fetch(postQuery, { slug });
-	return {
-		comments,
-		dehydratedState: dehydrate(qc),
-		post,
-	};
+	const [handles, data] = await load(qc, {
+		// Doesn't wait: the comments stream in after the page renders.
+		comments: prefetchEntry(commentsQuery, { slug }),
+		// Waits, so the post is in the page's first HTML.
+		post: fetchEntry(postQuery, { slug }),
+	});
+	// `data` holds what the loader waited for: here, the post.
+	if (data.post.slug !== slug) {
+		throw redirect(`/posts/${data.post.slug}`);
+	}
+	return { ...handles, dehydratedState: dehydrate(qc) };
 }
 // #endregion loader
 
@@ -43,7 +49,7 @@ export default function PostPage(props: Route.ComponentProps) {
 	);
 }
 
-function Post(props: { handle: QueryHandleWithData<typeof postQuery> }) {
+function Post(props: { handle: DefinedQueryHandle<typeof postQuery> }) {
 	// The loader waited for the post, so this is the post, not a promise.
 	const [post] = useQuery(postQuery, props.handle);
 	//     ^?

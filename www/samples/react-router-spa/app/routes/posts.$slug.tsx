@@ -1,4 +1,10 @@
-import { type QueryHandleWithData, useQuery } from "@raf-query/react";
+import {
+	type DefinedQueryHandle,
+	ensureEntry,
+	load,
+	prefetchEntry,
+	useQuery,
+} from "@raf-query/react";
 import { Suspense } from "react";
 
 import { Comments, CommentsSkeleton } from "~/components/comments.tsx";
@@ -10,12 +16,14 @@ import type { Route } from "./+types/posts.$slug";
 // #region loader
 export async function clientLoader(args: Route.ClientLoaderArgs) {
 	const { slug } = args.params;
-	// Doesn't wait: the comments stream in after the page renders.
-	const comments = queryClient.prefetch(commentsQuery, { slug });
-	// Waits on the first visit only. Coming back shows the cached post at
-	// once, and refetches it behind the page once it's stale.
-	const post = await queryClient.ensure(postQuery, { slug });
-	return { comments, post };
+	const [handles] = await load(queryClient, {
+		// Doesn't wait: the comments stream in after the page renders.
+		comments: prefetchEntry(commentsQuery, { slug }),
+		// Waits on the first visit only. Coming back shows the cached post at
+		// once, and refetches it behind the page once it's stale.
+		post: ensureEntry(postQuery, { slug }),
+	});
+	return handles;
 }
 // #endregion loader
 
@@ -32,7 +40,7 @@ export default function PostPage(props: Route.ComponentProps) {
 	);
 }
 
-function Post(props: { handle: QueryHandleWithData<typeof postQuery> }) {
+function Post(props: { handle: DefinedQueryHandle<typeof postQuery> }) {
 	// The loader waited for the post, so this is the post, not a promise.
 	const [post] = useQuery(postQuery, props.handle);
 	//     ^?

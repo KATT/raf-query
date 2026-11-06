@@ -1,17 +1,16 @@
-import { QueryProvider } from "@raf-query/react";
 import { QueryDevtools } from "@raf-query/react/devtools";
 import type { ReactNode } from "react";
 
-import { queryClientConfig } from "~/query-client.ts";
+import { AppQueryProvider } from "~/components/query-provider.tsx";
 
 export default function RootLayout(props: { children: ReactNode }) {
 	return (
 		<html lang="en">
 			<body>
-				<QueryProvider config={queryClientConfig}>
+				<AppQueryProvider>
 					{props.children}
 					{process.env.NODE_ENV !== "production" ? <QueryDevtools /> : null}
-				</QueryProvider>
+				</AppQueryProvider>
 			</body>
 		</html>
 	);

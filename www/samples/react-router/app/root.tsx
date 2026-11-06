@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@raf-query/react";
+import {
+	createQueryClient,
+	QueryClientProvider,
+	recommended,
+} from "@raf-query/react";
 import { QueryDevtools } from "@raf-query/react/devtools";
 import { type ReactNode, useState } from "react";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
@@ -10,7 +14,7 @@ import type { Route } from "./+types/root";
 // #region middleware
 export const middleware: Array<Route.MiddlewareFunction> = [
 	({ context }) => {
-		context.set(queryClientContext, new QueryClient());
+		context.set(queryClientContext, createQueryClient());
 	},
 ];
 // #endregion middleware
@@ -34,8 +38,8 @@ export function Layout(props: { readonly children: ReactNode }) {
 
 // #region app
 export default function App() {
-	const [queryClient] = useState(
-		() => new QueryClient({ defaults: { staleTime: 5000 } }),
+	const [queryClient] = useState(() =>
+		createQueryClient({ ...recommended(), staleTime: 5000 }),
 	);
 	return (
 		<QueryClientProvider client={queryClient}>

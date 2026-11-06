@@ -17,19 +17,23 @@ A query client per request for server components, scoped by React's [`cache()`](
 nextjs/src/query-client.ts
 ```
 
-`QueryProvider` in the root layout, for client components:
+Client components get theirs from `QueryProvider`, which creates one client per server render and one per browser tab. Links and features, such as the ones [`recommended()`](./important-defaults.md) returns, are functions, which a server component can't pass to a client component. So build the config in a client component:
+
+```sample
+nextjs/src/components/query-provider.tsx
+```
+
+And render that in the root layout:
 
 ```sample
 nextjs/src/app/layout.tsx
 ```
 
-`QueryProvider` creates one client per server render and one per browser tab. Its `config` must be serializable, since it crosses from the server component layout to the client.
-
 Mount DevTools only when `process.env.NODE_ENV !== "production"` so the bundler drops the panel from production builds. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
 
 ## Pages
 
-A server component starts queries, and wraps what it renders in a `HydrationBoundary` that sends the request client's entries to the browser:
+A server component starts queries with `load`, and wraps what it renders in a `HydrationBoundary` that sends the request client's entries to the browser:
 
 ```sample
 nextjs/src/app/(blog)/posts/[slug]/page.tsx
@@ -46,8 +50,22 @@ nextjs/src/app/(blog)/components/comments.tsx#component
 - Render a `HydrationBoundary` in each server component that starts queries for client components. Entries already sent in this request are skipped, so nesting them is fine.
 - `client` works only in server components. The bundler resolves `@raf-query/react` with the `react-server` [export condition](https://nodejs.org/api/packages.html#conditional-exports) there, which picks the `HydrationBoundary` that dehydrates the client. Client components get the one that takes a dehydrated `state`, as in [React Router](./react-router.md).
 - Pending entries stream as promises through the RSC payload: the page's shell renders while `comments` loads.
-- `await qc.fetch(...)` returns a handle with the `data`: render `post.data` in the server component, and pass `post` to client components that read the query: typed `QueryHandleWithData`, they get the data from `useQuery` without a promise. The data crosses once: the RSC payload references the `HydrationBoundary`'s copy.
-- Use `prefetch` and `fetch` in server components, not `ensure`. Each request's client starts empty, so `ensure` waits for the request every time, exactly like `fetch`. See [Starting queries](./starting-queries.md#server-only-code).
+- `options` takes [`dehydrate`](./ssr-and-hydration.md)'s options, such as `keepErrors` and `filter`.
+- Use `prefetchEntry` and `fetchEntry` in server components, not `ensureEntry`. Each request's client starts empty, so `ensureEntry` waits for the request every time, exactly like `fetchEntry`. See [Starting queries](./starting-queries.md).
+
+### Data in the server component
+
+To render a query's data in the server component itself, wait for it with `fetchEntry`. `load` resolves to the handles and the data of the entries it waited for:
+
+```sample
+nextjs/src/docs/nextjs.fetch.tsx#fetch
+```
+
+`handles.post` is a `DefinedQueryHandle`: a client component that reads it gets the data from `useQuery`, without a promise, and follows later refetches. The handle carries no data: the post crosses once, in the `HydrationBoundary`'s entries.
+
+```sample
+nextjs/src/app/(blog)/components/post-title.tsx#component
+```
 
 ## Pending UI
 
@@ -71,7 +89,7 @@ Changing search params with [`<Link>`](https://nextjs.org/docs/app/api-reference
 
 ## Queries that start in the browser
 
-`QueryProvider`'s server render starts no requests. A client component reading a query that no `HydrationBoundary` sent renders its Suspense fallback on the server, and the query loads in the browser. This is what happens with [`useWaterfall`](./request-waterfalls.md#render-time-inputs-usewaterfall) in a client component. That boundary renders in the browser through React's error recovery, with the digest Next.js uses for `ssr: false`, so Next.js doesn't report it. Other RSC frameworks see a recoverable error.
+`QueryProvider`'s server render starts no requests. A client component reading a query that no `HydrationBoundary` sent renders its Suspense fallback on the server, and the query loads in the browser. This is what happens when a client component reads a handle from [`waterfallHandle`](./request-waterfalls.md). That boundary renders in the browser through React's error recovery, with the digest Next.js uses for `ssr: false`, so Next.js doesn't report it. Other RSC frameworks see a recoverable error.
 
 ## Server and browser requests
 
@@ -139,6 +157,8 @@ Write with a server action, then invalidate in the browser:
 ```sample
 nextjs/src/components/update-issue-form.tsx#form
 ```
+
+`invalidateOne` resolves when the refetch of the query on screen settles, so the form stays pending until the new data shows. `action(updateIssue, { invalidates: [issueQuery] })` wraps the server action to do both, on a browser client with the `invalidateOnAction()` feature, which `recommended()` includes. See [Mutations](./mutations.md).
 
 If the action also calls [`revalidatePath`](https://nextjs.org/docs/app/api-reference/functions/revalidatePath) or [`refresh()`](https://nextjs.org/docs/app/api-reference/functions/refresh), server components render again and send their entries, and the browser keeps whichever copy is newest.
 
