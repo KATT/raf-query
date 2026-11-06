@@ -1,65 +1,45 @@
 ---
 title: Testing
-description: Test components and loaders that use raf-query with a fresh client per test, seeded data, a fake clock and a fake page.
+description: Test components and loaders that use raf-query with a fresh client per test, seeded data, an injectable clock and real browser events.
 section: Guides
 order: 21
 ---
 
-Components that read queries need a `QueryClient` and handles. In tests, create both directly. There's nothing to mock in raf-query itself: mock your API, or seed the cache.
+Components that read queries need a query client and handles. In tests, create both directly. There's nothing to mock in raf-query itself: mock your API, or seed the cache. The examples use [Vitest](https://vitest.dev) and [Testing Library](https://testing-library.com/docs/react-testing-library/intro/), but nothing depends on them.
 
 ## A client per test
 
-Create a new client for every test, so no cached data leaks between them. Turn retries off, or a failing request takes seconds to fail:
+Create a new client for every test, so no cached data leaks between them:
 
-```tsx twoslash
-import { afterEach, beforeEach } from "@effect/vitest";
-import { act, render } from "@testing-library/react";
-import type { ReactNode } from "react";
-// ---cut---
-import { QueryClient, QueryClientProvider } from "@raf-query/react";
-
-let queryClient: QueryClient;
-
-beforeEach(() => {
-	queryClient = new QueryClient({ defaults: { retry: false } });
-});
-
-afterEach(async () => {
-	await queryClient.dispose();
-});
-
-function renderWithClient(ui: ReactNode) {
-	return act(async () =>
-		render(
-			<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
-		),
-	);
-}
+```sample
+tanstack-start/src/docs/testing.tsx#a-client-per-test
 ```
 
-`dispose()` interrupts in-flight requests and timers, so nothing runs after the test ends.
+- A client starts with no links and no features: no retries, no refetching on focus, no polling. A failing request fails at once. Add only the parts a test is about. If your app makes its client in a function, let that function take the parts, so tests can leave `retry()` out.
+- `removeAll` drops every query and aborts requests in flight, so nothing runs after the test ends. Features stop when the `QueryClientProvider` unmounts, which Testing Library's `cleanup` does after each test.
+- `isServer: false` makes it a browser client even where `window` isn't defined. See [Server rendering](#server-rendering).
 
-Render inside an awaited, async `act`. A tree that suspends inside a sync `act`, which `render` on its own uses, is never retried by React once its data lands, with or without a Suspense boundary. The same holds for any `use(promise)`, not only raf-query's.
+Render inside an awaited, async [`act`](https://react.dev/reference/react/act). A tree that suspends inside a sync `act`, which `render` on its own uses, is never retried by React once its data lands, with or without a Suspense boundary. The same holds for any `use(promise)`, not only raf-query's.
 
 ## Testing a component
 
-A component takes a handle as a prop, so a test can start the query itself, the same way a loader would:
+A component takes a handle as a prop, so a test can start the query itself with `load`, the same way a loader would:
 
 ```sample
 tanstack-start/src/docs/testing.tsx#testing-a-component
 ```
 
-For a component that takes a `QueryHandleWithData`, pass `await queryClient.ensure(...)` instead.
+For a component that takes a `DefinedQueryHandle`, load the query with `ensureEntry` or `fetchEntry` instead.
 
 ## Seeding the cache
 
-To render with known data and no request at all, write it with `setData` before rendering:
+To render with known data and no request at all, write it with `setData` before loading:
 
 ```sample
 tanstack-start/src/docs/testing.ts#seeding-the-cache
 ```
 
-Data written with `setData` is fresh, so `ensure` resolves at once without calling the `queryFn`.
+`ensureEntry` resolves at once when the cache has data. It also refetches stale data in the background, and data written with `setData` is fresh only for `staleTime`, which is `0` by default: give the test client a `staleTime` so the seeded data stays as it is.
 
 ## Mocking the network
 
@@ -77,52 +57,34 @@ A loader is a function of its context. Export it from the route file, call it wi
 tanstack-start/src/docs/testing.loader-test.ts#testing-loaders
 ```
 
-## Time, focus and the network
+`getData` reads what an ensured or fetched entry loaded, and `isFetching(queryClient, target)` counts the requests still in flight, such as a prefetch's.
 
-Staleness, garbage collection, retries and polling depend on time; focus refetching and offline retries depend on the page. raf-query reads both from Effect services, so a test can replace them instead of mocking globals:
+## Time
 
-- **Time** comes from Effect's `Clock`. Use `TestClock` to move time forward instantly.
-- **The page** comes from the `Platform` service: whether it's visible, whether it's online, and its focus and reconnect events.
-
-```ts twoslash
-import { Platform, QueryClient } from "@raf-query/react";
-import { Layer } from "effect";
-// ---cut---
-const listeners = new Set<(event: "focus" | "online") => void>();
-let visible = true;
-
-const FakePlatform = Layer.succeed(Platform.Platform, {
-	isOnlineUnsafe: () => true,
-	isServer: false,
-	isVisibleUnsafe: () => visible,
-	subscribeUnsafe(listener) {
-		listeners.add(listener);
-		return () => listeners.delete(listener);
-	},
-});
-
-function focus() {
-	visible = true;
-	for (const listener of listeners) listener("focus");
-}
-
-const queryClient = new QueryClient({ layer: FakePlatform });
-```
-
-With a fake clock, a test of `staleTime` or `gcTime` runs in milliseconds. [`@effect/vitest`](https://effect.website/docs/v4/api/vitest)'s `it.effect` provides `TestClock`:
+Staleness, garbage collection, retry delays, timeouts and polling depend on time. The client reads it from its `clock`: `now()`, `setTimeout` and `clearTimeout`. Pass your own to `createQueryClient({ clock })`, and a test of `gcTime` or `staleTime` runs in milliseconds, without touching globals:
 
 ```sample
-tanstack-start/src/docs/testing.ts#time-focus-and-the-network
+tanstack-start/src/docs/testing.ts#time
 ```
 
-In a plain Vitest test without Effect, `vi.useFakeTimers()` also works: the default clock reads `Date.now()` and schedules with `setTimeout`.
+The default clock calls `Date.now()` and `setTimeout` each time, so [`vi.useFakeTimers()`](https://vitest.dev/api/vi.html#vi-usefaketimers) works as well.
+
+## Focus and the network
+
+`focusRefetch()` and `reconnectRefetch()` listen to the page's own events, so a test in a DOM environment fires them. Give the client the feature, render under a `QueryClientProvider` (features only run while one has the client mounted), and dispatch the event:
+
+```sample
+tanstack-start/src/docs/testing.tsx#focus-and-the-network
+```
+
+`focusRefetch()` refetches on `focus` only while `document.visibilityState` is `"visible"`. For reconnecting, dispatch `new Event("online")`. Retries wait for that event too, while `navigator.onLine` is `false`.
 
 ## Server rendering
 
-A client created where `window` isn't defined behaves as a server client: no retries, no garbage collection, cached data never stale. To test browser behavior in Node without a DOM environment, pass `isServer: false`:
+A client created where `window` isn't defined is a server client: no retries, no garbage collection, and cached data is never revalidated. To test browser behavior in Node without a DOM environment, pass `isServer: false`:
 
 ```ts twoslash
-import { QueryClient } from "@raf-query/react";
+import { createQueryClient } from "@raf-query/react";
 // ---cut---
-const queryClient = new QueryClient({ isServer: false });
+const queryClient = createQueryClient({ isServer: false });
 ```

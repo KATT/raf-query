@@ -1,17 +1,17 @@
-import { type QueryHandleWithData, useQuery } from "@raf-query/react";
+import { type DefinedQueryHandle, useQuery } from "@raf-query/react";
 import { postQuery } from "~/queries.ts";
 
-declare const loaderData: { post: QueryHandleWithData<typeof postQuery> };
+declare const loaderData: { post: DefinedQueryHandle<typeof postQuery> };
 
 declare function formatTime(value: number): string;
 
 // #region stale-data-notice
-const [post, postState] = useQuery(postQuery, loaderData.post);
+const [post, controls] = useQuery(postQuery, loaderData.post);
 
 {
-	postState.error ? (
+	controls.error ? (
 		<p role="status">
-			Couldn't refresh. Showing data from {formatTime(postState.updatedAt)}.
+			Couldn't refresh. Showing data from {formatTime(controls.updatedAt)}.
 		</p>
 	) : null;
 }

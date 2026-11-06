@@ -1,57 +1,48 @@
 ---
 title: Window focus refetching
-description: Stale queries on screen refetch when the user comes back to the tab or reconnects. How to turn it off, globally or per read.
+description: Refetch stale queries on screen when the user comes back to the tab or reconnects, with the focusRefetch() and reconnectRefetch() features, and opt queries out in meta.
 section: Guides
 order: 15
 ---
 
-When the user leaves your app and comes back, the data on screen may be out of date. raf-query refetches every **read, stale** query when the page becomes visible again, and when the browser reconnects after being offline.
+When the user leaves your app and comes back, the data on screen may be out of date. Two features refetch it:
 
-Only queries that are being read refetch, and only stale ones: data within its `staleTime` stays as it is. With the default `staleTime` of `0`, that's everything on screen.
+- `focusRefetch()` refetches every **read, stale** query when the window regains focus.
+- `reconnectRefetch()` does the same when the browser comes back online.
+
+Neither is on by default. Add them to the client, or spread `recommended()`, which has both:
+
+```sample
+tanstack-start/src/docs/window-focus-refetching.ts#the-features
+```
+
+Only queries that a component is reading refetch, and only stale ones: data within its `staleTime` stays as it is. With the default `staleTime` of `0`, that's everything on screen.
+
+Features run while a `QueryClientProvider` has the client mounted, so they only ever run in the browser.
 
 ## Turning it off
 
-For every query, in the client's defaults:
-
-```ts twoslash
-import { QueryClient } from "@raf-query/react";
-// ---cut---
-const queryClient = new QueryClient({
-	defaults: {
-		refetchOnReconnect: false,
-		refetchOnWindowFocus: false,
-	},
-});
-```
-
-For one query, in its factory:
+For every query, leave the feature out of the client:
 
 ```sample
 tanstack-start/src/docs/window-focus-refetching.ts#turning-it-off
 ```
 
-Or for one reader, in `useQuery`'s options. The query refetches on focus if any reader wants it to:
+For one query, set `meta: { refetchOnWindowFocus: false }` or `meta: { refetchOnReconnect: false }` in its factory. The features declare these fields, so a factory that names its root with `def` gets them typed only when the root has the feature: see [Query meta](./query-meta.md#typing-meta-by-its-root).
 
 ```sample
-tanstack-start/src/docs/window-focus-refetching.per-query.ts#per-query
+tanstack-start/src/docs/window-focus-refetching.ts#per-query
 ```
 
 A long `staleTime` is often the better fix: the data then refetches on focus only once it's actually old.
 
 ## What counts as focus
 
-The page counts as focused when `document.visibilityState` becomes `"visible"`: switching back to the tab, restoring the window, unlocking the phone. Clicking between two visible windows isn't a visibility change, so it doesn't refetch.
+`focusRefetch()` listens for two events:
 
-To test it by hand, switch tabs and come back. The [polling](./polling.md) demo shows it too: polling pauses while the tab is hidden.
+- the document's [`visibilitychange`](https://developer.mozilla.org/en-US/docs/Web/API/Document/visibilitychange_event) event, when [`document.visibilityState`](https://developer.mozilla.org/en-US/docs/Web/API/Document/visibilityState) becomes `"visible"`: switching back to the tab, restoring the window, unlocking the phone;
+- the window's [`focus`](https://developer.mozilla.org/en-US/docs/Web/API/Window/focus_event) event, while the page is visible: clicking back into the browser window from another app.
 
-## A custom platform
+`reconnectRefetch()` listens for the window's [`online`](https://developer.mozilla.org/en-US/docs/Web/API/Window/online_event) event.
 
-The cache learns about focus and network changes from a `Platform` service. Its default reads `window`, `document` and `navigator`. Provide your own for environments without them (React Native, an embedded webview) or to control focus in tests:
-
-```sample
-tanstack-start/src/docs/window-focus-refetching.ts#a-custom-platform
-```
-
-The cache is built on top of the client's `layer`, so the platform it provides replaces the default.
-
-See [Testing](./testing.md) for using it in tests.
+To test it by hand, switch tabs and come back. See [Testing](./testing.md#focus-and-the-network) for firing these events in tests.

@@ -1,18 +1,37 @@
-import { QueryClient } from "@raf-query/react";
-import { todosQuery } from "~/queries.ts";
+import {
+	createQueryClient,
+	getData,
+	invalidateMany,
+	invalidateOne,
+	invalidateOnAction,
+	type QueryClient,
+	recommended,
+	setData,
+} from "@raf-query/react";
 import { updatePost } from "~/api.ts";
-import { postQuery } from "~/queries.ts";
+import { postQuery, todosQuery } from "~/queries.ts";
+
+// #region the-invalidateonaction-feature
+const queryClient = createQueryClient({ features: [invalidateOnAction()] });
+// or
+const withEverything = createQueryClient({ ...recommended() });
+// #endregion
+
+declare const slug: string;
+
+declare const title: string;
+
+// #region invalidating-by-hand
+await updatePost({ slug, title });
+await invalidateOne(queryClient, postQuery, { slug });
+// #endregion
 
 declare function toggleTodoApi(id: number): Promise<void>;
 
-const qc = new QueryClient();
-
-const api = { toggleTodo: toggleTodoApi };
-
 // #region optimistic-updates-in-the-cache
-async function toggleTodo(id: number) {
-	const previous = qc.getData(todosQuery);
-	qc.setData(todosQuery, undefined, (data) => ({
+async function toggleTodo(queryClient: QueryClient, id: number) {
+	const previous = getData(queryClient, todosQuery);
+	setData(queryClient, todosQuery, undefined, (data) => ({
 		pageParams: data?.pageParams ?? [],
 		pages: (data?.pages ?? []).map((page) => ({
 			...page,
@@ -22,25 +41,22 @@ async function toggleTodo(id: number) {
 		})),
 	}));
 	try {
-		await api.toggleTodo(id);
+		await toggleTodoApi(id);
 	} catch (error) {
-		qc.setData(
+		setData(
+			queryClient,
 			todosQuery,
 			undefined,
 			previous ?? { pageParams: [], pages: [] },
 		);
 		throw error;
 	} finally {
-		await qc.invalidate(todosQuery);
+		await invalidateMany(queryClient, todosQuery);
 	}
 }
 // #endregion
 
-declare const slug: string;
-
-declare const title: string;
-
 // #region updates-from-mutation-responses
 const updated = await updatePost({ slug, title });
-qc.setData(postQuery, { slug }, updated);
+setData(queryClient, postQuery, { slug }, updated);
 // #endregion

@@ -1,10 +1,12 @@
-import { QueryClient } from "@raf-query/react";
+import { ensureEntry, load, type QueryClient } from "@raf-query/react";
 import { commentsQuery } from "~/queries.ts";
 
-const qc = new QueryClient();
+declare const queryClient: QueryClient;
 
 declare const slug: string;
 
 // #region loading-several-pages-up-front
-const comments = await qc.ensure(commentsQuery, { slug }, { pages: 2 });
+const [handles] = await load(queryClient, {
+	comments: ensureEntry(commentsQuery, { slug }, { pages: 2 }),
+});
 // #endregion

@@ -1,46 +1,44 @@
-import { Suspense } from "react";
-import { type QueryHandleWithData, useQuery } from "@raf-query/react";
-import { postQuery } from "~/queries.ts";
-import type { ReactNode } from "react";
-import { Route } from "~/routes/posts.$slug.tsx";
-import { use } from "react";
+import { type DefinedQueryHandle, useQuery } from "@raf-query/react";
+import { type ReactNode, use } from "react";
 import type { Todo } from "~/api.ts";
+import { postQuery } from "~/queries.ts";
 
-declare function PostBody(props: { readonly post: unknown }): ReactNode;
+declare const loaderData: { post: DefinedQueryHandle<typeof postQuery> };
 
-declare function PostSkeleton(): ReactNode;
+declare function CommentsSection(): ReactNode;
 
-// #region tracked-controls
+// #region reading-where-the-data-is-used
 function PostPage() {
-	const loaderData = Route.useLoaderData();
-	// Reads only the promise: doesn't re-render while refetching.
-	const [postPromise] = useQuery(postQuery, loaderData.post);
+	// Passes the handle down; doesn't read the query.
 	return (
 		<>
 			<RefreshButton handle={loaderData.post} />
-			<Suspense fallback={<PostSkeleton />}>
-				<PostBody post={postPromise} />
-			</Suspense>
+			<PostBody handle={loaderData.post} />
+			<CommentsSection />
 		</>
 	);
 }
 
 function RefreshButton(props: {
-	handle: QueryHandleWithData<typeof postQuery>;
+	handle: DefinedQueryHandle<typeof postQuery>;
 }) {
-	// Reads isFetching: re-renders when a request starts and ends.
-	const [, post] = useQuery(postQuery, props.handle);
+	const [, controls] = useQuery(postQuery, props.handle);
 	return (
-		<button disabled={post.isFetching} onClick={() => post.refetch()}>
+		<button disabled={controls.isFetching} onClick={() => controls.refetch()}>
 			Refresh
 		</button>
 	);
+}
+
+function PostBody(props: { handle: DefinedQueryHandle<typeof postQuery> }) {
+	const [post] = useQuery(postQuery, props.handle);
+	return <article>{post.body}</article>;
 }
 // #endregion
 
 declare const todosPromise: Promise<ReadonlyArray<Todo>>;
 
-// #region deriving-data
+// #region deriving-in-render
 const todos = use(todosPromise);
 const done = todos.filter((todo) => todo.done);
 // #endregion

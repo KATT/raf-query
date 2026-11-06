@@ -1,9 +1,15 @@
-import { Suspense, type ReactNode } from "react";
-import { type QueryHandle } from "@raf-query/react";
-import { CatchBoundary } from "@tanstack/react-router";
+import {
+	load,
+	prefetchEntry,
+	type QueryHandle,
+	useQueryClient,
+} from "@raf-query/react";
+import {
+	CatchBoundary,
+	type ErrorComponentProps,
+} from "@tanstack/react-router";
+import { type ReactNode, Suspense } from "react";
 import { commentsQuery } from "~/queries.ts";
-
-declare const post: { hash: string };
 
 declare const loaderData: { comments: QueryHandle<typeof commentsQuery> };
 
@@ -13,27 +19,41 @@ declare function Comments(props: {
 
 declare function CommentsSkeleton(): ReactNode;
 
-function ErrorExample() {
+// #region showing-errors
+function CommentsSection() {
 	return (
-		// #region showing-errors
 		<CatchBoundary
-			getResetKey={() => post.hash}
-			errorComponent={(props) => (
-				<div role="alert">
-					<p>
-						Couldn't load comments:{" "}
-						{props.error instanceof Error
-							? props.error.message
-							: String(props.error)}
-					</p>
-					<button onClick={props.reset}>Try again</button>
-				</div>
-			)}
+			getResetKey={() => loaderData.comments.input.slug}
+			errorComponent={CommentsError}
 		>
 			<Suspense fallback={<CommentsSkeleton />}>
 				<Comments handle={loaderData.comments} />
 			</Suspense>
 		</CatchBoundary>
-		// #endregion
 	);
 }
+
+function CommentsError(props: ErrorComponentProps) {
+	const queryClient = useQueryClient();
+	return (
+		<div role="alert">
+			<p>
+				Couldn't load comments:{" "}
+				{props.error instanceof Error
+					? props.error.message
+					: String(props.error)}
+			</p>
+			<button
+				onClick={() => {
+					void load(queryClient, {
+						comments: prefetchEntry(commentsQuery, loaderData.comments.input),
+					});
+					props.reset();
+				}}
+			>
+				Try again
+			</button>
+		</div>
+	);
+}
+// #endregion

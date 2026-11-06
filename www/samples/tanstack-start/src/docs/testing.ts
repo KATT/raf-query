@@ -1,20 +1,29 @@
-import { QueryClient } from "@raf-query/react";
-import { postQuery } from "~/queries.ts";
-import { Platform, QueryCache } from "@raf-query/react";
-import { Effect, Layer, Option } from "effect";
-import { expect, it } from "@effect/vitest";
-import { TestClock } from "effect/testing";
-import { todosQuery } from "~/queries.ts";
-
-const queryClient = new QueryClient();
+import {
+	type Clock,
+	createQueryClient,
+	ensureEntry,
+	getData,
+	load,
+	setData,
+} from "@raf-query/react";
+import { expect, test } from "./testing.vitest.ts";
+import { postQuery, todoQuery } from "~/queries.ts";
 
 // #region seeding-the-cache
-queryClient.setData(
+const queryClient = createQueryClient({
+	isServer: false,
+	staleTime: Number.POSITIVE_INFINITY,
+});
+
+setData(
+	queryClient,
 	postQuery,
 	{ slug: "hello" },
 	{ slug: "hello", title: "Hello", body: "", authorId: "" },
 );
-const handle = await queryClient.ensure(postQuery, { slug: "hello" });
+const [handles] = await load(queryClient, {
+	post: ensureEntry(postQuery, { slug: "hello" }),
+});
 // #endregion
 
 declare const server: {
@@ -37,25 +46,52 @@ server.use(
 );
 // #endregion
 
-const listeners = new Set<(event: "focus" | "online") => void>();
+// #region time
+// ---collapse---
+interface Timer {
+	readonly at: number;
+	readonly callback: () => void;
+}
 
-const FakePlatform = Layer.succeed(Platform.Platform, {
-	isOnlineUnsafe: () => true,
-	isServer: false,
-	isVisibleUnsafe: () => true,
-	subscribeUnsafe(listener) {
-		listeners.add(listener);
-		return () => listeners.delete(listener);
-	},
+/** A clock whose timers fire only when the test advances it. */
+function fakeClock(): Clock & { advance(ms: number): void } {
+	let now = 0;
+	let timers: Array<Timer> = [];
+	return {
+		now: () => now,
+		setTimeout(callback, ms) {
+			const timer = { at: now + ms, callback };
+			timers.push(timer);
+			return timer;
+		},
+		clearTimeout(handle) {
+			timers = timers.filter((timer) => timer !== handle);
+		},
+		advance(ms) {
+			const end = now + ms;
+			for (;;) {
+				const due = timers
+					.filter((timer) => timer.at <= end)
+					.toSorted((a, b) => a.at - b.at)[0];
+				if (!due) break;
+				timers = timers.filter((timer) => timer !== due);
+				now = due.at;
+				due.callback();
+			}
+			now = end;
+		},
+	};
+}
+// ---/collapse---
+
+test("garbage-collects unread entries", () => {
+	const clock = fakeClock();
+	const queryClient = createQueryClient({ clock, isServer: false });
+	const todo = { id: 1, title: "Write tests", done: false };
+
+	setData(queryClient, todoQuery, { id: 1 }, todo);
+	clock.advance(5 * 60 * 1000); // the default gcTime
+
+	expect(getData(queryClient, todoQuery, { id: 1 })).toBeUndefined();
 });
-
-// #region time-focus-and-the-network
-it.effect("garbage-collects unread entries", () =>
-	Effect.gen(function* () {
-		const cache = yield* QueryCache.QueryCache;
-		yield* cache.fetch(todosQuery);
-		yield* TestClock.adjust("5 minutes");
-		expect(Option.isNone(yield* cache.getData(todosQuery))).toBe(true);
-	}).pipe(Effect.provide(QueryCache.layer()), Effect.provide(FakePlatform)),
-);
 // #endregion

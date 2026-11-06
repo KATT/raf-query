@@ -1,11 +1,11 @@
 ---
 title: Render optimizations
-description: Structural sharing, stable promises and tracked controls keep re-renders to the components whose data actually changed.
+description: Structural sharing, stable promises and select keep the data's identity stable, so memoized components re-render only when their data changed.
 section: Guides
 order: 19
 ---
 
-raf-query re-renders a component only when something it uses has changed. Three mechanisms make that happen, all on by default.
+A component that calls `useQuery` re-renders whenever its query's state changes: new data, a request starting or ending. What raf-query keeps stable is the data: its identity changes only when its content does, so `memo` components, [React Compiler](https://react.dev/learn/react-compiler) and effects below the reader skip work on refetches that changed nothing.
 
 ## Structural sharing
 
@@ -20,9 +20,9 @@ When a query refetches, the new data is compared with the old. Objects and array
 
 This lets `memo` components and React Compiler skip re-rendering children whose props didn't change, and keeps effects from re-running on refetches that changed nothing.
 
-When the whole response is deeply equal to the cached data, the old data is kept as it is, and the reader's promise doesn't change: nothing re-renders at all.
+When the whole response is deeply equal to the cached data, the old data is kept as it is, and the reader's promise doesn't change.
 
-Structural sharing only looks inside plain objects and arrays. Class instances, `Map`s and `Date`s are compared by identity. Turn it off for very large responses where the comparison costs more than it saves:
+Structural sharing only looks inside plain objects and arrays. Class instances, `Map`s and `Date`s are compared by identity. Turn it off for very large responses where the comparison costs more than it saves, per query or for the whole client with `createQueryClient({ structuralSharing: false })`:
 
 ```sample
 tanstack-start/src/docs/render-optimizations.ts#structural-sharing
@@ -30,32 +30,40 @@ tanstack-start/src/docs/render-optimizations.ts#structural-sharing
 
 ## Stable promises
 
-`useQuery` returns a promise owned by the cache. It changes only when the data does, so it's safe to pass down, compare, or use as a dependency. A new promise is always pre-resolved: `use()` returns its value synchronously, and nothing suspends on a refetch.
+For a handle from `prefetchEntry`, `useQuery` returns a promise owned by the cache. It changes only when the data does, so it's safe to pass down, compare, or use as a dependency. A new promise is always already resolved: `use()` returns its value synchronously, and nothing suspends on a refetch.
 
-## Tracked controls
+## Selecting data
 
-The controls object returned by `useQuery` tracks which fields a component reads. Reading `controls.isFetching` subscribes the component to `isFetching`; a component that never reads it isn't re-rendered when a background refetch starts and ends.
+`select` in a factory derives what readers get from the `queryFn`'s data:
 
 ```sample
-tanstack-start/src/docs/render-optimizations.tsx#tracked-controls
+tanstack-start/src/docs/render-optimizations.ts#selecting-data
 ```
 
-Both components read the same query; each pays only for what it reads. Destructure only what you use. Spreading the controls (`{ ...controls }`) reads every field and subscribes to all of them.
+- `select` runs again only when the cached data changes, so its result keeps its identity across refetches that changed nothing.
+- It's part of the factory, so every reader of the factory gets the selected data. `getData` and `setData` work on the data before `select`.
+- `select` doesn't stop the reader from re-rendering: the component still re-renders when the query's state changes, but what it passes down stays the same.
+
+For a derivation only one component needs, derive in render. The data only changes when it actually changed, so with React Compiler (or `useMemo`) the derivation reruns only then:
+
+```sample
+tanstack-start/src/docs/render-optimizations.tsx#deriving-in-render
+```
+
+## Reading where the data is used
+
+Since every reader of a query re-renders on its state changes, pass the handle down instead of the data, and call `useQuery` in the components that use it:
+
+```sample
+tanstack-start/src/docs/render-optimizations.tsx#reading-where-the-data-is-used
+```
+
+Both components read the same query. When a request starts and ends, they re-render; the page around them doesn't. Handles are small serializable objects that don't change while the page shows the same query, so passing them down costs nothing.
 
 ## Passing promises down
 
-A parent can read a prefetched handle and hand the promise to a child, so only the child suspends. The parent re-renders when the promise changes, which is exactly when the child needs new props:
+A parent can read a prefetched handle and hand the promise to a child, so only the child suspends. The promise changes only when the data does, which is exactly when the child needs new props:
 
 ```sample
 tanstack-start/src/docs/render-optimizations.passing-promises-down.tsx#passing-promises-down
 ```
-
-## Deriving data
-
-There's no `select` option. Derive in render: the data only changes when it actually changed, so with React Compiler (or `useMemo`) the derivation reruns only then:
-
-```sample
-tanstack-start/src/docs/render-optimizations.tsx#deriving-data
-```
-
-To share a derivation, put it in a function next to the factory, and call it wherever the data is read.

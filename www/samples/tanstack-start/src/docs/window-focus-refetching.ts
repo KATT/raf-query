@@ -1,43 +1,38 @@
-import { queryOptions } from "@raf-query/react";
+import {
+	createQueryClient,
+	focusRefetch,
+	invalidateOnAction,
+	polling,
+	queryOptions,
+	recommended,
+	reconnectRefetch,
+	retry,
+} from "@raf-query/react";
 import { getSettings } from "~/api.ts";
-import { Platform, QueryClient } from "@raf-query/react";
-import { Layer } from "effect";
+import { account } from "~/queries.ts";
 
-// #region turning-it-off
-export function settingsQuery() {
-	return queryOptions({
-		queryKey: ["settings"],
-		queryFn: () => getSettings(),
-		refetchOnWindowFocus: false,
-	});
-}
+// #region the-features
+const queryClient = createQueryClient({
+	features: [focusRefetch(), reconnectRefetch()],
+});
+// or
+const withEverything = createQueryClient({ ...recommended() });
 // #endregion
 
-declare const AppState: {
-	readonly currentState: string;
-	addEventListener(event: "change", listener: (state: string) => void): void;
-};
-
-// #region a-custom-platform
-const listeners = new Set<(event: "focus" | "online") => void>();
-
-const AppPlatform = Layer.succeed(Platform.Platform, {
-	isOnlineUnsafe: () => true,
-	isServer: false,
-	isVisibleUnsafe: () => AppState.currentState === "active",
-	subscribeUnsafe(listener) {
-		listeners.add(listener);
-		return () => {
-			listeners.delete(listener);
-		};
-	},
+// #region turning-it-off
+// `recommended()` without focusRefetch() and reconnectRefetch()
+const withoutFocus = createQueryClient({
+	links: [retry()],
+	features: [polling(), invalidateOnAction()],
 });
+// #endregion
 
-AppState.addEventListener("change", (state) => {
-	if (state === "active") {
-		for (const listener of listeners) listener("focus");
-	}
-});
-
-const queryClient = new QueryClient({ layer: AppPlatform });
+// #region per-query
+export function settingsQuery() {
+	return queryOptions({
+		queryKey: [account, "settings"],
+		queryFn: () => getSettings(),
+		meta: { refetchOnWindowFocus: false },
+	});
+}
 // #endregion
