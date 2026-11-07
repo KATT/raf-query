@@ -9,10 +9,10 @@ import { AssigneeCardSkeleton } from "@examples/kit/components/user";
 import { Button, buttonVariants } from "@examples/ui/components/button";
 import { cn } from "@examples/ui/lib/utils";
 import { Separator } from "@examples/ui/components/separator";
-import { type DefinedQueryHandle, useQuery } from "@raf-query/react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, use } from "react";
 
 import { EditBody } from "~/components/edit-body.tsx";
 import { EditTitle } from "~/components/edit-title.tsx";
@@ -24,9 +24,9 @@ import { AssigneeCard } from "./assignee-card.tsx";
 import { Comments } from "./comments.tsx";
 
 export function IssuePage(props: {
-	readonly assignee: DefinedQueryHandle<typeof assigneeQuery>;
-	readonly comments: DefinedQueryHandle<typeof commentsQuery>;
-	readonly issue: DefinedQueryHandle<typeof issueQuery>;
+	readonly assignee: QueryHandle<typeof assigneeQuery>;
+	readonly comments: QueryHandle<typeof commentsQuery>;
+	readonly issue: QueryHandle<typeof issueQuery>;
 }) {
 	const id = props.issue.input.id;
 
@@ -111,17 +111,16 @@ function IssueNav(props: { readonly id: number }) {
 	);
 }
 
-function useIssue(handle: DefinedQueryHandle<typeof issueQuery>) {
-	const [issue] = useQuery(issueQuery, handle);
+function useIssue(handle: QueryHandle<typeof issueQuery>) {
+	const [issueThenable] = useQuery(issueQuery, handle);
+	const issue = use(issueThenable);
 	if (!issue) {
 		notFound();
 	}
 	return issue;
 }
 
-function IssueBody(props: {
-	readonly handle: DefinedQueryHandle<typeof issueQuery>;
-}) {
+function IssueBody(props: { readonly handle: QueryHandle<typeof issueQuery> }) {
 	const issue = useIssue(props.handle);
 
 	return (
@@ -136,7 +135,7 @@ function IssueBody(props: {
 }
 
 function IssueStatus(props: {
-	readonly handle: DefinedQueryHandle<typeof issueQuery>;
+	readonly handle: QueryHandle<typeof issueQuery>;
 }) {
 	const issue = useIssue(props.handle);
 	return <StatusSelect align="end" issueId={issue.id} status={issue.status} />;

@@ -1,14 +1,16 @@
 "use client";
 
+import { use } from "react";
 import { AssigneeCardView } from "@examples/kit/components/user";
-import { type DefinedQueryHandle, useQuery } from "@raf-query/react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
 
 import { assigneeQuery } from "~/queries.ts";
 
 export function AssigneeCard(props: {
-	readonly handle: DefinedQueryHandle<typeof assigneeQuery>;
+	readonly handle: QueryHandle<typeof assigneeQuery>;
 }) {
-	const [user] = useQuery(assigneeQuery, props.handle);
+	const [userThenable] = useQuery(assigneeQuery, props.handle);
+	const user = use(userThenable);
 	if (!user) {
 		return null;
 	}

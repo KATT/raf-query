@@ -24,8 +24,8 @@ export function Comments(props: {
 }) {
 	const queryClient = useQueryClient();
 	const formRef = useRef<HTMLFormElement>(null);
-	const [pagesPromise, comments] = useQuery(commentsQuery, props.handle);
-	const pages = use(pagesPromise);
+	const [pagesThenable, comments] = useQuery(commentsQuery, props.handle);
+	const pages = use(pagesThenable);
 	const issueId = props.handle.input.issueId;
 	const loaded = pages.pages.flatMap((page) => page.comments);
 	const confirmedIds = new Set(loaded.map((comment) => comment.id));

@@ -30,8 +30,9 @@ const logQuery = (input: { readonly id: number }) =>
 	});
 
 function Log(props: { readonly handle: QueryHandle<typeof logQuery> }) {
-	const [log] = useQuery(logQuery, props.handle);
-	return <pre>{use(log)}</pre>;
+	const [logThenable] = useQuery(logQuery, props.handle);
+	const log = use(logThenable);
+	return <pre>{log}</pre>;
 }
 
 const client = createQueryClient();

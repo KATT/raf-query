@@ -7,8 +7,8 @@ import { assigneeQuery } from "~/queries.ts";
 export function AssigneeCard(props: {
 	readonly handle: QueryHandle<typeof assigneeQuery>;
 }) {
-	const [userPromise] = useQuery(assigneeQuery, props.handle);
-	const user = use(userPromise);
+	const [userThenable] = useQuery(assigneeQuery, props.handle);
+	const user = use(userThenable);
 	if (!user) {
 		return null;
 	}

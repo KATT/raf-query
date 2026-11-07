@@ -1,4 +1,5 @@
-import { type DefinedQueryHandle, useQuery } from "@raf-query/react";
+import { use } from "react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
 import { Card } from "@examples/ui/components/card";
 import {
 	IssueListSummary,
@@ -15,11 +16,12 @@ import { StatusSelect } from "~/components/status-select.tsx";
 import { issueListQuery } from "~/queries.ts";
 
 export function IssueList(props: {
-	readonly handle: DefinedQueryHandle<typeof issueListQuery>;
+	readonly handle: QueryHandle<typeof issueListQuery>;
 }) {
-	const [pages, list] = useQuery(issueListQuery, props.handle, {
+	const [pagesThenable, list] = useQuery(issueListQuery, props.handle, {
 		whilePending: "previous",
 	});
+	const pages = use(pagesThenable);
 	const lastPage = pages.pages.at(-1);
 	const total = lastPage?.total ?? 0;
 	const shown = pages.pages.reduce((sum, page) => sum + page.issues.length, 0);

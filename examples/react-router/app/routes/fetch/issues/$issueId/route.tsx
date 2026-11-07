@@ -9,7 +9,7 @@ import { Button, buttonVariants } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
 import { cn } from "@examples/ui/lib/utils";
 import {
-	type DefinedQueryHandle,
+	type QueryHandle,
 	fetchEntry,
 	HydrationBoundary,
 	load,
@@ -17,7 +17,7 @@ import {
 } from "@raf-query/react";
 import { dehydrate } from "@raf-query/react/hydration";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
-import { Suspense } from "react";
+import { Suspense, use } from "react";
 import { isRouteErrorResponse } from "react-router";
 
 import { AppLink } from "~/components/app-link.tsx";
@@ -163,17 +163,16 @@ function IssueNav(props: { readonly id: number }) {
  */
 const issueNotFound = new Response("Not Found", { status: 404 });
 
-function useIssue(handle: DefinedQueryHandle<typeof issueQuery>) {
-	const [issue] = useQuery(issueQuery, handle);
+function useIssue(handle: QueryHandle<typeof issueQuery>) {
+	const [issueThenable] = useQuery(issueQuery, handle);
+	const issue = use(issueThenable);
 	if (!issue) {
 		throw issueNotFound;
 	}
 	return issue;
 }
 
-function IssueBody(props: {
-	readonly handle: DefinedQueryHandle<typeof issueQuery>;
-}) {
+function IssueBody(props: { readonly handle: QueryHandle<typeof issueQuery> }) {
 	const issue = useIssue(props.handle);
 
 	return (
@@ -188,7 +187,7 @@ function IssueBody(props: {
 }
 
 function IssueStatus(props: {
-	readonly handle: DefinedQueryHandle<typeof issueQuery>;
+	readonly handle: QueryHandle<typeof issueQuery>;
 }) {
 	const issue = useIssue(props.handle);
 	return <StatusSelect align="end" issueId={issue.id} status={issue.status} />;

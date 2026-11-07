@@ -24,8 +24,8 @@ export const issueQuery = (input: { readonly id: number }) =>
 function IssueTitle(props: {
 	readonly handle: QueryHandle<typeof issueQuery>;
 }) {
-	const [issuePromise] = useQuery(issueQuery, props.handle);
-	const issue = use(issuePromise);
+	const [issueThenable] = useQuery(issueQuery, props.handle);
+	const issue = use(issueThenable);
 	return <h1>{issue.title}</h1>;
 }
 

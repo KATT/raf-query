@@ -1,9 +1,10 @@
+import { use } from "react";
 import {
 	type IssueListInput,
 	issueSorts,
 	issueStatuses,
 } from "@examples/db/types";
-import { type DefinedQueryHandle, useQuery } from "@raf-query/react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
 import { statusLabel } from "@examples/kit/components/status-badge";
 import { cn } from "@examples/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
@@ -11,10 +12,11 @@ import { Link } from "@tanstack/react-router";
 import { issueCountsQuery } from "~/queries.ts";
 
 export function StatusFilter(props: {
-	readonly counts: DefinedQueryHandle<typeof issueCountsQuery>;
+	readonly counts: QueryHandle<typeof issueCountsQuery>;
 	readonly current: IssueListInput;
 }) {
-	const [counts] = useQuery(issueCountsQuery, props.counts);
+	const [countsThenable] = useQuery(issueCountsQuery, props.counts);
+	const counts = use(countsThenable);
 	const current = props.current;
 
 	return (

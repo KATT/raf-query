@@ -10,21 +10,22 @@ import {
 import { LoadMore } from "@examples/kit/components/load-more";
 import { warnMockDbWrite } from "@examples/kit/lib/mock-db-toast";
 import {
-	type DefinedQueryHandle,
+	type QueryHandle,
 	invalidateMany,
 	useQuery,
 	useQueryClient,
 } from "@raf-query/react";
-import { useOptimistic, useRef } from "react";
+import { useOptimistic, useRef, use } from "react";
 
 import { commentsQuery, issues } from "~/queries.ts";
 
 export function Comments(props: {
-	readonly handle: DefinedQueryHandle<typeof commentsQuery>;
+	readonly handle: QueryHandle<typeof commentsQuery>;
 }) {
 	const queryClient = useQueryClient();
 	const formRef = useRef<HTMLFormElement>(null);
-	const [pages, comments] = useQuery(commentsQuery, props.handle);
+	const [pagesThenable, comments] = useQuery(commentsQuery, props.handle);
+	const pages = use(pagesThenable);
 	const issueId = props.handle.input.issueId;
 	const loaded = pages.pages.flatMap((page) => page.comments);
 	const confirmedIds = new Set(loaded.map((comment) => comment.id));
