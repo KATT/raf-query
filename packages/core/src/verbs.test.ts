@@ -13,8 +13,10 @@ import {
 	isFetching,
 	load,
 	prefetchEntry,
+	type InputOf,
 	type PartialInput,
-	type QueryInfo,
+	type QueryMeta,
+	type Target,
 	queryOptions,
 	removeAll,
 	removeMany,
@@ -131,7 +133,7 @@ describe("invalidation", () => {
 				queryFn: () => (calls += 1),
 				queryKey: issues("list", input),
 			});
-		const input = { filter: { ids: [1, 2], open: true } };
+		const input: InputOf<typeof list> = { filter: { ids: [1, 2], open: true } };
 		await load(client, { list: fetchEntry(list, input) });
 		const refetches = async (partial: PartialInput<typeof list>) => {
 			const before = calls;
@@ -160,8 +162,8 @@ describe("invalidation", () => {
 
 	it("matches a one-off where target with its parameter", async () => {
 		const cache = await cached();
-		const byTitle = {
-			where: (query: QueryInfo, title: string) =>
+		const byTitle: Target<QueryMeta, string> = {
+			where: (query, title) =>
 				// SAFETY: every query this test caches holds an issue or a draft string.
 				(query.data as { readonly title?: string } | undefined)?.title ===
 				title,
@@ -328,7 +330,10 @@ describe("data", () => {
 			}),
 		);
 		const client = testClient();
-		const list = { a: { b: 1 }, list: [{ id: 1 }, { id: 2 }] };
+		const list = {
+			a: { b: 1 },
+			list: [{ id: 1 }, { id: 2 }],
+		} satisfies JsonValue;
 		setData(client, any, undefined, list);
 		setData(client, any, undefined, {
 			a: { b: 1 },

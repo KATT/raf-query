@@ -33,17 +33,23 @@ function routerFor(isServer: boolean) {
 }
 
 interface ServerSsr {
-	readonly cleanups: Array<() => void>;
+	readonly cleanups: Array<(settled: boolean) => void>;
 	readonly renderFinished: Array<() => void>;
 }
 
 /** What TanStack Start does around a server render. */
 function attachServerSsr(router: AnyRouter): ServerSsr {
 	const ssr: ServerSsr = { cleanups: [], renderFinished: [] };
-	const serverSsr = {
-		onCleanup: (listener: () => void) => ssr.cleanups.push(listener),
-		onRenderFinished: (listener: () => void) =>
-			ssr.renderFinished.push(listener),
+	const serverSsr: Pick<
+		NonNullable<AnyRouter["serverSsr"]>,
+		"onCleanup" | "onRenderFinished"
+	> = {
+		onCleanup: (listener) => {
+			ssr.cleanups.push(listener);
+		},
+		onRenderFinished: (listener) => {
+			ssr.renderFinished.push(listener);
+		},
 	};
 	Object.assign(router, { serverSsr });
 	for (const attach of router.serverSsrLifecycle?.onServerSsrAttach ?? []) {
@@ -57,6 +63,12 @@ function attachServerSsr(router: AnyRouter): ServerSsr {
 function runAll(listeners: ReadonlyArray<() => void>) {
 	for (const listener of listeners) {
 		listener();
+	}
+}
+
+function endRequest(ssr: ServerSsr, settled: boolean) {
+	for (const listener of ssr.cleanups) {
+		listener(settled);
 	}
 }
 
@@ -95,7 +107,7 @@ describe("setupRouterIntegration", () => {
 			"Third",
 		);
 
-		runAll(ssr.cleanups);
+		endRequest(ssr, true);
 		expect(dehydrate(server).entries).toHaveLength(0);
 	});
 
@@ -105,7 +117,7 @@ describe("setupRouterIntegration", () => {
 		const router = routerFor(true);
 		setupRouterIntegration({ queryClient: server, router });
 		const ssr = attachServerSsr(router);
-		runAll(ssr.cleanups);
+		endRequest(ssr, false);
 		setData(server, backend.issueQuery, { id: 1 }, { id: 1, title: "Late" });
 		await expect(router.options.dehydrate?.()).resolves.toBeUndefined();
 		expect(getData(server, backend.issueQuery, { id: 1 })).toBeUndefined();

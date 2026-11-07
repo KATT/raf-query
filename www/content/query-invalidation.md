@@ -58,7 +58,7 @@ Called with a parameter, a tag is the string a query lists (`author("ada")`). Pa
 
 ### Matching with where
 
-A target is any object with `where(query, param)`. It gets each query's `queryKey`, `input`, `meta` and `data` (before `select`), and the parameter the verb was called with:
+A target is any object with `where(query, param)`, typed `Target<TMeta, TParam>`. Its `where` gets each query's `queryKey`, `input`, `meta` and `data` (before `select`), and the parameter the verb was called with:
 
 ```sample
 tanstack-start/src/docs/query-invalidation.ts#matching-with-where

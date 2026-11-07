@@ -131,7 +131,7 @@ export interface QueryInfo<TMeta = QueryMeta> {
  * parameter the verb was called with.
  *
  * ```ts
- * const ownedBy = { where: (query: QueryInfo<AppMeta>, team: Team) => query.meta.owner === team };
+ * const ownedBy: Target<AppMeta, Team> = { where: (query, team) => query.meta.owner === team };
  * await invalidateMany(client, ownedBy, "posts-team");
  * ```
  */

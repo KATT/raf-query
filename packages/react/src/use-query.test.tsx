@@ -145,7 +145,7 @@ describe("useQuery", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-		const handle = {
+		const handle: QueryHandle<Backend["issueQuery"]> = {
 			input: { id: 1 },
 			queryKey: backend.issueQuery({ id: 1 }).queryKey,
 		};
@@ -508,7 +508,7 @@ describe("useQuery", () => {
 				{ id: 2 },
 				{ id: 2, title: "Cached" },
 			);
-			const handle = {
+			const handle: QueryHandle<Backend["issueQuery"]> = {
 				input: { id: 1 },
 				queryKey: backend.issueQuery({ id: 1 }).queryKey,
 			};

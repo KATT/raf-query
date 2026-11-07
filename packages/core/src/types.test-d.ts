@@ -20,6 +20,7 @@ import {
 	type QueryClient,
 	type QueryHandle,
 	type QueryInfo,
+	type Target,
 	type QueryKey,
 	queryOptions,
 	type Recommended,
@@ -330,9 +331,8 @@ describe("root types", () => {
 	it("check a bound action's targets against its client's root", () => {
 		const qc = makeQueryClient();
 		const save = async () => {};
-		const owned = {
-			where: (query: QueryInfo<{ readonly owner: string | undefined }>) =>
-				query.meta.owner === "users-team",
+		const owned: Target<{ readonly owner: string | undefined }> = {
+			where: (query) => query.meta.owner === "users-team",
 		};
 		action(save, { client: qc, invalidates: [posts, postById, writer, owned] });
 		action(save, { invalidates: [writer, owned] });

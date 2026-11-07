@@ -3,6 +3,7 @@ import {
 	createHighlighterCore,
 	type GrammarState,
 	type HighlighterCore,
+	type LanguageInput,
 } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 
@@ -21,7 +22,7 @@ const languages = {
 	tsx: () => import("shiki/langs/tsx.mjs"),
 	typescript: () => import("shiki/langs/typescript.mjs"),
 	yaml: () => import("shiki/langs/yaml.mjs"),
-};
+} satisfies Record<string, LanguageInput>;
 
 const aliases: Record<string, keyof typeof languages> = {
 	js: "javascript",

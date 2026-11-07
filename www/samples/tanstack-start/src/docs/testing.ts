@@ -7,6 +7,7 @@ import {
 	setData,
 } from "@raf-query/react";
 import { expect, test } from "./testing.vitest.ts";
+import type { Todo } from "~/api.ts";
 import { postQuery, todoQuery } from "~/queries.ts";
 
 // #region seeding-the-cache
@@ -60,7 +61,7 @@ function fakeClock(): Clock & { advance(ms: number): void } {
 	return {
 		now: () => now,
 		setTimeout(callback, ms) {
-			const timer = { at: now + ms, callback };
+			const timer: Timer = { at: now + ms, callback };
 			timers.push(timer);
 			return timer;
 		},
@@ -87,7 +88,7 @@ function fakeClock(): Clock & { advance(ms: number): void } {
 test("garbage-collects unread entries", () => {
 	const clock = fakeClock();
 	const queryClient = createQueryClient({ clock, isServer: false });
-	const todo = { id: 1, title: "Write tests", done: false };
+	const todo: Todo = { id: 1, title: "Write tests", done: false };
 
 	setData(queryClient, todoQuery, { id: 1 }, todo);
 	clock.advance(5 * 60 * 1000); // the default gcTime

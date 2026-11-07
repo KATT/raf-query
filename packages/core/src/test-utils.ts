@@ -69,7 +69,7 @@ function fakeClock(epoch = 1_000_000): FakeClock {
 		},
 		now: () => now,
 		setTimeout(callback, ms) {
-			const timer = { at: now + ms, callback };
+			const timer: Timer = { at: now + ms, callback };
 			timers.add(timer);
 			return timer;
 		},

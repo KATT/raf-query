@@ -7,6 +7,7 @@ import {
 	devPort,
 	isIgnored,
 	openUrl,
+	type PackageJson,
 	rootPackageJson,
 	standalonePackageJson,
 	standaloneReadme,
@@ -32,7 +33,10 @@ describe("standalonePackageJson", () => {
 	const shared = new Set(["@examples/ui"]);
 
 	it("keeps shared packages in the workspace and installs raf-query from npm", () => {
-		const scripts = { build: "vp build", dev: "vp dev --port 3000" };
+		const scripts: PackageJson["scripts"] = {
+			build: "vp build",
+			dev: "vp dev --port 3000",
+		};
 		const pkg = standalonePackageJson(
 			{
 				dependencies: {

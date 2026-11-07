@@ -43,11 +43,11 @@ await invalidateMany(qc, posts);
 // #endregion
 
 // #region matching-with-where
-import type { QueryInfo } from "@raf-query/react";
+import type { QueryMeta, Target } from "@raf-query/react";
 
 // Every query whose key mentions a todo id
-const mentionsTodo = {
-	where: (query: QueryInfo, id: number) => query.queryKey.includes(id),
+const mentionsTodo: Target<QueryMeta, number> = {
+	where: (query, id) => query.queryKey.includes(id),
 };
 await invalidateMany(qc, mentionsTodo, 5);
 

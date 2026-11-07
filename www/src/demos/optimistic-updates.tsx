@@ -61,7 +61,7 @@ function todosQuery() {
 
 function postTodo(text: string) {
 	return server.respond(`POST /todos "${text}"`, (db) => {
-		const todo = {
+		const todo: Todo = {
 			id: Math.max(0, ...db.todos.map((item) => item.id)) + 1,
 			text,
 		};
