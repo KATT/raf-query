@@ -515,6 +515,20 @@
 			}
 		},
 		{
+			// What readers copy: every object bound to a name says its type.
+			"files": [
+				"examples/**/*.{ts,tsx}",
+				"www/samples/**/*.{ts,tsx}",
+				"www/src/demos/**/*.{ts,tsx}",
+				"**/*.test.{ts,tsx}",
+				"**/*.test-d.{ts,tsx}",
+				"**/test-utils.{ts,tsx}"
+			],
+			"rules": {
+				"workspace/no-untyped-object-literal": "error"
+			}
+		},
+		{
 			// TanStack Router infers loader/search/context types from option key
 			// order (`validateSearch` before `loader`, `loader` before `head`).
 			"files": [
