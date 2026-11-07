@@ -220,7 +220,9 @@ describe("a read query", () => {
 
 		expect(backend.requests).toHaveLength(0);
 		const view = read(client, backend.issueQuery, handles.issue);
-		expect(view.result.current[0]).toMatchObject({ title: "First" });
+		expect(view.result.current[0]).toMatchObject({
+			value: { title: "First" },
+		});
 		expect(backend.requests).toHaveLength(1);
 		await backend.respondAll();
 	});

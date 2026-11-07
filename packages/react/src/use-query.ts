@@ -24,7 +24,7 @@ import {
 	rejected,
 	subscribeEntry,
 } from "@raf-query/core/internal";
-import { use, useCallback, useState, useSyncExternalStore } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 
 import { assertStartsRequests } from "./browser-only.ts";
 import { useQueryClient } from "./provider.tsx";
@@ -88,16 +88,14 @@ type Read<
 	: DataOf<TFactory>;
 
 /**
- * What `useQuery` reads: the data itself for a defined handle (from a fetch
- * or ensure entry), and a thenable to pass to `use()` otherwise.
+ * What `useQuery` reads, for every handle: a thenable to pass to `use()`.
+ * A loader can't promise the data is still cached when a component renders
+ * (a write can reset or remove it), so the read may suspend.
  */
 export type QueryValue<
 	TFactory extends QueryFactory,
-	THandle,
-	TResult extends boolean,
-> = THandle extends { readonly defined: true }
-	? Read<TFactory, TResult>
-	: Thenable<Read<TFactory, TResult>>;
+	TResult extends boolean = false,
+> = Thenable<Read<TFactory, TResult>>;
 
 type Thenables = WeakMap<Thenable<unknown>, Thenable<unknown>>;
 
@@ -200,9 +198,8 @@ function settled(promise: Promise<unknown>): Promise<void> {
  * Read a query by its handle.
  *
  * ```tsx
- * const [issue] = useQuery(issueQuery, handles.issue); // defined: the data
- * const [comments] = useQuery(commentsQuery, handles.comments); // plain: use() it
- * const page = use(comments);
+ * const [issueThenable, issueState] = useQuery(issueQuery, handles.issue);
+ * const issue = use(issueThenable);
  * ```
  *
  * Reading never refetches stale data: loaders decide freshness. A query no
@@ -211,13 +208,12 @@ function settled(promise: Promise<unknown>): Promise<void> {
  */
 export function useQuery<
 	TFactory extends QueryFactory,
-	const THandle extends QueryHandle<TFactory>,
 	const TResult extends boolean = false,
 >(
 	factory: TFactory,
-	handle: THandle,
+	handle: QueryHandle<TFactory>,
 	options?: UseQueryOptions<TResult>,
-): readonly [QueryValue<TFactory, THandle, TResult>, ControlsOf<TFactory>] {
+): readonly [QueryValue<TFactory, TResult>, ControlsOf<TFactory>] {
 	const client = useQueryClient();
 	const current = entryOf(client, factory, handle.input);
 	const subscribe = useCallback(
@@ -260,8 +256,6 @@ export function useQuery<
 	if (options?.result) {
 		thenable = asResult(caches.result, thenable);
 	}
-	const value =
-		"defined" in handle && handle.defined ? use(thenable) : thenable;
 	const controls = {
 		...pagesAround(entry, entryState),
 		error: state.error,
@@ -282,7 +276,7 @@ export function useQuery<
 	};
 	return [
 		// SAFETY: `QueryValue` describes what was read for this handle.
-		value as QueryValue<TFactory, THandle, TResult>,
+		thenable as QueryValue<TFactory, TResult>,
 		// SAFETY: paged controls are only typed for paged factories.
 		controls as ControlsOf<TFactory>,
 	];

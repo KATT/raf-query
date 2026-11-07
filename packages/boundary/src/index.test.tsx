@@ -36,11 +36,11 @@ function createBackend() {
 type Backend = ReturnType<typeof createBackend>;
 
 function Issue(props: { readonly backend: Backend; readonly id: number }) {
-	const [read] = useQuery(
+	const [titleThenable] = useQuery(
 		props.backend.issueQuery,
 		waterfallHandle(props.backend.issueQuery, { id: props.id }),
 	);
-	const title = use(read);
+	const title = use(titleThenable);
 	return <p>{title}</p>;
 }
 

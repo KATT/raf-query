@@ -43,16 +43,8 @@ describe("load", () => {
 			second: { author: "bob", id: 2, title: "Second" },
 		});
 		expect(handles).toEqual({
-			first: {
-				defined: true,
-				input: { id: 1 },
-				queryKey: issues("byId", { id: 1 }),
-			},
-			second: {
-				defined: true,
-				input: { id: 2 },
-				queryKey: issues("byId", { id: 2 }),
-			},
+			first: { input: { id: 1 }, queryKey: issues("byId", { id: 1 }) },
+			second: { input: { id: 2 }, queryKey: issues("byId", { id: 2 }) },
 			third: { input: { id: 3 }, queryKey: issues("byId", { id: 3 }) },
 		});
 		expect(structuredClone(handles)).toEqual(handles);

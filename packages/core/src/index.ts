@@ -59,7 +59,6 @@ export {
 	timeout,
 } from "./links.ts";
 export {
-	type DefinedQueryHandle,
 	ensureEntry,
 	type EntryOptions,
 	fetchEntry,

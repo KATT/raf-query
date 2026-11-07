@@ -72,10 +72,10 @@ describe("a streamed query", () => {
 		const [handles] = await loading;
 		const view = read(client, stream.sum, handles.sum);
 
-		expect(view.result.current[0]).toBe(2);
+		expect(view.result.current[0]).toMatchObject({ value: 2 });
 		expect(view.result.current[1].isFetching).toBe(true);
 		await stream.push(3);
-		expect(view.result.current[0]).toBe(5);
+		expect(view.result.current[0]).toMatchObject({ value: 5 });
 		await stream.push();
 		expect(view.result.current[1].isFetching).toBe(false);
 	});

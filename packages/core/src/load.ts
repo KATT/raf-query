@@ -32,16 +32,6 @@ export interface QueryHandle<TFactory extends QueryFactory = QueryFactory> {
 	readonly queryKey: KeyOf<TFactory>;
 }
 
-/**
- * A handle from a fetch or ensure entry: when its `load` resolved, the cache
- * had the query's data. `useQuery` returns the data itself for it.
- */
-export interface DefinedQueryHandle<
-	TFactory extends QueryFactory = QueryFactory,
-> extends QueryHandle<TFactory> {
-	readonly defined: true;
-}
-
 type EntryKind = "ensure" | "fetch" | "prefetch";
 
 /** A query for `load` to start. Building one starts nothing. */
@@ -112,13 +102,6 @@ export function ensureEntry<TFactory extends QueryFactory>(
 	return makeEntry("ensure", factory, args);
 }
 
-type HandleOf<TEntry> =
-	TEntry extends LoadEntry<infer TFactory, infer TKind>
-		? TKind extends "prefetch"
-			? QueryHandle<TFactory>
-			: DefinedQueryHandle<TFactory>
-		: never;
-
 type LoadedData<TEntries extends Record<string, LoadEntry>> = {
 	[
 		TName in keyof TEntries as TEntries[TName] extends LoadEntry<
@@ -132,7 +115,9 @@ type LoadedData<TEntries extends Record<string, LoadEntry>> = {
 
 /** What `load` resolves to: a handle per entry, and the data of fetch and ensure entries. */
 export type Loaded<TEntries extends Record<string, LoadEntry>> = readonly [
-	handles: { [TName in keyof TEntries]: HandleOf<TEntries[TName]> },
+	handles: {
+		[TName in keyof TEntries]: QueryHandle<TEntries[TName]["factory"]>;
+	},
 	data: LoadedData<TEntries>,
 ];
 
@@ -263,12 +248,9 @@ export async function load<const TEntries extends Record<string, LoadEntry>>(
 	const handles: Record<string, unknown> = {};
 	const data: Record<string, unknown> = {};
 	for (const one of started) {
-		const handle = { input: one.item.input, queryKey: one.entry.key };
+		handles[one.name] = { input: one.item.input, queryKey: one.entry.key };
 		if (one.wait) {
-			handles[one.name] = { ...handle, defined: true };
 			data[one.name] = readData(one.entry);
-		} else {
-			handles[one.name] = handle;
 		}
 	}
 	// SAFETY: built from the entries, as `Loaded` describes.

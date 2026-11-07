@@ -44,7 +44,7 @@ export function commentsQuery(input: { slug: string }) {
 }
 ```
 
-A loader names its queries in one `load` call. **`prefetchEntry`** starts a request without waiting for it: the page renders now, and `use()` suspends whatever is still loading under its Suspense fallback. **`ensureEntry`** holds the navigation until the data is cached, and `useQuery` returns the data itself for that handle, not a promise.
+A loader names its queries in one `load` call. **`prefetchEntry`** starts a request without waiting for it: the page renders now, and `use()` suspends whatever is still loading under its Suspense fallback. **`ensureEntry`** holds the navigation until the data is cached, so `use()` returns it without suspending. `useQuery` returns a thenable for every handle, because the cache can drop a query between the loader and the render.
 
 ```tsx
 import {
@@ -70,8 +70,9 @@ export const Route = createFileRoute("/posts/$slug")({
 
 function PostPage() {
 	const data = Route.useLoaderData();
-	// The loader waited for it, so this is the post itself.
-	const [post] = useQuery(postQuery, data.post);
+	const [postThenable] = useQuery(postQuery, data.post);
+	// The loader waited for it, so this doesn't suspend.
+	const post = use(postThenable);
 	return (
 		<article>
 			<h1>{post.title}</h1>
@@ -83,8 +84,8 @@ function PostPage() {
 }
 
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
-	const [pagesPromise] = useQuery(commentsQuery, props.handle);
-	const pages = use(pagesPromise);
+	const [pagesThenable] = useQuery(commentsQuery, props.handle);
+	const pages = use(pagesThenable);
 	return pages.pages
 		.flatMap((page) => page.items)
 		.map((comment) => (

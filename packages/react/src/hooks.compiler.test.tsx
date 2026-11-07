@@ -45,8 +45,8 @@ describe("hooks compiled by the React Compiler", () => {
 		function Title(props: {
 			readonly handle: QueryHandle<Backend["issueQuery"]>;
 		}) {
-			const [promise] = useQuery(backend.issueQuery, props.handle);
-			const issue = use(promise);
+			const [issueThenable] = useQuery(backend.issueQuery, props.handle);
+			const issue = use(issueThenable);
 			return <p>{issue.title}</p>;
 		}
 		await renderWith(client, <Title handle={handle} />);
@@ -75,10 +75,14 @@ describe("hooks compiled by the React Compiler", () => {
 		function Pages(props: {
 			readonly handle: QueryHandle<Backend["pageQuery"]>;
 		}) {
-			const [promise, controls] = useQuery(backend.pageQuery, props.handle, {
-				whilePending: "previous",
-			});
-			const data = use(promise);
+			const [pagesThenable, controls] = useQuery(
+				backend.pageQuery,
+				props.handle,
+				{
+					whilePending: "previous",
+				},
+			);
+			const data = use(pagesThenable);
 			return (
 				<>
 					<p>pages {data.pages.flat().join(",")}</p>

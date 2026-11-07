@@ -14,6 +14,7 @@ import {
 	QueryDisabledError,
 	type QueryHandle,
 	QueryProvider,
+	removeOne,
 	setData,
 	type Thenable,
 	useQuery,
@@ -40,25 +41,70 @@ async function loaded(backend: Backend, run: () => Promise<void>) {
 }
 
 describe("useQuery", () => {
-	it("returns the data for a defined handle", async () => {
+	it("reads a loaded handle without suspending, and suspends again once the cache dropped it", async () => {
 		const backend = createBackend();
 		const client = testClient();
-		let handle: QueryHandle<Backend["issueQuery"]> & { readonly defined: true };
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		let handle!: QueryHandle<Backend["issueQuery"]>;
 		await loaded(backend, async () => {
 			[{ issue: handle }] = await load(client, {
 				issue: fetchEntry(backend.issueQuery, { id: 1 }),
 			});
 		});
 		function Issue() {
-			const [issue, controls] = useQuery(backend.issueQuery, handle);
+			const [issueThenable, controls] = useQuery(backend.issueQuery, handle);
+			const issue = use(issueThenable);
 			return (
 				<p>
 					{issue.title} {controls.hash} {String(controls.isPending)}
 				</p>
 			);
 		}
-		await renderWith(client, <Issue />);
+		const view = await renderWith(client, <Issue />);
 		expect(screen.getByText(/First/u).textContent).toContain("false");
+		expect(screen.queryByText("loading")).toBeNull();
+
+		view.unmount();
+		await act(() => removeOne(client, backend.issueQuery, { id: 1 }));
+		await renderWith(client, <Issue />);
+		expect(screen.getByText("loading")).toBeTruthy();
+		expect(warn).toHaveBeenCalledOnce();
+		await backend.respondAll();
+		expect(screen.getByText(/First/u)).toBeTruthy();
+	});
+
+	it("reads without suspending by switching on the thenable's status", async () => {
+		const backend = createBackend();
+		const client = testClient();
+		const [handles] = await load(client, {
+			found: prefetchEntry(backend.issueQuery, { id: 1 }),
+			missing: prefetchEntry(backend.issueQuery, { id: 9 }),
+		});
+		function Issue(props: {
+			readonly handle: QueryHandle<Backend["issueQuery"]>;
+		}) {
+			const [issueThenable] = useQuery(backend.issueQuery, props.handle);
+			switch (issueThenable.status) {
+				case "pending":
+					return <p>pending</p>;
+				case "rejected":
+					return <p>failed {String(issueThenable.reason)}</p>;
+				case "fulfilled":
+					return <p>{issueThenable.value.title}</p>;
+			}
+		}
+		await renderWith(
+			client,
+			<>
+				<Issue handle={handles.found} />
+				<Issue handle={handles.missing} />
+			</>,
+		);
+		expect(screen.getAllByText("pending")).toHaveLength(2);
+		expect(screen.queryByText("loading")).toBeNull();
+		await backend.respondAll();
+		expect(screen.getByText("First")).toBeTruthy();
+		expect(screen.getByText(/^failed /u)).toBeTruthy();
 	});
 
 	it("returns a thenable for a prefetch handle", async () => {
@@ -68,8 +114,9 @@ describe("useQuery", () => {
 			issue: prefetchEntry(backend.issueQuery, { id: 2 }),
 		});
 		function Issue() {
-			const [issue] = useQuery(backend.issueQuery, handles.issue);
-			return <IssueTitle issue={use(issue)} />;
+			const [issueThenable] = useQuery(backend.issueQuery, handles.issue);
+			const issue = use(issueThenable);
+			return <IssueTitle issue={issue} />;
 		}
 		await renderWith(client, <Issue />);
 		expect(screen.getByText("loading")).toBeTruthy();
@@ -83,8 +130,9 @@ describe("useQuery", () => {
 		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		const handle = waterfallHandle(backend.issueQuery, { id: 1 });
 		function Issue() {
-			const [issue] = useQuery(backend.issueQuery, handle);
-			return <IssueTitle issue={use(issue)} />;
+			const [issueThenable] = useQuery(backend.issueQuery, handle);
+			const issue = use(issueThenable);
+			return <IssueTitle issue={issue} />;
 		}
 		await renderWith(client, <Issue />);
 		expect(backend.requests).toHaveLength(1);
@@ -102,8 +150,9 @@ describe("useQuery", () => {
 			queryKey: backend.issueQuery({ id: 1 }).queryKey,
 		};
 		function Issue() {
-			const [issue] = useQuery(backend.issueQuery, handle);
-			return <IssueTitle issue={use(issue)} />;
+			const [issueThenable] = useQuery(backend.issueQuery, handle);
+			const issue = use(issueThenable);
+			return <IssueTitle issue={issue} />;
 		}
 		await renderWith(client, <Issue />);
 		expect(warn).toHaveBeenCalledWith(
@@ -116,18 +165,15 @@ describe("useQuery", () => {
 	it("applies select", async () => {
 		const backend = createBackend();
 		const client = testClient();
-		let handles!: {
-			readonly title: QueryHandle<Backend["titleQuery"]> & {
-				readonly defined: true;
-			};
-		};
+		let handles!: { readonly title: QueryHandle<Backend["titleQuery"]> };
 		await loaded(backend, async () => {
 			[handles] = await load(client, {
 				title: ensureEntry(backend.titleQuery, { id: 1 }),
 			});
 		});
 		function Title() {
-			const [title] = useQuery(backend.titleQuery, handles.title);
+			const [titleThenable] = useQuery(backend.titleQuery, handles.title);
+			const title = use(titleThenable);
 			return <p>{title}</p>;
 		}
 		await renderWith(client, <Title />);
@@ -137,11 +183,7 @@ describe("useQuery", () => {
 	it("reads a refetched, invalidated entry when it mounts", async () => {
 		const backend = createBackend();
 		const client = testClient();
-		let handles!: {
-			readonly issue: QueryHandle<Backend["issueQuery"]> & {
-				readonly defined: true;
-			};
-		};
+		let handles!: { readonly issue: QueryHandle<Backend["issueQuery"]> };
 		await loaded(backend, async () => {
 			[handles] = await load(client, {
 				issue: fetchEntry(backend.issueQuery, { id: 1 }),
@@ -149,7 +191,11 @@ describe("useQuery", () => {
 		});
 		void invalidateOne(client, backend.issueQuery, { id: 1 });
 		function Issue() {
-			const [issue, controls] = useQuery(backend.issueQuery, handles.issue);
+			const [issueThenable, controls] = useQuery(
+				backend.issueQuery,
+				handles.issue,
+			);
+			const issue = use(issueThenable);
 			return (
 				<p>
 					{issue.title} {controls.isFetching ? "fetching" : "idle"}
@@ -167,11 +213,7 @@ describe("useQuery", () => {
 	it("refetches on request", async () => {
 		const backend = createBackend();
 		const client = testClient();
-		let handles!: {
-			readonly issue: QueryHandle<Backend["issueQuery"]> & {
-				readonly defined: true;
-			};
-		};
+		let handles!: { readonly issue: QueryHandle<Backend["issueQuery"]> };
 		await loaded(backend, async () => {
 			[handles] = await load(client, {
 				issue: fetchEntry(backend.issueQuery, { id: 1 }),
@@ -179,7 +221,11 @@ describe("useQuery", () => {
 		});
 		const settled = vi.fn();
 		function Issue() {
-			const [issue, controls] = useQuery(backend.issueQuery, handles.issue);
+			const [issueThenable, controls] = useQuery(
+				backend.issueQuery,
+				handles.issue,
+			);
+			const issue = use(issueThenable);
 			return (
 				<button
 					onClick={() => void controls.refetch().then(settled)}
@@ -202,10 +248,14 @@ describe("useQuery", () => {
 			readonly backend: Backend;
 			readonly handle: QueryHandle<Backend["issueQuery"]>;
 		}) {
-			const [read] = useQuery(props.backend.issueQuery, props.handle, {
-				result: true,
-			});
-			const result = use(read);
+			const [resultThenable] = useQuery(
+				props.backend.issueQuery,
+				props.handle,
+				{
+					result: true,
+				},
+			);
+			const result = use(resultThenable);
 			return (
 				<p>{result.ok ? result.value.title : `failed ${result.error._tag}`}</p>
 			);
@@ -255,10 +305,10 @@ describe("useQuery", () => {
 			const errors: Array<unknown> = [];
 			const thenables: Array<Thenable<unknown>> = [];
 			function Capture() {
-				const [read] = useQuery(backend.issueQuery, handles.issue, {
+				const [resultThenable] = useQuery(backend.issueQuery, handles.issue, {
 					result: true,
 				});
-				thenables.push(read);
+				thenables.push(resultThenable);
 				return null;
 			}
 			await renderWith(client, <Capture />);
@@ -282,15 +332,15 @@ describe("useQuery", () => {
 		const client = testClient();
 		setData(client, backend.issueQuery, { id: 1 }, { id: 1, title: "First" });
 		function Issue(props: { readonly id: number }) {
-			const [issue, controls] = useQuery(
+			const [issueThenable, controls] = useQuery(
 				backend.issueQuery,
 				waterfallHandle(backend.issueQuery, { id: props.id }),
 				{ whilePending: "previous" },
 			);
-			const value = use(issue);
+			const issue = use(issueThenable);
 			return (
 				<p>
-					{value.title} {String(controls.isPrevious)}
+					{issue.title} {String(controls.isPrevious)}
 				</p>
 			);
 		}
@@ -305,11 +355,7 @@ describe("useQuery", () => {
 	it("pages through a paged query", async () => {
 		const backend = createBackend();
 		const client = testClient();
-		let handles!: {
-			readonly pages: QueryHandle<Backend["pageQuery"]> & {
-				readonly defined: true;
-			};
-		};
+		let handles!: { readonly pages: QueryHandle<Backend["pageQuery"]> };
 		await loaded(backend, async () => {
 			[handles] = await load(client, {
 				pages: fetchEntry(backend.pageQuery, { size: 2 }),
@@ -317,7 +363,11 @@ describe("useQuery", () => {
 		});
 		const settled = vi.fn();
 		function Pages() {
-			const [data, controls] = useQuery(backend.pageQuery, handles.pages);
+			const [pagesThenable, controls] = useQuery(
+				backend.pageQuery,
+				handles.pages,
+			);
+			const data = use(pagesThenable);
 			return (
 				<>
 					<p>{data.pages.flat().join(",")}</p>
@@ -401,16 +451,16 @@ describe("useQuery", () => {
 			const client = createQueryClient({ isServer: true });
 			const handle = waterfallHandle(backend.disabledQuery, { id: 1 });
 			const reads: Array<Promise<unknown>> = [];
-			function Child(props: { readonly issue: Promise<unknown> }) {
-				use(props.issue);
+			function Child(props: { readonly issueThenable: Promise<unknown> }) {
+				use(props.issueThenable);
 				return <p>loaded</p>;
 			}
 			function Disabled() {
-				const [issue] = useQuery(backend.disabledQuery, handle);
-				reads.push(issue);
+				const [issueThenable] = useQuery(backend.disabledQuery, handle);
+				reads.push(issueThenable);
 				return (
 					<Suspense fallback={<p>in the browser</p>}>
-						<Child issue={issue} />
+						<Child issueThenable={issueThenable} />
 					</Suspense>
 				);
 			}
@@ -432,8 +482,8 @@ describe("useQuery", () => {
 			const backend = createBackend();
 			const handle = waterfallHandle(backend.issueQuery, { id: 1 });
 			function Issue() {
-				const [read] = useQuery(backend.issueQuery, handle);
-				const issue = use(read);
+				const [issueThenable] = useQuery(backend.issueQuery, handle);
+				const issue = use(issueThenable);
 				return <p>{issue.title}</p>;
 			}
 			const html = renderToString(

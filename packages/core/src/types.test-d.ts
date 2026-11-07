@@ -4,7 +4,6 @@ import {
 	action,
 	createQueryClient,
 	type DataOf,
-	type DefinedQueryHandle,
 	defType,
 	ensureEntry,
 	type ErrorOf,
@@ -114,7 +113,7 @@ async function typedLoad() {
 		});
 
 		expectTypeOf(handles.issue).toEqualTypeOf<
-			DefinedQueryHandle<typeof backend.issueQuery>
+			QueryHandle<typeof backend.issueQuery>
 		>();
 		expectTypeOf(handles.title).toEqualTypeOf<QueryHandle<typeof titles>>();
 		expectTypeOf(data.settings).toEqualTypeOf<{ theme: string }>();
