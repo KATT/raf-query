@@ -2,7 +2,7 @@
 
 Spec lives in the docs site's pages (`www/content`). Picks, and what lost:
 
-- **Read API: `[value, controls] = useQuery(factory, handle)`**: a `Thenable` for a prefetch or waterfall handle, read with `use()`, and the data itself for a defined handle (see [load-handles.md](./load-handles.md)). Lost: suspense-direct `{ data } = useQuery(...)` (hides `use()`, can't pass promises down; could be sugar later), registry-based `useQuery(handle)` (every definition in the root bundle, global name uniqueness).
+- **Read API: `[xThenable, xState] = useQuery(factory, handle)`**: a `Thenable` for every handle, read with `const x = use(xThenable)` (see [use-query-thenable.md](./use-query-thenable.md)). Lost: suspense-direct `{ data } = useQuery(...)` (hides `use()`, can't pass promises down; could be sugar later), registry-based `useQuery(handle)` (every definition in the root bundle, global name uniqueness).
 - **Definitions: TanStack-style factories `(input?) => queryOptions({ queryKey, queryFn })`.** Lost: `defineQuery({ name, fn })` with derived keys. Consequence: invalidation is by factory (with all or part of its input), by group, or by a target (see [keys-groups-tags.md](./keys-groups-tags.md)).
 - **Hydration: cache-level stream; handles carry no promises.** Lost: handle-carried promises. Consequence: every framework needs an integration (`/tanstack-router`, `HydrationBoundary`). Handles carry no data either: readers go through the cache.
 - **Engine: own core**, copying mechanisms from TanStack — not a wrapper around `@tanstack/query-core`. See [implementation-notes.md](../implementation-notes.md).
