@@ -12,11 +12,11 @@ declare function PostSkeleton(): ReactNode;
 function PostPage() {
 	// #region skeletons-for-unrelated-content
 	// This loader starts the post with `prefetchEntry`.
-	const [postPromise, controls] = useQuery(postQuery, loaderData.post);
+	const [postThenable, controls] = useQuery(postQuery, loaderData.post);
 
 	return (
 		<Suspense key={controls.hash} fallback={<PostSkeleton />}>
-			<PostBody post={postPromise} />
+			<PostBody post={postThenable} />
 		</Suspense>
 	);
 	// #endregion

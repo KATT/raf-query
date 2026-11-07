@@ -93,8 +93,8 @@ function MessageSkeletons() {
 function Messages(props: {
 	readonly handle: QueryHandle<typeof messagesQuery>;
 }) {
-	const [pagesPromise, controls] = useQuery(messagesQuery, props.handle);
-	const data = use(pagesPromise);
+	const [pagesThenable, controls] = useQuery(messagesQuery, props.handle);
+	const data = use(pagesThenable);
 	const items = data.pages.flatMap((page) => page.items);
 	return (
 		<div

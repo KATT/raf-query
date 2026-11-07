@@ -1,16 +1,14 @@
-import {
-	type DefinedQueryHandle,
-	useIsFetching,
-	useQuery,
-} from "@raf-query/react";
+import { use } from "react";
+import { type QueryHandle, useIsFetching, useQuery } from "@raf-query/react";
 import type { ReactNode } from "react";
 import { commentsQuery, postQuery } from "~/queries.ts";
 
 declare function Spinner(props: { readonly label: string }): ReactNode;
 
 // #region one-query-isfetching
-function Post(props: { handle: DefinedQueryHandle<typeof postQuery> }) {
-	const [post, controls] = useQuery(postQuery, props.handle);
+function Post(props: { handle: QueryHandle<typeof postQuery> }) {
+	const [postThenable, controls] = useQuery(postQuery, props.handle);
+	const post = use(postThenable);
 	return (
 		<article aria-busy={controls.isFetching}>
 			<h1>

@@ -1,6 +1,5 @@
 import {
 	createQueryClient,
-	type DefinedQueryHandle,
 	fetchEntry,
 	focusRefetch,
 	load,
@@ -13,7 +12,7 @@ import {
 	useQuery,
 } from "@raf-query/react";
 import { act, render, screen } from "@testing-library/react";
-import { type ReactNode, Suspense } from "react";
+import { type ReactNode, Suspense, use } from "react";
 import { afterEach, beforeEach, expect, test } from "./testing.vitest.ts";
 import { postQuery } from "~/queries.ts";
 import { group } from "@raf-query/react/groups";
@@ -63,8 +62,9 @@ test("refetches on focus", async () => {
 	let calls = 0;
 	const countQuery = () =>
 		queryOptions({ queryKey: count(), queryFn: async () => ++calls });
-	function Count(props: { handle: DefinedQueryHandle<typeof countQuery> }) {
-		const [count] = useQuery(countQuery, props.handle);
+	function Count(props: { handle: QueryHandle<typeof countQuery> }) {
+		const [countThenable] = useQuery(countQuery, props.handle);
+		const count = use(countThenable);
 		return <p>{count}</p>;
 	}
 

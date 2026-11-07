@@ -1,6 +1,5 @@
 import {
 	createQueryClient,
-	type DefinedQueryHandle,
 	ensureEntry,
 	load,
 	prefetchEntry,
@@ -9,6 +8,7 @@ import {
 	useQuery,
 	type UseQueryOptions,
 } from "@raf-query/react";
+import { use } from "react";
 import { commentsQuery, postQuery } from "~/queries.ts";
 
 declare const config: QueryClientConfig | undefined;
@@ -30,11 +30,9 @@ declare const factory: typeof postQuery;
 
 declare const handle: QueryHandle<typeof postQuery>;
 
-declare const definedHandle: DefinedQueryHandle<typeof postQuery>;
-
 declare const options: UseQueryOptions | undefined;
 
 // #region usequery
-const [promise, controls] = useQuery(factory, handle, options);
-const [post, postControls] = useQuery(factory, definedHandle, options);
+const [postThenable, postState] = useQuery(factory, handle, options);
+const post = use(postThenable);
 // #endregion

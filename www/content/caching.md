@@ -26,7 +26,7 @@ Assume the default `gcTime` of **5 minutes** and the default `staleTime` of `0`.
    - Reading never fetches: there is no refetch on mount, so no request starts.
 3. **The user navigates away and comes back.**
    - The loader runs again and calls `load` with the same prefetch entry. The data is stale, so the cached data renders at once and is refetched in the background.
-   - When the refetch completes, both readers re-render with the new data. If nothing changed, structural sharing keeps the same data and the same promise, so the readers' data keeps its identity.
+   - When the refetch completes, both readers re-render with the new data. If nothing changed, structural sharing keeps the same data and the same thenable, so the readers' data keeps its identity.
 4. **Every component reading `["todos"]` unmounts.**
    - The entry has no readers, so it's **inactive**. A garbage-collection timer starts for `gcTime` (5 minutes).
 5. **The user returns before the timer fires.**

@@ -1,6 +1,6 @@
 ---
 title: Reading queries
-description: useQuery returns a stable promise and the query's controls; unwrap the promise with use() under Suspense, or pass it down to a child.
+description: useQuery returns a stable thenable and the query's state; read it with use() under Suspense, switch on its status, or pass it down to a child.
 section: Guides
 order: 7
 ---
@@ -11,9 +11,9 @@ Components read queries with `useQuery`, passing the factory and the handle the 
 tanstack-start/src/docs/reading-queries.ts#intro
 ```
 
-`promise` is a stable `Thenable<Data>` owned by the cache: a `Promise` that also carries its `status`, `value` and `reason`. Unwrap it with `use()`. When the cache already has data, the promise is pre-resolved and `use()` returns synchronously without suspending.
+`postThenable` is a stable `Thenable<Data>` owned by the cache: a `Promise` that also carries `status`, `value` and `reason`, the fields React's [`use()`](https://react.dev/reference/react/use) reads. Read it with `use()` on its own line. When the cache already has the data, the thenable is fulfilled and `use()` returns it synchronously; otherwise `use()` suspends until it lands.
 
-A handle from `ensureEntry` or `fetchEntry` had its data loaded before the route rendered, so `useQuery` returns the data itself. See [Handles](./handles.md#typed-by-what-the-loader-did) for typing the props that receive one.
+`useQuery` returns a thenable for every handle. A handle from `ensureEntry` or `fetchEntry` had its data loaded before the route rendered, so `use()` doesn't suspend on it. If the cache dropped the data since (garbage collection, `resetOne`, `removeOne`), `use()` suspends while the query refetches. See [Handles](./handles.md#reading-a-handle).
 
 ```sample
 tanstack-start/src/docs/reading-queries.tsx#post-page
@@ -23,36 +23,36 @@ tanstack-start/src/docs/reading-queries.tsx#post-page
 
 ## Controls
 
-| Field               | Meaning                                                                                                   |
-| ------------------- | --------------------------------------------------------------------------------------------------------- |
-| `isPending`         | No data yet for the handle's input; `use(promise)` will suspend                                           |
-| `isPrevious`        | The promise holds the previous handle's data while this handle's query loads (`whilePending: "previous"`) |
-| `isFetching`        | A request is in flight: first load, new input, or background refetch                                      |
-| `isStale`           | Data is older than `staleTime`, or was invalidated                                                        |
-| `error`             | The last request's error while it's the latest outcome: a `fail()` value or a defect                      |
-| `updatedAt`         | When the handle's data was fetched; `0` without data                                                      |
-| `queryKey`, `input` | The handle's key and input                                                                                |
-| `hash`              | Stable string form of the handle's key, for `key` props on Suspense boundaries                            |
-| `refetch()`         | Refetch now. Returns a promise, so it can be awaited inside a transition or action                        |
+| Field               | Meaning                                                                                                    |
+| ------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `isPending`         | No data yet for the handle's input; `use()` on the thenable will suspend                                   |
+| `isPrevious`        | The thenable holds the previous handle's data while this handle's query loads (`whilePending: "previous"`) |
+| `isFetching`        | A request is in flight: first load, new input, or background refetch                                       |
+| `isStale`           | Data is older than `staleTime`, or was invalidated                                                         |
+| `error`             | The last request's error while it's the latest outcome: a `fail()` value or a defect                       |
+| `updatedAt`         | When the handle's data was fetched; `0` without data                                                       |
+| `queryKey`, `input` | The handle's key and input                                                                                 |
+| `hash`              | Stable string form of the handle's key, for `key` props on Suspense boundaries                             |
+| `refetch()`         | Refetch now. Returns a promise, so it can be awaited inside a transition or action                         |
 
 Paged factories add `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage` and `isFetchingPreviousPage`. See [Infinite queries](./infinite-queries.md).
 
 ## Updates never suspend
 
-When the cache updates — refetch, invalidation, `setData` — the hook returns a new, pre-resolved promise and the component re-renders without suspending. New data is structurally shared with the old: a refetch that returns equal data keeps the same promise and the same objects, so memoized children don't re-render. See [Render optimizations](./render-optimizations.md).
+When the cache updates — refetch, invalidation, `setData` — the hook returns a new, fulfilled thenable and the component re-renders without suspending. New data is structurally shared with the old: a refetch that returns equal data keeps the same thenable and the same objects, so memoized children don't re-render. See [Render optimizations](./render-optimizations.md).
 
 ## Errors
 
-When the **first** load fails, the promise rejects and `use()` throws to the nearest error boundary. A failed **background** refetch doesn't throw: the old data stays on screen and `controls.error` holds the error, so the component can show it next to the data. [Retries](./retries.md) has a demo of both.
+When the **first** load fails, the thenable rejects and `use()` throws to the nearest error boundary. A failed **background** refetch doesn't throw: the old data stays on screen and `controls.error` holds the error, so the component can show it next to the data. [Retries](./retries.md) has a demo of both.
 
 An [expected error](./query-functions.md#expected-errors) (`fail()`) throws a `QueryFailure`. Read it as a value with `{ result: true }`, or catch it by tag with `QueryBoundary` from `@raf-query/boundary`, whose `retry` refetches the query and renders the children again. With another error boundary, call `resetOne(qc, factory, input)` before resetting it, so the query loads again instead of throwing the same error.
 
-## Passing promises down
+## Passing thenables down
 
-A component can call the hook with a prefetched handle and hand the promise to a child, so only the child suspends:
+A component can call the hook with a prefetched handle and hand the thenable to a child, so only the child suspends:
 
 ```sample
-tanstack-start/src/docs/reading-queries.passing-promises-down.tsx#passing-promises-down
+tanstack-start/src/docs/reading-queries.passing-thenables-down.tsx#passing-thenables-down
 ```
 
 The component that calls `useQuery` re-renders whenever the query's state changes, such as `isFetching` during a background refetch. A parent that should stay put can pass the handle down instead, so only the child reads the query.

@@ -1,9 +1,9 @@
-import { type DefinedQueryHandle, useQuery } from "@raf-query/react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
 import { type ReactNode, use } from "react";
 import type { Todo } from "~/api.ts";
 import { postQuery } from "~/queries.ts";
 
-declare const loaderData: { post: DefinedQueryHandle<typeof postQuery> };
+declare const loaderData: { post: QueryHandle<typeof postQuery> };
 
 declare function CommentsSection(): ReactNode;
 
@@ -19,19 +19,18 @@ function PostPage() {
 	);
 }
 
-function RefreshButton(props: {
-	handle: DefinedQueryHandle<typeof postQuery>;
-}) {
-	const [, controls] = useQuery(postQuery, props.handle);
+function RefreshButton(props: { handle: QueryHandle<typeof postQuery> }) {
+	const [, postState] = useQuery(postQuery, props.handle);
 	return (
-		<button disabled={controls.isFetching} onClick={() => controls.refetch()}>
+		<button disabled={postState.isFetching} onClick={() => postState.refetch()}>
 			Refresh
 		</button>
 	);
 }
 
-function PostBody(props: { handle: DefinedQueryHandle<typeof postQuery> }) {
-	const [post] = useQuery(postQuery, props.handle);
+function PostBody(props: { handle: QueryHandle<typeof postQuery> }) {
+	const [postThenable] = useQuery(postQuery, props.handle);
+	const post = use(postThenable);
 	return <article>{post.body}</article>;
 }
 // #endregion

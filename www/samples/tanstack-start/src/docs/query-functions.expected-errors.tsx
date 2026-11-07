@@ -30,8 +30,8 @@ export const Route = createFileRoute("/posts/$slug")({
 
 // #region result
 function Post(props: { handle: QueryHandle<typeof postQuery> }) {
-	const [result] = useQuery(postQuery, props.handle, { result: true });
-	const post = use(result);
+	const [postThenable] = useQuery(postQuery, props.handle, { result: true });
+	const post = use(postThenable);
 	//    ^?
 	if (!post.ok) {
 		return <p>No post at {post.error.slug}.</p>;

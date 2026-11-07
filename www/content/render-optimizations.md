@@ -20,7 +20,7 @@ When a query refetches, the new data is compared with the old. Objects and array
 
 This lets `memo` components and React Compiler skip re-rendering children whose props didn't change, and keeps effects from re-running on refetches that changed nothing.
 
-When the whole response is deeply equal to the cached data, the old data is kept as it is, and the reader's promise doesn't change.
+When the whole response is deeply equal to the cached data, the old data is kept as it is, and the reader's thenable doesn't change.
 
 Structural sharing only looks inside plain objects and arrays. Class instances, `Map`s and `Date`s are compared by identity. Turn it off for very large responses where the comparison costs more than it saves, per query or for the whole client with `createQueryClient({ structuralSharing: false })`:
 
@@ -28,9 +28,9 @@ Structural sharing only looks inside plain objects and arrays. Class instances, 
 tanstack-start/src/docs/render-optimizations.ts#structural-sharing
 ```
 
-## Stable promises
+## Stable thenables
 
-For a handle from `prefetchEntry`, `useQuery` returns a promise owned by the cache. It changes only when the data does, so it's safe to pass down, compare, or use as a dependency. A new promise is always already resolved: `use()` returns its value synchronously, and nothing suspends on a refetch.
+`useQuery` returns a thenable owned by the cache. It changes only when the data does, so it's safe to pass down, compare, or use as a dependency. A new thenable is always already fulfilled: `use()` returns its value synchronously, and nothing suspends on a refetch.
 
 ## Selecting data
 
@@ -60,10 +60,10 @@ tanstack-start/src/docs/render-optimizations.tsx#reading-where-the-data-is-used
 
 Both components read the same query. When a request starts and ends, they re-render; the page around them doesn't. Handles are small serializable objects that don't change while the page shows the same query, so passing them down costs nothing.
 
-## Passing promises down
+## Passing thenables down
 
-A parent can read a prefetched handle and hand the promise to a child, so only the child suspends. The promise changes only when the data does, which is exactly when the child needs new props:
+A parent can read a prefetched handle and hand the thenable to a child, so only the child suspends. The thenable changes only when the data does, which is exactly when the child needs new props:
 
 ```sample
-tanstack-start/src/docs/render-optimizations.passing-promises-down.tsx#passing-promises-down
+tanstack-start/src/docs/render-optimizations.passing-thenables-down.tsx#passing-thenables-down
 ```

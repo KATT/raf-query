@@ -139,8 +139,8 @@ function LineSkeleton(props: { readonly className: string }) {
 }
 
 function Title(props: { readonly handle: QueryHandle<typeof postQuery> }) {
-	const [postPromise] = useQuery(postQuery, props.handle);
-	const post = use(postPromise);
+	const [postThenable] = useQuery(postQuery, props.handle);
+	const post = use(postThenable);
 	return <h3 className="text-lg font-semibold">{post?.title}</h3>;
 }
 
@@ -151,8 +151,8 @@ function Byline(props: { readonly name: string | undefined }) {
 function CommentList(props: {
 	readonly handle: QueryHandle<typeof commentsQuery>;
 }) {
-	const [pagesPromise] = useQuery(commentsQuery, props.handle);
-	const pages = use(pagesPromise);
+	const [pagesThenable] = useQuery(commentsQuery, props.handle);
+	const pages = use(pagesThenable);
 	return (
 		<ul className="grid gap-1.5">
 			{pages.pages
@@ -173,8 +173,8 @@ function CommentList(props: {
 function LoaderAuthor(props: {
 	readonly handle: QueryHandle<typeof postAuthorQuery>;
 }) {
-	const [authorPromise] = useQuery(postAuthorQuery, props.handle);
-	const author = use(authorPromise);
+	const [authorThenable] = useQuery(postAuthorQuery, props.handle);
+	const author = use(authorThenable);
 	return <Byline name={author} />;
 }
 
@@ -204,8 +204,8 @@ function LoaderPost(props: {
 /** Each level discovers what it needs only after its parent's data arrives. */
 function RenderPost(props: { readonly id: number }) {
 	const handle = waterfallHandle(postQuery, { id: props.id });
-	const [postPromise] = useQuery(postQuery, handle);
-	const post = use(postPromise);
+	const [postThenable] = useQuery(postQuery, handle);
+	const post = use(postThenable);
 	return (
 		<div className="grid gap-3">
 			<div className="grid gap-1">
@@ -230,8 +230,8 @@ function RenderAuthor(props: {
 	readonly postId: number;
 }) {
 	const handle = waterfallHandle(authorQuery, { id: props.authorId });
-	const [authorPromise] = useQuery(authorQuery, handle);
-	const author = use(authorPromise);
+	const [authorThenable] = useQuery(authorQuery, handle);
+	const author = use(authorThenable);
 	return (
 		<>
 			<Byline name={author} />

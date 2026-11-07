@@ -1,0 +1,6 @@
+{
+	// `tsc` checks only `x.ts` when a folder has both `x.ts` and `x.tsx`,
+	// so the `.tsx` half of each pair gets its own run.
+	"extends": "./tsconfig.json",
+	"include": ["src/**/*.tsx", "src/register.ts", "src/routeTree.gen.ts"]
+}

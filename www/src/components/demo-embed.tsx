@@ -23,11 +23,12 @@ function DemoPlaceholder() {
 function LoadedDemo(props: { readonly handle: QueryHandle<typeof demoQuery> }) {
 	// The server doesn't send demo entries (see router.tsx), so after
 	// hydration the browser loads a demo's chunk when it renders.
-	const [demoPromise] = useQuery(
+	const [demoThenable] = useQuery(
 		demoQuery,
 		waterfallHandle(demoQuery, props.handle.input),
 	);
-	return <DemoFrame demo={use(demoPromise)} />;
+	const demo = use(demoThenable);
+	return <DemoFrame demo={demo} />;
 }
 
 /**

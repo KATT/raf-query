@@ -9,9 +9,9 @@ import { postQuery } from "~/queries.ts";
 
 // #region component
 export function Post(props: { handle: QueryHandle<typeof postQuery> }) {
-	const [postPromise] = useQuery(postQuery, props.handle);
+	const [postThenable] = useQuery(postQuery, props.handle);
 	//     ^?
-	const post = use(postPromise);
+	const post = use(postThenable);
 	return <h1>{post.title}</h1>;
 }
 // #endregion component

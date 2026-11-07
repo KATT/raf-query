@@ -7,15 +7,15 @@ order: 5
 
 Queries start where the page's inputs are known: a route loader, a server component, or an event handler. `load` takes the client and a record of **entries**, one per query. Each entry names a factory and its input, and its kind decides what the load waits for:
 
-| Entry                           | Handle               | Cache miss            | Stale data                                    | TanStack Query                                                                                                                                         |
-| ------------------------------- | -------------------- | --------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `prefetchEntry(factory, input)` | `QueryHandle`        | Starts the request    | Refetches in the background                   | [`prefetchQuery`](https://tanstack.com/query/latest/docs/framework/react/reference/classes/QueryClient#prefetchquery), not awaited                     |
-| `ensureEntry(factory, input)`   | `DefinedQueryHandle` | Waits for the request | Resolves at once, refetches in the background | [`ensureQueryData({ revalidateIfStale: true })`](https://tanstack.com/query/latest/docs/framework/react/reference/classes/QueryClient#ensurequerydata) |
-| `fetchEntry(factory, input)`    | `DefinedQueryHandle` | Waits for the request | Waits for the refetch                         | [`fetchQuery`](https://tanstack.com/query/latest/docs/framework/react/reference/classes/QueryClient#fetchquery)                                        |
+| Entry                           | Cache miss            | Stale data                                    | TanStack Query                                                                                                                                         |
+| ------------------------------- | --------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `prefetchEntry(factory, input)` | Starts the request    | Refetches in the background                   | [`prefetchQuery`](https://tanstack.com/query/latest/docs/framework/react/reference/classes/QueryClient#prefetchquery), not awaited                     |
+| `ensureEntry(factory, input)`   | Waits for the request | Resolves at once, refetches in the background | [`ensureQueryData({ revalidateIfStale: true })`](https://tanstack.com/query/latest/docs/framework/react/reference/classes/QueryClient#ensurequerydata) |
+| `fetchEntry(factory, input)`    | Waits for the request | Waits for the refetch                         | [`fetchQuery`](https://tanstack.com/query/latest/docs/framework/react/reference/classes/QueryClient#fetchquery)                                        |
 
 Fresh cached data is reused by all three, without a request. So `prefetchEntry` never holds anything up, `ensureEntry` holds up only the first visit (returning to a page shows the cached data at once, then fresh data), and `fetchEntry` always returns fresh data, at the cost of a round trip whenever the cache is stale. That difference needs a client that keeps its cache between navigations, as a TanStack Router loader's or a client-only React Router `clientLoader`'s does. Code that only runs on the server has none: see [Server-only code](#server-only-code).
 
-`load` resolves to `[handles, data]`: a handle for every entry, and the data of the `ensureEntry` and `fetchEntry` ones. A handle from a waiting entry is a `DefinedQueryHandle`, which `useQuery` reads as the data itself. See [Handles](./handles.md).
+`load` resolves to `[handles, data]`: a `QueryHandle` for every entry, and the data of the `ensureEntry` and `fetchEntry` ones. A component reads every handle the same way, and `use()` returns a waited-for query's data without suspending. See [Handles](./handles.md).
 
 ```sample
 tanstack-start/src/routes/posts.$slug.tsx#route

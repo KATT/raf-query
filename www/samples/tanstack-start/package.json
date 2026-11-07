@@ -5,7 +5,7 @@
 	"description": "The TanStack Start app the docs' code samples are written against",
 	"type": "module",
 	"scripts": {
-		"typecheck": "tsc"
+		"typecheck": "tsc && tsc -p tsconfig.tsx.json"
 	},
 	"dependencies": {
 		"@raf-query/react": "workspace:*",

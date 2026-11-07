@@ -53,7 +53,7 @@ react-router-spa/app/components/comments.tsx#component
 ```
 
 - The client outlives navigations, so the entries differ as in [Starting queries](./starting-queries.md): `ensureEntry` holds up only the first visit, and returning to a page shows the cached data at once, then refetches it behind the page once it's stale. `fetchEntry` waits whenever the data is stale.
-- `ensureEntry` and `fetchEntry` give `DefinedQueryHandle`s: `useQuery` returns their data, not a promise.
+- `ensureEntry` and `fetchEntry` handles read without suspending: their thenable is already fulfilled when the component renders.
 - React Router runs a route's `clientLoader` again on every navigation to it. Data that is still fresh costs no request.
 - A module's client is safe only when nothing renders on the server. With `ssr: true`, every request would share it: see [Server rendering](#server-rendering).
 - In Data Mode, a route's `loader` runs in the browser too: start queries in it the same way, on a client from a module.
@@ -108,7 +108,7 @@ react-router/app/components/comments.tsx#component
 - **`dehydrate(qc)`** takes entries with data, entries that returned a `fail()`, and entries still loading. React Router [streams promises in loader data](https://reactrouter.com/how-to/suspense), so a `prefetchEntry` that is still loading resolves in the browser when the server's request does, and the browser doesn't fetch it again.
 - With nested routes, a loader's snapshot holds every entry the client has when the loader returns, other loaders' queries included. The browser keeps the newer copy of an entry, so the overlap only adds to the payload.
 - **`HydrationBoundary`** writes the entries into the provider's client: entries the browser doesn't have yet while it renders, so its children read them, and the rest once it commits. The browser keeps whichever copy of an entry is newer. See [SSR and hydration](./ssr-and-hydration.md#when-the-browser-already-has-data).
-- `load` resolves to `[handles, data]`. `data` holds what the `fetchEntry` entries waited for, for deciding on a redirect or building another query's input in the loader. A `fetchEntry`'s handle is a `DefinedQueryHandle`: `useQuery` returns its data without a promise, and follows later refetches. See [Handles](./handles.md).
+- `load` resolves to `[handles, data]`. `data` holds what the `fetchEntry` entries waited for, for deciding on a redirect or building another query's input in the loader. A component reads a `fetchEntry`'s handle with `use()` without suspending, and follows later refetches. See [Handles](./handles.md).
 - Use `prefetchEntry` and `fetchEntry` in a `loader`, not `ensureEntry`. A `loader` runs on the server for every navigation, client-side ones included, and its client starts empty, so `ensureEntry` waits for the request every time, exactly like `fetchEntry`. See [Starting queries](./starting-queries.md).
 - `load` rejects with a `QueryFailure` when a `fetchEntry`'s `queryFn` returns a `fail()`, so the route's [`ErrorBoundary`](https://reactrouter.com/start/framework/route-module#errorboundary) renders it.
 

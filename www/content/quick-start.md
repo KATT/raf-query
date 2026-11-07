@@ -55,7 +55,7 @@ tanstack-start/src/routes/todos.tsx#loader
 tanstack-start/src/routes/todos.tsx#component
 ```
 
-`useQuery` returns a stable promise and the query's controls. `use()` suspends until the data is there, then returns it; once the cache has data, the promise is already resolved and `use()` returns synchronously.
+`useQuery` returns a stable thenable and the query's state. `use()` suspends until the data is there, then returns it; once the cache has data, the thenable is already fulfilled and `use()` returns synchronously.
 
 ## 5. Write data with an Action
 

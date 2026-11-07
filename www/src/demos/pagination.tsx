@@ -67,12 +67,12 @@ function Projects(props: {
 	readonly data: PageData;
 	readonly whilePending: WhilePending;
 }) {
-	const [projectsPromise, controls] = useQuery(
+	const [projectsThenable, controls] = useQuery(
 		projectsQuery,
 		props.data.projects,
 		{ whilePending: props.whilePending },
 	);
-	const result = use(projectsPromise);
+	const result = use(projectsThenable);
 	const page = props.data.page;
 	return (
 		<div className="grid gap-3">

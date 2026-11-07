@@ -9,8 +9,8 @@ declare function Comment(props: {
 
 // #region reading-pages
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
-	const [pagesPromise, comments] = useQuery(commentsQuery, props.handle);
-	const data = use(pagesPromise);
+	const [pagesThenable, comments] = useQuery(commentsQuery, props.handle);
+	const data = use(pagesThenable);
 	//    ^?
 
 	return (

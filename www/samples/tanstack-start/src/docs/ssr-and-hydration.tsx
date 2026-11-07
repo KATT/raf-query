@@ -21,7 +21,8 @@ function PushSettings() {
 }
 
 function PushState() {
-	const [push] = useQuery(pushStateQuery, loaderData.push);
-	return <PushSwitch state={use(push)} />;
+	const [pushThenable] = useQuery(pushStateQuery, loaderData.push);
+	const push = use(pushThenable);
+	return <PushSwitch state={push} />;
 }
 // #endregion

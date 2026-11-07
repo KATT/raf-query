@@ -1,3 +1,4 @@
+import { use } from "react";
 import { ensureEntry, load, prefetchEntry, useQuery } from "@raf-query/react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Pencil } from "lucide-react";
@@ -79,7 +80,8 @@ export const Route = createFileRoute("/docs/$slug")({
 
 function DocPage() {
 	const data = Route.useLoaderData();
-	const [doc] = useQuery(docQuery, data.doc);
+	const [docThenable] = useQuery(docQuery, data.doc);
+	const doc = use(docThenable);
 	const around = neighbours(doc.slug);
 
 	return (

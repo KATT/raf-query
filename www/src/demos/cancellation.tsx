@@ -1,7 +1,8 @@
+import { use } from "react";
 import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
-	type DefinedQueryHandle,
+	type QueryHandle,
 	ensureEntry,
 	infiniteQueryOptions,
 	invalidateOne,
@@ -57,16 +58,15 @@ function inboxQuery() {
 
 type PageData =
 	| {
-			readonly inbox: DefinedQueryHandle<typeof inboxQuery>;
+			readonly inbox: QueryHandle<typeof inboxQuery>;
 			readonly page: "inbox";
 	  }
 	| { readonly page: "settings" };
 
-function Inbox(props: {
-	readonly handle: DefinedQueryHandle<typeof inboxQuery>;
-}) {
+function Inbox(props: { readonly handle: QueryHandle<typeof inboxQuery> }) {
 	const queryClient = useQueryClient();
-	const [pages, controls] = useQuery(inboxQuery, props.handle);
+	const [pagesThenable, controls] = useQuery(inboxQuery, props.handle);
+	const pages = use(pagesThenable);
 	const messages = pages.pages.flatMap((page) => page.items);
 	return (
 		<div aria-busy={controls.isFetching} className="grid gap-3">

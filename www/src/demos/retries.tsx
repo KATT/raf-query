@@ -62,8 +62,8 @@ function PostSkeleton() {
  * boundary then refetches it.
  */
 function PostView(props: { readonly handle: QueryHandle<typeof postQuery> }) {
-	const [postPromise, post] = useQuery(postQuery, props.handle);
-	const data = use(postPromise);
+	const [postThenable, post] = useQuery(postQuery, props.handle);
+	const data = use(postThenable);
 	return (
 		<div className="grid gap-3">
 			<div className="grid gap-1">

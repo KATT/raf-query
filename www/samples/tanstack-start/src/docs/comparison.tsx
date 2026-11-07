@@ -8,8 +8,15 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense } from "react";
 import { group } from "@raf-query/react/groups";
+import { postQuery } from "~/queries.ts";
 
 const permission = group("permission");
+
+declare function Spinner(): React.ReactNode;
+
+declare function ErrorNotice(props: {
+	readonly error: unknown;
+}): React.ReactNode;
 
 declare function NotificationsToggle(props: {
 	readonly permission: PermissionState | undefined;
@@ -56,16 +63,32 @@ function NotificationsSetting() {
 }
 
 function Permission() {
-	const [promise] = useQuery(permissionQuery, loaderData.notifications);
-	const permission = promise.status === "fulfilled" ? promise.value : undefined;
+	const [permissionThenable] = useQuery(
+		permissionQuery,
+		loaderData.notifications,
+	);
+	const permission =
+		permissionThenable.status === "fulfilled"
+			? permissionThenable.value
+			: undefined;
 	return <NotificationsToggle permission={permission} />;
 }
 // #endregion component
 
 // #region thenable
-const [promise, controls] = useQuery(permissionQuery, loaderData.notifications);
-const data = promise.status === "fulfilled" ? promise.value : undefined;
-//    ^?
-const error = promise.status === "rejected" ? promise.reason : undefined;
-const { isFetching, isPending } = controls;
+function PostTitle(props: { handle: QueryHandle<typeof postQuery> }) {
+	const [postThenable, postState] = useQuery(postQuery, props.handle);
+	switch (postThenable.status) {
+		case "pending":
+			return <Spinner />;
+		case "rejected":
+			return <ErrorNotice error={postThenable.reason} />;
+		case "fulfilled":
+			return (
+				<h1 aria-busy={postState.isFetching}>{postThenable.value.title}</h1>
+			);
+	}
+}
 // #endregion thenable
+
+export { PostTitle };

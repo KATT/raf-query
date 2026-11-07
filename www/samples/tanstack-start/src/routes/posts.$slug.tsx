@@ -31,7 +31,8 @@ export const Route = createFileRoute("/posts/$slug")({
 function PostPage() {
 	const data = Route.useLoaderData();
 	// The route already waited for this, so this is the post itself.
-	const [post] = useQuery(postQuery, data.post);
+	const [postThenable] = useQuery(postQuery, data.post);
+	const post = use(postThenable);
 	//     ^?
 	return (
 		<article>
@@ -45,9 +46,9 @@ function PostPage() {
 
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	// May still be loading. If so, use() suspends until it lands.
-	const [pagesPromise] = useQuery(commentsQuery, props.handle);
+	const [pagesThenable] = useQuery(commentsQuery, props.handle);
 	//     ^?
-	const pages = use(pagesPromise);
+	const pages = use(pagesThenable);
 	return pages.pages.flatMap((page) => page.items).map(renderComment);
 }
 // #endregion component

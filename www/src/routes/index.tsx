@@ -107,10 +107,10 @@ const features: ReadonlyArray<{
 		title: "Small, serializable handles",
 	},
 	{
-		body: "useQuery returns a stable promise; unwrap it with use() wherever the data is needed, even in a child.",
+		body: "useQuery returns a stable thenable for every handle; read it with use() wherever the data is needed, even in a child.",
 		icon: <SquareStack />,
 		slug: "reading-queries",
-		title: "Promises in, use() out",
+		title: "Thenables in, use() out",
 	},
 	{
 		body: "Filters, sort and pages live in the URL. whilePending picks between suspending and keeping the previous page.",
@@ -233,7 +233,7 @@ const stepsByMode = {
 					<p>
 						Client components live in their own files, marked with a{" "}
 						<code>use client</code> directive. <code>useQuery</code> takes the
-						factory and a handle and returns a promise. <code>use()</code>{" "}
+						factory and a handle and returns a thenable. <code>use()</code>{" "}
 						suspends that subtree while its skeleton shows, so the rest of the
 						page can stream in around it.
 					</p>
@@ -299,8 +299,8 @@ const stepsByMode = {
 						The route component wraps the page in <code>HydrationBoundary</code>
 						, which writes the loader’s snapshot into the browser’s cache.{" "}
 						<code>useQuery</code> takes the factory and a handle and returns a
-						promise. <code>use()</code> suspends that subtree while its skeleton
-						shows, so the rest of the page can stream in around it.
+						thenable. <code>use()</code> suspends that subtree while its
+						skeleton shows, so the rest of the page can stream in around it.
 					</p>
 					<p>
 						From then on the cache keeps both up to date: with{" "}
@@ -371,8 +371,8 @@ const stepsByMode = {
 				<>
 					<p>
 						<code>useQuery</code> takes the factory and a handle and returns a
-						promise. <code>use()</code> suspends that subtree while its skeleton
-						shows, so the rest of the page can stream in around it.
+						thenable. <code>use()</code> suspends that subtree while its
+						skeleton shows, so the rest of the page can stream in around it.
 					</p>
 					<p>
 						From then on the cache keeps both up to date: with{" "}
@@ -435,7 +435,10 @@ const mapping: ReadonlyArray<readonly [string, string]> = [
 		"load(qc, { x: ensureEntry(factory, input) })",
 	],
 	["queryClient.fetchQuery()", "load(qc, { x: fetchEntry(factory, input) })"],
-	["useSuspenseQuery()", "use(useQuery(factory, handle)[0])"],
+	[
+		"useSuspenseQuery()",
+		"use() on the thenable from useQuery(factory, handle)",
+	],
 	["useInfiniteQuery()", "useQuery() with an infiniteQueryOptions factory"],
 	["placeholderData: keepPreviousData", 'whilePending: "previous"'],
 	["useMutation()", "action(write, { invalidates })"],

@@ -5,7 +5,7 @@ section: Getting started
 order: 1
 ---
 
-raf-query is a data-fetching library for React built around **render-as-you-fetch**. Queries start in route loaders and React Server Components, travel to components as small serializable **handles**, and are read with React's `use()` under Suspense. Fetch-on-render is an explicitly named escape hatch, not the default.
+raf-query is a data-fetching library for React built around **render-as-you-fetch**. Queries start in route loaders and React Server Components, travel to components as small serializable **handles**, and are read with React's [`use()`](https://react.dev/reference/react/use) under Suspense. Fetch-on-render is an explicitly named escape hatch, not the default.
 
 The cache's mechanics (dedupe, staleness, infinite paging, SSR hydration) follow [TanStack Query](https://tanstack.com/query). The public API is built around loaders, RSC and `use()` instead of `useQuery`-in-render.
 
@@ -20,12 +20,12 @@ React's own guidance is to start fetching before rendering: in the router's load
 
 - The **loader** (or server component) starts queries with `load`, one entry per query: `prefetchEntry`, `ensureEntry` or `fetchEntry`.
 - It passes **handles** to components. A handle is a query's key and input, with no data, so it serializes for free.
-- Components call `useQuery(factory, handle)`. It returns the data for a handle the loader waited for, and a promise to unwrap with `use()` for one it didn't. Suspense boundaries decide what shows while data is on its way.
+- Components call `useQuery(factory, handle)`, which returns a **thenable** and the query's state. A thenable is a promise that also carries `status`, `value` and `reason`, the fields `use()` reads: when the value is already there, `use()` returns it synchronously, and otherwise it suspends. A handle the loader waited for reads without suspending, and Suspense boundaries decide what shows while the rest is on its way.
 
 ## Principles
 
 - **Fetch where React recommends.** Loaders and server components start queries. Components read them.
-- **Promises in, `use()` out.** The read hook returns a stable promise; components unwrap it with `use()`, so reads can be conditional or happen in a child.
+- **Thenables in, `use()` out.** The read hook returns a stable thenable for every handle; components read it with `use()`, so reads can be conditional or happen in a child.
 - **The URL is the input.** Anything that changes what a query fetches (filters, sort, page) lives in path or search params, so the loader starts the right query on every navigation. Components never derive query input from local state.
 - **Actions for writes.** Mutations are plain async functions in form actions or transitions. The cache provides invalidation, React provides pending and optimistic state.
 - **Pay for what you use.** The client does nothing on its own. Retries, refetching on focus or reconnect, polling and invalidation after actions are opt-in links and features, so an app ships only what it turns on.

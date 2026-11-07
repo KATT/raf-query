@@ -29,8 +29,6 @@ A component takes a handle as a prop, so a test can start the query itself with 
 tanstack-start/src/docs/testing.tsx#testing-a-component
 ```
 
-For a component that takes a `DefinedQueryHandle`, load the query with `ensureEntry` or `fetchEntry` instead.
-
 ## Seeding the cache
 
 To render with known data and no request at all, write it with `setData` before loading:

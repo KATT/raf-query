@@ -1,3 +1,4 @@
+import { use } from "react";
 import {
 	createQueryClient,
 	ensureEntry,
@@ -41,5 +42,6 @@ const getPostQuery = endpointQuery(api.posts.get);
 const [handles] = await load(qc, {
 	post: ensureEntry(getPostQuery, { slug }),
 });
-const [post] = useQuery(getPostQuery, handles.post);
+const [postThenable] = useQuery(getPostQuery, handles.post);
+const post = use(postThenable);
 // #endregion

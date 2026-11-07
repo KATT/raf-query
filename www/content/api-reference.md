@@ -76,12 +76,11 @@ tanstack-start/src/docs/api-reference.ts#load
 | Export                                    | Use                                                                                                                                           |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `load(client, entries)`                   | Start every entry, then resolve with `[handles, data]`. Rejects when a fetch or ensure entry fails. [Starting queries](./starting-queries.md) |
-| `prefetchEntry(factory, input, options?)` | Start the query if the cache has no fresh data; never waits. Its handle is a `QueryHandle`                                                    |
-| `ensureEntry(factory, input, options?)`   | Wait only when the cache has no data; stale data resolves at once and refetches. Its handle is a `DefinedQueryHandle`                         |
-| `fetchEntry(factory, input, options?)`    | Wait for fresh data. Its handle is a `DefinedQueryHandle`                                                                                     |
+| `prefetchEntry(factory, input, options?)` | Start the query if the cache has no fresh data; never waits                                                                                   |
+| `ensureEntry(factory, input, options?)`   | Wait only when the cache has no data; stale data resolves at once and refetches                                                               |
+| `fetchEntry(factory, input, options?)`    | Wait for fresh data                                                                                                                           |
 | `waterfallHandle(factory, input)`         | The handle of a query whose input is only known while rendering. [Request waterfalls](./request-waterfalls.md)                                |
-| `QueryHandle<TFactory>`                   | `{ queryKey, input }`, serializable. [Handles](./handles.md)                                                                                  |
-| `DefinedQueryHandle<TFactory>`            | A handle whose query had data when `load` resolved: `{ queryKey, input, defined: true }`                                                      |
+| `QueryHandle<TFactory>`                   | `{ queryKey, input }`, serializable; what `load` returns for every entry. [Handles](./handles.md)                                             |
 | `LoadEntry`, `Loaded`, `EntryOptions`     | Entry and result types. `EntryOptions` is `{ pages }`: how many pages a paged factory's first load fetches                                    |
 
 ## Reading queries
@@ -90,7 +89,7 @@ tanstack-start/src/docs/api-reference.ts#load
 tanstack-start/src/docs/api-reference.ts#usequery
 ```
 
-`useQuery(factory, handle, options?)` returns a `Thenable<Data>` to pass to `use()`, or the data itself for a `DefinedQueryHandle`, next to its controls. A query nothing loaded fetches while rendering. [Reading queries](./reading-queries.md)
+`useQuery(factory, handle, options?)` returns a `Thenable<Data>` for every handle, next to its state. Read it with `use()`, which returns at once when the data is cached and suspends otherwise. A query nothing loaded fetches while rendering. [Reading queries](./reading-queries.md)
 
 Options:
 
@@ -101,7 +100,7 @@ Options:
 
 | Control             | Meaning                                                                                     |
 | ------------------- | ------------------------------------------------------------------------------------------- |
-| `isPending`         | No data yet for the handle's input; `use(promise)` will suspend                             |
+| `isPending`         | No data yet for the handle's input; `use()` on the thenable will suspend                    |
 | `isPrevious`        | Showing the previous handle's data while the new one loads (`whilePending: "previous"`)     |
 | `isFetching`        | A request is in flight: first load, new input, or background refetch                        |
 | `isStale`           | Data is older than `staleTime`, or invalidated                                              |
@@ -113,7 +112,7 @@ Options:
 
 Paged factories add `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage` and `isFetchingPreviousPage`.
 
-The promise is a `Thenable<Data>`: read its `status`, `value` and `reason` to render without Suspense. See [Reading without Suspense](./comparison.md#reading-without-suspense).
+Read the thenable's `status`, `value` and `reason` to render without Suspense. See [Reading without Suspense](./comparison.md#reading-without-suspense).
 
 | Export                                                                       | Use                                                                                                                                                                           |
 | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

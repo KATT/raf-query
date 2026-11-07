@@ -87,11 +87,11 @@ interface PageData {
 }
 
 function ListCard(props: {
-	readonly items: Promise<{
+	readonly itemsThenable: Promise<{
 		readonly pages: ReadonlyArray<{ readonly items: ReadonlyArray<string> }>;
 	}>;
 }) {
-	const pages = use(props.items);
+	const pages = use(props.itemsThenable);
 	return (
 		<ul className="grid gap-1 text-sm">
 			{pages.pages
@@ -107,7 +107,7 @@ function ListCard(props: {
 
 function Card(props: {
 	readonly fetching: boolean;
-	readonly items: Promise<{
+	readonly itemsThenable: Promise<{
 		readonly pages: ReadonlyArray<{ readonly items: ReadonlyArray<string> }>;
 	}>;
 	readonly label: string;
@@ -133,7 +133,7 @@ function Card(props: {
 					</div>
 				}
 			>
-				<ListCard items={props.items} />
+				<ListCard itemsThenable={props.itemsThenable} />
 			</Suspense>
 			<p className="text-[11px] text-muted-foreground tabular-nums">
 				{props.updatedAt ? `Fetched ${formatTime(props.updatedAt)}` : "Loading"}
@@ -146,11 +146,11 @@ function TodosCard(props: {
 	readonly handle: QueryHandle<typeof todosQuery>;
 	readonly label: string;
 }) {
-	const [items, state] = useQuery(todosQuery, props.handle);
+	const [itemsThenable, state] = useQuery(todosQuery, props.handle);
 	return (
 		<Card
 			fetching={state.isFetching}
-			items={items}
+			itemsThenable={itemsThenable}
 			label={props.label}
 			updatedAt={state.updatedAt}
 		/>
@@ -158,11 +158,11 @@ function TodosCard(props: {
 }
 
 function UsersCard(props: { readonly handle: QueryHandle<typeof usersQuery> }) {
-	const [items, state] = useQuery(usersQuery, props.handle);
+	const [itemsThenable, state] = useQuery(usersQuery, props.handle);
 	return (
 		<Card
 			fetching={state.isFetching}
-			items={items}
+			itemsThenable={itemsThenable}
 			label='[users, "list"]'
 			updatedAt={state.updatedAt}
 		/>

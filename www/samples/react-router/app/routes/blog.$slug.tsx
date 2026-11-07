@@ -53,17 +53,17 @@ export default function PostPage(props: Route.ComponentProps) {
 }
 
 function Post(props: { handle: QueryHandle<typeof postQuery> }) {
-	const [postPromise] = useQuery(postQuery, props.handle);
+	const [postThenable] = useQuery(postQuery, props.handle);
 	//     ^?
-	const post = use(postPromise);
+	const post = use(postThenable);
 	return <h1>{post.title}</h1>;
 }
 
 // ---collapse---
 function PostComments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	// May still be loading. If so, use() suspends until it lands.
-	const [pagesPromise] = useQuery(commentsQuery, props.handle);
-	const pages = use(pagesPromise);
+	const [pagesThenable] = useQuery(commentsQuery, props.handle);
+	const pages = use(pagesThenable);
 	return pages.pages
 		.flatMap((page) => page.items)
 		.map((comment) => <Comment key={comment.id} comment={comment} />);

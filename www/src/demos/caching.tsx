@@ -72,8 +72,8 @@ function TodosSkeleton() {
 }
 
 function Todos(props: { readonly handle: QueryHandle<typeof todosQuery> }) {
-	const [pagesPromise, controls] = useQuery(todosQuery, props.handle);
-	const pages = use(pagesPromise);
+	const [pagesThenable, controls] = useQuery(todosQuery, props.handle);
+	const pages = use(pagesThenable);
 	const list = pages.pages.flatMap((page) => page.items);
 	return (
 		<div aria-busy={controls.isFetching} className="grid gap-2">

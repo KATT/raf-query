@@ -23,8 +23,8 @@ declare function Comment(props: { comment: PostComment }): React.ReactNode;
 // #region hero
 export function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	// May still be loading. If so, use() suspends until it lands.
-	const [pagesPromise] = useQuery(commentsQuery, props.handle);
-	const pages = use(pagesPromise);
+	const [pagesThenable] = useQuery(commentsQuery, props.handle);
+	const pages = use(pagesThenable);
 	//     ^?
 	return pages.pages
 		.flatMap((page) => page.items)

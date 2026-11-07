@@ -1,3 +1,4 @@
+import { use } from "react";
 import { ensureEntry, load, useQuery } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 
@@ -15,7 +16,11 @@ export const Route = createFileRoute("/posts/$slug")({
 });
 
 function PostPage() {
-	const [post, postState] = useQuery(postQuery, Route.useLoaderData().post);
+	const [postThenable, postState] = useQuery(
+		postQuery,
+		Route.useLoaderData().post,
+	);
+	const post = use(postThenable);
 	return (
 		<article aria-busy={postState.isFetching}>
 			<h1>{post.title}</h1>

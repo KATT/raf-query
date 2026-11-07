@@ -11,11 +11,11 @@ declare function PostBody(props: {
 declare function Spinner(): ReactNode;
 
 function Parent() {
-	// #region passing-promises-down
-	const [postPromise] = useQuery(postQuery, loaderData.post);
+	// #region passing-thenables-down
+	const [postThenable] = useQuery(postQuery, loaderData.post);
 	return (
 		<Suspense fallback={<Spinner />}>
-			<PostBody post={postPromise} />
+			<PostBody post={postThenable} />
 		</Suspense>
 	);
 	// #endregion

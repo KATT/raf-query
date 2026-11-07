@@ -32,8 +32,8 @@ function TodosPage() {
 }
 
 function TodoList(props: { handle: QueryHandle<typeof todosQuery> }) {
-	const [pagesPromise, todosState] = useQuery(todosQuery, props.handle);
-	const pages = use(pagesPromise);
+	const [pagesThenable, todosState] = useQuery(todosQuery, props.handle);
+	const pages = use(pagesThenable);
 	return (
 		<ul aria-busy={todosState.isFetching}>
 			{pages.pages

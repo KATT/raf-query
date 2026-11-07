@@ -2,7 +2,7 @@ import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
-	type DefinedQueryHandle,
+	type QueryHandle,
 	ensureEntry,
 	invalidateMany,
 	load,
@@ -12,7 +12,7 @@ import {
 	useQueryClient,
 } from "@raf-query/react";
 import { RefreshCw } from "lucide-react";
-import { startTransition } from "react";
+import { startTransition, use } from "react";
 
 import { DemoBrowser } from "~/demo-kit/browser.tsx";
 import { Spinner } from "~/demo-kit/controls.tsx";
@@ -43,7 +43,7 @@ function statQuery(input: { readonly stat: Stat }) {
 	});
 }
 
-type PageData = Readonly<Record<Stat, DefinedQueryHandle<typeof statQuery>>>;
+type PageData = Readonly<Record<Stat, QueryHandle<typeof statQuery>>>;
 
 function GlobalIndicator() {
 	const fetching = useIsFetching();
@@ -67,10 +67,11 @@ function GlobalIndicator() {
 }
 
 function StatCard(props: {
-	readonly handle: DefinedQueryHandle<typeof statQuery>;
+	readonly handle: QueryHandle<typeof statQuery>;
 	readonly stat: Stat;
 }) {
-	const [value, stat] = useQuery(statQuery, props.handle);
+	const [valueThenable, stat] = useQuery(statQuery, props.handle);
+	const value = use(valueThenable);
 	return (
 		<section
 			aria-busy={stat.isFetching}

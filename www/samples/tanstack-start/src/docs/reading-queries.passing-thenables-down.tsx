@@ -9,11 +9,11 @@ declare function Spinner(): ReactNode;
 declare const loaderData: { post: QueryHandle<typeof postQuery> };
 
 function Parent() {
-	// #region passing-promises-down
-	const [postPromise] = useQuery(postQuery, loaderData.post); // from `prefetchEntry`
+	// #region passing-thenables-down
+	const [postThenable] = useQuery(postQuery, loaderData.post); // from `prefetchEntry`
 	return (
 		<Suspense fallback={<Spinner />}>
-			<PostBody post={postPromise} />
+			<PostBody post={postThenable} />
 		</Suspense>
 	);
 	// #endregion

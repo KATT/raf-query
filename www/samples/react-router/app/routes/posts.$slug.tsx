@@ -1,5 +1,5 @@
 import {
-	type DefinedQueryHandle,
+	type QueryHandle,
 	fetchEntry,
 	HydrationBoundary,
 	load,
@@ -7,7 +7,7 @@ import {
 	useQuery,
 } from "@raf-query/react";
 import { dehydrate } from "@raf-query/react/hydration";
-import { Suspense } from "react";
+import { Suspense, use } from "react";
 import { redirect } from "react-router";
 
 import { Comments, CommentsSkeleton } from "~/components/comments.tsx";
@@ -49,9 +49,10 @@ export default function PostPage(props: Route.ComponentProps) {
 	);
 }
 
-function Post(props: { handle: DefinedQueryHandle<typeof postQuery> }) {
+function Post(props: { handle: QueryHandle<typeof postQuery> }) {
 	// The loader waited for the post, so this is the post, not a promise.
-	const [post] = useQuery(postQuery, props.handle);
+	const [postThenable] = useQuery(postQuery, props.handle);
+	const post = use(postThenable);
 	//     ^?
 	return <h1>{post.title}</h1>;
 }

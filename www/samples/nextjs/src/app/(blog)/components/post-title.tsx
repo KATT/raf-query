@@ -2,16 +2,16 @@
 "use client";
 // #endregion
 
-import { type DefinedQueryHandle, useQuery } from "@raf-query/react";
+import { use } from "react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
 
 import { postQuery } from "~/queries.ts";
 
 // #region component
-export function PostTitle(props: {
-	handle: DefinedQueryHandle<typeof postQuery>;
-}) {
+export function PostTitle(props: { handle: QueryHandle<typeof postQuery> }) {
 	// The server component waited for the post: this is the post, not a promise.
-	const [post] = useQuery(postQuery, props.handle);
+	const [postThenable] = useQuery(postQuery, props.handle);
+	const post = use(postThenable);
 	//     ^?
 	return <h1>{post.title}</h1>;
 }

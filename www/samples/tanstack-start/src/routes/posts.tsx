@@ -27,10 +27,10 @@ export const Route = createFileRoute("/posts")({
 
 function PostsPage() {
 	const loaderData = Route.useLoaderData();
-	const [postsPromise, postsState] = useQuery(postsQuery, loaderData.posts, {
+	const [postsThenable, postsState] = useQuery(postsQuery, loaderData.posts, {
 		whilePending: "previous",
 	});
-	const posts = use(postsPromise);
+	const posts = use(postsThenable);
 
 	return (
 		<>

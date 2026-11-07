@@ -61,7 +61,7 @@ tanstack-start/src/docs/query-factories.disabling-a-query.ts#disabling-a-query
 Every call runs the factory again, so `enabled` is decided per call: a later call that returns `true`, such as the loader running after the flag turned on, starts the query. While it's disabled:
 
 - Nothing runs it: not `prefetchEntry`, not its readers, not an invalidation or `refetch()`. A `load` with an `ensureEntry` or `fetchEntry` for it rejects with `QueryDisabledError`, unless an `ensureEntry` finds cached data.
-- Readers see `isPending`. In the browser its promise stays pending, so a reader that calls `use()` shows its Suspense fallback until the query is enabled and loads.
+- Readers see `isPending`. In the browser its thenable stays pending, so a reader that calls `use()` shows its Suspense fallback until the query is enabled and loads.
 
 `enabled: typeof window !== "undefined"` disables a query on the server only. See [Browser-only queries](./ssr-and-hydration.md#browser-only-queries).
 

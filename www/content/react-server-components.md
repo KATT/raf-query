@@ -61,7 +61,7 @@ To render a query's data in the server component itself, wait for it with `fetch
 nextjs/src/docs/nextjs.fetch.tsx#fetch
 ```
 
-`handles.post` is a `DefinedQueryHandle`: a client component that reads it gets the data from `useQuery`, without a promise, and follows later refetches. The handle carries no data: the post crosses once, in the `HydrationBoundary`'s entries.
+`handles.post` came from a `fetchEntry`: a client component reads it with `use()` without suspending, and follows later refetches. The handle carries no data: the post crosses once, in the `HydrationBoundary`'s entries.
 
 ```sample
 nextjs/src/app/(blog)/components/post-title.tsx#component

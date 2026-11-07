@@ -286,10 +286,10 @@ function PromisedList(props: {
 
 function PrefetchedList(): ReactNode {
 	const handle = prefetchList.useLoaderData<PrefetchRouter>();
-	const [postsPromise, postsState] = useQuery(prefetching.postsQuery, handle);
+	const [postsThenable, postsState] = useQuery(prefetching.postsQuery, handle);
 	return (
 		<Suspense fallback={<PostListSkeleton />} key={postsState.hash}>
-			<PromisedList posts={postsPromise} />
+			<PromisedList posts={postsThenable} />
 		</Suspense>
 	);
 }
@@ -301,18 +301,18 @@ function PromisedPost(props: { readonly post: Promise<Post | undefined> }) {
 
 function PrefetchedComments(): ReactNode {
 	const data = prefetchPost.useLoaderData<PrefetchRouter>();
-	const [commentsPromise] = useQuery(prefetching.commentsQuery, data.comments);
-	const pages = use(commentsPromise);
+	const [commentsThenable] = useQuery(prefetching.commentsQuery, data.comments);
+	const pages = use(commentsThenable);
 	return <CommentList comments={commentItems(pages)} />;
 }
 
 function PrefetchedPost(): ReactNode {
 	const data = prefetchPost.useLoaderData<PrefetchRouter>();
-	const [postPromise, postState] = useQuery(prefetching.postQuery, data.post);
+	const [postThenable, postState] = useQuery(prefetching.postQuery, data.post);
 	return (
 		<PostPage>
 			<Suspense fallback={<PostSkeleton />} key={postState.hash}>
-				<PromisedPost post={postPromise} />
+				<PromisedPost post={postThenable} />
 			</Suspense>
 			<CommentsSection>
 				<Suspense
@@ -356,14 +356,17 @@ const ensureTree = ensureRoot.addChildren([ensureList, ensurePost]);
 
 function EnsuredList(): ReactNode {
 	const handle = ensureList.useLoaderData<EnsureRouter>();
-	const [pages] = useQuery(ensuring.postsQuery, handle);
+	const [pagesThenable] = useQuery(ensuring.postsQuery, handle);
+	const pages = use(pagesThenable);
 	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
 }
 
 function EnsuredPost(): ReactNode {
 	const data = ensurePost.useLoaderData<EnsureRouter>();
-	const [post] = useQuery(ensuring.postQuery, data.post);
-	const [pages] = useQuery(ensuring.commentsQuery, data.comments);
+	const [postThenable] = useQuery(ensuring.postQuery, data.post);
+	const post = use(postThenable);
+	const [pagesThenable] = useQuery(ensuring.commentsQuery, data.comments);
+	const pages = use(pagesThenable);
 	return (
 		<PostPage>
 			<PostBody post={post} />
@@ -404,14 +407,17 @@ const fetchTree = fetchRoot.addChildren([fetchList, fetchPost]);
 
 function FetchedList(): ReactNode {
 	const handle = fetchList.useLoaderData<FetchRouter>();
-	const [pages] = useQuery(fetching.postsQuery, handle);
+	const [pagesThenable] = useQuery(fetching.postsQuery, handle);
+	const pages = use(pagesThenable);
 	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
 }
 
 function FetchedPost(): ReactNode {
 	const data = fetchPost.useLoaderData<FetchRouter>();
-	const [post] = useQuery(fetching.postQuery, data.post);
-	const [pages] = useQuery(fetching.commentsQuery, data.comments);
+	const [postThenable] = useQuery(fetching.postQuery, data.post);
+	const post = use(postThenable);
+	const [pagesThenable] = useQuery(fetching.commentsQuery, data.comments);
+	const pages = use(pagesThenable);
 	return (
 		<PostPage>
 			<PostBody post={post} />
