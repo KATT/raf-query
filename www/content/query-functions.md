@@ -43,7 +43,7 @@ An expected error is never retried, and it crosses SSR and the router's serializ
 tanstack-start/src/docs/query-functions.expected-errors.tsx#loader
 ```
 
-- `useQuery` throws the same `QueryFailure` to the nearest error boundary. Pass `{ result: true }` to read a `Result` instead: `{ ok: true, value }` or `{ ok: false, error }`, where `error` is the `fail()` value. Defects still throw.
+- The thenable `useQuery` returns rejects with the same `QueryFailure`, and `use()` throws it to the nearest error boundary. Pass `{ result: true }` to read a `Result` instead: `{ ok: true, value }` or `{ ok: false, error }`, where `error` is the `fail()` value. Defects still throw.
 
 ```sample
 tanstack-start/src/docs/query-functions.expected-errors.tsx#result

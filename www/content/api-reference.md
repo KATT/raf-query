@@ -138,16 +138,16 @@ Each verb takes the client first. A factory matches the queries it built: all of
 
 ## Errors
 
-| Export                  | Use                                                                                                                                     |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `QueryFailure`          | What reading or loading a query throws when its `queryFn` returned `fail()`: an `Error` with the value in `fail` and the query's `hash` |
-| `isFail(value, tag?)`   | Whether `value` is a `fail()` value or a `QueryFailure`, optionally with that `_tag`                                                    |
-| `failOf(value)`         | The `fail()` value in `value`, unwrapping a `QueryFailure`                                                                              |
-| `isQueryFailure(value)` | Whether `value` is a `QueryFailure`                                                                                                     |
-| `Fail`, `Result`        | A `fail()` value, and what `useQuery` reads with `result: true`: `{ ok: true, value }` or `{ ok: false, error }`                        |
-| `QueryDisabledError`    | Why a disabled query has no data: `load` rejects with it for fetch and ensure entries, and `useQuery` throws it on the server           |
-| `QueryTimeoutError`     | What a request fails with when `timeout()` cuts it off                                                                                  |
-| `abortError()`          | Makes the `AbortError` (a `DOMException`) that a `load` waiting on a removed query rejects with                                         |
+| Export                  | Use                                                                                                                                                      |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `QueryFailure`          | What reading or loading a query throws when its `queryFn` returned `fail()`: an `Error` with the value in `fail` and the query's `hash`                  |
+| `isFail(value, tag?)`   | Whether `value` is a `fail()` value or a `QueryFailure`, optionally with that `_tag`                                                                     |
+| `failOf(value)`         | The `fail()` value in `value`, unwrapping a `QueryFailure`                                                                                               |
+| `isQueryFailure(value)` | Whether `value` is a `QueryFailure`                                                                                                                      |
+| `Fail`, `Result`        | A `fail()` value, and what `useQuery` reads with `result: true`: `{ ok: true, value }` or `{ ok: false, error }`                                         |
+| `QueryDisabledError`    | Why a disabled query has no data: `load` rejects with it for fetch and ensure entries, and on the server the thenable `useQuery` returns rejects with it |
+| `QueryTimeoutError`     | What a request fails with when `timeout()` cuts it off                                                                                                   |
+| `abortError()`          | Makes the `AbortError` (a `DOMException`) that a `load` waiting on a removed query rejects with                                                          |
 
 ## Providers
 

@@ -82,7 +82,7 @@ tanstack-start/src/docs/comparison.tsx#queries
 tanstack-start/src/docs/comparison.tsx#route
 ```
 
-The component reads its `status`. On the server, `useQuery` throws for a disabled query with no data, so the reader sits in a Suspense boundary: the server sends the fallback, and the browser renders the permission.
+The component reads the thenable's `status` instead of calling `use()`, so it never suspends. On the server the query is disabled, its thenable is rejected and the toggle renders without a permission. In the browser the query runs, and the toggle re-renders with the permission.
 
 ```sample
 tanstack-start/src/docs/comparison.tsx#component

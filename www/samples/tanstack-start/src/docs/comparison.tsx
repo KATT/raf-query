@@ -6,7 +6,6 @@ import {
 	useQuery,
 } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Suspense } from "react";
 import { group } from "@raf-query/react/groups";
 import { postQuery } from "~/queries.ts";
 
@@ -54,15 +53,6 @@ declare const loaderData: {
 
 // #region component
 function NotificationsSetting() {
-	// The server can't read a browser-only query: it sends the fallback.
-	return (
-		<Suspense fallback={<NotificationsToggle permission={undefined} />}>
-			<Permission />
-		</Suspense>
-	);
-}
-
-function Permission() {
 	const [permissionThenable] = useQuery(
 		permissionQuery,
 		loaderData.notifications,
