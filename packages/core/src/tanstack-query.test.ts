@@ -6,7 +6,7 @@ import {
 	type QueryObserverOptions,
 } from "@tanstack/query-core";
 import { type QueryControls, useQuery } from "@raf-query/react";
-import { createElement } from "react";
+import { createElement, Suspense, use } from "react";
 import { describe, expect, it } from "vitest";
 
 import { group, type GroupKey } from "./groups.ts";
@@ -47,6 +47,12 @@ const posts = group("posts");
 const drafts = group(posts, "drafts");
 const users = group("users");
 
+/** Requests each side made. */
+interface Calls {
+	raf: number;
+	tanstack: number;
+}
+
 /**
  * A backend both caches fetch from, counting requests per side. Post 404
  * is a `fail()` value on raf-query; post 500 is down.
@@ -56,7 +62,7 @@ function createApi() {
 		[1, "First"],
 		[2, "Second"],
 	]);
-	const calls = { raf: 0, tanstack: 0 };
+	const calls: Calls = { raf: 0, tanstack: 0 };
 	const get = async (id: number): Promise<Post> => {
 		await Promise.resolve();
 		if (id === 500) {
@@ -115,40 +121,45 @@ function observe(tanstack: TanStackQueryClient, options: QueryObserverOptions) {
 function Reader(props: {
 	readonly factory: QueryFactory;
 	readonly handle: QueryHandle<QueryFactory>;
-	readonly show: (read: ReturnType<typeof useQuery>) => void;
+	readonly show: (query: unknown, queryState: QueryControls) => void;
 }) {
-	props.show(useQuery(props.factory, props.handle));
+	const [queryThenable, queryState] = useQuery(props.factory, props.handle);
+	const query = use(queryThenable);
+	props.show(query, queryState);
 	return null;
 }
 
 type Read = readonly [factory: QueryFactory, handle: QueryHandle<QueryFactory>];
 
 /**
- * Mount the raf client with a component reading each handle. `shown[i]`
- * and `controls[i]` are what the i-th screen's `useQuery` returned last;
- * `show()` swaps the screens.
+ * Mount the raf client with a component reading each handle under one
+ * Suspense boundary. `shown[i]` is the data the i-th screen rendered last
+ * and `states[i]` its state; `show()` swaps the screens.
  */
 function screens(client: QueryClient, reads: ReadonlyArray<Read> = []) {
 	const shown: Array<unknown> = [];
-	const controls: Array<QueryControls> = [];
+	const states: Array<QueryControls> = [];
 	const ui = (list: ReadonlyArray<Read>) =>
-		list.map(([factory, handle], index) =>
-			createElement(Reader, {
-				factory,
-				handle,
-				key: index,
-				show: ([value, control]) => {
-					shown[index] = value;
-					controls[index] = control;
-				},
-			}),
+		createElement(
+			Suspense,
+			{ fallback: null },
+			list.map(([factory, handle], index) =>
+				createElement(Reader, {
+					factory,
+					handle,
+					key: index,
+					show: (query, queryState) => {
+						shown[index] = query;
+						states[index] = queryState;
+					},
+				}),
+			),
 		);
 	const view = mount(client, ui(reads));
 	return {
-		controls,
 		show: (list: ReadonlyArray<Read>) => view.rerender(ui(list)),
 		shown,
-		unmount: () => view.unmount(),
+		states,
 	};
 }
 
@@ -259,8 +270,8 @@ describe("errors", () => {
 		const api = createApi();
 		using clients = createClients();
 		const [handles] = await load(clients.client, {
-			down: prefetchEntry(api.postQuery, { id: 1 }),
-			missing: prefetchEntry(api.postQuery, { id: 2 }),
+			down: ensureEntry(api.postQuery, { id: 1 }),
+			missing: ensureEntry(api.postQuery, { id: 2 }),
 		});
 		const view = screens(clients.client, [
 			[api.postQuery, handles.down],
@@ -284,7 +295,7 @@ describe("errors", () => {
 			.catch(() => {});
 		await flush();
 
-		expect(view.controls.map((control) => control.error)).toEqual([
+		expect(view.states.map((queryState) => queryState.error)).toEqual([
 			new Error("Down"),
 			notFound,
 		]);

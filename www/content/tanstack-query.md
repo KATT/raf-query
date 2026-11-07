@@ -35,7 +35,15 @@ The screen on raf-query starts the query in its loader, as any raf-query route d
 tanstack-start/src/docs/tanstack-query.tsx#loader
 ```
 
-A screen still on TanStack Query keeps its [`useQuery`](https://tanstack.com/query/latest/docs/framework/react/reference/functions/useQuery) as it is. It can also build its key with the group, `queryKey: posts("detail", slug)`, so the two can't drift apart:
+Its component reads the handle with `useQuery`, and React's [`use()`](https://react.dev/reference/react/use) suspends until the post is there:
+
+```sample
+tanstack-start/src/docs/tanstack-query.tsx#screen
+```
+
+TanStack Query's [`useQuery`](https://tanstack.com/query/latest/docs/framework/react/reference/functions/useQuery) doesn't suspend. For a part of the screen that shouldn't either, switch on the thenable's `status` instead of calling `use()`: see [Reading without Suspense](./comparison.md#reading-without-suspense).
+
+A screen still on TanStack Query keeps its `useQuery` as it is. It can also build its key with the group, `queryKey: posts("detail", slug)`, so the two can't drift apart:
 
 ```sample
 tanstack-start/src/docs/tanstack-query.tanstack.tsx#screen

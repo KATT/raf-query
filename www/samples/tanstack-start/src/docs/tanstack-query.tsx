@@ -4,8 +4,10 @@ import {
 	invalidateMany,
 	load,
 	QueryClientProvider,
+	type QueryHandle,
 	queryOptions,
 	recommended,
+	useQuery,
 } from "@raf-query/react";
 import { group } from "@raf-query/react/groups";
 import { tanstackQuerySync } from "@raf-query/react/tanstack-query";
@@ -13,7 +15,7 @@ import {
 	QueryClient,
 	QueryClientProvider as TanStackQueryClientProvider,
 } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { type ReactNode, use } from "react";
 import { getPost } from "~/api.ts";
 
 // #region setup
@@ -61,9 +63,21 @@ export function postQuery(input: { slug: string }) {
 // #endregion
 
 // #region loader
-const [handles, data] = await load(queryClient, {
+const [handles] = await load(queryClient, {
 	post: ensureEntry(postQuery, { slug }),
 });
+// #endregion
+
+// #region screen
+export function PostPage(props: { post: QueryHandle<typeof postQuery> }) {
+	const [postThenable, postState] = useQuery(postQuery, props.post);
+	const post = use(postThenable);
+	return (
+		<article aria-busy={postState.isFetching}>
+			<h1>{post.title}</h1>
+		</article>
+	);
+}
 // #endregion
 
 // #region invalidate
