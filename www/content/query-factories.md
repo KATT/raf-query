@@ -44,7 +44,6 @@ Options set in the factory override the client's (`staleTime`, `gcTime`, `struct
 | `enabled`           | `false` keeps the query from running. See [Disabling a query](#disabling-a-query). Default `true`               |
 | `stream`            | Folds the chunks of a `queryFn` that returns an async iterable. See [Streaming](./query-functions.md#streaming) |
 | `meta`              | Settings for the client's links and features, such as `retry`. See [Query meta](./query-meta.md)                |
-| `def`               | Ties the factory to its client's types. See [Typing meta by its root](./query-meta.md#typing-meta-by-its-root)  |
 
 Per-query retries, polling and focus refetching are `meta` fields, read by the link or feature that does them: `meta: { retry: 1 }` with `retry()`, `meta: { refetchInterval: 5000 }` with `polling()`. See [Retries](./retries.md), [Polling](./polling.md) and [Window focus refetching](./window-focus-refetching.md).
 

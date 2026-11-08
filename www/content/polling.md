@@ -17,7 +17,7 @@ The `polling()` feature reads that field, so the client needs it, on its own or 
 tanstack-start/src/docs/polling.ts#the-feature
 ```
 
-On a client without `polling()`, `refetchInterval` does nothing. A factory that names its root with `def` gets the field typed only when the root has the feature: see [Query meta](./query-meta.md#typing-meta-by-its-root).
+On a client without `polling()`, `refetchInterval` does nothing. A factory built with a bound `queryOptions` gets the field typed only when the root has the feature: see [Query meta](./query-meta.md#typing-meta-by-its-root).
 
 - Polling starts when the first component reads the query, and stops when the last one unmounts.
 - There is one timer per query, however many components read it.

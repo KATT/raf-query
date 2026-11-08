@@ -1,9 +1,10 @@
 import { describe, expectTypeOf, it } from "vitest";
 
 import {
+	bindInfiniteQueryOptions,
+	bindQueryOptions,
 	createQueryClient,
 	type DataOf,
-	defType,
 	ensureEntry,
 	type ErrorOf,
 	type Fail,
@@ -276,12 +277,12 @@ describe("root types", () => {
 		});
 	const posts = group("posts");
 	const writer = tag<string>("writer");
+	const rootQueryOptions = bindQueryOptions<typeof makeQueryClient>();
 	const postById = (input: {
 		readonly authorId: string;
 		readonly id: string;
 	}) =>
-		queryOptions({
-			def: defType<typeof makeQueryClient>(),
+		rootQueryOptions({
 			meta: {
 				owner: "posts-team",
 				retry: false,
@@ -339,23 +340,59 @@ describe("root types", () => {
 
 	it("check meta against the root", () => {
 		const wrong = () => {
-			queryOptions({
-				def: defType<typeof makeQueryClient>(),
+			rootQueryOptions({
 				// @ts-expect-error -- no link or feature in the root reads `cacheFor`
 				meta: { cacheFor: 1000 },
 				queryFn: async () => 1,
 				queryKey: posts("x"),
 			});
-			queryOptions({
-				def: defType<typeof makeQueryClient>(),
+			rootQueryOptions({
 				// @ts-expect-error -- meta fields have their part's types
 				meta: { owner: "nobody" },
 				queryFn: async () => 1,
 				queryKey: posts("y"),
 			});
+			rootQueryOptions({
+				// @ts-expect-error -- a typo isn't a field the root declares
+				meta: { retyr: 1 },
+				queryFn: async () => 1,
+				queryKey: posts("z"),
+			});
 		};
 		expectTypeOf(wrong).toBeFunction();
 		expectTypeOf(postById).returns.toHaveProperty("meta");
+		queryOptions({
+			meta: { cacheFor: 1000, retyr: 1 },
+			queryFn: async () => 1,
+			queryKey: posts("unbound"),
+		});
+	});
+
+	it("bind infiniteQueryOptions to the root too", () => {
+		const rootInfiniteQueryOptions =
+			bindInfiniteQueryOptions<typeof makeQueryClient>();
+		const postPages = () =>
+			rootInfiniteQueryOptions({
+				getNextPageParam: (page: number) => page + 1,
+				initialPageParam: 0,
+				meta: { owner: "posts-team", retry: 1 },
+				queryFn: async (context) => context.pageParam,
+				queryKey: posts("pages"),
+			});
+		void invalidateOne(makeQueryClient(), postPages);
+		const wrong = () => {
+			rootInfiniteQueryOptions({
+				getNextPageParam: () => null,
+				initialPageParam: 0,
+				// @ts-expect-error -- no link or feature in the root reads `cacheFor`
+				meta: { cacheFor: 1000 },
+				queryFn: async () => 1,
+				queryKey: posts("wrong-pages"),
+			});
+			// @ts-expect-error -- postPages belongs to makeQueryClient's root
+			void invalidateOne(createQueryClient(), postPages);
+		};
+		expectTypeOf(wrong).toBeFunction();
 	});
 
 	it("take the root's clients and targets", () => {
@@ -422,8 +459,7 @@ describe("root types", () => {
 		const more = () =>
 			createQueryClient({ features: [groups()], links: [retry()] });
 		const ofFewer = () =>
-			queryOptions({
-				def: defType<typeof fewer>(),
+			bindQueryOptions<typeof fewer>()({
 				queryFn: async () => 1,
 				queryKey: group("fewer")(),
 			});

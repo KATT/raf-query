@@ -1,16 +1,25 @@
 import { describe, expectTypeOf, it } from "vitest";
 
 import {
+	bindQueryOptions,
+	bindUseQueryClient,
+	createQueryClient,
 	type ErrorOf,
+	group,
 	type InfiniteData,
 	type InfiniteQueryControls,
+	invalidateMany,
+	type QueryClient,
 	type QueryControls,
 	type QueryHandle,
 	type Result,
+	retry,
+	type RootOf,
 	type SingleQueryFactory,
 	type Thenable,
 	useInfiniteQuery,
 	useQuery,
+	useQueryClient,
 } from "./index.ts";
 import { createBackend, type Issue } from "./test-utils.tsx";
 
@@ -116,5 +125,50 @@ describe("useInfiniteQuery", () => {
 			return null;
 		}
 		expectTypeOf(Issue).toBeFunction();
+	});
+});
+
+describe("bindUseQueryClient", () => {
+	const makeQueryClient = () => createQueryClient({ links: [retry()] });
+	const queryOptions = bindQueryOptions<typeof makeQueryClient>();
+	const useRootClient = bindUseQueryClient<typeof makeQueryClient>();
+	const posts = group("posts");
+	const postQuery = (input: { readonly id: number }) =>
+		queryOptions({
+			meta: { retry: 1 },
+			queryFn: async () => ({ id: input.id }),
+			queryKey: posts(input.id),
+		});
+	const makeOtherClient = () => createQueryClient();
+	const otherQuery = () =>
+		bindQueryOptions<typeof makeOtherClient>()({
+			queryFn: async () => 1,
+			queryKey: group("other")(),
+		});
+
+	it("returns a client of the root, whose verbs check factories", () => {
+		function Post(props: { readonly handle: QueryHandle<typeof postQuery> }) {
+			const [postThenable] = useQuery(postQuery, props.handle);
+			const client = useRootClient();
+			expectTypeOf(postThenable).toEqualTypeOf<Thenable<{ id: number }>>();
+			expectTypeOf(client).toEqualTypeOf<
+				QueryClient<RootOf<typeof makeQueryClient>>
+			>();
+			void invalidateMany(client, postQuery);
+			// @ts-expect-error -- otherQuery belongs to another root
+			void invalidateMany(client, otherQuery);
+			return null;
+		}
+		expectTypeOf(Post).toBeFunction();
+	});
+
+	it("leaves the unbound useQueryClient taking any root", () => {
+		function Post() {
+			const client = useQueryClient();
+			void invalidateMany(client, postQuery);
+			void invalidateMany(client, otherQuery);
+			return null;
+		}
+		expectTypeOf(Post).toBeFunction();
 	});
 });

@@ -28,7 +28,7 @@ For every query, leave the feature out of the client:
 tanstack-start/src/docs/window-focus-refetching.ts#turning-it-off
 ```
 
-For one query, set `meta: { refetchOnWindowFocus: false }` or `meta: { refetchOnReconnect: false }` in its factory. The features declare these fields, so a factory that names its root with `def` gets them typed only when the root has the feature: see [Query meta](./query-meta.md#typing-meta-by-its-root).
+For one query, set `meta: { refetchOnWindowFocus: false }` or `meta: { refetchOnReconnect: false }` in its factory. The features declare these fields, so a factory built with a bound `queryOptions` gets them typed only when the root has the feature: see [Query meta](./query-meta.md#typing-meta-by-its-root).
 
 ```sample
 tanstack-start/src/docs/window-focus-refetching.ts#per-query

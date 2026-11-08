@@ -37,18 +37,18 @@ Links and features:
 
 ## Query factories
 
-| Export                                                                      | Use                                                                                                                               |
-| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `queryOptions(options)`                                                     | Typed options for a query factory. [Query factories](./query-factories.md)                                                        |
-| `infiniteQueryOptions(options)`                                             | Typed options for a paged query factory. [Infinite queries](./infinite-queries.md)                                                |
-| `group(name)`, `group(parent, name)`, `Group`                               | Build flat keys under a path; a group is also a target that covers every key under its path. [Query keys](./query-keys.md#groups) |
-| `defType<typeof makeQueryClient>()`                                         | The `def` option: checks a factory's `meta` against a root's. [Query meta](./query-meta.md#typing-meta-by-its-root)               |
-| `fail(error)`                                                               | Return an expected error from a `queryFn`: an object with a `_tag`. [Query functions](./query-functions.md#expected-errors)       |
-| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>`                | A factory's data, input and `fail()` types                                                                                        |
-| `QueryOptions`, `QueryFunctionContext`, `StreamOptions`                     | Option types. The context has `queryKey`, `signal` and `meta`                                                                     |
-| `InfiniteQueryOptions`, `InfiniteQueryFunctionContext`, `InfiniteData`      | Paged option types. The context adds `pageParam` and `direction`; the data is `{ pages, pageParams }`                             |
-| `QueryFactory`, `AnyFactory`, `QueryKey`                                    | A function of an input that returns query options, and a key: any plain array                                                     |
-| `QueryMeta`, `MetaOf`, `Decl`, `Def`, `RootOf`, `RootTypes`, `DefaultTypes` | Types behind root typing                                                                                                          |
+| Export                                                                                                                     | Use                                                                                                                                     |
+| -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `queryOptions(options)`                                                                                                    | Typed options for a query factory. [Query factories](./query-factories.md)                                                              |
+| `infiniteQueryOptions(options)`                                                                                            | Typed options for a paged query factory. [Infinite queries](./infinite-queries.md)                                                      |
+| `group(name)`, `group(parent, name)`, `Group`                                                                              | Build flat keys under a path; a group is also a target that covers every key under its path. [Query keys](./query-keys.md#groups)       |
+| `bindQueryOptions<typeof makeQueryClient>()`, `bindInfiniteQueryOptions<…>()`                                              | The builder bound to a root: checks `meta` against the root's links and features. [Query meta](./query-meta.md#typing-meta-by-its-root) |
+| `fail(error)`                                                                                                              | Return an expected error from a `queryFn`: an object with a `_tag`. [Query functions](./query-functions.md#expected-errors)             |
+| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>`                                                               | A factory's data, input and `fail()` types                                                                                              |
+| `QueryOptions`, `QueryFunctionContext`, `StreamOptions`                                                                    | Option types. The context has `queryKey`, `signal` and `meta`                                                                           |
+| `InfiniteQueryOptions`, `InfiniteQueryFunctionContext`, `InfiniteData`                                                     | Paged option types. The context adds `pageParam` and `direction`; the data is `{ pages, pageParams }`                                   |
+| `QueryFactory`, `AnyFactory`, `QueryKey`                                                                                   | A function of an input that returns query options, and a key: any plain array                                                           |
+| `QueryMeta`, `MetaOf`, `Decl`, `RootOf`, `RootTypes`, `DefaultTypes`, `QueryOptionsBuilder`, `InfiniteQueryOptionsBuilder` | Types behind root typing                                                                                                                |
 
 Query options, for `queryOptions` and `infiniteQueryOptions`:
 
@@ -63,7 +63,6 @@ Query options, for `queryOptions` and `infiniteQueryOptions`:
 | `select` (derive what readers get from the data)                                                                                                           | None                                                    |
 | `stream` (`{ initial, reduce }`, for a `queryFn` that returns an async iterable)                                                                           | None. [Query functions](./query-functions.md#streaming) |
 | [`meta`](./query-meta.md) (settings for the root's links and features)                                                                                     | None                                                    |
-| `def` (`defType<typeof makeQueryClient>()`)                                                                                                                | Any root                                                |
 
 `infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam` and `maxPages`.
 
@@ -153,12 +152,13 @@ Each verb takes the client first. A factory matches the queries it built: all of
 
 ## Providers
 
-| Export                | Use                                                                                                                                                                                     |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `QueryClientProvider` | Provides a client to the tree, and runs its features while mounted                                                                                                                      |
-| `useQueryClient()`    | Read the client                                                                                                                                                                         |
-| `QueryProvider`       | Provider for React Server Components apps: a client per server render and per browser tab; its server render starts no request. [React Server Components](./react-server-components.md) |
-| `HydrationBoundary`   | Writes server data into the client: a loader's `state`, or in server components the request's `client`. [React Router](./react-router.md)                                               |
+| Export                                         | Use                                                                                                                                                                                     |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `QueryClientProvider`                          | Provides a client to the tree, and runs its features while mounted                                                                                                                      |
+| `useQueryClient()`                             | Read the client                                                                                                                                                                         |
+| `bindUseQueryClient<typeof makeQueryClient>()` | `useQueryClient`, typed with a root, so verbs check factories against it. [Query meta](./query-meta.md#typing-meta-by-its-root)                                                         |
+| `QueryProvider`                                | Provider for React Server Components apps: a client per server render and per browser tab; its server render starts no request. [React Server Components](./react-server-components.md) |
+| `HydrationBoundary`                            | Writes server data into the client: a loader's `state`, or in server components the request's `client`. [React Router](./react-router.md)                                               |
 
 ## Subpaths
 

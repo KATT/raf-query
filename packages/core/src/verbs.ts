@@ -47,7 +47,7 @@ export type PartialInput<TFactory extends QueryFactory> = DeepPartial<
 
 /**
  * The clients a factory's verbs take: its root's, or any client for a
- * factory without `def`.
+ * factory from an unbound builder.
  */
 export type ClientFor<TFactory extends QueryFactory> = QueryClient<
 	RootOfFactory<TFactory>

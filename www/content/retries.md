@@ -27,7 +27,7 @@ A query sets its own attempts with `meta: { retry }`: a number of retries after 
 tanstack-start/src/docs/retries.ts#attempts-per-query
 ```
 
-The `retry()` link declares the field, so a factory that names its root with `def` gets it typed only when the root has the link: see [Query meta](./query-meta.md#typing-meta-by-its-root). On a client without the link, `meta.retry` does nothing.
+The `retry()` link declares the field, so a factory built with a bound `queryOptions` gets it typed only when the root has the link: see [Query meta](./query-meta.md#typing-meta-by-its-root). On a client without the link, `meta.retry` does nothing.
 
 ## Options
 

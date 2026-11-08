@@ -32,9 +32,11 @@ export {
 	type ReconnectRefetchMeta,
 } from "./features.ts";
 export {
+	bindInfiniteQueryOptions,
 	type InfiniteData,
 	type InfiniteQueryFunctionContext,
 	type InfiniteQueryOptions,
+	type InfiniteQueryOptionsBuilder,
 	infiniteQueryOptions,
 } from "./infinite.ts";
 export {
@@ -65,6 +67,7 @@ export {
 	waterfallHandle,
 } from "./load.ts";
 export {
+	bindQueryOptions,
 	type DataOf,
 	type ErrorOf,
 	type InputOf,
@@ -73,14 +76,13 @@ export {
 	type SingleQueryFactory,
 	type QueryFunctionContext,
 	type QueryOptions,
+	type QueryOptionsBuilder,
 	queryOptions,
 	type StreamOptions,
 } from "./options.ts";
 export {
 	type Decl,
 	type DefaultTypes,
-	type Def,
-	defType,
 	type MetaOf,
 	type QueryMeta,
 	type RootOf,

@@ -6,7 +6,7 @@ import type {
 	QueryFunctionContext,
 	QueryOptions,
 } from "./options.ts";
-import type { DefaultTypes, RootTypes } from "./root.ts";
+import type { DefaultTypes, RootOf, RootTypes } from "./root.ts";
 
 /** A paged query's data. */
 export interface InfiniteData<TPage, TParam = unknown> {
@@ -28,7 +28,7 @@ type PageParamFn<TPage, TParam> = (
 	pageParam: TParam,
 ) => TParam | null | undefined;
 
-export interface InfiniteOptions<
+interface InfiniteOptions<
 	TKey extends QueryKey,
 	TPage,
 	TParam,
@@ -60,6 +60,35 @@ export type InfiniteQueryOptions<
 		| "maxPages"
 	> & { readonly "~run": (op: Operation) => Promise<unknown> };
 
+/** `infiniteQueryOptions`, with `meta` checked against the root `TTypes`. */
+export interface InfiniteQueryOptionsBuilder<TTypes extends RootTypes> {
+	<
+		const TKey extends QueryKey,
+		TResult,
+		TParam,
+		TData = InfiniteData<Exclude<TResult, Fail>, TParam>,
+	>(
+		options: InfiniteOptions<
+			TKey,
+			Exclude<TResult, Fail>,
+			TParam,
+			TData,
+			TTypes
+		> & {
+			readonly queryFn: (
+				context: InfiniteQueryFunctionContext<TKey, TParam>,
+			) => PromiseLike<TResult> | TResult;
+		},
+	): InfiniteQueryOptions<
+		TKey,
+		Exclude<TResult, Fail>,
+		TParam,
+		Extract<TResult, Fail>,
+		TData,
+		TTypes
+	>;
+}
+
 /**
  * Typed options for a paged query factory. Readers get `{ pages, pageParams }`
  * and controls to fetch the next or previous page:
@@ -73,42 +102,36 @@ export type InfiniteQueryOptions<
  *     getNextPageParam: (lastPage) => lastPage.nextCursor,
  *   });
  * ```
+ *
+ * Its `meta` is any record. To check `meta` against a client's links and
+ * features, use the builder {@link bindInfiniteQueryOptions} returns.
  */
-export function infiniteQueryOptions<
-	const TKey extends QueryKey,
-	TResult,
-	TParam,
-	TData = InfiniteData<Exclude<TResult, Fail>, TParam>,
-	TTypes extends RootTypes = DefaultTypes,
->(
-	options: InfiniteOptions<
-		TKey,
-		Exclude<TResult, Fail>,
-		TParam,
-		TData,
-		TTypes
-	> & {
-		readonly queryFn: (
-			context: InfiniteQueryFunctionContext<TKey, TParam>,
-		) => PromiseLike<TResult> | TResult;
-	},
-): InfiniteQueryOptions<
-	TKey,
-	Exclude<TResult, Fail>,
-	TParam,
-	Extract<TResult, Fail>,
-	TData,
-	TTypes
+export const infiniteQueryOptions: InfiniteQueryOptionsBuilder<DefaultTypes> = (
+	options,
+) => ({
+	...options,
+	"~run": (op) =>
+		runPages(
+			op,
+			// SAFETY: the page types only narrow what `runPages` passes through.
+			options as unknown as PagedSource,
+		),
+});
+
+/**
+ * `infiniteQueryOptions` bound to a root, like `bindQueryOptions`. Bind it
+ * next to `queryOptions`, in apps that page:
+ *
+ * ```ts
+ * // raf.ts
+ * export const infiniteQueryOptions = bindInfiniteQueryOptions<typeof makeQueryClient>();
+ * ```
+ */
+export function bindInfiniteQueryOptions<T>(): InfiniteQueryOptionsBuilder<
+	RootOf<T>
 > {
-	return {
-		...options,
-		"~run": (op) =>
-			runPages(
-				op,
-				// SAFETY: the page types only narrow what `runPages` passes through.
-				options as unknown as PagedSource,
-			),
-	};
+	// SAFETY: the root is a phantom; the builder never reads it.
+	return infiniteQueryOptions as InfiniteQueryOptionsBuilder<RootOf<T>>;
 }
 
 interface PagedSource {

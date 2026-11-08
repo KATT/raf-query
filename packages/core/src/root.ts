@@ -1,10 +1,11 @@
 /**
  * Root types, the way tRPC v12 types a client from its links: each link and
  * feature declares the `meta` fields it reads, a client's `meta` is what its
- * parts declare, and factories name their root with a phantom `def`.
+ * parts declare, and builders bound to a root (`bindQueryOptions`) carry it
+ * as a phantom on the options they build.
  */
 
-/** A query's `meta` when its factory doesn't name a root. */
+/** A query's `meta` when its builder isn't bound to a root. */
 export type QueryMeta = Readonly<Record<string, unknown>>;
 
 /** What a link or feature declares: the `meta` fields it reads. */
@@ -17,7 +18,7 @@ export interface RootTypes {
 	readonly meta: object;
 }
 
-/** The root of a factory without `def`. A type only, never a value. */
+/** The root of the unbound builders. A type only, never a value. */
 export interface DefaultTypes {
 	readonly "~default": true;
 	readonly meta: QueryMeta;
@@ -92,11 +93,11 @@ export type MetaOf<TParts extends ReadonlyArray<AnyPart>> = [
 	? Flat<unknown>
 	: Flat<Intersect<MetaOfDecl<DeclOf<TParts[number]>>>>;
 
-declare const defBrand: unique symbol;
+declare const rootBrand: unique symbol;
 
-/** Phantom carrier of a factory's root. `undefined` at runtime. */
-export interface Def<TTypes extends RootTypes> {
-	readonly [defBrand]: TTypes;
+/** Phantom carrier of the root a factory's builder is bound to. Never set at runtime. */
+export interface RootTag<TTypes extends RootTypes> {
+	readonly [rootBrand]: TTypes;
 }
 
 /** A root's types, from a client or from a function that makes one. */
@@ -109,19 +110,3 @@ export type RootOf<T> = T extends (...args: never) => infer TClient
 		  }
 		? TTypes
 		: never;
-
-/**
- * Tie a factory to a root, so its `meta` is checked against what the root's
- * links and features read, and verbs only take that root's clients. Takes
- * the client type or a function that makes the client, and returns
- * `undefined`.
- *
- * ```ts
- * import type { makeQueryClient } from "./raf";
- * queryOptions({ def: defType<typeof makeQueryClient>(), meta: { retry: false }, … });
- * ```
- */
-export function defType<T>(): Def<RootOf<T>> {
-	// SAFETY: a phantom; only its type is read.
-	return undefined as unknown as Def<RootOf<T>>;
-}

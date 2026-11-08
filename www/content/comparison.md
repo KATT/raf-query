@@ -104,7 +104,7 @@ tanstack-start/src/docs/comparison.tsx#component
 - **The URL is the input.** There is no option to change a read's input. Anything that changes what a query fetches lives in the route, so the loader starts the right query. [URL state and pagination](./url-state-and-pagination.md) shows the pattern.
 - **Queries are matched by factory or group, never by a key passed to a verb.** `invalidateMany(qc, postQuery)` covers the queries that factory built. A group builds keys and covers every key that starts with its path, the way a TanStack Query key prefix does. Tags and `where` pick queries by `meta` or data.
 - **Expected errors are values.** A `queryFn` returns `fail({ _tag: "NotFound" })`, and its type says which errors a reader can get. Thrown errors stay defects.
-- **`meta` is typed by the client.** Links and features declare the `meta` fields they read, and factories tied to that client with `def` are checked against them.
+- **`meta` is typed by the client.** Links and features declare the `meta` fields they read, and factories built with `queryOptions` bound to that client are checked against them.
 - **`undefined` is a valid result.** A `queryFn` typed `Promise<User | undefined>` caches `undefined` like any other value. TanStack Query treats it as an error.
 - **No `placeholderData`.** Use `whilePending: "previous"` to keep showing the last page.
 - **`enabled` doesn't wait for input.** Start queries only when the route has their input. `enabled: false` is for a query that's off for now, such as one behind a flag or one only the browser can run.

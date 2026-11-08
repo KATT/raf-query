@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+	bindUseQueryClient,
 	createQueryClient,
 	type Feature,
 	load,
@@ -41,6 +42,21 @@ describe("QueryClientProvider", () => {
 			return null;
 		}
 		expect(() => render(<Reader />)).toThrow(/no QueryClientProvider/u);
+	});
+
+	it("gives a bound useQueryClient the provider's client", () => {
+		const makeQueryClient = () => testClient();
+		const useRootClient = bindUseQueryClient<typeof makeQueryClient>();
+		const client = makeQueryClient();
+		function Reader() {
+			return <p>{String(useRootClient() === client)}</p>;
+		}
+		render(
+			<QueryClientProvider client={client}>
+				<Reader />
+			</QueryClientProvider>,
+		);
+		expect(screen.getByText("true")).toBeTruthy();
 	});
 });
 

@@ -44,24 +44,32 @@ tanstack-start/src/docs/query-meta.ts#root
 
 ## Typing meta by its root
 
-> [!NOTE]
-> Typing `meta` by its root is a design still being settled, like [groups and tags](./query-keys.md). Its shape can change before 1.0.
+A client's **root** is the links and features it's made with, and the root's `meta` is the fields they declare. The plain `queryOptions` takes any `meta`. To check `meta` against a root, bind the builders to it once per app, in a file of their own, and import them from there instead of from `@raf-query/react`:
 
-A factory's `meta` is `Record<string, unknown>` until the factory names its **root**: the function that makes its client. Name it with `def: defType<typeof makeQueryClient>()`, which takes the type of either the function or the client. The root's `meta` is the fields its links and features declare:
-
-```sample
-tanstack-start/src/docs/query-meta.ts#def
+```sample title="src/raf.ts"
+tanstack-start/src/docs/query-meta.bind.tsx#bind
 ```
 
-`def` is `undefined` at runtime, so importing the root's type with `import type` is enough, and the factory module doesn't import the client. With a root:
+Each binder takes the type of the function that makes the client, or of the client. Only the type is read, so `import type` is enough and the factories don't import the client. A binder returns the plain builder, typed for the root: binding costs a few bytes, and an app that doesn't page leaves out `bindInfiniteQueryOptions` and ships none of the paging code.
 
-- `meta` takes only the fields its parts declare, with their types:
+Factories built with the bound `queryOptions` name no root themselves:
 
 ```sample
-tanstack-start/src/docs/query-meta.ts#def-errors
+tanstack-start/src/docs/query-meta.bind.tsx#bound
 ```
 
-- Verbs such as `invalidateMany` and `setData` take only that root's clients. A client typed as plain `QueryClient`, as `useQueryClient()` returns it, takes any factory.
+- `meta` takes only the fields the root's parts declare, with their types:
+
+```sample
+tanstack-start/src/docs/query-meta.bind.tsx#bound-errors
+```
+
+- Verbs such as `invalidateMany` and `setData` take only that root's clients. The bound `useQueryClient` returns a client of the root, so verbs called in components check their factories too. The plain `useQueryClient()` returns a client of any root, which takes any factory.
+
+```sample
+tanstack-start/src/docs/query-meta.bind.tsx#use-query-client
+```
+
 - `where` targets see the root's `meta`, as the next section shows.
 
 The root is a function, not a client at module level, because a server makes one client per request. It's the same idea as a [tRPC v12](https://github.com/trpc/trpc/tree/v12) client typing its call options from its links.

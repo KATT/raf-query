@@ -2,8 +2,9 @@ import { act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+	bindInfiniteQueryOptions,
+	bindQueryOptions,
 	createQueryClient,
-	defType,
 	ensureEntry,
 	fail,
 	isQueryFailure,
@@ -99,26 +100,41 @@ describe("retry", () => {
 				isServer: false,
 				links: [retry({ delay: () => 0 })],
 			});
+		const boundQueryOptions = bindQueryOptions<typeof makeClient>();
+		const boundInfiniteQueryOptions =
+			bindInfiniteQueryOptions<typeof makeClient>();
 		const attempts = new Map<string, number>();
+		const attempt = (name: string) => {
+			attempts.set(name, (attempts.get(name) ?? 0) + 1);
+			throw down;
+		};
 		const failing = (input: { readonly retry: number | false }) =>
-			queryOptions({
-				def: defType<typeof makeClient>(),
+			boundQueryOptions({
 				meta: { retry: input.retry },
-				queryFn: async () => {
-					const name = String(input.retry);
-					attempts.set(name, (attempts.get(name) ?? 0) + 1);
-					throw down;
-				},
+				queryFn: async () => attempt(String(input.retry)),
 				queryKey: issues("failing", input),
+			});
+		const failingPages = () =>
+			boundInfiniteQueryOptions({
+				getNextPageParam: () => null,
+				initialPageParam: 0,
+				meta: { retry: 1 },
+				queryFn: async () => attempt("pages"),
+				queryKey: issues("failing-pages"),
 			});
 		const client = makeClient();
 		const once = await ensure(client, ensureEntry(failing, { retry: 1 }));
 		const never = await ensure(client, ensureEntry(failing, { retry: false }));
+		const pages = await ensure(client, ensureEntry(failingPages));
 		advance(client, 0);
 		await flush();
 
-		expect([once.error, never.error]).toEqual([down, down]);
-		expect(Object.fromEntries(attempts)).toEqual({ 1: 2, false: 1 });
+		expect([once.error, never.error, pages.error]).toEqual([down, down, down]);
+		expect(Object.fromEntries(attempts)).toEqual({
+			1: 2,
+			false: 1,
+			pages: 2,
+		});
 	});
 
 	it("doesn't retry an expected error, a thrown Response, or what `when` rules out", async () => {

@@ -138,8 +138,8 @@ export interface QueryClientConfig {
 }
 
 /**
- * A query cache. `TTypes` is its root's types, which factories with
- * `def: defType<typeof makeQueryClient>()` are checked against. The bare
+ * A query cache. `TTypes` is its root's types, which factories built with
+ * `bindQueryOptions<typeof makeQueryClient>()` are checked against. The bare
  * `QueryClient` type takes a client of any root.
  */
 export interface QueryClient<TTypes extends RootTypes = AnyRoot> {

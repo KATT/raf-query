@@ -79,6 +79,11 @@ export const scenarios: ReadonlyArray<Scenario> = [
 	{ fixture: "core.ts", imports: [], name: "Core only" },
 	{ fixture: "hooks.tsx", imports: ["hooks"], name: "+ React hooks" },
 	{
+		fixture: "bound.tsx",
+		imports: ["hooks"],
+		name: "+ bound `queryOptions` and `useQueryClient`",
+	},
+	{
 		fixture: "hydration.tsx",
 		imports: ["hooks", "hydration"],
 		name: "+ hydration (`HydrationBoundary`)",

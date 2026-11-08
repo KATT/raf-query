@@ -1,6 +1,12 @@
 import type { Fail } from "./fail.ts";
 import type { AnyFactory, QueryKey } from "./keys.ts";
-import type { AnyRoot, DefaultTypes, Def, RootTypes } from "./root.ts";
+import type {
+	AnyRoot,
+	DefaultTypes,
+	RootOf,
+	RootTag,
+	RootTypes,
+} from "./root.ts";
 
 export interface QueryFunctionContext<TKey extends QueryKey = QueryKey> {
 	/** The query's `meta`, typed by its root where the query is defined. */
@@ -18,8 +24,6 @@ export interface BaseOptions<
 	TKey extends QueryKey,
 	TTypes extends RootTypes = RootTypes,
 > {
-	/** The root this factory belongs to: `defType<typeof makeQueryClient>()`. */
-	readonly def?: Def<TTypes>;
 	/** `false`: the query doesn't run. Default `true`. */
 	readonly enabled?: boolean;
 	/** How long an entry with no reader stays cached. Default 5 minutes; never on the server. */
@@ -46,6 +50,8 @@ export interface QueryOptions<
 	TData = TQueryFnData,
 	TTypes extends RootTypes = RootTypes,
 > extends BaseOptions<TKey, TTypes> {
+	/** Phantom: the root the builder is bound to. Never set at runtime. */
+	readonly "~root"?: RootTag<TTypes>;
 	/** Set by `infiniteQueryOptions`: runs the request page by page. */
 	readonly "~run"?: (op: never) => Promise<unknown>;
 	readonly [dataTag]?: TData;
@@ -64,6 +70,32 @@ export interface StreamOptions<TData, TChunk> {
 
 type Awaitable<T> = PromiseLike<T> | T;
 
+/** `queryOptions`, with `meta` checked against the root `TTypes`. */
+export interface QueryOptionsBuilder<TTypes extends RootTypes> {
+	<const TKey extends QueryKey, TChunk, TData>(
+		options: BaseOptions<TKey, TTypes> & {
+			readonly queryFn: (
+				context: QueryFunctionContext<TKey>,
+			) => AsyncIterable<TChunk>;
+			readonly stream: StreamOptions<TData, TChunk>;
+		},
+	): QueryOptions<TKey, TData, never, TData, TTypes>;
+	<const TKey extends QueryKey, TResult, TData = Exclude<TResult, Fail>>(
+		options: BaseOptions<TKey, TTypes> & {
+			readonly queryFn: (
+				context: QueryFunctionContext<TKey>,
+			) => Awaitable<TResult>;
+			readonly select?: (data: Exclude<TResult, Fail>) => TData;
+		},
+	): QueryOptions<
+		TKey,
+		Exclude<TResult, Fail>,
+		Extract<TResult, Fail>,
+		TData,
+		TTypes
+	>;
+}
+
 /**
  * Typed options for a query factory:
  *
@@ -78,41 +110,29 @@ type Awaitable<T> = PromiseLike<T> | T;
  * A `queryFn` that returns an async iterable is a stream: pass `stream` to
  * fold its chunks into the data. Readers get the data after the first chunk,
  * and every later chunk updates it in place.
+ *
+ * Its `meta` is any record. To check `meta` against a client's links and
+ * features, use the builder {@link bindQueryOptions} returns.
  */
-export function queryOptions<
-	const TKey extends QueryKey,
-	TChunk,
-	TData,
-	TTypes extends RootTypes = DefaultTypes,
->(
-	options: BaseOptions<TKey, TTypes> & {
-		readonly queryFn: (
-			context: QueryFunctionContext<TKey>,
-		) => AsyncIterable<TChunk>;
-		readonly stream: StreamOptions<TData, TChunk>;
-	},
-): QueryOptions<TKey, TData, never, TData, TTypes>;
-export function queryOptions<
-	const TKey extends QueryKey,
-	TResult,
-	TData = Exclude<TResult, Fail>,
-	TTypes extends RootTypes = DefaultTypes,
->(
-	options: BaseOptions<TKey, TTypes> & {
-		readonly queryFn: (
-			context: QueryFunctionContext<TKey>,
-		) => Awaitable<TResult>;
-		readonly select?: (data: Exclude<TResult, Fail>) => TData;
-	},
-): QueryOptions<
-	TKey,
-	Exclude<TResult, Fail>,
-	Extract<TResult, Fail>,
-	TData,
-	TTypes
->;
-export function queryOptions(options: QueryOptions): QueryOptions {
-	return options;
+export const queryOptions: QueryOptionsBuilder<DefaultTypes> = <TOptions>(
+	options: TOptions,
+) => options;
+
+/**
+ * `queryOptions` bound to a root: `meta` takes the fields the root's links
+ * and features declare, and verbs take only that root's clients. `T` is the
+ * client's type, or the type of a function that makes it. Bind once per app:
+ *
+ * ```ts
+ * // raf.ts
+ * export const queryOptions = bindQueryOptions<typeof makeQueryClient>();
+ * ```
+ *
+ * It returns `queryOptions` itself; only the types change.
+ */
+export function bindQueryOptions<T>(): QueryOptionsBuilder<RootOf<T>> {
+	// SAFETY: the root is a phantom; the builder never reads it.
+	return queryOptions as QueryOptionsBuilder<RootOf<T>>;
 }
 
 /**
@@ -178,9 +198,9 @@ export type InputArgs<TFactory extends QueryFactory> =
 export type KeyOf<TFactory extends QueryFactory> =
 	ReturnType<TFactory>["queryKey"];
 
-/** A factory's root, from its `def`; any root without one. */
+/** The root a factory's builder is bound to; any root for an unbound one. */
 export type RootOfFactory<TFactory extends QueryFactory> =
-	ReturnType<TFactory> extends { readonly def?: Def<infer TTypes> }
+	ReturnType<TFactory> extends { readonly "~root"?: RootTag<infer TTypes> }
 		? TTypes extends DefaultTypes
 			? AnyRoot
 			: TTypes
