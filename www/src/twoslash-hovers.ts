@@ -44,7 +44,7 @@ function popupOf(hover: Element) {
  * popup is `position: fixed`, so the code block's scrolling doesn't clip
  * it, and a type taller than the room scrolls inside it.
  */
-export function placePopup(hover: Element) {
+function placePopup(hover: Element) {
 	const popup = popupOf(hover);
 	if (!popup) {
 		return;
