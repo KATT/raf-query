@@ -1,14 +1,19 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
+	group,
 	infiniteQueryOptions,
+	load,
+	prefetch,
 	type QueryHandle,
-	useQuery,
+	useInfiniteQuery,
 } from "@raf-query/react";
 import { use } from "react";
 
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
+
+const messages = group("messages");
 
 type Filter = "all" | "questions";
 
@@ -64,7 +69,7 @@ function messagesQuery(input: { readonly filter: Filter }) {
 		// After `queryFn`: TypeScript infers the page type from it.
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
 		initialPageParam: 0,
-		queryKey: ["messages", input],
+		queryKey: messages(input),
 		staleTime: 30_000,
 	});
 }
@@ -88,8 +93,11 @@ function MessageSkeletons() {
 function Messages(props: {
 	readonly handle: QueryHandle<typeof messagesQuery>;
 }) {
-	const [pagesPromise, messages] = useQuery(messagesQuery, props.handle);
-	const data = use(pagesPromise);
+	const [pagesThenable, messagesState] = useInfiniteQuery(
+		messagesQuery,
+		props.handle,
+	);
+	const data = use(pagesThenable);
 	const items = data.pages.flatMap((page) => page.items);
 	return (
 		<div
@@ -109,13 +117,13 @@ function Messages(props: {
 						</span>
 					</li>
 				))}
-				{messages.isFetchingNextPage ? <MessageSkeletons /> : null}
+				{messagesState.isFetchingNextPage ? <MessageSkeletons /> : null}
 			</ul>
-			{messages.hasNextPage && !messages.isFetchingNextPage ? (
+			{messagesState.hasNextPage && !messagesState.isFetchingNextPage ? (
 				<button
 					className="mt-2 w-full rounded-md border py-1.5 text-xs text-muted-foreground hover:bg-accent"
 					onClick={() => {
-						void messages.fetchNextPage();
+						void messagesState.fetchNextPage();
 					}}
 					ref={(button) => {
 						if (button === null) {
@@ -125,7 +133,7 @@ function Messages(props: {
 							(entries) => {
 								if (entries.some((entry) => entry.isIntersecting)) {
 									observer.disconnect();
-									void messages.fetchNextPage();
+									void messagesState.fetchNextPage();
 								}
 							},
 							{
@@ -143,7 +151,7 @@ function Messages(props: {
 					Load more
 				</button>
 			) : null}
-			{messages.hasNextPage ? null : (
+			{messagesState.hasNextPage ? null : (
 				<p className="py-2 text-center text-xs text-muted-foreground">
 					That’s all {items.length} messages.
 				</p>
@@ -182,11 +190,14 @@ function InfiniteScroll() {
 				</ul>
 			}
 			initial={{ path: "/messages", search: { filter: "all" } }}
-			loader={(args): PageData => ({
-				messages: args.client.prefetch(messagesQuery, {
-					filter: filterOf(args.location.search?.filter),
-				}),
-			})}
+			loader={async (args): Promise<PageData> => {
+				const [handles] = await load(args.client, {
+					messages: prefetch(messagesQuery, {
+						filter: filterOf(args.location.search?.filter),
+					}),
+				});
+				return handles;
+			}}
 		>
 			{(route) => <Page data={route.data} />}
 		</DemoBrowser>

@@ -44,8 +44,11 @@ describe("@vitejs/plugin-rsc", () => {
 				expect(html).toContain("<h1>Post hello</h1>");
 				expect(html).toContain("<p>First comment on hello</p>");
 				expect(html).not.toContain("Loading comments…");
-				// The server component started both. QueryProvider's server
-				// render started neither.
+				// Nothing on the server started the author, so its boundary
+				// renders in the browser.
+				expect(html).toContain("Loading author…");
+				// The server component started both. The client components'
+				// server render started nothing.
 				expect(globalThis.queryFnCalls).toEqual([
 					"comments hello",
 					"post hello",
@@ -58,15 +61,16 @@ describe("@vitejs/plugin-rsc", () => {
 					...payload.matchAll(/I\["[^"]+",\[[^\]]*\],"(\w+)"/g),
 				].map((match) => match[1]);
 				expect(clientReferences.toSorted()).toEqual([
+					"Author",
 					"Comments",
 					"Hydrate",
 					"Post",
-					"QueryProvider",
+					"Providers",
 				]);
 				// The pending entry crossed as a promise, resolved later in the
 				// stream.
 				expect(payload).toMatch(
-					/"key":\["comments","hello"\],"promise":"\$@\w+"/,
+					/"queryKey":\["comments","hello"\],"promise":"\$@\w+"/,
 				);
 				expect(payload).toContain('"data":["First comment on hello"]');
 				expect(globalThis.queryFnCalls).toEqual([

@@ -45,7 +45,7 @@ import { settingsQuery } from "~/queries.ts";
 declare const loaderData: { settings: QueryHandle<typeof settingsQuery> };
 
 // #region per-query
-const [settings] = useQuery(settingsQuery, loaderData.settings, {
+const [settingsThenable] = useQuery(settingsQuery, loaderData.settings, {
 	refetchOnWindowFocus: false,
 });
 // #endregion
@@ -62,9 +62,11 @@ const [settings] = useQuery(settingsQuery, loaderData.settings, {
 
 ````md
 ```ts twoslash
-import { useIsFetching } from "@raf-query/react";
+import { group, useIsFetching } from "@raf-query/react";
+
+const comments = group("comments");
 // ---cut---
-const savingComments = useIsFetching({ queryKey: ["comments"] });
+const savingComments = useIsFetching(comments);
 ```
 ````
 
@@ -79,7 +81,7 @@ Compiling every block is most of a build, so each result is kept in `node_module
 
 Code outside the pages imports a region instead of writing a fence: `import hero from "sample:tanstack-start/src/routes/blog.$slug.tsx#hero"` gives `hero.segments`, the region rendered as a `sample` fence renders it (the homepage's walkthrough does this).
 
-The sample apps are workspace packages in `samples/`: `tanstack-start` (`@samples/tanstack-start`) for the pages built on TanStack Start, `tanstack-start-effect` (`@samples/tanstack-start-effect`) for the Effect pages, `nextjs` (`@samples/nextjs`) for the React Server Components page, and `react-router` (`@samples/react-router`, with `app/` in place of `src/`) for the React Router page. Each declares the dependencies its files import, `pnpm typecheck` runs its `tsc`, and `pnpm lint` lints it (`src/docs/` files are page fragments, so some app rules are off there). The build regenerates their route trees and React Router's route types (`react-router typegen`).
+The sample apps are workspace packages in `samples/`: `tanstack-start` (`@samples/tanstack-start`) for the pages built on TanStack Start, `nextjs` (`@samples/nextjs`) for the React Server Components page, and `react-router` and `react-router-spa` (`@samples/react-router` and `@samples/react-router-spa`, with `app/` in place of `src/`) for the React Router page, in framework mode and as a client-only app. Each declares the dependencies its files import, `pnpm typecheck` runs its `tsc`, and `pnpm lint` lints it (`src/docs/` files are page fragments, so some app rules are off there). The build regenerates their route trees and React Router's route types (`react-router typegen`).
 
 ## Demos
 

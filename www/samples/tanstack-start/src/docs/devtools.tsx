@@ -1,8 +1,9 @@
+import {
+	type QueryClient,
+	QueryClientProvider,
+	QueryDevtools,
+} from "@raf-query/react";
 import type { ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@raf-query/react";
-import { QueryDevtools } from "@raf-query/react/devtools";
-
-/// <reference types="vite/client" />
 
 declare const props: { children: ReactNode };
 

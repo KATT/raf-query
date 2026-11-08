@@ -98,3 +98,28 @@ export function formatTime(ms: number) {
 		second: "2-digit",
 	});
 }
+
+/** A paged list's "Load more" button. Renders nothing after the last page. */
+export function LoadMoreButton(props: {
+	readonly fetchNextPage: () => Promise<void>;
+	readonly hasNextPage: boolean;
+	readonly isFetchingNextPage: boolean;
+}) {
+	if (!props.hasNextPage) {
+		return null;
+	}
+	return (
+		<Button
+			className="justify-self-start"
+			disabled={props.isFetchingNextPage}
+			onClick={() => {
+				void props.fetchNextPage();
+			}}
+			size="xs"
+			variant="outline"
+		>
+			{props.isFetchingNextPage ? <Spinner className="text-current" /> : null}
+			{props.isFetchingNextPage ? "Loading…" : "Load more"}
+		</Button>
+	);
+}

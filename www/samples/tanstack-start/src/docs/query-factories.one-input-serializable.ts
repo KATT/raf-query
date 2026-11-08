@@ -1,24 +1,21 @@
-import { infiniteQueryOptions, QueryClient } from "@raf-query/react";
-import { postQuery } from "~/queries.ts";
+import {
+	createQueryClient,
+	group,
+	infiniteQueryOptions,
+	load,
+	prefetch,
+} from "@raf-query/react";
+import { feedQuery, postQuery } from "~/queries.ts";
 import { type CommentPage, listComments } from "~/api.ts";
 
-const qc = new QueryClient();
-
-function issuesQuery() {
-	return infiniteQueryOptions({
-		queryKey: ["issues"],
-		queryFn: async () => ({
-			items: [] as Array<never>,
-			nextCursor: null,
-		}),
-		initialPageParam: 0,
-		getNextPageParam: (lastPage) => lastPage.nextCursor,
-	});
-}
+const qc = createQueryClient();
+const comments = group("comments");
 
 // #region one-input-serializable
-qc.prefetch(postQuery, { slug: "hello-world" });
-qc.prefetch(issuesQuery); // a factory without input
+await load(qc, {
+	post: prefetch(postQuery, { slug: "hello-world" }),
+	feed: prefetch(feedQuery), // a factory without input
+});
 // #endregion
 
 // #region type-inference
@@ -27,7 +24,7 @@ const commentsOptions = infiniteQueryOptions({
 	initialPageParam: 0,
 	queryFn: (context) =>
 		listComments({ cursor: context.pageParam, slug: "hello-world" }),
-	queryKey: ["comments", "hello-world"],
+	queryKey: comments("hello-world"),
 });
 commentsOptions;
 // ^?
@@ -36,7 +33,7 @@ commentsOptions;
 // #region type-helpers
 import type { DataOf, InputOf, QueryHandle } from "@raf-query/react";
 
-type PostData = DataOf<typeof postQuery>; // what queryFn resolves to
+type PostData = DataOf<typeof postQuery>; // what readers get
 //   ^?
 type PostInput = InputOf<typeof postQuery>;
 //   ^?

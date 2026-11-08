@@ -13,7 +13,7 @@ import {
 import { NavigationProgress } from "@examples/kit/components/navigation-progress";
 import { SettingsControls } from "@examples/kit/components/settings";
 import { withLoaderVerb } from "@examples/kit/lib/loader-verb";
-import { useQueryClient } from "@raf-query/react";
+import { removeAll, useQueryClient } from "@raf-query/react";
 import Link, { useLinkStatus } from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -87,7 +87,7 @@ export function Settings(props: {
 					clearCookie(LATENCY_COOKIE);
 					clearCookie(STALE_TIME_COOKIE);
 					applyStaleTime(defaults, DEFAULT_STALE_TIME);
-					queryClient.clear();
+					removeAll(queryClient);
 					window.location.reload();
 				}}
 				onStaleTimeChange={(value) => {

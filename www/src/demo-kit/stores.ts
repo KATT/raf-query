@@ -1,7 +1,7 @@
-import { Query, type QueryClient } from "@raf-query/react";
+import type { QueryClient } from "@raf-query/react";
 import { useSyncExternalStore } from "react";
 
-import type { FakeServer, NetworkRequest } from "./server.ts";
+import { type FakeServer, keyLabel, type NetworkRequest } from "./server.ts";
 
 const tickers = new Map<
 	number,
@@ -64,34 +64,40 @@ export type DataStatus = "error" | "fresh" | "pending" | "stale";
 
 export interface CacheRow {
 	readonly data: DataStatus;
-	readonly failureCount: number;
+	/** The key's label, as the fake server logs it. */
 	readonly hash: string;
 	readonly isFetching: boolean;
-	readonly observers: number;
+	readonly readers: number;
 	readonly updatedAt: number;
 }
 
-function dataStatusOf(query: Query.Query): DataStatus {
-	const state = Query.getUnsafe(query);
+/** What `client.subscribe` reports an event about. */
+type Entry = Parameters<Parameters<QueryClient["subscribe"]>[0]>[0]["entry"];
+
+interface Tracked {
+	/** Invalidated since its data was written. */
+	invalidated: boolean;
+	/** The state the last event saw. */
+	state: Entry["state"];
+}
+
+function dataStatusOf(
+	client: QueryClient,
+	entry: Entry,
+	tracked: Tracked,
+): DataStatus {
+	const state = entry.state;
 	if (state.status === "error") {
 		return "error";
 	}
-	if (state.updatedAt === 0) {
+	if (!state.hasData) {
 		return "pending";
 	}
-	return Query.isStaleUnsafe(query) ? "stale" : "fresh";
-}
-
-function rowOf(query: Query.Query): CacheRow {
-	const state = Query.getUnsafe(query);
-	return {
-		data: dataStatusOf(query),
-		failureCount: state.failureCount,
-		hash: query.hash,
-		isFetching: state.isFetching,
-		observers: Query.observerCountUnsafe(query),
-		updatedAt: state.updatedAt,
-	};
+	const staleTime = entry.options?.staleTime ?? client.config.staleTime ?? 0;
+	return tracked.invalidated ||
+		client.clock.now() - state.updatedAt >= staleTime
+		? "stale"
+		: "fresh";
 }
 
 function sameRows(a: ReadonlyArray<CacheRow>, b: ReadonlyArray<CacheRow>) {
@@ -104,9 +110,8 @@ function sameRows(a: ReadonlyArray<CacheRow>, b: ReadonlyArray<CacheRow>) {
 				row.hash === other.hash &&
 				row.data === other.data &&
 				row.isFetching === other.isFetching &&
-				row.observers === other.observers &&
-				row.updatedAt === other.updatedAt &&
-				row.failureCount === other.failureCount
+				row.readers === other.readers &&
+				row.updatedAt === other.updatedAt
 			);
 		})
 	);
@@ -117,18 +122,31 @@ interface CacheStore {
 	readonly subscribe: (onChange: () => void) => () => void;
 }
 
-const cacheStores = new WeakMap<QueryClient<unknown>, CacheStore>();
+const cacheStores = new WeakMap<QueryClient, CacheStore>();
 
-function cacheStoreFor(client: QueryClient<unknown>): CacheStore {
-	let store = cacheStores.get(client);
-	if (store) {
-		return store;
+/**
+ * Start recording `client`'s entries for {@link useCacheRows}. The cache only
+ * reports entries as they're added, so call it before anything queries the
+ * client.
+ */
+export function trackCache(client: QueryClient): void {
+	if (cacheStores.has(client)) {
+		return;
 	}
+	const entries = new Map<Entry, Tracked>();
 	let rows: ReadonlyArray<CacheRow> = [];
 	let scheduled = false;
 	const listeners = new Set<() => void>();
+	const rowsNow = () =>
+		[...entries].map(([entry, tracked]) => ({
+			data: dataStatusOf(client, entry, tracked),
+			hash: keyLabel(entry.key),
+			isFetching: entry.state.isFetching,
+			readers: entry.readers.size,
+			updatedAt: entry.state.updatedAt,
+		}));
 	const refresh = () => {
-		const next = client.getAll().map(rowOf);
+		const next = rowsNow();
 		if (sameRows(rows, next)) {
 			return;
 		}
@@ -137,9 +155,26 @@ function cacheStoreFor(client: QueryClient<unknown>): CacheStore {
 			listener();
 		}
 	};
-	// Cache events can fire while another component renders, so the rows are
-	// refreshed in a microtask, once per batch.
-	client.subscribe(() => {
+	client.subscribe((event) => {
+		const entry = event.entry;
+		if (event.type === "removed") {
+			entries.delete(entry);
+		} else {
+			const tracked = entries.get(entry);
+			if (!tracked) {
+				entries.set(entry, { invalidated: false, state: entry.state });
+			} else if (event.type === "updated") {
+				// An invalidation notifies an entry without changing its state.
+				if (tracked.state === entry.state) {
+					tracked.invalidated = true;
+				} else if (tracked.state.updatedAt !== entry.state.updatedAt) {
+					tracked.invalidated = false;
+				}
+				tracked.state = entry.state;
+			}
+		}
+		// Cache events can fire while another component renders, so the rows
+		// are refreshed in a microtask, once per batch.
 		if (scheduled) {
 			return;
 		}
@@ -150,11 +185,11 @@ function cacheStoreFor(client: QueryClient<unknown>): CacheStore {
 		});
 	});
 	let timer: ReturnType<typeof setInterval> | undefined;
-	store = {
+	cacheStores.set(client, {
 		getSnapshot: () => rows,
 		subscribe: (onChange) => {
 			listeners.add(onChange);
-			rows = client.getAll().map(rowOf);
+			rows = rowsNow();
 			// Staleness changes with time, not with a cache event.
 			timer ??= setInterval(refresh, 250);
 			return () => {
@@ -165,16 +200,16 @@ function cacheStoreFor(client: QueryClient<unknown>): CacheStore {
 				}
 			};
 		},
-	};
-	cacheStores.set(client, store);
-	return store;
+	});
 }
 
 /** Every entry of `client`'s cache, with its status kept current. */
-export function useCacheRows(
-	client: QueryClient<unknown>,
-): ReadonlyArray<CacheRow> {
-	const store = cacheStoreFor(client);
+export function useCacheRows(client: QueryClient): ReadonlyArray<CacheRow> {
+	trackCache(client);
+	const store = cacheStores.get(client);
+	if (!store) {
+		throw new Error("useCacheRows: trackCache didn't record the client");
+	}
 	return useSyncExternalStore(
 		store.subscribe,
 		store.getSnapshot,

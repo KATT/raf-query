@@ -42,8 +42,8 @@ tester.run(
          return <h1>{post.title}{post.body}</h1>;
        }`,
 			`function Post(props: Props) {
-         const [postPromise, controls] = useQuery(postQuery, props.post);
-         return <Body post={postPromise} busy={controls.isFetching} />;
+         const [postThenable, controls] = useQuery(postQuery, props.post);
+         return <Body post={postThenable} busy={controls.isFetching} />;
        }`,
 			`function Post(props: Props) {
          const { title } = use(props.post);

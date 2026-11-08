@@ -1,6 +1,6 @@
 "use client";
 
-import { useQueryClient } from "@raf-query/react";
+import { invalidateOne, useQueryClient } from "@raf-query/react";
 
 import { updateIssue } from "~/actions.ts";
 import { issueQuery } from "~/queries.ts";
@@ -12,7 +12,7 @@ export function UpdateIssueForm(props: { id: number }) {
 		<form
 			action={async (formData) => {
 				await updateIssue(formData);
-				await qc.invalidate(issueQuery, { id: props.id });
+				await invalidateOne(qc, issueQuery, { id: props.id });
 			}}
 		/>
 	);

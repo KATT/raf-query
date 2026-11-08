@@ -19,8 +19,7 @@ jobs:
           ref: main
       - id: check
         # Glob must match git.commitsPath in .release-it.json. Unquoted so the
-        # shell expands it (same as release-it). Experiments live under
-        # .experimental/, outside packages/.
+        # shell expands it (same as release-it).
         run: |
           latest=$(git describe --tags --abbrev=0)
           count=$(git rev-list "${latest}..HEAD" --count -- packages/*)

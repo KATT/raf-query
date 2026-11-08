@@ -1,8 +1,7 @@
 import { type QueryHandle, useQuery } from "@raf-query/react";
-import { Suspense, startTransition } from "react";
+import { Suspense, startTransition, use } from "react";
 import { commentsQuery, postQuery } from "~/queries.ts";
 import { Route } from "~/routes/posts.$slug.tsx";
-import { use } from "react";
 
 declare function CommentsSkeleton(): React.ReactNode;
 
@@ -13,8 +12,9 @@ declare function Comments(props: {
 // #region post-page
 function PostPage() {
 	const loaderData = Route.useLoaderData();
-	// `post` came from `qc.ensure`, `comments` from `qc.prefetch`.
-	const [post, postState] = useQuery(postQuery, loaderData.post);
+	// `post` came from `swr`, `comments` from `prefetch`.
+	const [postThenable, postState] = useQuery(postQuery, loaderData.post);
+	const post = use(postThenable);
 
 	return (
 		<article>

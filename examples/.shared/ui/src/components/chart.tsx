@@ -6,9 +6,15 @@ import * as RechartsPrimitive from "recharts";
 import type { TooltipValueType } from "recharts";
 
 // Format: { THEME_NAME: CSS_SELECTOR }
-const THEMES = { light: "", dark: ".dark" } as const;
+const THEMES = { light: "", dark: ".dark" } as const satisfies Record<
+	string,
+	string
+>;
 
-const INITIAL_DIMENSION = { width: 320, height: 200 } as const;
+const INITIAL_DIMENSION = { width: 320, height: 200 } as const satisfies {
+	height: number;
+	width: number;
+};
 type TooltipNameType = number | string;
 
 export type ChartConfig = Record<

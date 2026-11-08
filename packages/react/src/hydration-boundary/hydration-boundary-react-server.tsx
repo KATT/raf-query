@@ -1,7 +1,19 @@
-import { dehydrate } from "@raf-query/core";
+import { dehydrate, type QueryClient } from "@raf-query/core";
+
 import { Hydrate } from "./hydrate.tsx";
 import type { HydrationBoundaryProps } from "./hydration-boundary.tsx";
-import { sentHashes } from "./sent.ts";
+
+const sentByClient = new WeakMap<QueryClient, Set<string>>();
+
+/**
+ * Hashes of the request client's entries an earlier `HydrationBoundary`
+ * already sent, so each entry crosses once per request.
+ */
+function sentHashes(client: QueryClient): Set<string> {
+	const sent = sentByClient.get(client) ?? new Set<string>();
+	sentByClient.set(client, sent);
+	return sent;
+}
 
 /**
  * `HydrationBoundary` in server components (the `react-server` export
@@ -9,19 +21,20 @@ import { sentHashes } from "./sent.ts";
  * browser cache: pending entries cross as promises and stream in as they
  * settle, and entries an earlier boundary already sent in this request are
  * skipped. With `state`, writes that state, as the browser version does.
+ *
+ * It also marks the client components' server render: from there on, a read
+ * of a query nothing sent renders its Suspense fallback on the server and
+ * loads in the browser, instead of fetching where nothing would send it.
  */
 export function HydrationBoundary(props: HydrationBoundaryProps) {
-	if (props.client === undefined) {
-		return (
-			<Hydrate options={props.options} state={props.state}>
-				{props.children}
-			</Hydrate>
-		);
-	}
 	const client = props.client;
-	const state = dehydrate(client, {
-		sent: sentHashes(client),
-		...props.options,
-	});
-	return <Hydrate state={state}>{props.children}</Hydrate>;
+	const state =
+		client === undefined
+			? props.state
+			: dehydrate(client, { ...props.options, sent: sentHashes(client) });
+	return (
+		<Hydrate fromServerComponents state={state}>
+			{props.children}
+		</Hydrate>
+	);
 }

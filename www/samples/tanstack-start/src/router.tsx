@@ -1,12 +1,13 @@
-import { QueryClient, QueryClientProvider } from "@raf-query/react";
-import { QueryDevtools } from "@raf-query/react/devtools";
+import { QueryDevtools } from "@raf-query/react";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import { createRouter } from "@tanstack/react-router";
 
+import { Providers } from "./providers.tsx";
+import { makeQueryClient } from "./query-client.ts";
 import { routeTree } from "./routeTree.gen.ts";
 
 export function getRouter() {
-	const queryClient = new QueryClient();
+	const queryClient = makeQueryClient();
 	const router = createRouter({
 		context: { queryClient },
 		defaultPreload: "intent",
@@ -15,10 +16,10 @@ export function getRouter() {
 		routeTree,
 		scrollRestoration: true,
 		Wrap: (props) => (
-			<QueryClientProvider client={queryClient}>
+			<Providers client={queryClient}>
 				{props.children}
 				{import.meta.env.DEV ? <QueryDevtools /> : null}
-			</QueryClientProvider>
+			</Providers>
 		),
 	});
 	setupRouterIntegration({ queryClient, router });

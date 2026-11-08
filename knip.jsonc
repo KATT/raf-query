@@ -60,20 +60,16 @@
 		"packages/core": {
 			// `src/index.ts` is the published API.
 			"includeEntryExports": false,
+			// The tests read queries through React's hooks, aliased to
+			// `packages/react/src` in `vite.config.ts` and `tsconfig.json`. A
+			// devDependency would make a workspace cycle, which pnpm refuses.
+			"ignoreDependencies": ["@raf-query/react"],
 		},
 		"packages/react": {
 			"includeEntryExports": false,
-		},
-		".experimental/vue/package": {
-			"includeEntryExports": false,
-		},
-		".experimental/svelte/package": {
-			"includeEntryExports": false,
-		},
-		".experimental/tanstack-query/package": {
-			// Same surface as `@raf-query/react`, kept for the comparison even
-			// where the experimental apps don't call every export.
-			"includeEntryExports": false,
+			// `vitest.compiler.config.ts` runs the hooks through the React
+			// Compiler (`*.compiler.test.tsx`).
+			"vitest": { "config": ["vite.config.ts", "vitest.compiler.config.ts"] },
 		},
 		"examples/.shared/ui": {
 			// `package.json` exports are the shadcn kit. Components are added
@@ -101,19 +97,6 @@
 		"examples/tanstack-start": {
 			"ignoreDependencies": ["tailwindcss"],
 		},
-		"examples/tanstack-start-effect": {
-			"ignoreDependencies": ["tailwindcss"],
-			// `#rpc-transport` imports bind to the server file.
-			"ignoreIssues": {
-				"src/rpc-transport.browser.ts": ["exports", "types"],
-			},
-		},
-		".experimental/tanstack-query/nextjs": {
-			"ignoreDependencies": ["tailwindcss"],
-		},
-		".experimental/tanstack-query/start": {
-			"ignoreDependencies": ["tailwindcss"],
-		},
 		"examples/react-router": {
 			// Tailwind resolves from the app root while compiling
 			// `@import "tailwindcss"` in `@examples/ui`.
@@ -126,8 +109,8 @@
 		},
 		"tooling/bundle-size": {
 			// Fixtures are bundled by path from `measure.ts`. `analyze.ts` is
-			// a CLI. Their exports are the measured surface.
-			"entry": ["src/analyze.ts", "fixtures/**/*.{ts,tsx}"],
+			// a CLI.
+			"entry": ["src/analyze.ts", "fixtures/*.{ts,tsx}"],
 			"includeEntryExports": false,
 		},
 		"tooling/rsc-frameworks": {
@@ -155,7 +138,6 @@
 				"@samples/react-router",
 				"@samples/react-router-spa",
 				"@samples/tanstack-start",
-				"@samples/tanstack-start-effect",
 				"sample",
 			],
 		},
@@ -164,14 +146,6 @@
 			// which Knip does not parse: every file is an entry, and its
 			// exports are what the pages import.
 			"entry": ["src/**/*.{ts,tsx}"],
-			"includeEntryExports": false,
-		},
-		".experimental/svelte/sample": {
-			"entry": ["src/**/*.{ts,svelte}"],
-			"includeEntryExports": false,
-		},
-		".experimental/vue/sample": {
-			"entry": ["src/**/*.{ts,vue}"],
 			"includeEntryExports": false,
 		},
 		"www/samples/react-router": {

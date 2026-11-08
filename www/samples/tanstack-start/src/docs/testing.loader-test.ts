@@ -1,19 +1,18 @@
-import { expect, test } from "@effect/vitest";
-import { QueryClient } from "@raf-query/react";
+import { createQueryClient, getData, isFetching } from "@raf-query/react";
+import { expect, test } from "./testing.vitest.ts";
 
-import { postQuery } from "~/queries.ts";
+import { commentsQuery, postQuery } from "~/queries.ts";
 
 import { postLoader } from "./testing.post-loader.ts";
 
-const queryClient = new QueryClient();
-
 // #region testing-loaders
 test("the post loader starts both queries", async () => {
+	const queryClient = createQueryClient({ isServer: false });
 	await postLoader({
 		context: { queryClient },
 		params: { slug: "hello" },
 	});
-	expect(queryClient.getData(postQuery, { slug: "hello" })).toBeDefined();
-	expect(queryClient.isFetching({ queryKey: ["comments"] })).toBe(1);
+	expect(getData(queryClient, postQuery, { slug: "hello" })).toBeDefined();
+	expect(isFetching(queryClient, commentsQuery)).toBe(1);
 });
 // #endregion

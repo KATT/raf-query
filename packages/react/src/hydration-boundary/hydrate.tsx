@@ -2,14 +2,13 @@
 
 import {
 	type DehydratedState,
-	hashKey,
 	hydrate,
-	type HydrateOptions,
-	Query,
 	type QueryClient,
 } from "@raf-query/core";
+import { hashKey } from "@raf-query/core/internal";
 import { type ReactNode, useEffect, useState } from "react";
 
+import { markFedByServerComponents } from "../browser-render.ts";
 import { useQueryClient } from "../provider.tsx";
 
 /**
@@ -17,19 +16,11 @@ import { useQueryClient } from "../provider.tsx";
  * render, and entries it already shows, which must wait for a commit.
  */
 function split(client: QueryClient, state: DehydratedState) {
-	const shown = new Set(
-		client
-			.getAll()
-			.filter((query) => Query.getUnsafe(query).hasData)
-			.map((query) => query.hash),
-	);
-	const isShown = (query: DehydratedState["queries"][number]) =>
-		shown.has(hashKey(query.key));
+	const isShown = (sent: DehydratedState["entries"][number]) =>
+		client["~entries"].get(hashKey(sent.queryKey))?.state.hasData === true;
 	return {
-		deferred: { queries: state.queries.filter(isShown) },
-		now: {
-			queries: state.queries.filter((query) => !isShown(query)),
-		},
+		deferred: { entries: state.entries.filter(isShown) },
+		now: { entries: state.entries.filter((sent) => !isShown(sent)) },
 	};
 }
 
@@ -43,28 +34,33 @@ function split(client: QueryClient, state: DehydratedState) {
  */
 export function Hydrate(props: {
 	readonly children?: ReactNode;
-	readonly options?: HydrateOptions;
+	/**
+	 * Set by the server components' `HydrationBoundary`. It marks a server
+	 * render's client before the children render, so their reads of queries
+	 * nothing sent render in the browser instead of fetching on the server.
+	 */
+	readonly fromServerComponents?: boolean;
 	readonly state: DehydratedState;
 }) {
 	const client = useQueryClient();
+	if (props.fromServerComponents) {
+		markFedByServerComponents(client);
+	}
 	const state = props.state;
-	const options = props.options;
 	const [hydrated, setHydrated] = useState<{
 		readonly deferred: DehydratedState;
 		readonly state: DehydratedState;
 	}>();
-	// Once per state. Cache notifications are deferred to a microtask, so
-	// other components aren't updated mid-render.
 	if (hydrated?.state !== state) {
 		const parts = split(client, state);
-		hydrate(client, parts.now, options);
+		hydrate(client, parts.now);
 		setHydrated({ deferred: parts.deferred, state });
 	}
 	const deferred = hydrated?.deferred;
 	useEffect(() => {
-		if (deferred && deferred.queries.length > 0) {
-			hydrate(client, deferred, options);
+		if (deferred && deferred.entries.length > 0) {
+			hydrate(client, deferred);
 		}
-	}, [client, deferred, options]);
+	}, [client, deferred]);
 	return props.children;
 }

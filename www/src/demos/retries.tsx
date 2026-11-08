@@ -1,18 +1,31 @@
 import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { type QueryHandle, queryOptions, useQuery } from "@raf-query/react";
+import {
+	createQueryClient,
+	group,
+	load,
+	prefetch,
+	type QueryHandle,
+	queryOptions,
+	recommended,
+	retry,
+	useQuery,
+	useQueryClient,
+} from "@raf-query/react";
 import {
 	CatchBoundary,
 	type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { RefreshCw } from "lucide-react";
-import { startTransition, Suspense, use } from "react";
+import { createContext, startTransition, Suspense, use } from "react";
 
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
 import { FailNextButton, formatTime, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { seedPosts } from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
+
+const posts = group("posts");
 
 const server = createFakeServer(() => ({ posts: seedPosts() }));
 
@@ -24,11 +37,11 @@ function postQuery(input: { readonly id: number }) {
 				(db) => db.posts.find((post) => post.id === input.id),
 				context,
 			),
-		queryKey: ["posts", input.id],
-		retry: 2,
-		retryDelay: (failureCount) => 500 * 2 ** (failureCount - 1),
+		queryKey: posts(input.id),
 	});
 }
+
+const PostInput = createContext({ id: 0 });
 
 type PageData =
 	| { readonly page: "list" }
@@ -49,8 +62,8 @@ function PostSkeleton() {
  * boundary then refetches it.
  */
 function PostView(props: { readonly handle: QueryHandle<typeof postQuery> }) {
-	const [postPromise, post] = useQuery(postQuery, props.handle);
-	const data = use(postPromise);
+	const [postThenable, post] = useQuery(postQuery, props.handle);
+	const data = use(postThenable);
 	return (
 		<div className="grid gap-3">
 			<div className="grid gap-1">
@@ -92,6 +105,8 @@ function PostView(props: { readonly handle: QueryHandle<typeof postQuery> }) {
 
 // oxlint-disable-next-line workspace/inline-jsx-callback -- a component; defined inline it would remount on every render
 function PostError(props: ErrorComponentProps) {
+	const queryClient = useQueryClient();
+	const input = use(PostInput);
 	return (
 		<div
 			className="grid justify-items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm"
@@ -101,7 +116,15 @@ function PostError(props: ErrorComponentProps) {
 				Couldn&apos;t load the post:{" "}
 				{props.error instanceof Error ? props.error.message : "unknown error"}
 			</p>
-			<Button onClick={props.reset} size="xs" variant="outline">
+			<Button
+				onClick={() => {
+					// A failed query stays failed until something starts it again.
+					void load(queryClient, { post: prefetch(postQuery, input) });
+					props.reset();
+				}}
+				size="xs"
+				variant="outline"
+			>
 				Try again
 			</Button>
 		</div>
@@ -136,14 +159,16 @@ function Page(props: { readonly data: PageData }) {
 			>
 				← All posts
 			</DemoLink>
-			<CatchBoundary
-				errorComponent={PostError}
-				getResetKey={() => data.post.key.join("/")}
-			>
-				<Suspense fallback={<PostSkeleton />}>
-					<PostView handle={data.post} />
-				</Suspense>
-			</CatchBoundary>
+			<PostInput value={data.post.input}>
+				<CatchBoundary
+					errorComponent={PostError}
+					getResetKey={() => data.post.queryKey.join("/")}
+				>
+					<Suspense fallback={<PostSkeleton />}>
+						<PostView handle={data.post} />
+					</Suspense>
+				</CatchBoundary>
+			</PostInput>
 		</div>
 	);
 }
@@ -158,11 +183,15 @@ function Retries() {
 			<DemoBrowser
 				fallback={<Skeleton className="h-24 w-full" />}
 				initial={{ path: "/posts" }}
-				loader={(args): PageData => {
+				loader={async (args): Promise<PageData> => {
 					const id = Number(args.location.path.split("/")[2]);
-					return id
-						? { page: "post", post: args.client.prefetch(postQuery, { id }) }
-						: { page: "list" };
+					if (!id) {
+						return { page: "list" };
+					}
+					const [handles] = await load(args.client, {
+						post: prefetch(postQuery, { id }),
+					});
+					return { page: "post", post: handles.post };
 				}}
 			>
 				{(route) => <Page data={route.data} />}
@@ -173,6 +202,11 @@ function Retries() {
 
 export default defineDemo({
 	Component: Retries,
+	createClient: () =>
+		createQueryClient({
+			...recommended(),
+			links: [retry({ attempts: 2, delay: (attempt) => 500 * 2 ** attempt })],
+		}),
 	hint: "Queries here retry twice. Fail one request and open a post: the retry recovers it. Fail three to exhaust the retries: a first load hits the error boundary, a refetch keeps the old data.",
 	server,
 	title: "Retries and error boundaries",

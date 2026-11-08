@@ -1,13 +1,16 @@
-import { queryOptions } from "@raf-query/react";
+import { group, load, prefetch, queryOptions } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { getCurrentOrg } from "~/api.ts";
+
+const user = group("user");
+const org = group("org");
 
 declare function getCurrentUser(): Promise<{ orgId: string }>;
 
 function currentUserQuery() {
 	return queryOptions({
-		queryKey: ["user", "current"],
+		queryKey: user("current"),
 		queryFn: () => getCurrentUser(),
 	});
 }
@@ -15,18 +18,18 @@ function currentUserQuery() {
 // #region settings-backend
 export function currentOrgQuery() {
 	return queryOptions({
-		queryKey: ["org", "current"],
+		queryKey: org("current"),
 		queryFn: () => getCurrentOrg(),
 	});
 }
 
 export const Route = createFileRoute("/settings")({
-	loader: (args) => {
-		const qc = args.context.queryClient;
-		return {
-			org: qc.prefetch(currentOrgQuery),
-			user: qc.prefetch(currentUserQuery),
-		};
+	loader: async (args) => {
+		const [handles] = await load(args.context.queryClient, {
+			org: prefetch(currentOrgQuery),
+			user: prefetch(currentUserQuery),
+		});
+		return handles;
 	},
 });
 // #endregion

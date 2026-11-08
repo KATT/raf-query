@@ -6,7 +6,7 @@ import { use } from "react";
 import { commentsQuery } from "./queries.ts";
 
 export function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
-	const [commentsPromise] = useQuery(commentsQuery, props.handle);
-	const comments = use(commentsPromise);
+	const [commentsThenable] = useQuery(commentsQuery, props.handle);
+	const comments = use(commentsThenable);
 	return comments.map((comment) => <p key={comment}>{comment}</p>);
 }

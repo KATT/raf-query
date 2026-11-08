@@ -7,6 +7,7 @@ import {
 	noText,
 	sameWord,
 	type SearchableDoc,
+	type SearchEntry,
 	searchDocs,
 	type SearchMatch,
 	type SearchText,
@@ -269,7 +270,7 @@ describe("snippetOf", () => {
 	});
 
 	it("cuts a long body at a word, after what it found", () => {
-		const entry = {
+		const entry: SearchEntry = {
 			body: `${"word ".repeat(10)}needle ${"after ".repeat(60)}`.trim(),
 			description: "",
 			hash: "a",

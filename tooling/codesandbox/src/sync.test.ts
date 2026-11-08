@@ -109,7 +109,10 @@ const failsToBuild = Layer.succeed(
 	}),
 );
 
-const app = { "examples/app/package.json": "{}\n", "README.md": "branch\n" };
+const app = {
+	"examples/app/package.json": "{}\n",
+	"README.md": "branch\n",
+} satisfies Record<string, string>;
 
 describe("syncBranch", () => {
 	it.effect("creates the branch, then commits only what changed", () =>

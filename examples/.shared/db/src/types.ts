@@ -82,9 +82,9 @@ export function applyStaleTime(defaults: QueryTimeDefaults, staleTime: number) {
 
 /**
  * How the apps' loaders start their queries. The URL's first segment picks
- * one (`/ensure/issues/1`), so each verb's pages can be compared and shared.
+ * one (`/swr/issues/1`), so each verb's pages can be compared and shared.
  */
-export const loaderVerbs = ["prefetch", "ensure", "fetch"] as const;
+export const loaderVerbs = ["prefetch", "swr", "revalidate"] as const;
 export const LoaderVerb = z.enum(loaderVerbs);
 export type LoaderVerb = z.infer<typeof LoaderVerb>;
 

@@ -34,8 +34,8 @@ function app(dir: string) {
 	return { [`${dir}/tsconfig.json`]: "{}" };
 }
 
-const todos = [
-	'import { todosQuery } from "../queries.ts";',
+const postsRoute = [
+	'import { postsQuery } from "../queries.ts";',
 	"",
 	"// #region loader",
 	"export const Route = 1;",
@@ -56,23 +56,23 @@ describe("expandSnippets", () => {
 		() =>
 			Effect.gen(function* () {
 				const page = yield* setup({
-					"page/src/routes/todos.tsx": todos,
+					"page/src/routes/posts.tsx": postsRoute,
 					...app("page"),
 				});
 				const expanded = yield* page.expand(
-					`Intro\n\n${sample("page/src/routes/todos.tsx#loader")}\n\nOutro\n`,
+					`Intro\n\n${sample("page/src/routes/posts.tsx#loader")}\n\nOutro\n`,
 				);
 				expect(expanded.files).toEqual([
-					page.path.join(page.root, "page/src/routes/todos.tsx"),
+					page.path.join(page.root, "page/src/routes/posts.tsx"),
 				]);
 				expect(expanded.markdown).toBe(
 					[
 						"Intro",
 						"",
-						'```tsx twoslash title="src/routes/todos.tsx"',
+						'```tsx twoslash title="src/routes/posts.tsx"',
 						"// ---cut-start---",
-						"// @filename: page/src/routes/todos.loader.twoslash.tsx",
-						'import { todosQuery } from "../queries.ts";',
+						"// @filename: page/src/routes/posts.loader.twoslash.tsx",
+						'import { postsQuery } from "../queries.ts";',
 						"",
 						"// ---cut-end---",
 						"export const Route = 1;",
@@ -95,18 +95,18 @@ describe("expandSnippets", () => {
 	it.effect("dedents a region and drops other regions' queries", () =>
 		Effect.gen(function* () {
 			const page = yield* setup({
-				"page/src/routes/todos.tsx": todos,
+				"page/src/routes/posts.tsx": postsRoute,
 				...app("page"),
 			});
 			const expanded = yield* page.expand(
-				sample("page/src/routes/todos.tsx#body", ' title=""'),
+				sample("page/src/routes/posts.tsx#body", ' title=""'),
 			);
 			expect(expanded.markdown).toBe(
 				[
 					"```tsx twoslash",
 					"// ---cut-start---",
-					"// @filename: page/src/routes/todos.body.twoslash.tsx",
-					'import { todosQuery } from "../queries.ts";',
+					"// @filename: page/src/routes/posts.body.twoslash.tsx",
+					'import { postsQuery } from "../queries.ts";',
 					"",
 					"export const Route = 1;",
 					"",

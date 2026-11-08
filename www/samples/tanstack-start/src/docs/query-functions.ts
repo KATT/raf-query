@@ -1,33 +1,33 @@
-import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
-import type { Todo } from "~/api.ts";
+import { group, infiniteQueryOptions, queryOptions } from "@raf-query/react";
+import type { Post, PostPage } from "~/api.ts";
 
-declare function fetchAllTodos(): Promise<ReadonlyArray<Todo>>;
+const posts = group("posts");
+const builds = group("builds");
 
-declare function fetchTodoById(id: number): Promise<Todo>;
+declare function fetchPostPage(cursor: number): Promise<PostPage>;
 
-declare const id: number;
+declare function fetchPostBySlug(slug: string): Promise<Post>;
+
+declare const slug: string;
 
 // #region intro
 infiniteQueryOptions({
-	getNextPageParam: (lastPage: {
-		readonly items: ReadonlyArray<Todo>;
-		readonly nextCursor: number | null;
-	}) => lastPage.nextCursor,
+	queryKey: posts(),
+	queryFn: (context) => fetchPostPage(context.pageParam),
 	initialPageParam: 0,
-	queryFn: async () => ({ items: await fetchAllTodos(), nextCursor: null }),
-	queryKey: ["todos"],
+	getNextPageParam: (lastPage) => lastPage.nextCursor,
 });
-queryOptions({ queryKey: ["todos", id], queryFn: () => fetchTodoById(id) });
+queryOptions({ queryKey: posts(slug), queryFn: () => fetchPostBySlug(slug) });
 queryOptions({
-	queryKey: ["todos", id],
+	queryKey: posts(slug),
 	queryFn: async () => {
-		const data = await fetchTodoById(id);
+		const data = await fetchPostBySlug(slug);
 		return data;
 	},
 });
 queryOptions({
-	queryKey: ["todos", id],
-	queryFn: (context) => fetchTodoById(context.queryKey[1] as number),
+	queryKey: posts(slug),
+	queryFn: (context) => fetchPostBySlug(context.queryKey[1]),
 });
 // #endregion
 
@@ -39,7 +39,7 @@ declare const data: unknown;
 
 // #region handling-and-throwing-errors
 queryOptions({
-	queryKey: ["todos", id],
+	queryKey: posts(slug),
 	queryFn: async () => {
 		if (somethingGoesWrong) {
 			throw new Error("Oh no!");
@@ -54,13 +54,28 @@ queryOptions({
 
 // #region with-fetch-and-other-clients-that-dont-throw
 queryOptions({
-	queryKey: ["todos", id],
+	queryKey: posts(slug),
 	queryFn: async (context) => {
-		const response = await fetch(`/todos/${id}`, { signal: context.signal });
+		const response = await fetch(`/posts/${slug}`, { signal: context.signal });
 		if (!response.ok) {
 			throw new Error(`Request failed: ${response.status}`);
 		}
 		return response.json();
 	},
 });
+// #endregion
+
+declare function streamLines(signal: AbortSignal): AsyncIterable<string>;
+
+// #region streaming
+export function logQuery(input: { buildId: string }) {
+	return queryOptions({
+		queryKey: builds("log", input),
+		queryFn: (context) => streamLines(context.signal),
+		stream: {
+			initial: [] as ReadonlyArray<string>,
+			reduce: (lines, line) => [...lines, line],
+		},
+	});
+}
 // #endregion

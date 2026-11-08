@@ -2,25 +2,30 @@ import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
-	allKeyed,
-	type QueryHandleWithData,
+	group,
+	invalidateMany,
+	load,
+	type QueryHandle,
 	queryOptions,
+	swr,
 	useIsFetching,
 	useQuery,
 	useQueryClient,
 } from "@raf-query/react";
 import { RefreshCw } from "lucide-react";
-import { startTransition } from "react";
+import { startTransition, use } from "react";
 
 import { DemoBrowser } from "~/demo-kit/browser.tsx";
 import { Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
+const stats = group("stats");
+
 const server = createFakeServer(() => ({ requests: 0 }));
 
-const stats = ["orders", "signups", "tickets"] as const;
-type Stat = (typeof stats)[number];
+const statNames = ["orders", "signups", "tickets"] as const;
+type Stat = (typeof statNames)[number];
 
 function statQuery(input: { readonly stat: Stat }) {
 	return queryOptions({
@@ -33,12 +38,12 @@ function statQuery(input: { readonly stat: Stat }) {
 				},
 				context,
 			),
-		queryKey: ["stats", input.stat],
+		queryKey: stats(input.stat),
 		staleTime: Infinity,
 	});
 }
 
-type PageData = Readonly<Record<Stat, QueryHandleWithData<typeof statQuery>>>;
+type PageData = Readonly<Record<Stat, QueryHandle<typeof statQuery>>>;
 
 function GlobalIndicator() {
 	const fetching = useIsFetching();
@@ -62,10 +67,11 @@ function GlobalIndicator() {
 }
 
 function StatCard(props: {
-	readonly handle: QueryHandleWithData<typeof statQuery>;
+	readonly handle: QueryHandle<typeof statQuery>;
 	readonly stat: Stat;
 }) {
-	const [value, stat] = useQuery(statQuery, props.handle);
+	const [valueThenable, stat] = useQuery(statQuery, props.handle);
+	const value = use(valueThenable);
 	return (
 		<section
 			aria-busy={stat.isFetching}
@@ -99,7 +105,7 @@ function Dashboard(props: { readonly data: PageData }) {
 		<div className="grid gap-3">
 			<GlobalIndicator />
 			<div className="grid gap-2 sm:grid-cols-3">
-				{stats.map((stat) => (
+				{statNames.map((stat) => (
 					<StatCard handle={props.data[stat]} key={stat} stat={stat} />
 				))}
 			</div>
@@ -107,7 +113,7 @@ function Dashboard(props: { readonly data: PageData }) {
 				className="justify-self-start"
 				onClick={() => {
 					startTransition(async () => {
-						await qc.invalidate({ queryKey: ["stats"] });
+						await invalidateMany(qc, statQuery);
 					});
 				}}
 				size="sm"
@@ -124,13 +130,14 @@ function FetchingIndicators() {
 		<DemoBrowser
 			fallback={<Skeleton className="h-36 w-full" />}
 			initial={{ path: "/dashboard" }}
-			loader={(args): Promise<PageData> =>
-				allKeyed({
-					orders: args.client.ensure(statQuery, { stat: "orders" }),
-					signups: args.client.ensure(statQuery, { stat: "signups" }),
-					tickets: args.client.ensure(statQuery, { stat: "tickets" }),
-				})
-			}
+			loader={async (args): Promise<PageData> => {
+				const [handles] = await load(args.client, {
+					orders: swr(statQuery, { stat: "orders" }),
+					signups: swr(statQuery, { stat: "signups" }),
+					tickets: swr(statQuery, { stat: "tickets" }),
+				});
+				return handles;
+			}}
 		>
 			{(route) => <Dashboard data={route.data} />}
 		</DemoBrowser>

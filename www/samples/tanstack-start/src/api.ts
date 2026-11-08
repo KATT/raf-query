@@ -16,10 +16,9 @@ export interface CommentPage {
 	readonly nextCursor: number | null;
 }
 
-export interface Todo {
-	readonly done: boolean;
-	readonly id: number;
-	readonly title: string;
+export interface PostPage {
+	readonly items: ReadonlyArray<Post>;
+	readonly nextCursor: number | null;
 }
 
 export interface Author {
@@ -64,6 +63,13 @@ export function listComments(input: { cursor: number; slug: string }) {
 	);
 }
 
+export function addComment(input: { body: string; slug: string }) {
+	return request<PostComment>(`/api/posts/${input.slug}/comments`, {
+		method: "POST",
+		body: JSON.stringify({ body: input.body }),
+	});
+}
+
 export function listPosts(input: { page: number; sort: "newest" | "oldest" }) {
 	return request<ReadonlyArray<Post>>(
 		`/api/posts?page=${input.page}&sort=${input.sort}`,
@@ -77,22 +83,15 @@ export function updatePost(input: { slug: string; title: string }) {
 	});
 }
 
-export function listTodos(input?: { page?: number; status?: "open" | "done" }) {
-	const search = new URLSearchParams();
-	if (input?.page !== undefined) search.set("page", String(input.page));
-	if (input?.status) search.set("status", input.status);
-	return request<ReadonlyArray<Todo>>(`/api/todos?${search}`);
-}
-
-export function getTodo(id: number) {
-	return request<Todo>(`/api/todos/${id}`);
-}
-
-export function createTodo(input: { title: string }) {
-	return request<Todo>("/api/todos", {
-		method: "POST",
-		body: JSON.stringify(input),
-	});
+export function listPostPage(input: {
+	authorId?: string;
+	cursor: number;
+	drafts?: boolean;
+}) {
+	const search = new URLSearchParams({ cursor: String(input.cursor) });
+	if (input.authorId) search.set("authorId", input.authorId);
+	if (input.drafts) search.set("drafts", "true");
+	return request<PostPage>(`/api/posts?${search}`);
 }
 
 export function getAuthor(id: string) {
@@ -103,8 +102,9 @@ export function getBuild(id: string) {
 	return request<Build>(`/api/builds/${id}`);
 }
 
+/** `null` when signed out. */
 export function getMe() {
-	return request<User>("/api/me");
+	return request<User | null>("/api/me");
 }
 
 export function getCurrentOrg() {

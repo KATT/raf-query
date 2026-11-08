@@ -1,4 +1,5 @@
-import { useQuery } from "@raf-query/react";
+import { use } from "react";
+import { load, prefetch, swr, useQuery } from "@raf-query/react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Pencil } from "lucide-react";
 
@@ -19,13 +20,16 @@ export const Route = createFileRoute("/docs/$slug")({
 		}
 		// The manifest lists each page's demos, so their code starts loading
 		// with the page instead of after it renders.
-		const demos = Object.fromEntries(
-			meta.demos.map((id) => [id, qc.prefetch(demoQuery, { id })]),
-		);
-		return {
-			demos,
-			doc: await qc.ensure(docQuery, { slug: args.params.slug }),
-		};
+		const [[demos], [handles]] = await Promise.all([
+			load(
+				qc,
+				Object.fromEntries(
+					meta.demos.map((id) => [id, prefetch(demoQuery, { id })]),
+				),
+			),
+			load(qc, { doc: swr(docQuery, { slug: args.params.slug }) }),
+		]);
+		return { demos, doc: handles.doc };
 	},
 	head: (args) => {
 		const meta = findDoc(args.params.slug);
@@ -76,7 +80,8 @@ export const Route = createFileRoute("/docs/$slug")({
 
 function DocPage() {
 	const data = Route.useLoaderData();
-	const [doc] = useQuery(docQuery, data.doc);
+	const [docThenable] = useQuery(docQuery, data.doc);
+	const doc = use(docThenable);
 	const around = neighbours(doc.slug);
 
 	return (

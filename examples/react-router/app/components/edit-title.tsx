@@ -2,8 +2,10 @@ import { api, parseResponse } from "~/api.ts";
 import type { Issue } from "@examples/db/types";
 import { warnMockDbWrite } from "@examples/kit/lib/mock-db-toast";
 import { cn } from "@examples/ui/lib/utils";
-import { useQueryClient } from "@raf-query/react";
+import { invalidateMany, useQueryClient } from "@raf-query/react";
 import { useActionState, useOptimistic } from "react";
+
+import { issues } from "~/queries.ts";
 
 /**
  * The issue title, editable in place. Click (or tab) into it, then Enter or
@@ -34,7 +36,7 @@ export function EditTitle(props: { readonly issue: Issue }) {
 			} catch (error) {
 				return error instanceof Error ? error.message : String(error);
 			}
-			await queryClient.invalidate({ queryKey: ["issues"] });
+			await invalidateMany(queryClient, issues);
 			return null;
 		},
 		null,

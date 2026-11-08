@@ -39,7 +39,7 @@ tanstack-start/src/docs/request-waterfalls.tsx#fetch-on-render
 
 Suspense makes this worse, not better: a suspending component renders nothing below it, so its children can't even begin to fetch.
 
-raf-query has no fetch-on-render hook. `useQuery` only reads; the loader starts every query:
+raf-query has no fetch-on-render hook. The loader starts every query, and `useQuery` reads what it started:
 
 ```sample
 tanstack-start/src/routes/posts.$slug.tsx#route
@@ -49,24 +49,20 @@ Both requests start the moment the navigation does, before any component renders
 
 ## Start every query before awaiting any
 
-Inside a loader, the order matters. An `await` before a `prefetch` turns two parallel requests back into a waterfall:
+Inside a loader, put every query in one `load`. It starts every entry before it waits for any, so their order doesn't matter. A second `await load(…)` after a first turns two parallel requests back into a waterfall:
 
 ```sample
 tanstack-start/src/docs/request-waterfalls.ts#start-every-query-before-awaiting-any
 ```
 
-For several queries the route can't render without, `allKeyed` awaits them together:
-
-```sample
-tanstack-start/src/docs/request-waterfalls.all-keyed.ts#all-keyed
-```
+Several queries the route can't render without are `swr` entries in the same `load`, which waits for them together.
 
 ## Dependent queries
 
-A query whose input comes from another query's result is a waterfall by construction. Fix it where the data is shaped, so every query a route needs can start from what the URL already holds:
+A query whose input comes from another query's result is a waterfall by construction. A post page that shows "more by this author" needs `authorQuery({ id: post.authorId })`, and `authorId` is only known once the post has loaded, so the author's request can't start before the post's has finished. Fix it where the data is shaped, so every query a route needs can start from what the URL already holds:
 
 - **Put the input in the route.** If the page is about an organization, its id belongs in the path (`/orgs/$orgId`), not in a lookup on the current user.
-- **Have the backend resolve it.** The server already knows the session and the relations, so an endpoint can return the child with its parent, or be keyed by what the client has (`GET /me/org` instead of `GET /me` then `GET /orgs/:id`).
+- **Have the backend resolve it.** The server already knows the session and the relations, so an endpoint can return the child with its parent (the post with its author), or be keyed by what the client has (`GET /posts/:slug/author` instead of the post then `GET /authors/:id`, or `GET /me/org` instead of `GET /me` then `GET /orgs/:id`). The demo above does this: its loader starts the author from the post's id.
 
 <details>
 <summary>Example: the current user's organization</summary>
@@ -93,22 +89,22 @@ Either way, both requests start together, and the page is ready after one round 
 
 When the data really can't be reshaped (a third-party API you don't control), you have two options, and both pay the extra round trip:
 
-- **In the loader**: `await qc.fetch(...)` the parent and build the input from its `data`. The navigation waits for both.
-- **In a component**: start the child with `useWaterfall`, below. The rest of the page renders first.
+- **In the loader**: load the post with `revalidate`, then build the author's input from `load`'s data. The navigation waits for both.
+- **In a component**: read the author with a `waterfallHandle`, below. The rest of the page renders first.
 
-## Render-time inputs: useWaterfall
+## Render-time inputs: waterfallHandle
 
-When an input is only known at render time (an id from a parent query's result), no loader can start the query. `useWaterfall` starts it during render and returns a handle, so the consumer looks the same as one fed by a loader:
+When an input is only known at render time (the post's `authorId`), no loader can start the query. `waterfallHandle` builds its handle from the factory and the input, so the consumer looks the same as one fed by a loader. It starts nothing: the component that reads the handle fetches while it renders.
 
 ```sample
-tanstack-start/src/docs/request-waterfalls.render-time-inputs-usewaterfall.tsx#render-time-inputs-usewaterfall
+tanstack-start/src/docs/request-waterfalls.render-time-inputs-waterfallhandle.tsx#render-time-inputs-waterfallhandle
 ```
 
-Like `prefetch` in a loader, `useWaterfall` refetches stale cached data in the background, once each time the component mounts or its input changes. Re-renders don't refetch.
+The reader fetches only when the cache has no data for the query. Cached data, even stale, renders as is, and refetches the way any read query does: when it's invalidated, on window focus, and so on.
 
-The name is the warning: each waterfall is an extra round trip after render. Search a codebase for `useWaterfall` and you have a list of every waterfall in it.
+The name is the warning: each waterfall is an extra round trip after render. Search a codebase for `waterfallHandle` and you have a list of every waterfall in it. In development, `useQuery` warns in the console when it fetches a query that nothing loaded and that didn't come from `waterfallHandle`, so accidental waterfalls show up too.
 
-In TanStack Start, the `queryFn` runs on the server during SSR and the router streams the result. Under the Next.js `QueryProvider` it starts nothing on the server: the reader's Suspense boundary renders its fallback there, and the query loads in the browser. To have it in the HTML, start the dependent query in the server component instead:
+On the server, the waterfall happens there or moves to the browser. In TanStack Start, the reader fetches during the server render and the router streams the result. In React Router, it fetches during the server render, and the browser fetches it again. Under server components, the reader's Suspense boundary renders its fallback on the server, and the query loads in the browser (see [SSR and hydration](./ssr-and-hydration.md#queries-nothing-started-on-the-server)). To fetch it once, on the server, start the dependent query in the loader or server component instead:
 
 ```sample
 tanstack-start/src/docs/request-waterfalls.tsx#fetch-then-prefetch
@@ -123,6 +119,6 @@ These docs do the same: each page's demos are separate chunks, and the page's lo
 ## Summary
 
 - Start queries in loaders and server components, never in render.
-- Start every query before awaiting any.
+- Start every query a loader needs in one `load`.
 - Shape data so a route's inputs come from the URL, not from other queries.
-- Use `useWaterfall` only when you can't, and treat each one as a known cost.
+- Use `waterfallHandle` only when you can't, and treat each one as a known cost.

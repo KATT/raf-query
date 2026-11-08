@@ -1,49 +1,48 @@
 # Bundle size
 
-Reference for when bundle size matters more. Measure with `pnpm bundle-size` (see [decisions/bundle-size-measurement.md](./decisions/bundle-size-measurement.md)).
+`pnpm bundle-size` (`tooling/bundle-size`, CI job "Bundle Size") bundles small entries that each import one slice of raf-query, and prints each one's gzip size and the opt-in features found in it. React is external. The run fails when a bundle holds an opt-in feature its entry doesn't import, lacks one it does, or when the base entry passes 5 kB gzip ([decisions/bundle-budget.md](./decisions/bundle-budget.md)).
 
-## Current: Effect-native core (#23 onward)
+Measured 2026-11-08 with `pnpm bundle-size` (`src/`; `--dist` agrees within 0.01 kB). Every app imports from the main entry: hydration and the devtools are exports of `@raf-query/react` ([decisions/one-entry-point.md](./decisions/one-entry-point.md)), and the entries that don't import them carry none of their code.
 
-Core exposes only Effect APIs (`QueryCache`, `Query`, `QueryObserver`, `Platform` namespaces); `@raf-query/react`'s `QueryClient` builds the cache with `Layer.buildWithScope` and runs each verb with `Effect.runSync` / `runPromise`. `qc.effect` is the Effect-native cache itself. So every app bundles Effect's runtime plus `Layer`, `Context`, `Scope`, `Schedule` and the rest the engine reaches.
+| Entry                                                                              |    gzip | Over React hooks | Opt-in features in the bundle                                                                                       |
+| ---------------------------------------------------------------------------------- | ------: | ---------------: | ------------------------------------------------------------------------------------------------------------------- |
+| Core only (`createQueryClient`, `load`, `invalidateOne`, `group`)                  | 3.06 kB |                — | none                                                                                                                |
+| + React hooks (`useQuery`, `QueryClientProvider`): the base                        | 4.13 kB |                — | React hooks                                                                                                         |
+| + bound `queryOptions` and `useQueryClient`                                        | 4.16 kB |   +0.03 kB (+1%) | React hooks                                                                                                         |
+| + hydration (`HydrationBoundary`)                                                  | 4.53 kB |  +0.41 kB (+10%) | React hooks, hydration                                                                                              |
+| + `retry()`                                                                        | 4.43 kB |   +0.30 kB (+7%) | React hooks, `retry()`                                                                                              |
+| + `polling()`                                                                      | 4.35 kB |   +0.22 kB (+5%) | React hooks, `polling()`                                                                                            |
+| + `focusRefetch()`                                                                 | 4.28 kB |   +0.16 kB (+4%) | React hooks, `focusRefetch()`                                                                                       |
+| + `reconnectRefetch()`                                                             | 4.25 kB |   +0.12 kB (+3%) | React hooks, `reconnectRefetch()`                                                                                   |
+| + a paged query (`useInfiniteQuery`)                                               | 4.80 kB |  +0.67 kB (+16%) | React hooks, paging (`useInfiniteQuery`)                                                                            |
+| + a stream query                                                                   | 4.16 kB |   +0.04 kB (+1%) | React hooks                                                                                                         |
+| + devtools (`QueryDevtools`)                                                       | 5.41 kB |  +1.28 kB (+31%) | React hooks, devtools                                                                                               |
+| + devtools behind a development check, in production                               | 4.15 kB |   +0.03 kB (+1%) | React hooks                                                                                                         |
+| TanStack defaults (`retry()`, focus and reconnect refetch, `polling()`, hydration) | 5.16 kB |  +1.03 kB (+25%) | React hooks, hydration, `retry()`, `polling()`, `focusRefetch()`, `reconnectRefetch()`                              |
+| Everything (`recommended()`, `timeout()`, hydration, paging)                       | 6.19 kB |  +2.07 kB (+50%) | React hooks, hydration, `retry()`, `polling()`, `focusRefetch()`, `reconnectRefetch()`, paging (`useInfiniteQuery`) |
 
-## Numbers (gzip, kB; `tooling/bundle-size` fixtures, Start example's bundler)
+Every opt-in feature is absent from the bundles that don't import it (the run fails otherwise). Markers:
 
-| App                             | TanStack Query | raf-query `main` (Effect-native) | Pre-#23 Effect engine | Pre-#23 Promise engine |
-| ------------------------------- | -------------: | -------------------------------: | --------------------: | ---------------------: |
-| Factory + prefetch + `useQuery` |           9.77 |                            29.26 |                 16.75 |                   5.64 |
-| + paged                         |          10.44 |                            29.65 |                 17.15 |                   6.04 |
-| + action that invalidates       |          10.60 |                            29.81 |                 17.32 |                   6.21 |
-| TanStack Router app             |          12.36 |                            31.44 |                 18.50 |                   7.41 |
-| Effect `queryFn` + `Schedule`   |              — |                            29.49 |                 16.93 |                  15.33 |
+- **TanStack defaults.** The features TanStack Query runs without being asked (retries, refetch on focus and reconnect, `refetchInterval`, hydration) cost 1.03 kB gzip together, 25% over the base. Each alone: hydration 0.41, `retry()` 0.30, `polling()` 0.22, `focusRefetch()` 0.16, `reconnectRefetch()` 0.12 kB; they sum to 1.21 kB because they share the feature plumbing and stale-read helpers. Structural sharing, gc and refetching stale data on read are in the base.
+- **Markers.** A feature counts as present when its module has code in the bundle: `core/hydration/hydration`, `core/infinite/infinite`, `core/links/retry/retry`, `core/features/polling/polling`, `core/features/focus-refetch/focus-refetch`, `core/features/reconnect-refetch/reconnect-refetch`, `react/use-query`, `react/devtools`. Each opt-in behavior has its own module ([decisions/core-behavior-folders.md](./decisions/core-behavior-folders.md)); the run still accepts a string marker (`{ code }`) for a feature that would share a module.
+- **Typed errors cost the base 0.31 kB.** `fail()` handling in the entry and `useQuery`'s `{ result: true }`, which the PR stacked on #230 brings back ([decisions/typed-errors-stacked.md](./decisions/typed-errors-stacked.md)), put the base at 4.44 kB; without them it is 4.13 kB.
+- **Streams aren't opt-in.** Folding an async iterable into the data lives in the entry (`entry.ts`), so every bundle carries it; a stream query costs only its own options.
+- **Groups are in the base fixtures.** The fixtures build their keys with `group()`, the recommended way, so their bundles carry it: 152 B gzip on its own in production (esbuild, `NODE_ENV=production`), 62 B next to core, which shares its helpers. It sits in `core/keys` on the main entry and tree-shakes away in an app that writes its keys by hand: the base with a hand-written key is about 50 B smaller, with no `group()` code in it. Its development check that a subgroup and a query don't share a name is behind `process.env.NODE_ENV !== "production"` and costs 0 B in production. Matching a group as a key prefix keeps core 48 B under matching object groups.
+- **Binding the builders is free.** `bindQueryOptions` and `bindUseQueryClient` return the plain functions, typed for a root ([decisions/bound-builders.md](./decisions/bound-builders.md)). The bound fixture (`bound.tsx`) is 4612 B gzip; the same app with the plain builders is 4590 B, so the two binders cost 22 B (64 B minified). Neither pulls in `core/infinite`: only `bindInfiniteQueryOptions` does, in apps that page. Typing `queryOptions` as a `const` of `QueryOptionsBuilder` moved the base from 4575 to 4579 B gzip (its minified output is 12 B smaller).
+- **Paging is opt-in.** `useInfiniteQuery` is the only reader of `core/infinite/infinite` (page params, `pagesAround`), so `useQuery` apps don't ship it ([decisions/split-infinite-hook.md](./decisions/split-infinite-hook.md)). Splitting the hooks took the base from 4.30 to 4.15 kB.
+- **Tracked state is in the base.** The read-field tracking both hooks share (`react/tracked`) costs 0.31 kB: the base went from 4.15 to 4.46 kB ([decisions/tracked-state.md](./decisions/tracked-state.md)). Keeping own `"__proto__"` keys in structural sharing added 0.01 kB ([decisions/structural-sharing.md](./decisions/structural-sharing.md)).
+- **Target lists cost the `…Many` verbs about 0.04 kB.** Taking a list of targets in `invalidateMany`, `resetMany` and `removeMany` (one stamp per target, each entry checked against all of them) took everything from 6.93 to 6.98 kB. The base imports no `…Many` verb.
+- **`recommended()` holds retry, focus and reconnect refetch, and polling.** Dropping the action feature from it took everything from 6.98 to 6.91 kB; the other entries moved by at most 0.01 kB.
+- **The `load` kind names cost about 0.01 kB.** Its kind strings (`"swr"`, `"revalidate"`) are in every bundle that calls `load`; naming the builders after `Cache-Control` ([decisions/load-builder-names.md](./decisions/load-builder-names.md)) moved most entries up by 0.01 kB.
+- **Folding the subpaths into the main entries cost nothing.** Every entry measured the same before and after (devtools is a new row). The devtools panel is 1.28 kB; behind `process.env.NODE_ENV !== "production"` in a production build it drops out, and the 0.03-0.04 kB left is the fixture's own fragment around its children.
+- **Server renders that never start requests took the base from 4.47 to 4.42 kB** ([decisions/server-renders-start-no-requests.md](./decisions/server-renders-start-no-requests.md)): `startIfMissing` lost its server branch and the browser-only flag.
+- **One folder per behavior cost nothing.** Moving the links, features, hydration, paging, structural sharing and target matching into their own folders left every entry byte-identical (gzip, `src/`): the modules keep their code and their order in the bundle. `group()` stays in `keys/keys.ts` with `hashKey`, ahead of `keys/targets.ts`: a separate `group.ts` lands later in the bundle and moved most entries by 1 to 9 B.
+- **Tags left core** ([decisions/tags-userland.md](./decisions/tags-userland.md)): the tags row and its `".tags"` marker are gone, everything went from 6.91 to 6.76 kB, and every other entry is unchanged.
+- **The base sits at 4.44 kB of 5 kB.** Anything added to the always-imported path (`createQueryClient`, `load`, `useQuery`, the entry) has to pay for itself or go behind a link, a feature or an export the app has to import.
 
-- **Effect's share of raf-query:** ~21.4 kB on `main`; ~11.2 kB with the pre-#23 Effect engine plus `/effect` subpath; ~0.2 kB with the Promise engine.
-- **Full `examples/tanstack-start` client JS:** 185.3 kB on `main`. The TanStack-backed copy is 163.1 kB.
-- **Floor:** Effect's fiber runtime alone (`runPromiseExit(succeed(1))`) is ~7 kB gzip. Effect v4 has no lighter `Micro` runtime.
+## What defeats tree-shaking
 
-## Why it's big, and what's shakable
-
-Effect v4 shakes per export (`sideEffects` lists only a schema file), and app-side `import { X }` / `import * as X` with static access both shake with Rolldown. What defeats it:
-
-- **Anything reachable from the always-imported path.** Class properties built in a constructor (`qc.effect`) and engine code that runs on every request can't be shaken, whatever they import.
-- **`export * as X` in a library build.** Rolldown/tsdown compile it to an `__exportAll` getter object, which keeps every member in `dist/`. Core's `export * as QueryCache` / `Query` / `QueryObserver` / `Platform` are of this shape; apps importing the main entry may keep members they don't use. Check with `pnpm bundle-size --dist` after `pnpm build`.
-- **Runtime branches on build-time facts.** `if (router.isServer) setupServer()` keeps the server half's imports; use an export condition instead ([decisions/router-browser-build.md](./decisions/router-browser-build.md)).
-- Dynamic access (`X[key]`) and re-exported `export *` keep everything.
-
-## The Promise-engine experiment
-
-Branch **`cursor/promise-engine-reference-16c7`** has a working engine on Promises + `AbortSignal` (retry loop, abortable `sleep` / `whenOnline`, `RetryStrategy` bridging `Schedule`s), with Effect APIs behind a `@raf-query/core/effect` subpath. It's built on the **pre-#23** core (`client.ts`, `query.ts`), so it can't be cherry-picked onto the Effect-native core; treat it as a design reference.
-
-The human rejected it (2026-10-12): the internals were worse than the Effect version.
-
-Trade-offs:
-
-- **Effect engine:** retry, cancellation and online-wait are Effect combinators, which read well and are easy to extend (timeouts, racing, tracing). One factory API: `queryOptions` takes Effects and Schedules. Every app pays the Effect runtime and whatever the engine reaches.
-- **Promise engine:** about half of TanStack Query, and Effect costs only apps that import `/effect`. Hand-rolled retry and abort plumbing is more code to get right (abort races, `CancelledError` paths). Two ways to define an Effect query, and Schedule retries in `config.defaults` need an adapter.
-
-Levers that keep the Effect engine:
-
-- Move Effect-only, not-always-used APIs (`Stream`, `Queue`, `Layer` services) behind subpaths, as named exports.
-- Avoid constructor-built Effect objects.
-- Replace `export * as` namespaces in the main entry with named exports.
-
-Each lever can only get down to the ~7 kB runtime floor plus what the engine itself uses.
+- **Anything reachable from the always-imported path.** Behaviors that every client runs can't be shaken, so retries, focus/reconnect, polling, hydration and paging are opt-in: links, features, exports an app imports, or a `~run` function set only by `infiniteQueryOptions`.
+- **`export * as X` in a library build.** Rolldown/tsdown compile it to an `__exportAll` getter object, which keeps every member in `dist/`. The packages export named members only. Check with `pnpm bundle-size --dist` after `pnpm build`.
+- **Runtime branches on build-time facts.** `if (router.isServer) setupServer()` keeps the server half's imports; use an export condition ([decisions/router-browser-build.md](./decisions/router-browser-build.md)).
+- Dynamic access (`X[key]`) and re-exported `export *` of a module with side effects keep everything.

@@ -11,7 +11,7 @@
 // #endregion hero
 // #endregion component
 
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import { type QueryHandle, useInfiniteQuery } from "@raf-query/react";
 import { use } from "react";
 
 import type { PostComment } from "~/api.ts";
@@ -23,8 +23,8 @@ declare function Comment(props: { comment: PostComment }): React.ReactNode;
 // #region hero
 export function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	// May still be loading. If so, use() suspends until it lands.
-	const [pagesPromise] = useQuery(commentsQuery, props.handle);
-	const pages = use(pagesPromise);
+	const [pagesThenable] = useInfiniteQuery(commentsQuery, props.handle);
+	const pages = use(pagesThenable);
 	//     ^?
 	return pages.pages
 		.flatMap((page) => page.items)

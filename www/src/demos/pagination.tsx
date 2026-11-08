@@ -1,12 +1,21 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
-import { type QueryHandle, queryOptions, useQuery } from "@raf-query/react";
+import {
+	group,
+	load,
+	prefetch,
+	type QueryHandle,
+	queryOptions,
+	useQuery,
+} from "@raf-query/react";
 import { use, useState } from "react";
 
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
 import { Segmented, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
+
+const projects = group("projects");
 
 const pageSize = 4;
 const pageCount = 5;
@@ -32,7 +41,7 @@ function projectsQuery(input: { readonly page: number }) {
 				}),
 				context,
 			),
-		queryKey: ["projects", input],
+		queryKey: projects(input),
 		staleTime: 5000,
 	});
 }
@@ -58,20 +67,20 @@ function Projects(props: {
 	readonly data: PageData;
 	readonly whilePending: WhilePending;
 }) {
-	const [projectsPromise, projects] = useQuery(
+	const [projectsThenable, controls] = useQuery(
 		projectsQuery,
 		props.data.projects,
 		{ whilePending: props.whilePending },
 	);
-	const result = use(projectsPromise);
+	const result = use(projectsThenable);
 	const page = props.data.page;
 	return (
 		<div className="grid gap-3">
 			<ul
-				aria-busy={projects.isPrevious}
+				aria-busy={controls.isPrevious}
 				className={cn(
 					"grid gap-1.5 transition-opacity",
-					projects.isPrevious && "opacity-50",
+					controls.isPrevious && "opacity-50",
 				)}
 			>
 				{result.items.map((project) => (
@@ -94,7 +103,7 @@ function Projects(props: {
 				) : null}
 				<span className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
 					Page {page} of {pageCount}
-					{projects.isFetching ? <Spinner /> : null}
+					{controls.isFetching ? <Spinner /> : null}
 				</span>
 				{page < pageCount ? (
 					<DemoLink
@@ -125,12 +134,12 @@ function Pagination() {
 			<DemoBrowser
 				fallback={<ListSkeleton />}
 				initial={{ path: "/projects", search: { page: 1 } }}
-				loader={(args): PageData => {
+				loader={async (args): Promise<PageData> => {
 					const page = Math.max(1, Number(args.location.search?.page ?? 1));
-					return {
-						page,
-						projects: args.client.prefetch(projectsQuery, { page }),
-					};
+					const [handles] = await load(args.client, {
+						projects: prefetch(projectsQuery, { page }),
+					});
+					return { page, projects: handles.projects };
 				}}
 			>
 				{(route) => <Projects data={route.data} whilePending={whilePending} />}

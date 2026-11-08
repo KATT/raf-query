@@ -1,18 +1,17 @@
 ---
 name: verify-examples
-description: Launch and drive the raf-query example issue tracker (TanStack Start, Next.js, React Router, TanStack Start Effect) in headless Chrome and with curl, the way a user does, and prove a change works in every app. Use when a change touches an example app, examples/.shared/, or packages/ behavior the examples show, or when checking the four apps still match.
+description: Launch and drive the raf-query example issue tracker (TanStack Start, Next.js, React Router) in headless Chrome and with curl, the way a user does, and prove a change works in every app. Use when a change touches an example app, examples/.shared/, or packages/ behavior the examples show, or when checking the three apps still match.
 ---
 
 # Verify the example apps
 
-The four example apps are the same issue tracker on four stacks, so one feature map ([`features/README.md`](features/README.md)) covers all of them. A change to one app is proven in that app; a change to `examples/.shared/` or `packages/` is proven in all four.
+The three example apps are the same issue tracker on three stacks, so one feature map ([`features/README.md`](features/README.md)) covers all of them. A change to one app is proven in that app; a change to `examples/.shared/` or `packages/` is proven in all three.
 
-| App                     | Start                   | Port | Data layer                      |
-| ----------------------- | ----------------------- | ---- | ------------------------------- |
-| `tanstack-start`        | `pnpm dev:start`        | 3000 | REST API at `/api/*` (Hono)     |
-| `nextjs`                | `pnpm dev:next`         | 3001 | REST API at `/api/*` (Hono)     |
-| `tanstack-start-effect` | `pnpm dev:effect`       | 3005 | Effect RPC at `/rpc`, no `/api` |
-| `react-router`          | `pnpm dev:react-router` | 3006 | REST API at `/api/*` (Hono)     |
+| App              | Start                   | Port | Data layer                  |
+| ---------------- | ----------------------- | ---- | --------------------------- |
+| `tanstack-start` | `pnpm dev:start`        | 3000 | REST API at `/api/*` (Hono) |
+| `nextjs`         | `pnpm dev:next`         | 3001 | REST API at `/api/*` (Hono) |
+| `react-router`   | `pnpm dev:react-router` | 3006 | REST API at `/api/*` (Hono) |
 
 The helper below is `CE`:
 
@@ -46,7 +45,7 @@ To check a production build instead of dev (Next.js prefetches links only in pro
 ## Doctor
 
 ```bash
-$CE doctor                     # Chrome + all four apps
+$CE doctor                     # Chrome + all three apps
 $CE doctor --app react-router  # Chrome + one app
 ```
 
@@ -67,7 +66,7 @@ Each line is `ok` or `FAIL` with the reason. Drive nothing until the apps you ne
 - `$CE wait --text <t>` / `--gone <t>` / `--role <r> --name <n>`, with `--timeout <ms>` (default 10 s). Text includes what's typed in inputs. Wait on something, never sleep blindly before asserting.
 - `$CE text`, `$CE eval '<expression>'`, `$CE screenshot --path <file>` (`--width 390` for a phone's layout).
 
-Server-rendered HTML is checked with `curl` (see [server-rendering](features/server-rendering.md)). Persistence is checked with `curl` against `/api/*` in the three REST apps, and by reloading the page in `tanstack-start-effect`.
+Server-rendered HTML is checked with `curl` (see [server-rendering](features/server-rendering.md)). Persistence is checked with `curl` against `/api/*`.
 
 The feature files give the exact recipe per feature. One Chrome page is shared by every command, so drive one app at a time.
 
@@ -79,7 +78,7 @@ Write artifacts under `/opt/cursor/artifacts/verify-examples/<app>/<feature>/` (
 - For a write: a second read that doesn't go through the page's cache, either `curl` of the API or a fresh `$CE open` of the page.
 - For server rendering: the `curl` output, grepped for the data.
 
-Proof standards: drive the user path (clicks, typing), not `fetch` calls or React internals from `eval`. `eval` is for reading state after the user path ran. A change to shared code is unproven until each of the four apps has run its recipe; say which ones did.
+Proof standards: drive the user path (clicks, typing), not `fetch` calls or React internals from `eval`. `eval` is for reading state after the user path ran. A change to shared code is unproven until each of the three apps has run its recipe; say which ones did.
 
 ## Cleanup
 
@@ -95,4 +94,4 @@ This stops only the Chrome the helper started and deletes its profile. Stop dev 
 
 ## Keeping the map honest
 
-When a change adds, removes, or renames something a user sees in the examples (a route, a control's accessible name, a setting, a message), update the matching feature file in the same PR. When the four apps stop matching, either fix the app or record the difference in that feature's `Gotchas` with the reason.
+When a change adds, removes, or renames something a user sees in the examples (a route, a control's accessible name, a setting, a message), update the matching feature file in the same PR. When the three apps stop matching, either fix the app or record the difference in that feature's `Gotchas` with the reason.

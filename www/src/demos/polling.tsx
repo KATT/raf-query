@@ -1,16 +1,21 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
-	type QueryHandleWithData,
+	group,
+	load,
+	type QueryHandle,
 	queryOptions,
+	swr,
 	useQuery,
 } from "@raf-query/react";
-import { useState } from "react";
+import { useState, use } from "react";
 
 import { DemoBrowser } from "~/demo-kit/browser.tsx";
 import { formatTime, Segmented, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
+
+const stats = group("stats");
 
 const server = createFakeServer(() => ({ history: [42] }));
 
@@ -21,8 +26,9 @@ function nextValue(previous: number) {
 	);
 }
 
-function visitorsQuery() {
+function visitorsQuery(input: { readonly interval: number | false }) {
 	return queryOptions({
+		meta: { refetchInterval: input.interval },
 		queryFn: (context) =>
 			server.respond(
 				"GET /stats/visitors",
@@ -35,24 +41,21 @@ function visitorsQuery() {
 				},
 				context,
 			),
-		queryKey: ["stats", "visitors"],
+		queryKey: stats("visitors", input.interval),
 	});
 }
 
 interface PageData {
-	readonly visitors: QueryHandleWithData<typeof visitorsQuery>;
+	readonly visitors: QueryHandle<typeof visitorsQuery>;
 }
 
 type Interval = "1000" | "3000" | "off";
 
 function Visitors(props: {
-	readonly handle: QueryHandleWithData<typeof visitorsQuery>;
-	readonly interval: Interval;
+	readonly handle: QueryHandle<typeof visitorsQuery>;
 }) {
-	const [history, visitors] = useQuery(visitorsQuery, props.handle, {
-		refetchInterval:
-			props.interval === "off" ? undefined : Number(props.interval),
-	});
+	const [historyThenable, visitors] = useQuery(visitorsQuery, props.handle);
+	const history = use(historyThenable);
 	const max = Math.max(...history, 1);
 	return (
 		<div className="grid gap-3">
@@ -95,16 +98,21 @@ function Polling() {
 				]}
 				value={interval}
 			/>
+			{/* The interval is the query's input, so each one is its own query. */}
 			<DemoBrowser
 				fallback={<Skeleton className="h-32 w-full" />}
 				initial={{ path: "/dashboard" }}
-				loader={async (args): Promise<PageData> => ({
-					visitors: await args.client.ensure(visitorsQuery),
-				})}
+				key={interval}
+				loader={async (args): Promise<PageData> => {
+					const [handles] = await load(args.client, {
+						visitors: swr(visitorsQuery, {
+							interval: interval === "off" ? false : Number(interval),
+						}),
+					});
+					return handles;
+				}}
 			>
-				{(route) => (
-					<Visitors handle={route.data.visitors} interval={interval} />
-				)}
+				{(route) => <Visitors handle={route.data.visitors} />}
 			</DemoBrowser>
 		</div>
 	);
@@ -112,7 +120,7 @@ function Polling() {
 
 export default defineDemo({
 	Component: Polling,
-	hint: "The chart refetches on the chosen interval while it's on screen. Switch to another tab for a while: polling skips its ticks until you come back.",
+	hint: "The chart refetches on the chosen interval while it's on screen. Each interval is the query's input, so each is its own query: switch and watch the last one go inactive and stop polling.",
 	server,
-	title: "Polling with refetchInterval",
+	title: "Polling with meta.refetchInterval",
 });

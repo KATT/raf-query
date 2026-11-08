@@ -10,7 +10,17 @@ TanStack Router's loaders are where raf-query wants queries to start, and its SS
 ## Setup
 
 ```sample
+tanstack-start/src/query-client.ts
+```
+
+```sample
 tanstack-start/src/router.tsx
+```
+
+`makeQueryClient` is a function, not a client at module level: a module-level client on the server would share one cache between every request. `Providers` is the [provider component every framework shares](./ssr-and-hydration.md#the-provider); here it gets the router's client, the one loaders use:
+
+```sample
+tanstack-start/src/providers.tsx
 ```
 
 Mount DevTools only when `import.meta.env.DEV` is true so Vite drops the panel from production builds. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
@@ -33,21 +43,26 @@ tanstack-start/src/routes/__root.tsx
 
 Options:
 
-| Option             | Use                                                            |
-| ------------------ | -------------------------------------------------------------- |
-| `dehydrateOptions` | `filter` which entries are sent, `keepErrors`, `serializeData` |
-| `hydrateOptions`   | `deserializeData`, the counterpart of `serializeData`          |
-| `handleRedirects`  | `false` to handle redirects yourself                           |
+| Option             | Use                                                                                                      |
+| ------------------ | -------------------------------------------------------------------------------------------------------- |
+| `queryClient`      | The router's client                                                                                      |
+| `router`           | The router                                                                                               |
+| `dehydrateOptions` | `filter` which entries are sent; `keepErrors` to send a server request's error instead of a redacted one |
+| `handleRedirects`  | `false` to handle redirects yourself                                                                     |
+
+A query whose server request throws reaches the browser as a `RedactedError`, which names the query but not the cause, so server errors don't leak into the page.
+
+A component that reads a query no loader started, such as a [`waterfallHandle`](./request-waterfalls.md#render-time-inputs-waterfallhandle)'s, fetches it on the server while rendering. The integration streams that entry too, so the HTML has the data and the browser doesn't fetch it again. It's still a waterfall: the request starts only once the component renders. See [SSR and hydration](./ssr-and-hydration.md#queries-nothing-started-on-the-server).
 
 ## Loaders
 
-A loader starts every query its route needs and returns the handles:
+A loader starts every query its route needs with `load` and returns the handles:
 
 ```sample
 tanstack-start/src/routes/posts.$slug.tsx
 ```
 
-See [Starting queries](./starting-queries.md) for choosing between `prefetch` and `ensure`.
+See [Starting queries](./starting-queries.md) for choosing between `prefetch`, `swr` and `revalidate`.
 
 ### Handles in route context
 
@@ -70,16 +85,16 @@ Importing `@raf-query/react/tanstack-router` registers handles as serializable, 
 
 ### Pending UI
 
-While a loader's `ensure` is still running, the previous page stays on screen. Show that a navigation is in progress with the router — not [`useIsFetching`](./background-fetching-indicators.md#useisfetching):
+While a loader's `swr` entry is still loading, the previous page stays on screen. Show that a navigation is in progress with the router — not [`useIsFetching`](./background-fetching-indicators.md#useisfetching):
 
-- **`pendingComponent` and `pendingMs`** show a full-page skeleton after the delay (1 second by default) for routes whose loader `ensure`s slow data.
+- **`pendingComponent` and `pendingMs`** show a full-page skeleton after the delay (1 second by default) for routes whose loader waits for slow data.
 - **`useRouterState({ select: (state) => state.isLoading })`** drives a progress bar or spinner in the layout for any pending navigation:
 
 ```sample
 tanstack-start/src/docs/tanstack-start.tsx#pending-ui
 ```
 
-Per-query background refetches after the page has rendered use `controls.isFetching`. See [Background fetching indicators](./background-fetching-indicators.md).
+Per-query background refetches after the page has rendered use `isFetching` on the query's state. See [Background fetching indicators](./background-fetching-indicators.md).
 
 ### Search params
 
@@ -111,7 +126,7 @@ tanstack-start/src/forwarded-headers.ts
 
 ## Static prerendering
 
-These docs are a TanStack Start app, prerendered to static HTML. Every page's loader `ensure`s its content during the build, the content crosses in the page's HTML, and later navigations load it in the browser. See the [source](https://github.com/KATT/raf-query/tree/main/www).
+These docs are a TanStack Start app, prerendered to static HTML. Every page's loader waits for its content with `swr` during the build, the content crosses in the page's HTML, and later navigations load it in the browser. See the [source](https://github.com/KATT/raf-query/tree/main/www).
 
 ## Example
 

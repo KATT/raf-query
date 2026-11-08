@@ -1,6 +1,8 @@
-import { queryOptions } from "@raf-query/react";
+import { group, queryOptions } from "@raf-query/react";
 
 import type { DemoDefinition } from "~/demo-kit/define.ts";
+
+const demo = group("demo");
 
 const modules = import.meta.glob<{ default: DemoDefinition }>([
 	"./*.tsx",
@@ -24,7 +26,7 @@ export function demoQuery(input: { id: string }) {
 			const module = await load();
 			return module.default;
 		},
-		queryKey: ["demo", input.id],
+		queryKey: demo(input.id),
 		staleTime: Number.POSITIVE_INFINITY,
 	});
 }

@@ -3,70 +3,102 @@ import { Input } from "@examples/ui/components/input";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
+	group,
 	infiniteQueryOptions,
-	type QueryHandleWithData,
+	queryOptions,
+	invalidateMany,
+	load,
+	type QueryHandle,
+	swr,
+	useInfiniteQuery,
 	useQuery,
 	useQueryClient,
 } from "@raf-query/react";
-import { useActionState, useOptimistic } from "react";
+import { useActionState, useOptimistic, use } from "react";
 import { useFormStatus } from "react-dom";
 
 import { DemoBrowser } from "~/demo-kit/browser.tsx";
-import { FailNextButton, Spinner } from "~/demo-kit/controls.tsx";
+import {
+	FailNextButton,
+	LoadMoreButton,
+	Spinner,
+} from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
+import {
+	type Comment,
+	pageOf,
+	seedComments,
+	seedPosts,
+} from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
-interface Todo {
-	readonly id: number;
-	readonly pending?: boolean;
-	readonly text: string;
-}
+const posts = group("posts");
+const comments = group(posts, "comments");
 
-function seedTodos(): Array<Todo> {
-	return [
-		{ id: 1, text: "Write the action" },
-		{ id: 2, text: "Add useOptimistic" },
-	];
-}
+const postId = 1;
 
-const server = createFakeServer(() => ({ todos: seedTodos() }));
+/** A comment the server hasn't confirmed yet. */
+type ShownComment = Comment & { readonly pending?: boolean };
 
-interface TodoPage {
-	readonly items: ReadonlyArray<Todo>;
-	readonly nextCursor: number | null;
-}
+const server = createFakeServer(() => ({
+	// Newest first, so a new comment lands on the first page.
+	comments: seedComments()
+		.filter((comment) => comment.postId === postId)
+		.toReversed(),
+	posts: seedPosts(),
+}));
 
-function todoNext(lastPage: TodoPage) {
-	return lastPage.nextCursor;
-}
-
-function todosQuery() {
-	return infiniteQueryOptions({
-		getNextPageParam: todoNext,
-		initialPageParam: 0,
+function postQuery(input: { readonly id: number }) {
+	return queryOptions({
 		queryFn: (context) =>
 			server.respond(
-				"GET /todos",
-				(db) => ({ items: db.todos, nextCursor: null }),
+				`GET /posts/${input.id}`,
+				(db) => db.posts.find((post) => post.id === input.id),
 				context,
 			),
-		queryKey: ["todos"],
+		queryKey: posts(input.id),
 	});
 }
 
-function addTodo(text: string) {
-	return server.respond(`POST /todos "${text}"`, (db) => {
-		const todo = {
-			id: Math.max(0, ...db.todos.map((item) => item.id)) + 1,
-			text,
-		};
-		db.todos.push(todo);
-		return todo;
+function commentsQuery(input: { readonly postId: number }) {
+	return infiniteQueryOptions({
+		queryFn: (context) =>
+			server.respond(
+				`GET /posts/${input.postId}/comments?cursor=${context.pageParam}`,
+				(db) =>
+					pageOf<ShownComment>(
+						db.comments.filter((comment) => comment.postId === input.postId),
+						context.pageParam,
+						2,
+					),
+				context,
+			),
+		// After `queryFn`: TypeScript infers the page type from it.
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		initialPageParam: 0,
+		queryKey: comments(input.postId),
 	});
+}
+
+function addComment(input: { readonly body: string; readonly postId: number }) {
+	return server.respond(
+		`POST /posts/${input.postId}/comments "${input.body}"`,
+		(db) => {
+			const comment: Comment = {
+				author: "You",
+				body: input.body,
+				id: Math.max(0, ...db.comments.map((item) => item.id)) + 1,
+				postId: input.postId,
+			};
+			db.comments.unshift(comment);
+			return comment;
+		},
+	);
 }
 
 interface PageData {
-	readonly todos: QueryHandleWithData<typeof todosQuery>;
+	readonly comments: QueryHandle<typeof commentsQuery>;
+	readonly post: QueryHandle<typeof postQuery>;
 }
 
 function SubmitButton() {
@@ -79,32 +111,42 @@ function SubmitButton() {
 	);
 }
 
-function TodoList(props: {
-	readonly handle: QueryHandleWithData<typeof todosQuery>;
+function PostTitle(props: { readonly handle: QueryHandle<typeof postQuery> }) {
+	const [postThenable] = useQuery(postQuery, props.handle);
+	const post = use(postThenable);
+	return <h3 className="text-lg font-semibold">{post?.title}</h3>;
+}
+
+function Comments(props: {
+	readonly handle: QueryHandle<typeof commentsQuery>;
 }) {
-	const qc = useQueryClient();
-	const [pages] = useQuery(todosQuery, props.handle);
-	const serverTodos = pages.pages.flatMap((page) => page.items);
-	const [todos, addOptimistic] = useOptimistic<ReadonlyArray<Todo>, string>(
-		serverTodos,
-		(current, text) => [
-			...current,
-			{ id: -current.length - 1, pending: true, text },
-		],
+	const queryClient = useQueryClient();
+	const [pagesThenable, commentsState] = useInfiniteQuery(
+		commentsQuery,
+		props.handle,
 	);
+	const pages = use(pagesThenable);
+	const serverComments = pages.pages.flatMap((page) => page.items);
+	const [shownComments, addOptimistic] = useOptimistic<
+		ReadonlyArray<ShownComment>,
+		string
+	>(serverComments, (current, body) => [
+		{ author: "You", body, id: -current.length - 1, pending: true, postId },
+		...current,
+	]);
 	const [message, formAction] = useActionState<string | null, FormData>(
 		async (_previous, formData) => {
-			const text = String(formData.get("text")).trim();
-			if (!text) {
+			const body = String(formData.get("body")).trim();
+			if (!body) {
 				return "Write something first.";
 			}
-			addOptimistic(text);
+			addOptimistic(body);
 			try {
-				await addTodo(text);
+				await addComment({ body, postId });
 			} catch (error) {
 				return error instanceof Error ? error.message : "Something went wrong";
 			}
-			await qc.invalidate(todosQuery);
+			await invalidateMany(queryClient, [[commentsQuery, { postId }]]);
 			return null;
 		},
 		null,
@@ -113,25 +155,37 @@ function TodoList(props: {
 	return (
 		<div className="grid gap-3">
 			<ul className="grid gap-1.5">
-				{todos.map((todo) => (
+				{shownComments.map((comment) => (
 					<li
 						className={cn(
-							"flex items-center justify-between rounded-md border px-3 py-1.5 text-sm",
-							todo.pending && "border-dashed text-muted-foreground",
+							"flex items-center justify-between gap-2 rounded-md border px-3 py-1.5 text-sm",
+							comment.pending && "border-dashed text-muted-foreground",
 						)}
-						key={todo.id}
+						key={comment.id}
 					>
-						{todo.text}
-						{todo.pending ? (
-							<span className="flex items-center gap-1.5 text-xs">
+						<span>
+							<span className="mr-2 font-medium">{comment.author}</span>
+							{comment.body}
+						</span>
+						{comment.pending ? (
+							<span className="flex shrink-0 items-center gap-1.5 text-xs">
 								<Spinner /> saving
 							</span>
 						) : null}
 					</li>
 				))}
 			</ul>
+			<LoadMoreButton
+				fetchNextPage={commentsState.fetchNextPage}
+				hasNextPage={commentsState.hasNextPage}
+				isFetchingNextPage={commentsState.isFetchingNextPage}
+			/>
 			<form action={formAction} className="flex gap-2">
-				<Input aria-label="New todo" name="text" placeholder="Add a todo" />
+				<Input
+					aria-label="New comment"
+					name="body"
+					placeholder="Add a comment"
+				/>
 				<SubmitButton />
 			</form>
 			{message ? (
@@ -150,13 +204,22 @@ function OptimisticUpdates() {
 				<FailNextButton server={server} />
 			</div>
 			<DemoBrowser
-				fallback={<Skeleton className="h-24 w-full" />}
-				initial={{ path: "/todos" }}
-				loader={async (args): Promise<PageData> => ({
-					todos: await args.client.ensure(todosQuery),
-				})}
+				fallback={<Skeleton className="h-32 w-full" />}
+				initial={{ path: `/posts/${postId}` }}
+				loader={async (args): Promise<PageData> => {
+					const [handles] = await load(args.client, {
+						comments: swr(commentsQuery, { postId }),
+						post: swr(postQuery, { id: postId }),
+					});
+					return handles;
+				}}
 			>
-				{(route) => <TodoList handle={route.data.todos} />}
+				{(route) => (
+					<div className="grid gap-3">
+						<PostTitle handle={route.data.post} />
+						<Comments handle={route.data.comments} />
+					</div>
+				)}
 			</DemoBrowser>
 		</div>
 	);
@@ -164,7 +227,7 @@ function OptimisticUpdates() {
 
 export default defineDemo({
 	Component: OptimisticUpdates,
-	hint: "Add a todo: it appears at once, dashed, until the server confirms and the list refetches. Make the next request fail to watch it roll back on its own.",
+	hint: "Add a comment: it appears at once, dashed and marked saving, until the server confirms and the comments refetch. Make the next request fail to watch it roll back on its own.",
 	server,
 	title: "Optimistic updates with useOptimistic",
 });

@@ -5,46 +5,41 @@ section: Guides
 order: 6
 ---
 
-A handle is the only thing that crosses the loader → component or server → client boundary:
+A handle is the only thing that crosses the loader → component or server → client boundary. It's a query's key and its factory's input, and nothing else:
 
 ```sample
 tanstack-start/src/docs/handles.ts#intro
 ```
 
-## Handles with data
+A handle carries no data, so it serializes for free: the TanStack Router serializer, React Router's loader data and React's RSC payload all send it as is. The data reaches the browser's cache through [hydration](./ssr-and-hydration.md), once, however many handles point at it.
 
-`prefetch` doesn't wait, so its handle is the query's key and input. `ensure` and `fetch` waited for the data, so they return a `QueryHandleWithData`: the same handle plus `data`, for the code that called them. A loader can branch on it or build another query's input from it, and a server component can render it.
+## The data the loader waited for
 
-`data` is the cache entry's own object, not a copy. Data reaches the browser's cache through the [hydration stream](./ssr-and-hydration.md), and the TanStack Router serializer and React's RSC payload both send an object once, however many handles and entries point at it.
+Every entry gives the same `QueryHandle`, whether the loader waited for it or not. The data itself is in the second element of what `load` resolves to, for the code that called it. A loader can branch on it or build another query's input from it, and a server component can render it. It's the cache entry's own object (through `select`), not a copy.
 
-## Typed by what the loader did
+## Reading a handle
 
-The loader's return value lists exactly which queries a route started, and its types show which ones the route waited for. `useQuery` returns **the data** for a `QueryHandleWithData` and **a promise** for a `QueryHandle`:
+`useQuery` takes the factory as well as the handle because the handle is plain data, `{ queryKey, input }`, so it can cross from a loader or a server component to the browser, and a function can't: the handle can't carry the `queryFn`, so you pass the factory alongside it.
 
-```sample
-tanstack-start/src/docs/handles.tsx#typed-by-what-the-loader-did
-```
-
-Type a prop with the handle its loader returns:
+`useQuery` returns a thenable for every handle, and `use()` reads it. What the loader did decides whether that read suspends: an `swr` or `revalidate` handle's thenable is already fulfilled, so `use()` returns the data at once, and a `prefetch` handle's suspends until the data lands:
 
 ```sample
-tanstack-start/src/docs/handles.handle-props.tsx#handle-props
+tanstack-start/src/docs/handles.tsx#reading-a-handle
 ```
 
-A handle's type names its factory, and a factory's type includes its key's shape (`readonly ["post", string]`). So `useQuery(draftQuery, handle)` is a type error when `handle` came from `postQuery`, even when both take the same input and return the same data. Factories whose keys have the same shape read the same entries, so their handles mix. Annotating a factory's return type as `QueryOptions<{ data: Post }>` widens its key to any `QueryKey`, and its handles mix with any factory's of the same input and data.
+So a prop takes a `QueryHandle` whichever entry fed it, and switching a loader from `prefetch` to `swr` changes nothing in the components.
 
-`QueryHandleWithData` extends `QueryHandle`, so TypeScript lets a handle with data into a `QueryHandle` prop. `useQuery` picks by the handle it gets at runtime, though: there it returns the data while the prop's type says promise, and `use()` on it throws. If you switch a query from `prefetch` to `ensure`, switch the props that receive its handle to `QueryHandleWithData`.
+A handle's type names its factory, and a factory's type includes its key's shape (`readonly ["posts", "bySlug", string]`). So `useQuery(draftQuery, handle)` is a type error when `handle` came from `postQuery`, even when both take the same input and return the same data. Factories whose keys have the same shape read the same entries, so their handles mix.
 
 ## The cache is the source of truth
 
-`data` is what the cache held when the verb resolved. `useQuery` reads the entry's current data instead: after a refetch, an invalidation or a `setData`, every reader updates, which a value frozen into loader data couldn't do.
+`load`'s data is what the cache held when it resolved. `useQuery` reads the entry's current data instead: after a refetch, an invalidation or a `setData`, every reader updates, which a value frozen into loader data couldn't do.
 
-If the entry has lost its data since — it was garbage-collected while the router kept the loader data, or something called `reset` — `useQuery` suspends until it's refetched instead of returning `undefined`.
+A loader can't promise the data is still there when a component renders. If the entry has lost it since (it was garbage-collected while the router kept the loader data, or something called `resetOne` or `removeOne`), `use()` on the thenable suspends until the query is refetched instead of returning `undefined`. That's why `useQuery` returns a thenable even for a handle the loader waited for.
 
 ## Where handles come from
 
-- `qc.prefetch(factory, input)` returns a `QueryHandle` synchronously.
-- `await qc.ensure(factory, input)` and `await qc.fetch(factory, input)` return a `QueryHandleWithData`.
-- `useWaterfall(factory, input)` starts a query during render and returns a `QueryHandle`. It's an [escape hatch](./request-waterfalls.md#render-time-inputs-usewaterfall).
+- `load(qc, entries)` resolves to a `QueryHandle` per entry.
+- `waterfallHandle(factory, input)` returns a `QueryHandle` that starts nothing: the component that reads it fetches while rendering. It's an [escape hatch](./request-waterfalls.md#render-time-inputs-waterfallhandle). `waterfallHandle(factory, handle, (input) => next)` derives one from another handle's input, such as a loader's, and returns that handle as is while `next` maps to the same query ([URL state](./url-state-and-pagination.md#input-typed-before-the-url)).
 
-You never build handles by hand: the factory's key and input must agree, and the verbs guarantee it.
+You never build handles by hand: the factory's key and input must agree, and `load` and `waterfallHandle` guarantee it.

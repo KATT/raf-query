@@ -1,45 +1,30 @@
-// #region todos
 // #region home
-import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
+import { group, infiniteQueryOptions, queryOptions } from "@raf-query/react";
 
-// #endregion home
-import { getTodo, listTodos } from "./api.ts";
-
-// #endregion todos
-// #region home
 import { type CommentPage, listComments } from "./api.ts";
 import { getPost } from "./posts.functions.ts";
 
 // #endregion home
-import { getAuthor, getBuild, getMe, getSettings, listPosts } from "./api.ts";
-
-// #region todos
-export function todosQuery() {
-	return infiniteQueryOptions({
-		queryKey: ["todos"],
-		queryFn: async () => ({
-			items: await listTodos(),
-			nextCursor: null,
-		}),
-		initialPageParam: 0,
-		getNextPageParam: (lastPage) => lastPage.nextCursor,
-	});
-}
-
-export function todoQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: ["todos", input.id],
-		queryFn: () => getTodo(input.id),
-		staleTime: 30_000,
-	});
-}
-// #endregion todos
+import {
+	getAuthor,
+	getBuild,
+	getMe,
+	getSettings,
+	listPostPage,
+	listPosts,
+} from "./api.ts";
 
 // #region home
+// #region groups
+export const posts = group("posts");
+// A post's comments are a group inside `posts`.
+export const comments = group(posts, "comments");
+// #endregion groups
+
 // #region post-query
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: ["post", input.slug],
+		queryKey: posts("bySlug", input.slug),
 		queryFn: () => getPost({ data: input }),
 	});
 }
@@ -47,7 +32,7 @@ export function postQuery(input: { slug: string }) {
 
 export function commentsQuery(input: { slug: string }) {
 	return infiniteQueryOptions({
-		queryKey: ["comments", input.slug],
+		queryKey: comments(input.slug),
 		queryFn: (context) =>
 			listComments({ cursor: context.pageParam, slug: input.slug }),
 		initialPageParam: 0,
@@ -56,37 +41,52 @@ export function commentsQuery(input: { slug: string }) {
 }
 // #endregion home
 
+export function feedQuery() {
+	return infiniteQueryOptions({
+		queryKey: posts("feed"),
+		queryFn: (context) => listPostPage({ cursor: context.pageParam }),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+	});
+}
+
 export function postsQuery(input: { page: number; sort: "newest" | "oldest" }) {
 	return queryOptions({
-		queryKey: ["posts", input],
+		queryKey: posts("list", input),
 		queryFn: () => listPosts(input),
 	});
 }
 
+export const authors = group("authors");
+
 export function authorQuery(input: { id: string }) {
 	return queryOptions({
-		queryKey: ["author", input.id],
+		queryKey: authors(input.id),
 		queryFn: () => getAuthor(input.id),
 	});
 }
 
+export const account = group("account");
+
 export function meQuery() {
 	return queryOptions({
-		queryKey: ["me"],
+		queryKey: account("me"),
 		queryFn: () => getMe(),
 	});
 }
 
+export const builds = group("builds");
+
 export function buildQuery(input: { id: string }) {
 	return queryOptions({
-		queryKey: ["build", input.id],
+		queryKey: builds(input.id),
 		queryFn: () => getBuild(input.id),
 	});
 }
 
 export function settingsQuery() {
 	return queryOptions({
-		queryKey: ["settings"],
+		queryKey: account("settings"),
 		queryFn: () => getSettings(),
 	});
 }

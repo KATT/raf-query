@@ -1,6 +1,7 @@
 import { Badge } from "@examples/ui/components/badge";
 import { buttonVariants } from "@examples/ui/components/button";
 import { cn } from "@examples/ui/lib/utils";
+import { load, prefetch } from "@raf-query/react";
 import {
 	createFileRoute,
 	Link,
@@ -54,11 +55,12 @@ export const Route = createFileRoute("/")({
 	search: {
 		middlewares: [stripSearchParams(homeSearchDefaults)],
 	},
-	loader: (args) => ({
-		demo: args.context.queryClient.prefetch(demoQuery, {
-			id: "starting-queries",
-		}),
-	}),
+	loader: async (args) => {
+		const [handles] = await load(args.context.queryClient, {
+			demo: prefetch(demoQuery, { id: "starting-queries" }),
+		});
+		return handles;
+	},
 	head: () =>
 		pageHead({
 			description: site.description,
@@ -99,16 +101,16 @@ const features: ReadonlyArray<{
 		title: "Fetch where React recommends",
 	},
 	{
-		body: "A handle is a key and an input, plus the data once ensure or fetch has loaded it. It crosses the loader, the server and the client.",
+		body: "A handle is a query's key and input. It crosses the loader, the server and the client, and the cache carries the data next to it.",
 		icon: <Link2 />,
 		slug: "handles",
 		title: "Small, serializable handles",
 	},
 	{
-		body: "useQuery returns a stable promise; unwrap it with use() wherever the data is needed, even in a child.",
+		body: "useQuery returns a stable thenable for every handle; read it with use() wherever the data is needed, even in a child.",
 		icon: <SquareStack />,
 		slug: "reading-queries",
-		title: "Promises in, use() out",
+		title: "Thenables in, use() out",
 	},
 	{
 		body: "Filters, sort and pages live in the URL. whilePending picks between suspending and keeping the previous page.",
@@ -117,7 +119,7 @@ const features: ReadonlyArray<{
 		title: "The URL is the input",
 	},
 	{
-		body: "No useMutation: write in form actions, then invalidate. React's useOptimistic and useActionState do the rest.",
+		body: "No useMutation: wrap a write in action() and name the queries it invalidates. React's useOptimistic and useActionState do the rest.",
 		icon: <Cable />,
 		slug: "mutations",
 		title: "Actions for writes",
@@ -203,18 +205,19 @@ const stepsByMode = {
 						before client components render.
 					</p>
 					<p>
+						<code>load</code> takes named entries and starts them together. A{" "}
 						<code>prefetch</code> never holds the response: the page streams
-						while the post and comments load. Each call returns a{" "}
-						<strong className="text-foreground">handle</strong> — the query’s
-						key and input, without the data. <code>HydrationBoundary</code>{" "}
-						streams the cache to the browser next to those handles, so nothing
-						is fetched twice.
+						while the post and comments load. <code>load</code> returns a{" "}
+						<strong className="text-foreground">handle</strong> for each entry —
+						the query’s key and input, without the data.{" "}
+						<code>HydrationBoundary</code> streams the cache to the browser next
+						to those handles, so nothing is fetched twice.
 					</p>
 					<p>
-						Use <code>fetch</code> when the server component itself renders the
-						data. Prefer <code>prefetch</code> when a client component will read
-						it under Suspense — the usual App Router shape, and what the example
-						app does.
+						Use <code>revalidate</code> when the server component itself renders
+						the data. Prefer <code>prefetch</code> when a client component will
+						read it under Suspense — the usual App Router shape, and what the
+						example app does.
 					</p>
 				</>
 			),
@@ -230,14 +233,15 @@ const stepsByMode = {
 					<p>
 						Client components live in their own files, marked with a{" "}
 						<code>use client</code> directive. <code>useQuery</code> takes the
-						factory and a handle and returns a promise. <code>use()</code>{" "}
+						factory and a handle and returns a thenable. <code>use()</code>{" "}
 						suspends that subtree while its skeleton shows, so the rest of the
 						page can stream in around it.
 					</p>
 					<p>
 						From then on the cache keeps both up to date: it refetches stale
-						data when the window regains focus and after a write invalidates it,
-						and each component re-renders with the new data.
+						data after an action invalidates it and, with{" "}
+						<code>recommended()</code>, when the window regains focus, and each
+						component re-renders with the new data.
 					</p>
 				</>
 			),
@@ -265,17 +269,19 @@ const stepsByMode = {
 						share a cache, and requests never share data.
 					</p>
 					<p>
+						<code>load</code> takes named entries and starts them together. A{" "}
 						<code>prefetch</code> never holds the navigation: the page renders
-						while the post and comments load. Each call returns a{" "}
-						<strong className="text-foreground">handle</strong> — the query’s
-						key and input, without the data. The loader returns the handles with{" "}
-						<code>dehydrate(qc)</code>, and React Router streams the queries
-						still loading to the browser, so nothing is fetched twice.
+						while the post and comments load. <code>load</code> returns a{" "}
+						<strong className="text-foreground">handle</strong> for each entry —
+						the query’s key and input, without the data. The loader returns the
+						handles with <code>dehydrate(qc)</code>, and React Router streams
+						the queries still loading to the browser, so nothing is fetched
+						twice.
 					</p>
 					<p>
-						Use <code>fetch</code> when the route can’t lay out without the
-						data. Prefer <code>prefetch</code> when a component will read it
-						under Suspense — the usual shape, and what the example app does for
+						Use <code>swr</code> when the route can’t lay out without the data.
+						Prefer <code>prefetch</code> when a component will read it under
+						Suspense — the usual shape, and what the example app does for
 						streamed parts of the page.
 					</p>
 				</>
@@ -293,13 +299,14 @@ const stepsByMode = {
 						The route component wraps the page in <code>HydrationBoundary</code>
 						, which writes the loader’s snapshot into the browser’s cache.{" "}
 						<code>useQuery</code> takes the factory and a handle and returns a
-						promise. <code>use()</code> suspends that subtree while its skeleton
-						shows, so the rest of the page can stream in around it.
+						thenable. <code>use()</code> suspends that subtree while its
+						skeleton shows, so the rest of the page can stream in around it.
 					</p>
 					<p>
 						From then on the cache keeps both up to date: it refetches stale
-						data when the window regains focus and after a write invalidates it,
-						and each component re-renders with the new data.
+						data after an action invalidates it and, with{" "}
+						<code>recommended()</code>, when the window regains focus, and each
+						component re-renders with the new data.
 					</p>
 				</>
 			),
@@ -314,10 +321,17 @@ const stepsByMode = {
 		{
 			...factoryStep,
 			body: factoryStepBody(
-				<p>
-					<code>getPost</code> is a server function: during SSR it runs in the
-					process, and refetches in the browser call it over HTTP.
-				</p>,
+				<>
+					<p>
+						<code>getPost</code> is a server function: during SSR it runs in the
+						process, and refetches in the browser call it over HTTP.
+					</p>
+					<p>
+						Each key starts with a group. <code>comments</code> is a group
+						inside <code>posts</code>, so invalidating <code>posts</code> also
+						matches every post’s comments.
+					</p>
+				</>,
 			),
 			code: homeFactories.segments,
 		},
@@ -330,16 +344,18 @@ const stepsByMode = {
 						starts there, at the same time, before anything renders.
 					</p>
 					<p>
+						<code>load</code> takes named entries and starts them together. A{" "}
 						<code>prefetch</code> never holds the navigation: the page renders
-						while the post and comments load. Each call returns a{" "}
-						<strong className="text-foreground">handle</strong> — the query’s
-						key and input, without the data. During SSR, the cache streams to
-						the browser next to those handles, so nothing is fetched twice.
+						while the post and comments load. <code>load</code> returns a{" "}
+						<strong className="text-foreground">handle</strong> for each entry —
+						the query’s key and input, without the data. During SSR, the cache
+						streams to the browser next to those handles, so nothing is fetched
+						twice.
 					</p>
 					<p>
-						Use <code>ensure</code> when the route can’t lay out without the
-						data. Prefer <code>prefetch</code> when a component will read it
-						under Suspense — the usual shape, and what the example app does for
+						Use <code>swr</code> when the route can’t lay out without the data.
+						Prefer <code>prefetch</code> when a component will read it under
+						Suspense — the usual shape, and what the example app does for
 						streamed parts of the page.
 					</p>
 				</>
@@ -355,13 +371,14 @@ const stepsByMode = {
 				<>
 					<p>
 						<code>useQuery</code> takes the factory and a handle and returns a
-						promise. <code>use()</code> suspends that subtree while its skeleton
-						shows, so the rest of the page can stream in around it.
+						thenable. <code>use()</code> suspends that subtree while its
+						skeleton shows, so the rest of the page can stream in around it.
 					</p>
 					<p>
 						From then on the cache keeps both up to date: it refetches stale
-						data when the window regains focus and after a write invalidates it,
-						and each component re-renders with the new data.
+						data after an action invalidates it and, with{" "}
+						<code>recommended()</code>, when the window regains focus, and each
+						component re-renders with the new data.
 					</p>
 				</>
 			),
@@ -409,14 +426,17 @@ const howItWorksByMode = {
 } as const satisfies Record<FrameworkMode, ReactNode>;
 
 const mapping: ReadonlyArray<readonly [string, string]> = [
-	["queryClient.prefetchQuery()", "qc.prefetch(factory, input)"],
-	["queryClient.ensureQueryData()", "qc.ensure(factory, input)"],
-	["queryClient.fetchQuery()", "qc.fetch(factory, input)"],
-	["useSuspenseQuery()", "use(useQuery(factory, handle)[0])"],
+	["queryClient.prefetchQuery()", "load(qc, { x: prefetch(factory, input) })"],
+	["queryClient.ensureQueryData()", "load(qc, { x: swr(factory, input) })"],
+	["queryClient.fetchQuery()", "load(qc, { x: revalidate(factory, input) })"],
+	[
+		"useSuspenseQuery()",
+		"use() on the thenable from useQuery(factory, handle)",
+	],
 	["useInfiniteQuery()", "useQuery() with an infiniteQueryOptions factory"],
 	["placeholderData: keepPreviousData", 'whilePending: "previous"'],
-	["useMutation()", "Actions + qc.invalidate()"],
-	["invalidateQueries(filters)", "qc.invalidate(filter)"],
+	["useMutation()", "a React action: await write(), then invalidateMany()"],
+	["invalidateQueries(filters)", "invalidateMany(qc, target)"],
 ];
 
 /** Homepage excerpts; the full list is /docs/comparison#what-we-leave-out. */
@@ -429,8 +449,8 @@ const leaveOuts: ReadonlyArray<{
 		why: "Actions, useOptimistic and useActionState already cover pending, optimistic and error state.",
 	},
 	{
-		feature: "enabled / select / placeholderData",
-		why: "The route owns the input; shape data in the queryFn or the component; whilePending keeps the previous page.",
+		feature: "enabled / placeholderData",
+		why: "The route owns the input, so it starts a query only once the input exists, or skips it with skipToken. whilePending keeps the previous page.",
 	},
 	{
 		feature: "refetchOnMount",
@@ -438,7 +458,7 @@ const leaveOuts: ReadonlyArray<{
 	},
 	{
 		feature: "Render-starting useQuery",
-		why: "Only useWaterfall may start a request in render — waterfalls stay explicit.",
+		why: "Only a waterfallHandle may start a request in render — waterfalls stay explicit.",
 	},
 	{
 		feature: "Persistence and other frameworks",
@@ -504,7 +524,6 @@ function HomePage() {
 							</div>
 							<p className="font-mono text-sm text-muted-foreground">
 								<span className="select-none">$ </span>pnpm add @raf-query/react
-								effect
 							</p>
 						</div>
 						{/* pt-14 is the room the framework pill docks in, above the code.
@@ -623,7 +642,9 @@ function HomePage() {
 							className="mb-2 scroll-mt-32 text-2xl font-semibold tracking-tight"
 							id="try-it"
 						>
-							<HashLink id="try-it">Try it: prefetch, ensure or fetch</HashLink>
+							<HashLink id="try-it">
+								Try it: prefetch, swr or revalidate
+							</HashLink>
 						</h2>
 						<p className="max-w-2xl text-muted-foreground">
 							The demo runs in your browser against a fake server, with its
@@ -655,10 +676,11 @@ function HomePage() {
 								TanStack Query
 							</a>{" "}
 							closely: query keys, deduping, staleness, garbage collection,
-							retries, structural sharing, infinite pages, focus and reconnect
-							refetching. If you know TanStack Query, you already know how
-							raf-query caches. What changes is where queries start and how
-							components read them.
+							structural sharing and infinite pages. Retries and focus and
+							reconnect refetching are there too, as links and features you turn
+							on. If you know TanStack Query, you already know how raf-query
+							caches. What changes is where queries start and how components
+							read them.
 						</p>
 						<div className="flex flex-wrap gap-3">
 							<Link

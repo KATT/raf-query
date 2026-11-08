@@ -1,69 +1,83 @@
-export { allKeyed, type Settled } from "./all-keyed.ts";
 export {
-	dehydrate,
-	hydrate,
-	QueryClient,
+	type Clock,
+	createQueryClient,
+	type Feature,
+	feature,
+	type Link,
+	link,
+	type Operation,
+	type QueryClient,
 	type QueryClientConfig,
 } from "./client.ts";
-export {
-	type HasTypedError,
-	type PagingControls,
-	type PromiseControls,
-	promiseControls,
-	type QueryControls,
-	type ReadValue,
-	resultThenable,
-	type ThrowsOnError,
-	throwsOnError,
-	type UseQueryControls,
-	type UseQueryOptions,
-	type UseQueryThrowOptions,
-} from "./controls.ts";
-export * as Platform from "./platform.ts";
-export * as QueryBinding from "./binding.ts";
-export * as Query from "./query.ts";
-export * as QueryCache from "./cache.ts";
-export * as QueryObserver from "./observer.ts";
+export { abortError } from "./entry.ts";
+export { focusRefetch } from "./features/focus-refetch/focus-refetch.ts";
+export { reconnectRefetch } from "./features/reconnect-refetch/reconnect-refetch.ts";
+export { polling } from "./features/polling/polling.ts";
 export {
 	canDehydrate,
-	type DehydratedQuery,
+	type DehydratedEntry,
 	type DehydratedResult,
 	type DehydratedState,
 	type DehydratedStream,
 	type DehydrateOptions,
-	dehydrateQuery,
-	type HydrateOptions,
+	dehydrate,
+	dehydrateStream,
+	hydrate,
 	RedactedError,
-} from "./hydration.ts";
-export { hashKey, matchesKey, type QueryKey } from "./key.ts";
+} from "./hydration/hydration.ts";
 export {
-	type AnyQueryOptions,
-	type DataOf,
-	type ErrorOf,
+	bindInfiniteQueryOptions,
 	type InfiniteData,
+	type InfiniteQueryFunctionContext,
 	type InfiniteQueryOptions,
+	type InfiniteQueryOptionsBuilder,
 	infiniteQueryOptions,
-	type InfiniteQueryTypes,
-	type InputArgs,
-	type InputOf,
-	type IsPaged,
-	type LoadOptions,
-	type PageFunctionContext,
-	type PagedQueryFactory,
-	type PageOf,
-	type QueryBehavior,
-	type QueryFactory,
-	type QueryFnResult,
-	type QueryFunctionContext,
+} from "./infinite/infinite.ts";
+export { type Group, group, type QueryKey } from "./keys/keys.ts";
+export type { QueryInfo, Target } from "./keys/targets.ts";
+export { retry, type RetryOptions } from "./links/retry/retry.ts";
+export { QueryTimeoutError, timeout } from "./links/timeout/timeout.ts";
+export {
+	load,
+	type Loaded,
+	type LoadEntry,
+	type LoadEntryOptions,
+	prefetch,
 	type QueryHandle,
-	type QueryHandleWithData,
-	type QueryMeta,
+	revalidate,
+	skipToken,
+	swr,
+	waterfallHandle,
+} from "./load.ts";
+export {
+	bindQueryOptions,
+	type DataOf,
+	type InputOf,
+	type InfiniteQueryFactory,
+	type QueryFactory,
+	type SingleQueryFactory,
+	type QueryFunctionContext,
 	type QueryOptions,
+	type QueryOptionsBuilder,
 	queryOptions,
-	type QueryTypes,
-	type Register,
-	type RetryPolicy,
-	type ServicesOf,
-	type ThrowOnErrorOf,
+	type StreamOptions,
 } from "./options.ts";
-export { fulfilled, pending, type Pending, type Thenable } from "./thenable.ts";
+export type { QueryMeta } from "./root.ts";
+export { type Recommended, recommended } from "./presets.ts";
+export type { Thenable } from "./thenable.ts";
+export {
+	type ClientFor,
+	getData,
+	invalidateAll,
+	invalidateMany,
+	invalidateOne,
+	isFetching,
+	type PartialInput,
+	removeAll,
+	removeMany,
+	removeOne,
+	resetAll,
+	resetMany,
+	resetOne,
+	setData,
+} from "./verbs.ts";

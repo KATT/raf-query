@@ -26,7 +26,7 @@ tester.run("no-use-member-access", rule, {
        const comments = use(props.comments);
        return comments.map((comment) => <p key={comment.id}>{comment.body}</p>);
      }`,
-		`const [postPromise] = useQuery(postQuery, handle);`,
+		`const [postThenable] = useQuery(postQuery, handle);`,
 		`const issues = Issues.use((issues) => issues.list()).pipe(Effect.orDie);`,
 		`const value = useContext(Theme).color;`,
 		`const value = use.title;`,
@@ -47,7 +47,7 @@ tester.run("no-use-member-access", rule, {
 			errors: [{ messageId: "memberAccess" }],
 		},
 		{
-			code: `const title = use(postPromise)?.title;`,
+			code: `const title = use(postThenable)?.title;`,
 			errors: [{ messageId: "memberAccess" }],
 		},
 		{
@@ -55,15 +55,15 @@ tester.run("no-use-member-access", rule, {
 			errors: [{ messageId: "memberAccess" }],
 		},
 		{
-			code: `const title = (use(postPromise)).title;`,
+			code: `const title = (use(postThenable)).title;`,
 			errors: [{ messageId: "memberAccess" }],
 		},
 		{
-			code: `const title = use(postPromise)!.title;`,
+			code: `const title = use(postThenable)!.title;`,
 			errors: [{ messageId: "memberAccess" }],
 		},
 		{
-			code: `const title = React.use(postPromise).title;`,
+			code: `const title = React.use(postThenable).title;`,
 			errors: [{ messageId: "memberAccess" }],
 		},
 		{

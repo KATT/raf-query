@@ -36,7 +36,6 @@
 			"react-server": "./src/index-react-server.ts",
 			"default": "./src/index.ts"
 		},
-		"./devtools": "./src/devtools.tsx",
 		"./tanstack-router": {
 			"workerd": "./src/tanstack-router.ts",
 			"worker": "./src/tanstack-router.ts",
@@ -50,8 +49,8 @@
 	"scripts": {
 		"prepack": "node ../../scripts/sync-package-docs.ts",
 		"build": "vp pack",
-		"test": "vp test",
-		"typecheck": "tsc",
+		"test": "vp test --config vitest.compiler.config.ts && vp test",
+		"typecheck": "tsc && tsc -p tsconfig.no-node.json",
 		"publish:npm": "pnpm pack --out package.tgz && npm publish package.tgz --access public && rm package.tgz"
 	},
 	"dependencies": {
@@ -59,7 +58,6 @@
 	},
 	"peerDependencies": {
 		"@tanstack/react-router": "^1.170.0",
-		"effect": "^4.0.0",
 		"react": "^19.2.0"
 	},
 	"peerDependenciesMeta": {
@@ -68,19 +66,22 @@
 		}
 	},
 	"devDependencies": {
-		"@effect/vitest": "catalog:",
+		"@babel/core": "7.29.7",
+		"@rolldown/plugin-babel": "0.2.4",
 		"@tanstack/react-router": "1.170.42",
 		"@testing-library/react": "16.3.3",
 		"@types/node": "26.6.4",
 		"@types/react": "19.3.0",
 		"@types/react-dom": "19.3.0",
+		"@vitejs/plugin-react": "6.1.2",
 		"@vitest/coverage-v8": "5.0.1",
-		"effect": "catalog:",
+		"babel-plugin-react-compiler": "1.0.0",
 		"happy-dom": "21.0.1",
 		"react": "19.3.0",
 		"react-dom": "19.3.0",
 		"typescript": "7.0.2",
-		"vite-plus": "1.0.0"
+		"vite-plus": "1.0.0",
+		"vitest": "5.0.1"
 	},
 	"publishConfig": {
 		"access": "public",
@@ -89,7 +90,6 @@
 				"react-server": "./dist/index-react-server.mjs",
 				"default": "./dist/index.mjs"
 			},
-			"./devtools": "./dist/devtools.mjs",
 			"./tanstack-router": {
 				"workerd": "./dist/tanstack-router.mjs",
 				"worker": "./dist/tanstack-router.mjs",

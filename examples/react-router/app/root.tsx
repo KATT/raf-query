@@ -1,8 +1,6 @@
 import {
-	applyStaleTime,
 	DEFAULT_STALE_TIME,
 	type LoaderVerb,
-	queryTimeDefaults,
 	type QueryTimeDefaults,
 } from "@examples/db/types";
 import { AppHeader } from "@examples/kit/components/app-header";
@@ -13,11 +11,11 @@ import { ThemeProvider } from "@examples/kit/components/theme-provider";
 import { Toaster } from "@examples/ui/components/sonner";
 import { logoUrl } from "@examples/kit/lib/logo";
 import {
-	QueryClient,
 	QueryClientProvider,
+	QueryDevtools,
+	removeAll,
 	useQueryClient,
 } from "@raf-query/react";
-import { QueryDevtools } from "@raf-query/react/devtools";
 import { useState } from "react";
 import {
 	isRouteErrorResponse,
@@ -51,7 +49,9 @@ export const links: Route.LinksFunction = () => [
 /** One query client per request, for every loader the request runs. */
 export const middleware: Array<Route.MiddlewareFunction> = [
 	(args) => {
-		const client = withRequest(args.request, createAppQueryClient);
+		const client = withRequest(args.request, () =>
+			createAppQueryClient(readStaleTime() ?? DEFAULT_STALE_TIME),
+		);
 		args.context.set(queryClientContext, client.queryClient);
 	},
 ];
@@ -83,15 +83,9 @@ export function Layout(props: { readonly children: React.ReactNode }) {
 }
 
 export default function App(props: Route.ComponentProps) {
-	const [{ queryClient, queryDefaults }] = useState(() => {
-		const defaults = queryTimeDefaults(props.loaderData.staleTime);
-		const client = new QueryClient({ defaults });
-		// The cache reads this object live. A server client leaves `gcTime` unset.
-		if (!client.isServer) {
-			applyStaleTime(defaults, props.loaderData.staleTime);
-		}
-		return { queryClient: client, queryDefaults: defaults };
-	});
+	const [{ queryClient, queryDefaults }] = useState(() =>
+		createAppQueryClient(props.loaderData.staleTime),
+	);
 	const verb = loaderVerbOf(useLocation().pathname);
 	const navigating = useNavigation().state !== "idle";
 	const [prefetch, setPrefetch] = useState(
@@ -145,7 +139,7 @@ function AppSettings(props: {
 		<Settings
 			onPrefetchChange={props.onPrefetchChange}
 			onReset={() => {
-				queryClient.clear();
+				removeAll(queryClient);
 				window.location.reload();
 			}}
 			prefetch={props.prefetch}

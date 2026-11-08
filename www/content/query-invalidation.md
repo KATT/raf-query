@@ -1,11 +1,11 @@
 ---
 title: Query invalidation
-description: Mark queries stale after a write, refetch the ones on screen, and select queries with key prefixes and predicates.
+description: Mark queries stale after a write, refetch the ones on screen, and select queries by factory, group or predicate, such as tags.
 section: Guides
 order: 13
 ---
 
-Waiting for data to go stale on its own doesn't work after a write: the user just changed something and expects to see it. `invalidate` marks queries stale and refetches the ones that are being read:
+Waiting for data to go stale on its own doesn't work after a write: the user just changed something and expects to see it. `invalidateOne` and `invalidateMany` mark queries stale and refetch the ones that are being read:
 
 ```sample
 tanstack-start/src/docs/query-invalidation.ts#intro
@@ -13,86 +13,99 @@ tanstack-start/src/docs/query-invalidation.ts#intro
 
 When a query is invalidated:
 
-- It's marked stale, whatever its `staleTime`. The next `prefetch` or `ensure` refetches it, even on the server.
+- It's marked stale, whatever its `staleTime`. The next `load` that starts it refetches it.
 - If something is reading it, it refetches now, in the background. Readers keep showing the current data and re-render when the new data lands.
-- If nothing is reading it, nothing happens until the next time something starts it.
+- If nothing is reading it, nothing happens until the next time something starts or reads it.
 
-`invalidate` returns a promise that resolves once every refetch it started has settled. Await it at the end of an action, and the action stays pending until the fresh data is on screen.
+The verbs return a promise that resolves once every refetch they started has settled. Await it at the end of an action, and the action stays pending until the fresh data is on screen.
 
-Try it. Each list below reads its own query. Invalidate by prefix, or exactly, and watch which ones refetch:
+Try it. Each list below reads its own query. Invalidate a group, a factory, or one query, and watch which ones refetch:
 
 ```demo
 invalidation
 ```
 
-## Query filters
+## Targets
 
-`invalidate`, `reset` and `remove` take either a factory and its input, or a filter:
+Verbs are functions that take the client first. Each `…One` verb takes a factory and its full input; each `…Many` verb takes a **target**:
 
-```ts twoslash
-import type { QueryKey } from "@raf-query/react";
-import { Query as QueryModule } from "@raf-query/react";
-type Query = QueryModule.Query;
-// ---cut---
-interface Filter {
-	queryKey?: QueryKey; // key prefix; every key matches without it
-	exact?: boolean; // match `queryKey` exactly instead of as a prefix
-	predicate?: (query: Query) => boolean; // runs after key matching
-}
-```
+| Call                                        | Matches                                                                          |
+| ------------------------------------------- | -------------------------------------------------------------------------------- |
+| `invalidateOne(qc, factory, input)`         | The factory's query for that input                                               |
+| `invalidateMany(qc, factory)`               | Every query of the factory                                                       |
+| `invalidateMany(qc, factory, partialInput)` | The factory's queries whose input matches `partialInput`                         |
+| `invalidateMany(qc, group)`                 | Every key that starts with the [group](./query-keys.md#groups), or a group in it |
+| `invalidateMany(qc, { where }, param?)`     | Every query [`where`](#matching-with-where) returns `true` for                   |
+| `invalidateMany(qc, [target, …])`           | Every query any of the targets matches: [several targets](#several-targets)      |
+| `invalidateAll(qc)`                         | Everything                                                                       |
 
-Given these keys:
+A partial input matches the **input** each query's factory was called with, never its key, so it works the same however the key is built: `[postQuery, { slug }]` for a key written as `posts("bySlug", input.slug)`. Object fields match **partially**: `{ sort: "newest" }` matches any input with that field, whatever else it has.
 
-```ts twoslash
-["todos"];
-["todos", { status: "done" }];
-["todos", { status: "done", page: 2 }];
-["todos", 5];
-["users"];
-```
+A query that was only [hydrated](./ssr-and-hydration.md) has no factory until something reads it. A factory target still invalidates it, from its first read. `resetMany` and `removeMany` act at once, so a factory target skips it; a group reaches it by its key.
 
-| Filter                                        | Matches               |
-| --------------------------------------------- | --------------------- |
-| `{}`                                          | Everything            |
-| `{ queryKey: ["todos"] }`                     | All four `todos` keys |
-| `{ queryKey: ["todos"], exact: true }`        | Only `["todos"]`      |
-| `{ queryKey: ["todos", { status: "done" }] }` | Both `done` lists     |
-| `{ queryKey: ["todos", 5] }`                  | Only `["todos", 5]`   |
+Targets are values, never strings: a factory matches by identity, a group by its path, and a `where` target, such as a [tag](#tags), by what it says about each query. TypeScript checks a partial input against the factory's input, and a target's parameter against the target.
 
-Object segments match **partially**: `{ status: "done" }` matches any object segment with that field, whatever else it has. This is why [query keys](./query-keys.md) go from general to specific, with an object of filters last: one prefix then reaches every variant.
+> [!NOTE]
+> Groups and the way targets match are a design still being settled. See [Query keys](./query-keys.md).
 
-### Matching with predicate
+### Several targets
 
-`predicate` receives each `Query` that passed the key match. Read its `key` and `handle.input`, or its state with the `Query` functions:
+To invalidate more than one thing, pass a list. An element is a group, a factory, a target, or `[factory, partialInput]` / `[target, param]`:
 
 ```sample
-tanstack-start/src/docs/query-invalidation.matching-with-predicate.ts#matching-with-predicate
+tanstack-start/src/docs/query-invalidation.ts#several-targets
 ```
 
-`handle.input` is the input of the latest factory call for that entry. An entry that was only hydrated, and not yet read or started on this client, has `undefined` input, so match on `key` to include those.
+The refetches run side by side, a query that several targets cover refetches once, and the promise resolves when all of them have settled. Awaiting one verb after another serializes them instead: `await invalidateMany(qc, a); await invalidateMany(qc, b);` starts `b`'s refetches only once `a`'s are done. TypeScript checks each element on its own, the way it checks a single target.
+
+### Matching with where
+
+A target is any object with `where(query, param)`, typed `Target<TMeta, TParam>`. Its `where` gets each query's `queryKey`, `input`, `meta` and `data` (before `select`), and the parameter the verb was called with:
+
+```sample
+tanstack-start/src/docs/query-invalidation.ts#matching-with-where
+```
+
+`input` is the input of the latest factory call for that entry. An entry that was only hydrated, and not yet read or started on this client, has `undefined` input and `{}` as its `meta`, so match on `queryKey` to include those. On a client of a typed root, `query.meta` has the root's fields: see [Query meta](./query-meta.md#selecting-queries-by-meta).
+
+### Tags
+
+A tag cuts across groups: every query that shows some content, wherever its key starts. raf-query has no tags of its own, because a tag is a `where` target over a `meta` field: a few lines in your app. A [feature](./query-meta.md#links-and-features) without a setup function declares `meta.tags`, and `tag(name)` matches the queries that list `name`:
+
+```sample
+tanstack-start/src/docs/query-invalidation.ts#tags
+```
+
+`Tagged` names the field the way a client's root has it: present, and possibly `undefined`. Typed that way, `tag()` fits only clients made with `tagged`, and TypeScript rejects it on the others. To have one target for every tag, take the tag as the parameter:
+
+```sample
+tanstack-start/src/docs/query-invalidation.ts#tags-param
+```
+
+To pick queries by their data instead, read `query.data` in `where`. It's `undefined` until a query has data.
 
 ## Invalidate, reset or remove
 
-| Call         | Data                   | Read queries                                 | Use for                                    |
-| ------------ | ---------------------- | -------------------------------------------- | ------------------------------------------ |
-| `invalidate` | Kept, shown meanwhile  | Refetch in the background                    | After writes: the normal case              |
-| `reset`      | Dropped                | Suspend and refetch                          | Data that must not be shown again (logout) |
-| `remove`     | Dropped with the entry | Keep what they rendered until they re-render | Freeing memory, dropping an abandoned key  |
+| Verbs         | Data                   | Read queries                                 | Use for                                    |
+| ------------- | ---------------------- | -------------------------------------------- | ------------------------------------------ |
+| `invalidate…` | Kept, shown meanwhile  | Refetch in the background                    | After writes: the normal case              |
+| `reset…`      | Dropped                | Suspend and refetch                          | Data that must not be shown again (logout) |
+| `remove…`     | Dropped with the entry | Keep what they rendered until they re-render | Freeing memory, dropping an abandoned key  |
 
-`reset` resolves when the refetches it caused settle, like `invalidate`. `remove` is synchronous, and aborts in-flight requests.
+Each comes as `…One`, `…Many` and `…All`, with the same targets; `resetMany` and `removeMany` take a list too. `reset` resolves when the refetches it caused settle, like `invalidate`. `remove` is synchronous, and aborts in-flight requests.
 
 ## Invalidating from mutations
 
-The common pattern is to invalidate at the end of an action, so it covers whatever the write affected:
+The common pattern is to invalidate at the end of a write, so it covers whatever the write affected. Await a verb at the end of the action:
 
 ```sample
 tanstack-start/src/docs/query-invalidation.tsx#invalidating-from-mutations
 ```
 
-Prefer invalidating a little too much over too little. Only queries being read refetch, so a broad prefix costs a request per list on screen, not per list ever loaded.
+When a write changes more than one thing, invalidate them in [one call](#several-targets), so their refetches run side by side. Prefer invalidating a little too much over too little. Only queries being read refetch, so a broad group costs a request per list on screen, not per list ever loaded.
 
 When the server's response has everything the cache needs, write it with `setData` instead and skip the refetch. See [Mutations](./mutations.md#updates-from-mutation-responses).
 
 ## Invalidation on the server
 
-A server render's cache never considers data stale, because it renders once. `invalidate` is the exception: an entry marked by `invalidate` refetches on the server, too. This matters in Next.js server actions that render again after a write.
+A server render's client never revalidates cached data, because it renders once: `prefetch` and `swr` use what the cache has, even after an invalidation. A `revalidate` refetches an invalidated entry, so it sees the write. This matters in Next.js server actions that render again after a write.

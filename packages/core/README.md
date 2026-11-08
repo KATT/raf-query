@@ -1,47 +1,57 @@
 # @raf-query/core
 
-The framework-agnostic cache behind [raf-query](https://raf-query.katt.dev), written in and for [Effect](https://effect.website): every verb is an Effect with typed errors and services, and entries can be watched as Streams. It also holds `QueryClient`, the same cache with Promise methods, which the framework bindings re-export.
+The framework-agnostic query client behind [raf-query](https://raf-query.katt.dev): a small cache that dedupes requests, keeps entries fresh, and hands out serializable handles. Retries, timeouts, refetch on focus or reconnect, polling and hydration are opt-in links, features and exports, so a client bundles only what it turns on.
 
-**[Documentation](https://raf-query.katt.dev/docs/effect)** · [API reference](https://raf-query.katt.dev/docs/api-reference#raf-querycore) · [GitHub](https://github.com/KATT/raf-query)
+**[Documentation](https://raf-query.katt.dev)** · [API reference](https://raf-query.katt.dev/docs/api-reference#raf-querycore) · [GitHub](https://github.com/KATT/raf-query)
 
 > [!NOTE]
 > raf-query is early. The API can still change between minor releases, and you use it at your own risk.
 
-React apps install [`@raf-query/react`](https://www.npmjs.com/package/@raf-query/react) instead: it re-exports this package, so you never import core directly. Install core on its own for Effect programs and for bindings to other frameworks.
+React apps install [`@raf-query/react`](https://www.npmjs.com/package/@raf-query/react) instead: it re-exports this package, so you never import core directly. Install core on its own for scripts, tests and bindings to other frameworks.
 
 ## Install
 
 ```bash
-npm install @raf-query/core effect
+npm install @raf-query/core
 ```
 
 ## Usage
 
 ```ts
-import { QueryCache, queryOptions } from "@raf-query/core";
-import { Effect, Schedule, Stream } from "effect";
+import {
+	createQueryClient,
+	group,
+	invalidateOne,
+	load,
+	queryOptions,
+	retry,
+	revalidate,
+} from "@raf-query/core";
+
+const issues = group("issues");
 
 export function issueQuery(input: { id: number }) {
 	return queryOptions({
-		queryKey: ["issue", input.id],
-		queryFn: () => IssueRepo.get(input.id), // Effect<Issue, IssueNotFound>
-		retry: Schedule.exponential("200 millis").pipe(Schedule.upTo({ times: 3 })),
+		queryKey: issues("byId", input.id),
+		queryFn: () => getIssue(input.id),
 	});
 }
 
-const program = Effect.gen(function* () {
-	const cache = yield* QueryCache.QueryCache;
-	yield* cache.fetch(issueQuery, { id: 1 }); // fails with IssueNotFound
-	yield* cache.watch(issueQuery, { id: 1 }).pipe(
-		Stream.map((state) => state.data?.title),
-		Stream.runForEach((title) => Effect.log(title)),
-	);
-});
+const queryClient = createQueryClient({ links: [retry()], staleTime: 5000 });
 
-Effect.runFork(program.pipe(Effect.provide(QueryCache.layer())));
+const [, data] = await load(queryClient, {
+	issue: revalidate(issueQuery, { id: 1 }),
+});
+console.log(data.issue.title);
+
+await invalidateOne(queryClient, issueQuery, { id: 1 });
 ```
 
-[Effect](https://raf-query.katt.dev/docs/effect) and [services](https://raf-query.katt.dev/docs/effect-services) in the docs cover the rest.
+## Entry points
+
+| Import            | Use                                                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `@raf-query/core` | `createQueryClient`, query factories, `load`, the verbs, the built-in links and features, `group`, `dehydrate` and `hydrate` |
 
 ## License
 

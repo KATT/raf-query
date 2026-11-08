@@ -1,27 +1,35 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
+	group,
 	infiniteQueryOptions,
+	load,
+	prefetch,
 	type QueryHandle,
 	queryOptions,
+	removeAll,
+	useInfiniteQuery,
 	useQuery,
 	useQueryClient,
-	useWaterfall,
+	waterfallHandle,
 } from "@raf-query/react";
 import { Suspense, use, useState } from "react";
 
 import { DemoBrowser, type DemoLoader, DemoLink } from "~/demo-kit/browser.tsx";
-import { Segmented } from "~/demo-kit/controls.tsx";
+import { LoadMoreButton, Segmented } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
-import { seedComments, seedPosts } from "~/demo-kit/fixtures.ts";
+import { pageOf, seedComments, seedPosts } from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
-const authors = ["Ada", "Grace", "Linus", "Margaret", "Ken", "Barbara"];
+const posts = group("posts");
+const authors = group("authors");
+
+const authorNames = ["Ada", "Grace", "Linus", "Margaret", "Ken", "Barbara"];
 
 const server = createFakeServer(() => ({
 	comments: seedComments(),
 	posts: seedPosts().map((post, index) => ({
 		...post,
-		authorId: index % authors.length,
+		authorId: index % authorNames.length,
 	})),
 }));
 
@@ -33,7 +41,7 @@ function postQuery(input: { readonly id: number }) {
 				(db) => db.posts.find((post) => post.id === input.id),
 				context,
 			),
-		queryKey: ["posts", input.id],
+		queryKey: posts(input.id),
 		staleTime: 30_000,
 	});
 }
@@ -43,10 +51,10 @@ function authorQuery(input: { readonly id: number }) {
 		queryFn: (context) =>
 			server.respond(
 				`GET /authors/${input.id}`,
-				() => authors[input.id],
+				() => authorNames[input.id],
 				context,
 			),
-		queryKey: ["authors", input.id],
+		queryKey: authors(input.id),
 		staleTime: 30_000,
 	});
 }
@@ -58,41 +66,33 @@ function postAuthorQuery(input: { readonly postId: number }) {
 			server.respond(
 				`GET /posts/${input.postId}/author`,
 				(db) =>
-					authors[
+					authorNames[
 						db.posts.find((post) => post.id === input.postId)?.authorId ?? 0
 					],
 				context,
 			),
-		queryKey: ["posts", input.postId, "author"],
+		queryKey: posts(input.postId, "author"),
 		staleTime: 30_000,
 	});
 }
 
-interface CommentPage {
-	readonly items: ReturnType<typeof seedComments>;
-	readonly nextCursor: number | null;
-}
-
-function commentNext(lastPage: CommentPage) {
-	return lastPage.nextCursor;
-}
-
 function commentsQuery(input: { readonly postId: number }) {
 	return infiniteQueryOptions({
-		getNextPageParam: commentNext,
-		initialPageParam: 0,
 		queryFn: (context) =>
 			server.respond(
-				`GET /posts/${input.postId}/comments`,
-				(db): CommentPage => ({
-					items: db.comments.filter(
-						(comment) => comment.postId === input.postId,
+				`GET /posts/${input.postId}/comments?cursor=${context.pageParam}`,
+				(db) =>
+					pageOf(
+						db.comments.filter((comment) => comment.postId === input.postId),
+						context.pageParam,
+						2,
 					),
-					nextCursor: null,
-				}),
 				context,
 			),
-		queryKey: ["posts", input.postId, "comments"],
+		// After `queryFn`: TypeScript infers the page type from it.
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		initialPageParam: 0,
+		queryKey: posts(input.postId, "comments"),
 		staleTime: 30_000,
 	});
 }
@@ -110,7 +110,7 @@ type PageData =
 	  };
 
 function loaderFor(strategy: Strategy): DemoLoader<PageData> {
-	return (args) => {
+	return async (args) => {
 		const id = Number(args.location.path.split("/")[2]);
 		if (!id) {
 			return { page: "list" };
@@ -118,13 +118,12 @@ function loaderFor(strategy: Strategy): DemoLoader<PageData> {
 		if (strategy === "render") {
 			return { id, page: "render" };
 		}
-		const qc = args.client;
-		return {
-			author: qc.prefetch(postAuthorQuery, { postId: id }),
-			comments: qc.prefetch(commentsQuery, { postId: id }),
-			page: "loader",
-			post: qc.prefetch(postQuery, { id }),
-		};
+		const [handles] = await load(args.client, {
+			author: prefetch(postAuthorQuery, { postId: id }),
+			comments: prefetch(commentsQuery, { postId: id }),
+			post: prefetch(postQuery, { id }),
+		});
+		return { ...handles, page: "loader" };
 	};
 }
 
@@ -133,8 +132,8 @@ function LineSkeleton(props: { readonly className: string }) {
 }
 
 function Title(props: { readonly handle: QueryHandle<typeof postQuery> }) {
-	const [postPromise] = useQuery(postQuery, props.handle);
-	const post = use(postPromise);
+	const [postThenable] = useQuery(postQuery, props.handle);
+	const post = use(postThenable);
 	return <h3 className="text-lg font-semibold">{post?.title}</h3>;
 }
 
@@ -145,30 +144,40 @@ function Byline(props: { readonly name: string | undefined }) {
 function CommentList(props: {
 	readonly handle: QueryHandle<typeof commentsQuery>;
 }) {
-	const [pagesPromise] = useQuery(commentsQuery, props.handle);
-	const pages = use(pagesPromise);
+	const [pagesThenable, commentsState] = useInfiniteQuery(
+		commentsQuery,
+		props.handle,
+	);
+	const pages = use(pagesThenable);
 	return (
-		<ul className="grid gap-1.5">
-			{pages.pages
-				.flatMap((page) => page.items)
-				.map((comment) => (
-					<li
-						className="rounded-md border px-3 py-1.5 text-sm"
-						key={comment.id}
-					>
-						<span className="mr-2 font-medium">{comment.author}</span>
-						{comment.body}
-					</li>
-				))}
-		</ul>
+		<div className="grid gap-1.5">
+			<ul className="grid gap-1.5">
+				{pages.pages
+					.flatMap((page) => page.items)
+					.map((comment) => (
+						<li
+							className="rounded-md border px-3 py-1.5 text-sm"
+							key={comment.id}
+						>
+							<span className="mr-2 font-medium">{comment.author}</span>
+							{comment.body}
+						</li>
+					))}
+			</ul>
+			<LoadMoreButton
+				fetchNextPage={commentsState.fetchNextPage}
+				hasNextPage={commentsState.hasNextPage}
+				isFetchingNextPage={commentsState.isFetchingNextPage}
+			/>
+		</div>
 	);
 }
 
 function LoaderAuthor(props: {
 	readonly handle: QueryHandle<typeof postAuthorQuery>;
 }) {
-	const [authorPromise] = useQuery(postAuthorQuery, props.handle);
-	const author = use(authorPromise);
+	const [authorThenable] = useQuery(postAuthorQuery, props.handle);
+	const author = use(authorThenable);
 	return <Byline name={author} />;
 }
 
@@ -197,9 +206,9 @@ function LoaderPost(props: {
 
 /** Each level discovers what it needs only after its parent's data arrives. */
 function RenderPost(props: { readonly id: number }) {
-	const handle = useWaterfall(postQuery, { id: props.id });
-	const [postPromise] = useQuery(postQuery, handle);
-	const post = use(postPromise);
+	const handle = waterfallHandle(postQuery, { id: props.id });
+	const [postThenable] = useQuery(postQuery, handle);
+	const post = use(postThenable);
 	return (
 		<div className="grid gap-3">
 			<div className="grid gap-1">
@@ -223,9 +232,9 @@ function RenderAuthor(props: {
 	readonly authorId: number;
 	readonly postId: number;
 }) {
-	const handle = useWaterfall(authorQuery, { id: props.authorId });
-	const [authorPromise] = useQuery(authorQuery, handle);
-	const author = use(authorPromise);
+	const handle = waterfallHandle(authorQuery, { id: props.authorId });
+	const [authorThenable] = useQuery(authorQuery, handle);
+	const author = use(authorThenable);
 	return (
 		<>
 			<Byline name={author} />
@@ -237,7 +246,7 @@ function RenderAuthor(props: {
 }
 
 function RenderComments(props: { readonly postId: number }) {
-	const handle = useWaterfall(commentsQuery, { postId: props.postId });
+	const handle = waterfallHandle(commentsQuery, { postId: props.postId });
 	return (
 		<div className="mt-3">
 			<CommentList handle={handle} />
@@ -304,13 +313,13 @@ function Waterfalls() {
 			<Segmented
 				label="Start queries in"
 				onChange={(next) => {
-					qc.clear();
+					removeAll(qc);
 					server.reset();
 					setStrategy(next);
 				}}
 				options={[
 					{ label: "the loader", value: "loader" },
-					{ label: "render (useWaterfall)", value: "render" },
+					{ label: "render (waterfallHandle)", value: "render" },
 				]}
 				value={strategy}
 			/>

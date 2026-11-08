@@ -3,7 +3,6 @@
 import type {
 	DehydratedState,
 	DehydrateOptions,
-	HydrateOptions,
 	QueryClient,
 } from "@raf-query/core";
 import type { ReactNode } from "react";
@@ -24,8 +23,8 @@ export type HydrationBoundaryProps =
 	| {
 			readonly children?: ReactNode;
 			readonly client?: never;
-			readonly options?: HydrateOptions;
-			/** A loader's `dehydrate(qc)`. */
+			readonly options?: never;
+			/** A loader's `dehydrate(client)`. */
 			readonly state: DehydratedState;
 	  };
 
@@ -39,38 +38,18 @@ export type HydrationBoundaryProps =
  * through the package's `react-server` export condition.
  *
  * ```tsx
- * const qc = getQueryClient();
- * const comments = qc.prefetch(commentsQuery, { slug });
+ * const client = getQueryClient();
+ * const [handles] = await load(client, { comments: prefetch(commentsQuery, { slug }) });
  * return (
- *   <HydrationBoundary client={qc}>
- *     <Comments handle={comments} />
+ *   <HydrationBoundary client={client}>
+ *     <Comments handle={handles.comments} />
  *   </HydrationBoundary>
  * );
  * ```
  *
  * With loaders, such as React Router Framework Mode, pass the `state` the
- * loader dehydrated:
- *
- * ```tsx
- * export async function loader(args: Route.LoaderArgs) {
- *   const qc = new QueryClient();
- *   const post = await qc.ensure(postQuery, { slug: args.params.slug });
- *   return { dehydratedState: dehydrate(qc), post };
- * }
- *
- * export default function Page(props: Route.ComponentProps) {
- *   const { dehydratedState, post } = props.loaderData;
- *   return (
- *     <HydrationBoundary state={dehydratedState}>
- *       <Post handle={post} />
- *     </HydrationBoundary>
- *   );
- * }
- * ```
- *
- * Pending entries cross as promises when the framework's serializer
- * supports them (React Router's Single Fetch does). Nested boundaries
- * are fine: each only writes what its `state` holds.
+ * loader dehydrated. Pending entries cross as promises when the framework's
+ * serializer supports them (React Router's Single Fetch does).
  */
 export function HydrationBoundary(props: HydrationBoundaryProps) {
 	// The types allow `client` here: TypeScript can't tell which build a file
@@ -80,9 +59,5 @@ export function HydrationBoundary(props: HydrationBoundaryProps) {
 			"HydrationBoundary needs `state` here. `client` works only in server components.",
 		);
 	}
-	return (
-		<Hydrate options={props.options} state={props.state}>
-			{props.children}
-		</Hydrate>
-	);
+	return <Hydrate state={props.state}>{props.children}</Hydrate>;
 }

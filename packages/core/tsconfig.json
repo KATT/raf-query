@@ -2,16 +2,21 @@
 	"compilerOptions": {
 		"declaration": true,
 		"esModuleInterop": true,
+		"jsx": "react-jsx",
 		"module": "nodenext",
 		"moduleResolution": "nodenext",
 		"noEmit": true,
+		"paths": {
+			"@raf-query/react": ["../react/src/index.ts"]
+		},
 		"resolveJsonModule": true,
 		"rewriteRelativeImportExtensions": true,
 		"skipLibCheck": true,
 		"strict": true,
 		"lib": ["ES2024", "ESNext.Disposable", "DOM", "DOM.Iterable"],
-		"target": "ES2024"
+		"target": "ES2024",
+		"types": ["node"]
 	},
-	"include": ["src", "scripts"],
+	"include": ["src", "scripts", "vitest.setup.ts"],
 	"exclude": [".repos", "dist", "node_modules", "coverage"]
 }

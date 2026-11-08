@@ -1,4 +1,7 @@
-import { queryOptions, type QueryClientConfig } from "@raf-query/react";
+import { group, queryOptions, type QueryClientConfig } from "@raf-query/react";
+
+const post = group("post");
+const comments = group("comments");
 
 declare global {
 	/** Each `queryFn` call, by key. The RSC and SSR builds share it. */
@@ -11,7 +14,7 @@ function record(key: string) {
 }
 
 export const queryClientConfig = {
-	defaults: { staleTime: 5000 },
+	staleTime: 5000,
 } as const satisfies QueryClientConfig;
 
 export function postQuery(input: { slug: string }) {
@@ -20,7 +23,7 @@ export function postQuery(input: { slug: string }) {
 			record(`post ${input.slug}`);
 			return { title: `Post ${input.slug}` };
 		},
-		queryKey: ["post", input.slug],
+		queryKey: post(input.slug),
 	});
 }
 
@@ -32,6 +35,16 @@ export function commentsQuery(input: { slug: string }) {
 			await new Promise((resolve) => setTimeout(resolve, 20));
 			return [`First comment on ${input.slug}`];
 		},
-		queryKey: ["comments", input.slug],
+		queryKey: comments(input.slug),
+	});
+}
+
+export function authorQuery(input: { slug: string }) {
+	return queryOptions({
+		queryFn: async () => {
+			record(`author ${input.slug}`);
+			return { name: "Ada" };
+		},
+		queryKey: post(input.slug, "author"),
 	});
 }

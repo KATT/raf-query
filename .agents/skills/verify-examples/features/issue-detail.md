@@ -32,4 +32,3 @@ Commands:
 - The title is an input's value, not text. `$CE wait --text` reads input values too; `$CE text` doesn't.
 - `PROPERTIES` is uppercase on screen (CSS); `$CE snapshot` reports what's rendered.
 - The skeleton count can be lower than 8 once some sections have loaded; take it right after the click, at 3 s latency.
-- `tanstack-start-effect`'s assignee card has an error state (`Could not load the assignee.` and a `Try again` button) for failures other than a missing issue. Seed data never fails, so it isn't reachable without breaking the RPC handler.

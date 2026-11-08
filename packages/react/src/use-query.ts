@@ -1,222 +1,253 @@
-"use client";
-
 import {
 	type DataOf,
-	type ErrorOf,
-	promiseControls,
-	QueryBinding,
+	type InputOf,
 	type QueryFactory,
 	type QueryHandle,
-	type QueryHandleWithData,
-	QueryObserver,
-	Query,
-	resultThenable,
+	type SingleQueryFactory,
 	type Thenable,
-	type ThrowsOnError,
-	throwsOnError,
-	type UseQueryControls,
-	type UseQueryOptions,
-	type UseQueryThrowOptions,
 } from "@raf-query/core";
-import type { Result } from "effect";
-import { use, useEffect, useState, useSyncExternalStore } from "react";
+import {
+	type Entry,
+	entryOf,
+	type EntryState,
+	fetchEntry,
+	isInvalidated,
+	isStale,
+	isWaterfallHandle,
+	mapThenable,
+	subscribeEntry,
+} from "@raf-query/core/internal";
+import { useCallback, useState, useSyncExternalStore } from "react";
 
-import { assertSent } from "./query-provider/browser-requests.ts";
+import { browserRender, leavesUnstartedToBrowser } from "./browser-render.ts";
+import {
+	createTracker,
+	type Fields,
+	type Read as TrackedRead,
+	renderedChanged,
+	trackedState,
+} from "./tracked.ts";
 import { useQueryClient } from "./provider.tsx";
 
-export type UseQueryResult<
-	TFactory extends QueryFactory,
-	TThrow extends boolean | undefined = undefined,
-> =
-	ThrowsOnError<TFactory, TThrow> extends true
-		? readonly [
-				promise: Thenable<DataOf<TFactory>>,
-				controls: UseQueryControls<TFactory>,
-			]
-		: readonly [
-				promise: Thenable<Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>>,
-				controls: UseQueryControls<TFactory>,
-			];
+/** Bundlers replace `process.env.NODE_ENV`; typed here so consumers need no Node types. */
+declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
-/** {@link useQuery}'s result for a handle from `ensure` or `fetch`. */
-export type UseQueryResultWithData<
-	TFactory extends QueryFactory,
-	TThrow extends boolean | undefined = undefined,
-> =
-	ThrowsOnError<TFactory, TThrow> extends true
-		? readonly [data: DataOf<TFactory>, controls: UseQueryControls<TFactory>]
-		: readonly [
-				result: Result.Result<DataOf<TFactory>, ErrorOf<TFactory>>,
-				controls: UseQueryControls<TFactory>,
-			];
-
-/** An observer, with the stable callbacks `useSyncExternalStore` needs. */
-interface ObserverStore<TFactory extends QueryFactory> {
-	getSnapshot(): QueryObserver.Result<DataOf<TFactory>>;
-	readonly observer: QueryObserver.QueryObserver<TFactory>;
-	subscribe(onChange: () => void): () => void;
+export interface UseQueryOptions {
+	/**
+	 * While a new handle's query has no data: `"suspend"` (the default) shows
+	 * the Suspense fallback; `"previous"` keeps showing the last handle's data
+	 * and sets `isPrevious`.
+	 */
+	readonly whilePending?: "previous" | "suspend";
 }
 
-function storeFor<TFactory extends QueryFactory>(
-	query: Query.Query<TFactory>,
-	options: QueryObserver.Options,
-): ObserverStore<TFactory> {
-	const observer = QueryObserver.makeUnsafe(query, options);
-	return {
-		getSnapshot: () => QueryObserver.getUnsafe(observer),
-		observer,
-		subscribe: (onChange) => QueryObserver.subscribeUnsafe(observer, onChange),
-	};
+/** What `useQuery` returns next to the data. */
+export interface QueryState<TFactory extends QueryFactory = QueryFactory> {
+	/** The last request's error while it's the latest outcome. */
+	readonly error: unknown;
+	readonly hash: string;
+	readonly input: InputOf<TFactory>;
+	readonly isFetching: boolean;
+	/** No data yet. */
+	readonly isPending: boolean;
+	/** Showing the previous handle's data (`whilePending: "previous"`). */
+	readonly isPrevious: boolean;
+	readonly isStale: boolean;
+	readonly queryKey: ReturnType<TFactory>["queryKey"];
+	/** Fetch again, or join the request in flight. Resolves when it settles. */
+	refetch(): Promise<void>;
+	/** When the data was fetched (ms since epoch); `0` without data. */
+	readonly updatedAt: number;
 }
 
 /**
- * Read the query a handle points at. Returns a promise to unwrap with
- * `use()` and the query's controls:
- *
- * ```tsx
- * const [postPromise, postState] = useQuery(postQuery, loaderData.post);
- * const post = use(postPromise);
- * ```
- *
- * For an Effect `queryFn` (typed {@link ErrorOf}), with `throwOnError: false`
- * (the call's, else the query's, else the client's, which is the default
- * when it has a `layer`), the first slot is a `Result` instead — `use()`
- * never throws:
- *
- * ```tsx
- * const [issueResult, issueState] = useQuery(issueQuery, loaderData.issue);
- * const issue = use(issueResult);
- * Result.match(issue, { onFailure: …, onSuccess: … });
- * ```
- *
- * The promise is stable per data version and already fulfilled once the
- * cache has data, so `use()` only suspends while there is nothing to show.
- * The component re-renders when the promise changes, and when a control it
- * has read changes; changes to controls it never reads are skipped. A
- * first load settles its pending promise in place: that counts as a change
- * once the component has read the promise's `status`, `value` or `reason`,
- * so reading them without `use()` re-renders when the data lands:
- *
- * ```tsx
- * const [tagPromise] = useQuery(tagQuery, loaderData.tag);
- * const tag = tagPromise.status === "fulfilled" ? tagPromise.value : "…";
- * ```
- *
- * A handle from `ensure` or `fetch` already has its data, so the hook
- * unwraps the promise itself and returns the data (or `Result`):
- *
- * ```tsx
- * const [post, postState] = useQuery(postQuery, loaderData.post);
- * ```
- *
- * It reads the live entry, not the handle's `data` snapshot. If that entry
- * has lost its data since (garbage-collected, `reset`), the hook suspends
- * until it is refetched.
- *
- * The hook picks by the handle at runtime (`data` in it), so a prop that
- * receives a handle from `ensure` / `fetch` must be typed
- * {@link QueryHandleWithData}: typed as `QueryHandle`, it reads as a promise
- * while the hook returns the data.
+ * What `useQuery` and `useInfiniteQuery` read, for every handle: a thenable
+ * to pass to `use()`.
+ * A loader can't promise the data is still cached when a component renders
+ * (a write can reset or remove it), so the read may suspend.
  */
-export function useQuery<
-	TFactory extends QueryFactory,
-	const TThrow extends boolean | undefined = undefined,
->(
-	factory: TFactory,
-	handle: QueryHandleWithData<TFactory>,
-	options?: UseQueryOptions &
-		UseQueryThrowOptions<TFactory> & { readonly throwOnError?: TThrow },
-): UseQueryResultWithData<TFactory, TThrow>;
-export function useQuery<
-	TFactory extends QueryFactory,
-	const TThrow extends boolean | undefined = undefined,
->(
-	factory: TFactory,
-	handle: QueryHandle<TFactory>,
-	options?: UseQueryOptions &
-		UseQueryThrowOptions<TFactory> & { readonly throwOnError?: TThrow },
-): UseQueryResult<TFactory, TThrow>;
-export function useQuery<TFactory extends QueryFactory>(
-	factory: TFactory,
-	handle: QueryHandle<TFactory>,
-	options: UseQueryOptions & { readonly throwOnError?: boolean } = {},
-	// Overloads name the return; the body picks at runtime.
-):
-	| UseQueryResult<TFactory, boolean>
-	| UseQueryResultWithData<TFactory, boolean> {
-	const client = useQueryClient();
-	const query = QueryBinding.queryFor(client, factory, handle);
-	assertSent(client, query);
-	Query.readUnsafe(query);
+export type QueryValue<TFactory extends QueryFactory> = Thenable<
+	DataOf<TFactory>
+>;
 
-	const refetchInterval = options.refetchInterval;
-	const refetchOnReconnect = options.refetchOnReconnect;
-	const refetchOnWindowFocus = options.refetchOnWindowFocus;
-	const whilePending = options.whilePending;
-	const [store] = useState(() => storeFor(query, options));
-	const observer = store.observer;
-	const result = QueryObserver.getOptimisticResultUnsafe(
-		observer,
-		query,
-		options,
-	);
-	useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
-	useEffect(() => {
-		QueryObserver.setOptionsUnsafe(observer, query, {
-			refetchInterval,
-			refetchOnReconnect,
-			refetchOnWindowFocus,
-			whilePending,
-		});
-	}, [
-		observer,
-		query,
-		refetchInterval,
-		refetchOnReconnect,
-		refetchOnWindowFocus,
-		whilePending,
-	]);
+/** Whether nothing is loading the entry: no data, no error, no request in flight. */
+function isIdle(entry: Entry, state: EntryState): boolean {
+	return !state.hasData && !entry.run && state.status !== "error";
+}
 
-	// The promise is returned as the tuple's first element, where reads can't
-	// be seen, so it always counts as read.
-	QueryObserver.trackProp(observer, "promise");
-	const controls = promiseControls(QueryObserver.trackResult(observer, result));
-	const throwOnError = throwsOnError(
-		query,
-		options.throwOnError,
-		client.throwOnError,
-	);
-	const withData = "data" in handle;
-	if (!throwOnError) {
-		const resultPromise = resultThenable<DataOf<TFactory>, ErrorOf<TFactory>>(
-			result.promise,
+/**
+ * Start the request of an entry nothing is loading: the reader of a
+ * waterfall handle, or of a query the cache dropped. A server render fed by
+ * server components leaves it to the browser: nothing would send its data.
+ */
+function startIfMissing(entry: Entry, state: EntryState, waterfall: boolean) {
+	const client = entry.client;
+	if (!isIdle(entry, state) || leavesUnstartedToBrowser(client)) {
+		return;
+	}
+	if (process.env.NODE_ENV !== "production" && !waterfall && !client.isServer) {
+		// oxlint-disable-next-line no-console -- a development-only hint
+		console.warn(
+			`raf-query: ${entry.hash} was read before anything loaded it, so it fetches while rendering. Start it in a loader with load(), or build the handle with waterfallHandle() to make the waterfall explicit.`,
 		);
-		if (withData) {
-			// SAFETY: `use` unwraps to Result when throwOnError is false.
-			return [
-				use(resultPromise),
-				controls,
-			] as unknown as UseQueryResultWithData<TFactory, false>;
-		}
-		// SAFETY: Result thenable for typed ErrorOf when throwOnError is false.
-		return [
-			QueryObserver.trackThenable(observer, resultPromise),
-			controls,
-		] as unknown as UseQueryResult<TFactory, false>;
 	}
-	if (withData) {
-		const data = use(result.promise);
-		// SAFETY: as below; `use` unwraps the promise to its data.
-		return [data, controls] as unknown as UseQueryResultWithData<
-			TFactory,
-			true
-		>;
+	void fetchEntry(entry);
+}
+
+/**
+ * In a server render fed by server components, an entry `startIfMissing`
+ * left to the browser reads as a rejection: a `use()` of it inside Suspense
+ * renders that boundary's fallback, and the browser renders the content.
+ */
+function readOf(entry: Entry, state: EntryState): Thenable<unknown> {
+	return leavesUnstartedToBrowser(entry.client) && isIdle(entry, state)
+		? browserRender(entry)
+		: entry.thenable;
+}
+
+export function settled(promise: Promise<unknown>): Promise<void> {
+	return promise.then(() => {});
+}
+
+/** The state a kind of query adds, from the entry it shows and that entry's state. */
+export type ExtraFields = (entry: Entry, state: EntryState) => Fields;
+
+/**
+ * One read of the entry. It takes both entries' states as arguments: core
+ * writes a new state object with every write (and the thenable that
+ * carries it), so a compiler that memoizes the call recomputes it.
+ */
+function readQuery(
+	current: Entry,
+	state: EntryState,
+	shown: Entry,
+	shownState: EntryState,
+	handle: QueryHandle,
+	options: UseQueryOptions | undefined,
+	extra: ExtraFields | undefined,
+): TrackedRead & { readonly entry: Entry } {
+	const isPrevious =
+		options?.whilePending === "previous" &&
+		!state.hasData &&
+		shown !== current &&
+		shownState.hasData;
+	const entry = isPrevious ? shown : current;
+	const entryState = isPrevious ? shownState : state;
+	const added = extra?.(entry, entryState);
+	return {
+		actions: {
+			refetch: () => settled(fetchEntry(current)),
+			...added?.actions,
+		},
+		entry,
+		fields: {
+			error: state.error,
+			hash: current.hash,
+			input: handle.input,
+			isFetching: state.isFetching,
+			isPending: !state.hasData,
+			isPrevious,
+			isStale: isStale(current),
+			queryKey: handle.queryKey,
+			updatedAt: state.updatedAt,
+			...added?.fields,
+		},
+		source: readOf(entry, entryState),
+	};
+}
+
+/** What both hooks read: the thenable, and the tracked state. */
+export interface QueryRead<TControls> {
+	readonly controls: TControls;
+	readonly thenable: Thenable<unknown>;
+}
+
+/**
+ * The read both hooks share: the thenable, and the state with the fields
+ * `extra` adds. The state is tracked: the component re-renders, and gets a
+ * new state object, only when the thenable or a field it read changes.
+ */
+export function useQueryRead<TControls extends object>(
+	factory: QueryFactory,
+	handle: QueryHandle,
+	options: UseQueryOptions | undefined,
+	extra?: ExtraFields,
+): QueryRead<TControls> {
+	const client = useQueryClient();
+	const current = entryOf(client, factory, handle.input);
+	const [tracker] = useState(createTracker);
+	const subscribe = useCallback(
+		(onChange: () => void) => {
+			const unsubscribe = subscribeEntry(current, () => {
+				if (renderedChanged(tracker)) {
+					onChange();
+				}
+			});
+			if (isInvalidated(current)) {
+				void fetchEntry(current);
+			}
+			return unsubscribe;
+		},
+		[current, tracker],
+	);
+	const getState = () => current.state;
+	const state = useSyncExternalStore(subscribe, getState, getState);
+	const [shown, setShown] = useState(current);
+	if (shown !== current && state.hasData) {
+		setShown(current);
 	}
-	// SAFETY: the result's promise is this factory's entry's promise (or an
-	// earlier input's entry of the same factory), and the result has every
-	// field of both control shapes.
+	startIfMissing(current, state, isWaterfallHandle(handle));
+	const read = readQuery(
+		current,
+		state,
+		shown,
+		shown.state,
+		handle,
+		options,
+		extra,
+	);
+	const controls = trackedState(tracker, read, () =>
+		readQuery(
+			current,
+			current.state,
+			shown,
+			shown.state,
+			handle,
+			options,
+			extra,
+		),
+	);
+	const selected = useState(() => new WeakMap())[0];
+	const select = read.entry.options?.select;
+	const thenable = select
+		? mapThenable(selected, read.source, select)
+		: read.source;
+	// SAFETY: `extra` adds the fields the caller's controls type declares to `readQuery`'s.
+	const typed = controls as TControls;
+	return { controls: typed, thenable };
+}
+
+/**
+ * Read a query by its handle.
+ *
+ * ```tsx
+ * const [issueThenable, issueState] = useQuery(issueQuery, handles.issue);
+ * const issue = use(issueThenable);
+ * ```
+ *
+ * Reading never refetches stale data: loaders decide freshness. A query no
+ * loader started fetches while rendering, which is a waterfall (see
+ * `waterfallHandle`). Paged queries read with `useInfiniteQuery`.
+ */
+export function useQuery<TFactory extends SingleQueryFactory>(
+	factory: TFactory,
+	handle: QueryHandle<TFactory>,
+	options?: UseQueryOptions,
+): readonly [QueryValue<TFactory>, QueryState<TFactory>] {
+	const read = useQueryRead<QueryState<TFactory>>(factory, handle, options);
 	return [
-		QueryObserver.trackThenable(observer, result.promise),
-		controls,
-	] as unknown as UseQueryResult<TFactory, true>;
+		// SAFETY: `QueryValue` describes what was read for this handle.
+		read.thenable as QueryValue<TFactory>,
+		read.controls,
+	];
 }

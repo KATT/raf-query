@@ -1,54 +1,27 @@
-"use client";
-
-import type { QueryCache, QueryClient } from "@raf-query/core";
+import { type Group, isFetching } from "@raf-query/core";
+import type { AnyFactory, AnyTarget } from "@raf-query/core/internal";
 import { useCallback, useSyncExternalStore } from "react";
 
 import { useQueryClient } from "./provider.tsx";
 
-// Cache events fire synchronously, sometimes while another component renders
-// (a read that starts a fetch), so React hears about them in a microtask,
-// once per batch.
-function subscribeDeferred(
-	client: QueryClient<unknown>,
-	onStoreChange: () => void,
-) {
-	let scheduled = false;
-	return client.subscribe(() => {
-		if (scheduled) {
-			return;
-		}
-		scheduled = true;
-		queueMicrotask(() => {
-			scheduled = false;
-			onStoreChange();
-		});
-	});
-}
-
-const none = () => 0;
+const serverCount = () => 0;
 
 /**
- * How many queries have a request in flight: all of them, or those matching
- * `filter`. Re-renders when the count changes. It's `0` on the server and
- * while hydrating, so the server's HTML and the browser's first render agree.
- *
- * You probably don't need this. Prefer the router's pending UI for
- * navigations (`useRouterState` / `pendingComponent` in TanStack Router,
- * `useLinkStatus` in Next.js) and per-query `controls.isFetching` for
- * background refetches. Kept for TanStack Query compatibility when you want
- * one global count of every in-flight request:
- *
- * ```tsx
- * const fetching = useIsFetching();
- * return fetching > 0 ? <ProgressBar /> : null;
- * ```
+ * How many queries have a request in flight: all of them, or a factory's,
+ * a group's or a target's. For a global loading indicator. Always `0` on
+ * the server and while hydrating, so the HTML matches the first browser render.
  */
-export function useIsFetching(filter?: QueryCache.Filter): number {
+export function useIsFetching(target?: AnyFactory | AnyTarget | Group): number {
 	const client = useQueryClient();
 	const subscribe = useCallback(
-		(onStoreChange: () => void) => subscribeDeferred(client, onStoreChange),
+		(onChange: () => void) =>
+			client.subscribe((event) => {
+				if (event.type === "updated" || event.type === "removed") {
+					onChange();
+				}
+			}),
 		[client],
 	);
-	const getSnapshot = () => client.isFetching(filter);
-	return useSyncExternalStore(subscribe, getSnapshot, none);
+	const count = () => isFetching(client, target);
+	return useSyncExternalStore(subscribe, count, serverCount);
 }

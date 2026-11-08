@@ -112,8 +112,8 @@ function IssueNav(props: { readonly id: number }) {
 }
 
 function useIssue(handle: QueryHandle<typeof issueQuery>) {
-	const [issuePromise] = useQuery(issueQuery, handle);
-	const issue = use(issuePromise);
+	const [issueThenable] = useQuery(issueQuery, handle);
+	const issue = use(issueThenable);
 	if (!issue) {
 		notFound();
 	}

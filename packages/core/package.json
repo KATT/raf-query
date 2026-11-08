@@ -31,30 +31,35 @@
 	"type": "module",
 	"sideEffects": false,
 	"exports": {
-		".": "./src/index.ts"
+		".": "./src/index.ts",
+		"./internal": "./src/internal.ts"
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/sync-package-docs.ts",
 		"build": "vp pack",
 		"test": "vp test",
-		"typecheck": "tsc",
+		"typecheck": "tsc && tsc -p tsconfig.no-node.json",
 		"publish:npm": "pnpm pack --out package.tgz && npm publish package.tgz --access public && rm package.tgz"
 	},
-	"peerDependencies": {
-		"effect": "^4.0.0"
-	},
 	"devDependencies": {
-		"@effect/vitest": "catalog:",
+		"@testing-library/react": "16.3.3",
 		"@types/node": "26.6.4",
+		"@types/react": "19.3.0",
+		"@types/react-dom": "19.3.0",
 		"@vitest/coverage-v8": "5.0.1",
-		"effect": "catalog:",
+		"fast-check": "catalog:",
+		"happy-dom": "21.0.1",
+		"react": "19.3.0",
+		"react-dom": "19.3.0",
 		"typescript": "7.0.2",
-		"vite-plus": "1.0.0"
+		"vite-plus": "1.0.0",
+		"vitest": "5.0.1"
 	},
 	"publishConfig": {
 		"access": "public",
 		"exports": {
-			".": "./dist/index.mjs"
+			".": "./dist/index.mjs",
+			"./internal": "./dist/internal.mjs"
 		},
 		"provenance": true
 	},

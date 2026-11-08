@@ -11,8 +11,9 @@
 		"skipLibCheck": true,
 		"strict": true,
 		"lib": ["ES2024", "ESNext.Disposable", "DOM", "DOM.Iterable"],
-		"target": "ES2024"
+		"target": "ES2024",
+		"types": ["node"]
 	},
-	"include": ["src", "scripts"],
+	"include": ["src", "scripts", "vitest.setup.ts"],
 	"exclude": [".repos", "dist", "node_modules", "coverage"]
 }

@@ -8,8 +8,14 @@ import { AssigneeCardSkeleton } from "@examples/kit/components/user";
 import { Button, buttonVariants } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
 import { cn } from "@examples/ui/lib/utils";
-import { dehydrate, type QueryHandle, useQuery } from "@raf-query/react";
-import { HydrationBoundary } from "@raf-query/react";
+import {
+	dehydrate,
+	HydrationBoundary,
+	load,
+	prefetch,
+	type QueryHandle,
+	useQuery,
+} from "@raf-query/react";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Suspense, use } from "react";
 import { isRouteErrorResponse } from "react-router";
@@ -27,8 +33,8 @@ import type { Route } from "./+types/route";
 import { AssigneeCard } from "./components/assignee-card.tsx";
 import { Comments } from "./components/comments.tsx";
 
-export function loader(args: Route.LoaderArgs) {
-	return withRequest(args.request, () => {
+export async function loader(args: Route.LoaderArgs) {
+	return withRequest(args.request, async () => {
 		const id = Number(args.params.issueId);
 		if (!IssueId.safeParse(id).success) {
 			throw new Response("Not Found", { status: 404 });
@@ -37,11 +43,11 @@ export function loader(args: Route.LoaderArgs) {
 		// `prefetch` starts each query and returns its handle at once. The page
 		// streams in behind skeletons, and finds out about a missing
 		// issue when it reads it.
-		const handles = {
-			assignee: queryClient.prefetch(assigneeQuery, { issueId: id }),
-			comments: queryClient.prefetch(commentsQuery, { issueId: id }),
-			issue: queryClient.prefetch(issueQuery, { id }),
-		};
+		const [handles] = await load(queryClient, {
+			assignee: prefetch(assigneeQuery, { issueId: id }),
+			comments: prefetch(commentsQuery, { issueId: id }),
+			issue: prefetch(issueQuery, { id }),
+		});
 		return {
 			assignee: handles.assignee,
 			comments: handles.comments,
@@ -156,8 +162,8 @@ function IssueNav(props: { readonly id: number }) {
 const issueNotFound = new Response("Not Found", { status: 404 });
 
 function useIssue(handle: QueryHandle<typeof issueQuery>) {
-	const [issuePromise] = useQuery(issueQuery, handle);
-	const issue = use(issuePromise);
+	const [issueThenable] = useQuery(issueQuery, handle);
+	const issue = use(issueThenable);
 	if (!issue) {
 		throw issueNotFound;
 	}

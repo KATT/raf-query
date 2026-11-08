@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import { type QueryClient, removeAll } from "@raf-query/react";
 import type { QueryTimeDefaults } from "@examples/db/types";
 import { AppHeader } from "@examples/kit/components/app-header";
 import { Logo } from "@examples/kit/components/logo";
@@ -7,7 +8,6 @@ import { ThemeProvider } from "@examples/kit/components/theme-provider";
 import { loaderVerbOf } from "@examples/kit/lib/loader-verb";
 import { logoUrl } from "@examples/kit/lib/logo";
 import { Toaster } from "@examples/ui/components/sonner";
-import type { QueryClient } from "@raf-query/react";
 import {
 	createRootRouteWithContext,
 	HeadContent,
@@ -87,7 +87,7 @@ function RootDocument(props: { readonly children: ReactNode }) {
 									setPrefetch(next);
 								}}
 								onReset={() => {
-									router.options.context.queryClient.clear();
+									removeAll(router.options.context.queryClient);
 									router.clearCache();
 									window.location.reload();
 								}}

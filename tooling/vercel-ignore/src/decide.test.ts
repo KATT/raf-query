@@ -95,7 +95,10 @@ describe("decide", () => {
 		Effect.gen(function* () {
 			const root = (yield* setup).root;
 			yield* touch(root, "libs/b/a.ts");
-			const env = { VERCEL_GIT_COMMIT_REF: "feature" };
+			const env = { VERCEL_GIT_COMMIT_REF: "feature" } satisfies Record<
+				string,
+				string
+			>;
 			assert.isTrue((yield* decideFor(root, "apps/web").pipe(run(env))).build);
 			assert.isFalse(
 				(yield* decideFor(root, "apps/other").pipe(run(env))).build,

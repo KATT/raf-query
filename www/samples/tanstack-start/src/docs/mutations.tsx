@@ -1,14 +1,15 @@
-import { useOptimistic } from "react";
-import { useQueryClient } from "@raf-query/react";
+import {
+	invalidateMany,
+	invalidateOne,
+	useQueryClient,
+} from "@raf-query/react";
+import { useOptimistic, useTransition } from "react";
 import { type Post, updatePost } from "~/api.ts";
-import { postQuery } from "~/queries.ts";
-import { useTransition } from "react";
-import { QueryClient } from "@raf-query/react";
-import { infiniteQueryOptions } from "@raf-query/react";
+import { authors, postQuery, postsQuery } from "~/queries.ts";
 
 // #region intro
 function EditTitle(props: { post: Post }) {
-	const qc = useQueryClient();
+	const queryClient = useQueryClient();
 	const [title, setOptimisticTitle] = useOptimistic(props.post.title);
 
 	return (
@@ -17,7 +18,7 @@ function EditTitle(props: { post: Post }) {
 				const next = String(formData.get("title"));
 				setOptimisticTitle(next);
 				await updatePost({ slug: props.post.slug, title: next });
-				await qc.invalidate(postQuery, { slug: props.post.slug });
+				await invalidateOne(queryClient, postQuery, { slug: props.post.slug });
 			}}
 		>
 			<input name="title" defaultValue={title} />
@@ -26,36 +27,28 @@ function EditTitle(props: { post: Post }) {
 }
 // #endregion
 
-const qc = new QueryClient();
+declare function deletePostApi(slug: string): Promise<void>;
 
-declare function deletePost(slug: string): Promise<void>;
+function DeleteButton(props: { slug: string }) {
+	// #region pending-state
+	const queryClient = useQueryClient();
+	const [isPending, startTransition] = useTransition();
 
-declare const props: { slug: string };
-
-function postsQuery() {
-	return infiniteQueryOptions({
-		queryKey: ["posts"],
-		queryFn: async () => ({
-			items: [] as Array<{ slug: string }>,
-			nextCursor: null,
-		}),
-		initialPageParam: 0,
-		getNextPageParam: (lastPage) => lastPage.nextCursor,
-	});
+	return (
+		<button
+			disabled={isPending}
+			onClick={() => {
+				startTransition(async () => {
+					await deletePostApi(props.slug);
+					// The post lists, and the authors' post counts
+					await invalidateMany(queryClient, [postsQuery, authors]);
+				});
+			}}
+		>
+			Delete
+		</button>
+	);
+	// #endregion
 }
 
-// #region pending-state
-const [isPending, startTransition] = useTransition();
-
-<button
-	disabled={isPending}
-	onClick={() => {
-		startTransition(async () => {
-			await deletePost(props.slug);
-			await qc.invalidate(postsQuery);
-		});
-	}}
->
-	Delete
-</button>;
-// #endregion
+export { DeleteButton, EditTitle };

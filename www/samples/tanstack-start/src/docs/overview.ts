@@ -1,11 +1,13 @@
 import { getPost } from "~/api.ts";
 
 // #region a-taste
-import { queryOptions } from "@raf-query/react";
+import { group, queryOptions } from "@raf-query/react";
+
+const posts = group("posts");
 
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: ["post", input.slug],
+		queryKey: posts(input.slug),
 		queryFn: () => getPost(input.slug),
 		staleTime: 30_000,
 	});

@@ -8,12 +8,7 @@ import { Effect, FileSystem, Path, type PlatformError } from "effect";
 
 const repo = "KATT/raf-query";
 export const branch = "codesandbox";
-export const apps = [
-	"nextjs",
-	"react-router",
-	"tanstack-start",
-	"tanstack-start-effect",
-] as const;
+export const apps = ["nextjs", "react-router", "tanstack-start"] as const;
 export type App = (typeof apps)[number];
 
 /** The route each app's CodeSandbox link opens, relative to the app. */
@@ -21,7 +16,6 @@ const routes = {
 	nextjs: "src/app/prefetch/issues/page.tsx",
 	"react-router": "app/routes/prefetch/issues/route.tsx",
 	"tanstack-start": "src/routes/prefetch/issues/index.tsx",
-	"tanstack-start-effect": "src/routes/prefetch/issues/index.tsx",
 } satisfies Record<App, string>;
 
 const ignored = new Set([

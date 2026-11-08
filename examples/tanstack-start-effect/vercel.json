@@ -1,7 +1,14 @@
 {
 	"$schema": "https://openapi.vercel.sh/vercel.json",
-	"buildCommand": "pnpm build",
-	"framework": "tanstack-start",
-	"ignoreCommand": "sh ../../tooling/vercel-ignore/ignore.sh",
-	"installCommand": "pnpm install --frozen-lockfile"
+	"buildCommand": "",
+	"framework": null,
+	"installCommand": "",
+	"outputDirectory": ".",
+	"redirects": [
+		{
+			"destination": "https://raf-query.katt.dev/docs/examples",
+			"permanent": true,
+			"source": "/(.*)"
+		}
+	]
 }

@@ -1,4 +1,10 @@
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import {
+	load,
+	prefetch,
+	type QueryHandle,
+	useInfiniteQuery,
+	useQuery,
+} from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense, use } from "react";
 
@@ -7,19 +13,20 @@ import { commentsQuery, postQuery } from "~/queries.ts";
 
 declare function PostSkeleton(): React.ReactNode;
 
-// Homepage sample: one file. `posts.$slug.tsx` keeps ensure+prefetch for the
+// Homepage sample: one file. `posts.$slug.tsx` keeps swr+prefetch for the
 // guides that teach that split.
 
 // #region hero
 // #region route
 export const Route = createFileRoute("/blog/$slug")({
-	loader: (args) => {
-		const qc = args.context.queryClient;
+	loader: async (args) => {
 		const { slug } = args.params;
 		// Never waits: both load while the page renders.
-		const comments = qc.prefetch(commentsQuery, { slug });
-		const post = qc.prefetch(postQuery, { slug });
-		return { comments, post };
+		const [handles] = await load(args.context.queryClient, {
+			comments: prefetch(commentsQuery, { slug }),
+			post: prefetch(postQuery, { slug }),
+		});
+		return handles;
 	},
 	component: PostPage,
 });
@@ -41,17 +48,17 @@ function PostPage() {
 }
 
 function Post(props: { handle: QueryHandle<typeof postQuery> }) {
-	const [postPromise] = useQuery(postQuery, props.handle);
+	const [postThenable] = useQuery(postQuery, props.handle);
 	//     ^?
-	const post = use(postPromise);
+	const post = use(postThenable);
 	return <h1>{post.title}</h1>;
 }
 
 // ---collapse---
 function PostComments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	// May still be loading. If so, use() suspends until it lands.
-	const [pagesPromise] = useQuery(commentsQuery, props.handle);
-	const pages = use(pagesPromise);
+	const [pagesThenable] = useInfiniteQuery(commentsQuery, props.handle);
+	const pages = use(pagesThenable);
 	return pages.pages.flatMap((page) => page.items).map(renderComment);
 }
 // ---/collapse---

@@ -13,7 +13,6 @@ import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as TodosRouteImport } from './routes/todos'
 import { Route as AuthDashboardRouteImport } from './routes/_auth.dashboard'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as PostsSlugRouteImport } from './routes/posts.$slug'
@@ -37,11 +36,6 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TodosRoute = TodosRouteImport.update({
-  id: '/todos',
-  path: '/todos',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthDashboardRoute = AuthDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -63,7 +57,6 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/posts': typeof PostsRouteWithChildren
   '/settings': typeof SettingsRoute
-  '/todos': typeof TodosRoute
   '/dashboard': typeof AuthDashboardRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/posts/$slug': typeof PostsSlugRoute
@@ -73,7 +66,6 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/posts': typeof PostsRouteWithChildren
   '/settings': typeof SettingsRoute
-  '/todos': typeof TodosRoute
   '/dashboard': typeof AuthDashboardRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/posts/$slug': typeof PostsSlugRoute
@@ -84,7 +76,6 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/posts': typeof PostsRouteWithChildren
   '/settings': typeof SettingsRoute
-  '/todos': typeof TodosRoute
   '/_auth/dashboard': typeof AuthDashboardRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/posts/$slug': typeof PostsSlugRoute
@@ -96,7 +87,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/posts'
     | '/settings'
-    | '/todos'
     | '/dashboard'
     | '/blog/$slug'
     | '/posts/$slug'
@@ -106,7 +96,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/posts'
     | '/settings'
-    | '/todos'
     | '/dashboard'
     | '/blog/$slug'
     | '/posts/$slug'
@@ -116,7 +105,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/posts'
     | '/settings'
-    | '/todos'
     | '/_auth/dashboard'
     | '/blog/$slug'
     | '/posts/$slug'
@@ -127,7 +115,6 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PostsRoute: typeof PostsRouteWithChildren
   SettingsRoute: typeof SettingsRoute
-  TodosRoute: typeof TodosRoute
   BlogSlugRoute: typeof BlogSlugRoute
 }
 
@@ -159,13 +146,6 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/todos': {
-      id: '/todos'
-      path: '/todos'
-      fullPath: '/todos'
-      preLoaderRoute: typeof TodosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth/dashboard': {
@@ -217,7 +197,6 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PostsRoute: PostsRouteWithChildren,
   SettingsRoute: SettingsRoute,
-  TodosRoute: TodosRoute,
   BlogSlugRoute: BlogSlugRoute,
 }
 export const routeTree = rootRouteImport

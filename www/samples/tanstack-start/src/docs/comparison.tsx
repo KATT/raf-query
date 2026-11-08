@@ -1,5 +1,21 @@
-import { type QueryHandle, queryOptions, useQuery } from "@raf-query/react";
-import { createFileRoute } from "@tanstack/react-router";
+import {
+	group,
+	type QueryHandle,
+	queryOptions,
+	useQuery,
+	waterfallHandle,
+} from "@raf-query/react";
+import { useHydrated } from "@tanstack/react-router";
+import { useState } from "react";
+import { postQuery } from "~/queries.ts";
+
+const permission = group("permission");
+
+declare function Spinner(): React.ReactNode;
+
+declare function ErrorNotice(props: {
+	readonly error: unknown;
+}): React.ReactNode;
 
 declare function NotificationsToggle(props: {
 	readonly permission: PermissionState | undefined;
@@ -8,44 +24,53 @@ declare function NotificationsToggle(props: {
 // #region queries
 export function permissionQuery(input: { name: PermissionName }) {
 	return queryOptions({
-		queryKey: ["permission", input.name],
+		queryKey: permission(input.name),
 		queryFn: async () => {
 			const status = await navigator.permissions.query(input);
 			return status.state;
 		},
-		// Only the browser has `navigator.permissions`.
-		enabled: typeof window !== "undefined",
 	});
 }
 // #endregion queries
 
-// #region route
-export const Route = createFileRoute("/settings")({
-	loader: (args) => ({
-		notifications: args.context.queryClient.prefetch(permissionQuery, {
-			name: "notifications",
-		}),
-	}),
-	component: NotificationsSetting,
-});
-// #endregion route
-
-declare const loaderData: {
-	notifications: QueryHandle<typeof permissionQuery>;
-};
-
 // #region component
 function NotificationsSetting() {
-	const [promise] = useQuery(permissionQuery, loaderData.notifications);
-	const permission = promise.status === "fulfilled" ? promise.value : undefined;
+	// `false` on the server and while hydrating, `true` after.
+	const hydrated = useHydrated();
+	if (!hydrated) {
+		return <NotificationsToggle permission={undefined} />;
+	}
+	return <NotificationsPermission />;
+}
+
+function NotificationsPermission() {
+	// Only the browser has `navigator.permissions`, so the handle is built here.
+	const [handle] = useState(() =>
+		waterfallHandle(permissionQuery, { name: "notifications" }),
+	);
+	const [permissionThenable] = useQuery(permissionQuery, handle);
+	const permission =
+		permissionThenable.status === "fulfilled"
+			? permissionThenable.value
+			: undefined;
 	return <NotificationsToggle permission={permission} />;
 }
 // #endregion component
 
 // #region thenable
-const [promise, controls] = useQuery(permissionQuery, loaderData.notifications);
-const data = promise.status === "fulfilled" ? promise.value : undefined;
-//    ^?
-const error = promise.status === "rejected" ? promise.reason : undefined;
-const { isFetching, isPending } = controls;
+function PostTitle(props: { handle: QueryHandle<typeof postQuery> }) {
+	const [postThenable, postState] = useQuery(postQuery, props.handle);
+	switch (postThenable.status) {
+		case "pending":
+			return <Spinner />;
+		case "rejected":
+			return <ErrorNotice error={postThenable.reason} />;
+		case "fulfilled":
+			return (
+				<h1 aria-busy={postState.isFetching}>{postThenable.value.title}</h1>
+			);
+	}
+}
 // #endregion thenable
+
+export { NotificationsSetting, PostTitle };

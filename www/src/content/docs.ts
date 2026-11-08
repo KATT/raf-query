@@ -1,8 +1,10 @@
-import { queryOptions } from "@raf-query/react";
+import { group, queryOptions } from "@raf-query/react";
 import { notFound } from "@tanstack/react-router";
 import { sections } from "virtual:docs-manifest";
 
 import type { Doc, DocMeta } from "./types.ts";
+
+const doc = group("doc");
 
 export { sections };
 
@@ -13,12 +15,12 @@ export const allDocs: ReadonlyArray<DocMeta> = sections.flatMap(
 export const firstDoc = allDocs[0]?.slug ?? "overview";
 
 export function findDoc(slug: string): DocMeta | undefined {
-	return allDocs.find((doc) => doc.slug === slug);
+	return allDocs.find((meta) => meta.slug === slug);
 }
 
 /** The pages before and after `slug` in sidebar order. */
 export function neighbours(slug: string) {
-	const index = allDocs.findIndex((doc) => doc.slug === slug);
+	const index = allDocs.findIndex((meta) => meta.slug === slug);
 	return {
 		next: index === -1 ? undefined : allDocs[index + 1],
 		previous: index <= 0 ? undefined : allDocs[index - 1],
@@ -48,7 +50,7 @@ export function docQuery(input: { slug: string }) {
 			const page = await load();
 			return page.default;
 		},
-		queryKey: ["doc", input.slug],
+		queryKey: doc(input.slug),
 		staleTime: Number.POSITIVE_INFINITY,
 	});
 }

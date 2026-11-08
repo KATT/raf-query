@@ -1,46 +1,43 @@
-import { Suspense } from "react";
-import { type QueryHandleWithData, useQuery } from "@raf-query/react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import { type ReactNode, use } from "react";
+import type { PostComment } from "~/api.ts";
 import { postQuery } from "~/queries.ts";
-import type { ReactNode } from "react";
-import { Route } from "~/routes/posts.$slug.tsx";
-import { use } from "react";
-import type { Todo } from "~/api.ts";
 
-declare function PostBody(props: { readonly post: unknown }): ReactNode;
+declare const loaderData: { post: QueryHandle<typeof postQuery> };
 
-declare function PostSkeleton(): ReactNode;
+declare function CommentsSection(): ReactNode;
 
-// #region tracked-controls
+// #region reading-where-the-data-is-used
 function PostPage() {
-	const loaderData = Route.useLoaderData();
-	// Reads only the promise: doesn't re-render while refetching.
-	const [postPromise] = useQuery(postQuery, loaderData.post);
+	// Passes the handle down; doesn't read the query.
 	return (
 		<>
 			<RefreshButton handle={loaderData.post} />
-			<Suspense fallback={<PostSkeleton />}>
-				<PostBody post={postPromise} />
-			</Suspense>
+			<PostBody handle={loaderData.post} />
+			<CommentsSection />
 		</>
 	);
 }
 
-function RefreshButton(props: {
-	handle: QueryHandleWithData<typeof postQuery>;
-}) {
-	// Reads isFetching: re-renders when a request starts and ends.
-	const [, post] = useQuery(postQuery, props.handle);
+function RefreshButton(props: { handle: QueryHandle<typeof postQuery> }) {
+	const [, postState] = useQuery(postQuery, props.handle);
 	return (
-		<button disabled={post.isFetching} onClick={() => post.refetch()}>
+		<button disabled={postState.isFetching} onClick={() => postState.refetch()}>
 			Refresh
 		</button>
 	);
 }
+
+function PostBody(props: { handle: QueryHandle<typeof postQuery> }) {
+	const [postThenable] = useQuery(postQuery, props.handle);
+	const post = use(postThenable);
+	return <article>{post.body}</article>;
+}
 // #endregion
 
-declare const todosPromise: Promise<ReadonlyArray<Todo>>;
+declare const commentsPromise: Promise<ReadonlyArray<PostComment>>;
 
-// #region deriving-data
-const todos = use(todosPromise);
-const done = todos.filter((todo) => todo.done);
+// #region deriving-in-render
+const comments = use(commentsPromise);
+const byAda = comments.filter((comment) => comment.author === "Ada");
 // #endregion

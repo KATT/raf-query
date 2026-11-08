@@ -1,32 +1,35 @@
-import { useQuery } from "@raf-query/react";
-import { queryOptions } from "@raf-query/react";
-import { use, type ReactNode } from "react";
+import { useQuery, waterfallHandle } from "@raf-query/react";
+import { useHydrated } from "@tanstack/react-router";
+import { Suspense, use, useState, type ReactNode } from "react";
 
-declare function detectPushState(channel: string): Promise<"on" | "off">;
-
-function pushStateQuery(input: { channel: string }) {
-	return queryOptions({
-		queryKey: ["pushState", input.channel],
-		queryFn: () => detectPushState(input.channel),
-		enabled: typeof window !== "undefined",
-	});
-}
-
-declare const loaderData: {
-	push: import("@raf-query/react").QueryHandle<typeof pushStateQuery>;
-};
+import { pushStateQuery } from "./ssr-and-hydration.ts";
 
 declare function PushSwitch(props: {
 	readonly state: "on" | "off" | "unknown";
 }): ReactNode;
 
 // #region push-state
-function PushState() {
-	const [pushPromise, push] = useQuery(pushStateQuery, loaderData.push);
-	if (push.isPending) {
+function PushSettings() {
+	// `false` on the server and while hydrating, `true` after.
+	const hydrated = useHydrated();
+	if (!hydrated) {
 		return <PushSwitch state="unknown" />;
 	}
-	const state = use(pushPromise);
-	return <PushSwitch state={state} />;
+	return (
+		<Suspense fallback={<PushSwitch state="unknown" />}>
+			<PushState />
+		</Suspense>
+	);
 }
-// #endregion
+
+function PushState() {
+	const [handle] = useState(() =>
+		waterfallHandle(pushStateQuery, { channel: "news" }),
+	);
+	const [pushThenable] = useQuery(pushStateQuery, handle);
+	const push = use(pushThenable);
+	return <PushSwitch state={push} />;
+}
+// #endregion push-state
+
+export { PushSettings };

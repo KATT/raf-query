@@ -1,10 +1,14 @@
 import {
 	dehydrate,
 	HydrationBoundary,
-	type QueryHandleWithData,
+	load,
+	prefetch,
+	type QueryHandle,
+	revalidate,
 	useQuery,
 } from "@raf-query/react";
-import { Suspense } from "react";
+import { Suspense, use } from "react";
+import { redirect } from "react-router";
 
 import { Comments, CommentsSkeleton } from "~/components/comments.tsx";
 import { commentsQuery, postQuery } from "~/queries.ts";
@@ -16,15 +20,17 @@ import type { Route } from "./+types/posts.$slug";
 export async function loader(args: Route.LoaderArgs) {
 	const qc = args.context.get(queryClientContext);
 	const { slug } = args.params;
-	// Doesn't wait: the comments stream in after the page renders.
-	const comments = qc.prefetch(commentsQuery, { slug });
-	// Waits, so the post is in the page's first HTML.
-	const post = await qc.fetch(postQuery, { slug });
-	return {
-		comments,
-		dehydratedState: dehydrate(qc),
-		post,
-	};
+	const [handles, data] = await load(qc, {
+		// Doesn't wait: the comments stream in after the page renders.
+		comments: prefetch(commentsQuery, { slug }),
+		// Waits, so the post is in the page's first HTML.
+		post: revalidate(postQuery, { slug }),
+	});
+	// `data` holds what the loader waited for: here, the post.
+	if (data.post.slug !== slug) {
+		throw redirect(`/posts/${data.post.slug}`);
+	}
+	return { ...handles, dehydratedState: dehydrate(qc) };
 }
 // #endregion loader
 
@@ -43,9 +49,10 @@ export default function PostPage(props: Route.ComponentProps) {
 	);
 }
 
-function Post(props: { handle: QueryHandleWithData<typeof postQuery> }) {
+function Post(props: { handle: QueryHandle<typeof postQuery> }) {
 	// The loader waited for the post, so this is the post, not a promise.
-	const [post] = useQuery(postQuery, props.handle);
+	const [postThenable] = useQuery(postQuery, props.handle);
+	const post = use(postThenable);
 	//     ^?
 	return <h1>{post.title}</h1>;
 }

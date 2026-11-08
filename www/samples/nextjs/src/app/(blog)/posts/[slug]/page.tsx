@@ -1,4 +1,4 @@
-import { HydrationBoundary } from "@raf-query/react";
+import { HydrationBoundary, load, prefetch } from "@raf-query/react";
 // ---collapse---
 import { Suspense } from "react";
 
@@ -17,16 +17,18 @@ export default async function Page(props: {
 	const { slug } = await props.params;
 	const qc = getQueryClient();
 	// Never waits: both load while the page streams.
-	const comments = qc.prefetch(commentsQuery, { slug });
-	const post = qc.prefetch(postQuery, { slug });
+	const [handles] = await load(qc, {
+		comments: prefetch(commentsQuery, { slug }),
+		post: prefetch(postQuery, { slug }),
+	});
 	return (
 		<HydrationBoundary client={qc}>
 			<article>
 				<Suspense fallback={<PostSkeleton />}>
-					<Post handle={post} />
+					<Post handle={handles.post} />
 				</Suspense>
 				<Suspense fallback={<CommentsSkeleton />}>
-					<Comments handle={comments} />
+					<Comments handle={handles.comments} />
 				</Suspense>
 			</article>
 		</HydrationBoundary>

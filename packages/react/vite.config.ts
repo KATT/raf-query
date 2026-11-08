@@ -5,7 +5,6 @@ export default defineConfig({
 		entry: [
 			"src/index.ts",
 			"src/index-react-server.ts",
-			"src/devtools.tsx",
 			"src/tanstack-router.ts",
 			"src/tanstack-router-browser.ts",
 		],
@@ -14,11 +13,23 @@ export default defineConfig({
 	test: {
 		clearMocks: true,
 		coverage: {
-			include: ["src"],
-			reporter: ["html", "lcov"],
+			exclude: [
+				"src/**/*.test.{ts,tsx}",
+				"src/**/*.test-d.{ts,tsx}",
+				"src/test-utils.{ts,tsx}",
+			],
+			include: ["src/**/*.{ts,tsx}"],
+			reporter: ["html", "lcov", "text-summary"],
+			thresholds: {
+				branches: 100,
+				functions: 100,
+				lines: 100,
+				statements: 100,
+			},
 		},
 		environment: "happy-dom",
-		exclude: ["dist", "node_modules"],
+		exclude: ["dist", "node_modules", "src/**/*.compiler.test.tsx"],
+		setupFiles: ["./vitest.setup.ts"],
 		unstubGlobals: true,
 	},
 });

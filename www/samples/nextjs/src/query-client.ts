@@ -1,8 +1,9 @@
-import { QueryClient, type QueryClientConfig } from "@raf-query/react";
+import { createQueryClient, recommended } from "@raf-query/react";
 import { cache } from "react";
 
-export const queryClientConfig = {
-	defaults: { staleTime: 5000 },
-} as const satisfies QueryClientConfig;
+export function makeQueryClient() {
+	return createQueryClient({ ...recommended(), staleTime: 5000 });
+}
 
-export const getQueryClient = cache(() => new QueryClient(queryClientConfig));
+/** The server components' client, one per request. */
+export const getQueryClient = cache(makeQueryClient);

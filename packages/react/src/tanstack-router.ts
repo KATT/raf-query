@@ -1,5 +1,5 @@
+import { dehydrateStream, removeAll } from "@raf-query/core";
 import type { AnyRouter } from "@tanstack/react-router";
-import { Effect, Exit, Scope, Stream } from "effect";
 
 import {
 	type DehydratedRouterQueries,
@@ -16,7 +16,7 @@ function setupServer<TRouter extends AnyRouter>(
 	options: RouterIntegrationOptions<TRouter>,
 ) {
 	const router = options.router;
-	const queryClient = options.queryClient;
+	const client = options.queryClient;
 	const originalDehydrate = router.options.dehydrate;
 	let finish = noop;
 	let cleanedUp = false;
@@ -24,7 +24,7 @@ function setupServer<TRouter extends AnyRouter>(
 	const teardown = () => {
 		cleanedUp = true;
 		finish();
-		queryClient.clear();
+		removeAll(client);
 	};
 
 	// Registered before `router.load()`, so redirects and errors thrown before
@@ -42,28 +42,15 @@ function setupServer<TRouter extends AnyRouter>(
 	> => {
 		const dehydrated = await originalDehydrate?.();
 		if (cleanedUp) {
-			queryClient.clear();
+			removeAll(client);
 			return undefined;
 		}
-
-		const scope = Scope.makeUnsafe();
-		const stream = Effect.runSync(
-			queryClient.effect
-				.dehydrateStream(options.dehydrateOptions)
-				.pipe(Scope.provide(scope)),
-		);
-		finish = () => {
-			finish = noop;
-			Effect.runSync(Scope.close(scope, Exit.void));
-		};
-		router.serverSsr?.onRenderFinished(() => finish());
-
+		const stream = dehydrateStream(client, options.dehydrateOptions);
+		finish = () => stream.close();
+		router.serverSsr?.onRenderFinished(() => stream.close());
 		return {
 			...dehydrated,
-			raf: {
-				initial: stream.initial,
-				stream: Stream.toReadableStream(stream.updates),
-			},
+			raf: { initial: stream.initial, stream: stream.updates },
 		};
 	};
 }
@@ -72,8 +59,8 @@ function setupServer<TRouter extends AnyRouter>(
  * Connects a query client to a TanStack Router (and TanStack Start) router:
  *
  * - During SSR, sends the cache to the browser with the router's dehydrated
- *   state, then streams entries as they start or settle. Pending entries
- *   cross as promises, so the browser resumes them instead of refetching.
+ *   state, then streams entries as they start. Pending entries cross as
+ *   promises, so the browser resumes them instead of refetching.
  * - Clears the request's cache when the response finishes.
  * - Turns `redirect()` thrown from a `queryFn` into a navigation.
  *

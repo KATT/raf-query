@@ -51,3 +51,23 @@ export function seedComments(): ReadonlyArray<Comment> {
 		})),
 	);
 }
+
+/** A page of a list, as a paged endpoint returns it. */
+export interface ListPage<TItem> {
+	readonly items: ReadonlyArray<TItem>;
+	/** Where the next page starts, or `null` on the last page. */
+	readonly nextCursor: number | null;
+}
+
+/** The `size` items from `cursor` on, and the cursor of the page after them. */
+export function pageOf<TItem>(
+	items: ReadonlyArray<TItem>,
+	cursor: number,
+	size: number,
+): ListPage<TItem> {
+	const end = cursor + size;
+	return {
+		items: items.slice(cursor, end),
+		nextCursor: end < items.length ? end : null,
+	};
+}

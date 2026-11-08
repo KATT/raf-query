@@ -1,9 +1,14 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
-	allKeyed,
+	group,
 	infiniteQueryOptions,
+	load,
+	prefetch,
 	type QueryClient,
 	queryOptions,
+	revalidate,
+	swr,
+	useInfiniteQuery,
 	useQuery,
 } from "@raf-query/react";
 import {
@@ -16,15 +21,20 @@ import {
 import { MessageSquare } from "lucide-react";
 import { type ReactNode, Suspense, use, useId } from "react";
 
+import { LoadMoreButton } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import {
 	type Comment,
+	type ListPage,
+	pageOf,
 	type Post,
 	seedComments,
 	seedPosts,
 } from "~/demo-kit/fixtures.ts";
 import { DemoRouter } from "~/demo-kit/router.tsx";
 import { createFakeServer } from "~/demo-kit/server.ts";
+
+const posts = group("posts");
 
 /**
  * A blog's server and the factories that query it. Each variant gets its
@@ -38,20 +48,23 @@ function createBlog() {
 	return {
 		commentsQuery: (input: { postId: number }) =>
 			infiniteQueryOptions({
-				getNextPageParam: commentNext,
-				initialPageParam: 0,
 				queryFn: (context) =>
 					server.respond(
-						`GET /posts/${input.postId}/comments`,
-						(db): CommentPage => ({
-							items: db.comments.filter(
-								(comment) => comment.postId === input.postId,
+						`GET /posts/${input.postId}/comments?cursor=${context.pageParam}`,
+						(db) =>
+							pageOf(
+								db.comments.filter(
+									(comment) => comment.postId === input.postId,
+								),
+								context.pageParam,
+								2,
 							),
-							nextCursor: null,
-						}),
 						context,
 					),
-				queryKey: ["posts", input.postId, "comments"],
+				// After `queryFn`: TypeScript infers the page type from it.
+				getNextPageParam: (lastPage) => lastPage.nextCursor,
+				initialPageParam: 0,
+				queryKey: posts(input.postId, "comments"),
 				staleTime: 5000,
 			}),
 		postQuery: (input: { id: number }) =>
@@ -62,47 +75,33 @@ function createBlog() {
 						(db) => db.posts.find((post) => post.id === input.id),
 						context,
 					),
-				queryKey: ["posts", input.id],
+				queryKey: posts(input.id),
 				staleTime: 5000,
 			}),
 		postsQuery: () =>
 			infiniteQueryOptions({
-				getNextPageParam: postNext,
-				initialPageParam: 0,
 				queryFn: (context) =>
 					server.respond(
-						"GET /posts",
-						(db) => ({
-							items: db.posts
-								.slice(0, 4)
-								.map((post) => ({ id: post.id, title: post.title })),
-							nextCursor: null,
-						}),
+						`GET /posts?cursor=${context.pageParam}`,
+						(db) =>
+							pageOf(
+								db.posts.map((post): PostSummary => ({
+									id: post.id,
+									title: post.title,
+								})),
+								context.pageParam,
+								3,
+							),
 						context,
 					),
-				queryKey: ["posts"],
+				// After `queryFn`: TypeScript infers the page type from it.
+				getNextPageParam: (lastPage) => lastPage.nextCursor,
+				initialPageParam: 0,
+				queryKey: posts(),
 				staleTime: 5000,
 			}),
 		server,
 	};
-}
-
-interface CommentPage {
-	readonly items: ReadonlyArray<Comment>;
-	readonly nextCursor: number | null;
-}
-
-interface PostListPage {
-	readonly items: ReadonlyArray<PostSummary>;
-	readonly nextCursor: number | null;
-}
-
-function commentNext(lastPage: CommentPage) {
-	return lastPage.nextCursor;
-}
-
-function postNext(lastPage: PostListPage) {
-	return lastPage.nextCursor;
 }
 
 interface RouterContext {
@@ -112,8 +111,8 @@ interface RouterContext {
 // The docs site registers its own router, so the hooks and links below name
 // the demo's. Every variant's routes have the same paths.
 type PrefetchRouter = Router<typeof prefetchTree>;
-type EnsureRouter = Router<typeof ensureTree>;
-type FetchRouter = Router<typeof fetchTree>;
+type SwrRouter = Router<typeof swrTree>;
+type RevalidateRouter = Router<typeof revalidateTree>;
 
 function BlogLink<const TTo extends string>(
 	props: LinkComponentProps<"a", PrefetchRouter, string, TTo, string, "">,
@@ -170,55 +169,84 @@ function CommentsSkeleton() {
 	);
 }
 
-function commentItems(data: { readonly pages: ReadonlyArray<CommentPage> }) {
-	return data.pages.flatMap((page) => page.items);
+/** What a list needs from `useInfiniteQuery`'s state for its "Load more" button. */
+interface ListControls {
+	readonly fetchNextPage: () => Promise<void>;
+	readonly hasNextPage: boolean;
+	readonly isFetchingNextPage: boolean;
 }
 
-function CommentList(props: { readonly comments: ReadonlyArray<Comment> }) {
+function CommentList(
+	props: ListControls & {
+		readonly pages: ReadonlyArray<ListPage<Comment>>;
+	},
+) {
 	return (
-		<ul className="grid gap-3">
-			{props.comments.map((comment) => (
-				<li className="flex gap-2.5 text-sm" key={comment.id}>
-					<span
-						aria-hidden="true"
-						className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-medium text-muted-foreground"
-					>
-						{comment.author.charAt(0)}
-					</span>
-					<div className="grid gap-0.5">
-						<span className="font-medium">{comment.author}</span>
-						<p className="text-muted-foreground">{comment.body}</p>
-					</div>
-				</li>
-			))}
-		</ul>
+		<div className="grid gap-3">
+			<ul className="grid gap-3">
+				{props.pages
+					.flatMap((page) => page.items)
+					.map((comment) => (
+						<li className="flex gap-2.5 text-sm" key={comment.id}>
+							<span
+								aria-hidden="true"
+								className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-medium text-muted-foreground"
+							>
+								{comment.author.charAt(0)}
+							</span>
+							<div className="grid gap-0.5">
+								<span className="font-medium">{comment.author}</span>
+								<p className="text-muted-foreground">{comment.body}</p>
+							</div>
+						</li>
+					))}
+			</ul>
+			<LoadMoreButton
+				fetchNextPage={props.fetchNextPage}
+				hasNextPage={props.hasNextPage}
+				isFetchingNextPage={props.isFetchingNextPage}
+			/>
+		</div>
 	);
 }
 
 type PostSummary = Pick<Post, "id" | "title">;
 
-function PostList(props: { readonly posts: ReadonlyArray<PostSummary> }) {
+function PostList(
+	props: ListControls & {
+		readonly pages: ReadonlyArray<ListPage<PostSummary>>;
+	},
+) {
 	return (
-		<ul className="grid gap-1">
-			{props.posts.map((post) => (
-				<li key={post.id}>
-					<BlogLink
-						className="block rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-						params={{ id: String(post.id) }}
-						to="/posts/$id"
-					>
-						{post.title}
-					</BlogLink>
-				</li>
-			))}
-		</ul>
+		<div className="grid gap-2">
+			<ul className="grid gap-1">
+				{props.pages
+					.flatMap((page) => page.items)
+					.map((post) => (
+						<li key={post.id}>
+							<BlogLink
+								className="block rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+								params={{ id: String(post.id) }}
+								to="/posts/$id"
+							>
+								{post.title}
+							</BlogLink>
+						</li>
+					))}
+			</ul>
+			<LoadMoreButton
+				fetchNextPage={props.fetchNextPage}
+				hasNextPage={props.hasNextPage}
+				isFetchingNextPage={props.isFetchingNextPage}
+			/>
+		</div>
 	);
 }
 
 function PostListSkeleton() {
 	return (
 		<div className="grid gap-1">
-			{[0, 1, 2, 3].map((row) => (
+			{[0, 1, 2].map((row) => (
 				<Skeleton className="h-8 w-full" key={row} />
 			))}
 		</div>
@@ -244,41 +272,61 @@ const prefetchRoot = createRootRouteWithContext<RouterContext>()();
 const prefetchPost = createRoute({
 	component: PrefetchedPost,
 	getParentRoute: () => prefetchRoot,
-	loader: (args) => {
-		const qc = args.context.queryClient;
+	loader: async (args) => {
 		const id = Number(args.params.id);
-		return {
-			comments: qc.prefetch(prefetching.commentsQuery, { postId: id }),
-			post: qc.prefetch(prefetching.postQuery, { id }),
-		};
+		const [handles] = await load(args.context.queryClient, {
+			comments: prefetch(prefetching.commentsQuery, { postId: id }),
+			post: prefetch(prefetching.postQuery, { id }),
+		});
+		return handles;
 	},
 	path: "/posts/$id",
 });
 const prefetchList = createRoute({
 	component: PrefetchedList,
 	getParentRoute: () => prefetchRoot,
-	loader: (args) => args.context.queryClient.prefetch(prefetching.postsQuery),
+	loader: async (args) => {
+		const [handles] = await load(args.context.queryClient, {
+			posts: prefetch(prefetching.postsQuery),
+		});
+		return handles.posts;
+	},
 	path: "/posts",
 });
 const prefetchTree = prefetchRoot.addChildren([prefetchList, prefetchPost]);
 
-function PromisedList(props: {
-	readonly posts: Promise<{
-		readonly pages: ReadonlyArray<{
-			readonly items: ReadonlyArray<PostSummary>;
+function PromisedList(
+	props: ListControls & {
+		readonly posts: Promise<{
+			readonly pages: ReadonlyArray<ListPage<PostSummary>>;
 		}>;
-	}>;
-}) {
-	const pages = use(props.posts);
-	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
+	},
+) {
+	const data = use(props.posts);
+	return (
+		<PostList
+			fetchNextPage={props.fetchNextPage}
+			hasNextPage={props.hasNextPage}
+			isFetchingNextPage={props.isFetchingNextPage}
+			pages={data.pages}
+		/>
+	);
 }
 
 function PrefetchedList(): ReactNode {
 	const handle = prefetchList.useLoaderData<PrefetchRouter>();
-	const [postsPromise, postsState] = useQuery(prefetching.postsQuery, handle);
+	const [pagesThenable, postsState] = useInfiniteQuery(
+		prefetching.postsQuery,
+		handle,
+	);
 	return (
 		<Suspense fallback={<PostListSkeleton />} key={postsState.hash}>
-			<PromisedList posts={postsPromise} />
+			<PromisedList
+				fetchNextPage={postsState.fetchNextPage}
+				hasNextPage={postsState.hasNextPage}
+				isFetchingNextPage={postsState.isFetchingNextPage}
+				posts={pagesThenable}
+			/>
 		</Suspense>
 	);
 }
@@ -290,18 +338,28 @@ function PromisedPost(props: { readonly post: Promise<Post | undefined> }) {
 
 function PrefetchedComments(): ReactNode {
 	const data = prefetchPost.useLoaderData<PrefetchRouter>();
-	const [commentsPromise] = useQuery(prefetching.commentsQuery, data.comments);
-	const pages = use(commentsPromise);
-	return <CommentList comments={commentItems(pages)} />;
+	const [pagesThenable, commentsState] = useInfiniteQuery(
+		prefetching.commentsQuery,
+		data.comments,
+	);
+	const pages = use(pagesThenable);
+	return (
+		<CommentList
+			fetchNextPage={commentsState.fetchNextPage}
+			hasNextPage={commentsState.hasNextPage}
+			isFetchingNextPage={commentsState.isFetchingNextPage}
+			pages={pages.pages}
+		/>
+	);
 }
 
 function PrefetchedPost(): ReactNode {
 	const data = prefetchPost.useLoaderData<PrefetchRouter>();
-	const [postPromise, postState] = useQuery(prefetching.postQuery, data.post);
+	const [postThenable, postState] = useQuery(prefetching.postQuery, data.post);
 	return (
 		<PostPage>
 			<Suspense fallback={<PostSkeleton />} key={postState.hash}>
-				<PromisedPost post={postPromise} />
+				<PromisedPost post={postThenable} />
 			</Suspense>
 			<CommentsSection>
 				<Suspense
@@ -315,95 +373,150 @@ function PrefetchedPost(): ReactNode {
 	);
 }
 
-const ensuring = createBlog();
-const ensureRoot = createRootRouteWithContext<RouterContext>()();
-const ensurePost = createRoute({
-	component: EnsuredPost,
-	getParentRoute: () => ensureRoot,
+const swrBlog = createBlog();
+const swrRoot = createRootRouteWithContext<RouterContext>()();
+const swrPost = createRoute({
+	component: SwrPost,
+	getParentRoute: () => swrRoot,
 	loader: async (args) => {
-		const qc = args.context.queryClient;
 		const id = Number(args.params.id);
-		return await allKeyed({
-			comments: qc.ensure(ensuring.commentsQuery, { postId: id }),
-			post: qc.ensure(ensuring.postQuery, { id }),
+		const [handles] = await load(args.context.queryClient, {
+			comments: swr(swrBlog.commentsQuery, { postId: id }),
+			post: swr(swrBlog.postQuery, { id }),
 		});
+		return handles;
 	},
 	path: "/posts/$id",
 });
-const ensureList = createRoute({
-	component: EnsuredList,
-	getParentRoute: () => ensureRoot,
-	loader: (args) => args.context.queryClient.ensure(ensuring.postsQuery),
+const swrList = createRoute({
+	component: SwrList,
+	getParentRoute: () => swrRoot,
+	loader: async (args) => {
+		const [handles] = await load(args.context.queryClient, {
+			posts: swr(swrBlog.postsQuery),
+		});
+		return handles.posts;
+	},
 	path: "/posts",
 });
-const ensureTree = ensureRoot.addChildren([ensureList, ensurePost]);
+const swrTree = swrRoot.addChildren([swrList, swrPost]);
 
-function EnsuredList(): ReactNode {
-	const handle = ensureList.useLoaderData<EnsureRouter>();
-	const [pages] = useQuery(ensuring.postsQuery, handle);
-	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
+function SwrList(): ReactNode {
+	const handle = swrList.useLoaderData<SwrRouter>();
+	const [pagesThenable, postsState] = useInfiniteQuery(
+		swrBlog.postsQuery,
+		handle,
+	);
+	const pages = use(pagesThenable);
+	return (
+		<PostList
+			fetchNextPage={postsState.fetchNextPage}
+			hasNextPage={postsState.hasNextPage}
+			isFetchingNextPage={postsState.isFetchingNextPage}
+			pages={pages.pages}
+		/>
+	);
 }
 
-function EnsuredPost(): ReactNode {
-	const data = ensurePost.useLoaderData<EnsureRouter>();
-	const [post] = useQuery(ensuring.postQuery, data.post);
-	const [pages] = useQuery(ensuring.commentsQuery, data.comments);
+function SwrPost(): ReactNode {
+	const data = swrPost.useLoaderData<SwrRouter>();
+	const [postThenable] = useQuery(swrBlog.postQuery, data.post);
+	const post = use(postThenable);
+	const [commentsThenable, commentsState] = useInfiniteQuery(
+		swrBlog.commentsQuery,
+		data.comments,
+	);
+	const comments = use(commentsThenable);
 	return (
 		<PostPage>
 			<PostBody post={post} />
 			<CommentsSection>
-				<CommentList comments={commentItems(pages)} />
+				<CommentList
+					fetchNextPage={commentsState.fetchNextPage}
+					hasNextPage={commentsState.hasNextPage}
+					isFetchingNextPage={commentsState.isFetchingNextPage}
+					pages={comments.pages}
+				/>
 			</CommentsSection>
 		</PostPage>
 	);
 }
 
-const fetching = createBlog();
-const fetchRoot = createRootRouteWithContext<RouterContext>()();
-const fetchPost = createRoute({
-	component: FetchedPost,
-	getParentRoute: () => fetchRoot,
+const revalidateBlog = createBlog();
+const revalidateRoot = createRootRouteWithContext<RouterContext>()();
+const revalidatePost = createRoute({
+	component: RevalidatedPost,
+	getParentRoute: () => revalidateRoot,
 	loader: async (args) => {
-		const qc = args.context.queryClient;
 		const id = Number(args.params.id);
-		return await allKeyed({
-			comments: qc.fetch(fetching.commentsQuery, { postId: id }),
-			post: qc.fetch(fetching.postQuery, { id }),
+		const [handles] = await load(args.context.queryClient, {
+			comments: revalidate(revalidateBlog.commentsQuery, { postId: id }),
+			post: revalidate(revalidateBlog.postQuery, { id }),
 		});
+		return handles;
 	},
 	path: "/posts/$id",
 });
-const fetchList = createRoute({
-	component: FetchedList,
-	getParentRoute: () => fetchRoot,
-	loader: (args) => args.context.queryClient.fetch(fetching.postsQuery),
+const revalidateList = createRoute({
+	component: RevalidatedList,
+	getParentRoute: () => revalidateRoot,
+	loader: async (args) => {
+		const [handles] = await load(args.context.queryClient, {
+			posts: revalidate(revalidateBlog.postsQuery),
+		});
+		return handles.posts;
+	},
 	path: "/posts",
 });
-const fetchTree = fetchRoot.addChildren([fetchList, fetchPost]);
+const revalidateTree = revalidateRoot.addChildren([
+	revalidateList,
+	revalidatePost,
+]);
 
-function FetchedList(): ReactNode {
-	const handle = fetchList.useLoaderData<FetchRouter>();
-	const [pages] = useQuery(fetching.postsQuery, handle);
-	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
+function RevalidatedList(): ReactNode {
+	const handle = revalidateList.useLoaderData<RevalidateRouter>();
+	const [pagesThenable, postsState] = useInfiniteQuery(
+		revalidateBlog.postsQuery,
+		handle,
+	);
+	const pages = use(pagesThenable);
+	return (
+		<PostList
+			fetchNextPage={postsState.fetchNextPage}
+			hasNextPage={postsState.hasNextPage}
+			isFetchingNextPage={postsState.isFetchingNextPage}
+			pages={pages.pages}
+		/>
+	);
 }
 
-function FetchedPost(): ReactNode {
-	const data = fetchPost.useLoaderData<FetchRouter>();
-	const [post] = useQuery(fetching.postQuery, data.post);
-	const [pages] = useQuery(fetching.commentsQuery, data.comments);
+function RevalidatedPost(): ReactNode {
+	const data = revalidatePost.useLoaderData<RevalidateRouter>();
+	const [postThenable] = useQuery(revalidateBlog.postQuery, data.post);
+	const post = use(postThenable);
+	const [commentsThenable, commentsState] = useInfiniteQuery(
+		revalidateBlog.commentsQuery,
+		data.comments,
+	);
+	const comments = use(commentsThenable);
 	return (
 		<PostPage>
 			<PostBody post={post} />
 			<CommentsSection>
-				<CommentList comments={commentItems(pages)} />
+				<CommentList
+					fetchNextPage={commentsState.fetchNextPage}
+					hasNextPage={commentsState.hasNextPage}
+					isFetchingNextPage={commentsState.isFetchingNextPage}
+					pages={comments.pages}
+				/>
 			</CommentsSection>
 		</PostPage>
 	);
 }
 
 export default defineDemo({
-	hint: "Open a post with each, then switch back and forth: each keeps its own page and queries. The requests start at the same moment every time. Go back and reopen the post after 5 seconds, once its cache is stale, to see ensure and fetch differ.",
-	title: "prefetch, ensure or fetch",
+	hint: "Open a post with each, then switch back and forth: each keeps its own page and queries. The requests start at the same moment every time. Go back and reopen the post after 5 seconds, once its cache is stale, to see swr and revalidate differ.",
+	title: "prefetch, swr or revalidate",
 	variants: [
 		{
 			Component: () => <DemoRouter initial="/posts" routeTree={prefetchTree} />,
@@ -412,18 +525,20 @@ export default defineDemo({
 			server: prefetching.server,
 		},
 		{
-			Component: () => <DemoRouter initial="/posts" routeTree={ensureTree} />,
+			Component: () => <DemoRouter initial="/posts" routeTree={swrTree} />,
 			description:
 				"Stays on the list until the post and its comments load. Cached data opens at once and refetches in the background.",
-			label: "ensure",
-			server: ensuring.server,
+			label: "swr",
+			server: swrBlog.server,
 		},
 		{
-			Component: () => <DemoRouter initial="/posts" routeTree={fetchTree} />,
+			Component: () => (
+				<DemoRouter initial="/posts" routeTree={revalidateTree} />
+			),
 			description:
 				"Stays on the list until the post and its comments load, and waits for the refetch whenever the cache is stale.",
-			label: "fetch",
-			server: fetching.server,
+			label: "revalidate",
+			server: revalidateBlog.server,
 		},
 	],
 	variantsLabel: "Load each page with",
