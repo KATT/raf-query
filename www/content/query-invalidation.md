@@ -39,7 +39,7 @@ Verbs are functions that take the client first. Each `…One` verb takes a facto
 | `invalidateMany(qc, [target, …])`           | Every query any of the targets matches: [several targets](#several-targets)      |
 | `invalidateAll(qc)`                         | Everything                                                                       |
 
-A partial input matches the **input** each query's factory was called with, never its key, so it works the same however the key is built: `[postQuery, { slug }]` for a key written as `posts("bySlug", input.slug)`. Object fields match **partially**: `{ status: "done" }` matches any input with that field, whatever else it has.
+A partial input matches the **input** each query's factory was called with, never its key, so it works the same however the key is built: `[postQuery, { slug }]` for a key written as `posts("bySlug", input.slug)`. Object fields match **partially**: `{ sort: "newest" }` matches any input with that field, whatever else it has.
 
 A query that was only [hydrated](./ssr-and-hydration.md) has no factory until something reads it. A factory target still invalidates it, from its first read. `resetMany` and `removeMany` act at once, so a factory target skips it; a group reaches it by its key.
 

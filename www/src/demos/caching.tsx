@@ -1,5 +1,4 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { cn } from "@examples/ui/lib/utils";
 import {
 	group,
 	load,
@@ -13,49 +12,35 @@ import { use } from "react";
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
 import { formatTime, LoadMoreButton, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
-import { pageOf } from "~/demo-kit/fixtures.ts";
+import { pageOf, seedPosts } from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
-const todos = group("todos");
+const posts = group("posts");
 
-interface Todo {
-	readonly done: boolean;
-	readonly id: number;
-	readonly text: string;
-}
+const server = createFakeServer(() => ({ posts: seedPosts() }));
 
-const server = createFakeServer(() => ({
-	todos: [
-		{ done: true, id: 1, text: "Read about staleTime" },
-		{ done: false, id: 2, text: "Watch an entry go inactive" },
-		{ done: false, id: 3, text: "Wait out gcTime" },
-		{ done: false, id: 4, text: "Load a second page" },
-		{ done: false, id: 5, text: "Come back to both pages" },
-	] satisfies ReadonlyArray<Todo>,
-}));
-
-function todosQuery() {
+function postsQuery() {
 	return infiniteQueryOptions({
 		gcTime: 10_000,
 		queryFn: (context) =>
 			server.respond(
-				`GET /todos?cursor=${context.pageParam}`,
-				(db) => pageOf(db.todos, context.pageParam, 3),
+				`GET /posts?cursor=${context.pageParam}`,
+				(db) => pageOf(db.posts, context.pageParam, 3),
 				context,
 			),
 		// After `queryFn`: TypeScript infers the page type from it.
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
 		initialPageParam: 0,
-		queryKey: todos(),
+		queryKey: posts(),
 		staleTime: 5000,
 	});
 }
 
 type PageData =
 	| { readonly page: "about" }
-	| { readonly page: "todos"; readonly todos: QueryHandle<typeof todosQuery> };
+	| { readonly page: "posts"; readonly posts: QueryHandle<typeof postsQuery> };
 
-function TodosSkeleton() {
+function PostsSkeleton() {
 	return (
 		<div className="grid gap-2">
 			<Skeleton className="h-5 w-1/3" />
@@ -66,40 +51,34 @@ function TodosSkeleton() {
 	);
 }
 
-function Todos(props: { readonly handle: QueryHandle<typeof todosQuery> }) {
-	const [pagesThenable, todosState] = useInfiniteQuery(
-		todosQuery,
+function Posts(props: { readonly handle: QueryHandle<typeof postsQuery> }) {
+	const [pagesThenable, postsState] = useInfiniteQuery(
+		postsQuery,
 		props.handle,
 	);
 	const pages = use(pagesThenable);
 	const list = pages.pages.flatMap((page) => page.items);
 	return (
-		<div aria-busy={todosState.isFetching} className="grid gap-2">
+		<div aria-busy={postsState.isFetching} className="grid gap-2">
 			<p className="flex items-center gap-2 text-xs text-muted-foreground">
-				Fetched at {formatTime(todosState.updatedAt)}
-				{todosState.isFetching && !todosState.isFetchingNextPage ? (
+				Fetched at {formatTime(postsState.updatedAt)}
+				{postsState.isFetching && !postsState.isFetchingNextPage ? (
 					<>
 						<Spinner /> refetching in the background
 					</>
 				) : null}
 			</p>
 			<ul className="grid gap-1.5">
-				{list.map((todo) => (
-					<li
-						className={cn(
-							"rounded-md border px-3 py-1.5 text-sm",
-							todo.done && "text-muted-foreground line-through",
-						)}
-						key={todo.id}
-					>
-						{todo.text}
+				{list.map((post) => (
+					<li className="rounded-md border px-3 py-1.5 text-sm" key={post.id}>
+						{post.title}
 					</li>
 				))}
 			</ul>
 			<LoadMoreButton
-				fetchNextPage={todosState.fetchNextPage}
-				hasNextPage={todosState.hasNextPage}
-				isFetchingNextPage={todosState.isFetchingNextPage}
+				fetchNextPage={postsState.fetchNextPage}
+				hasNextPage={postsState.hasNextPage}
+				isFetchingNextPage={postsState.isFetchingNextPage}
 			/>
 		</div>
 	);
@@ -111,7 +90,7 @@ function Page(props: { readonly data: PageData }) {
 		<div className="grid gap-4">
 			<nav className="flex gap-1 text-sm">
 				{[
-					{ label: "Todos", path: "/todos" },
+					{ label: "Posts", path: "/posts" },
 					{ label: "About", path: "/about" },
 				].map((link) => (
 					<DemoLink
@@ -123,11 +102,11 @@ function Page(props: { readonly data: PageData }) {
 					</DemoLink>
 				))}
 			</nav>
-			{data.page === "todos" ? (
-				<Todos handle={data.todos} />
+			{data.page === "posts" ? (
+				<Posts handle={data.posts} />
 			) : (
 				<p className="text-sm text-muted-foreground">
-					Nothing here reads <code>{'["todos"]'}</code>, so its entry is
+					Nothing here reads <code>{'["posts"]'}</code>, so its entry is
 					inactive. Come back within 10 seconds to find it cached; wait longer
 					and it’s garbage-collected.
 				</p>
@@ -139,16 +118,16 @@ function Page(props: { readonly data: PageData }) {
 function Caching() {
 	return (
 		<DemoBrowser
-			fallback={<TodosSkeleton />}
-			initial={{ path: "/todos" }}
+			fallback={<PostsSkeleton />}
+			initial={{ path: "/posts" }}
 			loader={async (args): Promise<PageData> => {
-				if (args.location.path !== "/todos") {
+				if (args.location.path !== "/posts") {
 					return { page: "about" };
 				}
 				const [handles] = await load(args.client, {
-					todos: prefetch(todosQuery),
+					posts: prefetch(postsQuery),
 				});
-				return { page: "todos", todos: handles.todos };
+				return { page: "posts", posts: handles.posts };
 			}}
 		>
 			{(route) => <Page data={route.data} />}

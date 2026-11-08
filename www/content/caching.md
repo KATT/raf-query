@@ -17,24 +17,24 @@ This example follows one entry through its life:
 
 Assume the default `gcTime` of **5 minutes** and the default `staleTime` of `0`.
 
-1. **A loader starts `todosQuery` with a `prefetch` entry, and a component reads its handle.**
-   - Nothing is cached under `["todos"]` yet, so the component suspends and a request starts.
-   - When it completes, the data is cached under `["todos"]` and the component renders it.
+1. **A loader starts `postsQuery` with a `prefetch` entry, and a component reads its handle.**
+   - Nothing is cached under `["posts"]` yet, so the component suspends and a request starts.
+   - When it completes, the data is cached under `["posts"]` and the component renders it.
    - The data counts as stale after `staleTime`: immediately, by default.
 2. **A second component reads the same handle elsewhere on the page.**
-   - The cache already has data for `["todos"]`, so it renders at once.
+   - The cache already has data for `["posts"]`, so it renders at once.
    - Reading never fetches: there is no refetch on mount, so no request starts.
 3. **The user navigates away and comes back.**
    - The loader runs again and calls `load` with the same `prefetch` entry. The data is stale, so the cached data renders at once and is refetched in the background.
    - When the refetch completes, both readers re-render with the new data. If nothing changed, structural sharing keeps the same data and the same thenable, so the readers' data keeps its identity.
-4. **Every component reading `["todos"]` unmounts.**
+4. **Every component reading `["posts"]` unmounts.**
    - The entry has no readers, so it's **inactive**. A garbage-collection timer starts for `gcTime` (5 minutes).
 5. **The user returns before the timer fires.**
    - The entry is read again, so the timer stops. The cached data renders at once while the loader's `prefetch` entry refetches it.
-6. **The last reader unmounts again, and nothing reads `["todos"]` for 5 minutes.**
+6. **The last reader unmounts again, and nothing reads `["posts"]` for 5 minutes.**
    - The entry and its data are deleted.
 
-Try it. The demo's `todosQuery` has a `staleTime` of 5 seconds and a `gcTime` of 10, so you can watch the whole lifecycle in its Queries panel:
+Try it. The demo's `postsQuery` has a `staleTime` of 5 seconds and a `gcTime` of 10, so you can watch the whole lifecycle in its Queries panel:
 
 ```demo
 caching

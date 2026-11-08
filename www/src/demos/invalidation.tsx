@@ -19,36 +19,31 @@ import { Suspense, use, useTransition } from "react";
 import { DemoBrowser } from "~/demo-kit/browser.tsx";
 import { formatTime, LoadMoreButton, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
-import { type ListPage, pageOf } from "~/demo-kit/fixtures.ts";
+import { type ListPage, pageOf, seedPosts } from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
-type Status = "all" | "done";
+type Sort = "newest" | "oldest";
 
 const server = createFakeServer(() => ({
-	todos: [
-		{ done: true, text: "Start keys with a group" },
-		{ done: false, text: "Invalidate the group" },
-		{ done: true, text: "Invalidate one query" },
-		{ done: false, text: "Match part of the input" },
-	],
-	users: ["Ada", "Grace", "Linus"],
+	authors: ["Ada", "Grace", "Linus"],
+	posts: seedPosts(),
 }));
 
 const pageSize = 2;
 
-const todos = group("todos");
-const users = group("users");
+const posts = group("posts");
+const authors = group("authors");
 
-function todosQuery(input: { readonly status: Status }) {
+function postsQuery(input: { readonly sort: Sort }) {
 	return infiniteQueryOptions({
 		queryFn: (context) =>
 			server.respond(
-				`GET /todos?status=${input.status}&cursor=${context.pageParam}`,
+				`GET /posts?sort=${input.sort}&cursor=${context.pageParam}`,
 				(db) =>
 					pageOf(
-						db.todos
-							.filter((todo) => input.status === "all" || todo.done)
-							.map((todo) => todo.text),
+						(input.sort === "newest" ? db.posts.toReversed() : db.posts).map(
+							(post) => post.title,
+						),
 						context.pageParam,
 						pageSize,
 					),
@@ -57,31 +52,31 @@ function todosQuery(input: { readonly status: Status }) {
 		// After `queryFn`: TypeScript infers the page type from it.
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
 		initialPageParam: 0,
-		queryKey: todos("list", input),
+		queryKey: posts("list", input),
 		staleTime: Infinity,
 	});
 }
 
-function usersQuery() {
+function authorsQuery() {
 	return infiniteQueryOptions({
 		queryFn: (context) =>
 			server.respond(
-				`GET /users?cursor=${context.pageParam}`,
-				(db) => pageOf(db.users, context.pageParam, pageSize),
+				`GET /authors?cursor=${context.pageParam}`,
+				(db) => pageOf(db.authors, context.pageParam, pageSize),
 				context,
 			),
 		// After `queryFn`: TypeScript infers the page type from it.
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
 		initialPageParam: 0,
-		queryKey: users("list"),
+		queryKey: authors("list"),
 		staleTime: Infinity,
 	});
 }
 
 interface PageData {
-	readonly all: QueryHandle<typeof todosQuery>;
-	readonly done: QueryHandle<typeof todosQuery>;
-	readonly users: QueryHandle<typeof usersQuery>;
+	readonly authors: QueryHandle<typeof authorsQuery>;
+	readonly newest: QueryHandle<typeof postsQuery>;
+	readonly oldest: QueryHandle<typeof postsQuery>;
 }
 
 interface StringPages {
@@ -146,11 +141,11 @@ function Card(props: {
 	);
 }
 
-function TodosCard(props: {
-	readonly handle: QueryHandle<typeof todosQuery>;
+function PostsCard(props: {
+	readonly handle: QueryHandle<typeof postsQuery>;
 	readonly label: string;
 }) {
-	const [pagesThenable, state] = useInfiniteQuery(todosQuery, props.handle);
+	const [pagesThenable, state] = useInfiniteQuery(postsQuery, props.handle);
 	return (
 		<Card
 			fetching={state.isFetching}
@@ -164,15 +159,17 @@ function TodosCard(props: {
 	);
 }
 
-function UsersCard(props: { readonly handle: QueryHandle<typeof usersQuery> }) {
-	const [pagesThenable, state] = useInfiniteQuery(usersQuery, props.handle);
+function AuthorsCard(props: {
+	readonly handle: QueryHandle<typeof authorsQuery>;
+}) {
+	const [pagesThenable, state] = useInfiniteQuery(authorsQuery, props.handle);
 	return (
 		<Card
 			fetching={state.isFetching}
 			fetchNextPage={state.fetchNextPage}
 			hasNextPage={state.hasNextPage}
 			isFetchingNextPage={state.isFetchingNextPage}
-			label='[users, "list"]'
+			label='[authors, "list"]'
 			pagesThenable={pagesThenable}
 			updatedAt={state.updatedAt}
 		/>
@@ -184,16 +181,16 @@ const actions: ReadonlyArray<{
 	readonly run: (queryClient: QueryClient) => Promise<void>;
 }> = [
 	{
-		code: "invalidateMany(qc, todos)",
-		run: (qc) => invalidateMany(qc, todos),
+		code: "invalidateMany(qc, posts)",
+		run: (qc) => invalidateMany(qc, posts),
 	},
 	{
-		code: 'invalidateMany(qc, todosQuery, { status: "done" })',
-		run: (qc) => invalidateMany(qc, todosQuery, { status: "done" }),
+		code: 'invalidateMany(qc, postsQuery, { sort: "oldest" })',
+		run: (qc) => invalidateMany(qc, postsQuery, { sort: "oldest" }),
 	},
 	{
-		code: 'invalidateOne(qc, todosQuery, { status: "all" })',
-		run: (qc) => invalidateOne(qc, todosQuery, { status: "all" }),
+		code: 'invalidateOne(qc, postsQuery, { sort: "newest" })',
+		run: (qc) => invalidateOne(qc, postsQuery, { sort: "newest" }),
 	},
 	{ code: "invalidateAll(qc)", run: (qc) => invalidateAll(qc) },
 ];
@@ -227,15 +224,15 @@ function Page(props: { readonly data: PageData }) {
 	return (
 		<div className="grid gap-3">
 			<div className="grid gap-2 sm:grid-cols-3">
-				<TodosCard
-					handle={props.data.all}
-					label='[todos, "list", { status: "all" }]'
+				<PostsCard
+					handle={props.data.newest}
+					label='[posts, "list", { sort: "newest" }]'
 				/>
-				<TodosCard
-					handle={props.data.done}
-					label='[todos, "list", { status: "done" }]'
+				<PostsCard
+					handle={props.data.oldest}
+					label='[posts, "list", { sort: "oldest" }]'
 				/>
-				<UsersCard handle={props.data.users} />
+				<AuthorsCard handle={props.data.authors} />
 			</div>
 			<InvalidateButtons />
 		</div>
@@ -249,9 +246,9 @@ function Invalidation() {
 			initial={{ path: "/dashboard" }}
 			loader={async (args): Promise<PageData> => {
 				const [handles] = await load(args.client, {
-					all: prefetch(todosQuery, { status: "all" }),
-					done: prefetch(todosQuery, { status: "done" }),
-					users: prefetch(usersQuery),
+					authors: prefetch(authorsQuery),
+					newest: prefetch(postsQuery, { sort: "newest" }),
+					oldest: prefetch(postsQuery, { sort: "oldest" }),
 				});
 				return handles;
 			}}
@@ -263,7 +260,7 @@ function Invalidation() {
 
 export default defineDemo({
 	Component: Invalidation,
-	hint: "Every query here has staleTime: Infinity, so nothing refetches until it's invalidated. Invalidate the todos group, a factory's queries with part of an input, one query, or everything, and see which lists refetch.",
+	hint: "Every query here has staleTime: Infinity, so nothing refetches until it's invalidated. Invalidate the posts group, a factory's queries with part of an input, one query, or everything, and see which lists refetch.",
 	server,
 	title: "Invalidating by group, factory and query",
 });
