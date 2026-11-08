@@ -3,6 +3,7 @@ import { useRouter } from "@tanstack/react-router";
 
 import type { DocSegment } from "~/content/types.ts";
 import type { demoQuery } from "~/demos/registry.ts";
+import { installTwoslashHovers } from "~/twoslash-hovers.ts";
 
 import { DemoEmbed } from "./demo-embed.tsx";
 
@@ -50,31 +51,6 @@ function codeText(pre: Element) {
 		toggle.remove();
 	}
 	return copy.textContent.trimEnd();
-}
-
-/**
- * Shows a Twoslash hover popup next to its name, inside the viewport. The
- * popup is `position: fixed`, so the code block's scrolling doesn't clip it.
- */
-function placePopup(target: EventTarget | null) {
-	const hover = isElement(target)
-		? target.closest(".twoslash-hover:not(.twoslash-query-persisted)")
-		: null;
-	const popup = hover?.querySelector<HTMLElement>(
-		":scope > .twoslash-popup-container",
-	);
-	if (!hover || !popup) {
-		return;
-	}
-	const anchor = hover.getBoundingClientRect();
-	const margin = 8;
-	const below = anchor.bottom + 6;
-	popup.style.left = `${Math.max(margin, Math.min(anchor.left, window.innerWidth - popup.offsetWidth - margin))}px`;
-	popup.style.top = `${
-		below + popup.offsetHeight > window.innerHeight - margin
-			? Math.max(margin, anchor.top - popup.offsetHeight - 6)
-			: below
-	}px`;
 }
 
 /** Opens or closes a folded code region. The lines stay in the page either way. */
@@ -148,12 +124,12 @@ export function DocBody(props: {
 				}
 			}}
 			onPointerOver={(event) => {
-				placePopup(event.target);
 				const href = internalHref(event.target, event.currentTarget);
 				if (href) {
 					void router.preloadRoute({ to: href });
 				}
 			}}
+			ref={(element) => (element ? installTwoslashHovers(element) : undefined)}
 		>
 			{props.segments.map((segment, index) =>
 				segment.kind === "html" ? (
