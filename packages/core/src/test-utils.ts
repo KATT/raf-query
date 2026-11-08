@@ -332,7 +332,6 @@ export function counted() {
 	const calls = new Map<string, number>();
 	const query = (input: { readonly meta?: Meta; readonly name: string }) =>
 		queryOptions({
-			enabled: input.name !== "disabled",
 			meta: input.meta,
 			queryFn: () => {
 				const count = (calls.get(input.name) ?? 0) + 1;

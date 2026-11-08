@@ -19,6 +19,7 @@ import {
 	prefetch,
 	queryOptions,
 	revalidate,
+	skipToken,
 	swr,
 	waterfallHandle,
 } from "./index.ts";
@@ -196,24 +197,23 @@ describe("load", () => {
 		await expect(loading).resolves.toBeDefined();
 	});
 
-	it("rejects for a disabled query it has to wait for, and skips it in a prefetch", async () => {
-		let calls = 0;
+	it("skips a skipToken entry: no request, no handle, no data", async () => {
+		const backend = createBackend();
 		const client = testClient();
-		const disabled = () =>
-			queryOptions({
-				enabled: false,
-				queryFn: () => {
-					calls += 1;
-					return 1;
-				},
-				queryKey: issues("disabled"),
-			});
+		const isAdmin = false as boolean;
+		const loading = load(client, {
+			drafts: isAdmin ? revalidate(backend.issueQuery, { id: 2 }) : skipToken,
+			issue: swr(backend.issueQuery, { id: 1 }),
+			never: skipToken,
+		});
+		expect(backend.requests.map((request) => request.id)).toEqual([1]);
+		await backend.respondAll();
+		const [handles, data] = await loading;
 
-		await expect(load(client, { value: revalidate(disabled) })).rejects.toThrow(
-			'Query ["issues","disabled"] is disabled',
-		);
-		await load(client, { value: prefetch(disabled) });
-		expect(calls).toBe(0);
+		expect(handles.drafts).toBeUndefined();
+		expect(handles.never).toBeUndefined();
+		expect(handles.issue.input).toEqual({ id: 1 });
+		expect(Object.keys(data)).toEqual(["issue"]);
 	});
 
 	it("doesn't revalidate data the server already has", async () => {

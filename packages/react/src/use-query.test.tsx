@@ -1,6 +1,6 @@
 import { act, fireEvent, screen } from "@testing-library/react";
 import { Suspense, use, useState } from "react";
-import { renderToReadableStream, renderToString } from "react-dom/server";
+import { renderToReadableStream } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -467,22 +467,6 @@ describe("useQuery", () => {
 		expect(screen.getByText("Second false")).toBeTruthy();
 	});
 
-	it("leaves a disabled query pending in the browser", async () => {
-		const backend = createBackend();
-		const client = testClient();
-		const handle = waterfallHandle(backend.disabledQuery, { id: 1 });
-		const states: Array<boolean> = [];
-		function Disabled() {
-			const [, controls] = useQuery(backend.disabledQuery, handle);
-			states.push(controls.isPending);
-			return null;
-		}
-		await renderWith(client, <Disabled />);
-		await act(flush);
-		expect(backend.requests).toHaveLength(0);
-		expect(states.every(Boolean)).toBe(true);
-	});
-
 	it("doesn't restart an entry that failed", async () => {
 		const backend = createBackend();
 		const client = testClient();
@@ -505,39 +489,6 @@ describe("useQuery", () => {
 			digest: "BAILOUT_TO_CLIENT_SIDE_RENDERING",
 			name: "BrowserRenderError",
 		} satisfies Pick<Error, "name"> & { readonly digest: string };
-
-		it("hands a plain read of a disabled query to the browser", async () => {
-			vi.spyOn(console, "error").mockImplementation(() => {});
-			const backend = createBackend();
-			const client = createQueryClient({ isServer: true });
-			const handle = waterfallHandle(backend.disabledQuery, { id: 1 });
-			const reads: Array<Promise<unknown>> = [];
-			function Child(props: { readonly issueThenable: Promise<unknown> }) {
-				use(props.issueThenable);
-				return <p>loaded</p>;
-			}
-			function Disabled() {
-				const [issueThenable] = useQuery(backend.disabledQuery, handle);
-				reads.push(issueThenable);
-				return (
-					<Suspense fallback={<p>in the browser</p>}>
-						<Child issueThenable={issueThenable} />
-					</Suspense>
-				);
-			}
-			const html = renderToString(
-				<QueryClientProvider client={client}>
-					<Disabled />
-					<Disabled />
-				</QueryClientProvider>,
-			);
-
-			expect(html).toContain("in the browser");
-			expect(reads[1]).toBe(reads[0]);
-			const bailout = await reads[0]?.catch((error: unknown) => error);
-			expect(bailout).toMatchObject(bailoutError);
-			expect(backend.requests).toHaveLength(0);
-		});
 
 		it("fetches a query nothing started while rendering, without a warning", async () => {
 			const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -586,6 +537,12 @@ describe("useQuery", () => {
 				const issue = use(issueThenable);
 				return <p>{issue.ok ? issue.value.title : "failed"}</p>;
 			}
+			const reads: Array<Promise<unknown>> = [];
+			function ReadsTwice() {
+				reads.push(useQuery(backend.issueQuery, unstarted)[0]);
+				reads.push(useQuery(backend.issueQuery, unstarted)[0]);
+				return null;
+			}
 			const stream = await renderToReadableStream(
 				<QueryClientProvider client={client}>
 					<ServerHydrationBoundary client={serverComponents}>
@@ -595,6 +552,7 @@ describe("useQuery", () => {
 						<Suspense fallback={<p>also in the browser</p>}>
 							<Issue handle={unstarted} />
 						</Suspense>
+						<ReadsTwice />
 					</ServerHydrationBoundary>
 				</QueryClientProvider>,
 				{ onError: (error) => void errors.push(error) },
@@ -608,6 +566,7 @@ describe("useQuery", () => {
 				expect.objectContaining(bailoutError),
 				expect.objectContaining(bailoutError),
 			]);
+			expect(reads[1]).toBe(reads[0]);
 			expect(backend.requests).toHaveLength(0);
 			expect(warn).not.toHaveBeenCalled();
 		});

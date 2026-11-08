@@ -188,26 +188,6 @@ describe("a read query", () => {
 		await backend.respondAll();
 	});
 
-	it("doesn't run while disabled", async () => {
-		let calls = 0;
-		const client = testClient();
-		const disabled = () =>
-			queryOptions({
-				enabled: false,
-				queryFn: () => {
-					calls += 1;
-					return 1;
-				},
-				queryKey: issues("off"),
-			});
-		const view = read(client, disabled, waterfallHandle(disabled));
-		await act(() => view.result.current[1].refetch());
-		await act(() => invalidateOne(client, disabled));
-
-		expect(calls).toBe(0);
-		expect(view.result.current[1].isFetching).toBe(false);
-	});
-
 	it("maps its data through select, settled or not, and keeps the mapped thenable", async () => {
 		const backend = createBackend();
 		const client = testClient();

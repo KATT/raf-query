@@ -60,6 +60,17 @@ describe("useQuery", () => {
 		expectTypeOf(Pages).toBeFunction();
 	});
 
+	it("requires a handle: a skipped entry's reader renders only with one", () => {
+		function Issue(props: {
+			readonly handle: QueryHandle<Backend["issueQuery"]> | undefined;
+		}) {
+			// @ts-expect-error: a `skipToken` entry's handle may be `undefined`
+			useQuery(backend.issueQuery, props.handle);
+			return null;
+		}
+		expectTypeOf(Issue).toBeFunction();
+	});
+
 	it("is callable from a hook generic over single-query factories", () => {
 		function useTitle<TFactory extends SingleQueryFactory>(
 			factory: TFactory,

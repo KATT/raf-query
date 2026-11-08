@@ -1,6 +1,6 @@
 /** What the refetch features share: reading a `meta` field, and refetching read, stale queries. */
 import type { QueryClient } from "../client.ts";
-import { type Entry, fetchEntry, isEnabled, isStale } from "../entry.ts";
+import { type Entry, fetchEntry, isStale } from "../entry.ts";
 import { isObject } from "../guards.ts";
 
 export function metaOf(entry: Entry, field: string): unknown {
@@ -17,7 +17,6 @@ export function refetchStaleReads(client: QueryClient, optOut: string): void {
 	for (const entry of client["~entries"].values()) {
 		if (
 			entry.readers.size > 0 &&
-			isEnabled(entry) &&
 			isStale(entry) &&
 			metaOf(entry, optOut) !== false
 		) {

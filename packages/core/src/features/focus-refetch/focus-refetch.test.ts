@@ -3,7 +3,7 @@
  * `QueryClientProvider` calls when it mounts the client, and stops by
  * aborting `signal` when it unmounts. It listens for `visibilitychange`
  * and `focus`; when the document is visible, it refetches every query
- * that is read (has a mounted reader), enabled and stale, unless the
+ * that is read (has a mounted reader) and stale, unless the
  * query's `meta.refetchOnWindowFocus` is `false`. The refetch is the
  * entry's ordinary request, so the data lands in the cache as usual.
  */
@@ -36,12 +36,11 @@ describe("focusRefetch()", () => {
 		expect(counter.calls("stale")).toBe(2);
 	});
 
-	it("leaves fresh, unread and disabled queries alone, and those that opt out", async () => {
+	it("leaves fresh and unread queries alone, and those that opt out", async () => {
 		const counter = counted();
 		const client = testClient({ features: [focusRefetch()], staleTime: 10 });
 		const unread = await counter.show(client, "unread");
 		unread.unmount();
-		await counter.show(client, "disabled");
 		await counter.show(client, "opted out", { refetchOnWindowFocus: false });
 		await counter.show(client, "other meta", { refetchOnReconnect: false });
 		advance(client, 10);
@@ -50,9 +49,9 @@ describe("focusRefetch()", () => {
 		await flush();
 
 		expect(
-			["unread", "disabled", "opted out", "other meta", "fresh"].map(
+			["unread", "opted out", "other meta", "fresh"].map(
 				counter.calls,
 			),
-		).toEqual([1, 0, 1, 2, 1]);
+		).toEqual([1, 1, 2, 1]);
 	});
 });

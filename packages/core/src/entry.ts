@@ -61,11 +61,6 @@ export interface Entry {
 	thenable: Thenable<unknown>;
 }
 
-/** What a reader of a disabled query with no data gets on the server. */
-export class QueryDisabledError extends Error {
-	override readonly name = "QueryDisabledError";
-}
-
 const initialState: EntryState = {
 	data: undefined,
 	error: undefined,
@@ -185,10 +180,6 @@ export function entryOf(
 	entry.options = options;
 	scheduleGc(entry);
 	return entry;
-}
-
-export function isEnabled(entry: Entry): boolean {
-	return entry.options?.enabled !== false;
 }
 
 /** Whether an invalidation newer than the entry's data covers it. */
@@ -365,7 +356,7 @@ export function fetchEntry(
 		return current.done.promise;
 	}
 	const options = entry.options;
-	if (!options || !isEnabled(entry)) {
+	if (!options) {
 		return current?.done.promise ?? Promise.resolve({ ok: true });
 	}
 	current?.controller.abort();
@@ -518,7 +509,7 @@ export function invalidate(
 	for (const entry of entries) {
 		if (stamps.some((stamp) => matches(entry, stamp))) {
 			notify(entry);
-			if (entry.readers.size > 0 && isEnabled(entry)) {
+			if (entry.readers.size > 0) {
 				refetches.push(fetchEntry(entry, { restart: true }));
 			}
 		}
