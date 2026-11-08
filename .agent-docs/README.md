@@ -8,6 +8,7 @@ Working memory for coding agents on this repo. **Agents own this folder** — cr
 | [origin.md](./origin.md)                             | What the name means and the tooling baseline                                          |
 | [implementation-notes.md](./implementation-notes.md) | Verified mechanisms to copy from TanStack / React source, and which package owns what |
 | [bundle-size.md](./bundle-size.md)                   | Bundle size numbers against TanStack Query, and what defeats tree-shaking             |
+| [open-questions.md](./open-questions.md)             | Questions with no sign-off                                                            |
 
 ## Rules of thumb
 
