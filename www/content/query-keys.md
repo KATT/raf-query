@@ -86,7 +86,7 @@ Each distinct input gets its own entry, cached independently. Because the input 
 
 ## Design keys for invalidation
 
-A group matches every key that starts with its path. A factory matches the queries it built, and a factory with part of its input matches against the key's last segment. With the input last, every level is one call:
+A group matches every key that starts with its path. A factory matches the queries it built, and a factory with part of its input matches the queries whose input has those fields. Every level is one call:
 
 ```sample
 tanstack-start/src/docs/query-keys.ts#design-keys-for-invalidation

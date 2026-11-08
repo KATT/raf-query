@@ -24,7 +24,7 @@ import {
 import { isArray, isFunction } from "./guards.ts";
 import {
 	type InputArgs,
-	type KeyOf,
+	type InputOf,
 	optionsOf,
 	type QueryFactory,
 	type RootOfFactory,
@@ -36,13 +36,12 @@ type DeepPartial<T> = T extends object
 	? { readonly [TName in keyof T]?: DeepPartial<T[TName]> }
 	: T;
 
-type Last<T> = T extends readonly [...Array<unknown>, infer TLast]
-	? TLast
-	: never;
-
-/** What `invalidateMany(factory, partial)` takes: part of the key's last segment. */
+/**
+ * What `invalidateMany(factory, partial)` takes: part of the factory's
+ * input, whatever its key looks like.
+ */
 export type PartialInput<TFactory extends QueryFactory> = DeepPartial<
-	Last<KeyOf<TFactory>>
+	InputOf<TFactory>
 >;
 
 /**

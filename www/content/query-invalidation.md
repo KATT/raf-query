@@ -33,14 +33,16 @@ Verbs are functions that take the client first. Each `…One` verb takes a facto
 | ------------------------------------------- | -------------------------------------------------------------------------------- |
 | `invalidateOne(qc, factory, input)`         | The factory's query for that input                                               |
 | `invalidateMany(qc, factory)`               | Every query of the factory                                                       |
-| `invalidateMany(qc, factory, partialInput)` | The factory's queries whose key ends with a match for `partialInput`             |
+| `invalidateMany(qc, factory, partialInput)` | The factory's queries whose input matches `partialInput`                         |
 | `invalidateMany(qc, group)`                 | Every key that starts with the [group](./query-keys.md#groups), or a group in it |
 | `invalidateMany(qc, tag, param?)`           | Every query with the [tag](#tags), for one parameter or for any                  |
 | `invalidateMany(qc, { where }, param?)`     | Every query [`where`](#matching-with-where) returns `true` for                   |
 | `invalidateMany(qc, [target, …])`           | Every query any of the targets matches: [several targets](#several-targets)      |
 | `invalidateAll(qc)`                         | Everything                                                                       |
 
-A partial input matches the key's **last** segment, the factory's input when the key [ends with it](./query-keys.md#put-the-input-in-the-key). Object fields match **partially**: `{ status: "done" }` matches any input with that field, whatever else it has.
+A partial input matches the **input** each query's factory was called with, never its key, so it works the same however the key is built: `[postQuery, { slug }]` for a key written as `posts("bySlug", input.slug)`. Object fields match **partially**: `{ status: "done" }` matches any input with that field, whatever else it has.
+
+A query that was only [hydrated](./ssr-and-hydration.md) has no factory until something reads it. A factory target still invalidates it, from its first read. `resetMany` and `removeMany` act at once, so a factory target skips it; a group reaches it by its key.
 
 Targets are values, never strings: a factory matches by identity, a group by its path, and a tag or `where` by what it says about each query. TypeScript checks a partial input against the factory's input, and a tag's parameter against the tag.
 

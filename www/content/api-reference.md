@@ -122,7 +122,7 @@ Read the thenable's `status`, `value` and `reason` to render without Suspense. S
 
 ## Changing the cache
 
-Each verb takes the client first. A factory matches the queries it built: all of them, or those whose input matches a partial input. A group matches the keys that start with its path. A target (`{ where }`, such as a tag) matches the queries its `where` picks. [Query invalidation](./query-invalidation.md)
+Each verb takes the client first. A factory matches the queries it built: all of them, or those whose input matches a partial input (`PartialInput<TFactory>`, part of the factory's input, whatever its key looks like). A group matches the keys that start with its path. A target (`{ where }`, such as a tag) matches the queries its `where` picks. [Query invalidation](./query-invalidation.md)
 
 | Export                                                                                       | Use                                                                                                                             |
 | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |

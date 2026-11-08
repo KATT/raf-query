@@ -165,6 +165,60 @@ describe("invalidation", () => {
 		expect(await refetches({ filter: { open: true } })).toBe(true);
 	});
 
+	it("matches a partial against the input, whatever the key ends with", async () => {
+		const client = testClient({ staleTime: Infinity });
+		const calls: Array<string> = [];
+		const bySlug = (input: { readonly slug: string }) =>
+			queryOptions({
+				queryFn: () => calls.push(input.slug),
+				queryKey: issues("bySlug", input.slug, "detail"),
+			});
+		const loadBoth = () =>
+			load(client, {
+				a: revalidate(bySlug, { slug: "a" }),
+				b: revalidate(bySlug, { slug: "b" }),
+			});
+		const has = () =>
+			["a", "b"].map((slug) => getData(client, bySlug, { slug }) !== undefined);
+		await loadBoth();
+		calls.length = 0;
+
+		await invalidateMany(client, bySlug, { slug: "a" });
+		await loadBoth();
+		expect(calls).toEqual(["a"]);
+		await invalidateMany(client, [[bySlug, { slug: "b" }]]);
+		await loadBoth();
+		expect(calls).toEqual(["a", "b"]);
+		await resetMany(client, [[bySlug, { slug: "b" }]]);
+		expect(has()).toEqual([true, false]);
+		removeMany(client, bySlug, { slug: "a" });
+		expect(has()).toEqual([false, false]);
+	});
+
+	it("matches a partial against a hydrated query once its factory reads it", async () => {
+		const client = testClient({ staleTime: Infinity });
+		const calls: Array<string> = [];
+		const bySlug = (input: { readonly slug: string }) =>
+			queryOptions({
+				queryFn: () => calls.push(input.slug),
+				queryKey: issues("bySlug", input.slug),
+			});
+		const entry = (slug: string) => ({
+			data: 0,
+			queryKey: issues("bySlug", slug),
+			updatedAt: client.clock.now(),
+		});
+		hydrate(client, { entries: [entry("a"), entry("b")] });
+		removeMany(client, bySlug, { slug: "a" });
+		await invalidateMany(client, bySlug, { slug: "a" });
+		await load(client, {
+			a: revalidate(bySlug, { slug: "a" }),
+			b: revalidate(bySlug, { slug: "b" }),
+		});
+
+		expect(calls).toEqual(["a"]);
+	});
+
 	it("matches tags with or without their parameter", async () => {
 		const cache = await cached();
 		await invalidateMany(cache.client, author, "bob");

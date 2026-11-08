@@ -16,7 +16,7 @@ declare const title: string;
 // #region several-targets
 await updatePost({ slug, title });
 await invalidateMany(queryClient, [
-	[postQuery, slug], // this post
+	[postQuery, { slug }], // this post
 	postsQuery, // every post list
 	authors, // and the authors' post counts
 ]);

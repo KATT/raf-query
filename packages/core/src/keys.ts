@@ -9,6 +9,8 @@
  * Core knows three kinds of target:
  *
  * - A factory, matched by identity, optionally with part of its input.
+ *   The partial is matched against the input the factory was called with,
+ *   never against the key, so it means the same however the key is built.
  * - A group, made by `group()`: a function that builds flat keys under its
  *   path, `drafts("byId", input)` is `["posts", "drafts", "byId", input]`.
  *   It matches every key that starts with its path, whoever built the key,
@@ -20,6 +22,11 @@
  * matching stamp is newer than the request its data came from. Entries with
  * readers refetch at once; the rest are checked when they are next read,
  * which always goes through their factory, so `where` sees their `meta`.
+ *
+ * An entry that was only hydrated has no factory or input until it's read.
+ * A factory target covers it from that first read: invalidation through its
+ * stamp, which outlives the call. `resetMany` and `removeMany` act at once,
+ * so a factory target skips such an entry; a group still reaches it by key.
  */
 
 import { isString } from "./guards.ts";
@@ -269,7 +276,7 @@ export function matches(entry: Matchable, stamp: Stamp): boolean {
 			return (
 				entry.factory === stamp.factory &&
 				(stamp.partial === undefined ||
-					partialMatch(entry.key.at(-1), stamp.partial))
+					partialMatch(entry.input, stamp.partial))
 			);
 		case "group":
 			return stamp.path.every((segment, i) => entry.key[i] === segment);

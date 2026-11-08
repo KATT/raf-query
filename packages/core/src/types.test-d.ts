@@ -15,6 +15,7 @@ import {
 	invalidateOne,
 	link,
 	load,
+	type PartialInput,
 	prefetch,
 	type QueryClient,
 	type QueryHandle,
@@ -189,6 +190,20 @@ describe("verb types", () => {
 		void invalidateMany(client, featured);
 		// @ts-expect-error -- a partial input still has the factory's types
 		void invalidateMany(client, titles, { id: "1" });
+		const bySlug = (input: { readonly slug: string }) =>
+			queryOptions({
+				queryFn: () => input.slug,
+				queryKey: issues("bySlug", input.slug),
+			});
+		expectTypeOf<PartialInput<typeof bySlug>>().toEqualTypeOf<{
+			readonly slug?: string;
+		}>();
+		void invalidateMany(client, bySlug, { slug: "a" });
+		removeMany(client, [[bySlug, { slug: "a" }]]);
+		// @ts-expect-error -- a partial is part of the input, not the key's last segment
+		void invalidateMany(client, bySlug, "a");
+		// @ts-expect-error -- in a list too
+		void resetMany(client, [[bySlug, "a"]]);
 		// @ts-expect-error -- a tag parameter is typed
 		void invalidateMany(client, author, 1);
 		// @ts-expect-error -- a group takes no parameter
