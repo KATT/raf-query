@@ -91,7 +91,7 @@ export interface InfiniteQueryOptionsBuilder<TTypes extends RootTypes> {
 
 /**
  * Typed options for a paged query factory. Readers get `{ pages, pageParams }`
- * and controls to fetch the next or previous page:
+ * and, on their state, `fetchNextPage` and `fetchPreviousPage`:
  *
  * ```ts
  * export const issueList = (input: { status: Status }) =>

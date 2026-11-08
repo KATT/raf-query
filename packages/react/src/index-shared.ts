@@ -7,12 +7,5 @@ export {
 	type QueryDevtoolsProps,
 } from "./devtools.tsx";
 export { QueryClientProvider } from "./provider.tsx";
-export type {
-	InfiniteQueryControls,
-	PageControls,
-} from "./use-infinite-query.ts";
-export type {
-	QueryControls,
-	QueryValue,
-	UseQueryOptions,
-} from "./use-query.ts";
+export type { InfiniteQueryState, PageControls } from "./use-infinite-query.ts";
+export type { QueryState, QueryValue, UseQueryOptions } from "./use-query.ts";

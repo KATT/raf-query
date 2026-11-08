@@ -69,7 +69,7 @@ tanstack-start/src/docs/retries.tsx#showing-errors
 
 Any error boundary works: [`CatchBoundary`](https://tanstack.com/router/latest/docs/framework/react/api/router/catchBoundaryComponent) from TanStack Router, [`react-error-boundary`](https://github.com/bvaughn/react-error-boundary), Next.js's [`error.tsx`](https://nextjs.org/docs/app/api-reference/file-conventions/error), or your own class component. For expected errors, `QueryBoundary` from `@raf-query/boundary` picks a handler by the error's `_tag` and retries for you.
 
-**A background refetch fails.** The existing data stays on screen: losing it because a refetch failed would be worse than showing it a little longer. The error is on the reader's controls as `error`, for a hint:
+**A background refetch fails.** The existing data stays on screen: losing it because a refetch failed would be worse than showing it a little longer. The error is on the reader's state as `error`, for a hint:
 
 ```sample
 tanstack-start/src/docs/retries.stale-data-notice.tsx#stale-data-notice

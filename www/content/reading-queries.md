@@ -21,7 +21,7 @@ tanstack-start/src/docs/reading-queries.tsx#post-page
 
 `options` takes [`whilePending`](./url-state-and-pagination.md) and `result`, which reads [expected errors](./query-functions.md#expected-errors) as a `Result` instead of throwing them. There is no option to change the input: the handle decides what is read. Settings such as polling belong to the query, as [`meta`](./query-meta.md) in its factory.
 
-## Controls
+## State
 
 | Field               | Meaning                                                                                                    |
 | ------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -43,7 +43,7 @@ When the cache updates — refetch, invalidation, `setData` — the hook returns
 
 ## Errors
 
-When the **first** load fails, the thenable rejects and `use()` throws to the nearest error boundary. A failed **background** refetch doesn't throw: the old data stays on screen and `controls.error` holds the error, so the component can show it next to the data. [Retries](./retries.md) has a demo of both.
+When the **first** load fails, the thenable rejects and `use()` throws to the nearest error boundary. A failed **background** refetch doesn't throw: the old data stays on screen and the state's `error` holds the error, so the component can show it next to the data. [Retries](./retries.md) has a demo of both.
 
 An [expected error](./query-functions.md#expected-errors) (`fail()`) throws a `QueryFailure`. Read it as a value with `{ result: true }`, or catch it by tag with `QueryBoundary` from `@raf-query/boundary`, whose `retry` refetches the query and renders the children again. With another error boundary, call `resetOne(qc, factory, input)` before resetting it, so the query loads again instead of throwing the same error.
 

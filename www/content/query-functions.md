@@ -7,7 +7,7 @@ order: 3
 
 A query function can be literally any function that **returns a value or a promise**. The promise should either **resolve the data**, **resolve an [expected error](#expected-errors)** made with `fail()`, or **throw**.
 
-Unlike TanStack Query, `undefined` is a valid result: a `queryFn` typed `Promise<User | undefined>` caches `undefined` like any other value. So `getData` and a `setData` updater's `previous` are `undefined` both with no data and with `undefined` data; a reader's `controls.isPending` tells them apart.
+Unlike TanStack Query, `undefined` is a valid result: a `queryFn` typed `Promise<User | undefined>` caches `undefined` like any other value. So `getData` and a `setData` updater's `previous` are `undefined` both with no data and with `undefined` data; a reader's `isPending` tells them apart.
 
 All of these are valid:
 
@@ -19,7 +19,7 @@ In practice the `queryFn` lives in a [factory](./query-factories.md) and closes 
 
 ## Handling and throwing errors
 
-A query function that **throws** or returns a **rejected promise** fails with a **defect**: an error the app didn't plan for. The error is kept on the query: the first load's error rejects the promise `useQuery` returns, so `use()` throws it to the nearest error boundary, and a later background error shows up in `controls.error` while the old data stays readable.
+A query function that **throws** or returns a **rejected promise** fails with a **defect**: an error the app didn't plan for. The error is kept on the query: the first load's error rejects the promise `useQuery` returns, so `use()` throws it to the nearest error boundary, and a later background error shows up in the state's `error` while the old data stays readable.
 
 ```sample
 tanstack-start/src/docs/query-functions.ts#handling-and-throwing-errors
@@ -69,7 +69,7 @@ A `queryFn` that returns an [async iterable](https://developer.mozilla.org/en-US
 tanstack-start/src/docs/query-functions.ts#streaming
 ```
 
-Readers get the data after the first chunk, and every later chunk updates it in place. `controls.isFetching` stays `true` until the stream ends.
+Readers get the data after the first chunk, and every later chunk updates it in place. The state's `isFetching` stays `true` until the stream ends.
 
 ## The query function context
 

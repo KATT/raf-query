@@ -72,7 +72,7 @@ Array order does matter. These are three different entries:
 tanstack-start/src/docs/query-keys.ts#array-order-matters
 ```
 
-`useQuery`'s controls expose the hashed key as `hash`, which makes a good `key` prop for a Suspense boundary.
+`useQuery`'s state exposes the hashed key as `hash`, which makes a good `key` prop for a Suspense boundary.
 
 ## Put the input in the key
 

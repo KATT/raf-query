@@ -94,7 +94,7 @@ While a loader's `swr` entry is still loading, the previous page stays on screen
 tanstack-start/src/docs/tanstack-start.tsx#pending-ui
 ```
 
-Per-query background refetches after the page has rendered use `controls.isFetching`. See [Background fetching indicators](./background-fetching-indicators.md).
+Per-query background refetches after the page has rendered use `isFetching` on the query's state. See [Background fetching indicators](./background-fetching-indicators.md).
 
 ### Search params
 

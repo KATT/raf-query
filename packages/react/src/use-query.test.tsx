@@ -10,7 +10,7 @@ import {
 	load,
 	prefetch,
 	QueryClientProvider,
-	type QueryControls,
+	type QueryState,
 	type QueryHandle,
 	removeOne,
 	revalidate,
@@ -254,7 +254,7 @@ describe("useQuery", () => {
 				});
 			});
 			const thenables: Array<Thenable<Issue>> = [];
-			const states: Array<QueryControls<Backend["issueQuery"]>> = [];
+			const states: Array<QueryState<Backend["issueQuery"]>> = [];
 			function Issue(props: { readonly label: string }) {
 				const [issueThenable, controls] = useQuery(
 					backend.issueQuery,

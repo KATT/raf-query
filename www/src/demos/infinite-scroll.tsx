@@ -93,7 +93,7 @@ function MessageSkeletons() {
 function Messages(props: {
 	readonly handle: QueryHandle<typeof messagesQuery>;
 }) {
-	const [pagesThenable, controls] = useInfiniteQuery(
+	const [pagesThenable, messagesState] = useInfiniteQuery(
 		messagesQuery,
 		props.handle,
 	);
@@ -117,13 +117,13 @@ function Messages(props: {
 						</span>
 					</li>
 				))}
-				{controls.isFetchingNextPage ? <MessageSkeletons /> : null}
+				{messagesState.isFetchingNextPage ? <MessageSkeletons /> : null}
 			</ul>
-			{controls.hasNextPage && !controls.isFetchingNextPage ? (
+			{messagesState.hasNextPage && !messagesState.isFetchingNextPage ? (
 				<button
 					className="mt-2 w-full rounded-md border py-1.5 text-xs text-muted-foreground hover:bg-accent"
 					onClick={() => {
-						void controls.fetchNextPage();
+						void messagesState.fetchNextPage();
 					}}
 					ref={(button) => {
 						if (button === null) {
@@ -133,7 +133,7 @@ function Messages(props: {
 							(entries) => {
 								if (entries.some((entry) => entry.isIntersecting)) {
 									observer.disconnect();
-									void controls.fetchNextPage();
+									void messagesState.fetchNextPage();
 								}
 							},
 							{
@@ -151,7 +151,7 @@ function Messages(props: {
 					Load more
 				</button>
 			) : null}
-			{controls.hasNextPage ? null : (
+			{messagesState.hasNextPage ? null : (
 				<p className="py-2 text-center text-xs text-muted-foreground">
 					That’s all {items.length} messages.
 				</p>

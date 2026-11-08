@@ -1,15 +1,15 @@
 ---
 title: Background fetching indicators
-description: Show that a query is refreshing with controls.isFetching, count requests in flight with useIsFetching, and leave navigations to the router's pending UI.
+description: Show that a query is refreshing with its state's isFetching, count requests in flight with useIsFetching, and leave navigations to the router's pending UI.
 section: Guides
 order: 17
 ---
 
-A query's first load suspends, so Suspense fallbacks cover it. Later requests (refetches on focus, invalidation, polling) happen in the background, while the old data stays on screen. Read `isFetching` on that query's controls. For navigations, prefer the router's pending UI: you usually don't need a global fetch counter.
+A query's first load suspends, so Suspense fallbacks cover it. Later requests (refetches on focus, invalidation, polling) happen in the background, while the old data stays on screen. Read `isFetching` on that query's state. For navigations, prefer the router's pending UI: you usually don't need a global fetch counter.
 
 ## One query: isFetching
 
-`isFetching` on the reader's controls is `true` while a request for the query is in flight, first loads included:
+`isFetching` on the reader's state is `true` while a request for the query is in flight, first loads included:
 
 ```sample
 tanstack-start/src/docs/background-fetching-indicators.tsx#one-query-isfetching

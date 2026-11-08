@@ -75,7 +75,7 @@ While a link navigation is loading the next RSC payload, show pending state with
 nextjs/src/docs/nextjs.tsx#pending-ui
 ```
 
-Per-query background refetches after the page has rendered use `controls.isFetching`. See [Background fetching indicators](./background-fetching-indicators.md).
+Per-query background refetches after the page has rendered use `isFetching` on the query's state. See [Background fetching indicators](./background-fetching-indicators.md).
 
 ## Search params
 

@@ -1,5 +1,6 @@
 import {
 	type DataOf,
+	type EntryState,
 	type ErrorOf,
 	failOf,
 	type InputOf,
@@ -53,7 +54,7 @@ export interface UseQueryOptions<TResult extends boolean = boolean> {
 }
 
 /** What `useQuery` returns next to the data. */
-export interface QueryControls<TFactory extends QueryFactory = QueryFactory> {
+export interface QueryState<TFactory extends QueryFactory = QueryFactory> {
 	/** The last request's error while it's the latest outcome: a `fail()` value or a defect. */
 	readonly error: unknown;
 	readonly hash: string;
@@ -124,7 +125,7 @@ function asResult(
 }
 
 /** Whether nothing is loading the entry: no data, no error, no request in flight. */
-function isIdle(entry: Entry, state: State): boolean {
+function isIdle(entry: Entry, state: EntryState): boolean {
 	return !state.hasData && !entry.run && state.status !== "error";
 }
 
@@ -133,7 +134,7 @@ function isIdle(entry: Entry, state: State): boolean {
  * waterfall handle, or of a query the cache dropped. A server render never
  * starts one: only loaders and server components request on the server.
  */
-function startIfMissing(entry: Entry, state: State, waterfall: boolean) {
+function startIfMissing(entry: Entry, state: EntryState, waterfall: boolean) {
 	const client = entry.client;
 	if (client.isServer || !isIdle(entry, state) || !isEnabled(entry)) {
 		return;
@@ -147,14 +148,12 @@ function startIfMissing(entry: Entry, state: State, waterfall: boolean) {
 	void fetchEntry(entry);
 }
 
-export type State = Entry["state"];
-
 /**
  * On the server, an entry nothing is loading (disabled, never started, or
  * dropped) reads as a rejection: a `use()` of it inside Suspense renders
  * that boundary's fallback, and the browser renders the content.
  */
-function readOf(entry: Entry, state: State): Thenable<unknown> {
+function readOf(entry: Entry, state: EntryState): Thenable<unknown> {
 	return entry.client.isServer && isIdle(entry, state)
 		? browserRender(entry)
 		: entry.thenable;
@@ -165,7 +164,7 @@ export function settled(promise: Promise<unknown>): Promise<void> {
 }
 
 /** The state a kind of query adds, from the entry it shows and that entry's state. */
-export type ExtraFields = (entry: Entry, state: State) => Fields;
+export type ExtraFields = (entry: Entry, state: EntryState) => Fields;
 
 /**
  * One read of the entry. It takes both entries' states as arguments: core
@@ -174,9 +173,9 @@ export type ExtraFields = (entry: Entry, state: State) => Fields;
  */
 function readQuery(
 	current: Entry,
-	state: State,
+	state: EntryState,
 	shown: Entry,
-	shownState: State,
+	shownState: EntryState,
 	handle: QueryHandle,
 	options: UseQueryOptions | undefined,
 	extra: ExtraFields | undefined,
@@ -307,8 +306,8 @@ export function useQuery<
 	factory: TFactory,
 	handle: QueryHandle<TFactory>,
 	options?: UseQueryOptions<TResult>,
-): readonly [QueryValue<TFactory, TResult>, QueryControls<TFactory>] {
-	const read = useQueryRead<QueryControls<TFactory>>(factory, handle, options);
+): readonly [QueryValue<TFactory, TResult>, QueryState<TFactory>] {
+	const read = useQueryRead<QueryState<TFactory>>(factory, handle, options);
 	return [
 		// SAFETY: `QueryValue` describes what was read for this handle.
 		read.thenable as QueryValue<TFactory, TResult>,

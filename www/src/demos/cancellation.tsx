@@ -46,10 +46,10 @@ type PageData =
 
 function Inbox(props: { readonly handle: QueryHandle<typeof inboxQuery> }) {
 	const queryClient = useQueryClient();
-	const [messagesThenable, controls] = useQuery(inboxQuery, props.handle);
+	const [messagesThenable, inboxState] = useQuery(inboxQuery, props.handle);
 	const messages = use(messagesThenable);
 	return (
-		<div aria-busy={controls.isFetching} className="grid gap-3">
+		<div aria-busy={inboxState.isFetching} className="grid gap-3">
 			<ul className="grid gap-1.5">
 				{messages.map((message) => (
 					<li
@@ -63,9 +63,9 @@ function Inbox(props: { readonly handle: QueryHandle<typeof inboxQuery> }) {
 			</ul>
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
-					disabled={controls.isFetching}
+					disabled={inboxState.isFetching}
 					onClick={() => {
-						void controls.refetch();
+						void inboxState.refetch();
 					}}
 					size="xs"
 					variant="outline"
@@ -82,8 +82,8 @@ function Inbox(props: { readonly handle: QueryHandle<typeof inboxQuery> }) {
 					<RotateCcw /> Invalidate
 				</Button>
 				<span className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
-					{controls.isFetching ? <Spinner /> : null}
-					Fetched at {formatTime(controls.updatedAt)}
+					{inboxState.isFetching ? <Spinner /> : null}
+					Fetched at {formatTime(inboxState.updatedAt)}
 				</span>
 			</div>
 		</div>

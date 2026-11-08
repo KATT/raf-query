@@ -20,7 +20,7 @@ That's up to `useQuery`'s `whilePending` option:
 | `whilePending`        | While the new input loads                                                                                                                                                                  | Use for                                                       |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
 | `"suspend"` (default) | `use()` suspends. TanStack Router and Next.js run navigations as React transitions, so React keeps the whole previous screen, including the old URL's active links, until the data arrives | Short loads, and pages that shouldn't show stale data         |
-| `"previous"`          | The navigation commits immediately. `useQuery` keeps returning the previous input's data, and `isPrevious` is `true` on its controls until the new data lands                              | Lists, filters, pagination: anything that should feel instant |
+| `"previous"`          | The navigation commits immediately. `useQuery` keeps returning the previous input's data, and `isPrevious` is `true` on its state until the new data lands                                 | Lists, filters, pagination: anything that should feel instant |
 
 Either way, an input that's already cached renders immediately. A component that mounts with a pending handle has no previous data, so `"previous"` suspends like `"suspend"` on first load.
 
@@ -40,7 +40,7 @@ To show a skeleton instead, for instance when moving between unrelated posts, gi
 tanstack-start/src/docs/url-state-and-pagination.tsx#skeletons-for-unrelated-content
 ```
 
-`hash` on the controls is the stable string form of the query's key.
+`hash` on the state is the stable string form of the query's key.
 
 ## Pagination versus infinite scroll
 

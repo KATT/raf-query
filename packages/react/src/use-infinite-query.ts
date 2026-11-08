@@ -1,4 +1,8 @@
-import type { InfiniteQueryFactory, QueryHandle } from "@raf-query/core";
+import type {
+	EntryState,
+	InfiniteQueryFactory,
+	QueryHandle,
+} from "@raf-query/core";
 import {
 	type Entry,
 	fetchEntry,
@@ -6,10 +10,9 @@ import {
 } from "@raf-query/core/internal";
 
 import {
-	type QueryControls,
+	type QueryState,
 	type QueryValue,
 	settled,
-	type State,
 	useQueryRead,
 	type UseQueryOptions,
 } from "./use-query.ts";
@@ -28,14 +31,14 @@ export interface PageControls {
 }
 
 /** What `useInfiniteQuery` returns next to the data. */
-export interface InfiniteQueryControls<
+export interface InfiniteQueryState<
 	TFactory extends InfiniteQueryFactory = InfiniteQueryFactory,
 >
-	extends PageControls, QueryControls<TFactory> {}
+	extends PageControls, QueryState<TFactory> {}
 
 function hasPage(
 	entry: Entry,
-	state: State,
+	state: EntryState,
 	direction: "next" | "previous",
 ): boolean {
 	return (
@@ -50,7 +53,7 @@ function hasPage(
 	);
 }
 
-function pageFields(entry: Entry, state: State): Fields {
+function pageFields(entry: Entry, state: EntryState): Fields {
 	return {
 		actions: {
 			fetchNextPage: () => settled(fetchEntry(entry, { direction: "next" })),
@@ -68,7 +71,7 @@ function pageFields(entry: Entry, state: State): Fields {
 
 /**
  * Read a paged query (`infiniteQueryOptions`) by its handle. The data is
- * `{ pages, pageParams }`, and the controls load more pages.
+ * `{ pages, pageParams }`, and its state loads more pages.
  *
  * ```tsx
  * const [pagesThenable, pagesState] = useInfiniteQuery(commentsQuery, handles.comments);
@@ -82,8 +85,8 @@ export function useInfiniteQuery<
 	factory: TFactory,
 	handle: QueryHandle<TFactory>,
 	options?: UseQueryOptions<TResult>,
-): readonly [QueryValue<TFactory, TResult>, InfiniteQueryControls<TFactory>] {
-	const read = useQueryRead<InfiniteQueryControls<TFactory>>(
+): readonly [QueryValue<TFactory, TResult>, InfiniteQueryState<TFactory>] {
+	const read = useQueryRead<InfiniteQueryState<TFactory>>(
 		factory,
 		handle,
 		options,

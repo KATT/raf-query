@@ -7,10 +7,10 @@ import {
 	type ErrorOf,
 	group,
 	type InfiniteData,
-	type InfiniteQueryControls,
+	type InfiniteQueryState,
 	invalidateMany,
 	type QueryClient,
-	type QueryControls,
+	type QueryState,
 	type QueryHandle,
 	type Result,
 	retry,
@@ -38,7 +38,7 @@ describe("useQuery", () => {
 			);
 			expectTypeOf(issueThenable).toEqualTypeOf<Thenable<Issue>>();
 			expectTypeOf(issueState).toEqualTypeOf<
-				QueryControls<Backend["issueQuery"]>
+				QueryState<Backend["issueQuery"]>
 			>();
 			expectTypeOf(issueState).not.toHaveProperty("fetchNextPage");
 			expectTypeOf(issueState).not.toHaveProperty("hasNextPage");
@@ -81,7 +81,7 @@ describe("useInfiniteQuery", () => {
 				Thenable<InfiniteData<Array<number>, number>>
 			>();
 			expectTypeOf(pagesState).toEqualTypeOf<
-				InfiniteQueryControls<Backend["pageQuery"]>
+				InfiniteQueryState<Backend["pageQuery"]>
 			>();
 			expectTypeOf(pagesState.fetchNextPage).returns.toEqualTypeOf<
 				Promise<void>

@@ -147,7 +147,7 @@ While a link navigation is loading the next route, show pending state with React
 react-router/app/docs/react-router.tsx#pending-ui
 ```
 
-Per-query background refetches after the page has rendered use `controls.isFetching`. See [Background fetching indicators](./background-fetching-indicators.md).
+Per-query background refetches after the page has rendered use `isFetching` on the query's state. See [Background fetching indicators](./background-fetching-indicators.md).
 
 ## Prefetching links
 
