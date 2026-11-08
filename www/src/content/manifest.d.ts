@@ -4,6 +4,12 @@ declare module "virtual:docs-manifest" {
 	export const sections: ReadonlyArray<DocSection>;
 }
 
+declare module "virtual:docs-search-text" {
+	import type { SearchText } from "~/content/search.ts";
+
+	export const text: SearchText;
+}
+
 declare module "*.md" {
 	import type { Doc } from "~/content/types.ts";
 

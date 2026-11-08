@@ -45,6 +45,8 @@ export default defineConfig({
 						priority: 0.8,
 					},
 				})),
+				// Search results, which the browser lists from `?q=`.
+				{ path: "/search", sitemap: { exclude: true } },
 				{
 					path: "/404",
 					prerender: { enabled: true, outputPath: "/404.html" },
