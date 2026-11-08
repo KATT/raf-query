@@ -15,8 +15,8 @@ export type Fail<
  *
  * ```ts
  * queryFn: async () => {
- *   const res = await api.issues.get(id);
- *   if (res.status === 404) return fail({ _tag: "NotFound", id });
+ *   const res = await api.posts.get(slug);
+ *   if (res.status === 404) return fail({ _tag: "NotFound", slug });
  *   return res.data;
  * }
  * ```

@@ -6,11 +6,11 @@
 import { QueryBoundary } from "@raf-query/boundary";
 
 <QueryBoundary
-	query={issueQuery}
-	catch={{ NotFound: (error) => <p>No issue {error.id}</p> }}
-	fallback={<IssueSkeleton />}
+	query={postQuery}
+	catch={{ NotFound: (error) => <p>No post {error.slug}</p> }}
+	fallback={<PostSkeleton />}
 >
-	<Issue handle={handles.issue} />
+	<Post handle={handles.post} />
 </QueryBoundary>;
 ```
 
