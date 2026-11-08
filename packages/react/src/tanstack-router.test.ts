@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { describe, expect, it, vi } from "vitest";
 
-import { dehydrate } from "./hydration.ts";
+import { dehydrate } from "./index.ts";
 import {
 	createQueryClient,
 	getData,

@@ -1,4 +1,4 @@
-import { QueryDevtools } from "@raf-query/react/devtools";
+import { QueryDevtools } from "@raf-query/react";
 import type { ReactNode } from "react";
 
 import { Providers } from "~/components/providers.tsx";

@@ -17,10 +17,10 @@ import {
 	createQueryClient,
 	type QueryClient,
 	QueryClientProvider,
+	QueryDevtoolsPanel,
 	recommended,
 	removeAll,
 } from "@raf-query/react";
-import { QueryDevtoolsPanel } from "@raf-query/react/devtools";
 import { Expand, FlaskConical, Shrink } from "lucide-react";
 import { Activity, type ReactNode, Suspense, useId, useState } from "react";
 

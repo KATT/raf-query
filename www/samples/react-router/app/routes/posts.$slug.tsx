@@ -1,4 +1,5 @@
 import {
+	dehydrate,
 	HydrationBoundary,
 	load,
 	prefetch,
@@ -6,7 +7,6 @@ import {
 	revalidate,
 	useQuery,
 } from "@raf-query/react";
-import { dehydrate } from "@raf-query/react/hydration";
 import { Suspense, use } from "react";
 import { redirect } from "react-router";
 

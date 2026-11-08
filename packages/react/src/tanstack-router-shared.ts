@@ -1,9 +1,10 @@
-import type { QueryClient, QueryHandle } from "@raf-query/core";
 import {
 	type DehydratedState,
 	type DehydrateOptions,
 	hydrate,
-} from "@raf-query/core/hydration";
+	type QueryClient,
+	type QueryHandle,
+} from "@raf-query/core";
 import { type AnyRouter, isRedirect } from "@tanstack/react-router";
 
 declare module "@tanstack/react-router" {

@@ -5,7 +5,7 @@ section: Reference
 order: 1
 ---
 
-`@raf-query/react/devtools` shows the browser's query cache as it changes. Render `QueryDevtools` anywhere under the provider, and only mount it in development so bundlers drop the panel from production builds.
+`QueryDevtools` from `@raf-query/react` shows the browser's query cache as it changes. Render `QueryDevtools` anywhere under the provider, and only mount it in development so bundlers drop the panel from production builds.
 
 On Vite and TanStack Start, use [`import.meta.env.DEV`](https://vite.dev/guide/env-and-mode#built-in-constants):
 
@@ -54,7 +54,7 @@ Select an entry to see its data (or its error) and when it was last updated, and
 `QueryDevtoolsPanel` is the panel alone, to place in your own layout. It takes `client`, `style` for its root element (its height, say), and `onClose`, which adds a close button.
 
 ```tsx twoslash
-import { QueryDevtoolsPanel } from "@raf-query/react/devtools";
+import { QueryDevtoolsPanel } from "@raf-query/react";
 // ---cut---
 function Panel() {
 	return <QueryDevtoolsPanel style={{ height: 400 }} />;

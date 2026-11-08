@@ -1,5 +1,5 @@
 import { group, queryOptions, type QueryClient } from "@raf-query/react";
-import { canDehydrate } from "@raf-query/react/hydration";
+import { canDehydrate } from "@raf-query/react";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 
 const pushState = group("pushState");

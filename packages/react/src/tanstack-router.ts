@@ -1,5 +1,4 @@
-import { removeAll } from "@raf-query/core";
-import { dehydrateStream } from "@raf-query/core/hydration";
+import { dehydrateStream, removeAll } from "@raf-query/core";
 import type { AnyRouter } from "@tanstack/react-router";
 
 import {

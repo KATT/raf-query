@@ -1,8 +1,7 @@
 import { IssueListInput } from "@examples/db/types";
 import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { HydrationBoundary, load, prefetch } from "@raf-query/react";
-import { dehydrate } from "@raf-query/react/hydration";
+import { dehydrate, HydrationBoundary, load, prefetch } from "@raf-query/react";
 import { Suspense } from "react";
 
 import { queryClientContext } from "~/query-client.ts";

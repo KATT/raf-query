@@ -32,8 +32,6 @@
 	"sideEffects": false,
 	"exports": {
 		".": "./src/index.ts",
-		"./groups": "./src/groups.ts",
-		"./hydration": "./src/hydration.ts",
 		"./internal": "./src/internal.ts"
 	},
 	"scripts": {
@@ -61,8 +59,6 @@
 		"access": "public",
 		"exports": {
 			".": "./dist/index.mjs",
-			"./groups": "./dist/groups.mjs",
-			"./hydration": "./dist/hydration.mjs",
 			"./internal": "./dist/internal.mjs"
 		},
 		"provenance": true

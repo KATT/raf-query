@@ -28,20 +28,11 @@ npm install @raf-query/boundary
 - **React 19.2 or newer.** raf-query reads data with `use()` and relies on transitions, Actions and `useOptimistic`.
 - **Node.js 22 or newer** for server rendering.
 
-## Subpath entries
+## One entry point
 
-The parts not every app needs are subpath exports of the same package, so there is nothing else to install, and an app that doesn't import one doesn't bundle it:
+Everything comes from `@raf-query/react`: the hooks, the client, [tags](./query-invalidation.md#tags), `dehydrate` and `hydrate` for [SSR without an integration](./ssr-and-hydration.md), `HydrationBoundary` and the [devtools](./devtools.md). An app bundles only what it imports, so tags, hydration and the devtools cost nothing until it uses them.
 
-| Import                             | For                                                                                |
-| ---------------------------------- | ---------------------------------------------------------------------------------- |
-| `@raf-query/react/groups`          | [Tags](./query-invalidation.md#tags) to invalidate sets of queries across groups   |
-| `@raf-query/react/hydration`       | `dehydrate` and `hydrate` for [SSR without an integration](./ssr-and-hydration.md) |
-| `@raf-query/react/tanstack-router` | [TanStack Start and TanStack Router](./tanstack-start.md) SSR streaming            |
-| `@raf-query/react/devtools`        | The [devtools](./devtools.md) panel; omit the element to tree-shake it             |
-
-[React Server Components](./react-server-components.md) apps, such as the Next.js App Router, and [React Router Framework Mode](./react-router.md) need no integration subpath: `QueryClientProvider` and `HydrationBoundary` come from `@raf-query/react`.
-
-`@tanstack/react-router` is an optional peer: only apps that import `/tanstack-router` need it.
+[TanStack Start and TanStack Router](./tanstack-start.md) apps also import `setupRouterIntegration` from `@raf-query/react/tanstack-router`, the one subpath. It needs `@tanstack/react-router`, an optional peer, and gives the server and the browser different code. [React Server Components](./react-server-components.md) apps, such as the Next.js App Router, and [React Router Framework Mode](./react-router.md) need no integration entry.
 
 ## TypeScript
 

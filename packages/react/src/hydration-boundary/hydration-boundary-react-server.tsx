@@ -1,5 +1,4 @@
-import type { QueryClient } from "@raf-query/core";
-import { dehydrate } from "@raf-query/core/hydration";
+import { dehydrate, type QueryClient } from "@raf-query/core";
 
 import { Hydrate } from "./hydrate.tsx";
 import type { HydrationBoundaryProps } from "./hydration-boundary.tsx";

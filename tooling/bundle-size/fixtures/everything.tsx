@@ -1,13 +1,14 @@
 import { QueryBoundary } from "@raf-query/boundary";
 import {
 	createQueryClient,
+	type DehydratedState,
+	groups,
 	HydrationBoundary,
 	invalidateMany,
 	recommended,
+	tag,
 	timeout,
 } from "@raf-query/react";
-import { groups, tag } from "@raf-query/react/groups";
-import type { DehydratedState } from "@raf-query/react/hydration";
 
 import { renderPages } from "./pages.tsx";
 import { issueQuery, render } from "./render.tsx";

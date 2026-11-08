@@ -12,10 +12,10 @@ import { Toaster } from "@examples/ui/components/sonner";
 import { logoUrl } from "@examples/kit/lib/logo";
 import {
 	QueryClientProvider,
+	QueryDevtools,
 	removeAll,
 	useQueryClient,
 } from "@raf-query/react";
-import { QueryDevtools } from "@raf-query/react/devtools";
 import { useState } from "react";
 import {
 	isRouteErrorResponse,

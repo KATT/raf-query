@@ -1,10 +1,10 @@
 "use client";
 
-import type { QueryClient } from "@raf-query/core";
 import type {
 	DehydratedState,
 	DehydrateOptions,
-} from "@raf-query/core/hydration";
+	QueryClient,
+} from "@raf-query/core";
 import type { ReactNode } from "react";
 
 import { Hydrate } from "./hydrate.tsx";

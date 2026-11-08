@@ -1,5 +1,8 @@
-import { createQueryClient, HydrationBoundary } from "@raf-query/react";
-import type { DehydratedState } from "@raf-query/react/hydration";
+import {
+	createQueryClient,
+	type DehydratedState,
+	HydrationBoundary,
+} from "@raf-query/react";
 
 import { render } from "./render.tsx";
 

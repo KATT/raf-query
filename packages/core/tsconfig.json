@@ -7,8 +7,7 @@
 		"moduleResolution": "nodenext",
 		"noEmit": true,
 		"paths": {
-			"@raf-query/react": ["../react/src/index.ts"],
-			"@raf-query/react/devtools": ["../react/src/devtools.tsx"]
+			"@raf-query/react": ["../react/src/index.ts"]
 		},
 		"resolveJsonModule": true,
 		"rewriteRelativeImportExtensions": true,

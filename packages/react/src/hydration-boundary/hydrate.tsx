@@ -1,7 +1,10 @@
 "use client";
 
-import type { QueryClient } from "@raf-query/core";
-import { type DehydratedState, hydrate } from "@raf-query/core/hydration";
+import {
+	type DehydratedState,
+	hydrate,
+	type QueryClient,
+} from "@raf-query/core";
 import { hashKey } from "@raf-query/core/internal";
 import { type ReactNode, useEffect, useState } from "react";
 

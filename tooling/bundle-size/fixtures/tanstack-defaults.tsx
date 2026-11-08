@@ -1,12 +1,12 @@
 import {
 	createQueryClient,
+	type DehydratedState,
 	focusRefetch,
 	HydrationBoundary,
 	polling,
 	reconnectRefetch,
 	retry,
 } from "@raf-query/react";
-import type { DehydratedState } from "@raf-query/react/hydration";
 
 import { render } from "./render.tsx";
 

@@ -123,4 +123,4 @@ tanstack-start/src/docs/ssr-and-hydration.ts#serialization
 - [React Server Components](./react-server-components.md): `HydrationBoundary` for the Next.js App Router and other RSC frameworks.
 - [React Router](./react-router.md): `HydrationBoundary` for the snapshot each Framework Mode loader returns.
 
-Without an integration, `@raf-query/react/hydration` has the pieces they use: `dehydrate(client)` snapshots the cache, `dehydrateStream(client)` snapshots it and then streams entries as they start and settle, and `hydrate(client, state)` writes a snapshot into a client. `HydrationBoundary` takes a snapshot as its `state` prop and hydrates it while rendering.
+Without an integration, `@raf-query/react` has the pieces they use: `dehydrate(client)` snapshots the cache, `dehydrateStream(client)` snapshots it and then streams entries as they start and settle, and `hydrate(client, state)` writes a snapshot into a client. `HydrationBoundary` takes a snapshot as its `state` prop and hydrates it while rendering.

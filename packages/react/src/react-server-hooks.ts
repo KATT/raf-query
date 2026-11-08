@@ -20,15 +20,16 @@ function clientOnly(name: string): () => never {
 	};
 }
 
-export const useQuery: typeof UseQuery = clientOnly("useQuery");
+export const useQuery: typeof UseQuery = /* @__PURE__ */ clientOnly("useQuery");
 
 export const useInfiniteQuery: typeof UseInfiniteQuery =
-	clientOnly("useInfiniteQuery");
+	/* @__PURE__ */ clientOnly("useInfiniteQuery");
 
-export const useIsFetching: typeof UseIsFetching = clientOnly("useIsFetching");
+export const useIsFetching: typeof UseIsFetching =
+	/* @__PURE__ */ clientOnly("useIsFetching");
 
 export const useQueryClient: typeof UseQueryClient =
-	clientOnly("useQueryClient");
+	/* @__PURE__ */ clientOnly("useQueryClient");
 
 /**
  * `bindUseQueryClient` runs at module level in a file server modules may

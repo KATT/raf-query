@@ -9,13 +9,13 @@ import { Button, buttonVariants } from "@examples/ui/components/button";
 import { Separator } from "@examples/ui/components/separator";
 import { cn } from "@examples/ui/lib/utils";
 import {
+	dehydrate,
 	HydrationBoundary,
 	load,
 	prefetch,
 	type QueryHandle,
 	useQuery,
 } from "@raf-query/react";
-import { dehydrate } from "@raf-query/react/hydration";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Suspense, use } from "react";
 import { isRouteErrorResponse } from "react-router";

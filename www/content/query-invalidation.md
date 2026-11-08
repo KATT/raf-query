@@ -61,7 +61,7 @@ The refetches run side by side, a query that several targets cover refetches onc
 
 ### Tags
 
-A tag cuts across groups: every query that shows an author, wherever its key starts. Define one with `tag()` from `@raf-query/react/groups`, and list a query's tags in `meta.tags`, fixed or computed from its data. Tags need the `groups()` feature on the client:
+A tag cuts across groups: every query that shows an author, wherever its key starts. Define one with `tag()`, and list a query's tags in `meta.tags`, fixed or computed from its data. Tags need the `groups()` feature on the client:
 
 ```sample
 tanstack-start/src/docs/query-invalidation.ts#tags

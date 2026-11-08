@@ -98,13 +98,10 @@ function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 
 ## Entry points
 
-| Import                             | Use                                                                                                          |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `@raf-query/react`                 | `QueryClientProvider`, `useQuery`, `useInfiniteQuery`, `useIsFetching`, `HydrationBoundary`, and all of core |
-| `@raf-query/react/hydration`       | `dehydrate` and `hydrate` from core                                                                          |
-| `@raf-query/react/groups`          | `tag` and `groups()` from core                                                                               |
-| `@raf-query/react/tanstack-router` | [TanStack Start and Router](https://raf-query.katt.dev/docs/tanstack-start) SSR streaming                    |
-| `@raf-query/react/devtools`        | The [devtools](https://raf-query.katt.dev/docs/devtools) panel; omit the element to tree-shake it            |
+| Import                             | Use                                                                                                                                                                                                              |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@raf-query/react`                 | `QueryClientProvider`, `useQuery`, `useInfiniteQuery`, `useIsFetching`, `HydrationBoundary`, `QueryDevtools`, and all of core (tags, `dehydrate`, `hydrate`); what an app doesn't import stays out of its bundle |
+| `@raf-query/react/tanstack-router` | [TanStack Start and Router](https://raf-query.katt.dev/docs/tanstack-start) SSR streaming                                                                                                                        |
 
 ## License
 

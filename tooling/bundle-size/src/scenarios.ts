@@ -12,6 +12,10 @@ export const features = {
 		label: "`QueryBoundary`",
 		marker: { module: "boundary/index" },
 	},
+	devtools: {
+		label: "devtools",
+		marker: { module: "react/devtools" },
+	},
 	focusRefetch: {
 		label: "`focusRefetch()`",
 		marker: { code: "visibilitychange" },
@@ -50,6 +54,7 @@ export const featureIds: ReadonlyArray<Feature> = [
 	"tags",
 	"paging",
 	"boundary",
+	"devtools",
 ];
 
 export function hasFeature(bundle: Bundle, feature: Feature): boolean {
@@ -125,6 +130,16 @@ export const scenarios: ReadonlyArray<Scenario> = [
 		name: "+ `QueryBoundary`",
 	},
 	{
+		fixture: "devtools.tsx",
+		imports: ["hooks", "devtools"],
+		name: "+ devtools (`QueryDevtools`)",
+	},
+	{
+		fixture: "devtools-dev-only.tsx",
+		imports: ["hooks"],
+		name: "+ devtools behind a development check, in production",
+	},
+	{
 		fixture: "tanstack-defaults.tsx",
 		imports: [
 			"hooks",
@@ -138,7 +153,7 @@ export const scenarios: ReadonlyArray<Scenario> = [
 	},
 	{
 		fixture: "everything.tsx",
-		imports: featureIds,
+		imports: featureIds.filter((feature) => feature !== "devtools"),
 		name: "Everything (`recommended()`, `timeout()`, tags, hydration, paging, boundary)",
 	},
 ];

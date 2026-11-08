@@ -31,6 +31,19 @@ export {
 	reconnectRefetch,
 	type ReconnectRefetchMeta,
 } from "./features.ts";
+export { groups, type Tag, type TagsMeta, tag } from "./groups.ts";
+export {
+	canDehydrate,
+	type DehydratedEntry,
+	type DehydratedResult,
+	type DehydratedState,
+	type DehydratedStream,
+	type DehydrateOptions,
+	dehydrate,
+	dehydrateStream,
+	hydrate,
+	RedactedError,
+} from "./hydration.ts";
 export {
 	bindInfiniteQueryOptions,
 	type InfiniteData,

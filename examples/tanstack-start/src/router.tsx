@@ -6,9 +6,9 @@ import {
 import {
 	createQueryClient,
 	QueryClientProvider,
+	QueryDevtools,
 	recommended,
 } from "@raf-query/react";
-import { QueryDevtools } from "@raf-query/react/devtools";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import { createRouter } from "@tanstack/react-router";
 

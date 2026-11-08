@@ -31,14 +31,10 @@ export const bundle = Effect.fn("bundle")(function* (
 		? [
 				{ find: /^@raf-query\/core$/, replacement: built("core", "index") },
 				{
-					find: /^@raf-query\/core\/(groups|hydration|internal)$/,
-					replacement: built("core", "$1"),
+					find: /^@raf-query\/core\/internal$/,
+					replacement: built("core", "internal"),
 				},
 				{ find: /^@raf-query\/react$/, replacement: built("react", "index") },
-				{
-					find: /^@raf-query\/react\/(groups|hydration)$/,
-					replacement: built("react", "$1"),
-				},
 				{
 					find: /^@raf-query\/boundary$/,
 					replacement: built("boundary", "index"),

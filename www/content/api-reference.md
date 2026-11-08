@@ -1,6 +1,6 @@
 ---
 title: API reference
-description: Every export of @raf-query/react, its subpaths, @raf-query/core and @raf-query/boundary, with query options and their defaults.
+description: Every export of @raf-query/react, its TanStack Router subpath, @raf-query/core and @raf-query/boundary, with query options and their defaults.
 section: Reference
 order: 2
 ---
@@ -33,7 +33,7 @@ Links and features:
 | `focusRefetch()`                    | feature | Refetch read, stale queries on window focus; `meta.refetchOnWindowFocus: false` opts out. [Window focus refetching](./window-focus-refetching.md) |
 | `reconnectRefetch()`                | feature | Refetch read, stale queries when the browser comes back online; `meta.refetchOnReconnect: false` opts out                                         |
 | `polling()`                         | feature | Refetch read queries every `meta.refetchInterval` ms. [Polling](./polling.md)                                                                     |
-| `groups()`                          | feature | From `@raf-query/react/groups`: gives queries `meta.tags`. [Query invalidation](./query-invalidation.md#tags)                                     |
+| `groups()`                          | feature | Gives queries `meta.tags`. [Query invalidation](./query-invalidation.md#tags)                                                                     |
 
 ## Query factories
 
@@ -160,16 +160,23 @@ Each verb takes the client first. A factory matches the queries it built: all of
 | `bindUseQueryClient<typeof makeQueryClient>()` | `useQueryClient`, typed with a root, so verbs check factories against it. [Query meta](./query-meta.md#typing-meta-by-its-root)                 |
 | `HydrationBoundary`                            | Writes server data into the client: a loader's `state`, or in server components the request's `client`. [React Router](./react-router.md)       |
 
-## Subpaths
+## Tags, hydration and devtools
 
-| Entry                              | Exports                                                                                                                                                   |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@raf-query/react/groups`          | `tag(name)`, `groups()`, `Tag`, `TagsMeta`. [Query invalidation](./query-invalidation.md#tags)                                                            |
-| `@raf-query/react/hydration`       | `dehydrate`, `dehydrateStream`, `hydrate`, `canDehydrate`, `RedactedError`, and their option and state types. [SSR and hydration](./ssr-and-hydration.md) |
-| `@raf-query/react/tanstack-router` | `setupRouterIntegration({ queryClient, router, dehydrateOptions?, handleRedirects? })`. [TanStack Start](./tanstack-start.md)                             |
-| `@raf-query/react/devtools`        | `QueryDevtools`, `QueryDevtoolsPanel`. [Devtools](./devtools.md)                                                                                          |
+Also on the main entry. An app that doesn't import them doesn't bundle them.
 
-`@raf-query/core` has the same `groups` and `hydration` subpaths, for code that doesn't use React.
+| Export                                                                                                       | Use                                                                                             |
+| ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `tag(name)`, `groups()`, `Tag`, `TagsMeta`                                                                   | [Query invalidation](./query-invalidation.md#tags)                                              |
+| `dehydrate`, `dehydrateStream`, `hydrate`, `canDehydrate`, `RedactedError`, and their option and state types | Move a cache to the browser without an integration. [SSR and hydration](./ssr-and-hydration.md) |
+| `QueryDevtools`, `QueryDevtoolsPanel`                                                                        | [Devtools](./devtools.md)                                                                       |
+
+`@raf-query/core` exports the same, except the devtools, for code that doesn't use React.
+
+## TanStack Router
+
+| Entry                              | Exports                                                                                                                       |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `@raf-query/react/tanstack-router` | `setupRouterIntegration({ queryClient, router, dehydrateOptions?, handleRedirects? })`. [TanStack Start](./tanstack-start.md) |
 
 ## @raf-query/boundary
 

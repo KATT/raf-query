@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import { use } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { dehydrate } from "../hydration.ts";
+import { dehydrate } from "../index.ts";
 import { HydrationBoundary as ServerHydrationBoundary } from "../index-react-server.ts";
 import {
 	createQueryClient,

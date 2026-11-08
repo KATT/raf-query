@@ -1,4 +1,4 @@
-import { QueryDevtools } from "@raf-query/react/devtools";
+import { QueryDevtools } from "@raf-query/react";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import { createRouter } from "@tanstack/react-router";
 

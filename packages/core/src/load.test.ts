@@ -1,4 +1,4 @@
-import { QueryDevtoolsPanel } from "@raf-query/react/devtools";
+import { QueryDevtoolsPanel } from "@raf-query/react";
 import { screen } from "@testing-library/react";
 import { createElement } from "react";
 import { describe, expect, it, vi } from "vitest";

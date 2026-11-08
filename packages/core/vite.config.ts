@@ -5,12 +5,7 @@ const react = (file: string) =>
 
 export default defineConfig({
 	pack: {
-		entry: [
-			"src/index.ts",
-			"src/groups.ts",
-			"src/hydration.ts",
-			"src/internal.ts",
-		],
+		entry: ["src/index.ts", "src/internal.ts"],
 		// Without the tests, whose `@raf-query/react` path would pull React's
 		// source into the declaration build.
 		tsconfig: "tsconfig.no-node.json",
@@ -19,13 +14,7 @@ export default defineConfig({
 	test: {
 		// Core's tests read queries through React's hooks, from source. Not a
 		// dependency: react depends on core, and pnpm refuses workspace cycles.
-		alias: [
-			{ find: /^@raf-query\/react$/, replacement: react("index.ts") },
-			{
-				find: /^@raf-query\/react\/devtools$/,
-				replacement: react("devtools.tsx"),
-			},
-		],
+		alias: [{ find: /^@raf-query\/react$/, replacement: react("index.ts") }],
 		clearMocks: true,
 		coverage: {
 			exclude: [

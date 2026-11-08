@@ -1,5 +1,9 @@
-import { createQueryClient, invalidateMany } from "@raf-query/react";
-import { groups, tag } from "@raf-query/react/groups";
+import {
+	createQueryClient,
+	groups,
+	invalidateMany,
+	tag,
+} from "@raf-query/react";
 
 import { render } from "./render.tsx";
 

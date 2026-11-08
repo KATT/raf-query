@@ -1,5 +1,4 @@
-import { QueryClientProvider } from "@raf-query/react";
-import { QueryDevtools } from "@raf-query/react/devtools";
+import { QueryClientProvider, QueryDevtools } from "@raf-query/react";
 import type { ReactNode } from "react";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 

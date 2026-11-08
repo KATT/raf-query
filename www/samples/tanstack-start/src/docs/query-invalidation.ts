@@ -11,7 +11,7 @@ import { postQuery, posts, postsQuery, todos } from "~/queries.ts";
 declare const slug: string;
 
 // #region tags
-import { groups, tag } from "@raf-query/react/groups";
+import { groups, tag } from "@raf-query/react";
 
 export const author = tag<string>("author");
 

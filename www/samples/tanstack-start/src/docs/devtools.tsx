@@ -1,5 +1,8 @@
-import { type QueryClient, QueryClientProvider } from "@raf-query/react";
-import { QueryDevtools } from "@raf-query/react/devtools";
+import {
+	type QueryClient,
+	QueryClientProvider,
+	QueryDevtools,
+} from "@raf-query/react";
 import type { ReactNode } from "react";
 
 declare const props: { children: ReactNode };

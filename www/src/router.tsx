@@ -1,10 +1,10 @@
 import {
+	canDehydrate,
 	createQueryClient,
 	QueryClientProvider,
+	QueryDevtools,
 	retry,
 } from "@raf-query/react";
-import { QueryDevtools } from "@raf-query/react/devtools";
-import { canDehydrate } from "@raf-query/react/hydration";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import { createRouter } from "@tanstack/react-router";
 

@@ -100,7 +100,7 @@ Server middleware runs for the document request and for each client navigation's
 
 ### Server loaders
 
-Each loader takes the request's client from the context, starts every query the route needs with `load`, and returns the handles with a dehydrated snapshot of the cache, from `dehydrate` in `@raf-query/react/hydration`:
+Each loader takes the request's client from the context, starts every query the route needs with `load`, and returns the handles with a dehydrated snapshot of the cache, from `dehydrate`:
 
 ```sample
 react-router/app/routes/posts.$slug.tsx#loader
