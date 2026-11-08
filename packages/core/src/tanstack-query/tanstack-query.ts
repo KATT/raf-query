@@ -14,7 +14,6 @@ import {
 	reset,
 	write,
 } from "../entry.ts";
-import { isFailValue, isQueryFailure, QueryFailure } from "../fail.ts";
 import { hashKey, type QueryKey } from "../keys/keys.ts";
 import { entryStamp, matches } from "../keys/targets.ts";
 
@@ -229,15 +228,13 @@ export function tanstackQuerySync(
 					void reset(entry);
 				}
 				if (query && newError(raf, link.raf)) {
-					const error = raf?.error;
 					query.setState({
-						error: isFailValue(error) ? new QueryFailure(error, hash) : error,
+						error: raf?.error,
 						errorUpdatedAt: client.clock.now(),
 						status: "error",
 					});
 				} else if (entry && newError(tanstack, link.tanstack)) {
-					const error = tanstack?.error;
-					failWith(entry, isQueryFailure(error) ? error.fail : error);
+					failWith(entry, tanstack?.error);
 				}
 				const current = entries.get(hash);
 				const target = queries.get(hash);

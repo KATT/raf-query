@@ -231,7 +231,7 @@ export function write(
  * Record a failed request. Data the entry had stays readable. Without data,
  * the request in flight has a pending thenable for readers: it rejects.
  */
-function failWith(entry: Entry, error: unknown): void {
+export function failWith(entry: Entry, error: unknown): void {
 	if (!entry.state.hasData) {
 		entry.pendingThenable?.reject(error);
 		entry.pendingThenable = undefined;

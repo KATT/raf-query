@@ -24,20 +24,17 @@ import { describe, expect, it } from "vitest";
 import {
 	createQueryClient,
 	dehydrate,
-	fail,
 	getData,
 	group,
 	hydrate,
 	invalidateMany,
 	invalidateOne,
-	isQueryFailure,
 	load,
 	prefetch,
 	type QueryClient,
 	type QueryFactory,
 	type QueryHandle,
 	type QueryKey,
-	QueryFailure,
 	queryOptions,
 	removeAll,
 	removeOne,
@@ -70,7 +67,7 @@ interface Calls {
 
 /**
  * A backend both caches fetch from, counting requests per side. Post 404
- * is a `fail()` value on raf-query; post 500 is down.
+ * is missing; post 500 is down. Each is a thrown error.
  */
 function createApi() {
 	const titles = new Map([
@@ -78,21 +75,24 @@ function createApi() {
 		[2, "Second"],
 	]);
 	const calls: Calls = { raf: 0, tanstack: 0 };
+	const missing = new Error("Missing");
+	const down = new Error("Down");
 	const get = async (id: number): Promise<Post> => {
 		await Promise.resolve();
+		if (id === 404) {
+			throw missing;
+		}
 		if (id === 500) {
-			throw new Error("Down");
+			throw down;
 		}
 		return { id, title: titles.get(id) ?? "?" };
 	};
 	/** The raf-query factory for the key the TanStack Query screens use. */
 	const postQuery = (input: { readonly id: number }) =>
 		queryOptions({
-			queryFn: async () => {
+			queryFn: () => {
 				calls.raf += 1;
-				return input.id === 404
-					? fail({ _tag: "NotFound", id: input.id })
-					: get(input.id);
+				return get(input.id);
 			},
 			queryKey: posts("byId", input),
 			staleTime: 60_000,
@@ -107,7 +107,7 @@ function createApi() {
 		retry: false,
 		staleTime: 60_000,
 	});
-	return { calls, postQuery, tanstackPost, titles };
+	return { calls, down, missing, postQuery, tanstackPost, titles };
 }
 
 /** A raf-query client and a TanStack Query client, synced once the raf client mounts. */
@@ -255,7 +255,7 @@ describe("a screen on each side", () => {
 });
 
 describe("errors", () => {
-	it("shows a TanStack Query screen raf-query's error: a fail() value as a QueryFailure, a defect as it is", async () => {
+	it("shows a TanStack Query screen the error raf-query threw", async () => {
 		const api = createApi();
 		using clients = createClients();
 		mount(clients.client);
@@ -273,16 +273,14 @@ describe("errors", () => {
 		});
 		await flush();
 
-		const failure = missing.observer.getCurrentResult().error;
-		expect(isQueryFailure(failure)).toBe(true);
-		expect(failure).toMatchObject({ fail: { _tag: "NotFound", id: 404 } });
-		expect(down.observer.getCurrentResult()).toMatchObject({
-			error: new Error("Down"),
+		expect(missing.observer.getCurrentResult()).toMatchObject({
+			error: api.missing,
 			status: "error",
 		});
+		expect(down.observer.getCurrentResult().error).toBe(api.down);
 	});
 
-	it("shows a raf-query screen TanStack Query's error, unwrapping a QueryFailure to its fail() value", async () => {
+	it("shows a raf-query screen the error TanStack Query threw", async () => {
 		const api = createApi();
 		using clients = createClients();
 		const [handles] = await load(clients.client, {
@@ -293,7 +291,7 @@ describe("errors", () => {
 			[api.postQuery, handles.down],
 			[api.postQuery, handles.missing],
 		]);
-		const notFound = fail({ _tag: "NotFound", id: 2 });
+		const missing = new Error("Missing");
 		await clients.tanstack
 			.query({
 				...api.tanstackPost(500),
@@ -303,7 +301,7 @@ describe("errors", () => {
 			.catch(() => {});
 		await clients.tanstack
 			.query({
-				queryFn: () => Promise.reject(new QueryFailure(notFound, "posts")),
+				queryFn: () => Promise.reject(missing),
 				queryKey: posts("byId", { id: 2 }),
 				retry: false,
 				staleTime: 0,
@@ -311,10 +309,8 @@ describe("errors", () => {
 			.catch(() => {});
 		await flush();
 
-		expect(view.states.map((queryState) => queryState.error)).toEqual([
-			new Error("Down"),
-			notFound,
-		]);
+		expect(view.states[0]?.error).toBe(api.down);
+		expect(view.states[1]?.error).toBe(missing);
 	});
 });
 

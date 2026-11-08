@@ -77,14 +77,14 @@ What each side's invalidation reaches:
 
 ## What syncs
 
-| In one cache                                                                                                                              | In the other                                                                                                                                        |
-| ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Data, from a request or a write                                                                                                           | The same data, with the same `updatedAt` (`dataUpdatedAt` in TanStack Query)                                                                        |
-| An error                                                                                                                                  | The same error, if the other cache has the query. A `fail()` value reaches TanStack Query as a `QueryFailure`, and comes back as the `fail()` value |
-| An invalidation                                                                                                                           | The query is stale, and one of the two refetches it                                                                                                 |
-| A reset (`resetOne`, [`resetQueries`](https://tanstack.com/query/latest/docs/reference/QueryClient#resetqueries))                         | The other copy is reset                                                                                                                             |
-| A removal (`removeOne`, [`removeQueries`](https://tanstack.com/query/latest/docs/reference/QueryClient#removequeries), gc)                | The other copy is removed, unless something reads it there                                                                                          |
-| Hydration ([TanStack Query's](https://tanstack.com/query/latest/docs/framework/react/guides/ssr#using-the-hydration-apis) or raf-query's) | The hydrated data, like any other write                                                                                                             |
+| In one cache                                                                                                                              | In the other                                                                 |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Data, from a request or a write                                                                                                           | The same data, with the same `updatedAt` (`dataUpdatedAt` in TanStack Query) |
+| An error                                                                                                                                  | The same error, if the other cache has the query                             |
+| An invalidation                                                                                                                           | The query is stale, and one of the two refetches it                          |
+| A reset (`resetOne`, [`resetQueries`](https://tanstack.com/query/latest/docs/reference/QueryClient#resetqueries))                         | The other copy is reset                                                      |
+| A removal (`removeOne`, [`removeQueries`](https://tanstack.com/query/latest/docs/reference/QueryClient#removequeries), gc)                | The other copy is removed, unless something reads it there                   |
+| Hydration ([TanStack Query's](https://tanstack.com/query/latest/docs/framework/react/guides/ssr#using-the-hydration-apis) or raf-query's) | The hydrated data, like any other write                                      |
 
 When the sync starts, it merges the two caches: a query only one has is copied to the other, and where both have data, the newer `updatedAt` wins. So each cache can dehydrate and hydrate on its own in a server-rendered app, and the browser ends up with one copy.
 
