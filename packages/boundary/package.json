@@ -1,0 +1,74 @@
+{
+	"name": "@raf-query/boundary",
+	"version": "0.11.1",
+	"description": "QueryBoundary: typed error boundaries for raf-query",
+	"keywords": [
+		"error-boundary",
+		"query",
+		"raf",
+		"react",
+		"suspense"
+	],
+	"license": "MIT",
+	"author": {
+		"name": "KATT",
+		"email": "alexander@n1s.se"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/KATT/raf-query.git",
+		"directory": "packages/boundary"
+	},
+	"homepage": "https://raf-query.katt.dev",
+	"bugs": {
+		"url": "https://github.com/KATT/raf-query/issues"
+	},
+	"files": [
+		"dist/",
+		"CHANGELOG.md",
+		"LICENSE.md",
+		"README.md"
+	],
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		".": "./src/index.tsx"
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/sync-package-docs.ts",
+		"build": "vp pack",
+		"test": "vp test",
+		"typecheck": "tsc && tsc -p tsconfig.no-node.json",
+		"publish:npm": "pnpm pack --out package.tgz && npm publish package.tgz --access public && rm package.tgz"
+	},
+	"peerDependencies": {
+		"@raf-query/core": "workspace:^",
+		"@raf-query/react": "workspace:^",
+		"react": "^19.2.0"
+	},
+	"devDependencies": {
+		"@raf-query/core": "workspace:*",
+		"@raf-query/react": "workspace:*",
+		"@testing-library/react": "16.3.3",
+		"@types/node": "26.6.4",
+		"@types/react": "19.3.0",
+		"@types/react-dom": "19.3.0",
+		"@vitest/coverage-v8": "5.0.1",
+		"happy-dom": "21.0.1",
+		"react": "19.3.0",
+		"react-dom": "19.3.0",
+		"typescript": "7.0.2",
+		"vite-plus": "1.0.0",
+		"vitest": "5.0.1"
+	},
+	"publishConfig": {
+		"access": "public",
+		"exports": {
+			".": "./dist/index.mjs"
+		},
+		"provenance": true
+	},
+	"engines": {
+		"node": ">=22"
+	}
+}

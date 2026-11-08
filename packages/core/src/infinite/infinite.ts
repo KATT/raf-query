@@ -1,8 +1,8 @@
 import type { Operation } from "../client.ts";
+import { type Fail, isFailValue } from "../fail.ts";
 import type { QueryKey } from "../keys/keys.ts";
 import type {
 	BaseOptions,
-	FromQueryFn,
 	QueryFunctionContext,
 	QueryOptions,
 } from "../options.ts";
@@ -48,9 +48,10 @@ export type InfiniteQueryOptions<
 	TKey extends QueryKey = QueryKey,
 	TPage = unknown,
 	TParam = unknown,
+	TFail = unknown,
 	TData = InfiniteData<TPage, TParam>,
 	TTypes extends RootTypes = RootTypes,
-> = QueryOptions<TKey, InfiniteData<TPage, TParam>, TData, TTypes> &
+> = QueryOptions<TKey, InfiniteData<TPage, TParam>, TFail, TData, TTypes> &
 	Pick<
 		InfiniteOptions<TKey, TPage, TParam, TData, TTypes>,
 		| "getNextPageParam"
@@ -63,22 +64,29 @@ export type InfiniteQueryOptions<
 export interface InfiniteQueryOptionsBuilder<TTypes extends RootTypes> {
 	<
 		const TKey extends QueryKey,
-		TPage,
+		TResult,
 		TParam,
-		TData = InfiniteData<TPage, TParam>,
+		TData = InfiniteData<Exclude<TResult, Fail>, TParam>,
 	>(
 		options: InfiniteOptions<
 			TKey,
-			FromQueryFn<TPage>,
+			Exclude<TResult, Fail>,
 			TParam,
 			TData,
 			TTypes
 		> & {
 			readonly queryFn: (
 				context: InfiniteQueryFunctionContext<TKey, TParam>,
-			) => PromiseLike<TPage> | TPage;
+			) => PromiseLike<TResult> | TResult;
 		},
-	): InfiniteQueryOptions<TKey, TPage, TParam, TData, TTypes>;
+	): InfiniteQueryOptions<
+		TKey,
+		Exclude<TResult, Fail>,
+		TParam,
+		Extract<TResult, Fail>,
+		TData,
+		TTypes
+	>;
 }
 
 /**
@@ -179,6 +187,9 @@ async function runPages(op: Operation, source: PagedSource): Promise<unknown> {
 			pageParam,
 			direction === "next" ? "forward" : "backward",
 		);
+		if (isFailValue(page)) {
+			return page;
+		}
 		const max = source.maxPages ?? Infinity;
 		return direction === "next"
 			? {
@@ -196,6 +207,9 @@ async function runPages(op: Operation, source: PagedSource): Promise<unknown> {
 	let pageParam = previous?.pageParams[0] ?? source.initialPageParam;
 	while (pages.length < count) {
 		const page = await fetchPage(pageParam, "forward");
+		if (isFailValue(page)) {
+			return page;
+		}
 		pages.push(page);
 		pageParams.push(pageParam);
 		const next = pageParamAfter(source, { pageParams, pages }, "next");

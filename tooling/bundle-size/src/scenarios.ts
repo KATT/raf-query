@@ -9,6 +9,10 @@ import type { Bundle } from "./bundle.ts";
 type Marker = { readonly code: string } | { readonly module: string };
 
 export const features = {
+	boundary: {
+		label: "`QueryBoundary`",
+		marker: { module: "boundary/index" },
+	},
 	devtools: {
 		label: "devtools",
 		marker: { module: "react/devtools" },
@@ -54,6 +58,7 @@ export const featureIds: ReadonlyArray<Feature> = [
 	"focusRefetch",
 	"reconnectRefetch",
 	"paging",
+	"boundary",
 	"devtools",
 ];
 
@@ -125,6 +130,11 @@ export const scenarios: ReadonlyArray<Scenario> = [
 		name: "+ a stream query",
 	},
 	{
+		fixture: "boundary.tsx",
+		imports: ["hooks", "boundary"],
+		name: "+ `QueryBoundary`",
+	},
+	{
 		fixture: "devtools.tsx",
 		imports: ["hooks", "devtools"],
 		name: "+ devtools (`QueryDevtools`)",
@@ -149,6 +159,6 @@ export const scenarios: ReadonlyArray<Scenario> = [
 	{
 		fixture: "everything.tsx",
 		imports: featureIds.filter((feature) => feature !== "devtools"),
-		name: "Everything (`recommended()`, `timeout()`, hydration, paging)",
+		name: "Everything (`recommended()`, `timeout()`, hydration, paging, boundary)",
 	},
 ];

@@ -8,26 +8,31 @@ import {
 	adopt,
 	type Entry,
 	entryForKey,
+	failWith,
 	fetchEntry,
 	isStale,
 	write,
 } from "../entry.ts";
+import { type Fail, failOf, isFailValue } from "../fail.ts";
 import type { QueryKey } from "../keys/keys.ts";
 
 /** What a dehydrated pending entry's promise resolves to. */
 export interface DehydratedResult {
 	readonly data?: unknown;
+	/** Set when the request returned `fail()`. */
+	readonly fail?: Fail;
 	/** When the sender got the result (ms since epoch). */
 	readonly updatedAt: number;
 }
 
 /**
- * One cache entry in transit. Settled entries carry `data` and
+ * One cache entry in transit. Settled entries carry `data` (or `fail`) and
  * `updatedAt > 0`; entries still loading carry their request's `promise`,
  * so the receiver resumes it instead of fetching again.
  */
 export interface DehydratedEntry {
 	readonly data?: unknown;
+	readonly fail?: Fail;
 	readonly promise?: Promise<DehydratedResult>;
 	readonly queryKey: QueryKey;
 	/** When the data was fetched; `0` while pending. */
@@ -39,12 +44,9 @@ export interface DehydratedState {
 }
 
 export interface DehydrateOptions {
-	/**
-	 * Which entries to send. Default: entries with data or a request in
-	 * flight. An entry with neither has nothing to send and stays behind.
-	 */
+	/** Which entries to send. Default: entries with data, a `fail()`, or a request in flight. */
 	readonly filter?: (entry: Entry) => boolean;
-	/** Send a pending entry's error as is, instead of a `RedactedError`. */
+	/** Send a pending entry's unexpected error as is, instead of a `RedactedError`. */
 	readonly keepErrors?: boolean;
 	/**
 	 * Hashes already sent in this transfer (one request). Those entries are
@@ -55,7 +57,8 @@ export interface DehydrateOptions {
 
 /**
  * What a streamed pending entry rejects with when its server request threw:
- * the browser learns which query failed, not why.
+ * the browser learns which query failed, not why. Expected errors (`fail()`)
+ * cross as they are.
  */
 export class RedactedError extends Error {
 	override readonly name = "RedactedError";
@@ -66,16 +69,16 @@ export class RedactedError extends Error {
 	}
 }
 
-/** The default filter: entries with data or a request in flight. */
+/** The default filter: entries with data, a `fail()`, or a request in flight. */
 export function canDehydrate(entry: Entry): boolean {
 	const state = entry.state;
-	return state.hasData || state.isFetching;
+	return state.hasData || state.isFetching || isFailValue(state.error);
 }
 
 function dehydrateEntry(
 	entry: Entry,
 	options: DehydrateOptions,
-): DehydratedEntry | undefined {
+): DehydratedEntry {
 	const state = entry.state;
 	const base = { queryKey: entry.key };
 	if (state.hasData) {
@@ -83,11 +86,19 @@ function dehydrateEntry(
 	}
 	const run = entry.run;
 	if (!run) {
-		return undefined;
+		return {
+			...base,
+			fail: failOf(state.error),
+			updatedAt: entry.client.clock.now(),
+		};
 	}
 	const promise = run.done.promise.then((outcome): DehydratedResult => {
 		if (outcome.ok) {
 			return { data: entry.state.data, updatedAt: entry.state.updatedAt };
+		}
+		const failed = failOf(outcome.error);
+		if (failed) {
+			return { fail: failed, updatedAt: entry.client.clock.now() };
 		}
 		throw options.keepErrors ? outcome.error : new RedactedError(entry.hash);
 	});
@@ -103,13 +114,9 @@ function dehydrateEntries(
 	const sent = options.sent;
 	const dehydrated: Array<DehydratedEntry> = [];
 	for (const entry of entries) {
-		const dehydratedEntry =
-			!sent?.has(entry.hash) && filter(entry)
-				? dehydrateEntry(entry, options)
-				: undefined;
-		if (dehydratedEntry) {
+		if (!sent?.has(entry.hash) && filter(entry)) {
 			sent?.add(entry.hash);
-			dehydrated.push(dehydratedEntry);
+			dehydrated.push(dehydrateEntry(entry, options));
 		}
 	}
 	return { entries: dehydrated };
@@ -195,6 +202,12 @@ function revalidate(entry: Entry) {
 
 /** Take the sender's data if it's newer than the entry's. */
 function takeNewer(entry: Entry, result: DehydratedResult) {
+	if (result.fail) {
+		if (!entry.state.hasData && !entry.run) {
+			failWith(entry, result.fail);
+		}
+		return;
+	}
 	if (!entry.state.hasData || entry.state.updatedAt < result.updatedAt) {
 		write(entry, result.data, result.updatedAt, entry.client["~seq"]);
 	} else {
@@ -216,7 +229,15 @@ export function hydrate(client: QueryClient, state: DehydratedState): void {
 		} else {
 			const result = Promise.resolve(sent.promise);
 			if (!entry.state.hasData && !entry.run) {
-				adopt(entry, result);
+				adopt(
+					entry,
+					result.then((settled) => {
+						if (settled.fail) {
+							throw settled.fail;
+						}
+						return { data: settled.data, updatedAt: settled.updatedAt };
+					}),
+				);
 			} else {
 				result.then(
 					(settled) => takeNewer(entry, settled),

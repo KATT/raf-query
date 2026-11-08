@@ -1,3 +1,4 @@
+import { QueryBoundary } from "@raf-query/boundary";
 import {
 	createQueryClient,
 	type DehydratedState,
@@ -18,7 +19,11 @@ const client = createQueryClient({
 	links: [...behaviors.links, timeout(10_000)],
 });
 await render(client, (children) => (
-	<HydrationBoundary state={state}>{children}</HydrationBoundary>
+	<HydrationBoundary state={state}>
+		<QueryBoundary fallback="Loading" query={issueQuery}>
+			{children}
+		</QueryBoundary>
+	</HydrationBoundary>
 ));
 await renderPages(client);
 document.addEventListener("click", () => {

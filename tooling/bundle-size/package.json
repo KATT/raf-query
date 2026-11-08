@@ -10,6 +10,7 @@
 		"typecheck": "tsc"
 	},
 	"dependencies": {
+		"@raf-query/boundary": "workspace:*",
 		"@raf-query/core": "workspace:*",
 		"@raf-query/react": "workspace:*",
 		"effect": "catalog:",

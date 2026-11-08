@@ -14,8 +14,8 @@ import {
 	removeOne,
 	revalidate,
 	setData,
-	type Thenable,
 	swr,
+	type Thenable,
 	useQuery,
 	waterfallHandle,
 } from "./index.ts";
@@ -358,6 +358,90 @@ describe("useQuery", () => {
 		});
 	});
 
+	describe("result: true", () => {
+		function Read(props: {
+			readonly backend: Backend;
+			readonly handle: QueryHandle<Backend["issueQuery"]>;
+		}) {
+			const [resultThenable] = useQuery(
+				props.backend.issueQuery,
+				props.handle,
+				{
+					result: true,
+				},
+			);
+			const result = use(resultThenable);
+			return (
+				<p>{result.ok ? result.value.title : `failed ${result.error._tag}`}</p>
+			);
+		}
+
+		it("reads data as ok", async () => {
+			const backend = createBackend();
+			const client = testClient();
+			const [handles] = await load(client, {
+				issue: prefetch(backend.issueQuery, { id: 1 }),
+			});
+			await renderWith(
+				client,
+				<Read backend={backend} handle={handles.issue} />,
+			);
+			await backend.respondAll();
+			expect(screen.getByText("First")).toBeTruthy();
+		});
+
+		it("reads a fail() value as an error result, settled or pending", async () => {
+			const backend = createBackend();
+			const client = testClient();
+			const [handles] = await load(client, {
+				issue: prefetch(backend.issueQuery, { id: 9 }),
+			});
+			const view = await renderWith(
+				client,
+				<Read backend={backend} handle={handles.issue} />,
+			);
+			await backend.respondAll();
+			expect(screen.getByText("failed NotFound")).toBeTruthy();
+			view.unmount();
+			await renderWith(
+				client,
+				<Read backend={backend} handle={handles.issue} />,
+			);
+			expect(screen.getByText("failed NotFound")).toBeTruthy();
+		});
+
+		it("still throws defects, settled or pending", async () => {
+			const backend = createBackend();
+			const client = testClient();
+			vi.spyOn(console, "error").mockImplementation(() => {});
+			const [handles] = await load(client, {
+				issue: prefetch(backend.issueQuery, { id: 1 }),
+			});
+			const errors: Array<unknown> = [];
+			const thenables: Array<Thenable<unknown>> = [];
+			function Capture() {
+				const [resultThenable] = useQuery(backend.issueQuery, handles.issue, {
+					result: true,
+				});
+				thenables.push(resultThenable);
+				return null;
+			}
+			await renderWith(client, <Capture />);
+			await act(async () => {
+				backend.requests.splice(0)[0]?.fail(new Error("boom"));
+				await flush();
+			});
+			await thenables[0]?.then(undefined, (error: unknown) =>
+				errors.push(error),
+			);
+			await renderWith(client, <Capture />);
+			await thenables
+				.at(-1)
+				?.then(undefined, (error: unknown) => errors.push(error));
+			expect(errors).toEqual([new Error("boom"), new Error("boom")]);
+		});
+	});
+
 	it("keeps the previous data with whilePending: previous", async () => {
 		const backend = createBackend();
 		const client = testClient();
@@ -447,9 +531,11 @@ describe("useQuery", () => {
 			function Issue(props: {
 				readonly handle: QueryHandle<Backend["issueQuery"]>;
 			}) {
-				const [issueThenable] = useQuery(backend.issueQuery, props.handle);
+				const [issueThenable] = useQuery(backend.issueQuery, props.handle, {
+					result: true,
+				});
 				const issue = use(issueThenable);
-				return <p>{issue.title}</p>;
+				return <p>{issue.ok ? issue.value.title : "failed"}</p>;
 			}
 			const reads: Array<Promise<unknown>> = [];
 			function ReadsTwice() {

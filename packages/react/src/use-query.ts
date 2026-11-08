@@ -1,8 +1,11 @@
 import {
 	type DataOf,
+	type ErrorOf,
+	failOf,
 	type InputOf,
 	type QueryFactory,
 	type QueryHandle,
+	type Result,
 	type SingleQueryFactory,
 	type Thenable,
 } from "@raf-query/core";
@@ -11,10 +14,13 @@ import {
 	entryOf,
 	type EntryState,
 	fetchEntry,
+	fulfilled,
 	isInvalidated,
 	isStale,
 	isWaterfallHandle,
 	mapThenable,
+	pending,
+	rejected,
 	subscribeEntry,
 } from "@raf-query/core/internal";
 import { useCallback, useState, useSyncExternalStore } from "react";
@@ -32,7 +38,12 @@ import { useQueryClient } from "./provider.tsx";
 /** Bundlers replace `process.env.NODE_ENV`; typed here so consumers need no Node types. */
 declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
-export interface UseQueryOptions {
+export interface UseQueryOptions<TResult extends boolean = boolean> {
+	/**
+	 * Read the query's expected errors (`fail()`) as a `Result` instead of
+	 * throwing them to an error boundary. Defects still throw.
+	 */
+	readonly result?: TResult;
 	/**
 	 * While a new handle's query has no data: `"suspend"` (the default) shows
 	 * the Suspense fallback; `"previous"` keeps showing the last handle's data
@@ -43,7 +54,7 @@ export interface UseQueryOptions {
 
 /** What `useQuery` returns next to the data. */
 export interface QueryState<TFactory extends QueryFactory = QueryFactory> {
-	/** The last request's error while it's the latest outcome. */
+	/** The last request's error while it's the latest outcome: a `fail()` value or a defect. */
 	readonly error: unknown;
 	readonly hash: string;
 	readonly input: InputOf<TFactory>;
@@ -60,15 +71,57 @@ export interface QueryState<TFactory extends QueryFactory = QueryFactory> {
 	readonly updatedAt: number;
 }
 
+type Read<
+	TFactory extends QueryFactory,
+	TResult extends boolean,
+> = TResult extends true
+	? Result<DataOf<TFactory>, ErrorOf<TFactory>>
+	: DataOf<TFactory>;
+
 /**
  * What `useQuery` and `useInfiniteQuery` read, for every handle: a thenable
  * to pass to `use()`.
  * A loader can't promise the data is still cached when a component renders
  * (a write can reset or remove it), so the read may suspend.
  */
-export type QueryValue<TFactory extends QueryFactory> = Thenable<
-	DataOf<TFactory>
->;
+export type QueryValue<
+	TFactory extends QueryFactory,
+	TResult extends boolean = false,
+> = Thenable<Read<TFactory, TResult>>;
+
+type Thenables = WeakMap<Thenable<unknown>, Thenable<unknown>>;
+
+function toResult(reason: unknown): Thenable<unknown> {
+	const failed = failOf(reason);
+	return failed ? fulfilled({ error: failed, ok: false }) : rejected(reason);
+}
+
+function asResult(
+	cache: Thenables,
+	thenable: Thenable<unknown>,
+): Thenable<unknown> {
+	const cached = cache.get(thenable);
+	if (cached) {
+		return cached;
+	}
+	let mapped: Thenable<unknown>;
+	if (thenable.status === "fulfilled") {
+		mapped = fulfilled({ ok: true, value: thenable.value });
+	} else if (thenable.status === "rejected") {
+		mapped = toResult(thenable.reason);
+	} else {
+		const next = pending<unknown>();
+		thenable.then(
+			(value) => next.resolve({ ok: true, value }),
+			(error: unknown) => {
+				toResult(error).then(next.resolve, next.reject);
+			},
+		);
+		mapped = next.promise;
+	}
+	cache.set(thenable, mapped);
+	return mapped;
+}
 
 /** Whether nothing is loading the entry: no data, no error, no request in flight. */
 function isIdle(entry: Entry, state: EntryState): boolean {
@@ -217,11 +270,17 @@ export function useQueryRead<TControls extends object>(
 			extra,
 		),
 	);
-	const selected = useState(() => new WeakMap())[0];
+	const caches = useState(() => ({
+		result: new WeakMap(),
+		select: new WeakMap(),
+	}))[0];
 	const select = read.entry.options?.select;
-	const thenable = select
-		? mapThenable(selected, read.source, select)
+	let thenable: Thenable<unknown> = select
+		? mapThenable(caches.select, read.source, select)
 		: read.source;
+	if (options?.result) {
+		thenable = asResult(caches.result, thenable);
+	}
 	// SAFETY: `extra` adds the fields the caller's controls type declares to `readQuery`'s.
 	const typed = controls as TControls;
 	return { controls: typed, thenable };
@@ -239,15 +298,18 @@ export function useQueryRead<TControls extends object>(
  * loader started fetches while rendering, which is a waterfall (see
  * `waterfallHandle`). Paged queries read with `useInfiniteQuery`.
  */
-export function useQuery<TFactory extends SingleQueryFactory>(
+export function useQuery<
+	TFactory extends SingleQueryFactory,
+	const TResult extends boolean = false,
+>(
 	factory: TFactory,
 	handle: QueryHandle<TFactory>,
-	options?: UseQueryOptions,
-): readonly [QueryValue<TFactory>, QueryState<TFactory>] {
+	options?: UseQueryOptions<TResult>,
+): readonly [QueryValue<TFactory, TResult>, QueryState<TFactory>] {
 	const read = useQueryRead<QueryState<TFactory>>(factory, handle, options);
 	return [
 		// SAFETY: `QueryValue` describes what was read for this handle.
-		read.thenable as QueryValue<TFactory>,
+		read.thenable as QueryValue<TFactory, TResult>,
 		read.controls,
 	];
 }

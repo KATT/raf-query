@@ -35,6 +35,10 @@ export const bundle = Effect.fn("bundle")(function* (
 					replacement: built("core", "internal"),
 				},
 				{ find: /^@raf-query\/react$/, replacement: built("react", "index") },
+				{
+					find: /^@raf-query\/boundary$/,
+					replacement: built("boundary", "index"),
+				},
 			]
 		: [];
 	const result = yield* Effect.promise(() =>

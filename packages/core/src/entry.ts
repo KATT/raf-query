@@ -1,4 +1,5 @@
 import type { Operation, QueryClient } from "./client.ts";
+import { isFailValue, QueryFailure } from "./fail.ts";
 import { isObject } from "./guards.ts";
 import { type AnyFactory, hashKey, type QueryKey } from "./keys/keys.ts";
 import { matches, type Stamp } from "./keys/targets.ts";
@@ -9,12 +10,18 @@ import {
 	type Listeners,
 	type SubscribeOptions,
 } from "./subscribe.ts";
-import { fulfilled, pending, type Pending, type Thenable } from "./thenable.ts";
+import {
+	fulfilled,
+	pending,
+	type Pending,
+	rejected,
+	type Thenable,
+} from "./thenable.ts";
 
 /** An entry's state. A new object on every change, so it works as a snapshot. */
 export interface EntryState {
 	readonly data: unknown;
-	/** The last request's error, while it's the latest outcome. */
+	/** The last request's error, while it's the latest outcome: a `fail()` value or a defect. */
 	readonly error: unknown;
 	readonly fetchingDirection: "next" | "previous" | undefined;
 	readonly hasData: boolean;
@@ -196,6 +203,11 @@ export function isStale(entry: Entry): boolean {
 	);
 }
 
+/** The thrown form of an entry's error: a `fail()` value wrapped in a `QueryFailure`. */
+function thrown(entry: Entry, error: unknown): unknown {
+	return isFailValue(error) ? new QueryFailure(error, entry.hash) : error;
+}
+
 /** Write data. `startedAt` orders it against invalidations. */
 export function write(
 	entry: Entry,
@@ -227,14 +239,16 @@ export function write(
 	scheduleGc(entry);
 }
 
-/**
- * Record a failed request. Data the entry had stays readable. Without data,
- * the request in flight has a pending thenable for readers: it rejects.
- */
-function failWith(entry: Entry, error: unknown): void {
+/** Record a failed request. Data the entry had stays readable. */
+export function failWith(entry: Entry, error: unknown): void {
 	if (!entry.state.hasData) {
-		entry.pendingThenable?.reject(error);
-		entry.pendingThenable = undefined;
+		const reason = thrown(entry, error);
+		if (entry.pendingThenable) {
+			entry.pendingThenable.reject(reason);
+			entry.pendingThenable = undefined;
+		} else {
+			entry.thenable = rejected(reason);
+		}
 	}
 	setState(entry, { error, status: "error" });
 }
@@ -276,7 +290,7 @@ async function pump(
 	} catch (error) {
 		if (entry.run === run) {
 			failWith(entry, error);
-			finish(entry, run, { error, ok: false });
+			finish(entry, run, { error: thrown(entry, error), ok: false });
 		}
 		return;
 	}
@@ -387,6 +401,11 @@ export function fetchEntry(
 				void pump(entry, run, result, options.stream);
 				return;
 			}
+			if (isFailValue(result)) {
+				failWith(entry, result);
+				finish(entry, run, { error: thrown(entry, result), ok: false });
+				return;
+			}
 			write(entry, result, client.clock.now(), run.startedAt);
 			finish(entry, run, { ok: true });
 		},
@@ -404,7 +423,7 @@ export function fetchEntry(
 /** Take over a request started elsewhere (hydration of a pending entry). */
 export function adopt(
 	entry: Entry,
-	promise: PromiseLike<{ readonly data?: unknown; readonly updatedAt: number }>,
+	promise: PromiseLike<{ readonly data: unknown; readonly updatedAt: number }>,
 ): void {
 	const run: Run = {
 		controller: new AbortController(),
@@ -427,7 +446,7 @@ export function adopt(
 		(error: unknown) => {
 			if (entry.run === run) {
 				failWith(entry, error);
-				finish(entry, run, { error, ok: false });
+				finish(entry, run, { error: thrown(entry, error), ok: false });
 			}
 		},
 	);

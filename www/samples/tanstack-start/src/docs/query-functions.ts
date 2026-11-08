@@ -1,4 +1,10 @@
-import { group, infiniteQueryOptions, queryOptions } from "@raf-query/react";
+import {
+	type ErrorOf,
+	fail,
+	group,
+	infiniteQueryOptions,
+	queryOptions,
+} from "@raf-query/react";
 import type { Post, PostComment, PostPage } from "~/api.ts";
 
 const posts = group("posts");
@@ -49,6 +55,29 @@ queryOptions({
 		return data;
 	},
 });
+// #endregion
+
+// #region expected-errors
+export function postQuery(input: { slug: string }) {
+	return queryOptions({
+		queryKey: posts(input.slug),
+		queryFn: async (context) => {
+			const response = await fetch(`/api/posts/${input.slug}`, {
+				signal: context.signal,
+			});
+			if (response.status === 404) {
+				return fail({ _tag: "NotFound", slug: input.slug });
+			}
+			if (!response.ok) {
+				throw new Error(`Request failed: ${response.status}`);
+			}
+			return (await response.json()) as Post;
+		},
+	});
+}
+
+type PostError = ErrorOf<typeof postQuery>;
+//   ^?
 // #endregion
 
 // #region with-fetch-and-other-clients-that-dont-throw

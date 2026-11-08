@@ -67,9 +67,9 @@ The mark is set when the first `HydrationBoundary` renders. A client component t
 
 ## Errors
 
-The stream sends entries with data or with a request in flight. A query that had already failed when its entry would have been sent stays on the server, and the browser fetches it again when something reads it.
+The stream sends entries with data, with a `fail()` value, or with a request in flight. A query that had already thrown an unexpected error when its entry would have been sent stays on the server, and the browser fetches it again when something reads it.
 
-A query sent while pending crosses as a promise. If it throws on the server, the promise rejects with a `RedactedError` that names the query but not the message, so server internals (SQL errors, stack traces) don't leak into the page. The browser treats it like any failed load: the reader throws to its error boundary, and resetting the boundary with `resetOne` refetches the query from the browser. Pass `keepErrors: true` in the integration's `dehydrateOptions` to send the original error instead.
+A query sent while pending crosses as a promise. If it returns `fail()` on the server, the browser gets the same [expected error](./query-functions.md#expected-errors). If it throws, the promise rejects with a `RedactedError` that names the query but not the message, so server internals (SQL errors, stack traces) don't leak into the page. The browser treats it like any failed load: the reader throws to its error boundary, and resetting the boundary with `resetOne` refetches the query from the browser. Pass `keepErrors: true` in the integration's `dehydrateOptions` to send the original error instead.
 
 ## Browser-only queries
 
@@ -102,7 +102,7 @@ On client-side navigations in Next.js, server components render again and send t
 
 Data, keys and inputs cross the wire, so they must be serializable by the framework's serializer. TanStack Start uses [Seroval](https://github.com/lxsmnsyc/seroval), Next.js uses React's RSC serialization, and React Router uses [turbo-stream](https://github.com/jacob-ebey/turbo-stream): all three handle `Date`, `Map`, `Set`, `BigInt` and promises. `meta` stays on the server: the browser reads it from its own factories.
 
-Only send what's serializable. These docs, for instance, cache each demo's code module as a query, and a module full of components can't cross the wire. The router integration's `filter` option keeps those entries out of the stream. A `filter` replaces the default one, `canDehydrate` (entries with data or a request in flight), so combine the two:
+Only send what's serializable. These docs, for instance, cache each demo's code module as a query, and a module full of components can't cross the wire. The router integration's `filter` option keeps those entries out of the stream. A `filter` replaces the default one, `canDehydrate` (entries with data, a `fail()` value, or a request in flight), so combine the two:
 
 ```sample
 tanstack-start/src/docs/ssr-and-hydration.ts#serialization

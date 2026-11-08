@@ -2,10 +2,11 @@
 
 This is a Vite+ / pnpm monorepo. The publishable packages live in `packages/`:
 
-| Directory        | npm package        |
-| ---------------- | ------------------ |
-| `packages/core`  | `@raf-query/core`  |
-| `packages/react` | `@raf-query/react` |
+| Directory           | npm package           |
+| ------------------- | --------------------- |
+| `packages/core`     | `@raf-query/core`     |
+| `packages/react`    | `@raf-query/react`    |
+| `packages/boundary` | `@raf-query/boundary` |
 
 The published packages don't depend on Effect. Effect is for this repo's own code: scripts, tooling, CI and deploy steps.
 
@@ -130,7 +131,7 @@ Pushing to `main` runs [`.github/workflows/release.yaml`](./workflows/release.ya
 1. Computes the next version from conventional commits since the latest tag and updates `CHANGELOG.md`. Only commits that touch `packages/*` are considered (same path as the gate), and all of them appear in the notes, grouped by type. `feat`, `fix`, and `perf` decide the bump (`effect: "bump"` in `.release-it.json`); the other types are listed without bumping (`effect: "changelog"`), and a release with none of the three is a patch.
 2. Writes the version into each `packages/*/package.json`.
 3. Checks `main` hasn't moved since the run checked it out; if it has, it stops and leaves the release to the run for the newer commit (otherwise it would publish a version whose push gets rejected).
-4. Builds, then publishes `@raf-query/core` and `@raf-query/react` (each `pnpm pack` + `npm publish`, using npm trusted publishing over OIDC — no `NPM_TOKEN`). `pnpm pack` rewrites `workspace:*` and `catalog:` to real versions.
+4. Builds, then publishes `@raf-query/core`, `@raf-query/react` and `@raf-query/boundary` (each `pnpm pack` + `npm publish`, using npm trusted publishing over OIDC — no `NPM_TOKEN`). `pnpm pack` rewrites `workspace:*` and `catalog:` to real versions.
 5. Only after publishing: commits `chore: release vX.Y.Z`, tags, pushes, and creates a GitHub Release. A failed publish leaves nothing pushed.
 
 Do not set `NODE_AUTH_TOKEN` / `NPM_TOKEN` in the release job — a placeholder token disables OIDC.
@@ -146,7 +147,7 @@ Recreate these when forking, or when adding a new package to `packages/`.
    ```shell
    npm login
    pnpm build
-   for pkg in core react; do
+   for pkg in core react boundary; do
    	(cd packages/$pkg && pnpm pack --out package.tgz && npm publish package.tgz --access public --provenance=false && rm package.tgz)
    done
    ```
@@ -156,6 +157,7 @@ Recreate these when forking, or when adding a new package to `packages/`.
    ```shell
    npm trust github @raf-query/core --file release.yaml --repo KATT/raf-query --allow-publish -y
    npm trust github @raf-query/react --file release.yaml --repo KATT/raf-query --allow-publish -y
+   npm trust github @raf-query/boundary --file release.yaml --repo KATT/raf-query --allow-publish -y
    ```
 
    Or in the UI: package page → **Settings** → **Trusted Publisher** → GitHub Actions, owner `KATT`, repository `raf-query`, workflow `release.yaml`.

@@ -1,11 +1,11 @@
 ---
 title: Query functions
-description: What a queryFn may return, how errors are reported, and what the query function context contains.
+description: What a queryFn may return, how expected and unexpected errors are reported, and what the query function context contains.
 section: Guides
 order: 3
 ---
 
-A query function can be literally any function that **returns a value or a promise**. The promise should either **resolve the data** or **throw**.
+A query function can be literally any function that **returns a value or a promise**. The promise should either **resolve the data**, **resolve an [expected error](#expected-errors)** made with `fail()`, or **throw**.
 
 Unlike TanStack Query, `undefined` is a valid result: a `queryFn` typed `Promise<User | undefined>` caches `undefined` like any other value. So `getData` and a `setData` updater's `previous` are `undefined` both with no data and with `undefined` data; a reader's `isPending` tells them apart.
 
@@ -19,7 +19,7 @@ In practice the `queryFn` lives in a [factory](./query-factories.md) and closes 
 
 ## Handling and throwing errors
 
-A query function that **throws** or returns a **rejected promise** fails. The error is kept on the query: the first load's error rejects the promise `useQuery` returns, so `use()` throws it to the nearest error boundary, and a later background error shows up in the state's `error` while the old data stays readable.
+A query function that **throws** or returns a **rejected promise** fails with a **defect**: an error the app didn't plan for. The error is kept on the query: the first load's error rejects the promise `useQuery` returns, so `use()` throws it to the nearest error boundary, and a later background error shows up in the state's `error` while the old data stays readable.
 
 ```sample
 tanstack-start/src/docs/query-functions.ts#handling-and-throwing-errors
@@ -27,9 +27,33 @@ tanstack-start/src/docs/query-functions.ts#handling-and-throwing-errors
 
 With the `retry()` link, which `recommended()` includes, failed requests are [retried](./retries.md) three times before they count as failed.
 
+## Expected errors
+
+Some failures are part of the data's shape: a post that doesn't exist, a page the user may not see. Return them with `fail()` instead of throwing. A `fail()` value is plain data with a `_tag`, and its type becomes the factory's `ErrorOf`:
+
+```sample
+tanstack-start/src/docs/query-functions.ts#expected-errors
+```
+
+An expected error is never retried, and it crosses SSR and the router's serializer as it is. Where it ends up depends on who reads it:
+
+- A `load` waiting for the query (an `swr` or `revalidate`) rejects with a `QueryFailure`, an `Error` that carries the `fail()` value in `.fail`. `isFail(error, "NotFound")` checks for one by tag:
+
+```sample
+tanstack-start/src/docs/query-functions.expected-errors.tsx#loader
+```
+
+- The thenable `useQuery` returns rejects with the same `QueryFailure`, and `use()` throws it to the nearest error boundary. Pass `{ result: true }` to read a `Result` instead: `{ ok: true, value }` or `{ ok: false, error }`, where `error` is the `fail()` value. Defects still throw.
+
+```sample
+tanstack-start/src/docs/query-functions.expected-errors.tsx#result
+```
+
+- `QueryBoundary` from `@raf-query/boundary` is a Suspense and error boundary in one. Give it the factory as `query`, and a handler per tag in `catch`, typed from the factory's `fail()` values. Each handler gets the error and a `retry` that refetches the query and renders the children again. Defects and tags without a handler go to the next error boundary.
+
 ## With `fetch` and other clients that don't throw
 
-Many clients, such as axios, throw for unsuccessful HTTP responses. [`fetch`](https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch) doesn't, so throw yourself:
+Many clients, such as axios, throw for unsuccessful HTTP responses. [`fetch`](https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch) doesn't, so throw yourself, or return `fail()` for the statuses you expect:
 
 ```sample
 tanstack-start/src/docs/query-functions.ts#with-fetch-and-other-clients-that-dont-throw

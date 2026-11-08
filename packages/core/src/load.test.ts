@@ -13,6 +13,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	getData,
 	invalidateOne,
+	isFail,
+	isQueryFailure,
 	load,
 	prefetch,
 	queryOptions,
@@ -153,6 +155,24 @@ describe("load", () => {
 		);
 	});
 
+	it("rejects with a QueryFailure when a query returns fail()", async () => {
+		const backend = createBackend();
+		const client = testClient();
+		const loading = load(client, {
+			missing: revalidate(backend.issueQuery, { id: 9 }),
+			other: prefetch(backend.issueQuery, { id: 1 }),
+		}).catch((error: unknown) => error);
+		await backend.respondAll();
+		const failure = await loading;
+
+		expect(isQueryFailure(failure)).toBe(true);
+		expect(isFail(failure, "NotFound")).toBe(true);
+		expect(isFail(failure, "Other")).toBe(false);
+		expect(String(failure)).toBe(
+			'QueryFailure: Query ["issues","byId",{"id":9}] failed: NotFound',
+		);
+	});
+
 	it("rejects with the error itself when a query throws", async () => {
 		const backend = createBackend();
 		const client = testClient();
@@ -163,6 +183,7 @@ describe("load", () => {
 		backend.requests[0]?.fail(defect);
 
 		await expect(loading).rejects.toBe(defect);
+		expect(isFail(defect)).toBe(false);
 	});
 
 	it("never rejects for a failed prefetch entry", async () => {

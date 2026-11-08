@@ -87,7 +87,7 @@ A client-only React Router app is different: its [`clientLoader`](https://reactr
 - On the server, `staleTime` doesn't apply: the client belongs to one request, so what it fetched is fresh for that request. `prefetch` and `swr` reuse cached data even after an [invalidation](./query-invalidation.md#invalidation-on-the-server). `revalidate` reuses it until an invalidation, then waits for the refetch.
 - A `skipToken` in place of an entry starts nothing and gets an `undefined` handle. See [Conditional queries](#conditional-queries).
 - A failed `prefetch` never makes the load reject. The error surfaces where the data is read.
-- A failed `swr` or `revalidate` makes the load reject, so it reaches the route's error boundary.
+- A failed `swr` or `revalidate` makes the load reject, so it reaches the route's error boundary. An [expected error](./query-functions.md#expected-errors) rejects it with a `QueryFailure`.
 
 ## Preloading on intent
 

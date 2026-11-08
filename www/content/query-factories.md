@@ -29,7 +29,7 @@ tanstack-start/src/docs/query-factories.two-parameters.ts#two-parameters
 
 ## The factory decides everything
 
-The factory is the only place a query is declared, including whether it's paged. Every other API — `prefetch`, `swr`, `revalidate`, `waterfallHandle`, `invalidateOne`, `setData` — takes either kind and infers the rest from the factory's type: the data, the input, and for paged queries the page and page param types. Components read the two kinds with their own hooks, `useQuery` and `useInfiniteQuery`.
+The factory is the only place a query is declared, including whether it's paged. Every other API — `prefetch`, `swr`, `revalidate`, `waterfallHandle`, `invalidateOne`, `setData` — takes either kind and infers the rest from the factory's type: the data, the input, the expected errors, and for paged queries the page and page param types. Components read the two kinds with their own hooks, `useQuery` and `useInfiniteQuery`.
 
 Options set in the factory override the client's (`staleTime`, `gcTime`, `structuralSharing`):
 
@@ -62,7 +62,7 @@ To name a factory's types elsewhere:
 tanstack-start/src/docs/query-factories.one-input-serializable.ts#type-helpers
 ```
 
-The key's shape is part of the factory's type too (`readonly ["posts", "bySlug", string]`), so handles of two factories with the same input and data are still [different types](./handles.md).
+`ErrorOf` is the union of the [`fail()` values](./query-functions.md#expected-errors) the `queryFn` returns, and `never` when it returns none. The key's shape is part of the factory's type too (`readonly ["posts", "bySlug", string]`), so handles of two factories with the same input and data are still [different types](./handles.md).
 
 ## Factory makers
 

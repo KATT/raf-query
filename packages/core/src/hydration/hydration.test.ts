@@ -4,9 +4,10 @@
  * don't bundle it.
  *
  * - `dehydrate(client)` returns the entries worth sending (`canDehydrate`):
- *   data, and entries still loading, with a promise of their result. A
- *   request that then throws crosses as a `RedactedError` unless
- *   `keepErrors`. Errors and hashes already in `sent` stay behind, and so does `meta`, which comes from the factory.
+ *   data, `fail()` values, and entries still loading, with a promise of
+ *   their result. A request that then throws crosses as a `RedactedError`
+ *   unless `keepErrors`. Defects and hashes already in `sent` stay
+ *   behind, and so does `meta`, which comes from the factory.
  * - `hydrate(client, state)` writes entries by `queryKey`, and takes only
  *   data newer than what the browser has. A pending entry the browser has
  *   nothing for adopts the sender's promise as its request instead of
@@ -27,7 +28,9 @@ import {
 	RedactedError,
 } from "./hydration.ts";
 import {
+	fail,
 	getData,
+	isQueryFailure,
 	load,
 	prefetch,
 	removeOne,
@@ -92,27 +95,37 @@ describe("a server-rendered page", () => {
 		expect(page.backend.requests).toHaveLength(0);
 	});
 
-	it("leaves out errors and what it already sent", async () => {
+	it("sends fail() values, and leaves out defects and what it already sent", async () => {
 		const backend = createBackend();
 		const client = testClient({ isServer: true });
 		const loading = load(client, {
 			broken: prefetch(backend.issueQuery, { id: 1 }),
-			loaded: prefetch(backend.issueQuery, { id: 2 }),
+			missing: prefetch(backend.issueQuery, { id: 9 }),
 		});
 		backend.requests[0]?.fail(new Error("down"));
 		await backend.respondAll();
-		await loading;
+		const [handles] = await loading;
 		const sent = new Set<string>();
 		const state = dehydrate(client, { sent });
 
 		expect(state.entries).toEqual([
-			expect.objectContaining({ queryKey: issues("byId", { id: 2 }) }),
+			expect.objectContaining({ fail: fail({ _tag: "NotFound", id: 9 }) }),
 		]);
 		expect(dehydrate(client, { sent }).entries).toHaveLength(0);
 		expect(
 			dehydrate(client, { filter: (entry) => entry.state.status === "error" })
 				.entries,
-		).toHaveLength(0);
+		).toHaveLength(2);
+		const browser = testClient();
+		hydrate(browser, send(state));
+		const view = read(browser, backend.issueQuery, handles.missing, {
+			result: true,
+		});
+
+		expect(view.result.current[0]).toMatchObject({
+			status: "fulfilled",
+			value: { error: { _tag: "NotFound" }, ok: false },
+		});
 	});
 
 	it("streams queries still loading, so the browser resumes them instead of fetching again", async () => {
@@ -148,11 +161,12 @@ describe("a server-rendered page", () => {
 		expect(backend.requests).toHaveLength(0);
 	});
 
-	it("streams errors redacted unless it keeps them", async () => {
+	it("streams fail() values as they are, and defects redacted unless it keeps them", async () => {
 		const backend = createBackend();
 		const client = testClient({ isServer: true });
 		const [handles] = await load(client, {
 			broken: prefetch(backend.issueQuery, { id: 1 }),
+			missing: prefetch(backend.issueQuery, { id: 9 }),
 		});
 		const redacted = dehydrate(client);
 		const kept = dehydrate(client, { keepErrors: true });
@@ -163,12 +177,20 @@ describe("a server-rendered page", () => {
 		await expect(kept.entries[0]?.promise).rejects.toBe(defect);
 		const browser = testClient();
 		hydrate(browser, redacted);
-		const broken = read(browser, backend.issueQuery, handles.broken);
+		const broken = read(browser, backend.issueQuery, handles.broken, {
+			result: true,
+		});
+		const missing = read(browser, backend.issueQuery, handles.missing, {
+			result: true,
+		});
 		await flush();
 
 		expect(broken.result.current[0]).toMatchObject({
 			reason: new RedactedError('["issues","byId",{"id":1}]'),
 			status: "rejected",
+		});
+		expect(missing.result.current[0]).toMatchObject({
+			value: { error: { _tag: "NotFound" }, ok: false },
 		});
 	});
 });
@@ -273,6 +295,47 @@ describe("hydrating a query the browser has", () => {
 		expect(view.result.current[0]).toMatchObject({
 			value: { title: "Server" },
 		});
+	});
+
+	it("takes the sender's fail() over the browser's own error, but not over its data or request", async () => {
+		const backend = createBackend();
+		const client = testClient();
+		const loading = load(client, {
+			broken: prefetch(backend.issueQuery, { id: 1 }),
+			loaded: prefetch(backend.issueQuery, { id: 2 }),
+		});
+		backend.requests[0]?.fail(new Error("down"));
+		await backend.respondAll();
+		const [handles] = await loading;
+		void load(client, {
+			loading: prefetch(backend.issueQuery, { id: 3 }),
+		});
+		const notFound = (id: number) => ({
+			fail: fail({ _tag: "NotFound" }),
+			queryKey: issues("byId", { id }),
+			updatedAt: 5,
+		});
+		hydrate(client, {
+			entries: [
+				notFound(1),
+				notFound(2),
+				{
+					promise: Promise.resolve(notFound(3)),
+					queryKey: issues("byId", { id: 3 }),
+					updatedAt: 0,
+				},
+			],
+		});
+		await flush();
+		const broken = read(client, backend.issueQuery, handles.broken);
+
+		expect(broken.result.current[1].error).toEqual(fail({ _tag: "NotFound" }));
+		await expect(broken.result.current[0]).rejects.toSatisfy(isQueryFailure);
+		expect(getData(client, backend.issueQuery, { id: 2 })?.title).toBe(
+			"Second",
+		);
+		await backend.respondAll();
+		expect(getData(client, backend.issueQuery, { id: 3 })?.title).toBe("Third");
 	});
 
 	it("drops a sender's request whose query the browser removed first", async () => {

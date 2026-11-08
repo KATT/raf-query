@@ -11,8 +11,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	fail,
 	getData,
 	invalidateOne,
+	isQueryFailure,
 	link,
 	load,
 	queryOptions,
@@ -151,11 +153,11 @@ describe("a streamed query", () => {
 	it("takes a link's answer that isn't a stream as it is", async () => {
 		const stream = source();
 		const client = testClient({
-			links: [link(async () => 42)],
+			links: [link(async () => fail({ _tag: "Offline" }))],
 		});
-		const [, data] = await load(client, { sum: swr(stream.sum) });
+		const loading = load(client, { sum: swr(stream.sum) });
 
-		expect(data.sum).toBe(42);
+		await expect(loading).rejects.toSatisfy(isQueryFailure);
 		expect(stream.runs).toHaveLength(0);
 	});
 });

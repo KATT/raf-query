@@ -3,6 +3,7 @@ import { type ReactNode, Suspense } from "react";
 
 import {
 	createQueryClient,
+	fail,
 	group,
 	infiniteQueryOptions,
 	type QueryClient,
@@ -14,15 +15,6 @@ import {
 export interface Issue {
 	readonly id: number;
 	readonly title: string;
-}
-
-/** What the backend's issue query throws for an issue it doesn't have. */
-class NotFoundError extends Error {
-	readonly id: number;
-	constructor(id: number) {
-		super(`Issue ${id} not found`);
-		this.id = id;
-	}
 }
 
 interface Request {
@@ -53,13 +45,8 @@ export function createBackend() {
 
 	const issueQuery = (input: { readonly id: number }) =>
 		queryOptions({
-			queryFn: async () => {
-				const issue = await get(input.id);
-				if (!issue) {
-					throw new NotFoundError(input.id);
-				}
-				return issue;
-			},
+			queryFn: async () =>
+				(await get(input.id)) ?? fail({ _tag: "NotFound", id: input.id }),
 			queryKey: issues("byId", input),
 		});
 
