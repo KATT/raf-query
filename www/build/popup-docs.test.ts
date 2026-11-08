@@ -5,6 +5,7 @@ import {
 	conciseDocs,
 	renderPopupMarkdown,
 	renderPopupMarkdownInline,
+	withConciseDocs,
 } from "./popup-docs.ts";
 
 const hover = {
@@ -91,6 +92,44 @@ describe("renderPopupMarkdownInline", () => {
 			),
 		).toBe(
 			'<a href="https://trpc.io/docs/server/routers#nesting">trpc.io/docs/server/routers#nesting</a>',
+		);
+	});
+});
+
+describe("withConciseDocs", () => {
+	it("trims a `^?` type's docs and puts its indent in an element", () => {
+		const seen: Array<string | undefined> = [];
+		const renderer = withConciseDocs({
+			lineQuery: (query) => {
+				seen.push(query.docs);
+				return [
+					{
+						children: [
+							{ type: "text", value: "    " },
+							{
+								children: [],
+								properties: { class: "twoslash-popup-container" },
+								tagName: "span",
+								type: "element",
+							},
+						],
+						properties: { class: "twoslash-meta-line twoslash-query-line" },
+						tagName: "div",
+						type: "element",
+					},
+				];
+			},
+			nodeStaticInfo: (_info, node) => node,
+		});
+		const lines = renderer.lineQuery?.call(
+			// SAFETY: the stub renderer doesn't read its context.
+			Object.create(null),
+			{ ...hover, docs: "The input.\n\nMore about it.", type: "query" },
+			undefined,
+		);
+		expect(seen).toEqual(["The input."]);
+		expect(toHtml(lines ?? [])).toBe(
+			'<div class="twoslash-meta-line twoslash-query-line"><span class="twoslash-query-indent">    </span><span class="twoslash-popup-container"></span></div>',
 		);
 	});
 });
