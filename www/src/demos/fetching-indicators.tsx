@@ -20,30 +20,32 @@ import { Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
-const stats = group("stats");
+const posts = group("posts");
+
+const postId = 1;
 
 const server = createFakeServer(() => ({ requests: 0 }));
 
-const statNames = ["orders", "signups", "tickets"] as const;
-type Stat = (typeof statNames)[number];
+const countNames = ["views", "comments", "likes"] as const;
+type Count = (typeof countNames)[number];
 
-function statQuery(input: { readonly stat: Stat }) {
+function countQuery(input: { readonly count: Count }) {
 	return queryOptions({
 		queryFn: (context) =>
 			server.respond(
-				`GET /stats/${input.stat}`,
+				`GET /posts/${postId}/${input.count}/count`,
 				(db) => {
 					db.requests++;
-					return 40 + ((db.requests * 37 + input.stat.length * 11) % 60);
+					return 40 + ((db.requests * 37 + input.count.length * 11) % 60);
 				},
 				context,
 			),
-		queryKey: stats(input.stat),
+		queryKey: posts(postId, input.count),
 		staleTime: Infinity,
 	});
 }
 
-type PageData = Readonly<Record<Stat, QueryHandle<typeof statQuery>>>;
+type PageData = Readonly<Record<Count, QueryHandle<typeof countQuery>>>;
 
 function GlobalIndicator() {
 	const fetching = useIsFetching();
@@ -66,28 +68,28 @@ function GlobalIndicator() {
 	);
 }
 
-function StatCard(props: {
-	readonly handle: QueryHandle<typeof statQuery>;
-	readonly stat: Stat;
+function CountCard(props: {
+	readonly count: Count;
+	readonly handle: QueryHandle<typeof countQuery>;
 }) {
-	const [valueThenable, stat] = useQuery(statQuery, props.handle);
+	const [valueThenable, count] = useQuery(countQuery, props.handle);
 	const value = use(valueThenable);
 	return (
 		<section
-			aria-busy={stat.isFetching}
+			aria-busy={count.isFetching}
 			className="grid gap-1 rounded-lg border p-3"
 		>
 			<h4 className="flex items-center justify-between text-xs text-muted-foreground capitalize">
-				{props.stat}
-				{stat.isFetching ? <Spinner /> : null}
+				{props.count}
+				{count.isFetching ? <Spinner /> : null}
 			</h4>
 			<p className="text-2xl font-semibold tabular-nums">{value}</p>
 			<Button
 				className="justify-self-start"
-				disabled={stat.isFetching}
+				disabled={count.isFetching}
 				onClick={() => {
 					startTransition(async () => {
-						await stat.refetch();
+						await count.refetch();
 					});
 				}}
 				size="xs"
@@ -99,27 +101,27 @@ function StatCard(props: {
 	);
 }
 
-function Dashboard(props: { readonly data: PageData }) {
+function PostCounts(props: { readonly data: PageData }) {
 	const qc = useQueryClient();
 	return (
 		<div className="grid gap-3">
 			<GlobalIndicator />
 			<div className="grid gap-2 sm:grid-cols-3">
-				{statNames.map((stat) => (
-					<StatCard handle={props.data[stat]} key={stat} stat={stat} />
+				{countNames.map((name) => (
+					<CountCard count={name} handle={props.data[name]} key={name} />
 				))}
 			</div>
 			<Button
 				className="justify-self-start"
 				onClick={() => {
 					startTransition(async () => {
-						await invalidateMany(qc, statQuery);
+						await invalidateMany(qc, countQuery);
 					});
 				}}
 				size="sm"
 				variant="outline"
 			>
-				<RefreshCw /> Invalidate all stats
+				<RefreshCw /> Invalidate all counts
 			</Button>
 		</div>
 	);
@@ -129,24 +131,24 @@ function FetchingIndicators() {
 	return (
 		<DemoBrowser
 			fallback={<Skeleton className="h-36 w-full" />}
-			initial={{ path: "/dashboard" }}
+			initial={{ path: `/posts/${postId}` }}
 			loader={async (args): Promise<PageData> => {
 				const [handles] = await load(args.client, {
-					orders: swr(statQuery, { stat: "orders" }),
-					signups: swr(statQuery, { stat: "signups" }),
-					tickets: swr(statQuery, { stat: "tickets" }),
+					comments: swr(countQuery, { count: "comments" }),
+					likes: swr(countQuery, { count: "likes" }),
+					views: swr(countQuery, { count: "views" }),
 				});
 				return handles;
 			}}
 		>
-			{(route) => <Dashboard data={route.data} />}
+			{(route) => <PostCounts data={route.data} />}
 		</DemoBrowser>
 	);
 }
 
 export default defineDemo({
 	Component: FetchingIndicators,
-	hint: "Each card shows its own isFetching. The optional bar uses useIsFetching for a global count — prefer the router's pending UI for navigations. Refetch one card, or invalidate them all.",
+	hint: "Each of the post's counts shows its own isFetching. The optional bar uses useIsFetching for a global count — prefer the router's pending UI for navigations. Refetch one card, or invalidate them all.",
 	server,
 	title: "isFetching and useIsFetching",
 });

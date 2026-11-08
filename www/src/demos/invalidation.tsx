@@ -243,7 +243,7 @@ function Invalidation() {
 	return (
 		<DemoBrowser
 			fallback={<Skeleton className="h-40 w-full" />}
-			initial={{ path: "/dashboard" }}
+			initial={{ path: "/posts" }}
 			loader={async (args): Promise<PageData> => {
 				const [handles] = await load(args.client, {
 					authors: prefetch(authorsQuery),
