@@ -52,7 +52,11 @@ function partialMatch(actual: unknown, expected: unknown): boolean {
 	return false;
 }
 
-/** What a target's `where` sees of a query. */
+/**
+ * What a target's `where` sees of a query.
+ *
+ * @see https://raf-query.katt.dev/docs/query-invalidation#matching-with-where
+ */
 export interface QueryInfo<TMeta = QueryMeta> {
 	/** The query's data, before `select`; `undefined` without data. */
 	readonly data: unknown;
@@ -70,6 +74,8 @@ export interface QueryInfo<TMeta = QueryMeta> {
  * const ownedBy: Target<AppMeta, Team> = { where: (query, team) => query.meta.owner === team };
  * await invalidateMany(client, ownedBy, "posts-team");
  * ```
+ *
+ * @see https://raf-query.katt.dev/docs/query-invalidation#targets
  */
 export interface Target<TMeta = QueryMeta, TParam = never> {
 	readonly where: (query: QueryInfo<TMeta>, param: TParam) => boolean;

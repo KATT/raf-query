@@ -8,12 +8,21 @@ import type {
 } from "../options.ts";
 import type { DefaultTypes, RootOf, RootTypes } from "../root.ts";
 
-/** A paged query's data. */
+/**
+ * A paged query's data.
+ *
+ * @see https://raf-query.katt.dev/docs/infinite-queries
+ */
 export interface InfiniteData<TPage, TParam = unknown> {
 	readonly pageParams: ReadonlyArray<TParam>;
 	readonly pages: ReadonlyArray<TPage>;
 }
 
+/**
+ * What a paged `queryFn` gets: the query function context, plus the page param and the direction it loads in.
+ *
+ * @see https://raf-query.katt.dev/docs/infinite-queries
+ */
 export interface InfiniteQueryFunctionContext<
 	TKey extends QueryKey,
 	TParam,
@@ -43,7 +52,11 @@ interface InfiniteOptions<
 	readonly select?: (data: InfiniteData<TPage, TParam>) => TData;
 }
 
-/** What `infiniteQueryOptions` returns. */
+/**
+ * What `infiniteQueryOptions` returns.
+ *
+ * @see https://raf-query.katt.dev/docs/infinite-queries
+ */
 export type InfiniteQueryOptions<
 	TKey extends QueryKey = QueryKey,
 	TPage = unknown,
@@ -59,7 +72,11 @@ export type InfiniteQueryOptions<
 		| "maxPages"
 	> & { readonly "~run": (op: Operation) => Promise<unknown> };
 
-/** `infiniteQueryOptions`, with `meta` checked against the root `TTypes`. */
+/**
+ * `infiniteQueryOptions`, with `meta` checked against the root `TTypes`.
+ *
+ * @see https://raf-query.katt.dev/docs/query-meta#typing-meta-by-its-root
+ */
 export interface InfiniteQueryOptionsBuilder<TTypes extends RootTypes> {
 	<
 		const TKey extends QueryKey,
@@ -97,6 +114,8 @@ export interface InfiniteQueryOptionsBuilder<TTypes extends RootTypes> {
  *
  * Its `meta` is any record. To check `meta` against a client's links and
  * features, use the builder {@link bindInfiniteQueryOptions} returns.
+ *
+ * @see https://raf-query.katt.dev/docs/infinite-queries
  */
 export const infiniteQueryOptions: InfiniteQueryOptionsBuilder<DefaultTypes> = (
 	options,
@@ -118,6 +137,8 @@ export const infiniteQueryOptions: InfiniteQueryOptionsBuilder<DefaultTypes> = (
  * // raf.ts
  * export const infiniteQueryOptions = bindInfiniteQueryOptions<typeof makeQueryClient>();
  * ```
+ *
+ * @see https://raf-query.katt.dev/docs/query-meta#typing-meta-by-its-root
  */
 export function bindInfiniteQueryOptions<T>(): InfiniteQueryOptionsBuilder<
 	RootOf<T>

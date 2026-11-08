@@ -1,6 +1,11 @@
 import { type Clock, type Link, link } from "../../client.ts";
 import { isResponse } from "../../guards.ts";
 
+/**
+ * Options for {@link retry}.
+ *
+ * @see https://raf-query.katt.dev/docs/retries#options
+ */
 export interface RetryOptions {
 	/** Retries after the first attempt. A query's `meta.retry` wins. Default 3. */
 	readonly attempts?: number;
@@ -50,6 +55,8 @@ export interface RetryMeta {
  * server clients never retry, and a browser that is offline
  * waits until it's back online before retrying. A query sets its own
  * attempts with `meta: { retry }`.
+ *
+ * @see https://raf-query.katt.dev/docs/retries
  */
 export function retry(
 	options: RetryOptions = {},

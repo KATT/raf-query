@@ -24,6 +24,8 @@ declare const process: { readonly env: { readonly NODE_ENV?: string } };
  * A small serializable reference to a query: its key and its factory's
  * input. It carries no data; readers get that from the cache. Handles of
  * different factories have different types.
+ *
+ * @see https://raf-query.katt.dev/docs/handles
  */
 export interface QueryHandle<TFactory extends QueryFactory = QueryFactory> {
 	readonly input: InputOf<TFactory>;
@@ -32,7 +34,11 @@ export interface QueryHandle<TFactory extends QueryFactory = QueryFactory> {
 
 type LoadKind = "prefetch" | "revalidate" | "swr";
 
-/** A query for `load` to start. Building one starts nothing. */
+/**
+ * A query for `load` to start. Building one starts nothing.
+ *
+ * @see https://raf-query.katt.dev/docs/starting-queries
+ */
 export interface LoadEntry<
 	TFactory extends QueryFactory = QueryFactory,
 	TKind extends LoadKind = LoadKind,
@@ -44,6 +50,11 @@ export interface LoadEntry<
 	readonly pages?: number;
 }
 
+/**
+ * Options for a `load` entry.
+ *
+ * @see https://raf-query.katt.dev/docs/infinite-queries#loading-several-pages-up-front
+ */
 export interface LoadEntryOptions {
 	/** For paged factories: how many pages a first load fetches. Default 1. */
 	readonly pages?: number;
@@ -69,6 +80,8 @@ function loadEntry<TFactory extends QueryFactory, TKind extends LoadKind>(
  * Start the query if the cache has no fresh data, and don't wait for it.
  * It never makes the load reject: errors show up where a component reads
  * the handle.
+ *
+ * @see https://raf-query.katt.dev/docs/starting-queries#prefetch-or-swr
  */
 export function prefetch<TFactory extends QueryFactory>(
 	factory: TFactory,
@@ -83,6 +96,8 @@ export function prefetch<TFactory extends QueryFactory>(
  * HTTP's
  * [`stale-while-revalidate`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control#stale-while-revalidate)
  * does. The load rejects if the fetch it waits for fails.
+ *
+ * @see https://raf-query.katt.dev/docs/starting-queries#prefetch-or-swr
  */
 export function swr<TFactory extends QueryFactory>(
 	factory: TFactory,
@@ -98,6 +113,8 @@ export function swr<TFactory extends QueryFactory>(
  * is the max-age); with stale data or none it waits for the fetch. On a
  * server client, data counts as fresh until a write invalidates it. The
  * load rejects if the fetch fails.
+ *
+ * @see https://raf-query.katt.dev/docs/starting-queries#when-to-use-revalidate
  */
 export function revalidate<TFactory extends QueryFactory>(
 	factory: TFactory,
@@ -116,6 +133,8 @@ export function revalidate<TFactory extends QueryFactory>(
  *   drafts: user.isAdmin ? prefetch(draftsQuery, { slug }) : skipToken,
  * });
  * ```
+ *
+ * @see https://raf-query.katt.dev/docs/starting-queries#conditional-queries
  */
 export const skipToken: unique symbol = Symbol("skipToken");
 
@@ -144,6 +163,8 @@ type LoadedData<TEntries extends LoadEntries> = {
 /**
  * What `load` resolves to: a handle per entry (`undefined` for `skipToken`),
  * and the data of `swr` and `revalidate` entries.
+ *
+ * @see https://raf-query.katt.dev/docs/starting-queries
  */
 export type Loaded<TEntries extends LoadEntries> = readonly [
 	handles: { [TName in keyof TEntries]: HandleOf<TEntries[TName]> },
@@ -226,6 +247,8 @@ function waitAny(entry: Entry, pages: number | undefined): Promise<Outcome> {
  *   issue: swr(issueQuery, { id }),
  * });
  * ```
+ *
+ * @see https://raf-query.katt.dev/docs/starting-queries
  */
 export async function load<const TEntries extends LoadEntries>(
 	client: QueryClient,
@@ -317,6 +340,8 @@ function toHandle<TFactory extends QueryFactory>(
  * ```ts
  * const searchHandle = waterfallHandle(searchQuery, props.search, (input) => ({ ...input, q }));
  * ```
+ *
+ * @see https://raf-query.katt.dev/docs/request-waterfalls#render-time-inputs-waterfallhandle
  */
 export function waterfallHandle<TFactory extends QueryFactory>(
 	factory: TFactory,

@@ -10,6 +10,8 @@ export interface FocusRefetchMeta {
 /**
  * Refetch read, stale queries when the window regains focus, except those
  * with `meta: { refetchOnWindowFocus: false }`.
+ *
+ * @see https://raf-query.katt.dev/docs/window-focus-refetching
  */
 export function focusRefetch(): Feature<{ readonly meta: FocusRefetchMeta }> {
 	return feature<{ readonly meta: FocusRefetchMeta }>((client, signal) => {

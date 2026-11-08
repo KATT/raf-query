@@ -7,6 +7,11 @@ import type {
 	RootTypes,
 } from "./root.ts";
 
+/**
+ * What a `queryFn` gets: the query's key, `meta` and abort `signal`.
+ *
+ * @see https://raf-query.katt.dev/docs/query-functions#the-query-function-context
+ */
 export interface QueryFunctionContext<TKey extends QueryKey = QueryKey> {
 	/** The query's `meta`, typed by its root where the query is defined. */
 	readonly meta: object;
@@ -38,7 +43,11 @@ export interface BaseOptions<
 	readonly structuralSharing?: boolean;
 }
 
-/** What `queryOptions` and `infiniteQueryOptions` return. */
+/**
+ * What `queryOptions` and `infiniteQueryOptions` return.
+ *
+ * @see https://raf-query.katt.dev/docs/api-reference#query-factories
+ */
 export interface QueryOptions<
 	TKey extends QueryKey = QueryKey,
 	TQueryFnData = unknown,
@@ -55,6 +64,11 @@ export interface QueryOptions<
 	readonly stream?: StreamOptions<TQueryFnData, never>;
 }
 
+/**
+ * How a `queryFn` that returns an async iterable folds its chunks into data.
+ *
+ * @see https://raf-query.katt.dev/docs/query-functions#streaming
+ */
 export interface StreamOptions<TData, TChunk> {
 	/** The data before the first chunk. */
 	readonly initial: TData;
@@ -71,7 +85,11 @@ type Awaitable<T> = PromiseLike<T> | T;
  */
 export type FromQueryFn<T> = T extends unknown ? T : never;
 
-/** `queryOptions`, with `meta` checked against the root `TTypes`. */
+/**
+ * `queryOptions`, with `meta` checked against the root `TTypes`.
+ *
+ * @see https://raf-query.katt.dev/docs/query-meta#typing-meta-by-its-root
+ */
 export interface QueryOptionsBuilder<TTypes extends RootTypes> {
 	<const TKey extends QueryKey, TChunk, TData>(
 		options: BaseOptions<TKey, TTypes> & {
@@ -108,6 +126,8 @@ export interface QueryOptionsBuilder<TTypes extends RootTypes> {
  *
  * Its `meta` is any record. To check `meta` against a client's links and
  * features, use the builder {@link bindQueryOptions} returns.
+ *
+ * @see https://raf-query.katt.dev/docs/query-factories
  */
 export const queryOptions: QueryOptionsBuilder<DefaultTypes> = <TOptions>(
 	options: TOptions,
@@ -124,6 +144,8 @@ export const queryOptions: QueryOptionsBuilder<DefaultTypes> = <TOptions>(
  * ```
  *
  * It returns `queryOptions` itself; only the types change.
+ *
+ * @see https://raf-query.katt.dev/docs/query-meta#typing-meta-by-its-root
  */
 export function bindQueryOptions<T>(): QueryOptionsBuilder<RootOf<T>> {
 	// SAFETY: the root is a phantom; the builder never reads it.
@@ -136,6 +158,8 @@ export function bindQueryOptions<T>(): QueryOptionsBuilder<RootOf<T>> {
  * every factory fits, and an inline generic factory maker passed where a
  * `QueryFactory` is expected infers its own type parameters instead of
  * `never`.
+ *
+ * @see https://raf-query.katt.dev/docs/query-factories
  */
 export type QueryFactory = {
 	factory(input: unknown): {
@@ -144,14 +168,22 @@ export type QueryFactory = {
 	};
 }["factory"];
 
-/** A factory whose query has one value, not pages: what `useQuery` reads. */
+/**
+ * A factory whose query has one value, not pages: what `useQuery` reads.
+ *
+ * @see https://raf-query.katt.dev/docs/query-factories
+ */
 export type SingleQueryFactory = {
 	factory(input: unknown): ReturnType<QueryFactory> & {
 		readonly getNextPageParam?: never;
 	};
 }["factory"];
 
-/** A factory of paged queries (`infiniteQueryOptions`): what `useInfiniteQuery` reads. */
+/**
+ * A factory of paged queries (`infiniteQueryOptions`): what `useInfiniteQuery` reads.
+ *
+ * @see https://raf-query.katt.dev/docs/query-factories
+ */
 export type InfiniteQueryFactory = {
 	factory(input: unknown): ReturnType<QueryFactory> & {
 		readonly getNextPageParam: (...args: never) => unknown;
@@ -165,13 +197,21 @@ export function optionsOf(factory: AnyFactory, input: unknown): QueryOptions {
 	return call(input);
 }
 
-/** What a reader gets: the `select`ed data, or else the `queryFn`'s. */
+/**
+ * What a reader gets: the `select`ed data, or else the `queryFn`'s.
+ *
+ * @see https://raf-query.katt.dev/docs/query-factories#type-inference
+ */
 export type DataOf<TFactory extends QueryFactory> =
 	ReturnType<TFactory> extends { readonly [dataTag]?: infer TData }
 		? TData
 		: never;
 
-/** A factory's input: its first parameter, or `undefined` if it takes none. */
+/**
+ * A factory's input: its first parameter, or `undefined` if it takes none.
+ *
+ * @see https://raf-query.katt.dev/docs/query-factories#type-inference
+ */
 export type InputOf<TFactory extends QueryFactory> =
 	Parameters<TFactory> extends [] ? undefined : Parameters<TFactory>[0];
 

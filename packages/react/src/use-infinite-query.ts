@@ -15,7 +15,11 @@ import {
 } from "./use-query.ts";
 import type { Fields } from "./tracked.ts";
 
-/** The paging half of what `useInfiniteQuery` returns. */
+/**
+ * The paging half of what `useInfiniteQuery` returns.
+ *
+ * @see https://raf-query.katt.dev/docs/infinite-queries#reading-pages
+ */
 export interface PageControls {
 	/** Load the page after the last one. Resolves when it's there. */
 	fetchNextPage(): Promise<void>;
@@ -27,7 +31,11 @@ export interface PageControls {
 	readonly isFetchingPreviousPage: boolean;
 }
 
-/** What `useInfiniteQuery` returns next to the data. */
+/**
+ * What `useInfiniteQuery` returns next to the data.
+ *
+ * @see https://raf-query.katt.dev/docs/infinite-queries#reading-pages
+ */
 export interface InfiniteQueryState<
 	TFactory extends InfiniteQueryFactory = InfiniteQueryFactory,
 >
@@ -74,6 +82,8 @@ function pageFields(entry: Entry, state: EntryState): Fields {
  * const [pagesThenable, pagesState] = useInfiniteQuery(commentsQuery, handles.comments);
  * const pages = use(pagesThenable);
  * ```
+ *
+ * @see https://raf-query.katt.dev/docs/infinite-queries#reading-pages
  */
 export function useInfiniteQuery<TFactory extends InfiniteQueryFactory>(
 	factory: TFactory,

@@ -9,7 +9,11 @@ export interface PollingMeta {
 	readonly refetchInterval?: number | false;
 }
 
-/** Refetch read queries every `meta.refetchInterval` ms. */
+/**
+ * Refetch read queries every `meta.refetchInterval` ms.
+ *
+ * @see https://raf-query.katt.dev/docs/polling
+ */
 export function polling(): Feature<{ readonly meta: PollingMeta }> {
 	return feature<{ readonly meta: PollingMeta }>((client, signal) => {
 		const timers = new Map<Entry, unknown>();

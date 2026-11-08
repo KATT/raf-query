@@ -9,6 +9,11 @@ import type { ReactNode } from "react";
 
 import { Hydrate } from "./hydrate.tsx";
 
+/**
+ * Props of {@link HydrationBoundary}: a dehydrated `state`, or in server components the request's `client`.
+ *
+ * @see https://raf-query.katt.dev/docs/react-router#server-loaders
+ */
 export type HydrationBoundaryProps =
 	| {
 			readonly children?: ReactNode;
@@ -50,6 +55,8 @@ export type HydrationBoundaryProps =
  * With loaders, such as React Router Framework Mode, pass the `state` the
  * loader dehydrated. Pending entries cross as promises when the framework's
  * serializer supports them (React Router's Single Fetch does).
+ *
+ * @see https://raf-query.katt.dev/docs/react-router#server-loaders
  */
 export function HydrationBoundary(props: HydrationBoundaryProps) {
 	// The types allow `client` here: TypeScript can't tell which build a file

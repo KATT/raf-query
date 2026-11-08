@@ -16,6 +16,8 @@ import { useQueryClient } from "./provider.tsx";
  * It returns `useQueryClient` itself; only the types change. It isn't a
  * hook, so call it at module level. This module has no `"use client"`, so a
  * server module can import the file that binds it.
+ *
+ * @see https://raf-query.katt.dev/docs/query-meta#typing-meta-by-its-root
  */
 export function bindUseQueryClient<T>(): () => QueryClient<RootOf<T>> {
 	return useQueryClient;

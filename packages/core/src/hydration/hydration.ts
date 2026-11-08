@@ -14,7 +14,11 @@ import {
 } from "../entry.ts";
 import type { QueryKey } from "../keys/keys.ts";
 
-/** What a dehydrated pending entry's promise resolves to. */
+/**
+ * What a dehydrated pending entry's promise resolves to.
+ *
+ * @see https://raf-query.katt.dev/docs/ssr-and-hydration
+ */
 export interface DehydratedResult {
 	readonly data?: unknown;
 	/** When the sender got the result (ms since epoch). */
@@ -25,6 +29,8 @@ export interface DehydratedResult {
  * One cache entry in transit. Settled entries carry `data` and
  * `updatedAt > 0`; entries still loading carry their request's `promise`,
  * so the receiver resumes it instead of fetching again.
+ *
+ * @see https://raf-query.katt.dev/docs/ssr-and-hydration
  */
 export interface DehydratedEntry {
 	readonly data?: unknown;
@@ -34,10 +40,20 @@ export interface DehydratedEntry {
 	readonly updatedAt: number;
 }
 
+/**
+ * A cache, serialized by {@link dehydrate} for {@link hydrate}.
+ *
+ * @see https://raf-query.katt.dev/docs/ssr-and-hydration
+ */
 export interface DehydratedState {
 	readonly entries: ReadonlyArray<DehydratedEntry>;
 }
 
+/**
+ * Options for {@link dehydrate} and {@link dehydrateStream}.
+ *
+ * @see https://raf-query.katt.dev/docs/ssr-and-hydration
+ */
 export interface DehydrateOptions {
 	/**
 	 * Which entries to send. Default: entries with data or a request in
@@ -56,6 +72,8 @@ export interface DehydrateOptions {
 /**
  * What a streamed pending entry rejects with when its server request threw:
  * the browser learns which query failed, not why.
+ *
+ * @see https://raf-query.katt.dev/docs/ssr-and-hydration#errors
  */
 export class RedactedError extends Error {
 	override readonly name = "RedactedError";
@@ -66,7 +84,11 @@ export class RedactedError extends Error {
 	}
 }
 
-/** The default filter: entries with data or a request in flight. */
+/**
+ * The default filter: entries with data or a request in flight.
+ *
+ * @see https://raf-query.katt.dev/docs/ssr-and-hydration
+ */
 export function canDehydrate(entry: Entry): boolean {
 	const state = entry.state;
 	return state.hasData || state.isFetching;
@@ -115,7 +137,11 @@ function dehydrateEntries(
 	return { entries: dehydrated };
 }
 
-/** Snapshot the client's entries for transfer. */
+/**
+ * Snapshot the client's entries for transfer.
+ *
+ * @see https://raf-query.katt.dev/docs/ssr-and-hydration
+ */
 export function dehydrate(
 	client: QueryClient,
 	options: DehydrateOptions = {},
@@ -123,6 +149,11 @@ export function dehydrate(
 	return dehydrateEntries(client["~entries"].values(), options);
 }
 
+/**
+ * What {@link dehydrateStream} returns: the entries to send first, then their updates.
+ *
+ * @see https://raf-query.katt.dev/docs/ssr-and-hydration
+ */
 export interface DehydratedStream {
 	/** Stop: send what changed, then end `updates`. */
 	close(): void;
@@ -135,6 +166,8 @@ export interface DehydratedStream {
 /**
  * The cache now, then entries as they start, until `close()`. Snapshots and
  * subscribes in one synchronous step, so no change falls between the two.
+ *
+ * @see https://raf-query.katt.dev/docs/ssr-and-hydration
  */
 export function dehydrateStream(
 	client: QueryClient,
@@ -207,6 +240,8 @@ function takeNewer(entry: Entry, result: DehydratedResult) {
  * data. A pending entry the client has nothing for resumes the sender's
  * request; one that has data or a request of its own waits for the
  * sender's, takes it if newer, and revalidates if the sender's failed.
+ *
+ * @see https://raf-query.katt.dev/docs/ssr-and-hydration
  */
 export function hydrate(client: QueryClient, state: DehydratedState): void {
 	for (const sent of state.entries) {

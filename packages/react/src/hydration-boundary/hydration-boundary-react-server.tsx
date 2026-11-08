@@ -25,6 +25,8 @@ function sentHashes(client: QueryClient): Set<string> {
  * It also marks the client components' server render: from there on, a read
  * of a query nothing sent renders its Suspense fallback on the server and
  * loads in the browser, instead of fetching where nothing would send it.
+ *
+ * @see https://raf-query.katt.dev/docs/react-server-components#setup
  */
 export function HydrationBoundary(props: HydrationBoundaryProps) {
 	const client = props.client;

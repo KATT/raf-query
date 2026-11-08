@@ -65,6 +65,8 @@ function setupServer<TRouter extends AnyRouter>(
  * - Turns `redirect()` thrown from a `queryFn` into a navigation.
  *
  * Call it in `getRouter`, which runs once per request on the server.
+ *
+ * @see https://raf-query.katt.dev/docs/tanstack-start#setup
  */
 export function setupRouterIntegration<TRouter extends AnyRouter>(
 	options: RouterIntegrationOptions<TRouter>,

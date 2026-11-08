@@ -10,6 +10,8 @@ export interface ReconnectRefetchMeta {
 /**
  * Refetch read, stale queries when the browser comes back online, except
  * those with `meta: { refetchOnReconnect: false }`.
+ *
+ * @see https://raf-query.katt.dev/docs/testing#focus-and-the-network
  */
 export function reconnectRefetch(): Feature<{
 	readonly meta: ReconnectRefetchMeta;

@@ -37,6 +37,8 @@ type DeepPartial<T> = T extends object
 /**
  * What `invalidateMany(factory, partial)` takes: part of the factory's
  * input, whatever its key looks like.
+ *
+ * @see https://raf-query.katt.dev/docs/query-invalidation
  */
 export type PartialInput<TFactory extends QueryFactory> = DeepPartial<
 	InputOf<TFactory>
@@ -45,6 +47,8 @@ export type PartialInput<TFactory extends QueryFactory> = DeepPartial<
 /**
  * The clients a factory's verbs take: its root's, or any client for a
  * factory from an unbound builder.
+ *
+ * @see https://raf-query.katt.dev/docs/query-meta#typing-meta-by-its-root
  */
 export type ClientFor<TFactory extends QueryFactory> = QueryClient<
 	RootOfFactory<TFactory>
@@ -161,6 +165,8 @@ function settle(outcomes: ReadonlyArray<Promise<Outcome>>): Promise<void> {
 /**
  * Mark one query stale: a factory and its full input. If it's read, it
  * refetches; resolves when that settles.
+ *
+ * @see https://raf-query.katt.dev/docs/query-invalidation
  */
 export function invalidateOne<TFactory extends QueryFactory>(
 	client: ClientFor<TFactory>,
@@ -186,6 +192,8 @@ export function invalidateOne<TFactory extends QueryFactory>(
  * ```ts
  * await invalidateMany(client, [todos, [issuesQuery, { status: "open" }], [ownedBy, "billing"]]);
  * ```
+ *
+ * @see https://raf-query.katt.dev/docs/query-invalidation#several-targets
  */
 export function invalidateMany<TFactory extends QueryFactory>(
 	client: ClientFor<TFactory>,
@@ -216,7 +224,11 @@ export function invalidateMany(
 	return invalidate(client, (at) => stampsOf(target, partial, at));
 }
 
-/** Mark every query stale; read ones refetch. For sign-out, or after any write. */
+/**
+ * Mark every query stale; read ones refetch. For sign-out, or after any write.
+ *
+ * @see https://raf-query.katt.dev/docs/query-invalidation
+ */
 export function invalidateAll(client: QueryClient): Promise<void> {
 	return invalidate(client, (at) => [{ at, kind: "all" }]);
 }
@@ -232,6 +244,8 @@ function oneEntry(
 /**
  * Drop one query's data and error. If it's read, it suspends and refetches;
  * resolves when that settles.
+ *
+ * @see https://raf-query.katt.dev/docs/query-invalidation#invalidate-reset-or-remove
  */
 export function resetOne<TFactory extends QueryFactory>(
 	client: ClientFor<TFactory>,
@@ -242,7 +256,11 @@ export function resetOne<TFactory extends QueryFactory>(
 	return settle(entry ? [reset(entry)] : []);
 }
 
-/** {@link resetOne} for every query a target, or a list of them, covers. */
+/**
+ * {@link resetOne} for every query a target, or a list of them, covers.
+ *
+ * @see https://raf-query.katt.dev/docs/query-invalidation#invalidate-reset-or-remove
+ */
 export function resetMany<TFactory extends QueryFactory>(
 	client: ClientFor<TFactory>,
 	factory: TFactory,
@@ -271,12 +289,20 @@ export function resetMany(
 	);
 }
 
-/** {@link resetOne} for every query. */
+/**
+ * {@link resetOne} for every query.
+ *
+ * @see https://raf-query.katt.dev/docs/query-invalidation#invalidate-reset-or-remove
+ */
 export function resetAll(client: QueryClient): Promise<void> {
 	return settle([...client["~entries"].values()].map(reset));
 }
 
-/** Remove one query from the cache, aborting its request. */
+/**
+ * Remove one query from the cache, aborting its request.
+ *
+ * @see https://raf-query.katt.dev/docs/query-invalidation#invalidate-reset-or-remove
+ */
 export function removeOne<TFactory extends QueryFactory>(
 	client: ClientFor<TFactory>,
 	factory: TFactory,
@@ -288,7 +314,11 @@ export function removeOne<TFactory extends QueryFactory>(
 	}
 }
 
-/** {@link removeOne} for every query a target, or a list of them, covers. */
+/**
+ * {@link removeOne} for every query a target, or a list of them, covers.
+ *
+ * @see https://raf-query.katt.dev/docs/query-invalidation#invalidate-reset-or-remove
+ */
 export function removeMany<TFactory extends QueryFactory>(
 	client: ClientFor<TFactory>,
 	factory: TFactory,
@@ -314,7 +344,11 @@ export function removeMany(
 	}
 }
 
-/** Remove every query, aborting their requests. */
+/**
+ * Remove every query, aborting their requests.
+ *
+ * @see https://raf-query.katt.dev/docs/query-invalidation#invalidate-reset-or-remove
+ */
 export function removeAll(client: QueryClient): void {
 	for (const entry of client["~entries"].values()) {
 		remove(entry);
@@ -331,6 +365,8 @@ type Updater<TFactory extends QueryFactory> =
  * gets the current data, or `undefined` if there is none. A factory that
  * takes no input (or an optional one) skips the input:
  * `setData(client, todosQuery, updater)`.
+ *
+ * @see https://raf-query.katt.dev/docs/mutations#updates-from-mutation-responses
  */
 export function setData<TFactory extends QueryFactory>(
 	client: ClientFor<TFactory>,
@@ -361,7 +397,11 @@ export function setData<TFactory extends QueryFactory>(
 	write(entry, data, client.clock.now(), ++client["~seq"]);
 }
 
-/** A query's cached data (before `select`), or `undefined`. */
+/**
+ * A query's cached data (before `select`), or `undefined`.
+ *
+ * @see https://raf-query.katt.dev/docs/api-reference#changing-the-cache
+ */
 export function getData<TFactory extends QueryFactory>(
 	client: ClientFor<TFactory>,
 	factory: TFactory,
@@ -374,7 +414,11 @@ export function getData<TFactory extends QueryFactory>(
 		| undefined;
 }
 
-/** How many queries have a request in flight, optionally only a factory's, a group's or a target's. */
+/**
+ * How many queries have a request in flight, optionally only a factory's, a group's or a target's.
+ *
+ * @see https://raf-query.katt.dev/docs/background-fetching-indicators
+ */
 export function isFetching(
 	client: QueryClient,
 	target?: AnyInvalidation,

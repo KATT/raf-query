@@ -66,6 +66,11 @@ const initialState: EntryState = {
 
 const fiveMinutes = 5 * 60 * 1000;
 
+/**
+ * Make the `AbortError` (a `DOMException`) that a `load` waiting on a removed query rejects with.
+ *
+ * @see https://raf-query.katt.dev/docs/query-cancellation#when-requests-are-aborted
+ */
 export function abortError(): DOMException {
 	return new DOMException("The query was cancelled", "AbortError");
 }

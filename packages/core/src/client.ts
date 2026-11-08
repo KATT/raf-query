@@ -30,7 +30,11 @@ import {
 	type SubscribeOptions,
 } from "./subscribe.ts";
 
-/** Time and timers, injectable so tests control them without patching globals. */
+/**
+ * Time and timers, injectable so tests control them without patching globals.
+ *
+ * @see https://raf-query.katt.dev/docs/testing#time
+ */
 export interface Clock {
 	clearTimeout(handle: unknown): void;
 	now(): number;
@@ -48,7 +52,11 @@ export const systemClock: Clock = {
 	setTimeout: (callback, ms) => setTimeout(callback, ms),
 };
 
-/** One request, as links see it. `TMeta` is what the link declares. */
+/**
+ * One request, as links see it. `TMeta` is what the link declares.
+ *
+ * @see https://raf-query.katt.dev/docs/query-meta#links-and-features
+ */
 export interface Operation<TMeta extends object = object> {
 	readonly client: QueryClient;
 	/** The entry's data when the request started (paged queries extend it). */
@@ -71,12 +79,16 @@ export interface Operation<TMeta extends object = object> {
  * Wraps every request, like a tRPC link. Call `next(op)` to run the rest of
  * the chain; the last link is the query's own `queryFn`. `TDecl` is the
  * `meta` it reads: see {@link link}.
+ *
+ * @see https://raf-query.katt.dev/docs/query-meta#links-and-features
  */
 export type Link<TDecl extends Decl = Decl> = LinkFunction & Declares<TDecl>;
 
 /**
  * A cache-wide behavior, started when a provider mounts the client and
  * stopped by `signal`. `TDecl` is the `meta` it reads: see {@link feature}.
+ *
+ * @see https://raf-query.katt.dev/docs/query-meta#links-and-features
  */
 export type Feature<TDecl extends Decl = Decl> = FeatureFunction &
 	Declares<TDecl>;
@@ -90,6 +102,8 @@ export type Feature<TDecl extends Decl = Decl> = FeatureFunction &
  *   withTrace(op.meta.traceId, () => next(op)),
  * );
  * ```
+ *
+ * @see https://raf-query.katt.dev/docs/query-meta#links-and-features
  */
 export function link<TDecl extends Decl = Decl>(
 	run: (
@@ -111,6 +125,8 @@ const noop = () => {};
  * ```ts
  * const ownership = feature<{ meta: { owner?: "posts-team" | "users-team" } }>();
  * ```
+ *
+ * @see https://raf-query.katt.dev/docs/query-meta#links-and-features
  */
 export function feature<TDecl extends Decl = Decl>(
 	setup: FeatureFunction = noop,
@@ -122,6 +138,11 @@ export type ClientEvent =
 	| { readonly entry: Entry; readonly type: "added" | "removed" | "updated" }
 	| { readonly entry: Entry; readonly type: "readers" };
 
+/**
+ * What `createQueryClient` takes: links, features and the cache-wide defaults.
+ *
+ * @see https://raf-query.katt.dev/docs/important-defaults#changing-the-defaults
+ */
 export interface QueryClientConfig {
 	readonly clock?: Clock;
 	/** Behaviors started while a provider has the client mounted. */
@@ -142,6 +163,8 @@ export interface QueryClientConfig {
  * A query cache. `TTypes` is its root's types, which factories built with
  * `bindQueryOptions<typeof makeQueryClient>()` are checked against. The bare
  * `QueryClient` type takes a client of any root.
+ *
+ * @see https://raf-query.katt.dev/docs/api-reference#the-client
  */
 export interface QueryClient<TTypes extends RootTypes = AnyRoot> {
 	/** Entries changed since the last notification. */
@@ -176,6 +199,8 @@ export interface QueryClient<TTypes extends RootTypes = AnyRoot> {
  *
  * Make one per request on the server (in a loader or a request-scoped
  * cache), never at module level.
+ *
+ * @see https://raf-query.katt.dev/docs/important-defaults
  */
 export function createQueryClient<
 	const TLinks extends ReadonlyArray<AnyLink> = [],

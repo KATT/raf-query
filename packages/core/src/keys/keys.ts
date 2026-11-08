@@ -10,7 +10,11 @@
 
 import { isString } from "../guards.ts";
 
-/** A query's key: a plain, serializable array. */
+/**
+ * A query's key: a plain, serializable array.
+ *
+ * @see https://raf-query.katt.dev/docs/query-keys
+ */
 export type QueryKey = ReadonlyArray<unknown>;
 
 declare const groupBrand: unique symbol;
@@ -19,6 +23,8 @@ declare const groupBrand: unique symbol;
  * A named set of queries: those whose key starts with its path. Call it
  * for a key under that path; a subgroup's path extends its parent's, so a
  * group covers its subgroups and their queries.
+ *
+ * @see https://raf-query.katt.dev/docs/query-keys#groups
  */
 export interface Group<
 	TPath extends ReadonlyArray<string> = ReadonlyArray<string>,
@@ -67,6 +73,8 @@ function claim(parent: Group, name: unknown, kind: "group" | "query") {
  *   queryOptions({ queryKey: drafts("byId", input), queryFn }); // ["posts", "drafts", "byId", input]
  * await invalidateMany(client, posts); // drafts too
  * ```
+ *
+ * @see https://raf-query.katt.dev/docs/query-keys#groups
  */
 export function group<const TName extends string>(
 	name: TName,

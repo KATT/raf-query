@@ -10,6 +10,8 @@ const QueryClientContext = createContext<QueryClient | null>(null);
 /**
  * Provides a client to the tree, and runs its features (focus and
  * reconnect refetching, polling, …) while mounted.
+ *
+ * @see https://raf-query.katt.dev/docs/ssr-and-hydration#the-provider
  */
 export function QueryClientProvider(props: {
 	readonly children?: ReactNode;
@@ -27,7 +29,11 @@ export function useOptionalQueryClient(): QueryClient | null {
 	return use(QueryClientContext);
 }
 
-/** The client from the nearest {@link QueryClientProvider}. */
+/**
+ * The client from the nearest {@link QueryClientProvider}.
+ *
+ * @see https://raf-query.katt.dev/docs/api-reference#providers
+ */
 export function useQueryClient(): QueryClient {
 	const client = useOptionalQueryClient();
 	if (!client) {
