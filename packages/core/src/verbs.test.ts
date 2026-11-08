@@ -328,6 +328,18 @@ describe("data", () => {
 				expect(written).toEqual(next);
 				expect(getData(client, any)).toBe(written);
 			}),
+			{
+				// `jsonValue()` draws an own `"__proto__"` key in about one value
+				// in 2000, so these run every time rather than when the seed hits.
+				examples: [
+					[{}, JSON.parse('{"__proto__":{}}')],
+					[
+						JSON.parse('{"__proto__":{"a":1}}'),
+						JSON.parse('{"__proto__":{"a":1}}'),
+					],
+					[[JSON.parse('{"__proto__":null}')], [JSON.parse('{"__proto__":1}')]],
+				],
+			},
 		);
 		const client = testClient();
 		const list = {
@@ -343,6 +355,32 @@ describe("data", () => {
 			a: list.a,
 			list: [list.list[0], { id: 3 }],
 		});
+	});
+
+	it("keeps a `__proto__` key as data, as `JSON.parse` makes it", () => {
+		const client = testClient();
+		const previous: JsonValue = JSON.parse(
+			'{"__proto__":{"admin":false},"id":1}',
+		);
+		setData(client, any, undefined, {});
+		setData(client, any, undefined, previous);
+		const written = getData(client, any);
+		setData(
+			client,
+			any,
+			undefined,
+			JSON.parse('{"__proto__":{"admin":true},"id":1}'),
+		);
+		const shared = getData(client, any);
+
+		expect(written).toEqual(previous);
+		expect(Object.getPrototypeOf(shared)).toBe(Object.prototype);
+		expect(Object.getOwnPropertyDescriptor(shared, "__proto__")?.value).toEqual(
+			{
+				admin: true,
+			},
+		);
+		expect(Object.hasOwn(Object.prototype, "admin")).toBe(false);
 	});
 
 	it("replaces data it can't compare part by part", () => {

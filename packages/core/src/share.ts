@@ -29,17 +29,22 @@ export function replaceEqualDeep(previous: unknown, next: unknown): unknown {
 	// SAFETY: as above.
 	const after = next as Record<string, unknown>;
 	const names = Object.keys(after);
-	const copy: Record<string, unknown> = {};
 	let same = names.length === Object.keys(before).length;
-	for (const name of names) {
-		const value = replaceEqualDeep(before[name], after[name]);
-		copy[name] = value;
-		if (value !== before[name] || !Object.hasOwn(before, name)) {
+	// Reads only own keys and builds the copy from entries: JSON can carry a
+	// `"__proto__"` key, which `before[name]` would read as the prototype and
+	// `copy[name] = value` would set as one.
+	const values = names.map((name) => {
+		const own = Object.hasOwn(before, name);
+		const value = replaceEqualDeep(own ? before[name] : undefined, after[name]);
+		if (!own || value !== before[name]) {
 			same = false;
 		}
-	}
+		return value;
+	});
 	if (same) {
 		return previous;
 	}
-	return arrays ? names.map((name) => copy[name]) : copy;
+	return arrays
+		? values
+		: Object.fromEntries(names.map((name, index) => [name, values[index]]));
 }
