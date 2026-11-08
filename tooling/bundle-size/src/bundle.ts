@@ -34,7 +34,15 @@ export const bundle = Effect.fn("bundle")(function* (
 					find: /^@raf-query\/core\/internal$/,
 					replacement: built("core", "internal"),
 				},
+				{
+					find: /^@raf-query\/core\/tanstack-query$/,
+					replacement: built("core", "tanstack-query/tanstack-query"),
+				},
 				{ find: /^@raf-query\/react$/, replacement: built("react", "index") },
+				{
+					find: /^@raf-query\/react\/tanstack-query$/,
+					replacement: built("react", "tanstack-query"),
+				},
 			]
 		: [];
 	const result = yield* Effect.promise(() =>

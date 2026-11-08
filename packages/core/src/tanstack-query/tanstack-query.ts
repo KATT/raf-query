@@ -4,7 +4,7 @@
  * depends on no `@tanstack/*` package. It's typed against the small part
  * of TanStack Query's `QueryClient` it uses.
  */
-import { type Feature, feature } from "./client.ts";
+import { type Feature, feature } from "../client.ts";
 import {
 	type Entry,
 	entryForKey,
@@ -14,10 +14,10 @@ import {
 	remove,
 	reset,
 	write,
-} from "./entry.ts";
-import { isFailValue, isQueryFailure, QueryFailure } from "./fail.ts";
-import { hashKey, type QueryKey } from "./keys/keys.ts";
-import { entryStamp, matches } from "./keys/targets.ts";
+} from "../entry.ts";
+import { isFailValue, isQueryFailure, QueryFailure } from "../fail.ts";
+import { hashKey, type QueryKey } from "../keys/keys.ts";
+import { entryStamp, matches } from "../keys/targets.ts";
 
 /** The state of a TanStack Query query that the sync reads. */
 export interface QueryStateLike {

@@ -505,7 +505,7 @@
 		{
 			// The TanStack Query sync takes a client by its shape, so apps bring
 			// their own TanStack Query version.
-			"files": ["packages/core/src/tanstack-query.ts"],
+			"files": ["packages/core/src/tanstack-query/tanstack-query.ts"],
 			"rules": {
 				"no-restricted-imports": [
 					"error",

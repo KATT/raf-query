@@ -1,15 +1,15 @@
 import {
 	createQueryClient,
-	ensureEntry,
+	group,
 	invalidateMany,
 	load,
 	QueryClientProvider,
 	type QueryHandle,
 	queryOptions,
 	recommended,
+	swr,
 	useQuery,
 } from "@raf-query/react";
-import { group } from "@raf-query/react/groups";
 import { tanstackQuerySync } from "@raf-query/react/tanstack-query";
 import {
 	QueryClient,
@@ -64,7 +64,7 @@ export function postQuery(input: { slug: string }) {
 
 // #region loader
 const [handles] = await load(queryClient, {
-	post: ensureEntry(postQuery, { slug }),
+	post: swr(postQuery, { slug }),
 });
 // #endregion
 
@@ -81,7 +81,7 @@ export function PostPage(props: { post: QueryHandle<typeof postQuery> }) {
 // #endregion
 
 // #region invalidate
-// In an action on raf-query: every key that starts with "posts".
+// After a write on raf-query: every key that starts with "posts".
 await invalidateMany(queryClient, posts);
 // In code still on TanStack Query, the same queries:
 await tanstackQueryClient.invalidateQueries({ queryKey: ["posts"] });

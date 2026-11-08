@@ -43,7 +43,7 @@ export const features = {
 	},
 	tanstackQuery: {
 		label: "`tanstackQuerySync()`",
-		marker: { module: "core/tanstack-query" },
+		marker: { module: "core/tanstack-query/tanstack-query" },
 	},
 } satisfies Record<string, { readonly label: string; readonly marker: Marker }>;
 

@@ -52,7 +52,7 @@ tanstack-start/src/docs/tanstack-query.tanstack.tsx#screen
 Both read one copy of the post:
 
 - When raf-query's loader has the post, the TanStack Query screen renders it at once, without a loading state.
-- When TanStack Query fetched it first, `ensureEntry` takes it from the cache instead of fetching again.
+- When TanStack Query fetched it first, `swr` takes it from the cache instead of fetching again.
 - A write on either side, such as raf-query's `setData` or TanStack Query's [`setQueryData`](https://tanstack.com/query/latest/docs/reference/QueryClient#setquerydata), shows on both screens.
 
 TanStack Query refetches a query when a screen mounts if its data is stale, and its default `staleTime` is `0`. Give it a `staleTime` (the setup above sets one for every query), so a screen that mounts on data raf-query just loaded doesn't fetch it again.
@@ -73,7 +73,7 @@ What each side's invalidation reaches:
 
 - TanStack Query's [`invalidateQueries`](https://tanstack.com/query/latest/docs/reference/QueryClient#invalidatequeries) reaches every query in its cache that its `queryKey` matches, by prefix and by the fields of an object segment, and the sync passes each one on. A raf-query entry still loading its first data has no copy in TanStack Query yet, so it isn't reached.
 - raf-query's groups and `invalidateOne` match by key, so they reach the copies the sync made too, including queries only TanStack Query screens have read.
-- raf-query's tags and `invalidateMany(queryClient, factory)` match by what raf-query knows of a query, its factory and `meta`, so they reach only the entries raf-query has read. While both sides show a set of queries, invalidate it by group.
+- A factory and a [`where` target](./query-invalidation.md#matching-with-where) match by what raf-query knows of a query: its factory, its input and its `meta`. A mirror has none of those until raf-query reads it, so they reach only the entries raf-query has read. Tags are one such target, a few lines over `meta.tags` ([Tags](./query-invalidation.md#tags)), not a core feature. While both sides show a set of queries, invalidate it by group.
 
 ## What syncs
 
@@ -97,7 +97,7 @@ Removing a copy the sync made, or its gc, leaves the original. Each copy has its
 - **`undefined` data.** raf-query caches it; TanStack Query doesn't take it, so the TanStack Query copy is left as it is.
 - **An error with nothing to attach to.** An error reaches the other cache only when that cache already has the query.
 - **Infinite queries** sync their `{ pages, pageParams }` data, but a page fetch runs in the cache that asked for it, with that side's page params.
-- **Mutations.** TanStack Query's mutation cache has no counterpart: raf-query writes are Actions. Invalidate or write after a mutation, and the sync carries the result.
+- **Mutations.** TanStack Query's mutation cache has no counterpart. A mutation awaits the write, then `invalidateMany(client, [targets])`. The sync carries that invalidation, and a `setData` from either side.
 - **Paused queries and `fetchStatus`.** raf-query has no offline pause.
 
 ## Choosing what syncs

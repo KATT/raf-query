@@ -33,7 +33,7 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./internal": "./src/internal.ts",
-		"./tanstack-query": "./src/tanstack-query.ts"
+		"./tanstack-query": "./src/tanstack-query/tanstack-query.ts"
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/sync-package-docs.ts",
@@ -62,7 +62,7 @@
 		"exports": {
 			".": "./dist/index.mjs",
 			"./internal": "./dist/internal.mjs",
-			"./tanstack-query": "./dist/tanstack-query.mjs"
+			"./tanstack-query": "./dist/tanstack-query/tanstack-query.mjs"
 		},
 		"provenance": true
 	},

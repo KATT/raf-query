@@ -1,3 +1,14 @@
+/**
+ * `tanstackQuerySync()` is a feature: it runs while a provider has the
+ * client mounted and stops when that signal aborts. It subscribes to both
+ * caches and writes the other side's data, errors, invalidations, resets
+ * and removals, matched by `hashKey`. An echo guard remembers the last
+ * state it left on each side, and an `applying` flag drops the write it
+ * just made. A group stamp matches a TanStack key by prefix; a factory
+ * stamp and a `where` target only match entries raf has read, because a
+ * mirror has no factory or `meta`. One side refetches: raf, when it has a
+ * reader, otherwise TanStack when its observer is active.
+ */
 import {
 	dehydrate as dehydrateTanStack,
 	hydrate as hydrateTanStack,
@@ -5,38 +16,40 @@ import {
 	QueryObserver,
 	type QueryObserverOptions,
 } from "@tanstack/query-core";
-import { type QueryControls, useQuery } from "@raf-query/react";
+import { type QueryState, useQuery } from "@raf-query/react";
 import { createElement, Suspense, use } from "react";
 import { describe, expect, it } from "vitest";
 
-import { group, type GroupKey } from "./groups.ts";
-import { dehydrate, hydrate } from "./hydration.ts";
 import {
 	createQueryClient,
-	ensureEntry,
+	dehydrate,
 	fail,
-	fetchEntry,
 	getData,
+	group,
+	hydrate,
 	invalidateMany,
 	invalidateOne,
 	isQueryFailure,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryClient,
 	type QueryFactory,
 	type QueryHandle,
+	type QueryKey,
 	QueryFailure,
 	queryOptions,
 	removeAll,
 	removeOne,
+	revalidate,
 	resetOne,
 	setData,
-} from "./index.ts";
+	swr,
+} from "../index.ts";
 import {
 	tanstackQuerySync,
 	type TanStackQuerySyncOptions,
 } from "./tanstack-query.ts";
-import { flush, mount } from "./test-utils.ts";
+import { flush, mount } from "../test-utils.ts";
 
 interface Post {
 	readonly id: number;
@@ -121,7 +134,7 @@ function observe(tanstack: TanStackQueryClient, options: QueryObserverOptions) {
 function Reader(props: {
 	readonly factory: QueryFactory;
 	readonly handle: QueryHandle<QueryFactory>;
-	readonly show: (query: unknown, queryState: QueryControls) => void;
+	readonly show: (query: unknown, queryState: QueryState) => void;
 }) {
 	const [queryThenable, queryState] = useQuery(props.factory, props.handle);
 	const query = use(queryThenable);
@@ -139,7 +152,7 @@ type Read = readonly [factory: QueryFactory, handle: QueryHandle<QueryFactory>];
  */
 function screens(client: QueryClient, reads: ReadonlyArray<Read> = []) {
 	const shown: Array<unknown> = [];
-	const states: Array<QueryControls> = [];
+	const states: Array<QueryState> = [];
 	const ui = (list: ReadonlyArray<Read>) =>
 		createElement(
 			Suspense,
@@ -169,7 +182,7 @@ describe("a screen on each side", () => {
 		const api = createApi();
 		using clients = createClients();
 		mount(clients.client);
-		await load(clients.client, { post: ensureEntry(api.postQuery, { id: 1 }) });
+		await load(clients.client, { post: swr(api.postQuery, { id: 1 }) });
 		using screen = observe(clients.tanstack, api.tanstackPost(1));
 
 		expect(screen.observer.getCurrentResult()).toMatchObject({
@@ -197,7 +210,7 @@ describe("a screen on each side", () => {
 		mount(clients.client);
 		await clients.tanstack.query(api.tanstackPost(1));
 		const [, data] = await load(clients.client, {
-			post: fetchEntry(api.postQuery, { id: 1 }),
+			post: revalidate(api.postQuery, { id: 1 }),
 		});
 
 		expect(data.post).toEqual({ id: 1, title: "First" });
@@ -253,8 +266,8 @@ describe("errors", () => {
 			enabled: false,
 		});
 		await load(clients.client, {
-			down: prefetchEntry(api.postQuery, { id: 500 }),
-			missing: prefetchEntry(api.postQuery, { id: 404 }),
+			down: prefetch(api.postQuery, { id: 500 }),
+			missing: prefetch(api.postQuery, { id: 404 }),
 		});
 		await flush();
 
@@ -271,8 +284,8 @@ describe("errors", () => {
 		const api = createApi();
 		using clients = createClients();
 		const [handles] = await load(clients.client, {
-			down: ensureEntry(api.postQuery, { id: 1 }),
-			missing: ensureEntry(api.postQuery, { id: 2 }),
+			down: swr(api.postQuery, { id: 1 }),
+			missing: swr(api.postQuery, { id: 2 }),
 		});
 		const view = screens(clients.client, [
 			[api.postQuery, handles.down],
@@ -308,7 +321,7 @@ describe("invalidation", () => {
 		const api = createApi();
 		using clients = createClients();
 		mount(clients.client);
-		await load(clients.client, { post: ensureEntry(api.postQuery, { id: 1 }) });
+		await load(clients.client, { post: swr(api.postQuery, { id: 1 }) });
 		using screen = observe(clients.tanstack, api.tanstackPost(1));
 		api.titles.set(1, "Renamed");
 		await invalidateOne(clients.client, api.postQuery, { id: 1 });
@@ -329,7 +342,7 @@ describe("invalidation", () => {
 		const api = createApi();
 		using clients = createClients();
 		const [handles] = await load(clients.client, {
-			post: ensureEntry(api.postQuery, { id: 1 }),
+			post: swr(api.postQuery, { id: 1 }),
 		});
 		screens(clients.client, [[api.postQuery, handles.post]]);
 		using screen = observe(clients.tanstack, api.tanstackPost(1));
@@ -348,7 +361,7 @@ describe("invalidation", () => {
 		const api = createApi();
 		using clients = createClients();
 		const [handles] = await load(clients.client, {
-			post: ensureEntry(api.postQuery, { id: 1 }),
+			post: swr(api.postQuery, { id: 1 }),
 		});
 		screens(clients.client, [[api.postQuery, handles.post]]);
 		using _screen = observe(clients.tanstack, api.tanstackPost(1));
@@ -358,7 +371,7 @@ describe("invalidation", () => {
 		});
 		await flush();
 		const [, data] = await load(clients.client, {
-			post: fetchEntry(api.postQuery, { id: 1 }),
+			post: revalidate(api.postQuery, { id: 1 }),
 		});
 
 		expect(data.post).toEqual({ id: 1, title: "Renamed" });
@@ -372,7 +385,7 @@ describe("invalidation", () => {
 			readonly id: number;
 			readonly lang?: string;
 		}
-		const byId = (key: (input: ById) => GroupKey) => (input: ById) =>
+		const byId = (key: (input: ById) => QueryKey) => (input: ById) =>
 			queryOptions({
 				queryFn: () => {
 					const name = JSON.stringify(key(input));
@@ -386,10 +399,10 @@ describe("invalidation", () => {
 		const draftById = byId((input) => drafts("byId", input));
 		const userById = byId((input) => users("byId", input));
 		const [handles] = await load(clients.client, {
-			draft: ensureEntry(draftById, { id: 1 }),
-			post: ensureEntry(postById, { id: 1, lang: "en" }),
-			unread: ensureEntry(postById, { id: 2 }),
-			user: ensureEntry(userById, { id: 1 }),
+			draft: swr(draftById, { id: 1 }),
+			post: swr(postById, { id: 1, lang: "en" }),
+			unread: swr(postById, { id: 2 }),
+			user: swr(userById, { id: 1 }),
 		});
 		const view = screens(clients.client, [
 			[postById, handles.post],
@@ -405,7 +418,7 @@ describe("invalidation", () => {
 		expect(
 			clients.tanstack.getQueryData(posts("byId", { id: 1, lang: "en" })),
 		).toBe(2);
-		await load(clients.client, { unread: prefetchEntry(postById, { id: 2 }) });
+		await load(clients.client, { unread: prefetch(postById, { id: 2 }) });
 		expect(getData(clients.client, postById, { id: 2 })).toBe(2);
 
 		await clients.tanstack.invalidateQueries({
@@ -436,7 +449,7 @@ describe("resets and removals", () => {
 		const api = createApi();
 		using clients = createClients();
 		mount(clients.client);
-		await load(clients.client, { post: ensureEntry(api.postQuery, { id: 1 }) });
+		await load(clients.client, { post: swr(api.postQuery, { id: 1 }) });
 		await resetOne(clients.client, api.postQuery, { id: 1 });
 		await flush();
 
@@ -444,7 +457,7 @@ describe("resets and removals", () => {
 			clients.tanstack.getQueryData(posts("byId", { id: 1 })),
 		).toBeUndefined();
 
-		await load(clients.client, { post: ensureEntry(api.postQuery, { id: 1 }) });
+		await load(clients.client, { post: swr(api.postQuery, { id: 1 }) });
 		await clients.tanstack.resetQueries({ queryKey: posts() });
 		expect(getData(clients.client, api.postQuery, { id: 1 })).toBeUndefined();
 	});
@@ -454,8 +467,8 @@ describe("resets and removals", () => {
 		using clients = createClients();
 		const view = screens(clients.client);
 		await load(clients.client, {
-			one: ensureEntry(api.postQuery, { id: 1 }),
-			two: ensureEntry(api.postQuery, { id: 2 }),
+			one: swr(api.postQuery, { id: 1 }),
+			two: swr(api.postQuery, { id: 2 }),
 		});
 		using _screen = observe(clients.tanstack, {
 			...api.tanstackPost(2),
@@ -475,7 +488,7 @@ describe("resets and removals", () => {
 		await clients.tanstack.query(api.tanstackPost(3));
 		await clients.tanstack.query(api.tanstackPost(4));
 		const [handles] = await load(clients.client, {
-			four: ensureEntry(api.postQuery, { id: 4 }),
+			four: swr(api.postQuery, { id: 4 }),
 		});
 		view.show([[api.postQuery, handles.four]]);
 		clients.tanstack.removeQueries({ queryKey: posts() });
@@ -493,7 +506,7 @@ describe("resets and removals", () => {
 		const api = createApi();
 		using clients = createClients();
 		mount(clients.client);
-		await load(clients.client, { post: ensureEntry(api.postQuery, { id: 1 }) });
+		await load(clients.client, { post: swr(api.postQuery, { id: 1 }) });
 		clients.tanstack.removeQueries({ queryKey: posts("byId", { id: 1 }) });
 
 		expect(getData(clients.client, api.postQuery, { id: 1 })).toEqual({
@@ -515,8 +528,8 @@ describe("hydration", () => {
 		const api = createApi();
 		const server = createQueryClient({ isServer: true });
 		await load(server, {
-			done: ensureEntry(api.postQuery, { id: 1 }),
-			pending: prefetchEntry(api.postQuery, { id: 2 }),
+			done: swr(api.postQuery, { id: 1 }),
+			pending: prefetch(api.postQuery, { id: 2 }),
 		});
 		const state = dehydrate(server);
 		using clients = createClients();
@@ -544,7 +557,7 @@ describe("hydration", () => {
 		mount(clients.client);
 		hydrateTanStack(clients.tanstack, state);
 		const [, data] = await load(clients.client, {
-			post: fetchEntry(api.postQuery, { id: 1 }),
+			post: revalidate(api.postQuery, { id: 1 }),
 		});
 
 		expect(data.post).toEqual({ id: 1, title: "First" });
@@ -591,10 +604,10 @@ describe("options", () => {
 			queryOptions({ queryFn: () => 2, queryKey: remote() });
 		using clients = createClients({ filter: (key) => key[0] === "posts" });
 		clients.tanstack.setQueryData(remote(), 2);
-		setData(clients.client, localQuery, undefined, 1);
+		setData(clients.client, localQuery, 1);
 		mount(clients.client);
 		setData(clients.client, api.postQuery, { id: 1 }, { id: 1, title: "A" });
-		setData(clients.client, localQuery, undefined, 3);
+		setData(clients.client, localQuery, 3);
 		clients.tanstack.setQueryData(remote(), 4);
 		removeOne(clients.client, localQuery);
 		clients.tanstack.removeQueries({ queryKey: remote() });
