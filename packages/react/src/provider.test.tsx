@@ -9,9 +9,7 @@ import {
 	load,
 	prefetch,
 	QueryClientProvider,
-	QueryProvider,
 	useIsFetching,
-	useQuery,
 	useQueryClient,
 	waterfallHandle,
 } from "./index.ts";
@@ -60,23 +58,29 @@ describe("QueryClientProvider", () => {
 	});
 });
 
-describe("QueryProvider", () => {
-	it("makes a client from config that loads queries in the browser", async () => {
+describe("the react-server entry", () => {
+	it("throws from each hook, saying it reads in client components", async () => {
+		const server = await import("./index-react-server.ts");
 		const backend = createBackend();
-		const handle = waterfallHandle(backend.issueQuery, { id: 1 });
-		function Issue() {
-			const [, controls] = useQuery(backend.issueQuery, handle);
-			return <p>{String(controls.isFetching)}</p>;
-		}
-		render(
-			<QueryProvider config={{ staleTime: 1000 }}>
-				<Issue />
-			</QueryProvider>,
-		);
-
-		expect(screen.getByText("true")).toBeTruthy();
-		await backend.respondAll();
-		expect(screen.getByText("false")).toBeTruthy();
+		const message =
+			/reads in client components: move this into a file with "use client"/u;
+		expect(() =>
+			server.useQuery(
+				backend.issueQuery,
+				waterfallHandle(backend.issueQuery, { id: 1 }),
+			),
+		).toThrow(message);
+		expect(() =>
+			server.useInfiniteQuery(
+				backend.pageQuery,
+				waterfallHandle(backend.pageQuery, { size: 2 }),
+			),
+		).toThrow(message);
+		expect(() => server.useIsFetching()).toThrow(message);
+		expect(() => server.useQueryClient()).toThrow(message);
+		expect(server.bindUseQueryClient()).toBe(server.useQueryClient);
+		expect(server.QueryClientProvider).toBe(QueryClientProvider);
+		expect(server.load).toBe(load);
 	});
 });
 

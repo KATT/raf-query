@@ -143,8 +143,6 @@ export interface QueryClientConfig {
  * `QueryClient` type takes a client of any root.
  */
 export interface QueryClient<TTypes extends RootTypes = AnyRoot> {
-	/** Set on a React Server Components SSR client: renders start no request. */
-	"~browserOnly": boolean;
 	/** Entries changed since the last notification. */
 	readonly "~changed": Set<Entry>;
 	readonly "~entries": Map<string, Entry>;
@@ -189,7 +187,6 @@ export function createQueryClient<
 ): QueryClient<{ readonly meta: MetaOf<[...TLinks, ...TFeatures]> }> {
 	const events = listeners<ClientEvent>();
 	return {
-		"~browserOnly": false,
 		"~changed": new Set(),
 		"~entries": new Map(),
 		"~events": events,

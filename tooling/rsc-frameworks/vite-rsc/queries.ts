@@ -38,3 +38,13 @@ export function commentsQuery(input: { slug: string }) {
 		queryKey: comments(input.slug),
 	});
 }
+
+export function authorQuery(input: { slug: string }) {
+	return queryOptions({
+		queryFn: async () => {
+			record(`author ${input.slug}`);
+			return { name: "Ada" };
+		},
+		queryKey: post(input.slug, "author"),
+	});
+}

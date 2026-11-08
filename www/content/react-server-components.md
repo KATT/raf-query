@@ -5,22 +5,22 @@ section: Integrations
 order: 2
 ---
 
-With [React Server Components](https://react.dev/reference/rsc/server-components), server components play the part of loaders: they start queries and pass handles to client components. `QueryProvider` and `HydrationBoundary`, both from `@raf-query/react`, connect them.
+With [React Server Components](https://react.dev/reference/rsc/server-components), server components play the part of loaders: they start queries and pass handles to client components. `QueryClientProvider` and `HydrationBoundary`, both from `@raf-query/react`, connect them.
 
 The samples use the [Next.js App Router](https://nextjs.org/docs/app). Other RSC frameworks work the same way: the integration needs only a bundler that resolves the `react-server` export condition, which React itself needs too. It's tested on [Vite's RSC plugin](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-rsc), which Waku and React Router's RSC mode build on. Navigation, request headers and server actions are the framework's own, so those sections show the Next.js APIs.
 
 ## Setup
 
-A query client per request for server components, scoped by React's [`cache()`](https://react.dev/reference/react/cache):
+One function makes the app's clients. Server components get one per request, scoped by React's [`cache()`](https://react.dev/reference/react/cache):
 
 ```sample
 nextjs/src/query-client.ts
 ```
 
-Client components get theirs from `QueryProvider`, which creates one client per server render and one per browser tab. Links and features, such as the ones [`recommended()`](./important-defaults.md) returns, are functions, which a server component can't pass to a client component. So build the config in a client component:
+Client components get theirs from a `Providers` client component, which creates one client per server render and one per browser tab. Links and features, such as the ones [`recommended()`](./important-defaults.md) returns, are functions, which a server component can't pass to a client component, so the client is made on the client side of that boundary. The same component works in [every framework](./ssr-and-hydration.md#the-provider):
 
 ```sample
-nextjs/src/components/query-provider.tsx
+nextjs/src/components/providers.tsx
 ```
 
 And render that in the root layout:
@@ -89,7 +89,9 @@ Changing search params with [`<Link>`](https://nextjs.org/docs/app/api-reference
 
 ## Queries that start in the browser
 
-`QueryProvider`'s server render starts no requests. A client component reading a query that no `HydrationBoundary` sent renders its Suspense fallback on the server, and the query loads in the browser. This is what happens when a client component reads a handle from [`waterfallHandle`](./request-waterfalls.md). That boundary renders in the browser through React's error recovery, with the digest Next.js uses for `ssr: false`, so Next.js doesn't report it. Other RSC frameworks see a recoverable error.
+On the server, only server components start requests: client components' server render never does. A client component reading a query that no `HydrationBoundary` sent renders its Suspense fallback on the server, and the query loads in the browser. This is what happens when a client component reads a handle from [`waterfallHandle`](./request-waterfalls.md). That boundary renders in the browser through React's error recovery, with the digest Next.js uses for `ssr: false`, so Next.js doesn't report it. Other RSC frameworks see a recoverable error: skip it with `isBrowserRenderError`, as in [SSR and hydration](./ssr-and-hydration.md#queries-nothing-started-on-the-server).
+
+`useQuery`, `useInfiniteQuery`, `useIsFetching` and `useQueryClient` read the client's cache, so they belong in client components. Called in a server component, each throws an error that says so.
 
 ## Server and browser requests
 

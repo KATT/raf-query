@@ -1,18 +1,17 @@
 import { act, fireEvent, screen } from "@testing-library/react";
 import { Suspense, use } from "react";
-import { renderToString } from "react-dom/server";
+import { renderToReadableStream, renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import {
 	createQueryClient,
 	invalidateOne,
+	isBrowserRenderError,
 	load,
 	prefetch,
 	QueryClientProvider,
 	type QueryControls,
-	QueryDisabledError,
 	type QueryHandle,
-	QueryProvider,
 	removeOne,
 	revalidate,
 	setData,
@@ -487,34 +486,71 @@ describe("useQuery", () => {
 
 			expect(html).toContain("in the browser");
 			expect(reads[1]).toBe(reads[0]);
-			await expect(reads[0]).rejects.toThrow(QueryDisabledError);
+			const bailout = await reads[0]?.catch((error: unknown) => error);
+			expect(isBrowserRenderError(bailout)).toBe(true);
+			expect(bailout).toMatchObject({
+				digest: "BAILOUT_TO_CLIENT_SIDE_RENDERING",
+			});
 			expect(backend.requests).toHaveLength(0);
 		});
 
-		it("leaves a query to the browser under a QueryProvider, without starting it", () => {
-			vi.spyOn(console, "error").mockImplementation(() => {});
+		it("leaves a query nothing started to the browser, without starting it", async () => {
+			const errors: Array<unknown> = [];
+			const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 			const backend = createBackend();
+			const client = createQueryClient({ isServer: true });
 			const handle = waterfallHandle(backend.issueQuery, { id: 1 });
-			function Issue() {
-				const [issueThenable] = useQuery(backend.issueQuery, handle);
+			const unstarted: QueryHandle<Backend["issueQuery"]> = {
+				input: { id: 2 },
+				queryKey: backend.issueQuery({ id: 2 }).queryKey,
+			};
+			function Issue(props: {
+				readonly handle: QueryHandle<Backend["issueQuery"]>;
+			}) {
+				const [issueThenable] = useQuery(backend.issueQuery, props.handle, {
+					result: true,
+				});
 				const issue = use(issueThenable);
-				return <p>{issue.title}</p>;
+				return <p>{issue.ok ? issue.value.title : "failed"}</p>;
 			}
-			const html = renderToString(
-				<QueryProvider config={{ isServer: true }}>
+			const stream = await renderToReadableStream(
+				<QueryClientProvider client={client}>
 					<Suspense fallback={<p>in the browser</p>}>
-						<Issue />
+						<Issue handle={handle} />
 					</Suspense>
-				</QueryProvider>,
+					<Suspense fallback={<p>also in the browser</p>}>
+						<Issue handle={unstarted} />
+					</Suspense>
+				</QueryClientProvider>,
+				{ onError: (error) => void errors.push(error) },
 			);
+			await stream.allReady;
+			const html = await new Response(stream).text();
 
 			expect(html).toContain("in the browser");
+			expect(html).toContain("also in the browser");
+			expect(errors).toHaveLength(2);
+			expect(errors.every(isBrowserRenderError)).toBe(true);
 			expect(backend.requests).toHaveLength(0);
+			expect(warn).not.toHaveBeenCalled();
 		});
 
-		it("fetches on a server client without warning", () => {
+		it("tells a bail-out from other errors", () => {
+			expect(isBrowserRenderError(new Error("failed"))).toBe(false);
+			expect(
+				isBrowserRenderError({ digest: "BAILOUT_TO_CLIENT_SIDE_RENDERING" }),
+			).toBe(false);
+			expect(
+				isBrowserRenderError(
+					Object.assign(new Error("from the server"), {
+						digest: "BAILOUT_TO_CLIENT_SIDE_RENDERING",
+					}),
+				),
+			).toBe(true);
+		});
+
+		it("renders a request a loader started, and data already cached", async () => {
 			const backend = createBackend();
-			const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 			const client = createQueryClient({ isServer: true });
 			setData(
 				client,
@@ -522,21 +558,33 @@ describe("useQuery", () => {
 				{ id: 2 },
 				{ id: 2, title: "Cached" },
 			);
-			const handle: QueryHandle<Backend["issueQuery"]> = {
-				input: { id: 1 },
-				queryKey: backend.issueQuery({ id: 1 }).queryKey,
-			};
-			function Issue() {
-				useQuery(backend.issueQuery, handle);
-				return null;
+			const [handles] = await load(client, {
+				one: prefetch(backend.issueQuery, { id: 1 }),
+			});
+			const cached = waterfallHandle(backend.issueQuery, { id: 2 });
+			function Issue(props: {
+				readonly handle: QueryHandle<Backend["issueQuery"]>;
+			}) {
+				const [issueThenable] = useQuery(backend.issueQuery, props.handle);
+				const issue = use(issueThenable);
+				return <p>{issue.title}</p>;
 			}
-			renderToString(
+			const rendering = renderToReadableStream(
 				<QueryClientProvider client={client}>
-					<Issue />
+					<Suspense fallback={<p>loading</p>}>
+						<Issue handle={handles.one} />
+						<Issue handle={cached} />
+					</Suspense>
 				</QueryClientProvider>,
 			);
-			expect(backend.requests).toHaveLength(1);
-			expect(warn).not.toHaveBeenCalled();
+			await backend.respondAll();
+			const stream = await rendering;
+			await stream.allReady;
+			const html = await new Response(stream).text();
+
+			expect(html).toContain("First");
+			expect(html).toContain("Cached");
+			expect(backend.requests).toHaveLength(0);
 		});
 	});
 });

@@ -3,13 +3,14 @@ import {
 	HydrationBoundary,
 	load,
 	prefetch,
-	QueryProvider,
 	swr,
 } from "@raf-query/react";
 import { Suspense } from "react";
 
+import { Author } from "./author.tsx";
 import { Comments } from "./comments.tsx";
 import { Post } from "./post.tsx";
+import { Providers } from "./providers.tsx";
 import { commentsQuery, postQuery, queryClientConfig } from "./queries.ts";
 
 /** The docs' Next.js page and root layout, as one server component. */
@@ -22,14 +23,17 @@ export async function Page() {
 	return (
 		<html lang="en">
 			<body>
-				<QueryProvider config={queryClientConfig}>
+				<Providers>
 					<HydrationBoundary client={qc}>
 						<Post handle={handles.post} />
 						<Suspense fallback={<p>Loading comments…</p>}>
 							<Comments handle={handles.comments} />
 						</Suspense>
+						<Suspense fallback={<p>Loading author…</p>}>
+							<Author slug="hello" />
+						</Suspense>
 					</HydrationBoundary>
-				</QueryProvider>
+				</Providers>
 			</body>
 		</html>
 	);

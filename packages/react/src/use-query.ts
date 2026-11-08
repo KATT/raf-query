@@ -3,7 +3,6 @@ import {
 	type ErrorOf,
 	failOf,
 	type InputOf,
-	QueryDisabledError,
 	type QueryFactory,
 	type QueryHandle,
 	type Result,
@@ -26,7 +25,7 @@ import {
 } from "@raf-query/core/internal";
 import { useCallback, useState, useSyncExternalStore } from "react";
 
-import { assertStartsRequests } from "./browser-only.ts";
+import { browserRender } from "./browser-render.ts";
 import {
 	createTracker,
 	type Fields,
@@ -124,21 +123,22 @@ function asResult(
 	return mapped;
 }
 
+/** Whether nothing is loading the entry: no data, no error, no request in flight. */
+function isIdle(entry: Entry, state: State): boolean {
+	return !state.hasData && !entry.run && state.status !== "error";
+}
+
 /**
  * Start the request of an entry nothing is loading: the reader of a
- * waterfall handle, or of a query the cache dropped. On a React Server
- * Components SSR client, that request belongs to the browser instead.
+ * waterfall handle, or of a query the cache dropped. A server render never
+ * starts one: only loaders and server components request on the server.
  */
 function startIfMissing(entry: Entry, state: State, waterfall: boolean) {
-	if (state.hasData || entry.run || state.status === "error") {
-		return;
-	}
 	const client = entry.client;
-	if (!isEnabled(entry)) {
+	if (client.isServer || !isIdle(entry, state) || !isEnabled(entry)) {
 		return;
 	}
-	assertStartsRequests(client, entry.hash);
-	if (process.env.NODE_ENV !== "production" && !waterfall && !client.isServer) {
+	if (process.env.NODE_ENV !== "production" && !waterfall) {
 		// oxlint-disable-next-line no-console -- a development-only hint
 		console.warn(
 			`raf-query: ${entry.hash} was read before anything loaded it, so it fetches while rendering. Start it in a loader with load(), or build the handle with waterfallHandle() to make the waterfall explicit.`,
@@ -149,22 +149,15 @@ function startIfMissing(entry: Entry, state: State, waterfall: boolean) {
 
 export type State = Entry["state"];
 
-const disabledReads = new WeakMap<Entry, Thenable<unknown>>();
-
 /**
- * On the server, a disabled query without data reads as a rejection: a
- * `use()` of it inside Suspense leaves that boundary to the browser.
+ * On the server, an entry nothing is loading (disabled, never started, or
+ * dropped) reads as a rejection: a `use()` of it inside Suspense renders
+ * that boundary's fallback, and the browser renders the content.
  */
 function readOf(entry: Entry, state: State): Thenable<unknown> {
-	if (!entry.client.isServer || isEnabled(entry) || state.hasData) {
-		return entry.thenable;
-	}
-	let read = disabledReads.get(entry);
-	if (!read) {
-		read = rejected(new QueryDisabledError(`Query ${entry.hash} is disabled`));
-		disabledReads.set(entry, read);
-	}
-	return read;
+	return entry.client.isServer && isIdle(entry, state)
+		? browserRender(entry)
+		: entry.thenable;
 }
 
 export function settled(promise: Promise<unknown>): Promise<void> {

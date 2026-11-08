@@ -1,17 +1,10 @@
-import {
-	createQueryClient,
-	QueryClientProvider,
-	recommended,
-} from "@raf-query/react";
 import { QueryDevtools } from "@raf-query/react/devtools";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import { createRouter } from "@tanstack/react-router";
 
+import { Providers } from "./providers.tsx";
+import { makeQueryClient } from "./query-client.ts";
 import { routeTree } from "./routeTree.gen.ts";
-
-export function makeQueryClient() {
-	return createQueryClient({ ...recommended(), staleTime: 30_000 });
-}
 
 export function getRouter() {
 	const queryClient = makeQueryClient();
@@ -23,10 +16,10 @@ export function getRouter() {
 		routeTree,
 		scrollRestoration: true,
 		Wrap: (props) => (
-			<QueryClientProvider client={queryClient}>
+			<Providers client={queryClient}>
 				{props.children}
 				{import.meta.env.DEV ? <QueryDevtools /> : null}
-			</QueryClientProvider>
+			</Providers>
 		),
 	});
 	setupRouterIntegration({ queryClient, router });

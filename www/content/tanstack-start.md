@@ -10,10 +10,20 @@ TanStack Router's loaders are where raf-query wants queries to start, and its SS
 ## Setup
 
 ```sample
+tanstack-start/src/query-client.ts
+```
+
+```sample
 tanstack-start/src/router.tsx
 ```
 
-`makeQueryClient` is a function, not a client at module level: a module-level client on the server would share one cache between every request. Mount DevTools only when `import.meta.env.DEV` is true so Vite drops the panel from production builds. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
+`makeQueryClient` is a function, not a client at module level: a module-level client on the server would share one cache between every request. `Providers` is the [provider component every framework shares](./ssr-and-hydration.md#the-provider); here it gets the router's client, the one loaders use:
+
+```sample
+tanstack-start/src/providers.tsx
+```
+
+Mount DevTools only when `import.meta.env.DEV` is true so Vite drops the panel from production builds. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
 
 Type the router context in the root route, so loaders see `queryClient`:
 
@@ -41,6 +51,8 @@ Options:
 | `handleRedirects`  | `false` to handle redirects yourself                                                                     |
 
 A query whose server request throws reaches the browser as a `RedactedError`, which names the query but not the cause, so server errors don't leak into the page. [Expected errors](./query-functions.md#expected-errors) (`fail()`) cross as they are.
+
+Only loaders start requests on the server. A component that reads a query no loader started, such as a [`waterfallHandle`](./request-waterfalls.md#render-time-inputs-waterfallhandle)'s, renders its Suspense fallback in the HTML, and the browser fetches the query. Start's default stream handler logs that as a render error; a server and client entry that skip it are in [SSR and hydration](./ssr-and-hydration.md#queries-nothing-started-on-the-server).
 
 ## Loaders
 

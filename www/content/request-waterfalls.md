@@ -104,7 +104,7 @@ The reader fetches only when the cache has no data for the query. Cached data, e
 
 The name is the warning: each waterfall is an extra round trip after render. Search a codebase for `waterfallHandle` and you have a list of every waterfall in it. In development, `useQuery` warns in the console when it fetches a query that nothing loaded and that didn't come from `waterfallHandle`, so accidental waterfalls show up too.
 
-In TanStack Start, the `queryFn` runs on the server during SSR and the router streams the result. Under the Next.js `QueryProvider` it starts nothing on the server: the reader's Suspense boundary renders its fallback there, and the query loads in the browser. To have it in the HTML, start the dependent query in the server component instead:
+A server render never starts a request, in any framework: on the server, the reader's Suspense boundary renders its fallback, and the query loads in the browser (see [SSR and hydration](./ssr-and-hydration.md#queries-nothing-started-on-the-server)). To have it in the HTML, start the dependent query in the loader or server component instead:
 
 ```sample
 tanstack-start/src/docs/request-waterfalls.tsx#fetch-then-prefetch

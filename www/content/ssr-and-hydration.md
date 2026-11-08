@@ -31,6 +31,50 @@ Your components never deal with this. A handle only carries a key and an input, 
 
 So in a server render, every entry makes at most one request per query, whatever its `staleTime`, unless a write invalidates the query and a `revalidate` entry reads it again.
 
+On the server, only loaders and server components start requests. A render never does: see [Queries nothing started on the server](#queries-nothing-started-on-the-server).
+
+## The provider
+
+Every framework provides the client with `QueryClientProvider`. One `Providers` component works in all of them: it takes the router's client when the router makes one, and otherwise creates its own, one per server render and one per browser tab:
+
+```sample
+nextjs/src/components/providers.tsx
+```
+
+| Framework                               | Renders                                                                                |
+| --------------------------------------- | -------------------------------------------------------------------------------------- |
+| [TanStack Start](./tanstack-start.md)   | `<Providers client={queryClient}>` in the router's `Wrap`, with the client loaders use |
+| [Next.js](./react-server-components.md) | `<Providers>` in the root layout. Server components use their own client per request   |
+| [React Router](./react-router.md)       | `<Providers>` in the root route. Loaders use the request's client from middleware      |
+
+`"use client"` makes it a client component in Next.js. Elsewhere the directive does nothing.
+
+## Queries nothing started on the server
+
+A component that reads a query with no data, no error and no request in flight on a server client doesn't start the request. Its read rejects, `use()` throws, and React renders the nearest Suspense fallback in the HTML. The browser renders that boundary again, and its read starts the query there. This happens to a [`waterfallHandle`](./request-waterfalls.md#render-time-inputs-waterfallhandle)'s query, to a [browser-only query](#browser-only-queries), and to a query the server's cache dropped after its loader ran. Put a Suspense boundary around such readers, or start the query in a loader to have it in the HTML.
+
+React sees that read as an error it recovers from. The error has the digest Next.js uses for `ssr: false`, so Next.js reports nothing. Elsewhere, React calls the server render's `onError` and, while hydrating, the browser's [`onRecoverableError`](https://react.dev/reference/react-dom/client/hydrateRoot#parameters). TanStack Start's default stream handler logs it, and React Router's default `entry.server.tsx` logs it and answers 500. `isBrowserRenderError(error)` from `@raf-query/react` tells the two apart: return the error's `digest` from `onError` and skip it there, and skip it in `onRecoverableError`, which gets the digest back from the server.
+
+In TanStack Start, a [server entry](https://tanstack.com/start/latest/docs/framework/react/guide/server-entry-point) renders the page with that `onError`, and a [client entry](https://tanstack.com/start/latest/docs/framework/react/guide/client-entry-point) hydrates with that `onRecoverableError`:
+
+```sample
+tanstack-start/src/server.ts
+```
+
+```sample
+tanstack-start/src/client.tsx
+```
+
+In React Router Framework Mode, the same goes in [`entry.server.tsx`](https://reactrouter.com/api/framework-conventions/entry.server.tsx) and [`entry.client.tsx`](https://reactrouter.com/api/framework-conventions/entry.client.tsx):
+
+```sample
+react-router/app/entry.server.tsx
+```
+
+```sample
+react-router/app/entry.client.tsx
+```
+
 ## Errors
 
 The stream sends entries with data, with a `fail()` value, or with a request in flight. A query that had already thrown an unexpected error when its entry would have been sent stays on the server, and the browser fetches it again when something reads it.
@@ -47,13 +91,13 @@ tanstack-start/src/docs/ssr-and-hydration.ts#browser-only-queries
 
 A server client never starts a disabled query and never sends it. A loader that also runs on the server starts it with a `prefetch` entry: `load` returns its handle on the server too, and the browser starts the request when the loader or the first read runs there. `swr` and `revalidate` entries can't wait for it on the server, so `load` rejects with `QueryDisabledError`.
 
-On the server, a disabled query with no data reads as a thenable that rejects with `QueryDisabledError`, and `use()` throws it. Put the component that `use()`s it inside a Suspense boundary: React sends the fallback from the server and renders the content in the browser.
+On the server, a disabled query with no data reads like any [query nothing started there](#queries-nothing-started-on-the-server): put the component that `use()`s it inside a Suspense boundary, and React sends the fallback from the server and renders the content in the browser.
 
 ```sample
 tanstack-start/src/docs/ssr-and-hydration.tsx#push-state
 ```
 
-React reports that boundary to [`onRecoverableError`](https://react.dev/reference/react-dom/client/hydrateRoot#parameters) while hydrating.
+React reports that boundary to `onRecoverableError` while hydrating; `isBrowserRenderError` tells it apart from real errors.
 
 ## When the browser already has data
 
@@ -76,7 +120,7 @@ tanstack-start/src/docs/ssr-and-hydration.ts#serialization
 ## Integrations
 
 - [TanStack Start](./tanstack-start.md): `setupRouterIntegration` streams the router's query client.
-- [React Server Components](./react-server-components.md): `QueryProvider` and `HydrationBoundary` for the Next.js App Router and other RSC frameworks.
+- [React Server Components](./react-server-components.md): `HydrationBoundary` for the Next.js App Router and other RSC frameworks.
 - [React Router](./react-router.md): `HydrationBoundary` for the snapshot each Framework Mode loader returns.
 
 Without an integration, `@raf-query/react/hydration` has the pieces they use: `dehydrate(client)` snapshots the cache, `dehydrateStream(client)` snapshots it and then streams entries as they start and settle, and `hydrate(client, state)` writes a snapshot into a client. `HydrationBoundary` takes a snapshot as its `state` prop and hydrates it while rendering.

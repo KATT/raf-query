@@ -62,11 +62,23 @@ react-router-spa/app/components/comments.tsx#component
 
 ### Provider
 
-One query client per browser tab, in the root route's component:
+One function makes the app's clients:
+
+```sample
+react-router/app/query-client.ts#make-query-client
+```
+
+The root route's component renders `Providers`, the [provider component every framework shares](./ssr-and-hydration.md#the-provider). Without a `client` prop, it creates one client per server render and one per browser tab:
+
+```sample
+react-router/app/providers.tsx
+```
 
 ```sample
 react-router/app/root.tsx#app
 ```
+
+The server render's client starts no request: loaders start them on the request's client below, and `HydrationBoundary` sends their data. A component that reads a query no loader started renders its Suspense fallback in the HTML, and the browser fetches it. React Router's default `entry.server.tsx` would answer that page with a 500, so skip it as in [SSR and hydration](./ssr-and-hydration.md#queries-nothing-started-on-the-server).
 
 Nothing is on by default: [`recommended()`](./important-defaults.md) adds retries, refetching on window focus and reconnect, and polling.
 

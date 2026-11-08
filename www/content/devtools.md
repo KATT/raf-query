@@ -15,7 +15,7 @@ tanstack-start/src/docs/devtools.tsx#intro
 
 On Next.js, use `process.env.NODE_ENV !== "production"` instead. Either check is replaced at build time, so the production branch is empty and the panel's code is tree-shaken. There is no separate production entry: omit the element (or the whole import) whenever you don't want the panel.
 
-Both components are client components, so a Next.js server component layout can render them, inside the `QueryProvider`. See [React Server Components](./react-server-components.md).
+Both components are client components, so a Next.js server component layout can render them, inside the `Providers` that holds the `QueryClientProvider`. See [React Server Components](./react-server-components.md).
 
 Every demo on this site has a **Devtools** tab in its expanded view, showing the demo's own cache. The [example apps](./examples.md) always render `<QueryDevtools />`, so the panel is available in the deployed demos as well as in local `dev`.
 

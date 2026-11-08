@@ -88,7 +88,7 @@ tanstack-start/src/docs/api-reference.ts#load
 tanstack-start/src/docs/api-reference.ts#usequery
 ```
 
-`useQuery(factory, handle, options?)` returns a `Thenable<Data>` for every handle, next to its state. Read it with `use()`, which returns at once when the data is cached and suspends otherwise. A query nothing loaded fetches while rendering. It takes factories that aren't paged. [Reading queries](./reading-queries.md)
+`useQuery(factory, handle, options?)` returns a `Thenable<Data>` for every handle, next to its state. Read it with `use()`, which returns at once when the data is cached and suspends otherwise. A query nothing loaded fetches while rendering in the browser; on the server it [renders its Suspense fallback](./ssr-and-hydration.md#queries-nothing-started-on-the-server). It takes factories that aren't paged. The hooks belong in client components: in a server component each throws. [Reading queries](./reading-queries.md)
 
 Options:
 
@@ -139,26 +139,26 @@ Each verb takes the client first. A factory matches the queries it built: all of
 
 ## Errors
 
-| Export                  | Use                                                                                                                                                            |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `QueryFailure`          | What reading or loading a query throws when its `queryFn` returned `fail()`: an `Error` with the value in `fail` and the query's `hash`                        |
-| `isFail(value, tag?)`   | Whether `value` is a `fail()` value or a `QueryFailure`, optionally with that `_tag`                                                                           |
-| `failOf(value)`         | The `fail()` value in `value`, unwrapping a `QueryFailure`                                                                                                     |
-| `isQueryFailure(value)` | Whether `value` is a `QueryFailure`                                                                                                                            |
-| `Fail`, `Result`        | A `fail()` value, and what `useQuery` reads with `result: true`: `{ ok: true, value }` or `{ ok: false, error }`                                               |
-| `QueryDisabledError`    | Why a disabled query has no data: `load` rejects with it for `swr` and `revalidate` entries, and on the server the thenable `useQuery` returns rejects with it |
-| `QueryTimeoutError`     | What a request fails with when `timeout()` cuts it off                                                                                                         |
-| `abortError()`          | Makes the `AbortError` (a `DOMException`) that a `load` waiting on a removed query rejects with                                                                |
+| Export                        | Use                                                                                                                                                                                                                                                                   |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `QueryFailure`                | What reading or loading a query throws when its `queryFn` returned `fail()`: an `Error` with the value in `fail` and the query's `hash`                                                                                                                               |
+| `isFail(value, tag?)`         | Whether `value` is a `fail()` value or a `QueryFailure`, optionally with that `_tag`                                                                                                                                                                                  |
+| `failOf(value)`               | The `fail()` value in `value`, unwrapping a `QueryFailure`                                                                                                                                                                                                            |
+| `isQueryFailure(value)`       | Whether `value` is a `QueryFailure`                                                                                                                                                                                                                                   |
+| `Fail`, `Result`              | A `fail()` value, and what `useQuery` reads with `result: true`: `{ ok: true, value }` or `{ ok: false, error }`                                                                                                                                                      |
+| `QueryDisabledError`          | Why a disabled query has no data: `load` rejects with it for `swr` and `revalidate` entries                                                                                                                                                                           |
+| `isBrowserRenderError(error)` | Whether React rendered a Suspense fallback on the server because a read had nothing loading it, leaving the boundary to the browser. Skip it in `onError` and `onRecoverableError`. [SSR and hydration](./ssr-and-hydration.md#queries-nothing-started-on-the-server) |
+| `QueryTimeoutError`           | What a request fails with when `timeout()` cuts it off                                                                                                                                                                                                                |
+| `abortError()`                | Makes the `AbortError` (a `DOMException`) that a `load` waiting on a removed query rejects with                                                                                                                                                                       |
 
 ## Providers
 
-| Export                                         | Use                                                                                                                                                                                     |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `QueryClientProvider`                          | Provides a client to the tree, and runs its features while mounted                                                                                                                      |
-| `useQueryClient()`                             | Read the client                                                                                                                                                                         |
-| `bindUseQueryClient<typeof makeQueryClient>()` | `useQueryClient`, typed with a root, so verbs check factories against it. [Query meta](./query-meta.md#typing-meta-by-its-root)                                                         |
-| `QueryProvider`                                | Provider for React Server Components apps: a client per server render and per browser tab; its server render starts no request. [React Server Components](./react-server-components.md) |
-| `HydrationBoundary`                            | Writes server data into the client: a loader's `state`, or in server components the request's `client`. [React Router](./react-router.md)                                               |
+| Export                                         | Use                                                                                                                                             |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `QueryClientProvider`                          | Provides a client to the tree, and runs its features while mounted. In every framework; see [the provider](./ssr-and-hydration.md#the-provider) |
+| `useQueryClient()`                             | Read the client                                                                                                                                 |
+| `bindUseQueryClient<typeof makeQueryClient>()` | `useQueryClient`, typed with a root, so verbs check factories against it. [Query meta](./query-meta.md#typing-meta-by-its-root)                 |
+| `HydrationBoundary`                            | Writes server data into the client: a loader's `state`, or in server components the request's `client`. [React Router](./react-router.md)       |
 
 ## Subpaths
 

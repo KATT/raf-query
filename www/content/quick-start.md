@@ -18,7 +18,17 @@ For the Next.js App Router, the same steps apply with a server component in plac
 Create one client per router with `createQueryClient`. On the server, `getRouter` runs once per request, so each request gets its own cache; in the browser it runs once per tab.
 
 ```sample
+tanstack-start/src/query-client.ts
+```
+
+```sample
 tanstack-start/src/router.tsx
+```
+
+`Providers` hands the router's client to the components below it with `QueryClientProvider`. The same component works in [every framework](./ssr-and-hydration.md#the-provider):
+
+```sample
+tanstack-start/src/providers.tsx
 ```
 
 The client does nothing on its own. `recommended()` turns on what most apps want: retries, refetching stale data on window focus and reconnect, polling, and refetching after [actions](./mutations.md). `staleTime` keeps data fresh for 30 seconds, so navigating back to a page doesn't refetch it.
