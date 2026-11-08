@@ -24,20 +24,20 @@ export function makeQueryClient() {
 
 Pass `links` and `features` yourself to pick some of them, or to add your own. [Query meta](./query-meta.md) covers how they're configured per query.
 
-With `recommended()`, keep these in mind as you read the rest of the guides:
+Keep these in mind as you read the rest of the guides. Retries, focus and reconnect refetching, and polling assume `recommended()`:
+
+- **Reading a query never refetches stale data.** `useQuery` reads what's in the cache: a component that mounts with stale data renders it and starts no request, unlike TanStack Query's `useQuery`, which refetches stale data on mount. Loaders decide freshness: every [load entry](./starting-queries.md) refetches stale data when a loader starts it (`prefetch` and `swr` in the background, `revalidate` before it resolves). Stale data refreshes:
+  - when the next loader or server component starts the query with `load`, which TanStack Router does on every navigation
+  - when the query is [invalidated](./query-invalidation.md), such as at the end of an action that [writes data](./mutations.md)
+  - on [window focus](./window-focus-refetching.md) and on reconnect, for queries being read, with `focusRefetch()` and `reconnectRefetch()`
+  - on a timer, with `polling()` and `meta.refetchInterval` ([Polling](./polling.md))
+
+  Rendering the same handle in ten components reads one cache entry.
 
 - **Cached data is stale immediately** (`staleTime: 0`).
 
   > [!TIP]
   > Set `staleTime` per query in its factory, or for the whole client in `createQueryClient`. A longer `staleTime` means fewer refetches. `Infinity` never refetches on its own: only [invalidation](./query-invalidation.md) does.
-
-- **Stale data refetches in the background** when:
-  - a loader or server component starts the query again with `load`, which TanStack Router does on every navigation
-  - the window becomes visible again ([window focus refetching](./window-focus-refetching.md)), for queries being read
-  - the browser comes back online, for queries being read
-  - the query is [invalidated](./query-invalidation.md), such as at the end of an action that [writes data](./mutations.md)
-
-- **Mounting a component never fetches.** Unlike TanStack Query, raf-query has no refetch on mount: whatever started the query decides when it loads. Rendering the same handle in ten components reads one cache entry.
 
 - **Polling is per query.** `meta: { refetchInterval }` refetches on a timer while a component reads the query, independent of `staleTime`. See [Polling](./polling.md).
 
