@@ -2,12 +2,12 @@
 title: Query keys
 description: How query keys identify cache entries, how groups name sets of queries, and how to include a factory's input in its key.
 section: Guides
-order: 2
+order: 3
 ---
 
 At its core, raf-query caches by **query key**. A key is an array at the top level. It can be as simple as one string, or as complex as many strings and nested objects. As long as it serializes with `JSON.stringify` and is **unique to the query's data**, you can use it.
 
-Keys also travel inside [handles](./handles.md), from the server to the browser, so they must be plain data: strings, numbers, booleans, `null`, arrays and plain objects.
+Keys also travel inside [handles](./reading-queries.md#handles), from the server to the browser, so they must be plain data: strings, numbers, booleans, `null`, arrays and plain objects.
 
 > [!NOTE]
 > Groups and the way verbs match keys are a design still being settled. The shapes on this page can change before 1.0.

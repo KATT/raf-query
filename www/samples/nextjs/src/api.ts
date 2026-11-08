@@ -41,3 +41,9 @@ export function listComments(input: { cursor: number; slug: string }) {
 export function listIssues(input: { status: "open" | "done" }) {
 	return request<Array<Issue>>(`/api/issues?status=${input.status}`);
 }
+
+export function listPosts(input: { page: number; sort: "newest" | "oldest" }) {
+	return request<Array<Post>>(
+		`/api/posts?sort=${input.sort}&page=${input.page}`,
+	);
+}

@@ -1,7 +1,6 @@
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { Suspense, startTransition, use } from "react";
 import { commentsQuery, postQuery } from "~/queries.ts";
-import { Route } from "~/routes/posts.$slug.tsx";
 
 declare function CommentsSkeleton(): React.ReactNode;
 
@@ -10,10 +9,12 @@ declare function Comments(props: {
 }): React.ReactNode;
 
 // #region post-page
-function PostPage() {
-	const loaderData = Route.useLoaderData();
-	// `post` came from `swr`, `comments` from `prefetch`.
-	const [postThenable, postState] = useQuery(postQuery, loaderData.post);
+// The handles `load` returned, passed down from the loader or server component.
+function PostPage(props: {
+	post: QueryHandle<typeof postQuery>;
+	comments: QueryHandle<typeof commentsQuery>;
+}) {
+	const [postThenable, postState] = useQuery(postQuery, props.post);
 	const post = use(postThenable);
 
 	return (
@@ -27,7 +28,7 @@ function PostPage() {
 			</button>
 			<p>{post.body}</p>
 			<Suspense fallback={<CommentsSkeleton />}>
-				<Comments handle={loaderData.comments} />
+				<Comments handle={props.comments} />
 			</Suspense>
 		</article>
 	);

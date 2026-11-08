@@ -2,7 +2,7 @@
 title: Background fetching indicators
 description: Show that a query is refreshing with its state's isFetching, count requests in flight with useIsFetching, and leave navigations to the router's pending UI.
 section: Guides
-order: 17
+order: 16
 ---
 
 A query's first load suspends, so Suspense fallbacks cover it. Later requests (refetches on focus, invalidation, polling) happen in the background, while the old data stays on screen. Read `isFetching` on that query's state. For navigations, prefer the router's pending UI: you usually don't need a global fetch counter.
@@ -23,6 +23,7 @@ A navigation is not a background fetch: it's a transition. Use the router's pend
 
 - [TanStack Start](./tanstack-start.md#pending-ui): `pendingComponent` / `pendingMs`, or `useRouterState({ select: (state) => state.isLoading })`
 - [Next.js](./react-server-components.md#pending-ui): `useLinkStatus` from `next/link`
+- [React Router](./react-router.md#pending-ui): `useNavigation`, or `NavLink`'s `isPending`
 
 `isFetching` covers what happens after the page has rendered.
 

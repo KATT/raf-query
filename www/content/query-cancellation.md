@@ -2,7 +2,7 @@
 title: Query cancellation
 description: Pass the queryFn's AbortSignal to fetch so requests nobody needs any more are aborted, and know when raf-query aborts them.
 section: Guides
-order: 18
+order: 17
 ---
 
 Every `queryFn` receives an [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) as `signal`. Pass it to [`fetch`](https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch) (or any API that takes a signal), and raf-query can abort the request when its result is no longer needed:

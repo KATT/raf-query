@@ -2,7 +2,7 @@
 title: Mutations
 description: Write data in React actions inside forms and transitions, keep the UI responsive with useOptimistic, then invalidate or update the cache.
 section: Guides
-order: 12
+order: 10
 ---
 
 raf-query has no `useMutation`. React already has the pieces a mutation needs:
@@ -21,7 +21,7 @@ A mutation is a React action written in the component: get the client with `useQ
 tanstack-start/src/docs/mutations.tsx#intro
 ```
 
-`updatePost` is a plain async function: a TanStack Start server function, a Next.js server action, or a `fetch` call.
+`updatePost` is a plain async function: a `fetch` call, a TanStack Start server function, or a Next.js server action.
 
 The verb resolves once the queries it invalidated that are on screen have refetched. Awaiting it inside the action keeps the action pending until the fresh data is on screen, so the optimistic value is replaced by the real one without flickering back to the old one in between.
 

@@ -28,6 +28,18 @@ export function commentsQuery(input: { slug: string }) {
 }
 // #endregion home
 
+import { listPosts } from "./api.ts";
+import type { PostsInput } from "./posts-input.ts";
+
+const posts = group("posts");
+
+export function postsQuery(input: PostsInput) {
+	return queryOptions({
+		queryKey: posts("list", input),
+		queryFn: () => listPosts(input),
+	});
+}
+
 const issues = group("issues");
 
 export function issueListQuery(input: { status: "open" | "done" }) {

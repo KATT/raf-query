@@ -2,7 +2,7 @@
 title: API reference
 description: Every export of @raf-query/react, its TanStack Router subpath and @raf-query/core, with query options and their defaults.
 section: Reference
-order: 2
+order: 1
 ---
 
 raf-query's API is functions, not methods: the client is a cache you pass to `load` and to the verbs. `@raf-query/react` re-exports everything from `@raf-query/core`, so apps import from one place.
@@ -17,10 +17,10 @@ tanstack-start/src/docs/api-reference.ts#createqueryclient
 | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `createQueryClient(config?)`              | Make a query cache. `config`: `links`, `features`, `staleTime`, `gcTime`, `structuralSharing`, `isServer`, `clock`. [Important defaults](./important-defaults.md)                      |
 | `recommended()`                           | `{ links: [retry()], features: [focusRefetch(), reconnectRefetch(), polling()] }`, to spread into the config                                                                           |
-| `QueryClient<TTypes>`                     | The client type. Bare `QueryClient` takes a client of any root; verbs take `ClientFor<typeof factory>`. [Query meta](./query-meta.md#typing-meta-by-its-root)                          |
+| `QueryClient<TTypes>`                     | The client type. Bare `QueryClient` takes a client of any root; verbs take `ClientFor<typeof factory>`. [Query meta](./links-and-features.md#typing-meta-by-its-root)                  |
 | `client.subscribe(listener, { signal }?)` | Cache events: `added`, `updated`, `removed`, and `readers` (a reader subscribed or left)                                                                                               |
 | `client.isServer`                         | Set from `config.isServer`, else from whether `window` exists. Server clients don't retry, never gc, and reuse cached data. [SSR and hydration](./ssr-and-hydration.md#server-clients) |
-| `link(run)`, `Link`, `Operation`          | Wrap every request, outermost first. `link<{ meta: … }>(run)` declares the `meta` it reads. [Query meta](./query-meta.md#links-and-features)                                           |
+| `link(run)`, `Link`, `Operation`          | Wrap every request, outermost first. `link<{ meta: … }>(run)` declares the `meta` it reads. [Query meta](./links-and-features.md#links-and-features)                                   |
 | `feature(setup?)`, `Feature`              | A cache-wide behavior, started while a provider mounts the client. `feature<{ meta: … }>()` without `setup` only declares `meta` fields                                                |
 | `Clock`                                   | The type of `config.clock`: time and timers. Pass a fake one in tests. [Testing](./testing.md)                                                                                         |
 
@@ -36,17 +36,17 @@ Links and features:
 
 ## Query factories
 
-| Export                                                                        | Use                                                                                                                                     |
-| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `queryOptions(options)`                                                       | Typed options for a query factory. [Query factories](./query-factories.md)                                                              |
-| `infiniteQueryOptions(options)`                                               | Typed options for a paged query factory. [Infinite queries](./infinite-queries.md)                                                      |
-| `group(name)`, `group(parent, name)`, `Group`                                 | Build flat keys under a path; a group is also a target that covers every key under its path. [Query keys](./query-keys.md#groups)       |
-| `bindQueryOptions<typeof makeQueryClient>()`, `bindInfiniteQueryOptions<…>()` | The builder bound to a root: checks `meta` against the root's links and features. [Query meta](./query-meta.md#typing-meta-by-its-root) |
-| `DataOf<TFactory>`, `InputOf<TFactory>`                                       | A factory's data and input types                                                                                                        |
-| `QueryOptions`, `QueryFunctionContext`, `StreamOptions`                       | Option types. The context has `queryKey`, `signal` and `meta`                                                                           |
-| `InfiniteQueryOptions`, `InfiniteQueryFunctionContext`, `InfiniteData`        | Paged option types. The context adds `pageParam` and `direction`; the data is `{ pages, pageParams }`                                   |
-| `QueryFactory`, `QueryKey`                                                    | A function of an input that returns query options, and a key: any plain array                                                           |
-| `QueryMeta`, `QueryOptionsBuilder`, `InfiniteQueryOptionsBuilder`             | A query's `meta` when its builder isn't bound to a root, and the types of the bound builders                                            |
+| Export                                                                        | Use                                                                                                                                             |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `queryOptions(options)`                                                       | Typed options for a query factory. [Query factories](./query-factories.md)                                                                      |
+| `infiniteQueryOptions(options)`                                               | Typed options for a paged query factory. [Infinite queries](./infinite-queries.md)                                                              |
+| `group(name)`, `group(parent, name)`, `Group`                                 | Build flat keys under a path; a group is also a target that covers every key under its path. [Query keys](./query-keys.md#groups)               |
+| `bindQueryOptions<typeof makeQueryClient>()`, `bindInfiniteQueryOptions<…>()` | The builder bound to a root: checks `meta` against the root's links and features. [Query meta](./links-and-features.md#typing-meta-by-its-root) |
+| `DataOf<TFactory>`, `InputOf<TFactory>`                                       | A factory's data and input types                                                                                                                |
+| `QueryOptions`, `QueryFunctionContext`, `StreamOptions`                       | Option types. The context has `queryKey`, `signal` and `meta`                                                                                   |
+| `InfiniteQueryOptions`, `InfiniteQueryFunctionContext`, `InfiniteData`        | Paged option types. The context adds `pageParam` and `direction`; the data is `{ pages, pageParams }`                                           |
+| `QueryFactory`, `QueryKey`                                                    | A function of an input that returns query options, and a key: any plain array                                                                   |
+| `QueryMeta`, `QueryOptionsBuilder`, `InfiniteQueryOptionsBuilder`             | A query's `meta` when its builder isn't bound to a root, and the types of the bound builders                                                    |
 
 Query options, for `queryOptions` and `infiniteQueryOptions`:
 
@@ -59,7 +59,7 @@ Query options, for `queryOptions` and `infiniteQueryOptions`:
 | `structuralSharing` (keep deeply equal parts of data)                            | The client's, else `true`                               |
 | `select` (derive what readers get from the data)                                 | None                                                    |
 | `stream` (`{ initial, reduce }`, for a `queryFn` that returns an async iterable) | None. [Query functions](./query-functions.md#streaming) |
-| [`meta`](./query-meta.md) (settings for the root's links and features)           | None                                                    |
+| [`meta`](./links-and-features.md) (settings for the root's links and features)   | None                                                    |
 
 `infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam` and `maxPages`.
 
@@ -69,17 +69,17 @@ Query options, for `queryOptions` and `infiniteQueryOptions`:
 tanstack-start/src/docs/api-reference.ts#load
 ```
 
-| Export                                     | Use                                                                                                                                                                            |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `load(client, entries)`                    | Start every entry, then resolve with `[handles, data]`. Rejects when an `swr` or `revalidate` entry fails. [Starting queries](./starting-queries.md)                           |
-| `prefetch(factory, input, options?)`       | Start the query if the cache has no fresh data; never waits                                                                                                                    |
-| `swr(factory, input, options?)`            | Wait only when the cache has no data; stale data resolves at once and refetches                                                                                                |
-| `revalidate(factory, input, options?)`     | Wait for fresh data; fresh cached data resolves without a refetch                                                                                                              |
-| `skipToken`                                | In place of an entry: start nothing. Its handle is `undefined` and `data` has no key for it. [Conditional queries](./starting-queries.md#conditional-queries)                  |
-| `waterfallHandle(factory, input)`          | The handle of a query whose input is only known while rendering. [Request waterfalls](./request-waterfalls.md)                                                                 |
-| `waterfallHandle(factory, handle, update)` | A handle with `update(handle.input)` as its input, or `handle` itself while that maps to the same query. [URL state](./url-state-and-pagination.md#input-typed-before-the-url) |
-| `QueryHandle<TFactory>`                    | `{ queryKey, input }`, serializable; what `load` returns for every entry but a `skipToken`. [Handles](./handles.md)                                                            |
-| `LoadEntry`, `Loaded`, `LoadEntryOptions`  | Entry and result types. `LoadEntryOptions` is `{ pages }`: how many pages a paged factory's first load fetches                                                                 |
+| Export                                     | Use                                                                                                                                                                                       |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `load(client, entries)`                    | Start every entry, then resolve with `[handles, data]`. Rejects when an `swr` or `revalidate` entry fails. [Starting queries](./starting-queries.md)                                      |
+| `prefetch(factory, input, options?)`       | Start the query if the cache has no fresh data; never waits                                                                                                                               |
+| `swr(factory, input, options?)`            | Wait only when the cache has no data; stale data resolves at once and refetches                                                                                                           |
+| `revalidate(factory, input, options?)`     | Wait for fresh data; fresh cached data resolves without a refetch                                                                                                                         |
+| `skipToken`                                | In place of an entry: start nothing. Its handle is `undefined` and `data` has no key for it. [Conditional queries](./starting-queries.md#conditional-queries)                             |
+| `waterfallHandle(factory, input)`          | The handle of a query whose input is only known while rendering. [Request waterfalls](./request-waterfalls.md)                                                                            |
+| `waterfallHandle(factory, handle, update)` | A handle with `update(handle.input)` as its input, or `handle` itself while that maps to the same query. [URL state](./url-state-and-pagination.md#input-typed-before-it-reaches-the-url) |
+| `QueryHandle<TFactory>`                    | `{ queryKey, input }`, serializable; what `load` returns for every entry but a `skipToken`. [Handles](./reading-queries.md#handles)                                                       |
+| `LoadEntry`, `Loaded`, `LoadEntryOptions`  | Entry and result types. `LoadEntryOptions` is `{ pages }`: how many pages a paged factory's first load fetches                                                                            |
 
 ## Reading queries
 
@@ -148,7 +148,7 @@ Each verb takes the client first. A factory matches the queries it built: all of
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `QueryClientProvider`                          | Provides a client to the tree, and runs its features while mounted. In every framework; see [the provider](./ssr-and-hydration.md#the-provider) |
 | `useQueryClient()`                             | Read the client                                                                                                                                 |
-| `bindUseQueryClient<typeof makeQueryClient>()` | `useQueryClient`, typed with a root, so verbs check factories against it. [Query meta](./query-meta.md#typing-meta-by-its-root)                 |
+| `bindUseQueryClient<typeof makeQueryClient>()` | `useQueryClient`, typed with a root, so verbs check factories against it. [Query meta](./links-and-features.md#typing-meta-by-its-root)         |
 | `HydrationBoundary`                            | Writes server data into the client: a loader's `state`, or in server components the request's `client`. [React Router](./react-router.md)       |
 
 ## Hydration and devtools

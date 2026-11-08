@@ -1,8 +1,8 @@
 ---
-title: SSR and hydration
+title: Server rendering and hydration
 description: How the server's query cache streams to the browser, pending queries included, and how the browser reconciles it with its own cache.
-section: Server rendering
-order: 1
+section: Guides
+order: 18
 ---
 
 With server rendering, the queries a page needs run on the server, and the HTML arrives with the data already in it. raf-query streams the server's cache to the browser as entries start and settle, so the browser starts with the same data and doesn't fetch it again.

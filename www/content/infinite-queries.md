@@ -2,7 +2,7 @@
 title: Infinite queries
 description: Paged queries with infiniteQueryOptions, "load more" buttons, infinite scroll, bidirectional lists and maxPages.
 section: Guides
-order: 10
+order: 12
 ---
 
 Lists that load more data onto what's already shown, such as "load more" buttons and infinite scroll, are a common UI pattern. A paged factory returns `infiniteQueryOptions(...)`, and components read it with `useInfiniteQuery`. Loaders and verbs take it like any query.

@@ -2,7 +2,7 @@
 title: Query invalidation
 description: Mark queries stale after a write, refetch the ones on screen, and select queries by factory, group or predicate, such as tags.
 section: Guides
-order: 13
+order: 9
 ---
 
 Waiting for data to go stale on its own doesn't work after a write: the user just changed something and expects to see it. `invalidateOne` and `invalidateMany` mark queries stale and refetch the ones that are being read:
@@ -66,11 +66,11 @@ A target is any object with `where(query, param)`, typed `Target<TMeta, TParam>`
 tanstack-start/src/docs/query-invalidation.ts#matching-with-where
 ```
 
-`input` is the input of the latest factory call for that entry. An entry that was only hydrated, and not yet read or started on this client, has `undefined` input and `{}` as its `meta`, so match on `queryKey` to include those. On a client of a typed root, `query.meta` has the root's fields: see [Query meta](./query-meta.md#selecting-queries-by-meta).
+`input` is the input of the latest factory call for that entry. An entry that was only hydrated, and not yet read or started on this client, has `undefined` input and `{}` as its `meta`, so match on `queryKey` to include those. On a client of a typed root, `query.meta` has the root's fields: see [Query meta](./links-and-features.md#selecting-queries-by-meta).
 
 ### Tags
 
-A tag cuts across groups: every query that shows some content, wherever its key starts. raf-query has no tags of its own, because a tag is a `where` target over a `meta` field: a few lines in your app. A [feature](./query-meta.md#links-and-features) without a setup function declares `meta.tags`, and `tag(name)` matches the queries that list `name`:
+A tag cuts across groups: every query that shows some content, wherever its key starts. raf-query has no tags of its own, because a tag is a `where` target over a `meta` field: a few lines in your app. A [feature](./links-and-features.md#links-and-features) without a setup function declares `meta.tags`, and `tag(name)` matches the queries that list `name`:
 
 ```sample
 tanstack-start/src/docs/query-invalidation.ts#tags

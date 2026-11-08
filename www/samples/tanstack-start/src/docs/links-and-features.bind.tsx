@@ -1,6 +1,6 @@
 import { group } from "@raf-query/react";
 
-import type { makeQueryClient } from "./query-meta.ts";
+import type { makeQueryClient } from "./links-and-features.ts";
 
 declare function listInvoices(input: { orgId: string }): Promise<unknown>;
 

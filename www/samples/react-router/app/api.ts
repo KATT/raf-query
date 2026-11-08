@@ -34,3 +34,7 @@ export function listComments(input: { cursor: number; slug: string }) {
 		`/posts/${input.slug}/comments?cursor=${input.cursor}`,
 	);
 }
+
+export function listPosts(input: { page: number; sort: "newest" | "oldest" }) {
+	return request<Array<Post>>(`/posts?sort=${input.sort}&page=${input.page}`);
+}

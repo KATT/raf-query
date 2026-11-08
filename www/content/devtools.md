@@ -1,8 +1,8 @@
 ---
 title: Devtools
 description: Inspect the browser's query cache and recent loads as they change, refetch, reset or remove entries, and keep the panel out of production bundles.
-section: Reference
-order: 1
+section: Getting started
+order: 6
 ---
 
 `QueryDevtools` from `@raf-query/react` shows the browser's query cache as it changes. Render `QueryDevtools` anywhere under the provider, and only mount it in development so bundlers drop the panel from production builds.

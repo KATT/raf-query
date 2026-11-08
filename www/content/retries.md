@@ -2,7 +2,7 @@
 title: Retries and errors
 description: Retry failed requests with the retry() link, set attempts per query in meta, choose delays and which errors to retry, time requests out, and show errors.
 section: Guides
-order: 14
+order: 13
 ---
 
 The `retry()` link retries failed requests. With its defaults, a request that fails in the browser is retried **3 times**, waiting 1, 2 and then 4 seconds, before the query counts as failed. Readers keep suspending, or keep showing their current data, the whole time.
@@ -26,7 +26,7 @@ A query sets its own attempts with `meta: { retry }`: a number of retries after 
 tanstack-start/src/docs/retries.ts#attempts-per-query
 ```
 
-The `retry()` link declares the field, so a factory built with a bound `queryOptions` gets it typed only when the root has the link: see [Query meta](./query-meta.md#typing-meta-by-its-root). On a client without the link, `meta.retry` does nothing.
+The `retry()` link declares the field, so a factory built with a bound `queryOptions` gets it typed only when the root has the link: see [Query meta](./links-and-features.md#typing-meta-by-its-root). On a client without the link, `meta.retry` does nothing.
 
 ## Options
 

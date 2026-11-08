@@ -34,21 +34,29 @@ What changes is the API around the cache. TanStack Query lets any component star
 | `useIsFetching()`                                                                                                | `useIsFetching(target?)`                                                        | [Background indicators](./background-fetching-indicators.md)                                                                                          |
 | `HydrationBoundary` + `dehydrate()`                                                                              | Automatic streaming with a router integration                                   | [SSR and hydration](./ssr-and-hydration.md)                                                                                                           |
 | `cancelQueries()`                                                                                                | `removeOne(...)` / `removeMany(...)`                                            | Removing an entry aborts its request's `signal`                                                                                                       |
-| `Register` with `queryMeta`                                                                                      | `meta` typed by the client's links and features                                 | [Query meta](./query-meta.md)                                                                                                                         |
+| `Register` with `queryMeta`                                                                                      | `meta` typed by the client's links and features                                 | [Query meta](./links-and-features.md)                                                                                                                 |
 
 ## Loading data
 
-### Start queries in the loader
+### Start queries before render
 
-Where a TanStack Query app renders [`useQuery`](https://tanstack.com/query/latest/docs/framework/react/reference/functions/useQuery) and lets it fetch, a raf-query route starts the query in its loader and passes the handle down. Pick the entry by what the route needs:
+Where a TanStack Query app renders [`useQuery`](https://tanstack.com/query/latest/docs/framework/react/reference/functions/useQuery) and lets it fetch, a raf-query page starts the query in its loader or server component and passes the handle down. Pick the entry by what the page needs:
 
-- **`swr`** when the route can't render without the data. The loader waits for it, and `use()` returns its data without suspending.
+- **`swr`** when the page can't render without the data. The loader waits for it, and `use()` returns its data without suspending. In code that only runs on the server, such as a server component, use `revalidate`: its client starts empty every time.
 - **`prefetch`** when the UI can render without it. The loader doesn't wait, and `use()` suspends until the data lands.
 - **`skipToken`** in place of an entry when the route doesn't need the query, such as drafts only an admin sees. Its handle is `undefined`. See [Conditional queries](./starting-queries.md#conditional-queries).
 - **`waterfallHandle`** only as a last resort. The component that reads it fetches when it renders, which is a [request waterfall](./request-waterfalls.md). It's also how a component reads data only the browser has, such as [`localStorage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) or the [Permissions API](https://developer.mozilla.org/en-US/docs/Web/API/Permissions_API), once the page has hydrated. See [Browser-only queries](./ssr-and-hydration.md#browser-only-queries).
 
-```sample
+```sample framework="tanstack-start"
 tanstack-start/src/routes/posts.$slug.tsx#route
+```
+
+```sample framework="nextjs"
+nextjs/src/docs/nextjs.fetch.tsx#fetch
+```
+
+```sample framework="react-router"
+react-router/app/routes/posts.$slug.tsx#loader
 ```
 
 ### Reading without Suspense
