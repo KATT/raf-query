@@ -7,6 +7,7 @@ import {
 	frameworkModeLabels,
 	frameworkModeSearch,
 	frameworkModes,
+	chooseFrameworkMode,
 } from "~/framework-mode.ts";
 import { frameworkModeBarLayout } from "~/framework-mode-bar-layout.ts";
 
@@ -123,6 +124,7 @@ export function FrameworkModeBar(props: { readonly mode: FrameworkMode }) {
 							)}
 							data-framework-mode-link={mode}
 							key={mode}
+							onClick={() => chooseFrameworkMode(mode)}
 							replace
 							resetScroll={false}
 							search={frameworkModeSearch(mode)}

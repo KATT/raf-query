@@ -60,11 +60,33 @@ function applyFrameworkMode(mode: FrameworkMode) {
 	}
 }
 
+/** Where the docs remember the reader's framework, for the tabs on every page. */
+export const frameworkModeStorageKey = "raf-query-docs:framework";
+
 /**
  * Runs before first paint so `/?mode=nextjs` never flashes the prerendered
- * TanStack Start panels. Pairs with `[data-framework-panel]` CSS.
+ * TanStack Start panels. Pairs with `[data-framework-panel]` CSS. On `/` the
+ * mode is `?mode=`; on other pages, it's the framework the reader last picked
+ * (`frameworkModeStorageKey`), for the docs' framework tabs.
  */
-export const frameworkModeScript = `(${applyFrameworkMode.toString()})(((m)=>${JSON.stringify(frameworkModes)}.includes(m)?m:${JSON.stringify(defaultFrameworkMode)})(new URLSearchParams(location.search).get("mode")));`;
+export const frameworkModeScript = `(${applyFrameworkMode.toString()})(((m)=>${JSON.stringify(frameworkModes)}.includes(m)?m:${JSON.stringify(defaultFrameworkMode)})(location.pathname==="/"?new URLSearchParams(location.search).get("mode"):(()=>{try{return localStorage.getItem(${JSON.stringify(frameworkModeStorageKey)})}catch{return null}})()));`;
+
+/**
+ * Show `mode`'s panels on this page and remember it for the next ones: a
+ * docs framework tab, or the homepage's framework switch.
+ */
+export function chooseFrameworkMode(mode: FrameworkMode) {
+	syncFrameworkModeAttribute(mode);
+	try {
+		localStorage.setItem(frameworkModeStorageKey, mode);
+	} catch {
+		// Storage can be blocked; the choice then lasts until the next load.
+	}
+}
+
+export function isFrameworkMode(value: string): value is FrameworkMode {
+	return frameworkModes.some((mode) => mode === value);
+}
 
 /** Keep `<html data-framework-mode>` in sync after client navigations. */
 export function syncFrameworkModeAttribute(mode: FrameworkMode) {

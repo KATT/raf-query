@@ -143,6 +143,7 @@ function twoslashCode(lines: ReadonlyArray<Line>, filename: string) {
  * that app's project. Its title is the file's path inside the app, unless
  * the file is in `src/docs/` or `app/docs/` (a page's own samples, not a
  * file of the app) or the fence sets `title="…"` (`title=""` for none).
+ * The rest of the fence's meta, such as `framework="nextjs"`, is kept.
  *
  * A `.vue` or `.svelte` file becomes a plain block of its region, marked with
  * `// #region name` in its script or `<!-- #region name -->` in its markup.
@@ -189,7 +190,9 @@ export const expandSnippets = Effect.fn("expandSnippets")(function* (
 		const title =
 			/\btitle="([^"]*)"/.exec(meta)?.[1] ??
 			(/^(?:src|app)\/docs\//.test(inApp) ? "" : inApp);
-		const titleMeta = title ? ` title="${title}"` : "";
+		// Other meta, such as `framework="nextjs"`, passes through.
+		const rest = meta.replace(/\btitle="[^"]*"/, "").trim();
+		const titleMeta = `${title ? ` title="${title}"` : ""}${rest ? ` ${rest}` : ""}`;
 		if (componentLangs.has(lang)) {
 			const shown = dedent(
 				lines.filter((line) => line.shown).map((line) => line.text),

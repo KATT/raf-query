@@ -1,63 +1,70 @@
 ---
 title: Overview
-description: What raf-query is, the principles behind it, and how it relates to TanStack Query.
+description: What raf-query is, the problem it solves, and the three pieces every page uses — a query factory, load, and useQuery with use().
 section: Getting started
 order: 1
 ---
 
-raf-query is a data-fetching library for React built around **render-as-you-fetch**. Queries start in route loaders and React Server Components, travel to components as small serializable **handles**, and are read with React's [`use()`](https://react.dev/reference/react/use) under Suspense. Fetch-on-render is an explicitly named escape hatch, not the default.
-
-The cache's mechanics (dedupe, staleness, infinite paging, SSR hydration) follow [TanStack Query](https://tanstack.com/query). The public API is built around loaders, RSC and `use()` instead of `useQuery`-in-render.
+raf-query is a data-fetching library for React built around **render-as-you-fetch**: every request a page needs starts before the page renders, and components read the results with React's [`use()`](https://react.dev/reference/react/use) under [Suspense](https://react.dev/reference/react/Suspense). It's a cache of asynchronous data, with dedupe, staleness, background refetching, infinite paging and streaming SSR hydration, and an API shaped so requests start where React recommends: in route loaders and server components.
 
 > [!NOTE]
 > raf-query is early. The packages are on npm at `0.x`, and the API can still change between minor releases.
 
-## Motivation
+## The problem
 
-Most React data fetching starts in a component: it renders, notices it needs data, and asks for it. Every nested component that does the same adds a round trip, so a page with a post, its comments and its author waits for three requests one after another. That's a **waterfall**, and it's the default shape of fetch-on-render code.
+Most React data fetching starts in a component. It renders, discovers it needs data, and asks for it. When its children do the same, each level waits for the one above: a post, then its comments, then the author, one round trip after another. That's a **request waterfall**, and it's the default shape of fetch-on-render code.
 
-React's own guidance is to start fetching before rendering: in the router's loader, or in a server component. The page knows everything it needs from the URL, so every request can start at once, and components read the results as they arrive. raf-query is a cache shaped around that flow:
+The page usually knows everything it needs from the URL alone. Start every request the moment the navigation starts, and they run side by side while the components render. Routers and React Server Components give you a place to do that. raf-query gives you a cache built for that place.
 
-- The **loader** (or server component) starts queries with `load`, one entry per query: `prefetch`, `swr` or `revalidate`.
-- It passes **handles** to components. A handle is a query's key and input, with no data, so it serializes for free.
-- Components call `useQuery(factory, handle)`, which returns a **thenable** and the query's state. A thenable is a promise that also carries `status`, `value` and `reason`, the fields `use()` reads: when the value is already there, `use()` returns it synchronously, and otherwise it suspends. A handle the loader waited for reads without suspending, and Suspense boundaries decide what shows while the rest is on its way.
+## How it works
 
-## Principles
+Every page uses three pieces.
 
-- **Fetch where React recommends.** Loaders and server components start queries. Components read them.
-- **Thenables in, `use()` out.** The read hook returns a stable thenable for every handle; components read it with `use()`, so reads can be conditional or happen in a child.
-- **The URL is the input.** Anything that changes what a query fetches (filters, sort, page) lives in path or search params, so the loader starts the right query on every navigation. Components never derive query input from local state.
-- **Actions for writes.** Mutations are plain async functions in form actions or transitions. The cache provides invalidation, React provides pending and optimistic state.
-- **Pay for what you use.** The client does nothing on its own. Retries, refetching on focus or reconnect and polling are opt-in links and features, so an app ships only what it turns on.
+**A query factory** describes a query once: its key, and the function that fetches it. It takes one serializable input:
 
-## A taste
-
-```sample title="src/queries.ts"
+```sample title="queries.ts"
 tanstack-start/src/docs/overview.ts#a-taste
 ```
 
-```sample title="src/routes/posts.$slug.tsx"
+**`load`** starts queries where the page's input is known: a route loader, a server component, or an event handler. Each entry says whether to wait for the data, and `load` returns a **handle** per query: its key and input, plain data that crosses from a loader or a server to the browser.
+
+**`useQuery`** reads a handle in a component. It returns a **thenable**, a promise that React's `use()` can read synchronously once the data is there, so a query the loader waited for renders at once and one still in flight suspends to the nearest boundary.
+
+```sample title="src/routes/posts.$slug.tsx" framework="tanstack-start"
 tanstack-start/src/docs/overview.route.tsx#a-taste
 ```
 
-The loader decides when the request starts and whether navigation waits for it; the component only reads. Try both strategies:
+```sample framework="nextjs"
+nextjs/src/app/(blog)/posts/[slug]/page.tsx#page
+```
+
+```sample framework="nextjs"
+nextjs/src/app/(blog)/components/post.tsx#component
+```
+
+```sample title="app/routes/posts.$slug.tsx" framework="react-router"
+react-router/app/routes/blog.$slug.tsx#hero
+```
+
+Whatever starts the queries, a loader or a server component, decides when each request starts and what the page waits for. Components only read. Try both strategies:
 
 ```demo
 starting-queries
 ```
 
-## Packages
+## Principles
 
-| Package            | Contents                                                                                                   |
-| ------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `@raf-query/react` | Hooks and providers. Re-exports `@raf-query/core`, so apps import this package rather than core            |
-| `@raf-query/core`  | Framework-agnostic: the query client, its links and features, factories, `load` and handles, and the verbs |
+- **Start where the inputs are known.** Loaders and server components start queries; components read them. Fetching in render is possible, but it's an escape hatch named after what it causes: [`waterfallHandle`](./request-waterfalls.md#render-time-inputs-waterfallhandle).
+- **The URL is the input.** Filters, sort and page live in the URL, so the loader starts the right query on every navigation, and every view can be linked to.
+- **React does the rest.** Suspense shows what's loading, transitions keep the old screen while the new one loads, and Actions with `useOptimistic` handle writes. The cache invalidates and refetches after them.
+- **Pay for what you use.** A client only caches. Retries, refetching on focus and reconnect, polling and hydration are opt-in, so an app ships only what it turns on.
 
-Apps import everything from `@raf-query/react`, hydration and the devtools included: what an app doesn't import stays out of its bundle. The one subpath, `@raf-query/react/tanstack-router`, streams the router's query cache to the browser during SSR.
+## Where it runs
 
-## Where next
+raf-query works with any React 19 app that can start requests before rendering. The [integrations](./installation.md#pick-your-integration) cover TanStack Start and TanStack Router, React Server Components (the Next.js App Router and others), and React Router, server-rendered or client-only.
 
-- [Installation](./installation.md) and the [quick start](./quick-start.md) get an app running.
-- [Coming from TanStack Query](./comparison.md) maps what you know onto raf-query.
-- The guides start with [important defaults](./important-defaults.md), and each one has live demos you can poke at.
-- [What belongs in the cache](./client-state.md) covers backend data, browser-only queries, URL state and local UI state.
+## Next steps
+
+- [Install it](./installation.md), then build a page in the [quick start](./quick-start.md).
+- Already know TanStack Query? [Coming from TanStack Query](./comparison.md) maps what you know.
+- The guides start with [important defaults](./important-defaults.md). Most have live demos you can poke at.

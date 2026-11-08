@@ -325,7 +325,7 @@ function Waterfalls() {
 			/>
 			<DemoBrowser
 				fallback={<LineSkeleton className="h-24 w-full" />}
-				initial={{ path: "/posts" }}
+				initial={{ path: "/posts/1" }}
 				key={strategy}
 				loader={loaderFor(strategy)}
 			>
@@ -337,7 +337,7 @@ function Waterfalls() {
 
 export default defineDemo({
 	Component: Waterfalls,
-	hint: "Open a post with each strategy and watch the Queries panel. The loader starts all three requests at once; starting them in render makes each wait for the one before.",
+	hint: "The demo opens on a post. Switch strategy, or open another post, and watch the Queries panel. The loader starts all three requests at once; starting them in render makes each wait for the one before.",
 	server,
 	title: "One round trip or three",
 });

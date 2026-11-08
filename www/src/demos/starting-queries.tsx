@@ -515,28 +515,30 @@ function RevalidatedPost(): ReactNode {
 }
 
 export default defineDemo({
-	hint: "Open a post with each, then switch back and forth: each keeps its own page and queries. The requests start at the same moment every time. Go back and reopen the post after 5 seconds, once its cache is stale, to see swr and revalidate differ.",
+	hint: "Each variant opens on a post: prefetch shows it at once with skeletons, swr and revalidate wait for the data. Switch back and forth, and each keeps its own page and queries. Go back to the list and reopen the post after 5 seconds, once its cache is stale, to see swr and revalidate differ.",
 	title: "prefetch, swr or revalidate",
 	variants: [
 		{
-			Component: () => <DemoRouter initial="/posts" routeTree={prefetchTree} />,
+			Component: () => (
+				<DemoRouter initial="/posts/1" routeTree={prefetchTree} />
+			),
 			description: "Opens the post at once, with skeletons.",
 			label: "prefetch",
 			server: prefetching.server,
 		},
 		{
-			Component: () => <DemoRouter initial="/posts" routeTree={swrTree} />,
+			Component: () => <DemoRouter initial="/posts/1" routeTree={swrTree} />,
 			description:
-				"Stays on the list until the post and its comments load. Cached data opens at once and refetches in the background.",
+				"Waits for the post and its comments before showing the page. Cached data opens at once and refetches in the background.",
 			label: "swr",
 			server: swrBlog.server,
 		},
 		{
 			Component: () => (
-				<DemoRouter initial="/posts" routeTree={revalidateTree} />
+				<DemoRouter initial="/posts/1" routeTree={revalidateTree} />
 			),
 			description:
-				"Stays on the list until the post and its comments load, and waits for the refetch whenever the cache is stale.",
+				"Waits for the post and its comments before showing the page, and waits for the refetch whenever the cache is stale.",
 			label: "revalidate",
 			server: revalidateBlog.server,
 		},

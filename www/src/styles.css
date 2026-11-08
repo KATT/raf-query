@@ -183,6 +183,43 @@ html[data-announcement-dismissed] .announcement-bar {
 	opacity: 1;
 }
 
+/* Framework tabs: one tab per framework over that framework's blocks. Which
+   panel shows is `[data-framework-panel]` above, so the choice is page-wide. */
+.framework-tabs {
+	margin-block: 1.5em;
+}
+
+.framework-tabs-list {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 0.125rem;
+	border: 1px solid var(--border);
+	border-radius: 9999px;
+	padding: 0.1875rem;
+}
+
+.framework-tab {
+	border-radius: 9999px;
+	padding: 0.25rem 0.75rem;
+	color: var(--muted-foreground);
+	font-size: 0.8125rem;
+	line-height: 1.25rem;
+	transition: color 120ms;
+}
+
+.framework-tab:hover {
+	color: var(--foreground);
+}
+
+.framework-tab:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 1px;
+}
+
+.framework-tabs .code-block {
+	margin-block: 0.625rem 0;
+}
+
 /* Folded lines: “N collapsed lines”, opened from `DocBody`. A tab in the
    indent is two columns, the same as `tab-size` on `pre` above. */
 .code-collapse {
