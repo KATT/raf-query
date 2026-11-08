@@ -2,11 +2,11 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
 	group,
-	infiniteQueryOptions,
 	load,
 	prefetch,
 	type QueryHandle,
-	useInfiniteQuery,
+	queryOptions,
+	useQuery,
 } from "@raf-query/react";
 import { use } from "react";
 
@@ -31,26 +31,11 @@ const server = createFakeServer(() => ({
 	] satisfies ReadonlyArray<Todo>,
 }));
 
-interface TodoPage {
-	readonly items: ReadonlyArray<Todo>;
-	readonly nextCursor: number | null;
-}
-
-function todoNext(lastPage: TodoPage) {
-	return lastPage.nextCursor;
-}
-
 function todosQuery() {
-	return infiniteQueryOptions({
+	return queryOptions({
 		gcTime: 10_000,
-		getNextPageParam: todoNext,
-		initialPageParam: 0,
 		queryFn: (context) =>
-			server.respond(
-				"GET /todos",
-				(db) => ({ items: db.todos, nextCursor: null }),
-				context,
-			),
+			server.respond("GET /todos", (db) => db.todos, context),
 		queryKey: todos(),
 		staleTime: 5000,
 	});
@@ -72,14 +57,13 @@ function TodosSkeleton() {
 }
 
 function Todos(props: { readonly handle: QueryHandle<typeof todosQuery> }) {
-	const [pagesThenable, controls] = useInfiniteQuery(todosQuery, props.handle);
-	const pages = use(pagesThenable);
-	const list = pages.pages.flatMap((page) => page.items);
+	const [todosThenable, todosState] = useQuery(todosQuery, props.handle);
+	const list = use(todosThenable);
 	return (
-		<div aria-busy={controls.isFetching} className="grid gap-2">
+		<div aria-busy={todosState.isFetching} className="grid gap-2">
 			<p className="flex items-center gap-2 text-xs text-muted-foreground">
-				Fetched at {formatTime(controls.updatedAt)}
-				{controls.isFetching ? (
+				Fetched at {formatTime(todosState.updatedAt)}
+				{todosState.isFetching ? (
 					<>
 						<Spinner /> refetching in the background
 					</>

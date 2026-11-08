@@ -1,13 +1,11 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	group,
-	infiniteQueryOptions,
 	load,
 	prefetch,
 	type QueryHandle,
 	queryOptions,
 	removeAll,
-	useInfiniteQuery,
 	useQuery,
 	useQueryClient,
 	waterfallHandle,
@@ -76,28 +74,13 @@ function postAuthorQuery(input: { readonly postId: number }) {
 	});
 }
 
-interface CommentPage {
-	readonly items: ReturnType<typeof seedComments>;
-	readonly nextCursor: number | null;
-}
-
-function commentNext(lastPage: CommentPage) {
-	return lastPage.nextCursor;
-}
-
 function commentsQuery(input: { readonly postId: number }) {
-	return infiniteQueryOptions({
-		getNextPageParam: commentNext,
-		initialPageParam: 0,
+	return queryOptions({
 		queryFn: (context) =>
 			server.respond(
 				`GET /posts/${input.postId}/comments`,
-				(db): CommentPage => ({
-					items: db.comments.filter(
-						(comment) => comment.postId === input.postId,
-					),
-					nextCursor: null,
-				}),
+				(db) =>
+					db.comments.filter((comment) => comment.postId === input.postId),
 				context,
 			),
 		queryKey: posts(input.postId, "comments"),
@@ -152,21 +135,16 @@ function Byline(props: { readonly name: string | undefined }) {
 function CommentList(props: {
 	readonly handle: QueryHandle<typeof commentsQuery>;
 }) {
-	const [pagesThenable] = useInfiniteQuery(commentsQuery, props.handle);
-	const pages = use(pagesThenable);
+	const [commentsThenable] = useQuery(commentsQuery, props.handle);
+	const comments = use(commentsThenable);
 	return (
 		<ul className="grid gap-1.5">
-			{pages.pages
-				.flatMap((page) => page.items)
-				.map((comment) => (
-					<li
-						className="rounded-md border px-3 py-1.5 text-sm"
-						key={comment.id}
-					>
-						<span className="mr-2 font-medium">{comment.author}</span>
-						{comment.body}
-					</li>
-				))}
+			{comments.map((comment) => (
+				<li className="rounded-md border px-3 py-1.5 text-sm" key={comment.id}>
+					<span className="mr-2 font-medium">{comment.author}</span>
+					{comment.body}
+				</li>
+			))}
 		</ul>
 	);
 }

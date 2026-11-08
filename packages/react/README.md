@@ -60,8 +60,8 @@ export const Route = createFileRoute("/posts/$slug")({
 	loader: async (args) => {
 		const { slug } = args.params;
 		const [handles] = await load(args.context.queryClient, {
-			comments: prefetch(commentsQuery, { slug }),
 			post: swr(postQuery, { slug }),
+			comments: prefetch(commentsQuery, { slug }),
 		});
 		return handles;
 	},

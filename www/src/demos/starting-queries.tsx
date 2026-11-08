@@ -1,14 +1,12 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	group,
-	infiniteQueryOptions,
 	load,
 	prefetch,
 	type QueryClient,
 	queryOptions,
 	revalidate,
 	swr,
-	useInfiniteQuery,
 	useQuery,
 } from "@raf-query/react";
 import {
@@ -44,18 +42,12 @@ function createBlog() {
 	}));
 	return {
 		commentsQuery: (input: { postId: number }) =>
-			infiniteQueryOptions({
-				getNextPageParam: commentNext,
-				initialPageParam: 0,
+			queryOptions({
 				queryFn: (context) =>
 					server.respond(
 						`GET /posts/${input.postId}/comments`,
-						(db): CommentPage => ({
-							items: db.comments.filter(
-								(comment) => comment.postId === input.postId,
-							),
-							nextCursor: null,
-						}),
+						(db): ReadonlyArray<Comment> =>
+							db.comments.filter((comment) => comment.postId === input.postId),
 						context,
 					),
 				queryKey: posts(input.postId, "comments"),
@@ -73,18 +65,14 @@ function createBlog() {
 				staleTime: 5000,
 			}),
 		postsQuery: () =>
-			infiniteQueryOptions({
-				getNextPageParam: postNext,
-				initialPageParam: 0,
+			queryOptions({
 				queryFn: (context) =>
 					server.respond(
 						"GET /posts",
-						(db) => ({
-							items: db.posts
+						(db): ReadonlyArray<PostSummary> =>
+							db.posts
 								.slice(0, 4)
 								.map((post) => ({ id: post.id, title: post.title })),
-							nextCursor: null,
-						}),
 						context,
 					),
 				queryKey: posts(),
@@ -92,24 +80,6 @@ function createBlog() {
 			}),
 		server,
 	};
-}
-
-interface CommentPage {
-	readonly items: ReadonlyArray<Comment>;
-	readonly nextCursor: number | null;
-}
-
-interface PostListPage {
-	readonly items: ReadonlyArray<PostSummary>;
-	readonly nextCursor: number | null;
-}
-
-function commentNext(lastPage: CommentPage) {
-	return lastPage.nextCursor;
-}
-
-function postNext(lastPage: PostListPage) {
-	return lastPage.nextCursor;
 }
 
 interface RouterContext {
@@ -175,10 +145,6 @@ function CommentsSkeleton() {
 			))}
 		</div>
 	);
-}
-
-function commentItems(data: { readonly pages: ReadonlyArray<CommentPage> }) {
-	return data.pages.flatMap((page) => page.items);
 }
 
 function CommentList(props: { readonly comments: ReadonlyArray<Comment> }) {
@@ -275,22 +241,15 @@ const prefetchList = createRoute({
 const prefetchTree = prefetchRoot.addChildren([prefetchList, prefetchPost]);
 
 function PromisedList(props: {
-	readonly posts: Promise<{
-		readonly pages: ReadonlyArray<{
-			readonly items: ReadonlyArray<PostSummary>;
-		}>;
-	}>;
+	readonly posts: Promise<ReadonlyArray<PostSummary>>;
 }) {
-	const pages = use(props.posts);
-	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
+	const list = use(props.posts);
+	return <PostList posts={list} />;
 }
 
 function PrefetchedList(): ReactNode {
 	const handle = prefetchList.useLoaderData<PrefetchRouter>();
-	const [postsThenable, postsState] = useInfiniteQuery(
-		prefetching.postsQuery,
-		handle,
-	);
+	const [postsThenable, postsState] = useQuery(prefetching.postsQuery, handle);
 	return (
 		<Suspense fallback={<PostListSkeleton />} key={postsState.hash}>
 			<PromisedList posts={postsThenable} />
@@ -305,12 +264,9 @@ function PromisedPost(props: { readonly post: Promise<Post | undefined> }) {
 
 function PrefetchedComments(): ReactNode {
 	const data = prefetchPost.useLoaderData<PrefetchRouter>();
-	const [commentsThenable] = useInfiniteQuery(
-		prefetching.commentsQuery,
-		data.comments,
-	);
-	const pages = use(commentsThenable);
-	return <CommentList comments={commentItems(pages)} />;
+	const [commentsThenable] = useQuery(prefetching.commentsQuery, data.comments);
+	const comments = use(commentsThenable);
+	return <CommentList comments={comments} />;
 }
 
 function PrefetchedPost(): ReactNode {
@@ -363,25 +319,22 @@ const swrTree = swrRoot.addChildren([swrList, swrPost]);
 
 function SwrList(): ReactNode {
 	const handle = swrList.useLoaderData<SwrRouter>();
-	const [pagesThenable] = useInfiniteQuery(swrBlog.postsQuery, handle);
-	const pages = use(pagesThenable);
-	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
+	const [postsThenable] = useQuery(swrBlog.postsQuery, handle);
+	const list = use(postsThenable);
+	return <PostList posts={list} />;
 }
 
 function SwrPost(): ReactNode {
 	const data = swrPost.useLoaderData<SwrRouter>();
 	const [postThenable] = useQuery(swrBlog.postQuery, data.post);
 	const post = use(postThenable);
-	const [pagesThenable] = useInfiniteQuery(
-		swrBlog.commentsQuery,
-		data.comments,
-	);
-	const pages = use(pagesThenable);
+	const [commentsThenable] = useQuery(swrBlog.commentsQuery, data.comments);
+	const comments = use(commentsThenable);
 	return (
 		<PostPage>
 			<PostBody post={post} />
 			<CommentsSection>
-				<CommentList comments={commentItems(pages)} />
+				<CommentList comments={comments} />
 			</CommentsSection>
 		</PostPage>
 	);
@@ -420,25 +373,25 @@ const revalidateTree = revalidateRoot.addChildren([
 
 function RevalidatedList(): ReactNode {
 	const handle = revalidateList.useLoaderData<RevalidateRouter>();
-	const [pagesThenable] = useInfiniteQuery(revalidateBlog.postsQuery, handle);
-	const pages = use(pagesThenable);
-	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
+	const [postsThenable] = useQuery(revalidateBlog.postsQuery, handle);
+	const list = use(postsThenable);
+	return <PostList posts={list} />;
 }
 
 function RevalidatedPost(): ReactNode {
 	const data = revalidatePost.useLoaderData<RevalidateRouter>();
 	const [postThenable] = useQuery(revalidateBlog.postQuery, data.post);
 	const post = use(postThenable);
-	const [pagesThenable] = useInfiniteQuery(
+	const [commentsThenable] = useQuery(
 		revalidateBlog.commentsQuery,
 		data.comments,
 	);
-	const pages = use(pagesThenable);
+	const comments = use(commentsThenable);
 	return (
 		<PostPage>
 			<PostBody post={post} />
 			<CommentsSection>
-				<CommentList comments={commentItems(pages)} />
+				<CommentList comments={comments} />
 			</CommentsSection>
 		</PostPage>
 	);

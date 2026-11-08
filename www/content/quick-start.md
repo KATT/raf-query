@@ -1,6 +1,6 @@
 ---
 title: Quick start
-description: Create a query client, define a query factory, start it in a TanStack Start loader and read it with useQuery and use().
+description: Create a query client, define a post and its paged comments, start them in a TanStack Start loader, read them with useQuery, useInfiniteQuery and use(), and add a comment.
 section: Getting started
 order: 3
 ---
@@ -39,43 +39,49 @@ The client does nothing on its own. `recommended()` turns on what most apps want
 tanstack-start/src/routes/__root.tsx
 ```
 
-## 2. Define a query
+## 2. Define the queries
 
-A query is a **factory**: a function of at most one argument that returns `queryOptions(...)`. The argument is the query's input. Loaders and components call the same factory, so the data's type flows end to end.
-
-```sample
-tanstack-start/src/queries.ts#todos
-```
-
-The key comes from a **group**, `todos`, so one call can [invalidate](./query-invalidation.md) every todo query at once.
-
-## 3. Start it in the loader
-
-The loader starts the query with `load` and returns its **handle**, a small `{ queryKey, input }` object:
+The page is a blog post with its comments. A query is a **factory**: a function of at most one argument that returns `queryOptions(...)`, or `infiniteQueryOptions(...)` for a list that loads page by page, like the comments. The argument is the query's input, here the post's `slug`. Loaders and components call the same factory, so the data's type flows end to end.
 
 ```sample
-tanstack-start/src/routes/todos.tsx#loader
+tanstack-start/src/queries.ts#home
 ```
 
-`prefetch` starts the request without waiting for it, so the page renders while the data is on its way. Use `swr` instead when the page can't lay out without the data: the navigation then waits for it. [Starting queries](./starting-queries.md) covers the trade-off.
+The keys come from **groups**. `comments` is a group inside `posts`, so one call can [invalidate](./query-invalidation.md) every post query and every comment list at once, or only the comments.
 
-## 4. Read it in a component
+`listComments` returns a page of comments and the cursor of the next one, `null` after the last page. `getNextPageParam` hands that cursor to the next request, as in [TanStack Query](https://tanstack.com/query/latest/docs/framework/react/guides/infinite-queries).
+
+## 3. Start them in the loader
+
+The loader starts both queries in one `load` and returns their **handles**, small `{ queryKey, input }` objects:
 
 ```sample
-tanstack-start/src/routes/todos.tsx#component
+tanstack-start/src/routes/posts.$slug.tsx#route
 ```
 
-`useQuery` returns a stable thenable and the query's state. `use()` suspends until the data is there, then returns it; once the cache has data, the thenable is already fulfilled and `use()` returns synchronously.
+`swr` waits for the post when the cache doesn't have it yet, because the page can't lay out without it. `prefetch` starts the comments without waiting, so the page renders while they're on their way. [Starting queries](./starting-queries.md) covers the trade-off.
+
+## 4. Read them in components
+
+```sample
+tanstack-start/src/routes/posts.$slug.tsx#component
+```
+
+`useQuery` takes the factory as well as the handle because the handle is plain data, `{ queryKey, input }`, so it can cross from a loader or a server component to the browser, and a function can't: the handle can't carry the `queryFn`, so you pass the factory alongside it.
+
+`useQuery` returns a stable thenable and the query's state. `use()` suspends until the data is there, then returns it. The loader already waited for the post, so the thenable is fulfilled and `use()` returns it without suspending.
+
+The comments may still be loading, so `<Comments>` sits in its own Suspense boundary and the post renders without them. `useInfiniteQuery` reads them as `{ pages, pageParams }`, and its state loads more: `fetchNextPage()` fetches the next page and appends it, `hasNextPage` says whether there is one, and `isFetchingNextPage` is `true` while it loads. See [Infinite queries](./infinite-queries.md).
 
 ## 5. Write data with an Action
 
-There is no `useMutation`. Write a form action in the component: await the write, then invalidate what it changed with the client from `useQueryClient()`:
+There is no `useMutation`. Adding a comment is a form action in the component: await the write, then invalidate what it changed with the client from `useQueryClient()`:
 
 ```sample
-tanstack-start/src/components/add-todo.tsx#add-todo
+tanstack-start/src/routes/posts.$slug.tsx#add-comment
 ```
 
-`invalidateMany` resolves once every todo query being read has refetched, so the form stays pending until the new todo is on screen. See [Mutations](./mutations.md) for optimistic updates and errors.
+`invalidateMany` takes a list of targets. `[commentsQuery, { slug }]` is this post's comments, and the list refetches every page it has loaded. The verb resolves once that refetch has settled, so the form stays pending until the new comment is on screen. See [Mutations](./mutations.md) for optimistic updates and errors.
 
 ## What you get
 

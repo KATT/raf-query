@@ -19,6 +19,8 @@ Every entry gives the same `QueryHandle`, whether the loader waited for it or no
 
 ## Reading a handle
 
+`useQuery` takes the factory as well as the handle because the handle is plain data, `{ queryKey, input }`, so it can cross from a loader or a server component to the browser, and a function can't: the handle can't carry the `queryFn`, so you pass the factory alongside it.
+
 `useQuery` returns a thenable for every handle, and `use()` reads it. What the loader did decides whether that read suspends: an `swr` or `revalidate` handle's thenable is already fulfilled, so `use()` returns the data at once, and a `prefetch` handle's suspends until the data lands:
 
 ```sample

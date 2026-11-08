@@ -3,7 +3,6 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
 	group,
-	infiniteQueryOptions,
 	invalidateAll,
 	invalidateMany,
 	invalidateOne,
@@ -11,7 +10,8 @@ import {
 	prefetch,
 	type QueryClient,
 	type QueryHandle,
-	useInfiniteQuery,
+	queryOptions,
+	useQuery,
 	useQueryClient,
 } from "@raf-query/react";
 import { Suspense, use, useTransition } from "react";
@@ -36,28 +36,15 @@ const server = createFakeServer(() => ({
 const todos = group("todos");
 const users = group("users");
 
-interface StringPage {
-	readonly items: ReadonlyArray<string>;
-	readonly nextCursor: number | null;
-}
-
-function pageNext(lastPage: StringPage) {
-	return lastPage.nextCursor;
-}
-
 function todosQuery(input: { readonly status: Status }) {
-	return infiniteQueryOptions({
-		getNextPageParam: pageNext,
-		initialPageParam: 0,
+	return queryOptions({
 		queryFn: (context) =>
 			server.respond(
 				`GET /todos?status=${input.status}`,
-				(db) => ({
-					items: db.todos
+				(db) =>
+					db.todos
 						.filter((todo) => input.status === "all" || todo.done)
 						.map((todo) => todo.text),
-					nextCursor: null,
-				}),
 				context,
 			),
 		queryKey: todos("list", input),
@@ -66,15 +53,9 @@ function todosQuery(input: { readonly status: Status }) {
 }
 
 function usersQuery() {
-	return infiniteQueryOptions({
-		getNextPageParam: pageNext,
-		initialPageParam: 0,
+	return queryOptions({
 		queryFn: (context) =>
-			server.respond(
-				"GET /users",
-				(db) => ({ items: db.users, nextCursor: null }),
-				context,
-			),
+			server.respond("GET /users", (db) => db.users, context),
 		queryKey: users("list"),
 		staleTime: Infinity,
 	});
@@ -87,29 +68,23 @@ interface PageData {
 }
 
 function ListCard(props: {
-	readonly itemsThenable: Promise<{
-		readonly pages: ReadonlyArray<{ readonly items: ReadonlyArray<string> }>;
-	}>;
+	readonly itemsThenable: Promise<ReadonlyArray<string>>;
 }) {
-	const pages = use(props.itemsThenable);
+	const items = use(props.itemsThenable);
 	return (
 		<ul className="grid gap-1 text-sm">
-			{pages.pages
-				.flatMap((page) => page.items)
-				.map((item) => (
-					<li className="truncate" key={item}>
-						{item}
-					</li>
-				))}
+			{items.map((item) => (
+				<li className="truncate" key={item}>
+					{item}
+				</li>
+			))}
 		</ul>
 	);
 }
 
 function Card(props: {
 	readonly fetching: boolean;
-	readonly itemsThenable: Promise<{
-		readonly pages: ReadonlyArray<{ readonly items: ReadonlyArray<string> }>;
-	}>;
+	readonly itemsThenable: Promise<ReadonlyArray<string>>;
 	readonly label: string;
 	readonly updatedAt: number;
 }) {
@@ -146,7 +121,7 @@ function TodosCard(props: {
 	readonly handle: QueryHandle<typeof todosQuery>;
 	readonly label: string;
 }) {
-	const [itemsThenable, state] = useInfiniteQuery(todosQuery, props.handle);
+	const [itemsThenable, state] = useQuery(todosQuery, props.handle);
 	return (
 		<Card
 			fetching={state.isFetching}
@@ -158,7 +133,7 @@ function TodosCard(props: {
 }
 
 function UsersCard(props: { readonly handle: QueryHandle<typeof usersQuery> }) {
-	const [itemsThenable, state] = useInfiniteQuery(usersQuery, props.handle);
+	const [itemsThenable, state] = useQuery(usersQuery, props.handle);
 	return (
 		<Card
 			fetching={state.isFetching}

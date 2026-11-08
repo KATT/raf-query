@@ -1,41 +1,19 @@
-// #region todos
 // #region home
 import { group, infiniteQueryOptions, queryOptions } from "@raf-query/react";
 
-// #endregion home
-import { getTodo, listTodos } from "./api.ts";
-
-// #endregion todos
-// #region home
 import { type CommentPage, listComments } from "./api.ts";
 import { getPost } from "./posts.functions.ts";
 
 // #endregion home
-import { getAuthor, getBuild, getMe, getSettings, listPosts } from "./api.ts";
-
-// #region todos
-export const todos = group("todos");
-
-export function todosQuery() {
-	return infiniteQueryOptions({
-		queryKey: todos("list"),
-		queryFn: async () => ({
-			items: await listTodos(),
-			nextCursor: null,
-		}),
-		initialPageParam: 0,
-		getNextPageParam: (lastPage) => lastPage.nextCursor,
-	});
-}
-
-export function todoQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: todos("byId", input.id),
-		queryFn: () => getTodo(input.id),
-		staleTime: 30_000,
-	});
-}
-// #endregion todos
+import {
+	getAuthor,
+	getBuild,
+	getMe,
+	getSettings,
+	getTodo,
+	listPosts,
+	listTodos,
+} from "./api.ts";
 
 // #region home
 // #region groups
@@ -63,6 +41,23 @@ export function commentsQuery(input: { slug: string }) {
 	});
 }
 // #endregion home
+
+export const todos = group("todos");
+
+export function todosQuery() {
+	return queryOptions({
+		queryKey: todos("list"),
+		queryFn: () => listTodos(),
+	});
+}
+
+export function todoQuery(input: { id: number }) {
+	return queryOptions({
+		queryKey: todos("byId", input.id),
+		queryFn: () => getTodo(input.id),
+		staleTime: 30_000,
+	});
+}
 
 export function postsQuery(input: { page: number; sort: "newest" | "oldest" }) {
 	return queryOptions({

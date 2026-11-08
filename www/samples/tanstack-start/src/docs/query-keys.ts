@@ -1,7 +1,6 @@
 import {
 	createQueryClient,
 	group,
-	infiniteQueryOptions,
 	invalidateMany,
 	queryOptions,
 } from "@raf-query/react";
@@ -23,15 +22,7 @@ archived.path;
 const settings = group("settings");
 
 // A list of todos
-infiniteQueryOptions({
-	queryKey: todos("list"),
-	queryFn: async () => ({
-		items: await listTodos(),
-		nextCursor: null,
-	}),
-	initialPageParam: 0,
-	getNextPageParam: (lastPage) => lastPage.nextCursor,
-});
+queryOptions({ queryKey: todos("list"), queryFn: () => listTodos() });
 
 // Something else, whatever!
 queryOptions({
@@ -50,15 +41,7 @@ queryOptions({ queryKey: todos("byId", 5), queryFn: () => getTodo(5) });
 queryOptions({ queryKey: todos("byId", 5, { preview: true }), queryFn });
 
 // A list of archived todos that are "done"
-infiniteQueryOptions({
-	queryKey: archived("list", { status: "done" }),
-	queryFn: async () => ({
-		items: await queryFn(),
-		nextCursor: null,
-	}),
-	initialPageParam: 0,
-	getNextPageParam: (lastPage) => lastPage.nextCursor,
-});
+queryOptions({ queryKey: archived("list", { status: "done" }), queryFn });
 // #endregion
 
 declare const status: string;

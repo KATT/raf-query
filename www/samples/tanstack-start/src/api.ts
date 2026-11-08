@@ -64,6 +64,13 @@ export function listComments(input: { cursor: number; slug: string }) {
 	);
 }
 
+export function addComment(input: { body: string; slug: string }) {
+	return request<PostComment>(`/api/posts/${input.slug}/comments`, {
+		method: "POST",
+		body: JSON.stringify({ body: input.body }),
+	});
+}
+
 export function listPosts(input: { page: number; sort: "newest" | "oldest" }) {
 	return request<ReadonlyArray<Post>>(
 		`/api/posts?page=${input.page}&sort=${input.sort}`,
@@ -86,13 +93,6 @@ export function listTodos(input?: { page?: number; status?: "open" | "done" }) {
 
 export function getTodo(id: number) {
 	return request<Todo>(`/api/todos/${id}`);
-}
-
-export function createTodo(input: { title: string }) {
-	return request<Todo>("/api/todos", {
-		method: "POST",
-		body: JSON.stringify(input),
-	});
 }
 
 export function getAuthor(id: string) {

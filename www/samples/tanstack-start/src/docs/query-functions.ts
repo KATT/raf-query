@@ -1,10 +1,4 @@
-import {
-	type ErrorOf,
-	fail,
-	group,
-	infiniteQueryOptions,
-	queryOptions,
-} from "@raf-query/react";
+import { type ErrorOf, fail, group, queryOptions } from "@raf-query/react";
 import type { Post, Todo } from "~/api.ts";
 
 const todos = group("todos");
@@ -18,15 +12,7 @@ declare function fetchTodoById(id: number): Promise<Todo>;
 declare const id: number;
 
 // #region intro
-infiniteQueryOptions({
-	getNextPageParam: (lastPage: {
-		readonly items: ReadonlyArray<Todo>;
-		readonly nextCursor: number | null;
-	}) => lastPage.nextCursor,
-	initialPageParam: 0,
-	queryFn: async () => ({ items: await fetchAllTodos(), nextCursor: null }),
-	queryKey: todos(),
-});
+queryOptions({ queryKey: todos(), queryFn: fetchAllTodos });
 queryOptions({ queryKey: todos(id), queryFn: () => fetchTodoById(id) });
 queryOptions({
 	queryKey: todos(id),

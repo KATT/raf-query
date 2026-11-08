@@ -30,10 +30,10 @@ export function postQuery(input: { slug: string }) {
 export const Route = createFileRoute("/posts/$slug")({
 	loader: async (args) => {
 		const [handles] = await load(args.context.queryClient, {
-			// Comments stream in after the route changes, under the skeleton below.
-			comments: prefetch(commentsQuery, { slug: args.params.slug }),
 			// The route change waits for the post.
 			post: swr(postQuery, { slug: args.params.slug }),
+			// Comments stream in after the route changes, under the skeleton below.
+			comments: prefetch(commentsQuery, { slug: args.params.slug }),
 		});
 		return handles;
 	},

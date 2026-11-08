@@ -59,10 +59,10 @@ Several queries the route can't render without are `swr` entries in the same `lo
 
 ## Dependent queries
 
-A query whose input comes from another query's result is a waterfall by construction. Fix it where the data is shaped, so every query a route needs can start from what the URL already holds:
+A query whose input comes from another query's result is a waterfall by construction. A post page that shows "more by this author" needs `authorQuery({ id: post.authorId })`, and `authorId` is only known once the post has loaded, so the author's request can't start before the post's has finished. Fix it where the data is shaped, so every query a route needs can start from what the URL already holds:
 
 - **Put the input in the route.** If the page is about an organization, its id belongs in the path (`/orgs/$orgId`), not in a lookup on the current user.
-- **Have the backend resolve it.** The server already knows the session and the relations, so an endpoint can return the child with its parent, or be keyed by what the client has (`GET /me/org` instead of `GET /me` then `GET /orgs/:id`).
+- **Have the backend resolve it.** The server already knows the session and the relations, so an endpoint can return the child with its parent (the post with its author), or be keyed by what the client has (`GET /posts/:slug/author` instead of the post then `GET /authors/:id`, or `GET /me/org` instead of `GET /me` then `GET /orgs/:id`). The demo above does this: its loader starts the author from the post's id.
 
 <details>
 <summary>Example: the current user's organization</summary>
@@ -89,12 +89,12 @@ Either way, both requests start together, and the page is ready after one round 
 
 When the data really can't be reshaped (a third-party API you don't control), you have two options, and both pay the extra round trip:
 
-- **In the loader**: load the parent with `revalidate`, then build the child's input from `load`'s data. The navigation waits for both.
-- **In a component**: read the child with a `waterfallHandle`, below. The rest of the page renders first.
+- **In the loader**: load the post with `revalidate`, then build the author's input from `load`'s data. The navigation waits for both.
+- **In a component**: read the author with a `waterfallHandle`, below. The rest of the page renders first.
 
 ## Render-time inputs: waterfallHandle
 
-When an input is only known at render time (an id from a parent query's result), no loader can start the query. `waterfallHandle` builds its handle from the factory and the input, so the consumer looks the same as one fed by a loader. It starts nothing: the component that reads the handle fetches while it renders.
+When an input is only known at render time (the post's `authorId`), no loader can start the query. `waterfallHandle` builds its handle from the factory and the input, so the consumer looks the same as one fed by a loader. It starts nothing: the component that reads the handle fetches while it renders.
 
 ```sample
 tanstack-start/src/docs/request-waterfalls.render-time-inputs-waterfallhandle.tsx#render-time-inputs-waterfallhandle

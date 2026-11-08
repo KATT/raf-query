@@ -31,14 +31,9 @@ export function commentsQuery(input: { slug: string }) {
 const issues = group("issues");
 
 export function issueListQuery(input: { status: "open" | "done" }) {
-	return infiniteQueryOptions({
+	return queryOptions({
 		queryKey: issues(input),
-		queryFn: async () => ({
-			items: await listIssues(input),
-			nextCursor: null,
-		}),
-		initialPageParam: 0,
-		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		queryFn: () => listIssues(input),
 	});
 }
 
