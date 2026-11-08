@@ -23,6 +23,7 @@ const ranking = [
 	["retry", "retries"],
 	["polling", "polling"],
 	["factory", "query-factories"],
+	["queryOptions", "query-factories"],
 	["invalidation", "query-invalidation"],
 	["infinite queries", "infinite-queries"],
 	["server components", "react-server-components"],
@@ -34,20 +35,19 @@ const ranking = [
 	["invalidaton", "query-invalidation"],
 	["cancelation", "query-cancellation"],
 	// A heading named for the query, camelCase or not.
-	["prefetch", "starting-queries#prefetch-or-ensure"],
+	["prefetch", "starting-queries#prefetch-or-swr"],
 	["staleTime", "caching#choosing-staletime"],
 	["gcTime", "caching#choosing-gctime"],
-	["queryOptions", "api-reference#query-options"],
 	["isFetching", "background-fetching-indicators#one-query-isfetching"],
-	["usewaterfall", "request-waterfalls#render-time-inputs-usewaterfall"],
-	["abort", "query-cancellation#when-requests-are-aborted"],
+	["waterfallhandle", "request-waterfalls#render-time-inputs-waterfallhandle"],
+	["aborted", "query-cancellation#when-requests-are-aborted"],
 	// Only in a section's body text.
 	["useSuspenseQuery", "comparison#api-map"],
 	[
 		"placeholder",
 		"url-state-and-pagination#what-shows-while-the-new-input-loads",
 	],
-	["enabled", "query-factories#disabling-a-query"],
+	["skipToken", "starting-queries#conditional-queries"],
 ] as const;
 
 describe("searchDocs on the docs", () => {
