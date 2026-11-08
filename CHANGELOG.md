@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.12.0](https://github.com/KATT/raf-query/compare/0.11.1...0.12.0) (2026-11-08)
+
+### ⚠ BREAKING CHANGES
+
+- greenfield rewrite on a promise kernel, with load() handles and opt-in behaviors ([#230](https://github.com/KATT/raf-query/issues/230))
+
+### Features
+
+- greenfield rewrite on a promise kernel, with load() handles and opt-in behaviors ([#230](https://github.com/KATT/raf-query/issues/230)) ([e2a6f85](https://github.com/KATT/raf-query/commit/e2a6f85297992dc8a5cdd3f871a54452393ae978))
+
 ## [0.11.1](https://github.com/KATT/raf-query/compare/0.11.0...0.11.1) (2026-10-17)
 
 ### Features
