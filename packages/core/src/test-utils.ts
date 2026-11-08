@@ -1,5 +1,6 @@
 import {
 	QueryClientProvider,
+	useInfiniteQuery,
 	useQuery,
 	type UseQueryOptions,
 } from "@raf-query/react";
@@ -18,7 +19,8 @@ import {
 	infiniteQueryOptions,
 	type QueryClient,
 	type QueryClientConfig,
-	type QueryFactory,
+	type InfiniteQueryFactory,
+	type SingleQueryFactory,
 	type QueryHandle,
 	queryOptions,
 } from "./index.ts";
@@ -223,7 +225,7 @@ function provider(client: QueryClient) {
  * `renders()` counts the renders so far.
  */
 export function read<
-	TFactory extends QueryFactory,
+	TFactory extends SingleQueryFactory,
 	const THandle extends QueryHandle<TFactory>,
 >(
 	client: QueryClient,
@@ -236,6 +238,27 @@ export function read<
 		() => {
 			renders += 1;
 			return useQuery(factory, handle, options);
+		},
+		{ wrapper: provider(client) },
+	);
+	return Object.assign(hook, { renders: () => renders });
+}
+
+/** `read` for a paged query, with `useInfiniteQuery`. */
+export function readPages<
+	TFactory extends InfiniteQueryFactory,
+	const THandle extends QueryHandle<TFactory>,
+>(
+	client: QueryClient,
+	factory: TFactory,
+	handle: THandle,
+	options?: UseQueryOptions,
+) {
+	let renders = 0;
+	const hook = renderHook(
+		() => {
+			renders += 1;
+			return useInfiniteQuery(factory, handle, options);
 		},
 		{ wrapper: provider(client) },
 	);

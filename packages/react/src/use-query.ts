@@ -7,6 +7,7 @@ import {
 	type QueryFactory,
 	type QueryHandle,
 	type Result,
+	type SingleQueryFactory,
 	type Thenable,
 } from "@raf-query/core";
 import {
@@ -19,7 +20,6 @@ import {
 	isStale,
 	isWaterfallHandle,
 	mapThenable,
-	pageParamAfter,
 	pending,
 	rejected,
 	subscribeEntry,
@@ -65,21 +65,6 @@ export interface QueryControls<TFactory extends QueryFactory = QueryFactory> {
 	readonly updatedAt: number;
 }
 
-/** Extra controls for paged queries (`infiniteQueryOptions`). */
-export interface PageControls {
-	fetchNextPage(): Promise<void>;
-	fetchPreviousPage(): Promise<void>;
-	readonly hasNextPage: boolean;
-	readonly hasPreviousPage: boolean;
-	readonly isFetchingNextPage: boolean;
-	readonly isFetchingPreviousPage: boolean;
-}
-
-type ControlsOf<TFactory extends QueryFactory> = QueryControls<TFactory> &
-	(ReturnType<TFactory> extends { readonly getNextPageParam: unknown }
-		? PageControls
-		: unknown);
-
 type Read<
 	TFactory extends QueryFactory,
 	TResult extends boolean,
@@ -88,7 +73,8 @@ type Read<
 	: DataOf<TFactory>;
 
 /**
- * What `useQuery` reads, for every handle: a thenable to pass to `use()`.
+ * What `useQuery` and `useInfiniteQuery` read, for every handle: a thenable
+ * to pass to `use()`.
  * A loader can't promise the data is still cached when a component renders
  * (a write can reset or remove it), so the read may suspend.
  */
@@ -154,7 +140,7 @@ function startIfMissing(entry: Entry, state: State, waterfall: boolean) {
 	void fetchEntry(entry);
 }
 
-type State = Entry["state"];
+export type State = Entry["state"];
 
 const disabledReads = new WeakMap<Entry, Thenable<unknown>>();
 
@@ -174,46 +160,24 @@ function readOf(entry: Entry, state: State): Thenable<unknown> {
 	return read;
 }
 
-function pagesAround(entry: Entry, state: State) {
-	const options = entry.options;
-	const paged =
-		options !== undefined && "getNextPageParam" in options && state.hasData;
-	const has = (direction: "next" | "previous") =>
-		paged &&
-		pageParamAfter(
-			// SAFETY: options with `getNextPageParam` come from `infiniteQueryOptions`.
-			options as never,
-			// SAFETY: and so does the data they fetched.
-			state.data as never,
-			direction,
-		) !== undefined;
-	return { hasNextPage: has("next"), hasPreviousPage: has("previous") };
-}
-
-function settled(promise: Promise<unknown>): Promise<void> {
+export function settled(promise: Promise<unknown>): Promise<void> {
 	return promise.then(() => {});
 }
 
-/**
- * Read a query by its handle.
- *
- * ```tsx
- * const [issueThenable, issueState] = useQuery(issueQuery, handles.issue);
- * const issue = use(issueThenable);
- * ```
- *
- * Reading never refetches stale data: loaders decide freshness. A query no
- * loader started fetches while rendering, which is a waterfall (see
- * `waterfallHandle`).
- */
-export function useQuery<
-	TFactory extends QueryFactory,
-	const TResult extends boolean = false,
->(
+/** What both hooks read: the entry shown, its state, the thenable and the controls. */
+export interface QueryRead<TFactory extends QueryFactory> {
+	readonly controls: QueryControls<TFactory>;
+	readonly entry: Entry;
+	readonly entryState: State;
+	readonly thenable: Thenable<unknown>;
+}
+
+/** The read both hooks share. Its caller adds what its kind of query needs. */
+export function useQueryRead<TFactory extends QueryFactory>(
 	factory: TFactory,
 	handle: QueryHandle<TFactory>,
-	options?: UseQueryOptions<TResult>,
-): readonly [QueryValue<TFactory, TResult>, ControlsOf<TFactory>] {
+	options: UseQueryOptions | undefined,
+): QueryRead<TFactory> {
 	const client = useQueryClient();
 	const current = entryOf(client, factory, handle.input);
 	const subscribe = useCallback(
@@ -257,16 +221,10 @@ export function useQuery<
 		thenable = asResult(caches.result, thenable);
 	}
 	const controls = {
-		...pagesAround(entry, entryState),
 		error: state.error,
-		fetchNextPage: () => settled(fetchEntry(entry, { direction: "next" })),
-		fetchPreviousPage: () =>
-			settled(fetchEntry(entry, { direction: "previous" })),
 		hash: current.hash,
 		input: handle.input,
 		isFetching: state.isFetching,
-		isFetchingNextPage: entryState.fetchingDirection === "next",
-		isFetchingPreviousPage: entryState.fetchingDirection === "previous",
 		isPending: !state.hasData,
 		isPrevious,
 		isStale: isStale(current),
@@ -274,10 +232,40 @@ export function useQuery<
 		refetch: () => settled(fetchEntry(current)),
 		updatedAt: state.updatedAt,
 	};
+	return {
+		controls:
+			// SAFETY: a handle's `queryKey` is its factory's key as a plain tuple.
+			controls as QueryControls<TFactory>,
+		entry,
+		entryState,
+		thenable,
+	};
+}
+
+/**
+ * Read a query by its handle.
+ *
+ * ```tsx
+ * const [issueThenable, issueState] = useQuery(issueQuery, handles.issue);
+ * const issue = use(issueThenable);
+ * ```
+ *
+ * Reading never refetches stale data: loaders decide freshness. A query no
+ * loader started fetches while rendering, which is a waterfall (see
+ * `waterfallHandle`). Paged queries read with `useInfiniteQuery`.
+ */
+export function useQuery<
+	TFactory extends SingleQueryFactory,
+	const TResult extends boolean = false,
+>(
+	factory: TFactory,
+	handle: QueryHandle<TFactory>,
+	options?: UseQueryOptions<TResult>,
+): readonly [QueryValue<TFactory, TResult>, QueryControls<TFactory>] {
+	const read = useQueryRead(factory, handle, options);
 	return [
 		// SAFETY: `QueryValue` describes what was read for this handle.
-		thenable as QueryValue<TFactory, TResult>,
-		// SAFETY: paged controls are only typed for paged factories.
-		controls as ControlsOf<TFactory>,
+		read.thenable as QueryValue<TFactory, TResult>,
+		read.controls,
 	];
 }

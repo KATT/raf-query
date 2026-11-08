@@ -22,6 +22,7 @@ import {
 	flush,
 	issues,
 	read,
+	readPages,
 	start,
 	testClient,
 	timersOf,
@@ -371,7 +372,7 @@ describe("paged queries", () => {
 	it("load the first page, then the next ones until there are none", async () => {
 		const backend = createBackend();
 		const client = testClient();
-		const view = read(
+		const view = readPages(
 			client,
 			backend.pageQuery,
 			waterfallHandle(backend.pageQuery, { size: 4 }),
@@ -411,7 +412,7 @@ describe("paged queries", () => {
 		await backend.respondAll();
 		await backend.respondAll();
 		const [handles] = await loading;
-		const view = read(client, backend.pageQuery, handles.pages);
+		const view = readPages(client, backend.pageQuery, handles.pages);
 		const [refetch] = await start(() => view.result.current[1].refetch());
 		await backend.respondAll();
 		await backend.respondAll();
@@ -437,7 +438,7 @@ describe("paged queries", () => {
 				queryFn: (context) => context.pageParam,
 				queryKey: issues("numbers"),
 			});
-		const view = read(client, numbers, waterfallHandle(numbers));
+		const view = readPages(client, numbers, waterfallHandle(numbers));
 		await flush();
 		await act(() => view.result.current[1].fetchNextPage());
 		await act(() => view.result.current[1].fetchNextPage());
@@ -463,8 +464,16 @@ describe("paged queries", () => {
 						: context.pageParam,
 				queryKey: issues("failing", input),
 			});
-		const atFirst = read(client, failing, waterfallHandle(failing, { at: 0 }));
-		const atSecond = read(client, failing, waterfallHandle(failing, { at: 1 }));
+		const atFirst = readPages(
+			client,
+			failing,
+			waterfallHandle(failing, { at: 0 }),
+		);
+		const atSecond = readPages(
+			client,
+			failing,
+			waterfallHandle(failing, { at: 1 }),
+		);
 		await flush();
 		await act(() => atSecond.result.current[1].fetchNextPage());
 
@@ -487,7 +496,7 @@ describe("paged queries", () => {
 				pages: [],
 			},
 		);
-		const view = read(
+		const view = readPages(
 			client,
 			backend.pageQuery,
 			waterfallHandle(backend.pageQuery, { size: 1 }),

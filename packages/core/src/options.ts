@@ -128,6 +128,20 @@ export type QueryFactory = {
 	};
 }["factory"];
 
+/** A factory whose query has one value, not pages: what `useQuery` reads. */
+export type SingleQueryFactory = {
+	factory(input: unknown): ReturnType<QueryFactory> & {
+		readonly getNextPageParam?: never;
+	};
+}["factory"];
+
+/** A factory of paged queries (`infiniteQueryOptions`): what `useInfiniteQuery` reads. */
+export type InfiniteQueryFactory = {
+	factory(input: unknown): ReturnType<QueryFactory> & {
+		readonly getNextPageParam: (...args: never) => unknown;
+	};
+}["factory"];
+
 /** Call a factory with an input its caller's types already checked. */
 export function optionsOf(factory: AnyFactory, input: unknown): QueryOptions {
 	// SAFETY: factories return query options, and callers type `input`.

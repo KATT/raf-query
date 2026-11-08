@@ -352,66 +352,6 @@ describe("useQuery", () => {
 		expect(screen.getByText("Second false")).toBeTruthy();
 	});
 
-	it("pages through a paged query", async () => {
-		const backend = createBackend();
-		const client = testClient();
-		let handles!: { readonly pages: QueryHandle<Backend["pageQuery"]> };
-		await loaded(backend, async () => {
-			[handles] = await load(client, {
-				pages: fetchEntry(backend.pageQuery, { size: 2 }),
-			});
-		});
-		const settled = vi.fn();
-		function Pages() {
-			const [pagesThenable, controls] = useQuery(
-				backend.pageQuery,
-				handles.pages,
-			);
-			const data = use(pagesThenable);
-			return (
-				<>
-					<p>{data.pages.flat().join(",")}</p>
-					<p>
-						{String(controls.hasPreviousPage)} {String(controls.hasNextPage)}
-					</p>
-					<p>
-						{String(controls.isFetchingPreviousPage)}{" "}
-						{String(controls.isFetchingNextPage)}
-					</p>
-					<button
-						onClick={() => void controls.fetchNextPage().then(settled)}
-						type="button"
-					>
-						next
-					</button>
-					<button
-						onClick={() => void controls.fetchPreviousPage().then(settled)}
-						type="button"
-					>
-						previous
-					</button>
-				</>
-			);
-		}
-		await renderWith(client, <Pages />);
-		expect(screen.getByText("1,1")).toBeTruthy();
-		expect(screen.getByText("true true")).toBeTruthy();
-		await act(async () => {
-			fireEvent.click(screen.getByText("next"));
-			await flush();
-		});
-		expect(screen.getByText("false true")).toBeTruthy();
-		await backend.respondAll();
-		await act(async () => {
-			fireEvent.click(screen.getByText("previous"));
-			await flush();
-		});
-		expect(screen.getByText("true false")).toBeTruthy();
-		await backend.respondAll();
-		expect(screen.getByText("0,0,1,1,2,2")).toBeTruthy();
-		expect(settled).toHaveBeenCalledTimes(2);
-	});
-
 	it("leaves a disabled query pending in the browser", async () => {
 		const backend = createBackend();
 		const client = testClient();

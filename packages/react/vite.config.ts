@@ -16,7 +16,11 @@ export default defineConfig({
 	test: {
 		clearMocks: true,
 		coverage: {
-			exclude: ["src/**/*.test.{ts,tsx}", "src/test-utils.{ts,tsx}"],
+			exclude: [
+				"src/**/*.test.{ts,tsx}",
+				"src/**/*.test-d.{ts,tsx}",
+				"src/test-utils.{ts,tsx}",
+			],
 			include: ["src/**/*.{ts,tsx}"],
 			reporter: ["html", "lcov", "text-summary"],
 			thresholds: {

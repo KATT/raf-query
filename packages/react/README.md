@@ -52,6 +52,7 @@ import {
 	load,
 	prefetchEntry,
 	type QueryHandle,
+	useInfiniteQuery,
 	useQuery,
 } from "@raf-query/react";
 import { Suspense, use } from "react";
@@ -84,7 +85,7 @@ function PostPage() {
 }
 
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
-	const [pagesThenable] = useQuery(commentsQuery, props.handle);
+	const [pagesThenable] = useInfiniteQuery(commentsQuery, props.handle);
 	const pages = use(pagesThenable);
 	return pages.pages
 		.flatMap((page) => page.items)
@@ -98,13 +99,13 @@ function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 
 ## Entry points
 
-| Import                             | Use                                                                                                       |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `@raf-query/react`                 | `QueryClientProvider`, `QueryProvider`, `useQuery`, `useIsFetching`, `HydrationBoundary`, and all of core |
-| `@raf-query/react/hydration`       | `dehydrate` and `hydrate` from core                                                                       |
-| `@raf-query/react/groups`          | `group` and `tag` from core                                                                               |
-| `@raf-query/react/tanstack-router` | [TanStack Start and Router](https://raf-query.katt.dev/docs/tanstack-start) SSR streaming                 |
-| `@raf-query/react/devtools`        | The [devtools](https://raf-query.katt.dev/docs/devtools) panel; omit the element to tree-shake it         |
+| Import                             | Use                                                                                                                           |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `@raf-query/react`                 | `QueryClientProvider`, `QueryProvider`, `useQuery`, `useInfiniteQuery`, `useIsFetching`, `HydrationBoundary`, and all of core |
+| `@raf-query/react/hydration`       | `dehydrate` and `hydrate` from core                                                                                           |
+| `@raf-query/react/groups`          | `group` and `tag` from core                                                                                                   |
+| `@raf-query/react/tanstack-router` | [TanStack Start and Router](https://raf-query.katt.dev/docs/tanstack-start) SSR streaming                                     |
+| `@raf-query/react/devtools`        | The [devtools](https://raf-query.katt.dev/docs/devtools) panel; omit the element to tree-shake it                             |
 
 ## License
 

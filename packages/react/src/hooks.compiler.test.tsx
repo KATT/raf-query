@@ -8,6 +8,7 @@ import {
 	prefetchEntry,
 	type QueryHandle,
 	setData,
+	useInfiniteQuery,
 	useIsFetching,
 	useQuery,
 } from "./index.ts";
@@ -63,7 +64,8 @@ describe("hooks compiled by the React Compiler", () => {
 		}
 	});
 
-	it("render every page a paged query fetches", async () => {
+	it("render every page a paged query fetches, and whether one is loading", async () => {
+		expect(String(useInfiniteQuery)).toMatch(/\$\[\d+\]/);
 		const backend = createBackend();
 		const client = testClient();
 		const handle = await prefetched(backend, async () => {
@@ -75,7 +77,7 @@ describe("hooks compiled by the React Compiler", () => {
 		function Pages(props: {
 			readonly handle: QueryHandle<Backend["pageQuery"]>;
 		}) {
-			const [pagesThenable, controls] = useQuery(
+			const [pagesThenable, controls] = useInfiniteQuery(
 				backend.pageQuery,
 				props.handle,
 				{
@@ -86,6 +88,7 @@ describe("hooks compiled by the React Compiler", () => {
 			return (
 				<>
 					<p>pages {data.pages.flat().join(",")}</p>
+					<p>{controls.isFetchingNextPage ? "loading next" : "idle"}</p>
 					<button onClick={() => void controls.fetchNextPage()} type="button">
 						next
 					</button>
@@ -99,8 +102,10 @@ describe("hooks compiled by the React Compiler", () => {
 				fireEvent.click(screen.getByText("next"));
 				await flush();
 			});
+			expect(screen.getByText("loading next")).toBeTruthy();
 			await backend.respondAll();
 			expect(screen.getByText(shown)).toBeTruthy();
+			expect(screen.getByText("idle")).toBeTruthy();
 		}
 	});
 
