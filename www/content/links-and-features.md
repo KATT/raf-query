@@ -1,5 +1,5 @@
 ---
-title: Query meta
+title: Links, features and meta
 description: Set per-query options for the client's links and features with meta, declare your own fields, and type meta by the client it belongs to.
 section: Guides
 order: 20
@@ -14,7 +14,7 @@ order: 20
 The per-query behavior that `recommended()` turns on is set here, and each field is read by the part that does it:
 
 ```sample
-tanstack-start/src/docs/query-meta.ts#intro
+tanstack-start/src/docs/links-and-features.ts#intro
 ```
 
 | Field                  | Read by              | Use                                                                           |
@@ -36,7 +36,7 @@ A client's behavior comes from two kinds of part, both passed to `createQueryCli
 Each part declares the `meta` fields it reads, with `link<{ meta: … }>(fn)` or `feature<{ meta: … }>(setup)`. A feature without `setup` only declares fields: an app's own data, for targets to match on. Here a link toasts a per-query message when a request fails, and a feature declares an `owner`:
 
 ```sample
-tanstack-start/src/docs/query-meta.ts#root
+tanstack-start/src/docs/links-and-features.ts#root
 ```
 
 A package that ships a link or feature needs only these exports: `link` and `feature`, the types `Link`, `Feature` and `Operation` (the request a link gets) to name them, and `Target` and `QueryInfo` for a [target](./query-invalidation.md#matching-with-where) that matches on the fields it declares. [Tags](./query-invalidation.md#tags) are built the same way, in a few lines of app code.
@@ -48,7 +48,7 @@ A package that ships a link or feature needs only these exports: `link` and `fea
 A client's **root** is the links and features it's made with, and the root's `meta` is the fields they declare. The plain `queryOptions` takes any `meta`. To check `meta` against a root, bind the builders to it once per app, in a file of their own, and import them from there instead of from `@raf-query/react`:
 
 ```sample title="src/raf.ts"
-tanstack-start/src/docs/query-meta.bind.tsx#bind
+tanstack-start/src/docs/links-and-features.bind.tsx#bind
 ```
 
 Each binder takes the type of the function that makes the client, or of the client. Only the type is read, so `import type` is enough and the factories don't import the client. A binder returns the plain builder, typed for the root: binding costs a few bytes, and an app that doesn't page leaves out `bindInfiniteQueryOptions` and ships none of the paging code.
@@ -56,19 +56,19 @@ Each binder takes the type of the function that makes the client, or of the clie
 Factories built with the bound `queryOptions` name no root themselves:
 
 ```sample
-tanstack-start/src/docs/query-meta.bind.tsx#bound
+tanstack-start/src/docs/links-and-features.bind.tsx#bound
 ```
 
 - `meta` takes only the fields the root's parts declare, with their types:
 
 ```sample
-tanstack-start/src/docs/query-meta.bind.tsx#bound-errors
+tanstack-start/src/docs/links-and-features.bind.tsx#bound-errors
 ```
 
 - Verbs such as `invalidateMany` and `setData` take only that root's clients. The bound `useQueryClient` returns a client of the root, so verbs called in components check their factories too. The plain `useQueryClient()` returns a client of any root, which takes any factory.
 
 ```sample
-tanstack-start/src/docs/query-meta.bind.tsx#use-query-client
+tanstack-start/src/docs/links-and-features.bind.tsx#use-query-client
 ```
 
 - `where` targets see the root's `meta`, as the next section shows.
@@ -80,7 +80,7 @@ The root is a function, not a client at module level, because a server makes one
 A `where` target picks queries by what their `meta` says. On a client of a typed root, `query.meta` has the root's fields:
 
 ```sample
-tanstack-start/src/docs/query-meta.ts#selecting-queries-by-meta
+tanstack-start/src/docs/links-and-features.ts#selecting-queries-by-meta
 ```
 
 See [Query invalidation](./query-invalidation.md#matching-with-where) for targets, and tags, which are targets built on `meta`.

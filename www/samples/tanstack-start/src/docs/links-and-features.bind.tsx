@@ -1,7 +1,7 @@
 import { getPost, listComments } from "~/api.ts";
 import { comments, posts } from "~/queries.ts";
 
-import type { makeQueryClient } from "./query-meta.ts";
+import type { makeQueryClient } from "./links-and-features.ts";
 
 // #region bind
 import {

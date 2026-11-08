@@ -2,7 +2,7 @@
 title: Request waterfalls
 description: What a request waterfall is, why it's the biggest performance problem in data fetching, and how loaders, routes and backends remove them.
 section: Guides
-order: 11
+order: 7
 ---
 
 A request waterfall is a request that can't start until another one has finished. Each level of the waterfall costs a full round trip, and on a slow connection a round trip can be hundreds of milliseconds. Removing waterfalls is usually the single most effective thing you can do for an app's loading time.
@@ -39,17 +39,25 @@ tanstack-start/src/docs/request-waterfalls.tsx#fetch-on-render
 
 Suspense makes this worse, not better: a suspending component renders nothing below it, so its children can't even begin to fetch.
 
-raf-query has no fetch-on-render hook. The loader starts every query, and `useQuery` reads what it started:
+raf-query has no fetch-on-render hook. The loader or server component starts every query, and `useQuery` reads what it started:
 
-```sample
+```sample framework="tanstack-start"
 tanstack-start/src/routes/posts.$slug.tsx#route
 ```
 
-Both requests start the moment the navigation does, before any component renders. With `defaultPreload: "intent"`, they start when the user hovers the link.
+```sample framework="nextjs"
+nextjs/src/app/(blog)/posts/[slug]/page.tsx#page
+```
+
+```sample framework="react-router"
+react-router/app/routes/posts.$slug.tsx#loader
+```
+
+Both requests start the moment the navigation does, before any component renders. A router that runs loaders on hover starts them even earlier.
 
 ## Start every query before awaiting any
 
-Inside a loader, put every query in one `load`. It starts every entry before it waits for any, so their order doesn't matter. A second `await load(…)` after a first turns two parallel requests back into a waterfall:
+Put every query a page needs in one `load`. It starts every entry before it waits for any, so their order doesn't matter. A second `await load(…)` after a first turns two parallel requests back into a waterfall:
 
 ```sample
 tanstack-start/src/docs/request-waterfalls.ts#start-every-query-before-awaiting-any

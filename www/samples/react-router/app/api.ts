@@ -34,3 +34,13 @@ export function listComments(input: { cursor: number; slug: string }) {
 		`/posts/${input.slug}/comments?cursor=${input.cursor}`,
 	);
 }
+
+export interface PostPage {
+	readonly items: ReadonlyArray<Post>;
+	/** The last page's number. */
+	readonly pageCount: number;
+}
+
+export function listPosts(input: { page: number }) {
+	return request<PostPage>(`/posts?page=${input.page}`);
+}

@@ -22,12 +22,12 @@ export function makeQueryClient() {
 | `reconnectRefetch()` | feature | Refetches read, stale queries when the browser comes back online |
 | `polling()`          | feature | Refetches read queries on a timer set by `meta.refetchInterval`  |
 
-Pass `links` and `features` yourself to pick some of them, or to add your own. [Query meta](./query-meta.md) covers how they're configured per query.
+Pass `links` and `features` yourself to pick some of them, or to add your own. [Query meta](./links-and-features.md) covers how they're configured per query.
 
-Keep these in mind as you read the rest of the guides. Retries, focus and reconnect refetching, and polling assume `recommended()`:
+Keep these in mind as you read the rest of the guides. Where they mention retries, focus and reconnect refetching, or polling, they assume `recommended()`:
 
 - **Reading a query never refetches stale data.** `useQuery` reads what's in the cache: a component that mounts with stale data renders it and starts no request, unlike TanStack Query's `useQuery`, which refetches stale data on mount. Loaders decide freshness: every [load entry](./starting-queries.md) refetches stale data when a loader starts it (`prefetch` and `swr` in the background, `revalidate` before it resolves). Stale data refreshes:
-  - when the next loader or server component starts the query with `load`, which TanStack Router does on every navigation
+  - when the next loader or server component starts the query with `load`, which happens on every navigation to the page
   - when the query is [invalidated](./query-invalidation.md), such as at the end of an action that [writes data](./mutations.md)
   - on [window focus](./window-focus-refetching.md) and on reconnect, for queries being read, with `focusRefetch()` and `reconnectRefetch()`
   - on a timer, with `polling()` and `meta.refetchInterval` ([Polling](./polling.md))

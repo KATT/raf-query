@@ -13,7 +13,6 @@ export const sections = [
 	"Getting started",
 	"Integrations",
 	"Guides",
-	"Server rendering",
 	"Reference",
 	"Project",
 ] as const;

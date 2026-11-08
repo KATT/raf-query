@@ -2,7 +2,7 @@
 title: Window focus refetching
 description: Refetch stale queries on screen when the user comes back to the tab or reconnects, with the focusRefetch() and reconnectRefetch() features, and opt queries out in meta.
 section: Guides
-order: 15
+order: 14
 ---
 
 When the user leaves your app and comes back, the data on screen may be out of date. Two features refetch it:
@@ -28,7 +28,7 @@ For every query, leave the feature out of the client:
 tanstack-start/src/docs/window-focus-refetching.ts#turning-it-off
 ```
 
-For one query, set `meta: { refetchOnWindowFocus: false }` or `meta: { refetchOnReconnect: false }` in its factory. The features declare these fields, so a factory built with a bound `queryOptions` gets them typed only when the root has the feature: see [Query meta](./query-meta.md#typing-meta-by-its-root).
+For one query, set `meta: { refetchOnWindowFocus: false }` or `meta: { refetchOnReconnect: false }` in its factory. The features declare these fields, so a factory built with a bound `queryOptions` gets them typed only when the root has the feature: see [Query meta](./links-and-features.md#typing-meta-by-its-root).
 
 ```sample
 tanstack-start/src/docs/window-focus-refetching.ts#per-query

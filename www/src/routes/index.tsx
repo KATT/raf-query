@@ -103,7 +103,7 @@ const features: ReadonlyArray<{
 	{
 		body: "A handle is a query's key and input. It crosses the loader, the server and the client, and the cache carries the data next to it.",
 		icon: <Link2 />,
-		slug: "handles",
+		slug: "reading-queries",
 		title: "Small, serializable handles",
 	},
 	{
@@ -119,7 +119,7 @@ const features: ReadonlyArray<{
 		title: "The URL is the input",
 	},
 	{
-		body: "No useMutation: wrap a write in action() and name the queries it invalidates. React's useOptimistic and useActionState do the rest.",
+		body: "No useMutation: a write is a React action that awaits the write, then invalidates what it changed. useOptimistic and useActionState do the rest.",
 		icon: <Cable />,
 		slug: "mutations",
 		title: "Actions for writes",

@@ -1,88 +1,161 @@
 ---
 title: Quick start
-description: Create a query client, define a post and its paged comments, start them in a TanStack Start loader, read them with useQuery, useInfiniteQuery and use(), and add a comment.
+description: Build a blog post page with paged comments in TanStack Start, Next.js or React Router — define the queries, start them before render, read them with use(), and add a comment.
 section: Getting started
 order: 3
 ---
 
-This walks through the three core concepts of raf-query on [TanStack Start](https://tanstack.com/start):
+This page builds a blog post with its comments, the shape of most pages: something the page can't render without (the post), something that can stream in (the comments, loaded page by page), and a write (adding a comment). It covers the four things every raf-query app does:
 
-- **Query factories**, which describe a query once
-- **Starting queries** in a loader, which hands components a handle
-- **Reading queries** with `useQuery` and `use()`
+1. **Define** each query once, as a factory.
+2. **Start** the page's queries before it renders, with `load`.
+3. **Read** them in components, with `useQuery` and `use()`.
+4. **Write**, then invalidate what changed.
 
-For the Next.js App Router, the same steps apply with a server component in place of the loader: see [React Server Components](./react-server-components.md). For React Router Framework Mode, see [React Router](./react-router.md).
+Steps that differ by framework show a tab for each of TanStack Start, Next.js and React Router. Pick yours once: every page of these docs follows the choice, and remembers it.
 
-## 1. Create the client
+## 1. Install
 
-Create one client per router with `createQueryClient`. On the server, `getRouter` runs once per request, so each request gets its own cache; in the browser it runs once per tab.
-
-```sample
-tanstack-start/src/query-client.ts
+```bash
+npm install @raf-query/react
 ```
 
-```sample
-tanstack-start/src/router.tsx
-```
-
-`Providers` hands the router's client to the components below it with `QueryClientProvider`. The same component works in [every framework](./ssr-and-hydration.md#the-provider):
-
-```sample
-tanstack-start/src/providers.tsx
-```
-
-The client does nothing on its own. `recommended()` turns on what most apps want: retries, refetching stale data on window focus and reconnect, polling, and refetching after [actions](./mutations.md). `staleTime` keeps data fresh for 30 seconds, so navigating back to a page doesn't refetch it.
-
-`setupRouterIntegration` streams the server's cache to the browser while the page renders, so data loaded on the server is never fetched twice. In development, [DevTools](./devtools.md) show what's in the cache. Give the root route the client's type:
-
-```sample
-tanstack-start/src/routes/__root.tsx
-```
+See [Installation](./installation.md) for the requirements.
 
 ## 2. Define the queries
 
-The page is a blog post with its comments. A query is a **factory**: a function of at most one argument that returns `queryOptions(...)`, or `infiniteQueryOptions(...)` for a list that loads page by page, like the comments. The argument is the query's input, here the post's `slug`. Loaders and components call the same factory, so the data's type flows end to end.
+A query is a **factory**: a function of at most one argument, its **input**, that returns `queryOptions(...)`. The comments load page by page, so their factory returns `infiniteQueryOptions(...)` instead. Everything else in raf-query takes the factory, so the data's type flows from the `queryFn` to every component that reads it.
 
-```sample
-tanstack-start/src/queries.ts#home
+```sample title="queries.ts"
+react-router/app/queries.ts#home
 ```
 
-The keys come from **groups**. `comments` is a group inside `posts`, so one call can [invalidate](./query-invalidation.md) every post query and every comment list at once, or only the comments.
+- The input is serializable (`{ slug }`), because it travels with the query from the server to the browser.
+- The keys come from **groups**, which name sets of queries so one call can [invalidate](./query-invalidation.md) them all.
+- `listComments` returns a page and the next page's cursor, `null` after the last one. `getNextPageParam` hands that cursor to the next request.
 
-`listComments` returns a page of comments and the cursor of the next one, `null` after the last page. `getNextPageParam` hands that cursor to the next request, as in [TanStack Query](https://tanstack.com/query/latest/docs/framework/react/guides/infinite-queries).
+## 3. Create the client
 
-## 3. Start them in the loader
+The client is the cache. On the server, make one **per request**, so users never share data. In the browser, make one per tab. `QueryClientProvider` gives it to the components below it.
 
-The loader starts both queries in one `load` and returns their **handles**, small `{ queryKey, input }` objects:
+```sample framework="tanstack-start"
+tanstack-start/src/query-client.ts
+```
 
-```sample
+```sample framework="tanstack-start"
+tanstack-start/src/router.tsx
+```
+
+```sample framework="tanstack-start"
+tanstack-start/src/providers.tsx
+```
+
+```sample framework="tanstack-start"
+tanstack-start/src/routes/__root.tsx
+```
+
+```sample framework="nextjs"
+nextjs/src/query-client.ts
+```
+
+```sample framework="nextjs"
+nextjs/src/components/providers.tsx
+```
+
+```sample framework="nextjs"
+nextjs/src/app/layout.tsx
+```
+
+```sample framework="react-router"
+react-router/app/query-client.ts
+```
+
+```sample framework="react-router"
+react-router/app/providers.tsx
+```
+
+```sample title="app/root.tsx" framework="react-router"
+react-router/app/root.tsx#middleware
+```
+
+```sample title="app/root.tsx" framework="react-router"
+react-router/app/root.tsx#app
+```
+
+A bare client only caches and dedupes. `recommended()` adds what most apps want: [retries](./retries.md), refetching stale data on [window focus](./window-focus-refetching.md) and reconnect, and [polling](./polling.md). `staleTime` says how long data counts as fresh. [Important defaults](./important-defaults.md) explains each.
+
+The integration also moves the server's cache to the browser, so data loaded during server rendering is never fetched twice. Your framework's guide covers the details: [TanStack Start](./tanstack-start.md), [React Server Components](./react-server-components.md), [React Router](./react-router.md).
+
+## 4. Start the queries
+
+The page's input, the post's `slug`, is in the URL, so every query can start before anything renders: in a route loader, or in a server component. `load` takes the client and one **entry** per query, starts them all at once, and resolves with a **handle** per query.
+
+```sample framework="tanstack-start"
 tanstack-start/src/routes/posts.$slug.tsx#route
 ```
 
-`swr` waits for the post when the cache doesn't have it yet, because the page can't lay out without it. `prefetch` starts the comments without waiting, so the page renders while they're on their way. [Starting queries](./starting-queries.md) covers the trade-off.
+```sample framework="nextjs"
+nextjs/src/app/(blog)/posts/[slug]/page.tsx#page
+```
 
-## 4. Read them in components
+```sample framework="react-router"
+react-router/app/routes/posts.$slug.tsx#loader
+```
 
-```sample
+The entry decides what `load` waits for:
+
+| Entry        | Waits for                     | Use for                                            |
+| ------------ | ----------------------------- | -------------------------------------------------- |
+| `prefetch`   | Nothing                       | Data that can stream in behind a Suspense fallback |
+| `swr`        | Data, when the cache has none | What the page can't render without, in the browser |
+| `revalidate` | Fresh data                    | The same, in code that only runs on the server     |
+
+A TanStack Router loader runs in the browser, on a client that keeps its cache between navigations, so `swr` waits only on the first visit and shows cached data at once after that. Server components and React Router's `loader` start every request with an empty cache, so there `revalidate` or `prefetch` say what you mean. [Starting queries](./starting-queries.md) has the details and a demo.
+
+A handle is `{ queryKey, input }` and nothing else, so it serializes for free: it crosses from a loader or a server component to the browser, and the data follows through the cache.
+
+## 5. Read them in components
+
+```sample framework="tanstack-start"
 tanstack-start/src/routes/posts.$slug.tsx#component
 ```
 
-`useQuery` takes the factory as well as the handle because the handle is plain data, `{ queryKey, input }`, so it can cross from a loader or a server component to the browser, and a function can't: the handle can't carry the `queryFn`, so you pass the factory alongside it.
+```sample framework="nextjs"
+nextjs/src/app/(blog)/components/post.tsx#component
+```
 
-`useQuery` returns a stable thenable and the query's state. `use()` suspends until the data is there, then returns it. The loader already waited for the post, so the thenable is fulfilled and `use()` returns it without suspending.
+```sample framework="nextjs"
+nextjs/src/app/(blog)/components/comments.tsx#component
+```
 
-The comments may still be loading, so `<Comments>` sits in its own Suspense boundary and the post renders without them. `useInfiniteQuery` reads them as `{ pages, pageParams }`, and its state loads more: `fetchNextPage()` fetches the next page and appends it, `hasNextPage` says whether there is one, and `isFetchingNextPage` is `true` while it loads. See [Infinite queries](./infinite-queries.md).
+```sample title="app/routes/posts.$slug.tsx" framework="react-router"
+react-router/app/routes/posts.$slug.tsx#component
+```
 
-## 5. Write data with an Action
+```sample framework="react-router"
+react-router/app/components/comments.tsx#component
+```
 
-There is no `useMutation`. Adding a comment is a form action in the component: await the write, then invalidate what it changed with the client from `useQueryClient()`:
+`useQuery(factory, handle)` returns a **thenable** and the query's state. A thenable is a promise that also carries its `status` and `value`, which React's `use()` reads: when the data is in the cache, `use()` returns it synchronously; otherwise it suspends until the data lands.
+
+- The factory comes along with the handle because the handle is plain data and can't carry the `queryFn`.
+- A query the page waited for reads without suspending. The comments may still be loading, so they sit in their own `<Suspense>` boundary and the post renders without them.
+- `useInfiniteQuery` reads the paged comments as `{ pages, pageParams }`, and its state has `fetchNextPage()`, `hasNextPage` and `isFetchingNextPage` for a "Load more" button. See [Infinite queries](./infinite-queries.md).
+- When the cache updates (a refetch, an invalidation), every reader re-renders with the new data, without suspending.
+
+## 6. Add a comment
+
+There is no mutation hook: a write is a React action. Await the write, then await an invalidation of what it changed:
 
 ```sample
 tanstack-start/src/routes/posts.$slug.tsx#add-comment
 ```
 
-`invalidateMany` takes a list of targets. `[commentsQuery, { slug }]` is this post's comments, and the list refetches every page it has loaded. The verb resolves once that refetch has settled, so the form stays pending until the new comment is on screen. See [Mutations](./mutations.md) for optimistic updates and errors.
+`invalidateMany` marks this post's comments stale and refetches them, since they're on screen. It resolves once the refetch has settled, so the form stays pending until the new comment shows. [Mutations](./mutations.md) covers optimistic updates and errors.
 
-## What you get
+## Next steps
 
-The cache always dedupes requests, garbage-collects unused entries and keeps unchanged data referentially stable. With `recommended()`, it also retries failures and refetches stale data when the window regains focus. Read [Important defaults](./important-defaults.md) next: they explain when raf-query fetches and when it doesn't.
+- [Important defaults](./important-defaults.md): when raf-query fetches, and when it doesn't.
+- [Starting queries](./starting-queries.md) and [Reading queries](./reading-queries.md): the two halves of every page, in depth.
+- Your framework's guide: [TanStack Start](./tanstack-start.md), [React Server Components](./react-server-components.md) or [React Router](./react-router.md).
+- [Examples](./examples.md): a full issue tracker in each framework.

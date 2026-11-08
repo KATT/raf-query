@@ -2,7 +2,7 @@
 title: Query functions
 description: What a queryFn may return, how errors are reported, and what the query function context contains.
 section: Guides
-order: 3
+order: 4
 ---
 
 A query function can be literally any function that **returns a value or a promise**. The promise should either **resolve the data** or **throw**.
@@ -53,7 +53,7 @@ Each `queryFn` receives a context object:
 
 - `queryKey`, the query's [key](./query-keys.md), typed as the factory wrote it
 - `signal: AbortSignal`, aborted when the request is cancelled. Pass it to `fetch` so [cancelled requests](./query-cancellation.md) stop using the network.
-- `meta`, the query's [`meta`](./query-meta.md), or `{}` when it has none
+- `meta`, the query's [`meta`](./links-and-features.md), or `{}` when it has none
 
 [Paged queries](./infinite-queries.md) also get:
 

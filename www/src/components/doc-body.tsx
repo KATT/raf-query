@@ -3,6 +3,7 @@ import { useRouter } from "@tanstack/react-router";
 
 import type { DocSegment } from "~/content/types.ts";
 import type { demoQuery } from "~/demos/registry.ts";
+import { chooseFrameworkMode, isFrameworkMode } from "~/framework-mode.ts";
 import { installTwoslashHovers } from "~/twoslash-hovers.ts";
 
 import { DemoEmbed } from "./demo-embed.tsx";
@@ -75,6 +76,26 @@ function toggleCodeCollapse(target: EventTarget | null) {
 }
 
 /**
+ * Switches every framework tab block on the site to the clicked tab's
+ * framework, keeping the clicked tab where it was on screen: blocks above it
+ * may change height.
+ */
+function chooseFrameworkTab(target: EventTarget | null) {
+	if (!isElement(target)) {
+		return false;
+	}
+	const tab = target.closest("button[data-framework-tab]");
+	const mode = tab?.getAttribute("data-framework-tab");
+	if (!tab || !mode || !isFrameworkMode(mode)) {
+		return false;
+	}
+	const before = tab.getBoundingClientRect().top;
+	chooseFrameworkMode(mode);
+	window.scrollBy(0, tab.getBoundingClientRect().top - before);
+	return true;
+}
+
+/**
  * A page's prerendered HTML, with its demos in between. Links between pages
  * navigate client-side and preload on hover, like the router's `<Link>`.
  */
@@ -87,7 +108,10 @@ export function DocBody(props: {
 		<div
 			className="prose prose-neutral max-w-none dark:prose-invert"
 			onClick={(event) => {
-				if (toggleCodeCollapse(event.target)) {
+				if (
+					toggleCodeCollapse(event.target) ||
+					chooseFrameworkTab(event.target)
+				) {
 					return;
 				}
 				const target = event.target;

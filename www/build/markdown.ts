@@ -15,6 +15,7 @@ import type {
 	Link,
 	Root as MdastRoot,
 	Paragraph,
+	RootContent,
 } from "mdast";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
@@ -26,9 +27,15 @@ import { createTwoslasher } from "twoslash/core";
 // doesn't have.
 import ts from "typescript6";
 import { unified } from "unified";
-import { visit } from "unist-util-visit";
+import { SKIP, visit } from "unist-util-visit";
 
 import type { DocHeading, DocSegment } from "../src/content/types.ts";
+import {
+	type FrameworkMode,
+	frameworkModeLabels,
+	frameworkModes,
+	isFrameworkMode,
+} from "../src/framework-mode.ts";
 import { collapseRegions } from "./collapse.ts";
 import { ContentError, messageOf } from "./content-error.ts";
 import {
@@ -133,6 +140,107 @@ function remarkDemos(demos: Array<string>) {
 				data: { hName: "raf-demo", hProperties: { dataDemo: id } },
 				type: "paragraph",
 			};
+		});
+	};
+}
+
+function frameworkOf(node: RootContent): FrameworkMode | undefined {
+	if (node.type !== "code") {
+		return undefined;
+	}
+	const id = /\bframework="([^"]*)"/.exec(node.meta ?? "")?.[1];
+	if (id === undefined) {
+		return undefined;
+	}
+	if (!isFrameworkMode(id)) {
+		throw new Error(
+			`framework="${id}" isn't one of ${frameworkModes.join(", ")}`,
+		);
+	}
+	return id;
+}
+
+/**
+ * Adjacent fences with `framework="…"` in their meta become one block with a
+ * tab per framework. A framework can have several fences, shown together, and
+ * every framework needs at least one, so a reader of any of them finds their
+ * code. The reader's choice is page-wide and remembered (`data-framework-mode`
+ * on `<html>`, set by `frameworkModeScript`):
+ *
+ * ````md
+ * ```sample framework="tanstack-start"
+ * tanstack-start/src/routes/posts.$slug.tsx#route
+ * ```
+ *
+ * ```sample framework="nextjs"
+ * nextjs/src/app/(blog)/posts/[slug]/page.tsx
+ * ```
+ * ````
+ */
+function remarkFrameworkTabs() {
+	return (tree: MdastRoot) => {
+		const groups = new WeakSet<Blockquote>();
+		visit(tree, (node) => {
+			if (node.type === "blockquote" && groups.has(node)) {
+				return SKIP;
+			}
+			if (!("children" in node)) {
+				return;
+			}
+			const children: Array<RootContent> = node.children;
+			for (let start = 0; start < children.length; start++) {
+				let end = start;
+				while (children[end] && frameworkOf(children[end])) {
+					end++;
+				}
+				if (end === start) {
+					continue;
+				}
+				const run = children.slice(start, end);
+				const panels = frameworkModes.map((mode) => {
+					const blocks = run.filter((child) => frameworkOf(child) === mode);
+					if (!blocks.length) {
+						throw new Error(
+							`a framework tab block has no framework="${mode}" fence`,
+						);
+					}
+					return { blocks, mode };
+				});
+				const tabs = panels
+					.map(
+						(panel) =>
+							`<button type="button" role="tab" class="framework-tab framework-mode-link" data-framework-mode-link="${panel.mode}" data-framework-tab="${panel.mode}">${frameworkModeLabels[panel.mode]}</button>`,
+					)
+					.join("");
+				const group: Blockquote = {
+					children: [
+						{
+							type: "html",
+							value: `<div class="framework-tabs-list" role="tablist" aria-label="Framework">${tabs}</div>`,
+						},
+						...panels.map((panel): Blockquote => ({
+							children: panel.blocks.filter(
+								(block): block is Code => block.type === "code",
+							),
+							data: {
+								hName: "div",
+								hProperties: {
+									dataFrameworkPanel: panel.mode,
+									role: "tabpanel",
+								},
+							},
+							type: "blockquote",
+						})),
+					],
+					data: {
+						hName: "div",
+						hProperties: { className: ["framework-tabs"] },
+					},
+					type: "blockquote",
+				};
+				groups.add(group);
+				children.splice(start, end - start, group);
+			}
 		});
 	};
 }
@@ -523,6 +631,7 @@ function parsing(headings: Array<DocHeading>, demos: Array<string>) {
 		.use(remarkAlerts)
 		.use(remarkDocLinks)
 		.use(remarkDemos(demos))
+		.use(remarkFrameworkTabs)
 		.use(remarkCodeMeta)
 		.use(remarkRehype, { allowDangerousHtml: true })
 		.use(rehypeRaw)
@@ -562,7 +671,9 @@ function searchTextOf(node: HastRoot["children"][number]): string {
 	if (
 		node.tagName === "pre" ||
 		node.tagName === "raf-demo" ||
-		(Array.isArray(className) && className.includes("callout-title"))
+		(Array.isArray(className) &&
+			(className.includes("callout-title") ||
+				className.includes("framework-tabs-list")))
 	) {
 		return " ";
 	}

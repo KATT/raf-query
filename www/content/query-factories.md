@@ -2,7 +2,7 @@
 title: Query factories
 description: Define each query once as a factory of one serializable input, shared by loaders, server components and components.
 section: Guides
-order: 4
+order: 2
 ---
 
 A query is a **factory**: a function of zero or one argument that returns `queryOptions(...)` or `infiniteQueryOptions(...)`. The loader and the component call the same factory, so data types flow end to end.
@@ -13,7 +13,7 @@ tanstack-start/src/docs/query-factories.ts#intro
 
 ## One input, serializable
 
-Factories take **at most one argument**; the type rejects two or more. That argument is the query's **input**, and it must be serializable, because it's what a [handle](./handles.md) carries from the loader (or the server) to the component.
+Factories take **at most one argument**; the type rejects two or more. That argument is the query's **input**, and it must be serializable, because it's what a [handle](./reading-queries.md#handles) carries from the loader (or the server) to the component.
 
 Use an object even for one field (`{ slug }`, `{ id }`): it reads well at call sites and leaves room to grow.
 
@@ -42,7 +42,7 @@ Options set in the factory override the client's (`staleTime`, `gcTime`, `struct
 | `gcTime`            | How long an unread entry stays cached, in ms                                                                    |
 | `structuralSharing` | See [Render optimizations](./render-optimizations.md)                                                           |
 | `stream`            | Folds the chunks of a `queryFn` that returns an async iterable. See [Streaming](./query-functions.md#streaming) |
-| `meta`              | Settings for the client's links and features, such as `retry`. See [Query meta](./query-meta.md)                |
+| `meta`              | Settings for the client's links and features, such as `retry`. See [Query meta](./links-and-features.md)        |
 
 Per-query retries, polling and focus refetching are `meta` fields, read by the link or feature that does them: `meta: { retry: 1 }` with `retry()`, `meta: { refetchInterval: 5000 }` with `polling()`. See [Retries](./retries.md), [Polling](./polling.md) and [Window focus refetching](./window-focus-refetching.md).
 
@@ -62,7 +62,7 @@ To name a factory's types elsewhere:
 tanstack-start/src/docs/query-factories.one-input-serializable.ts#type-helpers
 ```
 
-The key's shape is part of the factory's type too (`readonly ["posts", "bySlug", string]`), so handles of two factories with the same input and data are still [different types](./handles.md).
+The key's shape is part of the factory's type too (`readonly ["posts", "bySlug", string]`), so handles of two factories with the same input and data are still [different types](./reading-queries.md#handles).
 
 ## Factory makers
 
