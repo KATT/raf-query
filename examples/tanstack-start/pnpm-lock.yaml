@@ -185,8 +185,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@raf-query/react':
-        specifier: 0.11.1
-        version: 0.11.1(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(effect@4.1.2)(react@19.3.0)
+        specifier: 0.12.0
+        version: 0.12.0(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
       '@tanstack/react-router':
         specifier: 1.170.42
         version: 1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -1113,18 +1113,15 @@ packages:
       '@types/react':
         optional: true
 
-  '@raf-query/core@0.11.1':
-    resolution: {integrity: sha512-OnlyOMfZhuCfXWzL8i9BKna4kfRSvaqJbv/oMiSa/54KNPRyXpRqTVuJi2Ur6CUvRXnKSRBCs71agoV0HCw/wg==}
+  '@raf-query/core@0.12.0':
+    resolution: {integrity: sha512-i/s0KiydeGkeXcEf4LAz5a28d1rKhTfqrZtTYTde5egCb23qqHTFEB8ZjsQCO5EVqhdWiSiVDU97N/TRfQWBpA==}
     engines: {node: '>=22'}
-    peerDependencies:
-      effect: ^4.0.0
 
-  '@raf-query/react@0.11.1':
-    resolution: {integrity: sha512-FoPA60Wx4nt7Q2Kw9HWxu8RTJ3coSe/Wi9dsWVHmn6CZu2xFunp5VKTikHHsKVkKtR29ExaHdcX1olAoN4pe/Q==}
+  '@raf-query/react@0.12.0':
+    resolution: {integrity: sha512-U369QK80b7NchN45D74LeJdxtaxJ8Zig7M1VRwCicoZH4l9HCpIcu+msyicWpC5jInaa4wZosKpgEcTBYLIBVw==}
     engines: {node: '>=22'}
     peerDependencies:
       '@tanstack/react-router': ^1.170.0
-      effect: ^4.0.0
       react: ^19.2.0
     peerDependenciesMeta:
       '@tanstack/react-router':
@@ -2440,9 +2437,6 @@ packages:
 
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
-
-  effect@4.1.2:
-    resolution: {integrity: sha512-d3Oah1WyKxFLFh19yWheS5IXIVaITzxZ71JkE1rkUozq/6EcJSU5nPk5bF2QrSygZ3SQoiNQB8TsxFriyMeMaQ==}
 
   electron-to-chromium@1.5.478:
     resolution: {integrity: sha512-pftG+ma5Lm8O6/p45bhYT6StBN5ziQymaRzmCZwFl8DwWHKPPD93FdOmP1aqftcepolQYvrcyTLa17kE8Yf+jg==}
@@ -4690,14 +4684,11 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  '@raf-query/core@0.11.1(effect@4.1.2)':
-    dependencies:
-      effect: 4.1.2
+  '@raf-query/core@0.12.0': {}
 
-  '@raf-query/react@0.11.1(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(effect@4.1.2)(react@19.3.0)':
+  '@raf-query/react@0.12.0(@tanstack/react-router@1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)':
     dependencies:
-      '@raf-query/core': 0.11.1(effect@4.1.2)
-      effect: 4.1.2
+      '@raf-query/core': 0.12.0
       react: 19.3.0
     optionalDependencies:
       '@tanstack/react-router': 1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -5795,8 +5786,6 @@ snapshots:
       gopd: 1.2.0
 
   ee-first@1.1.1: {}
-
-  effect@4.1.2: {}
 
   electron-to-chromium@1.5.478: {}
 

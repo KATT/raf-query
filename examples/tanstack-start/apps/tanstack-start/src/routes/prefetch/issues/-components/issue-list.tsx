@@ -1,4 +1,4 @@
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import { type QueryHandle, useInfiniteQuery } from "@raf-query/react";
 import { Card } from "@examples/ui/components/card";
 import {
 	IssueListSummary,
@@ -18,10 +18,10 @@ import { issueListQuery } from "~/queries.ts";
 export function IssueList(props: {
 	readonly handle: QueryHandle<typeof issueListQuery>;
 }) {
-	const [pagesPromise, list] = useQuery(issueListQuery, props.handle, {
+	const [pagesThenable, list] = useInfiniteQuery(issueListQuery, props.handle, {
 		whilePending: "previous",
 	});
-	const pages = use(pagesPromise);
+	const pages = use(pagesThenable);
 	const lastPage = pages.pages.at(-1);
 	const total = lastPage?.total ?? 0;
 	const shown = pages.pages.reduce((sum, page) => sum + page.issues.length, 0);

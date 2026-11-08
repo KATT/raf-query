@@ -7,18 +7,26 @@ import {
 } from "@examples/kit/components/comments";
 import { LoadMore } from "@examples/kit/components/load-more";
 import { warnMockDbWrite } from "@examples/kit/lib/mock-db-toast";
-import { type QueryHandle, useQuery, useQueryClient } from "@raf-query/react";
+import {
+	invalidateMany,
+	type QueryHandle,
+	useQueryClient,
+	useInfiniteQuery,
+} from "@raf-query/react";
 import { use, useOptimistic, useRef } from "react";
 
-import { commentsQuery } from "~/queries.ts";
+import { commentsQuery, issues } from "~/queries.ts";
 
 export function Comments(props: {
 	readonly handle: QueryHandle<typeof commentsQuery>;
 }) {
 	const queryClient = useQueryClient();
 	const formRef = useRef<HTMLFormElement>(null);
-	const [pagesPromise, comments] = useQuery(commentsQuery, props.handle);
-	const pages = use(pagesPromise);
+	const [pagesThenable, comments] = useInfiniteQuery(
+		commentsQuery,
+		props.handle,
+	);
+	const pages = use(pagesThenable);
 	const issueId = props.handle.input.issueId;
 	const loaded = pages.pages.flatMap((page) => page.comments);
 	const confirmedIds = new Set(loaded.map((comment) => comment.id));
@@ -66,7 +74,7 @@ export function Comments(props: {
 							param: { id: String(issueId) },
 						}),
 					);
-					await queryClient.invalidate({ queryKey: ["issues"] });
+					await invalidateMany(queryClient, issues);
 				}}
 				className="grid gap-2"
 				ref={formRef}

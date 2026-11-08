@@ -1,8 +1,7 @@
 import { IssueListInput } from "@examples/db/types";
 import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { dehydrate } from "@raf-query/react";
-import { HydrationBoundary } from "@raf-query/react";
+import { dehydrate, HydrationBoundary, load, prefetch } from "@raf-query/react";
 import { Suspense } from "react";
 
 import { queryClientContext } from "~/query-client.ts";
@@ -13,18 +12,18 @@ import type { Route } from "./+types/route";
 import { IssueList } from "./components/issue-list.tsx";
 import { StatusFilter } from "./components/status-filter.tsx";
 
-export function loader(args: Route.LoaderArgs) {
-	return withRequest(args.request, () => {
+export async function loader(args: Route.LoaderArgs) {
+	return withRequest(args.request, async () => {
 		const input = IssueListInput.parse(
 			Object.fromEntries(new URL(args.request.url).searchParams),
 		);
 		const queryClient = args.context.get(queryClientContext);
 		// `prefetch` starts each query and returns its handle at once. The page
 		// streams in behind skeletons.
-		const handles = {
-			counts: queryClient.prefetch(issueCountsQuery),
-			issues: queryClient.prefetch(issueListQuery, input),
-		};
+		const [handles] = await load(queryClient, {
+			counts: prefetch(issueCountsQuery),
+			issues: prefetch(issueListQuery, input),
+		});
 		return {
 			counts: handles.counts,
 			dehydratedState: dehydrate(queryClient),

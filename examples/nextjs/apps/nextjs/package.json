@@ -21,9 +21,9 @@
 		"@examples/db": "workspace:*",
 		"@examples/kit": "workspace:*",
 		"@examples/ui": "workspace:*",
-		"@raf-query/react": "0.11.1",
+		"@raf-query/react": "0.12.0",
 		"lucide-react": "1.55.0",
-		"next": "16.4.0",
+		"next": "16.4.5",
 		"react": "19.3.0",
 		"react-dom": "19.3.0",
 		"zod": "4.6.5"

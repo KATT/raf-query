@@ -3,8 +3,12 @@ import {
 	DEFAULT_STALE_TIME,
 	queryTimeDefaults,
 } from "@examples/db/types";
-import { QueryClient, QueryClientProvider } from "@raf-query/react";
-import { QueryDevtools } from "@raf-query/react/devtools";
+import {
+	createQueryClient,
+	QueryClientProvider,
+	QueryDevtools,
+	recommended,
+} from "@raf-query/react";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import { createRouter } from "@tanstack/react-router";
 
@@ -14,8 +18,11 @@ import { readPrefetch, readStaleTime, toDefaultPreload } from "./settings.ts";
 export function getRouter() {
 	const staleTime = readStaleTime() ?? DEFAULT_STALE_TIME;
 	const queryDefaults = queryTimeDefaults(staleTime);
-	const queryClient = new QueryClient({ defaults: queryDefaults });
-	// The cache reads this object live. A server client leaves `gcTime` unset.
+	// The client reads its config live, so the settings panel can change
+	// `staleTime` without a new client. A server client leaves `gcTime` unset.
+	const queryClient = createQueryClient(
+		Object.assign(queryDefaults, recommended()),
+	);
 	if (!queryClient.isServer) {
 		applyStaleTime(queryDefaults, staleTime);
 	}
@@ -26,7 +33,7 @@ export function getRouter() {
 		defaultPreloadStaleTime: 0,
 		// A revisit waits for its loader, as the URL's verb says. With the
 		// default (`"background"`), the router renders the route's last loader
-		// data and reruns the loader behind it, so `fetch` would never wait.
+		// data and reruns the loader behind it, so `revalidate` would never wait.
 		defaultStaleReloadMode: "blocking",
 		routeTree,
 		scrollRestoration: true,

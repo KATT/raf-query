@@ -7,5 +7,3 @@ export type { RequestHeaders } from "./client.ts";
 export function createApi(headers?: RequestHeaders) {
 	return createClient({ headers });
 }
-
-export const api = createApi();

@@ -1,3 +1,4 @@
+import { load, prefetch } from "@raf-query/react";
 import { IssueListInput } from "@examples/db/types";
 import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
@@ -12,14 +13,15 @@ import { StatusFilter } from "./-components/status-filter.tsx";
 export const Route = createFileRoute("/prefetch/issues/")({
 	validateSearch: IssueListInput,
 	loaderDeps: (args) => args.search,
-	loader: (args) => {
+	loader: async (args) => {
 		const qc = args.context.queryClient;
 		// `prefetch` starts each query and returns its handle at once. The
 		// page shows skeletons until the data lands.
-		return {
-			counts: qc.prefetch(issueCountsQuery),
-			issues: qc.prefetch(issueListQuery, args.deps),
-		};
+		const [handles] = await load(qc, {
+			counts: prefetch(issueCountsQuery),
+			issues: prefetch(issueListQuery, args.deps),
+		});
+		return handles;
 	},
 	component: IssuesPage,
 });

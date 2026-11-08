@@ -9,6 +9,7 @@
 		"build": "pnpm --filter @examples/react-router build",
 		"dev": "pnpm --filter @examples/react-router dev",
 		"start": "pnpm --filter @examples/react-router start",
+		"test": "pnpm --filter @examples/react-router test",
 		"typecheck": "pnpm --recursive typecheck"
 	},
 	"type": "module",

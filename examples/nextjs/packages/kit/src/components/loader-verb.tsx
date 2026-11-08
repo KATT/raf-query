@@ -5,7 +5,7 @@ import type { LoaderVerb } from "@examples/db/types";
 /**
  * Where an app's loaders run after the first page load. `server`: every
  * navigation loads on the server with a new, empty client (React server
- * components, React Router loaders), so `ensure` waits like `fetch`.
+ * components, React Router loaders), so `swr` waits like `revalidate`.
  */
 export type LoaderRuntime = "browser" | "server";
 
@@ -14,18 +14,16 @@ const prefetchHint =
 
 const hints = {
 	browser: {
-		ensure:
-			"Waits for data the cache doesn't have. Cached data shows at once, even when stale, and refetches behind it.",
-		fetch:
-			"Waits for fresh data: on a cache miss, and when the cached data is stale.",
 		prefetch: prefetchHint,
+		revalidate:
+			"Waits for fresh data: on a cache miss, and when the cached data is stale. Fresh cached data shows at once.",
+		swr: "Waits for data the cache doesn't have. Cached data shows at once, even when stale, and refetches behind it.",
 	},
 	server: {
-		ensure:
-			"Waits for data the cache doesn't have. Every navigation loads on the server with an empty cache, so here it waits like fetch every time: use fetch.",
-		fetch:
-			"Waits for the data. Every navigation loads on the server with an empty cache, so it waits every time.",
 		prefetch: prefetchHint,
+		revalidate:
+			"Waits for the data. Every navigation loads on the server with an empty cache, so it waits every time.",
+		swr: "Waits for data the cache doesn't have. Every navigation loads on the server with an empty cache, so here it waits like revalidate every time: use revalidate.",
 	},
 } satisfies Record<LoaderRuntime, Record<LoaderVerb, string>>;
 
