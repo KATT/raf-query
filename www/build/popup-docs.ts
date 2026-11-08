@@ -5,7 +5,7 @@ import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 
-type NodeHover = Parameters<TwoslashRenderer["nodeStaticInfo"]>[0];
+export type NodeHover = Parameters<TwoslashRenderer["nodeStaticInfo"]>[0];
 type NodeQuery = Parameters<NonNullable<TwoslashRenderer["lineQuery"]>>[0];
 
 /**

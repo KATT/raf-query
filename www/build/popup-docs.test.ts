@@ -3,6 +3,7 @@ import { toHtml } from "hast-util-to-html";
 
 import {
 	conciseDocs,
+	type NodeHover,
 	renderPopupMarkdown,
 	renderPopupMarkdownInline,
 	withConciseDocs,
@@ -16,7 +17,7 @@ const hover = {
 	target: "t",
 	text: "const t: TRPC",
 	type: "hover",
-} as const;
+} as const satisfies NodeHover;
 
 describe("conciseDocs", () => {
 	it("keeps the first paragraph and the tags a popup shows", () => {
