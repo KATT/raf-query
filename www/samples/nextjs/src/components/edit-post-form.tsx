@@ -2,17 +2,17 @@
 
 import { invalidateOne, useQueryClient } from "@raf-query/react";
 
-import { updateIssue } from "~/actions.ts";
-import { issueQuery } from "~/queries.ts";
+import { updatePost } from "~/actions.ts";
+import { postQuery } from "~/queries.ts";
 
-export function UpdateIssueForm(props: { id: number }) {
+export function EditPostForm(props: { slug: string }) {
 	const qc = useQueryClient();
 	// #region form
 	return (
 		<form
 			action={async (formData) => {
-				await updateIssue(formData);
-				await invalidateOne(qc, issueQuery, { id: props.id });
+				await updatePost(formData);
+				await invalidateOne(qc, postQuery, { slug: props.slug });
 			}}
 		/>
 	);

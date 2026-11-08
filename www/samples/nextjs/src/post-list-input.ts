@@ -1,15 +1,15 @@
-export interface IssueListFilter {
-	readonly status: "open" | "done";
+export interface PostListFilter {
+	readonly page: number;
 }
 
-export interface IssueListParser {
-	parse(value: Record<string, string | Array<string>>): IssueListFilter;
+export interface PostListParser {
+	parse(value: Record<string, string | Array<string>>): PostListFilter;
 }
 
-export const IssueListInput: IssueListParser = {
+export const PostListInput: PostListParser = {
 	parse(value) {
-		const raw = value.status;
-		const status = Array.isArray(raw) ? raw[0] : raw;
-		return { status: status === "done" ? "done" : "open" };
+		const raw = value.page;
+		const page = Number(Array.isArray(raw) ? raw[0] : raw);
+		return { page: Number.isInteger(page) && page > 0 ? page : 1 };
 	},
 };
