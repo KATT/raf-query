@@ -1,5 +1,5 @@
 import { type Entry, rejected } from "@raf-query/core/internal";
-import type { Thenable } from "@raf-query/core";
+import type { QueryClient, Thenable } from "@raf-query/core";
 
 /**
  * The digest Next.js gives a boundary that renders only in the browser
@@ -17,29 +17,31 @@ class BrowserRenderError extends Error {
 	override readonly name = "BrowserRenderError";
 }
 
+/** Server clients a server components' `HydrationBoundary` feeds. */
+const fedByServerComponents = new WeakSet<QueryClient>();
+
 /**
- * Whether React rendered a Suspense boundary's fallback on the server, and
- * left its content to the browser, because a read bailed out: an error a
- * server render's `onError` and the browser's `onRecoverableError` can skip.
- * It checks the `digest`, which the browser's copy of the error keeps when
- * `onError` returns it.
+ * Mark a server render's client as fed by server components: from now on,
+ * its renders leave a query nothing started to the browser instead of
+ * fetching it, since nothing would send that request's data down.
  */
-export function isBrowserRenderError(
-	error: unknown,
-): error is Error & { readonly digest: string } {
-	return (
-		error instanceof Error &&
-		"digest" in error &&
-		error.digest === clientRendering
-	);
+export function markFedByServerComponents(client: QueryClient): void {
+	if (client.isServer) {
+		fedByServerComponents.add(client);
+	}
+}
+
+/** Whether a render on `client` leaves a query nothing started to the browser. */
+export function leavesUnstartedToBrowser(client: QueryClient): boolean {
+	return fedByServerComponents.has(client);
 }
 
 const reads = new WeakMap<Entry, Thenable<unknown>>();
 
 /**
- * The read of an entry a server render can't settle: no data, no error and
- * no request in flight. Renders never start requests on the server, so it
- * rejects, and the boundary that `use()`s it renders in the browser.
+ * The read of an entry a server render won't settle: no data, no error and
+ * no request in flight. It rejects, and the boundary that `use()`s it renders
+ * in the browser.
  */
 export function browserRender(entry: Entry): Thenable<unknown> {
 	let read = reads.get(entry);

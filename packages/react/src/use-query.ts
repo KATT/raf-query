@@ -26,7 +26,7 @@ import {
 } from "@raf-query/core/internal";
 import { useCallback, useState, useSyncExternalStore } from "react";
 
-import { browserRender } from "./browser-render.ts";
+import { browserRender, leavesUnstartedToBrowser } from "./browser-render.ts";
 import {
 	createTracker,
 	type Fields,
@@ -131,15 +131,19 @@ function isIdle(entry: Entry, state: EntryState): boolean {
 
 /**
  * Start the request of an entry nothing is loading: the reader of a
- * waterfall handle, or of a query the cache dropped. A server render never
- * starts one: only loaders and server components request on the server.
+ * waterfall handle, or of a query the cache dropped. A server render fed by
+ * server components leaves it to the browser: nothing would send its data.
  */
 function startIfMissing(entry: Entry, state: EntryState, waterfall: boolean) {
 	const client = entry.client;
-	if (client.isServer || !isIdle(entry, state) || !isEnabled(entry)) {
+	if (
+		!isIdle(entry, state) ||
+		!isEnabled(entry) ||
+		leavesUnstartedToBrowser(client)
+	) {
 		return;
 	}
-	if (process.env.NODE_ENV !== "production" && !waterfall) {
+	if (process.env.NODE_ENV !== "production" && !waterfall && !client.isServer) {
 		// oxlint-disable-next-line no-console -- a development-only hint
 		console.warn(
 			`raf-query: ${entry.hash} was read before anything loaded it, so it fetches while rendering. Start it in a loader with load(), or build the handle with waterfallHandle() to make the waterfall explicit.`,
@@ -149,9 +153,9 @@ function startIfMissing(entry: Entry, state: EntryState, waterfall: boolean) {
 }
 
 /**
- * On the server, an entry nothing is loading (disabled, never started, or
- * dropped) reads as a rejection: a `use()` of it inside Suspense renders
- * that boundary's fallback, and the browser renders the content.
+ * On the server, an entry still idle after `startIfMissing` (disabled, or
+ * left to the browser) reads as a rejection: a `use()` of it inside Suspense
+ * renders that boundary's fallback, and the browser renders the content.
  */
 function readOf(entry: Entry, state: EntryState): Thenable<unknown> {
 	return entry.client.isServer && isIdle(entry, state)

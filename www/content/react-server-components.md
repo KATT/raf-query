@@ -89,7 +89,9 @@ Changing search params with [`<Link>`](https://nextjs.org/docs/app/api-reference
 
 ## Queries that start in the browser
 
-On the server, only server components start requests: client components' server render never does. A client component reading a query that no `HydrationBoundary` sent renders its Suspense fallback on the server, and the query loads in the browser. This is what happens when a client component reads a handle from [`waterfallHandle`](./request-waterfalls.md). That boundary renders in the browser through React's error recovery, with the digest Next.js uses for `ssr: false`, so Next.js doesn't report it. Other RSC frameworks see a recoverable error: skip it with `isBrowserRenderError`, as in [SSR and hydration](./ssr-and-hydration.md#queries-nothing-started-on-the-server).
+On the server, only server components start requests. `HydrationBoundary` marks the client components' server render as it renders: below it, a client component reading a query that no `HydrationBoundary` sent renders its Suspense fallback on the server, and the query loads in the browser. This is what happens when a client component reads a handle from [`waterfallHandle`](./request-waterfalls.md). That boundary renders in the browser through React's error recovery, with the digest Next.js uses for `ssr: false`, so Next.js doesn't report it. Other RSC frameworks see a recoverable error.
+
+A client component that renders before the first `HydrationBoundary`, such as one in the root layout around `{children}`, isn't below a mark yet: a query it reads that nothing started fetches during the server render, and the browser fetches it again. See [SSR and hydration](./ssr-and-hydration.md#queries-nothing-started-on-the-server).
 
 `useQuery`, `useInfiniteQuery`, `useIsFetching` and `useQueryClient` read the client's cache, so they belong in client components. Called in a server component, each throws an error that says so.
 
@@ -103,7 +105,7 @@ A factory's `queryFn` runs in two places, and has to reach the same data as the 
 | `fetch("/api/...")` | Fails: there is no page origin to resolve it                                                      | Works                     |
 | The user's cookies  | Yours to forward, from [`headers()`](https://nextjs.org/docs/app/api-reference/functions/headers) | Sent by the browser       |
 
-Client components' server render starts no request, so it isn't a third place.
+Below a `HydrationBoundary`, client components' server render starts no request, so it isn't a third place. A client component above every boundary that reads a query nothing started is one: keep such reads below the page's boundary.
 
 ### An API in the same app
 

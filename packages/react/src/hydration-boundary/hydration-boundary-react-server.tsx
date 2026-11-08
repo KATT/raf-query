@@ -21,6 +21,10 @@ function sentHashes(client: QueryClient): Set<string> {
  * browser cache: pending entries cross as promises and stream in as they
  * settle, and entries an earlier boundary already sent in this request are
  * skipped. With `state`, writes that state, as the browser version does.
+ *
+ * It also marks the client components' server render: from there on, a read
+ * of a query nothing sent renders its Suspense fallback on the server and
+ * loads in the browser, instead of fetching where nothing would send it.
  */
 export function HydrationBoundary(props: HydrationBoundaryProps) {
 	const client = props.client;
@@ -28,5 +32,9 @@ export function HydrationBoundary(props: HydrationBoundaryProps) {
 		client === undefined
 			? props.state
 			: dehydrate(client, { ...props.options, sent: sentHashes(client) });
-	return <Hydrate state={state}>{props.children}</Hydrate>;
+	return (
+		<Hydrate fromServerComponents state={state}>
+			{props.children}
+		</Hydrate>
+	);
 }

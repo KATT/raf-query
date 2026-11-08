@@ -52,7 +52,7 @@ Options:
 
 A query whose server request throws reaches the browser as a `RedactedError`, which names the query but not the cause, so server errors don't leak into the page. [Expected errors](./query-functions.md#expected-errors) (`fail()`) cross as they are.
 
-Only loaders start requests on the server. A component that reads a query no loader started, such as a [`waterfallHandle`](./request-waterfalls.md#render-time-inputs-waterfallhandle)'s, renders its Suspense fallback in the HTML, and the browser fetches the query. Start's default stream handler logs that as a render error; a server and client entry that skip it are in [SSR and hydration](./ssr-and-hydration.md#queries-nothing-started-on-the-server).
+A component that reads a query no loader started, such as a [`waterfallHandle`](./request-waterfalls.md#render-time-inputs-waterfallhandle)'s, fetches it on the server while rendering. The integration streams that entry too, so the HTML has the data and the browser doesn't fetch it again. It's still a waterfall: the request starts only once the component renders. See [SSR and hydration](./ssr-and-hydration.md#queries-nothing-started-on-the-server).
 
 ## Loaders
 

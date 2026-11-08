@@ -122,6 +122,21 @@ describe("HydrationBoundary (react-server)", () => {
 		expect(backend.requests).toHaveLength(0);
 	});
 
+	it("leaves the browser's reads of queries nothing sent to fetch there", async () => {
+		const backend = createBackend();
+		const server = createQueryClient({ isServer: true });
+		const client = testClient();
+		await renderWith(
+			client,
+			<ServerHydrationBoundary client={server}>
+				<Issue backend={backend} id={1} />
+			</ServerHydrationBoundary>,
+		);
+		expect(backend.requests.map((request) => request.id)).toEqual([1]);
+		await backend.respondAll();
+		expect(screen.getByText("First")).toBeTruthy();
+	});
+
 	it("writes a given state", async () => {
 		const backend = createBackend();
 		const state = await serverState(backend, 2, "Given");

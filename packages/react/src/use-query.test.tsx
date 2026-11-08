@@ -6,7 +6,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	createQueryClient,
 	invalidateOne,
-	isBrowserRenderError,
 	load,
 	prefetch,
 	QueryClientProvider,
@@ -20,6 +19,7 @@ import {
 	useQuery,
 	waterfallHandle,
 } from "./index.ts";
+import { HydrationBoundary as ServerHydrationBoundary } from "./index-react-server.ts";
 import {
 	createBackend,
 	flush,
@@ -500,6 +500,12 @@ describe("useQuery", () => {
 	});
 
 	describe("on the server", () => {
+		/** What a read left to the browser rejects with. */
+		const bailoutError = {
+			digest: "BAILOUT_TO_CLIENT_SIDE_RENDERING",
+			name: "BrowserRenderError",
+		} satisfies Pick<Error, "name"> & { readonly digest: string };
+
 		it("hands a plain read of a disabled query to the browser", async () => {
 			vi.spyOn(console, "error").mockImplementation(() => {});
 			const backend = createBackend();
@@ -529,18 +535,43 @@ describe("useQuery", () => {
 			expect(html).toContain("in the browser");
 			expect(reads[1]).toBe(reads[0]);
 			const bailout = await reads[0]?.catch((error: unknown) => error);
-			expect(isBrowserRenderError(bailout)).toBe(true);
-			expect(bailout).toMatchObject({
-				digest: "BAILOUT_TO_CLIENT_SIDE_RENDERING",
-			});
+			expect(bailout).toMatchObject(bailoutError);
 			expect(backend.requests).toHaveLength(0);
 		});
 
-		it("leaves a query nothing started to the browser, without starting it", async () => {
+		it("fetches a query nothing started while rendering, without a warning", async () => {
+			const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+			const backend = createBackend();
+			const client = createQueryClient({ isServer: true });
+			const handle = waterfallHandle(backend.issueQuery, { id: 1 });
+			function Issue() {
+				const [issueThenable] = useQuery(backend.issueQuery, handle);
+				const issue = use(issueThenable);
+				return <p>{issue.title}</p>;
+			}
+			const rendering = renderToReadableStream(
+				<QueryClientProvider client={client}>
+					<Suspense fallback={<p>loading</p>}>
+						<Issue />
+					</Suspense>
+				</QueryClientProvider>,
+			);
+			await vi.waitFor(() => expect(backend.requests).toHaveLength(1));
+			await backend.respondAll();
+			const stream = await rendering;
+			await stream.allReady;
+			const html = await new Response(stream).text();
+
+			expect(html).toContain("First");
+			expect(warn).not.toHaveBeenCalled();
+		});
+
+		it("under a server components' HydrationBoundary, leaves a query nothing sent to the browser", async () => {
 			const errors: Array<unknown> = [];
 			const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 			const backend = createBackend();
 			const client = createQueryClient({ isServer: true });
+			const serverComponents = createQueryClient({ isServer: true });
 			const handle = waterfallHandle(backend.issueQuery, { id: 1 });
 			const unstarted: QueryHandle<Backend["issueQuery"]> = {
 				input: { id: 2 },
@@ -557,12 +588,14 @@ describe("useQuery", () => {
 			}
 			const stream = await renderToReadableStream(
 				<QueryClientProvider client={client}>
-					<Suspense fallback={<p>in the browser</p>}>
-						<Issue handle={handle} />
-					</Suspense>
-					<Suspense fallback={<p>also in the browser</p>}>
-						<Issue handle={unstarted} />
-					</Suspense>
+					<ServerHydrationBoundary client={serverComponents}>
+						<Suspense fallback={<p>in the browser</p>}>
+							<Issue handle={handle} />
+						</Suspense>
+						<Suspense fallback={<p>also in the browser</p>}>
+							<Issue handle={unstarted} />
+						</Suspense>
+					</ServerHydrationBoundary>
 				</QueryClientProvider>,
 				{ onError: (error) => void errors.push(error) },
 			);
@@ -571,24 +604,12 @@ describe("useQuery", () => {
 
 			expect(html).toContain("in the browser");
 			expect(html).toContain("also in the browser");
-			expect(errors).toHaveLength(2);
-			expect(errors.every(isBrowserRenderError)).toBe(true);
+			expect(errors).toEqual([
+				expect.objectContaining(bailoutError),
+				expect.objectContaining(bailoutError),
+			]);
 			expect(backend.requests).toHaveLength(0);
 			expect(warn).not.toHaveBeenCalled();
-		});
-
-		it("tells a bail-out from other errors", () => {
-			expect(isBrowserRenderError(new Error("failed"))).toBe(false);
-			expect(
-				isBrowserRenderError({ digest: "BAILOUT_TO_CLIENT_SIDE_RENDERING" }),
-			).toBe(false);
-			expect(
-				isBrowserRenderError(
-					Object.assign(new Error("from the server"), {
-						digest: "BAILOUT_TO_CLIENT_SIDE_RENDERING",
-					}),
-				),
-			).toBe(true);
 		});
 
 		it("renders a request a loader started, and data already cached", async () => {

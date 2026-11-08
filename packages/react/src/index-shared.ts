@@ -1,5 +1,4 @@
 export * from "@raf-query/core";
-export { isBrowserRenderError } from "./browser-render.ts";
 export {
 	QueryDevtools,
 	QueryDevtoolsPanel,

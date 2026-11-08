@@ -8,6 +8,7 @@ import {
 import { hashKey } from "@raf-query/core/internal";
 import { type ReactNode, useEffect, useState } from "react";
 
+import { markFedByServerComponents } from "../browser-render.ts";
 import { useQueryClient } from "../provider.tsx";
 
 /**
@@ -33,9 +34,18 @@ function split(client: QueryClient, state: DehydratedState) {
  */
 export function Hydrate(props: {
 	readonly children?: ReactNode;
+	/**
+	 * Set by the server components' `HydrationBoundary`. It marks a server
+	 * render's client before the children render, so their reads of queries
+	 * nothing sent render in the browser instead of fetching on the server.
+	 */
+	readonly fromServerComponents?: boolean;
 	readonly state: DehydratedState;
 }) {
 	const client = useQueryClient();
+	if (props.fromServerComponents) {
+		markFedByServerComponents(client);
+	}
 	const state = props.state;
 	const [hydrated, setHydrated] = useState<{
 		readonly deferred: DehydratedState;

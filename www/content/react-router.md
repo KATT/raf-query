@@ -78,11 +78,13 @@ react-router/app/providers.tsx
 react-router/app/root.tsx#app
 ```
 
-The server render's client starts no request: loaders start them on the request's client below, and `HydrationBoundary` sends their data. A component that reads a query no loader started renders its Suspense fallback in the HTML, and the browser fetches it. React Router's default `entry.server.tsx` would answer that page with a 500, so skip it as in [SSR and hydration](./ssr-and-hydration.md#queries-nothing-started-on-the-server).
-
 Nothing is on by default: [`recommended()`](./important-defaults.md) adds retries, refetching on window focus and reconnect, and polling.
 
 Mount DevTools only when `import.meta.env.DEV` is true so Vite drops the panel from production builds. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
+
+### Queries no loader started
+
+Loaders start queries on the request's client below, and `HydrationBoundary` sends their data. A component that reads a query no loader started, such as a [`waterfallHandle`](./request-waterfalls.md#render-time-inputs-waterfallhandle)'s, fetches it on the server render's client while rendering, so the HTML has the data. Nothing sends that client's cache to the browser: a loader's snapshot holds only what loaders started. So the browser fetches the query again when it hydrates, and the query runs twice for the page. That's the cost of starting a query outside a loader. Start it in the loader to run it once (see [SSR and hydration](./ssr-and-hydration.md#queries-nothing-started-on-the-server)).
 
 ### A client per request
 

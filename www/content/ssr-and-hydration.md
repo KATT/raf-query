@@ -31,7 +31,7 @@ Your components never deal with this. A handle only carries a key and an input, 
 
 So in a server render, every entry makes at most one request per query, whatever its `staleTime`, unless a write invalidates the query and a `revalidate` entry reads it again.
 
-On the server, only loaders and server components start requests. A render never does: see [Queries nothing started on the server](#queries-nothing-started-on-the-server).
+A server render fetches a query that nothing started, except where server components feed it: see [Queries nothing started on the server](#queries-nothing-started-on-the-server).
 
 ## The provider
 
@@ -51,29 +51,19 @@ nextjs/src/components/providers.tsx
 
 ## Queries nothing started on the server
 
-A component that reads a query with no data, no error and no request in flight on a server client doesn't start the request. Its read rejects, `use()` throws, and React renders the nearest Suspense fallback in the HTML. The browser renders that boundary again, and its read starts the query there. This happens to a [`waterfallHandle`](./request-waterfalls.md#render-time-inputs-waterfallhandle)'s query, to a [browser-only query](#browser-only-queries), and to a query the server's cache dropped after its loader ran. Put a Suspense boundary around such readers, or start the query in a loader to have it in the HTML.
+A component can read a query that no loader or server component started: a [`waterfallHandle`](./request-waterfalls.md#render-time-inputs-waterfallhandle)'s query, or one the server's cache dropped after its loader ran. What the server render does with it depends on what carries the server's cache to the browser:
 
-React sees that read as an error it recovers from. The error has the digest Next.js uses for `ssr: false`, so Next.js reports nothing. Elsewhere, React calls the server render's `onError` and, while hydrating, the browser's [`onRecoverableError`](https://react.dev/reference/react-dom/client/hydrateRoot#parameters). TanStack Start's default stream handler logs it, and React Router's default `entry.server.tsx` logs it and answers 500. `isBrowserRenderError(error)` from `@raf-query/react` tells the two apart: return the error's `digest` from `onError` and skip it there, and skip it in `onRecoverableError`, which gets the digest back from the server.
+| Framework                                                        | A read of a query nothing started, on the server                                                                                                                                                |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [TanStack Start](./tanstack-start.md)                            | Fetches while rendering. `setupRouterIntegration` streams the entry with the rest of the cache, so the browser resumes it instead of fetching again                                             |
+| [React Router](./react-router.md)                                | Fetches while rendering, so the HTML has the data. A loader's snapshot carries only what loaders started, so the browser [fetches the query again](./react-router.md#queries-no-loader-started) |
+| [Next.js and other RSC frameworks](./react-server-components.md) | Renders the nearest Suspense fallback, and the query loads in the browser                                                                                                                       |
 
-In TanStack Start, a [server entry](https://tanstack.com/start/latest/docs/framework/react/guide/server-entry-point) renders the page with that `onError`, and a [client entry](https://tanstack.com/start/latest/docs/framework/react/guide/client-entry-point) hydrates with that `onRecoverableError`:
+With server components, the client components' server render has nothing to send its own requests through: only server components' `HydrationBoundary` sends entries. So that `HydrationBoundary` marks the client components' server render as it renders. Below it, a read of a query nothing sent doesn't start the request: its read rejects, `use()` throws, and React renders the nearest Suspense fallback in the HTML. The browser renders that boundary again, and its read starts the query there. Put a Suspense boundary around such readers, or start the query in a server component to have it in the HTML.
 
-```sample
-tanstack-start/src/server.ts
-```
+React sees that read as an error it recovers from. The error has the digest Next.js uses for `ssr: false`, so Next.js reports nothing. Other RSC frameworks report it to the server render's `onError` and, while hydrating, the browser's [`onRecoverableError`](https://react.dev/reference/react-dom/client/hydrateRoot#parameters).
 
-```sample
-tanstack-start/src/client.tsx
-```
-
-In React Router Framework Mode, the same goes in [`entry.server.tsx`](https://reactrouter.com/api/framework-conventions/entry.server.tsx) and [`entry.client.tsx`](https://reactrouter.com/api/framework-conventions/entry.client.tsx):
-
-```sample
-react-router/app/entry.server.tsx
-```
-
-```sample
-react-router/app/entry.client.tsx
-```
+The mark is set when the first `HydrationBoundary` renders. A client component that renders before it, such as one in a root layout above the page's boundary, still fetches on the server, and the browser fetches that query again.
 
 ## Errors
 
@@ -91,13 +81,13 @@ tanstack-start/src/docs/ssr-and-hydration.ts#browser-only-queries
 
 A server client never starts a disabled query and never sends it. A loader that also runs on the server starts it with a `prefetch` entry: `load` returns its handle on the server too, and the browser starts the request when the loader or the first read runs there. `swr` and `revalidate` entries can't wait for it on the server, so `load` rejects with `QueryDisabledError`.
 
-On the server, a disabled query with no data reads like any [query nothing started there](#queries-nothing-started-on-the-server): put the component that `use()`s it inside a Suspense boundary, and React sends the fallback from the server and renders the content in the browser.
+On any server client, a disabled query with no data reads as a thenable that rejects, and `use()` throws it. Put the component that `use()`s it inside a Suspense boundary: React sends the fallback from the server and renders the content in the browser.
 
 ```sample
 tanstack-start/src/docs/ssr-and-hydration.tsx#push-state
 ```
 
-React reports that boundary to `onRecoverableError` while hydrating; `isBrowserRenderError` tells it apart from real errors.
+React reports that boundary as an error it recovers from, as for [a query left to the browser](#queries-nothing-started-on-the-server). Next.js reports nothing; other frameworks see it in the server render's `onError` and the browser's `onRecoverableError`.
 
 ## When the browser already has data
 
