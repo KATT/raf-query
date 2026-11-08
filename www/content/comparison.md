@@ -67,7 +67,7 @@ tanstack-start/src/docs/comparison.tsx#thenable
 
 ### Side by side
 
-A setting that shows the browser's notification permission. With TanStack Query, the component starts the query, and `enabled` keeps it off the server:
+A post page's "notify me about replies" toggle, which shows the browser's notification permission. With TanStack Query, the component starts the query, and `enabled` keeps it off the server:
 
 ```sample
 tanstack-start/src/docs/comparison.tanstack.tsx#tanstack

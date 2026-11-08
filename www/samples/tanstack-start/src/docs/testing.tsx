@@ -1,7 +1,6 @@
 import {
 	createQueryClient,
 	focusRefetch,
-	group,
 	load,
 	prefetch,
 	type QueryClient,
@@ -15,9 +14,7 @@ import {
 import { act, render, screen } from "@testing-library/react";
 import { type ReactNode, Suspense, use } from "react";
 import { afterEach, beforeEach, expect, test } from "./testing.vitest.ts";
-import { postQuery } from "~/queries.ts";
-
-const count = group("count");
+import { postQuery, posts } from "~/queries.ts";
 
 declare function Post(props: {
 	handle: QueryHandle<typeof postQuery>;
@@ -60,12 +57,12 @@ test("shows the post", async () => {
 // #region focus-and-the-network
 test("refetches on focus", async () => {
 	let calls = 0;
-	const countQuery = () =>
-		queryOptions({ queryKey: count(), queryFn: async () => ++calls });
-	function Count(props: { handle: QueryHandle<typeof countQuery> }) {
-		const [countThenable] = useQuery(countQuery, props.handle);
-		const count = use(countThenable);
-		return <p>{count}</p>;
+	const viewsQuery = () =>
+		queryOptions({ queryKey: posts("views"), queryFn: async () => ++calls });
+	function Views(props: { handle: QueryHandle<typeof viewsQuery> }) {
+		const [viewsThenable] = useQuery(viewsQuery, props.handle);
+		const views = use(viewsThenable);
+		return <p>{views} views</p>;
 	}
 
 	queryClient = createQueryClient({
@@ -73,9 +70,9 @@ test("refetches on focus", async () => {
 		features: [focusRefetch()],
 	});
 	const [handles] = await load(queryClient, {
-		count: revalidate(countQuery),
+		views: revalidate(viewsQuery),
 	});
-	await renderWithClient(<Count handle={handles.count} />);
+	await renderWithClient(<Views handle={handles.views} />);
 
 	await act(async () => {
 		window.dispatchEvent(new Event("focus"));

@@ -7,8 +7,8 @@ import {
 	reconnectRefetch,
 	retry,
 } from "@raf-query/react";
-import { getSettings } from "~/api.ts";
-import { account } from "~/queries.ts";
+import { getPost } from "~/api.ts";
+import { posts } from "~/queries.ts";
 
 // #region the-features
 const queryClient = createQueryClient({
@@ -27,10 +27,11 @@ const withoutFocus = createQueryClient({
 // #endregion
 
 // #region per-query
-export function settingsQuery() {
+// A post's body rarely changes while someone reads it.
+export function postBodyQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: account("settings"),
-		queryFn: () => getSettings(),
+		queryKey: posts("body", input.slug),
+		queryFn: () => getPost(input.slug),
 		meta: { refetchOnWindowFocus: false },
 	});
 }

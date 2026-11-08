@@ -1,8 +1,7 @@
 import { group, infiniteQueryOptions, queryOptions } from "@raf-query/react";
-import type { Post, PostPage } from "~/api.ts";
+import type { Post, PostComment, PostPage } from "~/api.ts";
 
 const posts = group("posts");
-const builds = group("builds");
 
 declare function fetchPostPage(cursor: number): Promise<PostPage>;
 
@@ -65,16 +64,19 @@ queryOptions({
 });
 // #endregion
 
-declare function streamLines(signal: AbortSignal): AsyncIterable<string>;
+declare function streamComments(
+	slug: string,
+	signal: AbortSignal,
+): AsyncIterable<PostComment>;
 
 // #region streaming
-export function logQuery(input: { buildId: string }) {
+export function liveCommentsQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: builds("log", input),
-		queryFn: (context) => streamLines(context.signal),
+		queryKey: posts("liveComments", input.slug),
+		queryFn: (context) => streamComments(input.slug, context.signal),
 		stream: {
-			initial: [] as ReadonlyArray<string>,
-			reduce: (lines, line) => [...lines, line],
+			initial: [] as ReadonlyArray<PostComment>,
+			reduce: (comments, comment) => [...comments, comment],
 		},
 	});
 }

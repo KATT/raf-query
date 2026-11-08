@@ -26,16 +26,6 @@ export interface Author {
 	readonly name: string;
 }
 
-export interface Build {
-	readonly id: string;
-	readonly status: "pending" | "running" | "done" | "failed";
-}
-
-export interface Org {
-	readonly id: string;
-	readonly name: string;
-}
-
 export interface User {
 	readonly id: string;
 	readonly name: string;
@@ -98,19 +88,20 @@ export function getAuthor(id: string) {
 	return request<Author>(`/api/authors/${id}`);
 }
 
-export function getBuild(id: string) {
-	return request<Build>(`/api/builds/${id}`);
+/** The post's author, looked up by the server from the post's slug. */
+export function getPostAuthor(slug: string) {
+	return request<Author>(`/api/posts/${slug}/author`);
+}
+
+export function getPostViews(slug: string) {
+	return request<number>(`/api/posts/${slug}/views`);
+}
+
+export function getCommentCount(slug: string) {
+	return request<number>(`/api/posts/${slug}/comments/count`);
 }
 
 /** `null` when signed out. */
 export function getMe() {
 	return request<User | null>("/api/me");
-}
-
-export function getCurrentOrg() {
-	return request<Org>("/api/me/org");
-}
-
-export function getSettings() {
-	return request<{ readonly theme: string }>("/api/settings");
 }

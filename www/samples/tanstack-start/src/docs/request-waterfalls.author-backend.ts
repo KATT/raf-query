@@ -1,33 +1,23 @@
-import { group, load, prefetch, queryOptions } from "@raf-query/react";
+import { load, prefetch, queryOptions } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { getCurrentOrg } from "~/api.ts";
+import { getPostAuthor } from "~/api.ts";
+import { authors, postQuery } from "~/queries.ts";
 
-const user = group("user");
-const org = group("org");
-
-declare function getCurrentUser(): Promise<{ orgId: string }>;
-
-function currentUserQuery() {
+// #region author-backend
+export function postAuthorQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: user("current"),
-		queryFn: () => getCurrentUser(),
+		queryKey: authors("byPost", input.slug),
+		queryFn: () => getPostAuthor(input.slug),
 	});
 }
 
-// #region settings-backend
-export function currentOrgQuery() {
-	return queryOptions({
-		queryKey: org("current"),
-		queryFn: () => getCurrentOrg(),
-	});
-}
-
-export const Route = createFileRoute("/settings")({
+export const Route = createFileRoute("/posts/$slug")({
 	loader: async (args) => {
+		const { slug } = args.params;
 		const [handles] = await load(args.context.queryClient, {
-			org: prefetch(currentOrgQuery),
-			user: prefetch(currentUserQuery),
+			author: prefetch(postAuthorQuery, { slug }),
+			post: prefetch(postQuery, { slug }),
 		});
 		return handles;
 	},
