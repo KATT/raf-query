@@ -39,4 +39,3 @@ How the human wants it: one point at a time, shown in code, short, plain words, 
 ## Questions for the human
 
 - A React Router integration that streams render-started queries, so they don't run twice.
-- Fake-paged lists in the demos became plain `queryOptions` lists, which reverses #140's "every plural query is infinite".
