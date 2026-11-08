@@ -17,9 +17,9 @@ const content = await Effect.runPromise(
 );
 
 const ranking = [
-	// Named for the query: a page by its title, plural or not.
-	["handle", "handles"],
-	["handles", "handles"],
+	// Named for the query: a page or a section by its title, plural or not.
+	["handle", "reading-queries#handles"],
+	["handles", "reading-queries#handles"],
 	["retry", "retries"],
 	["polling", "polling"],
 	["factory", "query-factories"],

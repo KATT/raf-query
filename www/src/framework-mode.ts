@@ -61,7 +61,7 @@ function applyFrameworkMode(mode: FrameworkMode) {
 }
 
 /** Where the docs remember the reader's framework, for the tabs on every page. */
-export const frameworkModeStorageKey = "raf-query-docs:framework";
+const frameworkModeStorageKey = "raf-query-docs:framework";
 
 /**
  * Runs before first paint so `/?mode=nextjs` never flashes the prerendered

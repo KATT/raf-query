@@ -17,13 +17,14 @@ Pages are `content/<slug>.md`, served at `/docs/<slug>`:
 title: Polling
 description: One sentence for search results and social cards.
 section: Guides # one of `sections` in src/site.ts
-order: 16 # position in the section
+order: 15 # position in the section
 ---
 ```
 
 - Link other pages as `./slug.md` or `./slug.md#heading`. The build fails on a link to a page or heading that doesn't exist.
 - `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]` and friends render as callouts.
 - A code fence can take a title: ` ```sh title="Terminal" `.
+- Adjacent fences with `framework="tanstack-start"`, `"nextjs"` or `"react-router"` in their meta become one block with a tab per framework, and every framework needs at least one fence. The reader's choice applies to every page and is remembered. Use them where starting or reading a query looks different per framework; keep the other samples framework-neutral.
 
 ### Types in code blocks
 
