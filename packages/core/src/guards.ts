@@ -4,6 +4,11 @@ export function isFunction(
 	return typeof value === "function";
 }
 
+/** `Array.isArray` that narrows readonly arrays and tuples too. */
+export function isArray(value: unknown): value is ReadonlyArray<unknown> {
+	return Array.isArray(value);
+}
+
 export function isNumber(value: unknown): value is number {
 	return typeof value === "number";
 }

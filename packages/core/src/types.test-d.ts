@@ -25,6 +25,8 @@ import {
 	type QueryKey,
 	queryOptions,
 	type Recommended,
+	removeMany,
+	resetMany,
 	retry,
 	type RootOf,
 	setData,
@@ -207,6 +209,52 @@ describe("verb types", () => {
 		expectTypeOf(author("ada")).toEqualTypeOf<string>();
 	});
 
+	it("check each target of a list on its own", async () => {
+		const statuses = (input: {
+			readonly id: number;
+			readonly status: "closed" | "open";
+		}) =>
+			queryOptions({
+				queryFn: () => input.status,
+				queryKey: issues("status", input),
+			});
+		await invalidateMany(client, [
+			issues,
+			titles,
+			[statuses, { status: "open" }],
+			[titles, {}],
+			author,
+			[author, "ada"],
+			featured,
+		]);
+		await resetMany(client, [issues, [author, "ada"]]);
+		removeMany(client, [[statuses, { id: 1 }], featured]);
+		await invalidateMany(client, []);
+		const kept: ReadonlyArray<typeof issues | typeof titles> = [issues];
+		await invalidateMany(client, kept);
+		const wrong = () => {
+			// @ts-expect-error -- a partial input still has its factory's types
+			void invalidateMany(client, [issues, [statuses, { status: "done" }]]);
+			// @ts-expect-error -- and so does a partial of another field
+			void invalidateMany(client, [[titles, { id: "1" }]]);
+			// @ts-expect-error -- a tag parameter is typed
+			void invalidateMany(client, [[author, 1]]);
+			// @ts-expect-error -- a group takes no parameter
+			void invalidateMany(client, [[issues, "x"]]);
+			// @ts-expect-error -- nor does a tag without one
+			void resetMany(client, [[featured, "x"]]);
+			// @ts-expect-error -- raw strings aren't targets
+			void invalidateMany(client, [issues, "issues"]);
+			// @ts-expect-error -- nor are hand-written keys
+			void invalidateMany(client, [["issues"]]);
+			// @ts-expect-error -- nor are keys a group built
+			removeMany(client, [issues("list")]);
+			// @ts-expect-error -- a hand-written key isn't a list of targets either
+			void invalidateMany(client, ["issues"] as const);
+		};
+		expectTypeOf(wrong).toBeFunction();
+	});
+
 	it("type data before select", () => {
 		expectTypeOf(getData(client, titles, { id: 1 })).toEqualTypeOf<
 			{ title: string } | undefined
@@ -330,6 +378,43 @@ describe("root types", () => {
 			void invalidateMany(bare, writer, "a");
 		};
 		void invalidateMany(bare, posts);
+		expectTypeOf(wrong).toBeFunction();
+	});
+
+	it("check a list's targets against the client's root", () => {
+		const qc = makeQueryClient();
+		const owned: Target<{ readonly owner: string | undefined }> = {
+			where: (query) => query.meta.owner === "users-team",
+		};
+		const ownedBy: Target<
+			{ readonly owner: string | undefined },
+			"posts-team" | "users-team"
+		> = { where: (query, team) => query.meta.owner === team };
+		void invalidateMany(qc, [
+			posts,
+			postById,
+			[postById, { authorId: "a" }],
+			[writer, "a"],
+			owned,
+			[ownedBy, "posts-team"],
+			titles,
+		]);
+		const bare = createQueryClient({ links: [retry()] });
+		void invalidateMany(bare, [posts, titles, [titles, { id: 1 }]]);
+		const anyClient: QueryClient = qc;
+		void invalidateMany(anyClient, [postById, [writer, "a"], owned]);
+		const wrong = () => {
+			// @ts-expect-error -- postById belongs to makeQueryClient's root
+			void invalidateMany(bare, [posts, postById]);
+			// @ts-expect-error -- `writer` reads meta.tags, which nothing in this root declares
+			void invalidateMany(bare, [[writer, "a"]]);
+			// @ts-expect-error -- nor does anything declare meta.owner
+			void resetMany(bare, [owned]);
+			// @ts-expect-error -- a target that needs a parameter needs it in a list too
+			void invalidateMany(qc, [ownedBy]);
+			// @ts-expect-error -- of its type
+			removeMany(qc, [[ownedBy, "nobody"]]);
+		};
 		expectTypeOf(wrong).toBeFunction();
 	});
 

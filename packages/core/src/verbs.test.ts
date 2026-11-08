@@ -31,6 +31,7 @@ import {
 	createBackend,
 	drafts,
 	featured,
+	flush,
 	issues,
 	read,
 	testClient,
@@ -188,6 +189,46 @@ describe("invalidation", () => {
 		expect(await cache.refetched()).toEqual(["two"]);
 	});
 
+	it("takes several targets in one call, each with its own argument", async () => {
+		const cache = await cached();
+		await invalidateMany(cache.client, [
+			[cache.backend.issueQuery, { id: 2 }],
+			featured,
+		]);
+		expect(await cache.refetched()).toEqual(["draft", "two"]);
+
+		await invalidateMany(cache.client, [users, [author, "ada"]]);
+		expect(await cache.refetched()).toEqual(["one"]);
+		await invalidateMany(cache.client, []);
+		expect(await cache.refetched()).toEqual([]);
+	});
+
+	it("refetches a read query that several targets of a list cover once, and resolves when every refetch settles", async () => {
+		const cache = await cached();
+		const one = read(cache.client, cache.backend.issueQuery, cache.handles.one);
+		const two = read(cache.client, cache.backend.issueQuery, cache.handles.two);
+		let settled = false;
+		const invalidating = invalidateMany(cache.client, [
+			issues,
+			cache.backend.issueQuery,
+			[cache.backend.issueQuery, { id: 1 }],
+			[author, "ada"],
+		]).then(() => {
+			settled = true;
+		});
+
+		expect(cache.backend.requests.map((request) => request.id)).toEqual([1, 2]);
+		cache.backend.requests.shift()?.respond();
+		await flush();
+		expect(settled).toBe(false);
+		await cache.backend.respondAll();
+		await invalidating;
+		expect(settled).toBe(true);
+		one.unmount();
+		two.unmount();
+		expect(await cache.refetched()).toEqual(["draft"]);
+	});
+
 	it("invalidates everything", async () => {
 		const cache = await cached();
 		await invalidateAll(cache.client);
@@ -243,6 +284,10 @@ describe("reset and remove", () => {
 		expect(has()).toEqual([false, true, true]);
 		await resetMany(cache.client, cache.backend.issueQuery, { id: 2 });
 		expect(has()).toEqual([false, false, true]);
+		await resetMany(cache.client, []);
+		expect(has()).toEqual([false, false, true]);
+		await resetMany(cache.client, [featured, [cache.backend.issueQuery, {}]]);
+		expect(has()).toEqual([false, false, false]);
 		await resetAll(cache.client);
 		expect(has()).toEqual([false, false, false]);
 	});
@@ -272,7 +317,7 @@ describe("reset and remove", () => {
 			].map((data) => data !== undefined);
 
 		expect(has()).toEqual([false, true, true]);
-		removeMany(cache.client, drafts);
+		removeMany(cache.client, [drafts, [author, "ada"]]);
 		expect(has()).toEqual([false, true, false]);
 		const loading = load(cache.client, {
 			one: ensureEntry(cache.backend.issueQuery, { id: 1 }),

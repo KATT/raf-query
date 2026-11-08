@@ -90,9 +90,9 @@ export function action<
 				if (targets) {
 					return Promise.all(
 						targets.map((target) =>
-							invalidate(registration.client, (at) =>
+							invalidate(registration.client, (at) => [
 								stampFor(target, undefined, at),
-							),
+							]),
 						),
 					);
 				}

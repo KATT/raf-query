@@ -503,24 +503,25 @@ export function reset(entry: Entry): Promise<Outcome> {
 }
 
 /**
- * Record an invalidation. Entries it covers that have readers refetch now;
- * the rest find out when they are next read. Resolves when the refetches
- * settle.
+ * Record an invalidation: one stamp per target, all at one point in the
+ * sequence. Entries they cover that have readers refetch now, once however
+ * many stamps cover them; the rest find out when they are next read.
+ * Resolves when the refetches settle.
  */
 export function invalidate(
 	client: QueryClient,
-	makeStamp: (at: number) => Stamp,
+	makeStamps: (at: number) => ReadonlyArray<Stamp>,
 ): Promise<void> {
-	const stamp = makeStamp(++client["~seq"]);
+	const stamps = makeStamps(++client["~seq"]);
 	const entries = [...client["~entries"].values()];
 	const oldest = Math.min(...entries.map((entry) => entry.requestedAt));
 	client["~stamps"] = [
 		...client["~stamps"].filter((kept) => kept.at > oldest),
-		stamp,
+		...stamps,
 	];
 	const refetches: Array<Promise<Outcome>> = [];
 	for (const entry of entries) {
-		if (matches(entry, stamp)) {
+		if (stamps.some((stamp) => matches(entry, stamp))) {
 			notify(entry);
 			if (entry.readers.size > 0 && isEnabled(entry)) {
 				refetches.push(fetchEntry(entry, { restart: true }));

@@ -37,6 +37,7 @@ Verbs are functions that take the client first. Each `…One` verb takes a facto
 | `invalidateMany(qc, group)`                 | Every key that starts with the [group](./query-keys.md#groups), or a group in it |
 | `invalidateMany(qc, tag, param?)`           | Every query with the [tag](#tags), for one parameter or for any                  |
 | `invalidateMany(qc, { where }, param?)`     | Every query [`where`](#matching-with-where) returns `true` for                   |
+| `invalidateMany(qc, [target, …])`           | Every query any of the targets matches: [several targets](#several-targets)      |
 | `invalidateAll(qc)`                         | Everything                                                                       |
 
 A partial input matches the key's **last** segment, the factory's input when the key [ends with it](./query-keys.md#put-the-input-in-the-key). Object fields match **partially**: `{ status: "done" }` matches any input with that field, whatever else it has.
@@ -45,6 +46,16 @@ Targets are values, never strings: a factory matches by identity, a group by its
 
 > [!NOTE]
 > Groups, tags and the way targets match are a design still being settled. See [Query keys](./query-keys.md).
+
+### Several targets
+
+To invalidate more than one thing, pass a list. An element is a group, a factory, a target, or `[factory, partialInput]` / `[target, param]`:
+
+```sample
+tanstack-start/src/docs/query-invalidation.ts#several-targets
+```
+
+The refetches run side by side, a query that several targets cover refetches once, and the promise resolves when all of them have settled. Awaiting one verb after another serializes them instead: `await invalidateMany(qc, a); await invalidateMany(qc, b);` starts `b`'s refetches only once `a`'s are done. TypeScript checks each element on its own, the way it checks a single target.
 
 ### Tags
 
@@ -74,7 +85,7 @@ tanstack-start/src/docs/query-invalidation.ts#matching-with-where
 | `reset…`      | Dropped                | Suspend and refetch                          | Data that must not be shown again (logout) |
 | `remove…`     | Dropped with the entry | Keep what they rendered until they re-render | Freeing memory, dropping an abandoned key  |
 
-Each comes as `…One`, `…Many` and `…All`, with the same targets. `reset` resolves when the refetches it caused settle, like `invalidate`. `remove` is synchronous, and aborts in-flight requests.
+Each comes as `…One`, `…Many` and `…All`, with the same targets; `resetMany` and `removeMany` take a list too. `reset` resolves when the refetches it caused settle, like `invalidate`. `remove` is synchronous, and aborts in-flight requests.
 
 ## Invalidating from mutations
 
@@ -90,7 +101,7 @@ Or call a verb yourself at the end of a form action:
 tanstack-start/src/docs/query-invalidation.tsx#invalidating-from-mutations
 ```
 
-Prefer invalidating a little too much over too little. Only queries being read refetch, so a broad group costs a request per list on screen, not per list ever loaded.
+When a write changes more than one thing, invalidate them in [one call](#several-targets), so their refetches run side by side. Prefer invalidating a little too much over too little. Only queries being read refetch, so a broad group costs a request per list on screen, not per list ever loaded.
 
 When the server's response has everything the cache needs, write it with `setData` instead and skip the refetch. See [Mutations](./mutations.md#updates-from-mutation-responses).
 

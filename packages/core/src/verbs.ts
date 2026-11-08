@@ -11,6 +11,7 @@ import {
 import {
 	type AnyFactory,
 	type AnyInvalidation,
+	type AnyTarget,
 	entryStamp,
 	type Group,
 	hashKey,
@@ -20,7 +21,7 @@ import {
 	stampFor,
 	type Target,
 } from "./keys.ts";
-import { isFunction } from "./guards.ts";
+import { isArray, isFunction } from "./guards.ts";
 import {
 	type InputArgs,
 	type KeyOf,
@@ -62,6 +63,63 @@ export type TargetFor<TTypes extends RootTypes, TParam> =
 		? Target<never, TParam>
 		: Target<NoInfer<TTypes["meta"]>, TParam>;
 
+type ParamOf<TTarget> = TTarget extends {
+	readonly where: (query: never, param: infer TParam) => boolean;
+}
+	? TParam
+	: never;
+
+/** A factory, if the client's root is its root; else nothing fits. */
+type FactoryFor<TTypes extends RootTypes, TFactory extends QueryFactory> = [
+	QueryClient<TTypes>,
+] extends [ClientFor<TFactory>]
+	? TFactory
+	: never;
+
+/** A target on its own, if it needs no parameter; else with its parameter. */
+type BareTarget<TTypes extends RootTypes, TParam> =
+	[] extends ParamArgs<TParam>
+		? TargetFor<TTypes, TParam>
+		: readonly [TargetFor<TTypes, TParam>, TParam];
+
+type AnyItem =
+	| AnyTarget
+	| Group
+	| QueryFactory
+	| readonly [AnyTarget | QueryFactory, unknown];
+
+/**
+ * What one element of a target list must be, given what was passed: a
+ * group, a factory of the client's root, a factory with a partial input, a
+ * target, or a target with its parameter.
+ */
+type Item<TTypes extends RootTypes, TItem> = TItem extends Group
+	? Group
+	: TItem extends QueryFactory
+		? FactoryFor<TTypes, TItem>
+		: TItem extends AnyTarget
+			? BareTarget<TTypes, ParamOf<TItem>>
+			: TItem extends readonly [infer TFirst, unknown]
+				? TFirst extends QueryFactory
+					? readonly [FactoryFor<TTypes, TFirst>, PartialInput<TFirst>]
+					: TFirst extends AnyTarget
+						? readonly [TargetFor<TTypes, ParamOf<TFirst>>, ParamOf<TFirst>]
+						: AnyItem
+				: AnyItem;
+
+/**
+ * Several targets for one verb call, each checked on its own: a group, a
+ * factory, `[factory, partial]`, a target, or `[target, param]`.
+ */
+export type TargetList<
+	TTypes extends RootTypes,
+	TItems extends ReadonlyArray<unknown>,
+> = { readonly [TIndex in keyof TItems]: Item<TTypes, TItems[TIndex]> };
+
+type AnyTargets =
+	| AnyInvalidation
+	| ReadonlyArray<AnyInvalidation | readonly [AnyInvalidation, unknown]>;
+
 /** The data `setData` writes: plain for a query, paged for an infinite one. */
 type WritableData<TFactory extends QueryFactory> =
 	ReturnType<TFactory> extends {
@@ -74,12 +132,28 @@ function hashOf(factory: AnyFactory, input: unknown): string {
 	return hashKey(optionsOf(factory, input).queryKey);
 }
 
+/** A stamp per target: one target and its argument, or each of a list. */
+function stampsOf(
+	targets: AnyTargets,
+	arg: unknown,
+	at: number,
+): ReadonlyArray<Stamp> {
+	const items: ReadonlyArray<
+		AnyInvalidation | readonly [AnyInvalidation, unknown]
+	> = isArray(targets) ? targets : [[targets, arg]];
+	return items.map((item) =>
+		isArray(item)
+			? stampFor(item[0], item[1], at)
+			: stampFor(item, undefined, at),
+	);
+}
+
 function entriesMatching(
 	client: QueryClient,
-	stamp: Stamp,
+	stamps: ReadonlyArray<Stamp>,
 ): ReadonlyArray<Entry> {
 	return [...client["~entries"].values()].filter((entry) =>
-		matches(entry, stamp),
+		stamps.some((stamp) => matches(entry, stamp)),
 	);
 }
 
@@ -96,7 +170,9 @@ export function invalidateOne<TFactory extends QueryFactory>(
 	factory: TFactory,
 	...input: InputArgs<TFactory>
 ): Promise<void> {
-	return invalidate(client, (at) => entryStamp(hashOf(factory, input[0]), at));
+	return invalidate(client, (at) => [
+		entryStamp(hashOf(factory, input[0]), at),
+	]);
 }
 
 /**
@@ -105,6 +181,14 @@ export function invalidateOne<TFactory extends QueryFactory>(
  * the group built them or not), or those a target's `where` picks, such as
  * a tag from `@raf-query/core/groups`. Read queries refetch now; the rest
  * when next read. Resolves when the refetches settle.
+ *
+ * Pass a list to invalidate several targets in one call: each query they
+ * cover refetches once, and the refetches run side by side. Awaiting one
+ * call after another runs them one after another instead.
+ *
+ * ```ts
+ * await invalidateMany(client, [todos, [issuesQuery, { status: "open" }], [author, "ada"]]);
+ * ```
  */
 export function invalidateMany<TFactory extends QueryFactory>(
 	client: ClientFor<TFactory>,
@@ -120,17 +204,24 @@ export function invalidateMany<TTypes extends RootTypes, TParam = never>(
 	target: TargetFor<TTypes, TParam>,
 	...param: ParamArgs<NoInfer<TParam>>
 ): Promise<void>;
+export function invalidateMany<
+	TTypes extends RootTypes,
+	const TItems extends ReadonlyArray<unknown>,
+>(
+	client: QueryClient<TTypes>,
+	targets: TargetList<TTypes, TItems>,
+): Promise<void>;
 export function invalidateMany(
 	client: QueryClient,
-	target: AnyInvalidation,
+	target: AnyTargets,
 	partial?: unknown,
 ): Promise<void> {
-	return invalidate(client, (at) => stampFor(target, partial, at));
+	return invalidate(client, (at) => stampsOf(target, partial, at));
 }
 
 /** Mark every query stale; read ones refetch. For sign-out, or after any write. */
 export function invalidateAll(client: QueryClient): Promise<void> {
-	return invalidate(client, (at) => ({ at, kind: "all" }));
+	return invalidate(client, (at) => [{ at, kind: "all" }]);
 }
 
 function oneEntry(
@@ -154,7 +245,7 @@ export function resetOne<TFactory extends QueryFactory>(
 	return settle(entry ? [reset(entry)] : []);
 }
 
-/** {@link resetOne} for every query a target covers. */
+/** {@link resetOne} for every query a target, or a list of them, covers. */
 export function resetMany<TFactory extends QueryFactory>(
 	client: ClientFor<TFactory>,
 	factory: TFactory,
@@ -166,13 +257,20 @@ export function resetMany<TTypes extends RootTypes, TParam = never>(
 	target: TargetFor<TTypes, TParam>,
 	...param: ParamArgs<NoInfer<TParam>>
 ): Promise<void>;
+export function resetMany<
+	TTypes extends RootTypes,
+	const TItems extends ReadonlyArray<unknown>,
+>(
+	client: QueryClient<TTypes>,
+	targets: TargetList<TTypes, TItems>,
+): Promise<void>;
 export function resetMany(
 	client: QueryClient,
-	target: AnyInvalidation,
+	target: AnyTargets,
 	partial?: unknown,
 ): Promise<void> {
 	return settle(
-		entriesMatching(client, stampFor(target, partial, 0)).map(reset),
+		entriesMatching(client, stampsOf(target, partial, 0)).map(reset),
 	);
 }
 
@@ -193,7 +291,7 @@ export function removeOne<TFactory extends QueryFactory>(
 	}
 }
 
-/** {@link removeOne} for every query a target covers. */
+/** {@link removeOne} for every query a target, or a list of them, covers. */
 export function removeMany<TFactory extends QueryFactory>(
 	client: ClientFor<TFactory>,
 	factory: TFactory,
@@ -205,12 +303,16 @@ export function removeMany<TTypes extends RootTypes, TParam = never>(
 	target: TargetFor<TTypes, TParam>,
 	...param: ParamArgs<NoInfer<TParam>>
 ): void;
+export function removeMany<
+	TTypes extends RootTypes,
+	const TItems extends ReadonlyArray<unknown>,
+>(client: QueryClient<TTypes>, targets: TargetList<TTypes, TItems>): void;
 export function removeMany(
 	client: QueryClient,
-	target: AnyInvalidation,
+	target: AnyTargets,
 	partial?: unknown,
 ): void {
-	for (const entry of entriesMatching(client, stampFor(target, partial, 0))) {
+	for (const entry of entriesMatching(client, stampsOf(target, partial, 0))) {
 		remove(entry);
 	}
 }
@@ -267,7 +369,7 @@ export function isFetching(
 		target === undefined
 			? { at: 0, kind: "all" }
 			: stampFor(target, undefined, 0);
-	return entriesMatching(client, stamp).filter(
+	return entriesMatching(client, [stamp]).filter(
 		(entry) => entry.state.isFetching,
 	).length;
 }

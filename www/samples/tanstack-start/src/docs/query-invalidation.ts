@@ -6,7 +6,7 @@ import {
 	recommended,
 } from "@raf-query/react";
 import { getPost, type Post } from "~/api.ts";
-import { postQuery, posts } from "~/queries.ts";
+import { postQuery, posts, postsQuery, todos } from "~/queries.ts";
 
 declare const slug: string;
 
@@ -40,6 +40,17 @@ await invalidateOne(qc, postQuery, { slug });
 
 // Every query whose key starts with the `posts` group
 await invalidateMany(qc, posts);
+// #endregion
+
+// #region several-targets
+// One call: the refetches run side by side, and a query that two targets
+// cover refetches once
+await invalidateMany(qc, [
+	todos, // a group
+	postQuery, // a factory: all its queries
+	[postsQuery, { sort: "newest" }], // a factory with a partial input
+	[author, "ada"], // a target with its parameter
+]);
 // #endregion
 
 // #region matching-with-where
