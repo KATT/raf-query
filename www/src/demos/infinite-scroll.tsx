@@ -13,18 +13,20 @@ import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
-const messages = group("messages");
+const posts = group("posts");
+
+const postId = 1;
 
 type Filter = "all" | "questions";
 
-interface Message {
+interface Comment {
 	readonly author: string;
 	readonly body: string;
 	readonly id: number;
 }
 
-interface MessagePage {
-	readonly items: ReadonlyArray<Message>;
+interface CommentPage {
+	readonly items: ReadonlyArray<Comment>;
 	readonly nextCursor: number | null;
 }
 
@@ -42,21 +44,21 @@ const bodies = [
 ];
 
 const server = createFakeServer(() => ({
-	messages: Array.from({ length: 48 }, (_, index) => ({
+	comments: Array.from({ length: 48 }, (_, index) => ({
 		author: authors[index % authors.length] ?? "Ada",
 		body: bodies[index % bodies.length] ?? "Hello.",
 		id: index + 1,
 	})),
 }));
 
-function messagesQuery(input: { readonly filter: Filter }) {
+function commentsQuery(input: { readonly filter: Filter }) {
 	return infiniteQueryOptions({
 		queryFn: (context) =>
 			server.respond(
-				`GET /messages?filter=${input.filter}&cursor=${context.pageParam}`,
-				(db): MessagePage => {
-					const matching = db.messages.filter(
-						(message) => input.filter === "all" || message.body.endsWith("?"),
+				`GET /posts/${postId}/comments?filter=${input.filter}&cursor=${context.pageParam}`,
+				(db): CommentPage => {
+					const matching = db.comments.filter(
+						(comment) => input.filter === "all" || comment.body.endsWith("?"),
 					);
 					const end = context.pageParam + pageSize;
 					return {
@@ -69,20 +71,20 @@ function messagesQuery(input: { readonly filter: Filter }) {
 		// After `queryFn`: TypeScript infers the page type from it.
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
 		initialPageParam: 0,
-		queryKey: messages(input),
+		queryKey: posts(postId, "comments", input),
 		staleTime: 30_000,
 	});
 }
 
 interface PageData {
-	readonly messages: QueryHandle<typeof messagesQuery>;
+	readonly comments: QueryHandle<typeof commentsQuery>;
 }
 
 function filterOf(value: number | string | undefined): Filter {
 	return value === "questions" ? "questions" : "all";
 }
 
-function MessageSkeletons() {
+function CommentSkeletons() {
 	return Array.from({ length: pageSize }, (_, index) => (
 		<li key={index}>
 			<Skeleton className="h-12 w-full" />
@@ -90,11 +92,11 @@ function MessageSkeletons() {
 	));
 }
 
-function Messages(props: {
-	readonly handle: QueryHandle<typeof messagesQuery>;
+function Comments(props: {
+	readonly handle: QueryHandle<typeof commentsQuery>;
 }) {
-	const [pagesThenable, messagesState] = useInfiniteQuery(
-		messagesQuery,
+	const [pagesThenable, commentsState] = useInfiniteQuery(
+		commentsQuery,
 		props.handle,
 	);
 	const data = use(pagesThenable);
@@ -105,25 +107,25 @@ function Messages(props: {
 			data-scroll-root
 		>
 			<ul className="grid gap-1.5">
-				{items.map((message) => (
+				{items.map((comment) => (
 					<li
 						className="rounded-md bg-muted/50 px-3 py-1.5 text-sm"
-						key={message.id}
+						key={comment.id}
 					>
-						<span className="mr-2 font-medium">{message.author}</span>
-						{message.body}
+						<span className="mr-2 font-medium">{comment.author}</span>
+						{comment.body}
 						<span className="float-right font-mono text-xs text-muted-foreground">
-							#{message.id}
+							#{comment.id}
 						</span>
 					</li>
 				))}
-				{messagesState.isFetchingNextPage ? <MessageSkeletons /> : null}
+				{commentsState.isFetchingNextPage ? <CommentSkeletons /> : null}
 			</ul>
-			{messagesState.hasNextPage && !messagesState.isFetchingNextPage ? (
+			{commentsState.hasNextPage && !commentsState.isFetchingNextPage ? (
 				<button
 					className="mt-2 w-full rounded-md border py-1.5 text-xs text-muted-foreground hover:bg-accent"
 					onClick={() => {
-						void messagesState.fetchNextPage();
+						void commentsState.fetchNextPage();
 					}}
 					ref={(button) => {
 						if (button === null) {
@@ -133,7 +135,7 @@ function Messages(props: {
 							(entries) => {
 								if (entries.some((entry) => entry.isIntersecting)) {
 									observer.disconnect();
-									void messagesState.fetchNextPage();
+									void commentsState.fetchNextPage();
 								}
 							},
 							{
@@ -151,9 +153,9 @@ function Messages(props: {
 					Load more
 				</button>
 			) : null}
-			{messagesState.hasNextPage ? null : (
+			{commentsState.hasNextPage ? null : (
 				<p className="py-2 text-center text-xs text-muted-foreground">
-					That’s all {items.length} messages.
+					That’s all {items.length} comments.
 				</p>
 			)}
 		</div>
@@ -169,14 +171,14 @@ function Page(props: { readonly data: PageData }) {
 						<DemoLink
 							className="rounded-md px-2.5 py-1 capitalize hover:bg-accent aria-[current=page]:bg-accent aria-[current=page]:font-medium"
 							key={filter}
-							to={{ path: "/messages", search: { filter } }}
+							to={{ path: `/posts/${postId}/comments`, search: { filter } }}
 						>
 							{filter}
 						</DemoLink>
 					),
 				)}
 			</nav>
-			<Messages handle={props.data.messages} />
+			<Comments handle={props.data.comments} />
 		</div>
 	);
 }
@@ -186,13 +188,13 @@ function InfiniteScroll() {
 		<DemoBrowser
 			fallback={
 				<ul className="grid gap-1.5">
-					<MessageSkeletons />
+					<CommentSkeletons />
 				</ul>
 			}
-			initial={{ path: "/messages", search: { filter: "all" } }}
+			initial={{ path: `/posts/${postId}/comments`, search: { filter: "all" } }}
 			loader={async (args): Promise<PageData> => {
 				const [handles] = await load(args.client, {
-					messages: prefetch(messagesQuery, {
+					comments: prefetch(commentsQuery, {
 						filter: filterOf(args.location.search?.filter),
 					}),
 				});
@@ -206,7 +208,7 @@ function InfiniteScroll() {
 
 export default defineDemo({
 	Component: InfiniteScroll,
-	hint: "Scroll the feed to load pages as you go. Switch the filter for a new list from its first page, then switch back: the old list is still cached with every page you loaded.",
+	hint: "Scroll the post's comments to load pages as you go. Switch the filter for a new list from its first page, then switch back: the old list is still cached with every page you loaded.",
 	server,
 	title: "Infinite scroll",
 });

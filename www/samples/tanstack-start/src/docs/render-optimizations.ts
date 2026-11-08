@@ -1,19 +1,18 @@
-import { group, queryOptions } from "@raf-query/react";
+import { queryOptions } from "@raf-query/react";
 import { getPost } from "~/api.ts";
 import { posts } from "~/queries.ts";
 
-declare const input: { region: string };
+declare const input: { slug: string };
 
-const maps = group("maps");
-
-declare function getRegionShapes(input: {
-	readonly region: string;
-}): Promise<unknown>;
+declare function getViewHistory(input: {
+	readonly slug: string;
+}): Promise<ReadonlyArray<number>>;
 
 // #region structural-sharing
+// The post's views for every hour since it went up: large, and replaced whole.
 queryOptions({
-	queryKey: maps("shapes", input.region),
-	queryFn: () => getRegionShapes(input),
+	queryKey: posts("viewHistory", input.slug),
+	queryFn: () => getViewHistory(input),
 	structuralSharing: false,
 });
 // #endregion

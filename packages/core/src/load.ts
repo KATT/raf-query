@@ -222,8 +222,8 @@ function waitAny(entry: Entry, pages: number | undefined): Promise<Outcome> {
  *
  * ```ts
  * const [handles, data] = await load(queryClient, {
- *   comments: prefetch(commentsQuery, { issueId: id }),
- *   issue: swr(issueQuery, { id }),
+ *   comments: prefetch(commentsQuery, { slug }),
+ *   post: swr(postQuery, { slug }),
  * });
  * ```
  */

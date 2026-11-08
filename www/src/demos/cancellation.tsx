@@ -16,75 +16,77 @@ import { RefreshCw, RotateCcw } from "lucide-react";
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
 import { formatTime, LoadMoreButton, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
-import { pageOf } from "~/demo-kit/fixtures.ts";
+import { pageOf, seedComments } from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
-const inbox = group("inbox");
+const posts = group("posts");
 
-const server = createFakeServer(() => ({
-	messages: [
-		{ from: "Ada", id: 1, subject: "Loader review" },
-		{ from: "Grace", id: 2, subject: "Re: abort signals" },
-		{ from: "Linus", id: 3, subject: "Cache sizes" },
-		{ from: "Margaret", id: 4, subject: "Retry budget" },
-		{ from: "Ken", id: 5, subject: "Re: staleTime defaults" },
-	],
-}));
+/** The post on screen: the one with five comments. */
+const postId = 3;
 
-function inboxQuery() {
+const server = createFakeServer(() => ({ comments: seedComments() }));
+
+function commentsQuery(input: { readonly postId: number }) {
 	return infiniteQueryOptions({
 		queryFn: (context) =>
 			server.respond(
-				`GET /inbox?cursor=${context.pageParam}`,
-				(db) => pageOf(db.messages, context.pageParam, 3),
+				`GET /posts/${input.postId}/comments?cursor=${context.pageParam}`,
+				(db) =>
+					pageOf(
+						db.comments.filter((comment) => comment.postId === input.postId),
+						context.pageParam,
+						3,
+					),
 				context,
 			),
 		// After `queryFn`: TypeScript infers the page type from it.
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
 		initialPageParam: 0,
-		queryKey: inbox(),
+		queryKey: posts(input.postId, "comments"),
 		staleTime: 60_000,
 	});
 }
 
 type PageData =
 	| {
-			readonly inbox: QueryHandle<typeof inboxQuery>;
-			readonly page: "inbox";
+			readonly comments: QueryHandle<typeof commentsQuery>;
+			readonly page: "post";
 	  }
-	| { readonly page: "settings" };
+	| { readonly page: "about" };
 
-function Inbox(props: { readonly handle: QueryHandle<typeof inboxQuery> }) {
+function Comments(props: {
+	readonly handle: QueryHandle<typeof commentsQuery>;
+}) {
 	const queryClient = useQueryClient();
-	const [pagesThenable, inboxState] = useInfiniteQuery(
-		inboxQuery,
+	const [pagesThenable, commentsState] = useInfiniteQuery(
+		commentsQuery,
 		props.handle,
 	);
 	const pages = use(pagesThenable);
-	const messages = pages.pages.flatMap((page) => page.items);
+	const comments = pages.pages.flatMap((page) => page.items);
 	return (
-		<div aria-busy={inboxState.isFetching} className="grid gap-3">
+		<div aria-busy={commentsState.isFetching} className="grid gap-3">
 			<ul className="grid gap-1.5">
-				{messages.map((message) => (
+				{comments.map((comment) => (
 					<li
 						className="flex gap-3 rounded-md border px-3 py-1.5 text-sm"
-						key={message.id}
+						key={comment.id}
 					>
-						<span className="w-14 font-medium">{message.from}</span>
-						{message.subject}
+						<span className="w-16 shrink-0 font-medium">{comment.author}</span>
+						{comment.body}
 					</li>
 				))}
 			</ul>
 			<LoadMoreButton
-				fetchNextPage={inboxState.fetchNextPage}
-				hasNextPage={inboxState.hasNextPage}
-				isFetchingNextPage={inboxState.isFetchingNextPage}
+				fetchNextPage={commentsState.fetchNextPage}
+				hasNextPage={commentsState.hasNextPage}
+				isFetchingNextPage={commentsState.isFetchingNextPage}
 			/>
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
-					disabled={inboxState.isFetching}
+					disabled={commentsState.isFetching}
 					onClick={() => {
-						void inboxState.refetch();
+						void commentsState.refetch();
 					}}
 					size="xs"
 					variant="outline"
@@ -93,7 +95,7 @@ function Inbox(props: { readonly handle: QueryHandle<typeof inboxQuery> }) {
 				</Button>
 				<Button
 					onClick={() => {
-						void invalidateOne(queryClient, inboxQuery);
+						void invalidateOne(queryClient, commentsQuery, { postId });
 					}}
 					size="xs"
 					variant="outline"
@@ -101,8 +103,8 @@ function Inbox(props: { readonly handle: QueryHandle<typeof inboxQuery> }) {
 					<RotateCcw /> Invalidate
 				</Button>
 				<span className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
-					{inboxState.isFetching ? <Spinner /> : null}
-					Fetched at {formatTime(inboxState.updatedAt)}
+					{commentsState.isFetching ? <Spinner /> : null}
+					Fetched at {formatTime(commentsState.updatedAt)}
 				</span>
 			</div>
 		</div>
@@ -115,8 +117,8 @@ function Page(props: { readonly data: PageData }) {
 		<div className="grid gap-4">
 			<nav className="flex gap-1 text-sm">
 				{[
-					{ label: "Inbox", path: "/inbox" },
-					{ label: "Settings", path: "/settings" },
+					{ label: "Post", path: `/posts/${postId}` },
+					{ label: "About", path: "/about" },
 				].map((link) => (
 					<DemoLink
 						className="rounded-md px-2.5 py-1 hover:bg-accent aria-[current=page]:bg-accent aria-[current=page]:font-medium"
@@ -127,11 +129,11 @@ function Page(props: { readonly data: PageData }) {
 					</DemoLink>
 				))}
 			</nav>
-			{data.page === "inbox" ? (
-				<Inbox handle={data.inbox} />
+			{data.page === "post" ? (
+				<Comments handle={data.comments} />
 			) : (
 				<p className="text-sm text-muted-foreground">
-					Nothing on this page reads the inbox.
+					Nothing on this page reads the comments.
 				</p>
 			)}
 		</div>
@@ -142,15 +144,15 @@ function Cancellation() {
 	return (
 		<DemoBrowser
 			fallback={<Skeleton className="h-28 w-full" />}
-			initial={{ path: "/inbox" }}
+			initial={{ path: `/posts/${postId}` }}
 			loader={async (args): Promise<PageData> => {
-				if (args.location.path !== "/inbox") {
-					return { page: "settings" };
+				if (args.location.path !== `/posts/${postId}`) {
+					return { page: "about" };
 				}
 				const [handles] = await load(args.client, {
-					inbox: swr(inboxQuery),
+					comments: swr(commentsQuery, { postId }),
 				});
-				return { inbox: handles.inbox, page: "inbox" };
+				return { comments: handles.comments, page: "post" };
 			}}
 		>
 			{(route) => <Page data={route.data} />}
@@ -160,7 +162,7 @@ function Cancellation() {
 
 export default defineDemo({
 	Component: Cancellation,
-	hint: "Pick Slow and press Refetch, then Invalidate before it lands: the request in flight is aborted and a new one starts. Refetch and open Settings instead: the request runs to the end, and the inbox is cached when you come back.",
+	hint: "Pick Slow and press Refetch, then Invalidate before it lands: the request in flight is aborted and a new one starts. Refetch and open About instead: the request runs to the end, and the comments are cached when you come back.",
 	server,
 	title: "Aborting requests that were replaced",
 });

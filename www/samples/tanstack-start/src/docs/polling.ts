@@ -4,14 +4,14 @@ import {
 	queryOptions,
 	recommended,
 } from "@raf-query/react";
-import { getBuild } from "~/api.ts";
-import { builds } from "~/queries.ts";
+import { getCommentCount, getPostViews } from "~/api.ts";
+import { posts } from "~/queries.ts";
 
 // #region intro
-export function buildQuery(input: { id: string }) {
+export function postViewsQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: builds(input.id),
-		queryFn: () => getBuild(input.id),
+		queryKey: posts("views", input.slug),
+		queryFn: () => getPostViews(input.slug),
 		meta: { refetchInterval: 2000 },
 	});
 }
@@ -24,10 +24,10 @@ const sameWithMore = createQueryClient({ ...recommended() });
 // #endregion
 
 // #region the-interval-per-input
-export function buildLogQuery(input: { id: string; live: boolean }) {
+export function commentCountQuery(input: { slug: string; live: boolean }) {
 	return queryOptions({
-		queryKey: builds("log", input),
-		queryFn: () => getBuild(input.id),
+		queryKey: posts("commentCount", input),
+		queryFn: () => getCommentCount(input.slug),
 		meta: { refetchInterval: input.live ? 1000 : false },
 	});
 }

@@ -39,7 +39,7 @@ const errorToasts = link<{ meta: { errorMessage?: string } }>(
 );
 
 // A feature with no behavior: it only declares a field, for targets to match on.
-const ownership = feature<{ meta: { owner?: "billing" | "growth" } }>();
+const ownership = feature<{ meta: { owner?: "editorial" | "community" } }>();
 
 export function makeQueryClient() {
 	const { features, links } = recommended();
@@ -56,7 +56,7 @@ import { invalidateMany } from "@raf-query/react";
 const qc = makeQueryClient();
 
 await invalidateMany(qc, {
-	where: (query) => query.meta.owner === "billing",
+	where: (query) => query.meta.owner === "community",
 	//                         ^?
 });
 // #endregion

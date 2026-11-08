@@ -5,14 +5,7 @@ import { type CommentPage, listComments } from "./api.ts";
 import { getPost } from "./posts.functions.ts";
 
 // #endregion home
-import {
-	getAuthor,
-	getBuild,
-	getMe,
-	getSettings,
-	listPostPage,
-	listPosts,
-} from "./api.ts";
+import { getAuthor, getMe, listPostPage, listPosts } from "./api.ts";
 
 // #region home
 // #region groups
@@ -72,21 +65,5 @@ export function meQuery() {
 	return queryOptions({
 		queryKey: account("me"),
 		queryFn: () => getMe(),
-	});
-}
-
-export const builds = group("builds");
-
-export function buildQuery(input: { id: string }) {
-	return queryOptions({
-		queryKey: builds(input.id),
-		queryFn: () => getBuild(input.id),
-	});
-}
-
-export function settingsQuery() {
-	return queryOptions({
-		queryKey: account("settings"),
-		queryFn: () => getSettings(),
 	});
 }

@@ -1,10 +1,7 @@
-import { group } from "@raf-query/react";
+import { getPost, listComments } from "~/api.ts";
+import { comments, posts } from "~/queries.ts";
 
 import type { makeQueryClient } from "./query-meta.ts";
-
-declare function listInvoices(input: { orgId: string }): Promise<unknown>;
-
-const invoices = group("invoices");
 
 // #region bind
 import {
@@ -23,13 +20,16 @@ export const infiniteQueryOptions = bindInfiniteQueryOptions<Client>();
 // #endregion
 
 // #region bound
-export function invoicesQuery(input: { orgId: string }) {
-	return queryOptions({
-		queryKey: invoices(input),
-		queryFn: () => listInvoices(input),
+export function commentsQuery(input: { slug: string }) {
+	return infiniteQueryOptions({
+		queryKey: comments(input.slug),
+		queryFn: (context) =>
+			listComments({ cursor: context.pageParam, slug: input.slug }),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
 		meta: {
-			errorMessage: "Couldn't load invoices",
-			owner: "billing",
+			errorMessage: "Couldn't load the comments",
+			owner: "community",
 			retry: 1,
 		},
 	});
@@ -38,8 +38,8 @@ export function invoicesQuery(input: { orgId: string }) {
 
 // #region bound-errors
 queryOptions({
-	queryKey: invoices("all"),
-	queryFn: () => listInvoices({ orgId: "all" }),
+	queryKey: posts("bySlug", "hello-world"),
+	queryFn: () => getPost("hello-world"),
 	// @ts-expect-error -- 2769: no link or feature of the root reads `cacheFor`
 	meta: { cacheFor: 60_000 },
 });
@@ -48,11 +48,11 @@ queryOptions({
 // #region use-query-client
 import { invalidateMany } from "@raf-query/react";
 
-export function RefreshInvoices(props: { orgId: string }) {
+export function RefreshComments(props: { slug: string }) {
 	const client = useQueryClient();
 	return (
 		<button
-			onClick={() => invalidateMany(client, invoicesQuery, props)}
+			onClick={() => invalidateMany(client, commentsQuery, props)}
 			type="button"
 		>
 			Refresh
