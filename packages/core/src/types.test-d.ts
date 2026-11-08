@@ -32,12 +32,11 @@ import {
 	type Target,
 	waterfallHandle,
 } from "./index.ts";
-import { groups, tag } from "./groups.ts";
 import type { RootOf } from "./root.ts";
 import { author, createBackend, featured, issues } from "./test-utils.ts";
 
 const backend = createBackend();
-const client = createQueryClient({ features: [groups()] });
+const client = createQueryClient();
 const settings = () =>
 	queryOptions({
 		queryFn: () => ({ theme: "dark" }),
@@ -188,7 +187,7 @@ describe("inline factory makers", () => {
 });
 
 describe("verb types", () => {
-	it("check inputs, partial inputs and tag parameters", () => {
+	it("check inputs, partial inputs and target parameters", () => {
 		void invalidateOne(client, titles, { id: 1 });
 		void invalidateMany(client, author, "ada");
 		void invalidateMany(client, author);
@@ -211,7 +210,7 @@ describe("verb types", () => {
 		void invalidateMany(client, bySlug, "a");
 		// @ts-expect-error -- in a list too
 		void resetMany(client, [[bySlug, "a"]]);
-		// @ts-expect-error -- a tag parameter is typed
+		// @ts-expect-error -- a target parameter is typed
 		void invalidateMany(client, author, 1);
 		// @ts-expect-error -- a group takes no parameter
 		void invalidateMany(client, issues, "x");
@@ -228,7 +227,6 @@ describe("verb types", () => {
 			void invalidateMany(client, issues("list"));
 		};
 		expectTypeOf(wrong).toBeFunction();
-		expectTypeOf(author("ada")).toEqualTypeOf<string>();
 	});
 
 	it("check each target of a list on its own", async () => {
@@ -259,11 +257,11 @@ describe("verb types", () => {
 			void invalidateMany(client, [issues, [statuses, { status: "done" }]]);
 			// @ts-expect-error -- and so does a partial of another field
 			void invalidateMany(client, [[titles, { id: "1" }]]);
-			// @ts-expect-error -- a tag parameter is typed
+			// @ts-expect-error -- a target parameter is typed
 			void invalidateMany(client, [[author, 1]]);
 			// @ts-expect-error -- a group takes no parameter
 			void invalidateMany(client, [[issues, "x"]]);
-			// @ts-expect-error -- nor does a tag without one
+			// @ts-expect-error -- nor does a target without one
 			void resetMany(client, [[featured, "x"]]);
 			// @ts-expect-error -- raw strings aren't targets
 			void invalidateMany(client, [issues, "issues"]);
@@ -319,12 +317,14 @@ describe("root types", () => {
 	}>();
 	const makeQueryClient = () =>
 		createQueryClient({
-			features: [groups(), ownership],
+			features: [ownership],
 			links: [retry()],
 			staleTime: 30_000,
 		});
 	const posts = group("posts");
-	const writer = tag<string>("writer");
+	const writtenBy: Target<{ readonly owner: string | undefined }, string> = {
+		where: (query, owner) => query.meta.owner === owner,
+	};
 	const rootQueryOptions = bindQueryOptions<typeof makeQueryClient>();
 	const postById = (input: {
 		readonly authorId: string;
@@ -334,7 +334,6 @@ describe("root types", () => {
 			meta: {
 				owner: "posts-team",
 				retry: false,
-				tags: [writer(input.authorId)],
 			},
 			queryFn: async () => ({ title: "x" }),
 			queryKey: posts("byId", input),
@@ -345,10 +344,6 @@ describe("root types", () => {
 			readonly meta: {
 				readonly owner: "posts-team" | "users-team" | undefined;
 				readonly retry: number | false | undefined;
-				readonly tags:
-					| ReadonlyArray<string>
-					| ((data: never) => ReadonlyArray<string>)
-					| undefined;
 			};
 		}>();
 		expectTypeOf<
@@ -448,7 +443,7 @@ describe("root types", () => {
 		void invalidateOne(qc, postById, { authorId: "a", id: "1" });
 		void invalidateMany(qc, postById, { authorId: "a" });
 		void invalidateMany(qc, posts);
-		void invalidateMany(qc, writer, "a");
+		void invalidateMany(qc, writtenBy, "a");
 		void invalidateMany(qc, {
 			where: (query: QueryInfo<{ readonly owner: string | undefined }>) =>
 				query.meta.owner === "users-team",
@@ -458,8 +453,8 @@ describe("root types", () => {
 		const wrong = () => {
 			// @ts-expect-error -- postById belongs to makeQueryClient's root
 			void invalidateMany(bare, postById);
-			// @ts-expect-error -- `writer` reads meta.tags, which nothing in this root declares
-			void invalidateMany(bare, writer, "a");
+			// @ts-expect-error -- `writtenBy` reads meta.owner, which nothing in this root declares
+			void invalidateMany(bare, writtenBy, "a");
 		};
 		void invalidateMany(bare, posts);
 		expectTypeOf(wrong).toBeFunction();
@@ -478,7 +473,7 @@ describe("root types", () => {
 			posts,
 			postById,
 			[postById, { authorId: "a" }],
-			[writer, "a"],
+			[writtenBy, "a"],
 			owned,
 			[ownedBy, "posts-team"],
 			titles,
@@ -486,12 +481,12 @@ describe("root types", () => {
 		const bare = createQueryClient({ links: [retry()] });
 		void invalidateMany(bare, [posts, titles, [titles, { id: 1 }]]);
 		const anyClient: QueryClient = qc;
-		void invalidateMany(anyClient, [postById, [writer, "a"], owned]);
+		void invalidateMany(anyClient, [postById, [writtenBy, "a"], owned]);
 		const wrong = () => {
 			// @ts-expect-error -- postById belongs to makeQueryClient's root
 			void invalidateMany(bare, [posts, postById]);
-			// @ts-expect-error -- `writer` reads meta.tags, which nothing in this root declares
-			void invalidateMany(bare, [[writer, "a"]]);
+			// @ts-expect-error -- `writtenBy` reads meta.owner, which nothing in this root declares
+			void invalidateMany(bare, [[writtenBy, "a"]]);
 			// @ts-expect-error -- nor does anything declare meta.owner
 			void resetMany(bare, [owned]);
 			// @ts-expect-error -- a target that needs a parameter needs it in a list too
@@ -503,9 +498,9 @@ describe("root types", () => {
 	});
 
 	it("keep roots apart when one has fewer parts", () => {
-		const fewer = () => createQueryClient({ features: [groups()] });
+		const fewer = () => createQueryClient({ features: [ownership] });
 		const more = () =>
-			createQueryClient({ features: [groups()], links: [retry()] });
+			createQueryClient({ features: [ownership], links: [retry()] });
 		const ofFewer = () =>
 			bindQueryOptions<typeof fewer>()({
 				queryFn: async () => 1,
@@ -528,7 +523,7 @@ describe("root types", () => {
 
 	it("take any root on a bare QueryClient", () => {
 		const anyClient: QueryClient = makeQueryClient();
-		void invalidateMany(anyClient, writer, "a");
+		void invalidateMany(anyClient, writtenBy, "a");
 		void invalidateMany(anyClient, postById);
 		expectTypeOf(anyClient).toExtend<QueryClient>();
 	});

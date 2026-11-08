@@ -25,7 +25,7 @@ tanstack-start/src/docs/mutations.tsx#intro
 
 The verb resolves once the queries it invalidated that are on screen have refetched. Awaiting it inside the action keeps the action pending until the fresh data is on screen, so the optimistic value is replaced by the real one without flickering back to the old one in between.
 
-The action decides what to invalidate after the write, so it can use the action's arguments and the write's result. Verbs take factories, groups and tags, never raw keys:
+The action decides what to invalidate after the write, so it can use the action's arguments and the write's result. Verbs take factories, groups and `where` targets, never raw keys:
 
 | Verb                                          | Marks stale                                         |
 | --------------------------------------------- | --------------------------------------------------- |

@@ -5,33 +5,49 @@ import {
 	queryOptions,
 	recommended,
 } from "@raf-query/react";
-import { getPost, type Post } from "~/api.ts";
+import { getPost } from "~/api.ts";
 import { postQuery, posts, postsQuery, todos } from "~/queries.ts";
 
 declare const slug: string;
 
 // #region tags
-import { groups, tag } from "@raf-query/react";
+import { feature } from "@raf-query/react";
 
-export const author = tag<string>("author");
+// Declares `meta.tags` on the clients that have it
+const tagged = feature<{ meta: { tags?: ReadonlyArray<string> } }>();
+
+type Tagged = { readonly tags: ReadonlyArray<string> | undefined };
+
+// Every query that lists the tag
+const tag = (name: string): Target<Tagged> => ({
+	where: (query) => query.meta.tags?.includes(name) ?? false,
+});
 
 export function makeQueryClient() {
 	const { features, links } = recommended();
-	return createQueryClient({ links, features: [...features, groups()] });
+	return createQueryClient({ links, features: [...features, tagged] });
 }
 
 export function postBySlugQuery(input: { slug: string }) {
 	return queryOptions({
 		queryKey: posts("bySlug", input.slug),
 		queryFn: () => getPost(input.slug),
-		meta: { tags: (post: Post) => [author(post.authorId)] },
+		meta: { tags: ["content", `post:${input.slug}`] },
 	});
 }
 
 const qc = makeQueryClient();
 
-await invalidateMany(qc, author, "ada"); // every query tagged with Ada
-await invalidateMany(qc, author); // every query with an author tag
+await invalidateMany(qc, tag("content"));
+// #endregion
+
+// #region tags-param
+// One target for every tag: the tag is its parameter
+const tags: Target<Tagged, string> = {
+	where: (query, name) => query.meta.tags?.includes(name) ?? false,
+};
+
+await invalidateMany(qc, tags, `post:${slug}`);
 // #endregion
 
 // #region intro
@@ -49,7 +65,7 @@ await invalidateMany(qc, [
 	todos, // a group
 	postQuery, // a factory: all its queries
 	[postsQuery, { sort: "newest" }], // a factory with a partial input
-	[author, "ada"], // a target with its parameter
+	[tags, `post:${slug}`], // a target with its parameter
 ]);
 // #endregion
 

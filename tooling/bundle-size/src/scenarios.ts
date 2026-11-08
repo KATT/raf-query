@@ -38,7 +38,6 @@ export const features = {
 		marker: { code: "refetchOnReconnect" },
 	},
 	retry: { label: "`retry()`", marker: { code: "[object Response]" } },
-	tags: { label: "tags", marker: { code: ".tags" } },
 } satisfies Record<string, { readonly label: string; readonly marker: Marker }>;
 
 export type Feature = keyof typeof features;
@@ -51,7 +50,6 @@ export const featureIds: ReadonlyArray<Feature> = [
 	"polling",
 	"focusRefetch",
 	"reconnectRefetch",
-	"tags",
 	"paging",
 	"boundary",
 	"devtools",
@@ -110,11 +108,6 @@ export const scenarios: ReadonlyArray<Scenario> = [
 		name: "+ `reconnectRefetch()`",
 	},
 	{
-		fixture: "tags.tsx",
-		imports: ["hooks", "tags"],
-		name: "+ tags (`groups()`, `tag`)",
-	},
-	{
 		fixture: "infinite.tsx",
 		imports: ["hooks", "paging"],
 		name: "+ a paged query (`useInfiniteQuery`)",
@@ -154,6 +147,6 @@ export const scenarios: ReadonlyArray<Scenario> = [
 	{
 		fixture: "everything.tsx",
 		imports: featureIds.filter((feature) => feature !== "devtools"),
-		name: "Everything (`recommended()`, `timeout()`, tags, hydration, paging, boundary)",
+		name: "Everything (`recommended()`, `timeout()`, hydration, paging, boundary)",
 	},
 ];

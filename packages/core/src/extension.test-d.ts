@@ -10,7 +10,6 @@ import {
 	type Feature,
 	feature,
 	group,
-	groups,
 	invalidateMany,
 	type Link,
 	link,
@@ -18,7 +17,6 @@ import {
 	type QueryClient,
 	type QueryInfo,
 	type Target,
-	tag,
 } from "./index.ts";
 
 interface TraceMeta {
@@ -63,19 +61,18 @@ const ownedBy: Target<OwnerMeta, OwnerMeta["owner"]> = {
 
 const makeQueryClient = () =>
 	createQueryClient({
-		features: [ownership(() => {}), groups()],
+		features: [ownership(() => {})],
 		links: [traced(() => {})],
 	});
 
 const queryOptions = bindQueryOptions<typeof makeQueryClient>();
 const reports = group("reports");
-const team = tag<string>("team");
 
 describe("extensions with public exports only", () => {
 	it("type a root's meta by what its link and features declare", () => {
 		const reportQuery = (input: { readonly id: number }) =>
 			queryOptions({
-				meta: { owner: "billing", tags: [team("core")], traceId: "r" },
+				meta: { owner: "billing", traceId: "r" },
 				queryFn: () => ({ id: input.id }),
 				queryKey: reports(input.id),
 			});
@@ -95,12 +92,11 @@ describe("extensions with public exports only", () => {
 		});
 	});
 
-	it("invalidate with the tags feature and a third-party target", () => {
+	it("invalidate with a third-party target", () => {
 		const client: QueryClient = makeQueryClient();
-		expectTypeOf(invalidateMany(client, team, "core")).resolves.toBeVoid();
 		expectTypeOf(invalidateMany(client, ownedBy, "growth")).resolves.toBeVoid();
 		expectTypeOf(
-			invalidateMany(client, [ownedBy, [team, "core"]]),
+			invalidateMany(client, [reports, [ownedBy, "billing"]]),
 		).resolves.toBeVoid();
 		// @ts-expect-error -- the target's parameter is an owner
 		void invalidateMany(client, ownedBy, "sales");

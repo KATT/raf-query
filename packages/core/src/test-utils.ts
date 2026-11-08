@@ -23,9 +23,10 @@ import {
 	type InfiniteQueryFactory,
 	type SingleQueryFactory,
 	type QueryHandle,
+	type QueryMeta,
 	queryOptions,
+	type Target,
 } from "./index.ts";
-import { tag } from "./groups.ts";
 
 export interface Issue {
 	readonly author: string;
@@ -85,8 +86,20 @@ function fakeClock(epoch = 1_000_000): FakeClock {
 export const issues = group("issues");
 export const drafts = group(issues, "drafts");
 export const users = group("users");
-export const author = tag<string>("author");
-export const featured = tag("featured");
+/** Issues by one author, or without a parameter every issue: a `where` target over data. */
+export const author: Target<QueryMeta, string | undefined> = {
+	where: (query, name) => {
+		const issue =
+			// SAFETY: the backend's queries hold an issue, a draft string or pages.
+			query.data as Partial<Issue> | undefined;
+		const by = issue?.author;
+		return by !== undefined && (name === undefined || by === name);
+	},
+};
+/** Queries whose `meta` says they're featured: the drafts. */
+export const featured: Target = {
+	where: (query) => query.meta.featured === true,
+};
 
 interface Request {
 	fail(error: unknown): void;
@@ -120,7 +133,6 @@ export function createBackend() {
 
 	const issueQuery = (input: { readonly id: number }) =>
 		queryOptions({
-			meta: { tags: (issue: Issue) => [author(issue.author)] },
 			queryFn: async (context) => {
 				const issue = await get(input.id, context.signal);
 				return issue ?? fail({ _tag: "NotFound", id: input.id });
@@ -130,7 +142,7 @@ export function createBackend() {
 
 	const draftQuery = (input: { readonly id: number }) =>
 		queryOptions({
-			meta: { tags: [featured()] },
+			meta: { featured: true },
 			queryFn: async (context) =>
 				JSON.stringify(await get(input.id, context.signal)),
 			queryKey: drafts("byId", input),

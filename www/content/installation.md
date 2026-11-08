@@ -30,7 +30,7 @@ npm install @raf-query/boundary
 
 ## One entry point
 
-Everything comes from `@raf-query/react`: the hooks, the client, [tags](./query-invalidation.md#tags), `dehydrate` and `hydrate` for [SSR without an integration](./ssr-and-hydration.md), `HydrationBoundary` and the [devtools](./devtools.md). An app bundles only what it imports, so tags, hydration and the devtools cost nothing until it uses them.
+Everything comes from `@raf-query/react`: the hooks, the client, `dehydrate` and `hydrate` for [SSR without an integration](./ssr-and-hydration.md), `HydrationBoundary` and the [devtools](./devtools.md). An app bundles only what it imports, so hydration and the devtools cost nothing until it uses them.
 
 [TanStack Start and TanStack Router](./tanstack-start.md) apps also import `setupRouterIntegration` from `@raf-query/react/tanstack-router`, the one subpath. It needs `@tanstack/react-router`, an optional peer, and gives the server and the browser different code. [React Server Components](./react-server-components.md) apps, such as the Next.js App Router, and [React Router Framework Mode](./react-router.md) need no integration entry.
 

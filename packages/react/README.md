@@ -98,10 +98,10 @@ function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 
 ## Entry points
 
-| Import                             | Use                                                                                                                                                                                                              |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@raf-query/react`                 | `QueryClientProvider`, `useQuery`, `useInfiniteQuery`, `useIsFetching`, `HydrationBoundary`, `QueryDevtools`, and all of core (tags, `dehydrate`, `hydrate`); what an app doesn't import stays out of its bundle |
-| `@raf-query/react/tanstack-router` | [TanStack Start and Router](https://raf-query.katt.dev/docs/tanstack-start) SSR streaming                                                                                                                        |
+| Import                             | Use                                                                                                                                                                                                                 |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@raf-query/react`                 | `QueryClientProvider`, `useQuery`, `useInfiniteQuery`, `useIsFetching`, `HydrationBoundary`, `QueryDevtools`, and all of core (`group`, `dehydrate`, `hydrate`); what an app doesn't import stays out of its bundle |
+| `@raf-query/react/tanstack-router` | [TanStack Start and Router](https://raf-query.katt.dev/docs/tanstack-start) SSR streaming                                                                                                                           |
 
 ## License
 

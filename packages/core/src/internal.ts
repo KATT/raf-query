@@ -26,7 +26,6 @@ export {
 	type PollingMeta,
 	type ReconnectRefetchMeta,
 } from "./features.ts";
-export type { TagsMeta } from "./groups.ts";
 export { pageParamAfter } from "./infinite.ts";
 export { type AnyFactory, type AnyTarget, hashKey } from "./keys.ts";
 export type { RetryMeta } from "./links.ts";

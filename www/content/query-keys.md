@@ -10,7 +10,7 @@ At its core, raf-query caches by **query key**. A key is an array at the top lev
 Keys also travel inside [handles](./handles.md), from the server to the browser, so they must be plain data: strings, numbers, booleans, `null`, arrays and plain objects.
 
 > [!NOTE]
-> Groups, tags and the way verbs match keys are a design still being settled. The shapes on this page can change before 1.0.
+> Groups and the way verbs match keys are a design still being settled. The shapes on this page can change before 1.0.
 
 ## Groups
 
@@ -92,4 +92,4 @@ A group matches every key that starts with its path. A factory matches the queri
 tanstack-start/src/docs/query-keys.ts#design-keys-for-invalidation
 ```
 
-For sets of queries that cut across groups, such as every query that shows one author, give them [tags](./query-invalidation.md#tags). See [Query invalidation](./query-invalidation.md) for every target.
+For sets of queries that cut across groups, such as every query that shows one author, give them [tags](./query-invalidation.md#tags): a `where` target over `meta`, written in your app. See [Query invalidation](./query-invalidation.md) for every target.

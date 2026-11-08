@@ -54,7 +54,7 @@ starting-queries
 | `@raf-query/core`     | Framework-agnostic: the query client, its links and features, factories, `load` and handles, and the verbs |
 | `@raf-query/boundary` | `QueryBoundary`, which catches a query's [typed errors](./query-functions.md#expected-errors) by tag       |
 
-Apps import everything from `@raf-query/react`, tags, hydration and the devtools included: what an app doesn't import stays out of its bundle. The one subpath, `@raf-query/react/tanstack-router`, streams the router's query cache to the browser during SSR.
+Apps import everything from `@raf-query/react`, hydration and the devtools included: what an app doesn't import stays out of its bundle. The one subpath, `@raf-query/react/tanstack-router`, streams the router's query cache to the browser during SSR.
 
 ## Where next
 

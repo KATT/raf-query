@@ -1,22 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { tag } from "./groups.ts";
 import {
 	group,
 	invalidateMany,
 	load,
 	queryOptions,
 	revalidate,
-	waterfallHandle,
 } from "./index.ts";
-import {
-	author,
-	createBackend,
-	flush,
-	issues,
-	read,
-	testClient,
-} from "./test-utils.ts";
+import { createBackend, issues, testClient } from "./test-utils.ts";
 
 describe("groups", () => {
 	it("build flat keys under their path that survive any serializer", async () => {
@@ -63,34 +54,5 @@ describe("groups", () => {
 		posts("drafts");
 
 		expect(group(posts, "drafts")("byId")).toEqual(["posts", "drafts", "byId"]);
-	});
-});
-
-describe("tags", () => {
-	it("build the tag string a query lists", () => {
-		const label = tag("label");
-		const named = tag<{ readonly name: string }>("label");
-
-		expect([label(), named({ name: "bug" })]).toEqual([
-			"label",
-			'label:{"name":"bug"}',
-		]);
-	});
-
-	it("don't match a query whose tags come from data it doesn't have yet", async () => {
-		const backend = createBackend();
-		const client = testClient();
-		read(
-			client,
-			backend.issueQuery,
-			waterfallHandle(backend.issueQuery, { id: 1 }),
-		);
-		const [request] = backend.requests;
-		await invalidateMany(client, author);
-		await flush();
-
-		expect(backend.requests).toHaveLength(1);
-		expect(request?.signal.aborted).toBe(false);
-		await backend.respondAll();
 	});
 });

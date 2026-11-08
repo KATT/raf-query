@@ -13,6 +13,7 @@ import {
 	load,
 	type PartialInput,
 	prefetch,
+	type QueryKey,
 	type QueryMeta,
 	queryOptions,
 	removeAll,
@@ -219,7 +220,7 @@ describe("invalidation", () => {
 		expect(calls).toEqual(["a"]);
 	});
 
-	it("matches tags with or without their parameter", async () => {
+	it("matches a where target with or without its parameter", async () => {
 		const cache = await cached();
 		await invalidateMany(cache.client, author, "bob");
 		expect(await cache.refetched()).toEqual(["two"]);
@@ -301,24 +302,34 @@ describe("invalidation", () => {
 	it("applies invalidations to hydrated queries once a factory reads them", async () => {
 		const backend = createBackend();
 		const client = testClient({ staleTime: Infinity });
-		const issue = (id: number, by: string) => ({
-			data: { author: by, id, title: `Issue ${id}` },
-			queryKey: issues("byId", { id }),
+		const hydrated = (queryKey: QueryKey, data: unknown) => ({
+			data,
+			queryKey,
 			updatedAt: client.clock.now(),
 		});
-		hydrate(client, { entries: [issue(1, "ada"), issue(2, "bob")] });
-		await invalidateMany(client, author, "ada");
+		hydrate(client, {
+			entries: [
+				hydrated(issues("byId", { id: 1 }), {
+					author: "ada",
+					id: 1,
+					title: "Issue 1",
+				}),
+				hydrated(drafts("byId", { id: 3 }), "Draft 3"),
+			],
+		});
+		// Hydrated entries have `{}` as their meta: `featured` matches the
+		// draft only once `draftQuery` reads it and gives it its meta.
+		await invalidateMany(client, featured);
 		const loading = load(client, {
+			draft: revalidate(backend.draftQuery, { id: 3 }),
 			one: revalidate(backend.issueQuery, { id: 1 }),
-			two: revalidate(backend.issueQuery, { id: 2 }),
 		});
 
-		expect(backend.requests.map((request) => request.id)).toEqual([1]);
+		expect(backend.requests.map((request) => request.id)).toEqual([3]);
 		await backend.respondAll();
 		await loading;
-		expect(getData(client, backend.issueQuery, { id: 1 })?.title).toBe("First");
-		expect(getData(client, backend.issueQuery, { id: 2 })?.title).toBe(
-			"Issue 2",
+		expect(getData(client, backend.issueQuery, { id: 1 })?.title).toBe(
+			"Issue 1",
 		);
 	});
 });

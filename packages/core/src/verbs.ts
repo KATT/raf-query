@@ -177,16 +177,16 @@ export function invalidateOne<TFactory extends QueryFactory>(
 /**
  * Mark queries stale: a factory's (optionally only those whose input
  * matches `partial`), a group's (keys that start with its path, whether
- * the group built them or not), or those a target's `where` picks, such as
- * a tag. Read queries refetch now; the rest
- * when next read. Resolves when the refetches settle.
+ * the group built them or not), or those a target's `where` picks. Read
+ * queries refetch now; the rest when next read. Resolves when the
+ * refetches settle.
  *
  * Pass a list to invalidate several targets in one call: each query they
  * cover refetches once, and the refetches run side by side. Awaiting one
  * call after another runs them one after another instead.
  *
  * ```ts
- * await invalidateMany(client, [todos, [issuesQuery, { status: "open" }], [author, "ada"]]);
+ * await invalidateMany(client, [todos, [issuesQuery, { status: "open" }], [ownedBy, "billing"]]);
  * ```
  */
 export function invalidateMany<TFactory extends QueryFactory>(

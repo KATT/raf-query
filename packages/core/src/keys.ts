@@ -16,7 +16,8 @@
  *   It matches every key that starts with its path, whoever built the key,
  *   so it covers its subgroups and their queries.
  * - Any object with `where(query, param)`, typed by the client's root
- *   `meta`: tags and one-off predicates. They read `meta`, never the key.
+ *   `meta`: predicates over a query's key, input, `meta` or data. Tags
+ *   are one, written in user code over a `meta.tags` a feature declares.
  *
  * Invalidation records a stamp per target. An entry is invalidated when a
  * matching stamp is newer than the request its data came from. Entries with
@@ -237,7 +238,7 @@ export type Stamp =
 /** Anything a verb can invalidate by. */
 export type AnyInvalidation = AnyFactory | AnyTarget | Group;
 
-/** A stamp for `target`. `arg` is a factory's partial input or a target's parameter. Tags are both callable and `where` targets. */
+/** A stamp for `target`. `arg` is a factory's partial input or a target's parameter. A `where` target may be callable too, so `where` is checked first. */
 export function stampFor(
 	target: AnyInvalidation,
 	arg: unknown,

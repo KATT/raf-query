@@ -20,7 +20,6 @@ export {
 	type Result,
 } from "./fail.ts";
 export { focusRefetch, polling, reconnectRefetch } from "./features.ts";
-export { groups, type Tag, tag } from "./groups.ts";
 export {
 	canDehydrate,
 	type DehydratedEntry,

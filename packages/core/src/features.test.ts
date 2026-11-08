@@ -8,7 +8,6 @@ import type {
 	PollingMeta,
 	ReconnectRefetchMeta,
 } from "./features.ts";
-import { groups } from "./groups.ts";
 import {
 	focusRefetch,
 	polling,
@@ -119,7 +118,7 @@ describe("reconnect refetching", () => {
 describe("polling", () => {
 	it("refetches a read query every refetchInterval, until nothing reads it", async () => {
 		const counter = counted();
-		const client = testClient({ features: [polling(), groups()] });
+		const client = testClient({ features: [polling()] });
 		const handle = waterfallHandle(counter.query, {
 			meta: { refetchInterval: 100 },
 			name: "polled",

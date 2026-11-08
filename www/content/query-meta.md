@@ -23,7 +23,6 @@ tanstack-start/src/docs/query-meta.ts#intro
 | `refetchInterval`      | `polling()`          | Refetch every `n` ms while read. See [Polling](./polling.md)                  |
 | `refetchOnWindowFocus` | `focusRefetch()`     | `false` opts out. See [Window focus refetching](./window-focus-refetching.md) |
 | `refetchOnReconnect`   | `reconnectRefetch()` | `false` opts out                                                              |
-| `tags`                 | `groups()`           | The query's [tags](./query-invalidation.md#tags)                              |
 
 A field does something only when the client has the part that reads it: `meta: { retry: 1 }` on a client without `retry()` is just data.
 
@@ -32,7 +31,7 @@ A field does something only when the client has the part that reads it: `meta: {
 A client's behavior comes from two kinds of part, both passed to `createQueryClient`:
 
 - A **link** wraps every request, like a [tRPC link](https://trpc.io/docs/client/links): it gets the request as `op` and calls `next(op)` to run the rest of the chain. The last link is the query's own `queryFn`. Links run outermost first. `retry()` and `timeout(ms)` are links.
-- A **feature** is a cache-wide behavior. It starts when a provider mounts the client and stops when it unmounts. `focusRefetch()`, `reconnectRefetch()`, `polling()` and `groups()` are features.
+- A **feature** is a cache-wide behavior. It starts when a provider mounts the client and stops when it unmounts. `focusRefetch()`, `reconnectRefetch()` and `polling()` are features.
 
 Each part declares the `meta` fields it reads, with `link<{ meta: … }>(fn)` or `feature<{ meta: … }>(setup)`. A feature without `setup` only declares fields: an app's own data, for targets to match on. Here a link toasts a per-query message when a request fails, and a feature declares an `owner`:
 
@@ -40,7 +39,7 @@ Each part declares the `meta` fields it reads, with `link<{ meta: … }>(fn)` or
 tanstack-start/src/docs/query-meta.ts#root
 ```
 
-A package that ships a link or feature needs only these exports: `link` and `feature`, the types `Link`, `Feature` and `Operation` (the request a link gets) to name them, and `Target` and `QueryInfo` for a [target](./query-invalidation.md#matching-with-where) that matches on the fields it declares. `groups()` and `tag` are built the same way.
+A package that ships a link or feature needs only these exports: `link` and `feature`, the types `Link`, `Feature` and `Operation` (the request a link gets) to name them, and `Target` and `QueryInfo` for a [target](./query-invalidation.md#matching-with-where) that matches on the fields it declares. [Tags](./query-invalidation.md#tags) are built the same way, in a few lines of app code.
 
 `errorToasts` comes before `retry()`, so it sees a request's error only after its retries ran out. `fail()` values are [expected errors](./query-functions.md#expected-errors): a request returns them rather than throws, so they never reach the `catch`.
 
@@ -88,4 +87,4 @@ See [Query invalidation](./query-invalidation.md#matching-with-where) for target
 
 ## Serialization
 
-`meta` isn't sent with dehydrated state during SSR: it comes from the factory, so it can hold functions, such as [tags](./query-invalidation.md#tags) computed from the data. An entry only hydrated, which nothing has read through its factory yet, has `{}` as its `meta`. Invalidations still reach it: they're checked again when the entry is next read.
+`meta` isn't sent with dehydrated state during SSR: it comes from the factory, so it can hold anything, functions included. An entry only hydrated, which nothing has read through its factory yet, has `{}` as its `meta`. Invalidations still reach it: they're checked again when the entry is next read.

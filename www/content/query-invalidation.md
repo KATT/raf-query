@@ -1,6 +1,6 @@
 ---
 title: Query invalidation
-description: Mark queries stale after a write, refetch the ones on screen, and select queries by factory, group, tag or predicate.
+description: Mark queries stale after a write, refetch the ones on screen, and select queries by factory, group or predicate, such as tags.
 section: Guides
 order: 13
 ---
@@ -35,7 +35,6 @@ Verbs are functions that take the client first. Each `…One` verb takes a facto
 | `invalidateMany(qc, factory)`               | Every query of the factory                                                       |
 | `invalidateMany(qc, factory, partialInput)` | The factory's queries whose input matches `partialInput`                         |
 | `invalidateMany(qc, group)`                 | Every key that starts with the [group](./query-keys.md#groups), or a group in it |
-| `invalidateMany(qc, tag, param?)`           | Every query with the [tag](#tags), for one parameter or for any                  |
 | `invalidateMany(qc, { where }, param?)`     | Every query [`where`](#matching-with-where) returns `true` for                   |
 | `invalidateMany(qc, [target, …])`           | Every query any of the targets matches: [several targets](#several-targets)      |
 | `invalidateAll(qc)`                         | Everything                                                                       |
@@ -44,10 +43,10 @@ A partial input matches the **input** each query's factory was called with, neve
 
 A query that was only [hydrated](./ssr-and-hydration.md) has no factory until something reads it. A factory target still invalidates it, from its first read. `resetMany` and `removeMany` act at once, so a factory target skips it; a group reaches it by its key.
 
-Targets are values, never strings: a factory matches by identity, a group by its path, and a tag or `where` by what it says about each query. TypeScript checks a partial input against the factory's input, and a tag's parameter against the tag.
+Targets are values, never strings: a factory matches by identity, a group by its path, and a `where` target, such as a [tag](#tags), by what it says about each query. TypeScript checks a partial input against the factory's input, and a target's parameter against the target.
 
 > [!NOTE]
-> Groups, tags and the way targets match are a design still being settled. See [Query keys](./query-keys.md).
+> Groups and the way targets match are a design still being settled. See [Query keys](./query-keys.md).
 
 ### Several targets
 
@@ -59,16 +58,6 @@ tanstack-start/src/docs/query-invalidation.ts#several-targets
 
 The refetches run side by side, a query that several targets cover refetches once, and the promise resolves when all of them have settled. Awaiting one verb after another serializes them instead: `await invalidateMany(qc, a); await invalidateMany(qc, b);` starts `b`'s refetches only once `a`'s are done. TypeScript checks each element on its own, the way it checks a single target.
 
-### Tags
-
-A tag cuts across groups: every query that shows an author, wherever its key starts. Define one with `tag()`, and list a query's tags in `meta.tags`, fixed or computed from its data. Tags need the `groups()` feature on the client:
-
-```sample
-tanstack-start/src/docs/query-invalidation.ts#tags
-```
-
-Called with a parameter, a tag is the string a query lists (`author("ada")`). Passed to a verb, it matches the queries with that tag for one parameter, or for any parameter without one. Tags computed from the data match only queries that have data.
-
 ### Matching with where
 
 A target is any object with `where(query, param)`, typed `Target<TMeta, TParam>`. Its `where` gets each query's `queryKey`, `input`, `meta` and `data` (before `select`), and the parameter the verb was called with:
@@ -78,6 +67,22 @@ tanstack-start/src/docs/query-invalidation.ts#matching-with-where
 ```
 
 `input` is the input of the latest factory call for that entry. An entry that was only hydrated, and not yet read or started on this client, has `undefined` input and `{}` as its `meta`, so match on `queryKey` to include those. On a client of a typed root, `query.meta` has the root's fields: see [Query meta](./query-meta.md#selecting-queries-by-meta).
+
+### Tags
+
+A tag cuts across groups: every query that shows some content, wherever its key starts. raf-query has no tags of its own, because a tag is a `where` target over a `meta` field: a few lines in your app. A [feature](./query-meta.md#links-and-features) without a setup function declares `meta.tags`, and `tag(name)` matches the queries that list `name`:
+
+```sample
+tanstack-start/src/docs/query-invalidation.ts#tags
+```
+
+`Tagged` names the field the way a client's root has it: present, and possibly `undefined`. Typed that way, `tag()` fits only clients made with `tagged`, and TypeScript rejects it on the others. To have one target for every tag, take the tag as the parameter:
+
+```sample
+tanstack-start/src/docs/query-invalidation.ts#tags-param
+```
+
+To pick queries by their data instead, read `query.data` in `where`. It's `undefined` until a query has data.
 
 ## Invalidate, reset or remove
 
