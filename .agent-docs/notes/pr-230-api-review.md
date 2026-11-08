@@ -27,6 +27,7 @@ How the human wants it: one point at a time, shown in code, short, plain words, 
 | Extension-only types                           | Moved to `/internal`; public: `link`, `feature`, `Link`, `Feature`, `Operation`, `Target`, `QueryInfo`          |
 | Reads never refetch stale data on mount        | First item in Important defaults; no opt-in                                                                     |
 | `useQuery(factory, handle)`                    | Kept; one sentence in the docs explains why                                                                     |
+| `enabled`                                      | Removed; `skipToken` skips a `load` entry ([skip-token.md](../decisions/skip-token.md))                         |
 | Tags                                           | Userland recipe on `feature` + `where` (in progress)                                                            |
 | One folder per behavior, tests as author docs  | In progress                                                                                                     |
 
@@ -38,5 +39,4 @@ How the human wants it: one point at a time, shown in code, short, plain words, 
 ## Questions for the human
 
 - A React Router integration that streams render-started queries, so they don't run twice.
-- Disabled queries on a Start or React Router server reject (Start logs it; React Router's default entry may answer 500 before the shell). The docs' notification-permission sample relies on a disabled-on-server query.
 - Fake-paged lists in the demos became plain `queryOptions` lists, which reverses #140's "every plural query is infinite".
