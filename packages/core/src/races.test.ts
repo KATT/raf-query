@@ -1,3 +1,9 @@
+/**
+ * A property test: random sequences of loads, reads, invalidations,
+ * resets, removals, hydrations and server answers. Whatever the order,
+ * every request ends in data, an error or a cancellation, and nothing
+ * waits forever.
+ */
 import {
 	type Arbitrary,
 	array,
@@ -9,7 +15,7 @@ import {
 } from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { dehydrate, hydrate } from "./hydration.ts";
+import { dehydrate, hydrate } from "./hydration/hydration.ts";
 import {
 	invalidateMany,
 	isFetching,

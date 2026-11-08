@@ -5,4 +5,4 @@
 - The type-only `GroupKey` brand (and `KeyTuple`, which stripped it for handles) is gone: nothing read its `path`, and its only effect was rejecting hand-written keys.
 - Cost: the development check that a subgroup and a query don't share a name only sees keys `group()` builds, not hand-written ones.
 - Unchanged: verbs take factories, groups and targets, never raw keys.
-- Where: `packages/core/src/keys.ts`, `options.ts`; tests in `types.test-d.ts` ("keys") and `verbs.test.ts` ("matches a hand-written key…"); docs in `www/content/query-keys.md#hand-written-keys`.
+- Where: `packages/core/src/keys/keys.ts`, `options.ts`; tests in `types.test-d.ts` ("keys") and `keys/keys.test.ts` ("matches a hand-written key…"); docs in `www/content/query-keys.md#hand-written-keys`.

@@ -1,3 +1,7 @@
+/**
+ * `createQueryClient()` with no config: the system clock, a 5-minute
+ * `gcTime`, and cache events through `client.subscribe`.
+ */
 import { describe, expect, it, vi } from "vitest";
 
 import {

@@ -9,7 +9,7 @@ import {
 	type Outcome,
 	QueryDisabledError,
 } from "./entry.ts";
-import { hashKey } from "./keys.ts";
+import { hashKey } from "./keys/keys.ts";
 import {
 	type DataOf,
 	type InputArgs,

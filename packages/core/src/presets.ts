@@ -2,12 +2,13 @@ import type { Feature, Link } from "./client.ts";
 import {
 	focusRefetch,
 	type FocusRefetchMeta,
-	polling,
-	type PollingMeta,
+} from "./features/focus-refetch/focus-refetch.ts";
+import { polling, type PollingMeta } from "./features/polling/polling.ts";
+import {
 	reconnectRefetch,
 	type ReconnectRefetchMeta,
-} from "./features.ts";
-import { retry, type RetryMeta } from "./links.ts";
+} from "./features/reconnect-refetch/reconnect-refetch.ts";
+import { retry, type RetryMeta } from "./links/retry/retry.ts";
 
 /** What `recommended()` returns: its parts keep the `meta` they declare. */
 export interface Recommended {

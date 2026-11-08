@@ -8,19 +8,17 @@ import {
 	reset,
 	write,
 } from "./entry.ts";
+import { type AnyFactory, type Group, hashKey } from "./keys/keys.ts";
 import {
-	type AnyFactory,
 	type AnyInvalidation,
 	type AnyTarget,
 	entryStamp,
-	type Group,
-	hashKey,
 	matches,
 	type ParamArgs,
 	type Stamp,
 	stampFor,
 	type Target,
-} from "./keys.ts";
+} from "./keys/targets.ts";
 import { isArray, isFunction } from "./guards.ts";
 import {
 	type InputArgs,
@@ -30,7 +28,7 @@ import {
 	type RootOfFactory,
 } from "./options.ts";
 import type { IsAnyRoot, RootTypes } from "./root.ts";
-import type { InfiniteData } from "./infinite.ts";
+import type { InfiniteData } from "./infinite/infinite.ts";
 
 type DeepPartial<T> = T extends object
 	? { readonly [TName in keyof T]?: DeepPartial<T[TName]> }

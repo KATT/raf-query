@@ -19,7 +19,9 @@ export {
 	QueryFailure,
 	type Result,
 } from "./fail.ts";
-export { focusRefetch, polling, reconnectRefetch } from "./features.ts";
+export { focusRefetch } from "./features/focus-refetch/focus-refetch.ts";
+export { reconnectRefetch } from "./features/reconnect-refetch/reconnect-refetch.ts";
+export { polling } from "./features/polling/polling.ts";
 export {
 	canDehydrate,
 	type DehydratedEntry,
@@ -31,7 +33,7 @@ export {
 	dehydrateStream,
 	hydrate,
 	RedactedError,
-} from "./hydration.ts";
+} from "./hydration/hydration.ts";
 export {
 	bindInfiniteQueryOptions,
 	type InfiniteData,
@@ -39,20 +41,11 @@ export {
 	type InfiniteQueryOptions,
 	type InfiniteQueryOptionsBuilder,
 	infiniteQueryOptions,
-} from "./infinite.ts";
-export {
-	type Group,
-	group,
-	type QueryInfo,
-	type QueryKey,
-	type Target,
-} from "./keys.ts";
-export {
-	QueryTimeoutError,
-	retry,
-	type RetryOptions,
-	timeout,
-} from "./links.ts";
+} from "./infinite/infinite.ts";
+export { type Group, group, type QueryKey } from "./keys/keys.ts";
+export type { QueryInfo, Target } from "./keys/targets.ts";
+export { retry, type RetryOptions } from "./links/retry/retry.ts";
+export { QueryTimeoutError, timeout } from "./links/timeout/timeout.ts";
 export {
 	load,
 	type Loaded,

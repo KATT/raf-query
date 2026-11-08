@@ -1,3 +1,10 @@
+/**
+ * `load(client, { name: entry })` starts every entry, then waits for the
+ * ones that need waiting for, and resolves with their handles and data.
+ * `prefetch` never waits, `swr` waits only without data, and `revalidate`
+ * waits for fresh data. `waterfallHandle` makes a handle whose reader
+ * starts the query while rendering.
+ */
 import { QueryDevtoolsPanel } from "@raf-query/react";
 import { screen } from "@testing-library/react";
 import { createElement } from "react";
@@ -258,28 +265,6 @@ describe("load", () => {
 
 		expect(data.title).toBe("HELLO");
 		expect(getData(client, titled)).toEqual({ title: "hello" });
-	});
-
-	it("fetches as many pages as a paged entry asks for, stopping at the last", async () => {
-		const backend = createBackend();
-		const client = testClient();
-		const loading = load(client, {
-			few: revalidate(backend.pageQuery, { size: 2 }, { pages: 2 }),
-			many: swr(backend.pageQuery, { size: 5 }, { pages: 9 }),
-		});
-		for (let round = 0; round < 3; round++) {
-			await backend.respondAll();
-		}
-		const [, data] = await loading;
-
-		expect(data.few).toEqual({
-			pageParams: [0, 2],
-			pages: [
-				[0, 1],
-				[2, 3],
-			],
-		});
-		expect(data.many.pageParams).toEqual([0, 5]);
 	});
 
 	it("shows its latest loads in the devtools, in development only", async () => {

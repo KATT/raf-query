@@ -1,15 +1,10 @@
 import type { Operation, QueryClient } from "./client.ts";
 import { isFailValue, QueryFailure } from "./fail.ts";
 import { isObject } from "./guards.ts";
-import {
-	type AnyFactory,
-	hashKey,
-	matches,
-	type QueryKey,
-	type Stamp,
-} from "./keys.ts";
+import { type AnyFactory, hashKey, type QueryKey } from "./keys/keys.ts";
+import { matches, type Stamp } from "./keys/targets.ts";
 import { optionsOf, type QueryOptions, type StreamOptions } from "./options.ts";
-import { replaceEqualDeep } from "./share.ts";
+import { replaceEqualDeep } from "./structural-sharing/structural-sharing.ts";
 import {
 	listeners,
 	type Listeners,

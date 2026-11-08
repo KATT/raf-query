@@ -12,12 +12,17 @@ import {
 } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 
+import type { FocusRefetchMeta } from "./features/focus-refetch/focus-refetch.ts";
+import type { PollingMeta } from "./features/polling/polling.ts";
+import type { ReconnectRefetchMeta } from "./features/reconnect-refetch/reconnect-refetch.ts";
 import {
 	type Clock,
 	createQueryClient,
 	fail,
 	group,
 	infiniteQueryOptions,
+	load,
+	type LoadEntry,
 	type QueryClient,
 	type QueryClientConfig,
 	type InfiniteQueryFactory,
@@ -25,7 +30,9 @@ import {
 	type QueryHandle,
 	type QueryMeta,
 	queryOptions,
+	revalidate,
 	type Target,
+	waterfallHandle,
 } from "./index.ts";
 
 export interface Issue {
@@ -286,3 +293,96 @@ export function readPages<
 export function mount(client: QueryClient, ui: ReactNode = null): RenderResult {
 	return render(ui, { wrapper: provider(client) });
 }
+
+/** A client with issues 1 and 2 and draft 3 cached and fresh forever. */
+export async function cached() {
+	const backend = createBackend();
+	const client = testClient({ staleTime: Infinity });
+	const loading = load(client, {
+		draft: revalidate(backend.draftQuery, { id: 3 }),
+		one: revalidate(backend.issueQuery, { id: 1 }),
+		two: revalidate(backend.issueQuery, { id: 2 }),
+	});
+	await backend.respondAll();
+	const [handles] = await loading;
+	/** Which of them the next revalidate entries refetch: the stale ones. */
+	const refetched = async () => {
+		void load(client, {
+			draft: revalidate(backend.draftQuery, { id: 3 }),
+			one: revalidate(backend.issueQuery, { id: 1 }),
+			two: revalidate(backend.issueQuery, { id: 2 }),
+		});
+		const ids = backend.requests.map((request) =>
+			request.id === 3 ? "draft" : request.id === 1 ? "one" : "two",
+		);
+		await backend.respondAll();
+		return ids;
+	};
+	return { backend, client, handles, refetched };
+}
+
+type Meta = {
+	readonly refetchInterval?: PollingMeta["refetchInterval"];
+	readonly refetchOnReconnect?: ReconnectRefetchMeta["refetchOnReconnect"];
+	readonly refetchOnWindowFocus?: FocusRefetchMeta["refetchOnWindowFocus"];
+};
+
+/** Queries that count their requests, each with its own `meta`. */
+export function counted() {
+	const calls = new Map<string, number>();
+	const query = (input: { readonly meta?: Meta; readonly name: string }) =>
+		queryOptions({
+			enabled: input.name !== "disabled",
+			meta: input.meta,
+			queryFn: () => {
+				const count = (calls.get(input.name) ?? 0) + 1;
+				calls.set(input.name, count);
+				return count;
+			},
+			queryKey: issues("counted", input.name),
+		});
+	/** Read the named query in a component, under its own provider; it loads at once. */
+	const show = async (client: QueryClient, name: string, meta?: Meta) => {
+		const reader = read(client, query, waterfallHandle(query, { meta, name }));
+		await flush();
+		return reader;
+	};
+	return { calls: (name: string) => calls.get(name) ?? 0, query, show };
+}
+
+/** A query that fails with `errors` in turn, then answers with how many attempts it took. */
+export function flaky(errors: ReadonlyArray<unknown>) {
+	const signals: Array<AbortSignal> = [];
+	const query = () =>
+		queryOptions({
+			queryFn: async (context) => {
+				signals.push(context.signal);
+				const error = errors[signals.length - 1];
+				if (error !== undefined) {
+					throw error;
+				}
+				return signals.length;
+			},
+			queryKey: issues("flaky"),
+		});
+	return { attempts: () => signals.length, query, signals };
+}
+
+interface Outcome {
+	done?: boolean;
+	error?: unknown;
+	value?: unknown;
+}
+
+/** Start loading `entry` and report how it ends, without waiting for it. */
+export async function loadOne(client: QueryClient, entry: LoadEntry) {
+	const outcome: Outcome = {};
+	load(client, { value: entry }).then(
+		([handles]) => Object.assign(outcome, { done: true, value: handles }),
+		(error: unknown) => Object.assign(outcome, { done: true, error }),
+	);
+	await flush();
+	return outcome;
+}
+
+export const down = new Error("down");

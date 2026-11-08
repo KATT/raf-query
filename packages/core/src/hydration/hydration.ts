@@ -3,7 +3,7 @@
  * client, the kernel or `useQuery` imports this module, so apps that don't
  * server-render don't bundle it.
  */
-import type { QueryClient } from "./client.ts";
+import type { QueryClient } from "../client.ts";
 import {
 	adopt,
 	type Entry,
@@ -13,9 +13,9 @@ import {
 	isEnabled,
 	isStale,
 	write,
-} from "./entry.ts";
-import { type Fail, failOf, isFailValue } from "./fail.ts";
-import type { QueryKey } from "./keys.ts";
+} from "../entry.ts";
+import { type Fail, failOf, isFailValue } from "../fail.ts";
+import type { QueryKey } from "../keys/keys.ts";
 
 /** What a dehydrated pending entry's promise resolves to. */
 export interface DehydratedResult {

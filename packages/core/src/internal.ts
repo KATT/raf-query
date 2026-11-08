@@ -21,14 +21,13 @@ export {
 	reset,
 	subscribeEntry,
 } from "./entry.ts";
-export {
-	type FocusRefetchMeta,
-	type PollingMeta,
-	type ReconnectRefetchMeta,
-} from "./features.ts";
-export { pageParamAfter } from "./infinite.ts";
-export { type AnyFactory, type AnyTarget, hashKey } from "./keys.ts";
-export type { RetryMeta } from "./links.ts";
+export type { FocusRefetchMeta } from "./features/focus-refetch/focus-refetch.ts";
+export type { PollingMeta } from "./features/polling/polling.ts";
+export type { ReconnectRefetchMeta } from "./features/reconnect-refetch/reconnect-refetch.ts";
+export { pageParamAfter } from "./infinite/infinite.ts";
+export { type AnyFactory, hashKey } from "./keys/keys.ts";
+export type { AnyTarget } from "./keys/targets.ts";
+export type { RetryMeta } from "./links/retry/retry.ts";
 export {
 	isWaterfallHandle,
 	type LoadRecord,

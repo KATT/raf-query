@@ -4,16 +4,16 @@ Mechanisms the build should copy, each verified against vendored or local source
 
 ## Where each concern lives
 
-| Concern                                                                      | Package                                                                                |
-| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Entries, dedupe, gc, lazy staleness, infinite paging, streams, `load`, verbs | `@raf-query/core` (`entry.ts`, `client.ts`, `load.ts`, `verbs.ts`)                     |
-| Keys, invalidation stamps and targets (the provisional seam)                 | `@raf-query/core` (`keys.ts`, with `group`)                                            |
-| Retry and timeout links; focus, reconnect and polling features               | `@raf-query/core` (`links.ts`, `features.ts`), opt-in                                  |
-| Stable thenables per (key, data version)                                     | `@raf-query/core` (React-agnostic: a thenable with `status`/`value` is just an object) |
-| `dehydrate`, `hydrate`, `dehydrateStream`                                    | `@raf-query/core` (`hydration.ts`), opt-in                                             |
-| `useSyncExternalStore` subscription, providers, `useQuery`, `useIsFetching`  | `@raf-query/react`                                                                     |
-| SSR stream glue                                                              | `@raf-query/react/tanstack-router`, `HydrationBoundary`                                |
-| `QueryBoundary`                                                              | `@raf-query/boundary`                                                                  |
+| Concern                                                                      | Package                                                                                   |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Entries, dedupe, gc, lazy staleness, infinite paging, streams, `load`, verbs | `@raf-query/core` (`entry.ts`, `client.ts`, `load.ts`, `verbs.ts`; paging in `infinite/`) |
+| Keys, invalidation stamps and targets (the provisional seam)                 | `@raf-query/core` (`keys/`: `keys.ts` with `group`, `targets.ts`)                         |
+| Retry and timeout links; focus, reconnect and polling features               | `@raf-query/core` (`links/<name>/`, `features/<name>/`), opt-in                           |
+| Stable thenables per (key, data version)                                     | `@raf-query/core` (React-agnostic: a thenable with `status`/`value` is just an object)    |
+| `dehydrate`, `hydrate`, `dehydrateStream`                                    | `@raf-query/core` (`hydration/`), opt-in                                                  |
+| `useSyncExternalStore` subscription, providers, `useQuery`, `useIsFetching`  | `@raf-query/react`                                                                        |
+| SSR stream glue                                                              | `@raf-query/react/tanstack-router`, `HydrationBoundary`                                   |
+| `QueryBoundary`                                                              | `@raf-query/boundary`                                                                     |
 
 Mirror TanStack's split: `.repos/query/packages/query-core` (no React import anywhere) and `.repos/query/packages/react-query/src/index.ts` (`export * from '@tanstack/query-core'`). Keep `@raf-query/core` free of React types so another binding could sit on it.
 

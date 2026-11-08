@@ -1,10 +1,16 @@
+/**
+ * Reading: `useQuery` subscribes to the entry and hands out its thenable.
+ * The thenable for a version of the data is one object, settled in place
+ * (`status`, `value`), so `use()` resumes on it without suspending again.
+ * Changes are batched per microtask; unread entries are dropped after
+ * `gcTime`, on the client's `Clock`.
+ */
 import { act } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import {
 	fail,
 	getData,
-	infiniteQueryOptions,
 	invalidateOne,
 	isQueryFailure,
 	load,
@@ -22,7 +28,6 @@ import {
 	flush,
 	issues,
 	read,
-	readPages,
 	start,
 	testClient,
 	timersOf,
@@ -79,51 +84,6 @@ describe("a read query", () => {
 		expect(reader.result.current[0]).toMatchObject({
 			value: { title: "First a b c" },
 		});
-	});
-
-	it("keeps unchanged data and its thenable across refetches", async () => {
-		const backend = createBackend();
-		const client = testClient();
-		const view = read(
-			client,
-			backend.issueQuery,
-			waterfallHandle(backend.issueQuery, { id: 1 }),
-		);
-		await backend.respondAll();
-		const [thenable] = view.result.current;
-		const data = getData(client, backend.issueQuery, { id: 1 });
-		const [refetch] = await start(() => view.result.current[1].refetch());
-		await backend.respondAll();
-		await refetch;
-
-		expect(view.result.current[0]).toBe(thenable);
-		expect(getData(client, backend.issueQuery, { id: 1 })).toBe(data);
-		backend.store.set(1, { author: "ada", id: 1, title: "New" });
-		const [changed] = await start(() => view.result.current[1].refetch());
-		await backend.respondAll();
-		await changed;
-		expect(view.result.current[0]).not.toBe(thenable);
-		expect(view.result.current[0]).toMatchObject({ value: { title: "New" } });
-	});
-
-	it("replaces equal data when structural sharing is off, for the client or one query", async () => {
-		const shared = (input: { readonly off?: boolean }) =>
-			queryOptions({
-				queryFn: () => ({ list: [1, 2] }),
-				queryKey: issues("shared", input),
-				structuralSharing: input.off ? false : undefined,
-			});
-		for (const [client, input] of [
-			[testClient({ structuralSharing: false }), {}],
-			[testClient(), { off: true }],
-		] as const) {
-			await load(client, { value: revalidate(shared, input) });
-			const first = getData(client, shared, input);
-			await load(client, { value: revalidate(shared, input) });
-
-			expect(getData(client, shared, input)).not.toBe(first);
-			expect(getData(client, shared, input)).toEqual(first);
-		}
 	});
 
 	it("records a failed refetch, and keeps the data it had", async () => {
@@ -365,143 +325,5 @@ describe("reset", () => {
 		await backend.respondAll();
 		await resetting;
 		expect(view.result.current[0]).toMatchObject({ value: { title: "First" } });
-	});
-});
-
-describe("paged queries", () => {
-	it("load the first page, then the next ones until there are none", async () => {
-		const backend = createBackend();
-		const client = testClient();
-		const view = readPages(
-			client,
-			backend.pageQuery,
-			waterfallHandle(backend.pageQuery, { size: 4 }),
-		);
-		await backend.respondAll();
-
-		expect(view.result.current[0]).toMatchObject({
-			value: { pageParams: [0], pages: [[0, 1, 2, 3]] },
-		});
-		expect(view.result.current[1]).toMatchObject({
-			hasNextPage: true,
-			hasPreviousPage: false,
-		});
-		const [next] = await start(() => view.result.current[1].fetchNextPage());
-		expect(view.result.current[1].isFetchingNextPage).toBe(true);
-		await backend.respondAll();
-		await next;
-		await act(() => view.result.current[1].fetchPreviousPage());
-		const [last] = await start(() => view.result.current[1].fetchNextPage());
-		await backend.respondAll();
-		await last;
-
-		expect(view.result.current[0]).toMatchObject({
-			value: { pageParams: [0, 4, 8] },
-		});
-		expect(view.result.current[1].hasNextPage).toBe(false);
-		await act(() => view.result.current[1].fetchNextPage());
-		expect(backend.requests).toHaveLength(0);
-	});
-
-	it("refetch every page they have, from the first", async () => {
-		const backend = createBackend();
-		const client = testClient();
-		const loading = load(client, {
-			pages: revalidate(backend.pageQuery, { size: 3 }, { pages: 2 }),
-		});
-		await backend.respondAll();
-		await backend.respondAll();
-		const [handles] = await loading;
-		const view = readPages(client, backend.pageQuery, handles.pages);
-		const [refetch] = await start(() => view.result.current[1].refetch());
-		await backend.respondAll();
-		await backend.respondAll();
-		await refetch;
-
-		expect(getData(client, backend.pageQuery, { size: 3 })).toEqual({
-			pageParams: [0, 3],
-			pages: [
-				[0, 1, 2],
-				[3, 4, 5],
-			],
-		});
-	});
-
-	it("keep at most maxPages, dropping from the other end", async () => {
-		const client = testClient();
-		const numbers = () =>
-			infiniteQueryOptions({
-				getNextPageParam: (page: number) => page + 1,
-				getPreviousPageParam: (page: number) => (page > 0 ? page - 1 : null),
-				initialPageParam: 1,
-				maxPages: 2,
-				queryFn: (context) => context.pageParam,
-				queryKey: issues("numbers"),
-			});
-		const view = readPages(client, numbers, waterfallHandle(numbers));
-		await flush();
-		await act(() => view.result.current[1].fetchNextPage());
-		await act(() => view.result.current[1].fetchNextPage());
-
-		expect(view.result.current[0]).toMatchObject({
-			value: { pageParams: [2, 3], pages: [2, 3] },
-		});
-		await act(() => view.result.current[1].fetchPreviousPage());
-		await act(() => view.result.current[1].fetchPreviousPage());
-		expect(view.result.current[0]).toMatchObject({ value: { pages: [0, 1] } });
-		expect(view.result.current[1].hasPreviousPage).toBe(false);
-	});
-
-	it("fail with a page's fail(), keeping the pages they had", async () => {
-		const client = testClient();
-		const failing = (input: { readonly at: number }) =>
-			infiniteQueryOptions({
-				getNextPageParam: (page: number) => page + 1,
-				initialPageParam: 0,
-				queryFn: (context) =>
-					context.pageParam === input.at
-						? fail({ _tag: "Gone" })
-						: context.pageParam,
-				queryKey: issues("failing", input),
-			});
-		const atFirst = readPages(
-			client,
-			failing,
-			waterfallHandle(failing, { at: 0 }),
-		);
-		const atSecond = readPages(
-			client,
-			failing,
-			waterfallHandle(failing, { at: 1 }),
-		);
-		await flush();
-		await act(() => atSecond.result.current[1].fetchNextPage());
-
-		expect(atFirst.result.current[0].status).toBe("rejected");
-		expect(atSecond.result.current[0]).toMatchObject({
-			value: { pages: [0] },
-		});
-		expect(atSecond.result.current[1].error).toEqual(fail({ _tag: "Gone" }));
-	});
-
-	it("have no next page when written empty", async () => {
-		const backend = createBackend();
-		const client = testClient();
-		setData(
-			client,
-			backend.pageQuery,
-			{ size: 1 },
-			{
-				pageParams: [],
-				pages: [],
-			},
-		);
-		const view = readPages(
-			client,
-			backend.pageQuery,
-			waterfallHandle(backend.pageQuery, { size: 1 }),
-		);
-
-		expect(view.result.current[1].hasNextPage).toBe(false);
 	});
 });

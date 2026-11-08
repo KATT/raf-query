@@ -1,3 +1,22 @@
+/**
+ * Hydration moves cache entries from a server client to a browser one.
+ * Nothing in the kernel imports it, so apps that don't server-render
+ * don't bundle it.
+ *
+ * - `dehydrate(client)` returns the entries worth sending (`canDehydrate`):
+ *   data, `fail()` values, and entries still loading, with a promise of
+ *   their result. A request that then throws crosses as a `RedactedError`
+ *   unless `keepErrors`. Defects, disabled entries and hashes already in
+ *   `sent` stay behind, and so does `meta`, which comes from the factory.
+ * - `hydrate(client, state)` writes entries by `queryKey`, and takes only
+ *   data newer than what the browser has. A pending entry the browser has
+ *   nothing for adopts the sender's promise as its request instead of
+ *   fetching; one with data or a request of its own waits for the
+ *   sender's, takes it if newer, and refetches if it failed. A read entry
+ *   that is stale after hydrating refetches.
+ * - `dehydrateStream(client)` sends the cache, then entries as they start
+ *   or settle, batched per microtask, until `close()`.
+ */
 import { describe, expect, it } from "vitest";
 
 import {
@@ -20,7 +39,7 @@ import {
 	setData,
 	swr,
 	waterfallHandle,
-} from "./index.ts";
+} from "../index.ts";
 import {
 	advance,
 	createBackend,
@@ -28,7 +47,7 @@ import {
 	issues,
 	read,
 	testClient,
-} from "./test-utils.ts";
+} from "../test-utils.ts";
 
 /** What crossing a network does to a dehydrated state: everything but the promises is copied. */
 function send(state: DehydratedState): DehydratedState {

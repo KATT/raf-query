@@ -2,8 +2,9 @@ import type { Bundle } from "./bundle.ts";
 
 /**
  * How to tell a feature is in a bundle: a module with code in it
- * (`<package>/<file>`, from `src/` or `dist/`), or a string that survives
- * minification (for features that share a module with others).
+ * (`<package>/<path>`, from `src/` or `dist/`, without the extension), or a
+ * string that survives minification (for a feature that shares a module
+ * with others).
  */
 type Marker = { readonly code: string } | { readonly module: string };
 
@@ -18,7 +19,7 @@ export const features = {
 	},
 	focusRefetch: {
 		label: "`focusRefetch()`",
-		marker: { code: "visibilitychange" },
+		marker: { module: "core/features/focus-refetch/focus-refetch" },
 	},
 	hooks: {
 		label: "React hooks",
@@ -26,18 +27,24 @@ export const features = {
 	},
 	hydration: {
 		label: "hydration",
-		marker: { module: "core/hydration" },
+		marker: { module: "core/hydration/hydration" },
 	},
 	paging: {
 		label: "paging (`useInfiniteQuery`)",
-		marker: { module: "core/infinite" },
+		marker: { module: "core/infinite/infinite" },
 	},
-	polling: { label: "`polling()`", marker: { code: "refetchInterval" } },
+	polling: {
+		label: "`polling()`",
+		marker: { module: "core/features/polling/polling" },
+	},
 	reconnectRefetch: {
 		label: "`reconnectRefetch()`",
-		marker: { code: "refetchOnReconnect" },
+		marker: { module: "core/features/reconnect-refetch/reconnect-refetch" },
 	},
-	retry: { label: "`retry()`", marker: { code: "[object Response]" } },
+	retry: {
+		label: "`retry()`",
+		marker: { module: "core/links/retry/retry" },
+	},
 } satisfies Record<string, { readonly label: string; readonly marker: Marker }>;
 
 export type Feature = keyof typeof features;
@@ -55,14 +62,19 @@ export const featureIds: ReadonlyArray<Feature> = [
 	"devtools",
 ];
 
+/** Typed as `Marker`, so a string marker stays possible when every feature has a module. */
+function markerOf(feature: Feature): Marker {
+	return features[feature].marker;
+}
+
 export function hasFeature(bundle: Bundle, feature: Feature): boolean {
-	const marker: Marker = features[feature].marker;
+	const marker = markerOf(feature);
 	if ("code" in marker) {
 		return bundle.code.includes(marker.code);
 	}
-	const [pkg, file] = marker.module.split("/");
+	const [pkg, ...path] = marker.module.split("/");
 	const module = new RegExp(
-		`/packages/${pkg}/(src|dist)/${file}\\.(ts|tsx|mjs)$`,
+		`/packages/${pkg}/(src|dist)/${path.join("/")}\\.(ts|tsx|mjs)$`,
 	);
 	return [...bundle.modules.keys()].some((id) => module.test(id));
 }

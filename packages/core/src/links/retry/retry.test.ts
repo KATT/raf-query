@@ -1,3 +1,24 @@
+/**
+ * `retry()` is a link: the client runs every request through its links,
+ * outermost first, and each link calls `next(op)` to run the rest of the
+ * chain down to the query's own `queryFn`. `retry()` wraps that call in a
+ * loop: when `next(op)` rejects, it waits on the client's `Clock`
+ * (doubling from 1 s, at most 30 s, or `delay(attempt)`), waits for
+ * `online` if `navigator.onLine` is `false`, and calls `next(op)` again.
+ *
+ * - Attempts: the query's `meta.retry` (a number, or `false` for none),
+ *   else `attempts`, else 3. `meta.retry` is typed only on clients whose
+ *   links include `retry()`.
+ * - Never retried: `fail()` values (a `queryFn` returns them, so `next(op)`
+ *   resolves), a thrown `Response` (a router redirect or not-found), what
+ *   `when(error)` rules out, a request whose `op.signal` aborted, and
+ *   anything on a server client.
+ * - It writes nothing to the cache: the entry records whatever the last
+ *   attempt ended with.
+ *
+ * `testClient(config)` is `createQueryClient({ clock, isServer: false,
+ * ...config })` with a fake clock that `advance` moves.
+ */
 import { act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -8,57 +29,23 @@ import {
 	fail,
 	isQueryFailure,
 	link,
-	load,
-	type LoadEntry,
-	type QueryClient,
 	queryOptions,
-	QueryTimeoutError,
 	recommended,
 	removeOne,
 	retry,
 	swr,
-	timeout,
-} from "./index.ts";
-import { advance, flush, issues, testClient } from "./test-utils.ts";
+} from "../../index.ts";
+import {
+	advance,
+	down,
+	flaky,
+	flush,
+	issues,
+	loadOne,
+	testClient,
+} from "../../test-utils.ts";
 
-/** A query that fails with `errors` in turn, then answers with how many attempts it took. */
-function flaky(errors: ReadonlyArray<unknown>) {
-	const signals: Array<AbortSignal> = [];
-	const query = () =>
-		queryOptions({
-			queryFn: async (context) => {
-				signals.push(context.signal);
-				const error = errors[signals.length - 1];
-				if (error !== undefined) {
-					throw error;
-				}
-				return signals.length;
-			},
-			queryKey: issues("flaky"),
-		});
-	return { attempts: () => signals.length, query, signals };
-}
-
-interface Outcome {
-	done?: boolean;
-	error?: unknown;
-	value?: unknown;
-}
-
-/** Start loading `entry` and report how it ends, without waiting for it. */
-async function loadOne(client: QueryClient, entry: LoadEntry) {
-	const outcome: Outcome = {};
-	load(client, { value: entry }).then(
-		([handles]) => Object.assign(outcome, { done: true, value: handles }),
-		(error: unknown) => Object.assign(outcome, { done: true, error }),
-	);
-	await flush();
-	return outcome;
-}
-
-const down = new Error("down");
-
-describe("retry", () => {
+describe("retry()", () => {
 	it("retries after growing delays, and gives up after its attempts", async () => {
 		const flakes = flaky([down, down, down, down]);
 		const client = testClient({ links: [retry()] });
@@ -229,46 +216,7 @@ describe("retry", () => {
 	});
 });
 
-describe("timeout", () => {
-	it("fails and aborts a request that takes too long", async () => {
-		const hanging = () =>
-			queryOptions({
-				queryFn: () => new Promise<never>(() => {}),
-				queryKey: issues("hanging"),
-			});
-		let signal: AbortSignal | undefined;
-		const client = testClient({
-			links: [
-				timeout(100),
-				link((op, next) => {
-					signal = op.signal;
-					return next(op);
-				}),
-			],
-		});
-		const outcome = await loadOne(client, swr(hanging));
-		advance(client, 100);
-		await flush();
-
-		expect(outcome.error).toBeInstanceOf(QueryTimeoutError);
-		expect(signal?.reason).toBe(outcome.error);
-	});
-
-	it("lets faster requests and their errors through", async () => {
-		const client = testClient({ links: [timeout(100)] });
-		const fast = await loadOne(client, swr(flaky([]).query));
-		const failing = await loadOne(
-			testClient({ links: [timeout(100)] }),
-			swr(flaky([down]).query),
-		);
-		advance(client, 200);
-
-		expect(fast.value).toBeDefined();
-		expect(failing.error).toBe(down);
-	});
-});
-
-describe("the recommended setup", () => {
+describe("recommended()", () => {
 	it("retries failed requests", async () => {
 		const flakes = flaky([down]);
 		const client = testClient(recommended());

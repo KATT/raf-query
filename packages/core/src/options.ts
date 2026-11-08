@@ -1,5 +1,5 @@
 import type { Fail } from "./fail.ts";
-import type { AnyFactory, QueryKey } from "./keys.ts";
+import type { AnyFactory, QueryKey } from "./keys/keys.ts";
 import type {
 	AnyRoot,
 	DefaultTypes,

@@ -1,12 +1,12 @@
-import type { Operation } from "./client.ts";
-import { type Fail, isFailValue } from "./fail.ts";
-import type { QueryKey } from "./keys.ts";
+import type { Operation } from "../client.ts";
+import { type Fail, isFailValue } from "../fail.ts";
+import type { QueryKey } from "../keys/keys.ts";
 import type {
 	BaseOptions,
 	QueryFunctionContext,
 	QueryOptions,
-} from "./options.ts";
-import type { DefaultTypes, RootOf, RootTypes } from "./root.ts";
+} from "../options.ts";
+import type { DefaultTypes, RootOf, RootTypes } from "../root.ts";
 
 /** A paged query's data. */
 export interface InfiniteData<TPage, TParam = unknown> {

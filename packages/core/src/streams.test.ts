@@ -1,3 +1,13 @@
+/**
+ * Streams live in the kernel (`entry.ts`, `pump`), so every bundle has
+ * them. When a request's result is an async iterable and the options have
+ * `stream: { initial, reduce }`, the entry folds each chunk into the data
+ * with `reduce` and writes it, and the request counts as settled at the
+ * first chunk: loads and readers resume there while later chunks keep
+ * updating the cache. A stream that ends without a chunk writes `initial`;
+ * one that throws keeps the chunks it wrote, and fails only if it wrote
+ * none. A restarted or removed entry ignores the old stream's chunks.
+ */
 import { describe, expect, it } from "vitest";
 
 import {

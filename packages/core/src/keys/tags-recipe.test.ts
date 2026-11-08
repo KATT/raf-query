@@ -20,9 +20,9 @@ import {
 	retry,
 	type Target,
 	waterfallHandle,
-} from "./index.ts";
-import type { RootOf } from "./root.ts";
-import { flush, issues, read, testClient } from "./test-utils.ts";
+} from "../index.ts";
+import type { RootOf } from "../root.ts";
+import { flush, issues, read, testClient } from "../test-utils.ts";
 
 const tagged = feature<{ meta: { tags?: ReadonlyArray<string> } }>();
 

@@ -1,5 +1,6 @@
 import type { Entry } from "./entry.ts";
-import type { QueryKey, Stamp } from "./keys.ts";
+import type { QueryKey } from "./keys/keys.ts";
+import type { Stamp } from "./keys/targets.ts";
 import type { QueryOptions } from "./options.ts";
 import type {
 	AnyPart,

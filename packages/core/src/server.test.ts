@@ -1,4 +1,8 @@
 // @vitest-environment node
+/**
+ * Without a `window`, a client is a server client: it never collects
+ * garbage and never revalidates what it has cached, for the whole request.
+ */
 import { describe, expect, it } from "vitest";
 
 import { createQueryClient, load, queryOptions, swr } from "./index.ts";
