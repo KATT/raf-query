@@ -1,10 +1,7 @@
-import type {
-	EntryState,
-	InfiniteQueryFactory,
-	QueryHandle,
-} from "@raf-query/core";
+import type { InfiniteQueryFactory, QueryHandle } from "@raf-query/core";
 import {
 	type Entry,
+	type EntryState,
 	fetchEntry,
 	pageParamAfter,
 } from "@raf-query/core/internal";

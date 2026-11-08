@@ -1,4 +1,4 @@
-import type { ClientEvent, QueryClient } from "@raf-query/react";
+import type { QueryClient } from "@raf-query/react";
 import { useSyncExternalStore } from "react";
 
 import { type FakeServer, keyLabel, type NetworkRequest } from "./server.ts";
@@ -71,7 +71,8 @@ export interface CacheRow {
 	readonly updatedAt: number;
 }
 
-type Entry = ClientEvent["entry"];
+/** What `client.subscribe` reports an event about. */
+type Entry = Parameters<Parameters<QueryClient["subscribe"]>[0]>[0]["entry"];
 
 interface Tracked {
 	/** Invalidated since its data was written. */

@@ -1,6 +1,5 @@
 import {
 	type DataOf,
-	type EntryState,
 	type ErrorOf,
 	failOf,
 	type InputOf,
@@ -13,6 +12,7 @@ import {
 import {
 	type Entry,
 	entryOf,
+	type EntryState,
 	fetchEntry,
 	fulfilled,
 	isEnabled,

@@ -5,7 +5,8 @@
  * it belongs, instead of React's error about hooks or client references.
  * The types are the client components' hooks', so both builds type alike.
  */
-import type { QueryClient, RootOf } from "@raf-query/core";
+import type { QueryClient } from "@raf-query/core";
+import type { RootOf } from "@raf-query/core/internal";
 
 import type { useQueryClient as UseQueryClient } from "./provider.tsx";
 import type { useInfiniteQuery as UseInfiniteQuery } from "./use-infinite-query.ts";

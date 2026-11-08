@@ -14,13 +14,14 @@ import {
 	type QueryHandle,
 	type Result,
 	retry,
-	type RootOf,
 	type SingleQueryFactory,
 	type Thenable,
 	useInfiniteQuery,
 	useQuery,
 	useQueryClient,
 } from "./index.ts";
+import type { RootOf } from "@raf-query/core/internal";
+
 import { createBackend, type Issue } from "./test-utils.tsx";
 
 type Backend = ReturnType<typeof createBackend>;

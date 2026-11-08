@@ -1,9 +1,5 @@
-import {
-	type AnyFactory,
-	type AnyTarget,
-	type Group,
-	isFetching,
-} from "@raf-query/core";
+import { type Group, isFetching } from "@raf-query/core";
+import type { AnyFactory, AnyTarget } from "@raf-query/core/internal";
 import { useCallback, useSyncExternalStore } from "react";
 
 import { useQueryClient } from "./provider.tsx";

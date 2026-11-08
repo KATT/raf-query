@@ -3,16 +3,18 @@ import { act } from "@testing-library/react";
 import { createElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import type {
+	FocusRefetchMeta,
+	PollingMeta,
+	ReconnectRefetchMeta,
+} from "./features.ts";
 import { groups } from "./groups.ts";
 import {
 	focusRefetch,
-	type FocusRefetchMeta,
 	polling,
-	type PollingMeta,
 	type QueryClient,
 	queryOptions,
 	reconnectRefetch,
-	type ReconnectRefetchMeta,
 	removeOne,
 	waterfallHandle,
 } from "./index.ts";

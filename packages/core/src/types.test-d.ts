@@ -27,13 +27,13 @@ import {
 	resetMany,
 	retry,
 	revalidate,
-	type RootOf,
 	setData,
 	swr,
 	type Target,
 	waterfallHandle,
 } from "./index.ts";
 import { groups, tag } from "./groups.ts";
+import type { RootOf } from "./root.ts";
 import { author, createBackend, featured, issues } from "./test-utils.ts";
 
 const backend = createBackend();

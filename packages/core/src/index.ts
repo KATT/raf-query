@@ -1,8 +1,5 @@
 export {
-	type AnyFeature,
-	type AnyLink,
 	type Clock,
-	type ClientEvent,
 	createQueryClient,
 	type Feature,
 	feature,
@@ -11,9 +8,8 @@ export {
 	type Operation,
 	type QueryClient,
 	type QueryClientConfig,
-	systemClock,
 } from "./client.ts";
-export { abortError, type EntryState, QueryDisabledError } from "./entry.ts";
+export { abortError, QueryDisabledError } from "./entry.ts";
 export {
 	type Fail,
 	fail,
@@ -23,15 +19,8 @@ export {
 	QueryFailure,
 	type Result,
 } from "./fail.ts";
-export {
-	focusRefetch,
-	type FocusRefetchMeta,
-	polling,
-	type PollingMeta,
-	reconnectRefetch,
-	type ReconnectRefetchMeta,
-} from "./features.ts";
-export { groups, type Tag, type TagsMeta, tag } from "./groups.ts";
+export { focusRefetch, polling, reconnectRefetch } from "./features.ts";
+export { groups, type Tag, tag } from "./groups.ts";
 export {
 	canDehydrate,
 	type DehydratedEntry,
@@ -53,8 +42,6 @@ export {
 	infiniteQueryOptions,
 } from "./infinite.ts";
 export {
-	type AnyFactory,
-	type AnyTarget,
 	type Group,
 	group,
 	type QueryInfo,
@@ -64,7 +51,6 @@ export {
 export {
 	QueryTimeoutError,
 	retry,
-	type RetryMeta,
 	type RetryOptions,
 	timeout,
 } from "./links.ts";
@@ -93,14 +79,7 @@ export {
 	queryOptions,
 	type StreamOptions,
 } from "./options.ts";
-export {
-	type Decl,
-	type DefaultTypes,
-	type MetaOf,
-	type QueryMeta,
-	type RootOf,
-	type RootTypes,
-} from "./root.ts";
+export type { QueryMeta } from "./root.ts";
 export { type Recommended, recommended } from "./presets.ts";
 export type { Thenable } from "./thenable.ts";
 export {

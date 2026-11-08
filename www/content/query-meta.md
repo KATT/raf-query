@@ -40,6 +40,8 @@ Each part declares the `meta` fields it reads, with `link<{ meta: … }>(fn)` or
 tanstack-start/src/docs/query-meta.ts#root
 ```
 
+A package that ships a link or feature needs only these exports: `link` and `feature`, the types `Link`, `Feature` and `Operation` (the request a link gets) to name them, and `Target` and `QueryInfo` for a [target](./query-invalidation.md#matching-with-where) that matches on the fields it declares. `groups()` and `tag` are built the same way.
+
 `errorToasts` comes before `retry()`, so it sees a request's error only after its retries ran out. `fail()` values are [expected errors](./query-functions.md#expected-errors): a request returns them rather than throws, so they never reach the `catch`.
 
 ## Typing meta by its root

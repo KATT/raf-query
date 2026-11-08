@@ -1,4 +1,5 @@
-import type { QueryClient, RootOf } from "@raf-query/core";
+import type { QueryClient } from "@raf-query/core";
+import type { RootOf } from "@raf-query/core/internal";
 
 import { useQueryClient } from "./provider.tsx";
 
