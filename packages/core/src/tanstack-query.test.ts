@@ -125,7 +125,7 @@ function Reader(props: {
 }) {
 	const [queryThenable, queryState] = useQuery(props.factory, props.handle);
 	const query = use(queryThenable);
-	props.show(query, queryState);
+	props.show(query, { ...queryState });
 	return null;
 }
 
@@ -134,7 +134,8 @@ type Read = readonly [factory: QueryFactory, handle: QueryHandle<QueryFactory>];
 /**
  * Mount the raf client with a component reading each handle under one
  * Suspense boundary. `shown[i]` is the data the i-th screen rendered last
- * and `states[i]` its state; `show()` swaps the screens.
+ * and `states[i]` its state, copied in render so every field is tracked;
+ * `show()` swaps the screens.
  */
 function screens(client: QueryClient, reads: ReadonlyArray<Read> = []) {
 	const shown: Array<unknown> = [];
