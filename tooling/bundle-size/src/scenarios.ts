@@ -24,6 +24,10 @@ export const features = {
 		label: "hydration",
 		marker: { module: "core/hydration" },
 	},
+	paging: {
+		label: "paging (`useInfiniteQuery`)",
+		marker: { module: "core/infinite" },
+	},
 	polling: { label: "`polling()`", marker: { code: "refetchInterval" } },
 	reconnectRefetch: {
 		label: "`reconnectRefetch()`",
@@ -44,6 +48,7 @@ export const featureIds: ReadonlyArray<Feature> = [
 	"focusRefetch",
 	"reconnectRefetch",
 	"tags",
+	"paging",
 	"boundary",
 ];
 
@@ -100,6 +105,11 @@ export const scenarios: ReadonlyArray<Scenario> = [
 		name: "+ tags (`groups()`, `tag`)",
 	},
 	{
+		fixture: "infinite.tsx",
+		imports: ["hooks", "paging"],
+		name: "+ a paged query (`useInfiniteQuery`)",
+	},
+	{
 		fixture: "streams.tsx",
 		imports: ["hooks"],
 		name: "+ a stream query",
@@ -124,6 +134,6 @@ export const scenarios: ReadonlyArray<Scenario> = [
 	{
 		fixture: "everything.tsx",
 		imports: featureIds,
-		name: "Everything (`recommended()`, `timeout()`, tags, hydration, boundary)",
+		name: "Everything (`recommended()`, `timeout()`, tags, hydration, paging, boundary)",
 	},
 ];

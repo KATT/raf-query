@@ -9,6 +9,7 @@ import {
 import { groups, tag } from "@raf-query/react/groups";
 import type { DehydratedState } from "@raf-query/react/hydration";
 
+import { renderPages } from "./pages.tsx";
 import { issueQuery, render } from "./render.tsx";
 
 declare const state: DehydratedState;
@@ -26,6 +27,7 @@ await render(client, (children) => (
 		</QueryBoundary>
 	</HydrationBoundary>
 ));
+await renderPages(client);
 document.addEventListener("click", () => {
 	void invalidateMany(client, author, "ada");
 });

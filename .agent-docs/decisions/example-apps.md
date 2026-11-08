@@ -14,7 +14,7 @@ App scope, small enough to read in one sitting, covering every documented featur
 | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | Issue list with status filter and sort in URL | search params → loader → paged `prefetchEntry`, infinite scroll, `whilePending: "previous"`, `isPrevious` dimming |
 | Issue detail                                  | `prefetchEntry` + skeletons. The route opens at once; title, body, and status suspend                             |
-| Comments under an issue                       | paged `useQuery`, streamed `prefetchEntry`, infinite scroll                                                       |
+| Comments under an issue                       | `useInfiniteQuery`, streamed `prefetchEntry`, infinite scroll                                                     |
 | Assignee card                                 | Loader / server component: `prefetchEntry` the issue's assignee beside the issue                                  |
 | Inline edit title/body; change status in list | form Actions / transitions + `useOptimistic` + `await invalidateMany(queryClient, issues)`                        |
 

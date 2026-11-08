@@ -2,7 +2,7 @@
 
 - Human: "those useQuery() things and their components should be scoped under the route themselves like in the folder for the route", the way the docs samples do it (TanStack Start samples define them in the route file; Next.js in `app/(blog)/components/`).
 - **Why**: the route decides how a query starts (`prefetchEntry`, `ensureEntry`, `fetchEntry`), and that decides what its handle is and what `useQuery` returns for it. The component that reads the handle belongs with the loader that made it.
-- **What lives there**: every component that calls `useQuery` on a handle from its route's loader. Components that only write (`edit-title`, `edit-body`, `status-select`) or are shared app chrome (`settings`, `app-link`) stay in `src/components` / `app/components`. `comments` reads and writes; it lives with the issue route, since only the issue page uses it.
+- **What lives there**: every component that calls `useQuery` or `useInfiniteQuery` on a handle from its route's loader. Components that only write (`edit-title`, `edit-body`, `status-select`) or are shared app chrome (`settings`, `app-link`) stay in `src/components` / `app/components`. `comments` reads and writes; it lives with the issue route, since only the issue page uses it.
 - **Folder per framework**, each its own way to keep the folder out of routing:
   - TanStack Start: `src/routes/<verb>/issues/index.tsx`, `src/routes/<verb>/issues/$issueId/route.tsx`, with `-components/` beside each (the router generator skips `-` prefixed files).
   - Next.js: `src/app/<verb>/issues/_components/`, `src/app/<verb>/issues/[issueId]/_components/` (`_` is the App Router's private folder).
