@@ -86,10 +86,10 @@ export interface InfiniteQueryOptionsBuilder<TTypes extends RootTypes> {
  * and, on their state, `fetchNextPage` and `fetchPreviousPage`:
  *
  * ```ts
- * export const issueList = (input: { status: Status }) =>
+ * export const commentsQuery = (input: { slug: string }) =>
  *   infiniteQueryOptions({
- *     queryKey: issues("list", input),
- *     queryFn: ({ pageParam, signal }) => listIssues({ ...input, cursor: pageParam }, { signal }),
+ *     queryKey: comments(input.slug),
+ *     queryFn: ({ pageParam, signal }) => listComments({ ...input, cursor: pageParam }, { signal }),
  *     initialPageParam: 0,
  *     getNextPageParam: (lastPage) => lastPage.nextCursor,
  *   });

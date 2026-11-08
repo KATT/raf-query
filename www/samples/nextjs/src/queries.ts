@@ -4,7 +4,7 @@ import { group, infiniteQueryOptions, queryOptions } from "@raf-query/react";
 import { getPost, listComments } from "./api.ts";
 
 // #endregion home
-import { listIssues } from "./api.ts";
+import { listPosts } from "./api.ts";
 
 // #region home
 const post = group("post");
@@ -28,37 +28,26 @@ export function commentsQuery(input: { slug: string }) {
 }
 // #endregion home
 
-import { listPosts } from "./api.ts";
-import type { PostsInput } from "./posts-input.ts";
-
 const posts = group("posts");
 
-export function postsQuery(input: PostsInput) {
+/** One page of posts, by its number in the URL. */
+export function postsQuery(input: { page: number }) {
 	return queryOptions({
-		queryKey: posts("list", input),
+		queryKey: posts(input),
 		queryFn: () => listPosts(input),
-	});
-}
-
-const issues = group("issues");
-
-export function issueListQuery(input: { status: "open" | "done" }) {
-	return queryOptions({
-		queryKey: issues(input),
-		queryFn: () => listIssues(input),
 	});
 }
 
 // #region api-fetch
 import { apiFetch } from "#api-fetch";
 
-const issue = group("issue");
+const authors = group("authors");
 
-export function issueQuery(input: { id: number }) {
+export function authorQuery(input: { id: string }) {
 	return queryOptions({
-		queryKey: issue(input.id),
+		queryKey: authors(input.id),
 		queryFn: (context) =>
-			apiFetch(`/api/issues/${input.id}`, { signal: context.signal }).then(
+			apiFetch(`/api/authors/${input.id}`, { signal: context.signal }).then(
 				(response) => response.json(),
 			),
 	});

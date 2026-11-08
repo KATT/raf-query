@@ -20,14 +20,18 @@ export function Posts(props: { handle: QueryHandle<typeof postsQuery> }) {
 		whilePending: "previous",
 	});
 	const posts = use(postsThenable);
-	const { input } = postsState;
+	const { page } = postsState.input;
 	return (
 		<>
+			<PostList dimmed={postsState.isPrevious} posts={posts.items} />
 			<nav aria-busy={postsState.isPrevious}>
-				<Link href={{ query: { ...input, sort: "newest" } }}>Newest</Link>
-				<Link href={{ query: { ...input, sort: "oldest" } }}>Oldest</Link>
+				{page > 1 ? (
+					<Link href={{ query: { page: page - 1 } }}>Previous</Link>
+				) : null}
+				{page < posts.pageCount ? (
+					<Link href={{ query: { page: page + 1 } }}>Next</Link>
+				) : null}
 			</nav>
-			<PostList dimmed={postsState.isPrevious} posts={posts} />
 		</>
 	);
 }

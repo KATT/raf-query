@@ -82,7 +82,7 @@ Per-query background refetches after the page has rendered use `isFetching` on t
 Read [`searchParams`](https://nextjs.org/docs/app/api-reference/file-conventions/page#searchparams-optional) in the page, validate them, and pass them as the input:
 
 ```sample
-nextjs/src/app/issues/page.tsx#page
+nextjs/src/app/(blog)/posts/page.tsx#page
 ```
 
 Changing search params with [`<Link>`](https://nextjs.org/docs/app/api-reference/components/link) or [`router.push`](https://nextjs.org/docs/app/api-reference/functions/use-router) renders the page again on the server with the new input. See [URL state and pagination](./url-state-and-pagination.md) for what to show while it loads.
@@ -159,7 +159,7 @@ The browser runs a page's server actions one at a time, so refetches wait for ea
 Write with a server action, then invalidate in the browser:
 
 ```sample
-nextjs/src/components/update-issue-form.tsx#form
+nextjs/src/components/edit-post-form.tsx#form
 ```
 
 `invalidateOne` resolves when the refetch of the query on screen settles, so the form stays pending until the new data shows. When the write changes more than one thing, pass a list to one `invalidateMany` call, so the refetches run side by side. See [Mutations](./mutations.md).

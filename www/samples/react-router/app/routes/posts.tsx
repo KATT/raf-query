@@ -22,9 +22,8 @@ declare function PostList(props: {
 
 // #region route
 export async function loader(args: Route.LoaderArgs) {
-	const { searchParams } = new URL(args.request.url);
-	// `?sort=oldest&page=2` → `{ sort: "oldest", page: 2 }`
-	const input = parsePostsInput(Object.fromEntries(searchParams));
+	// `?page=2` → `{ page: 2 }`
+	const input = parsePostsInput(new URL(args.request.url).searchParams);
 	const qc = args.context.get(queryClientContext);
 	const [handles] = await load(qc, {
 		posts: prefetch(postsQuery, input),
@@ -49,11 +48,13 @@ function Posts(props: { handle: Route.ComponentProps["loaderData"]["posts"] }) {
 	const { page } = postsState.input;
 	return (
 		<>
+			<PostList dimmed={postsState.isPrevious} posts={posts.items} />
 			<nav aria-busy={postsState.isPrevious}>
-				<Link to={`?sort=newest&page=${page}`}>Newest</Link>
-				<Link to={`?sort=oldest&page=${page}`}>Oldest</Link>
+				{page > 1 ? <Link to={`?page=${page - 1}`}>Previous</Link> : null}
+				{page < posts.pageCount ? (
+					<Link to={`?page=${page + 1}`}>Next</Link>
+				) : null}
 			</nav>
-			<PostList dimmed={postsState.isPrevious} posts={posts} />
 		</>
 	);
 }

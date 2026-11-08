@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
-declare function NotificationsToggle(props: {
+declare function ReplyNotificationsToggle(props: {
 	readonly permission: PermissionState | undefined;
 }): React.ReactNode;
 
 // #region tanstack
-function NotificationsSetting() {
+function ReplyNotificationsSetting() {
 	const { data } = useQuery({
 		queryKey: ["permission", "notifications"],
 		queryFn: async () => {
@@ -17,6 +17,6 @@ function NotificationsSetting() {
 		// Only the browser has `navigator.permissions`.
 		enabled: typeof window !== "undefined",
 	});
-	return <NotificationsToggle permission={data} />;
+	return <ReplyNotificationsToggle permission={data} />;
 }
 // #endregion

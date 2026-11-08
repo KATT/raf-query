@@ -35,6 +35,12 @@ export function listComments(input: { cursor: number; slug: string }) {
 	);
 }
 
-export function listPosts(input: { page: number; sort: "newest" | "oldest" }) {
-	return request<Array<Post>>(`/posts?sort=${input.sort}&page=${input.page}`);
+export interface PostPage {
+	readonly items: ReadonlyArray<Post>;
+	/** The last page's number. */
+	readonly pageCount: number;
+}
+
+export function listPosts(input: { page: number }) {
+	return request<PostPage>(`/posts?page=${input.page}`);
 }

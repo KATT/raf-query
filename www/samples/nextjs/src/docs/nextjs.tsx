@@ -20,8 +20,8 @@ function PendingHint() {
 	return pending ? <Spinner /> : null;
 }
 
-<Link href="/issues">
-	Issues
+<Link href="/posts">
+	Posts
 	<PendingHint />
 </Link>;
 // #endregion

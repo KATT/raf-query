@@ -40,7 +40,7 @@ Infinite scroll is the same paged query with an automatic "Load more". A ref cal
 tanstack-start/src/docs/infinite-queries.tsx#infinite-scroll
 ```
 
-Scroll the feed below. Switch the filter to see a new list start from its first page, and switch back to find the old one still cached, with every page you loaded.
+Scroll the comments below. Switch the filter to see a new list start from its first page, and switch back to find the old one still cached, with every page you loaded.
 
 ```demo
 infinite-scroll
@@ -64,7 +64,7 @@ Loading a page starts from the data as it was when the request started, and repl
 
 ## Bidirectional lists
 
-Add `getPreviousPageParam(firstPage, pages, firstPageParam)` to load pages before the first one, for a chat log that starts in the middle:
+Add `getPreviousPageParam(firstPage, pages, firstPageParam)` to load pages before the first one, for a comment thread opened at a linked comment, which starts in the middle:
 
 ```sample
 tanstack-start/src/docs/infinite-queries.ts#bidirectional-lists

@@ -23,7 +23,7 @@ nextjs/src/app/(blog)/components/posts.tsx#component
 react-router/app/routes/posts.tsx#route
 ```
 
-Clicking **Oldest** navigates, the new URL's input `{ sort: "oldest", page: 1 }` starts with `prefetch`, and the component receives a new handle.
+Clicking a link navigates, the loader or server component starts the new URL's input with `prefetch`, and the component receives a new handle.
 
 ## What shows while the new input loads
 

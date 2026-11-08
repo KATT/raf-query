@@ -24,7 +24,7 @@ function PushSettings() {
 
 function PushState() {
 	const [handle] = useState(() =>
-		waterfallHandle(pushStateQuery, { channel: "news" }),
+		waterfallHandle(pushStateQuery, { slug: "hello-world" }),
 	);
 	const [pushThenable] = useQuery(pushStateQuery, handle);
 	const push = use(pushThenable);

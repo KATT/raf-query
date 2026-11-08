@@ -15,40 +15,40 @@ import { Segmented, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
-const projects = group("projects");
+const posts = group("posts");
 
 const pageSize = 4;
 const pageCount = 5;
 
 const server = createFakeServer(() => ({
-	projects: Array.from({ length: pageSize * pageCount }, (_, index) => ({
+	posts: Array.from({ length: pageSize * pageCount }, (_, index) => ({
 		id: index + 1,
-		name: `Project ${String(index + 1).padStart(2, "0")}`,
+		title: `Field notes, week ${index + 1}`,
 	})),
 }));
 
-function projectsQuery(input: { readonly page: number }) {
+function postsQuery(input: { readonly page: number }) {
 	return queryOptions({
 		queryFn: (context) =>
 			server.respond(
-				`GET /projects?page=${input.page}`,
+				`GET /posts?page=${input.page}`,
 				(db) => ({
 					hasMore: input.page < pageCount,
-					items: db.projects.slice(
+					items: db.posts.slice(
 						(input.page - 1) * pageSize,
 						input.page * pageSize,
 					),
 				}),
 				context,
 			),
-		queryKey: projects(input),
+		queryKey: posts("list", input),
 		staleTime: 5000,
 	});
 }
 
 interface PageData {
 	readonly page: number;
-	readonly projects: QueryHandle<typeof projectsQuery>;
+	readonly posts: QueryHandle<typeof postsQuery>;
 }
 
 type WhilePending = "previous" | "suspend";
@@ -63,16 +63,14 @@ function ListSkeleton() {
 	);
 }
 
-function Projects(props: {
+function Posts(props: {
 	readonly data: PageData;
 	readonly whilePending: WhilePending;
 }) {
-	const [projectsThenable, controls] = useQuery(
-		projectsQuery,
-		props.data.projects,
-		{ whilePending: props.whilePending },
-	);
-	const result = use(projectsThenable);
+	const [postsThenable, controls] = useQuery(postsQuery, props.data.posts, {
+		whilePending: props.whilePending,
+	});
+	const result = use(postsThenable);
 	const page = props.data.page;
 	return (
 		<div className="grid gap-3">
@@ -83,12 +81,9 @@ function Projects(props: {
 					controls.isPrevious && "opacity-50",
 				)}
 			>
-				{result.items.map((project) => (
-					<li
-						className="rounded-md border px-3 py-1.5 text-sm"
-						key={project.id}
-					>
-						{project.name}
+				{result.items.map((post) => (
+					<li className="rounded-md border px-3 py-1.5 text-sm" key={post.id}>
+						{post.title}
 					</li>
 				))}
 			</ul>
@@ -96,7 +91,7 @@ function Projects(props: {
 				{page > 1 ? (
 					<DemoLink
 						className="rounded-md border px-2.5 py-1 hover:bg-accent"
-						to={{ path: "/projects", search: { page: page - 1 } }}
+						to={{ path: "/posts", search: { page: page - 1 } }}
 					>
 						← Previous
 					</DemoLink>
@@ -108,7 +103,7 @@ function Projects(props: {
 				{page < pageCount ? (
 					<DemoLink
 						className="ml-auto rounded-md border px-2.5 py-1 hover:bg-accent"
-						to={{ path: "/projects", search: { page: page + 1 } }}
+						to={{ path: "/posts", search: { page: page + 1 } }}
 					>
 						Next →
 					</DemoLink>
@@ -133,16 +128,16 @@ function Pagination() {
 			/>
 			<DemoBrowser
 				fallback={<ListSkeleton />}
-				initial={{ path: "/projects", search: { page: 1 } }}
+				initial={{ path: "/posts", search: { page: 1 } }}
 				loader={async (args): Promise<PageData> => {
 					const page = Math.max(1, Number(args.location.search?.page ?? 1));
 					const [handles] = await load(args.client, {
-						projects: prefetch(projectsQuery, { page }),
+						posts: prefetch(postsQuery, { page }),
 					});
-					return { page, projects: handles.projects };
+					return { page, posts: handles.posts };
 				}}
 			>
-				{(route) => <Projects data={route.data} whilePending={whilePending} />}
+				{(route) => <Posts data={route.data} whilePending={whilePending} />}
 			</DemoBrowser>
 		</div>
 	);

@@ -68,7 +68,7 @@ export interface QueryInfo<TMeta = QueryMeta> {
  *
  * ```ts
  * const ownedBy: Target<AppMeta, Team> = { where: (query, team) => query.meta.owner === team };
- * await invalidateMany(client, ownedBy, "posts-team");
+ * await invalidateMany(client, ownedBy, "editorial");
  * ```
  */
 export interface Target<TMeta = QueryMeta, TParam = never> {

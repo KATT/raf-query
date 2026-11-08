@@ -23,7 +23,7 @@ raf-query aborts a request only when it replaces or drops it:
 
 Nothing else aborts a request. When the last component reading a query unmounts, its request runs to the end and the result is cached: the query is likely to be read again, and `gcTime` only removes an entry once its request has finished. Requests nothing has read yet, like a loader's `prefetch`, run to the end too.
 
-Try it below. The inbox's `queryFn` passes its signal to the server, so aborted requests show up in the Queries panel:
+Try it below. The comments' `queryFn` passes its signal to the server, so aborted requests show up in the Queries panel:
 
 ```demo
 cancellation

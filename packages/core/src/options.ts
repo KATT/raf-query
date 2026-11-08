@@ -95,10 +95,10 @@ export interface QueryOptionsBuilder<TTypes extends RootTypes> {
  * Typed options for a query factory:
  *
  * ```ts
- * export const issueQuery = (input: { id: number }) =>
+ * export const postQuery = (input: { slug: string }) =>
  *   queryOptions({
- *     queryKey: issues("byId", input),
- *     queryFn: ({ signal }) => getIssue(input.id, { signal }),
+ *     queryKey: posts(input.slug),
+ *     queryFn: ({ signal }) => getPost(input.slug, { signal }),
  *   });
  * ```
  *

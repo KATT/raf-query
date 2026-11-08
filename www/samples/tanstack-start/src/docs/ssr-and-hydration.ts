@@ -4,13 +4,14 @@ import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 
 const pushState = group("pushState");
 
-declare function detectPushState(channel: string): Promise<"on" | "off">;
+/** Whether this browser gets a push when the post gets a new comment. */
+declare function detectPushState(slug: string): Promise<"on" | "off">;
 
 // #region browser-only-queries
-export function pushStateQuery(input: { channel: string }) {
+export function pushStateQuery(input: { slug: string }) {
 	return queryOptions({
-		queryKey: pushState(input.channel),
-		queryFn: () => detectPushState(input.channel),
+		queryKey: pushState(input.slug),
+		queryFn: () => detectPushState(input.slug),
 	});
 }
 // #endregion
