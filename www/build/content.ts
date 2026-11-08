@@ -5,11 +5,12 @@ import type { Connect, Plugin } from "vite";
 import { removeTwoslashNotations } from "twoslash/fallback";
 import { parse as parseYaml } from "yaml";
 
+import type { SearchableDoc, SearchText } from "../src/content/search.ts";
 import type { Doc, DocMeta, DocSection, Sample } from "../src/content/types.ts";
 import { stripCollapseMarkers } from "./collapse.ts";
 import { ContentError, messageOf } from "./content-error.ts";
 import { generateRouteTrees, generateRouteTypes } from "./sample-apps.ts";
-import { renderMarkdown } from "./markdown.ts";
+import { renderMarkdown, searchSectionsOf } from "./markdown.ts";
 import { expandSnippets } from "./snippets.ts";
 import {
 	makeTwoslashCache,
@@ -75,6 +76,10 @@ function withTypes(code: string, types: ReadonlyArray<string>) {
 
 const manifestId = "virtual:docs-manifest";
 const resolvedManifestId = `\0${manifestId}`;
+
+/** Each section's body text, for search, apart from the manifest. */
+const searchTextId = "virtual:docs-search-text";
+const resolvedSearchTextId = `\0${searchTextId}`;
 
 /**
  * `import hero from "sample:<app>/<path>#region"` renders that region of a
@@ -162,6 +167,66 @@ export const docPages = Effect.fn("docPages")(function* (dirs: ContentDirs) {
 	);
 });
 
+/**
+ * What the site's search finds in the pages, without compiling their code:
+ * each page's title, description and headings, in sidebar order, and the
+ * text of each of its sections by search entry id (`caching` before the
+ * first heading, `caching#garbage-collection` under one).
+ */
+export const searchContent = Effect.fn("searchContent")(function* (
+	dirs: ContentDirs,
+	sections: ReadonlyArray<string>,
+) {
+	const pages = yield* Effect.forEach(
+		yield* readSources(dirs),
+		(source) =>
+			searchSectionsOf(source.markdown).pipe(
+				Effect.map((outline) => ({ outline, source })),
+				Effect.mapError(
+					(error) =>
+						new ContentError({
+							cause: error,
+							message: `${source.file}: ${error.message}`,
+						}),
+				),
+			),
+		{ concurrency: "unbounded" },
+	);
+	const ordered = sections.flatMap((title) =>
+		pages
+			.filter((page) => page.source.frontmatter.section === title)
+			.toSorted(
+				(a, b) => a.source.frontmatter.order - b.source.frontmatter.order,
+			),
+	);
+	const text: SearchText = Object.fromEntries(
+		ordered.flatMap((page) =>
+			page.outline.sections.flatMap((section) =>
+				section.text === ""
+					? []
+					: [
+							[
+								section.id === undefined
+									? page.source.slug
+									: `${page.source.slug}#${section.id}`,
+								section.text,
+							],
+						],
+			),
+		),
+	);
+	return {
+		docs: ordered.map((page): SearchableDoc => ({
+			description: page.source.frontmatter.description,
+			headings: page.outline.headings,
+			section: page.source.frontmatter.section,
+			slug: page.source.slug,
+			title: page.source.frontmatter.title,
+		})),
+		text,
+	};
+});
+
 /** Runs a build step from one of Vite's hooks. */
 function run<A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) {
 	return Effect.runPromise(Effect.provide(effect, NodeServices.layer));
@@ -170,8 +235,9 @@ function run<A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) {
 /**
  * Compiles `content/*.md` at build time. Each page imports as a module of
  * pre-highlighted HTML segments (its own chunk, so the browser loads only the
- * pages it visits), and `virtual:docs-manifest` lists every page for the nav,
- * search and SEO. The client build also gets `llms.txt` and each page's
+ * pages it visits), `virtual:docs-manifest` lists every page for the nav,
+ * search and SEO, and `virtual:docs-search-text` has their text for search,
+ * which the search dialog loads when it opens. The client build also gets `llms.txt` and each page's
  * markdown source at `/docs/<slug>.md`.
  */
 export function docsContent(options: ContentOptions): Plugin {
@@ -467,6 +533,7 @@ export function docsContent(options: ContentOptions): Plugin {
 			const graph = this.environment.moduleGraph;
 			const stale = [...graph.idToModuleMap].flatMap(([id, module]) =>
 				id === resolvedManifestId ||
+				id === resolvedSearchTextId ||
 				(context.file.startsWith(samplesDir) &&
 					id.startsWith(resolvedSamplePrefix))
 					? [module]
@@ -487,6 +554,10 @@ export function docsContent(options: ContentOptions): Plugin {
 				}
 				return `export default ${JSON.stringify(output.sample)};`;
 			}
+			if (id === resolvedSearchTextId) {
+				const content = await run(searchContent(options, options.sections));
+				return `export const text = ${JSON.stringify(content.text)};`;
+			}
 			if (id !== resolvedManifestId) {
 				return undefined;
 			}
@@ -497,6 +568,9 @@ export function docsContent(options: ContentOptions): Plugin {
 		resolveId(id) {
 			if (id.startsWith(samplePrefix)) {
 				return `\0${id}`;
+			}
+			if (id === searchTextId) {
+				return resolvedSearchTextId;
 			}
 			return id === manifestId ? resolvedManifestId : undefined;
 		},
