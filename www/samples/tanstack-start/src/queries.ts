@@ -1,7 +1,6 @@
 // #region todos
 // #region home
-import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
-import { group } from "@raf-query/react/groups";
+import { group, infiniteQueryOptions, queryOptions } from "@raf-query/react";
 
 // #endregion home
 import { getTodo, listTodos } from "./api.ts";

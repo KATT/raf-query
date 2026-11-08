@@ -1,9 +1,8 @@
-import { queryOptions } from "@raf-query/react";
+import { group, queryOptions } from "@raf-query/react";
 import { notFound } from "@tanstack/react-router";
 import { sections } from "virtual:docs-manifest";
 
 import type { Doc, DocMeta } from "./types.ts";
-import { group } from "@raf-query/react/groups";
 
 const doc = group("doc");
 

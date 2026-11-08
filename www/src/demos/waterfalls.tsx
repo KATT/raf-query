@@ -1,5 +1,6 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
+	group,
 	infiniteQueryOptions,
 	load,
 	prefetchEntry,
@@ -18,7 +19,6 @@ import { Segmented } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { seedComments, seedPosts } from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
-import { group } from "@raf-query/react/groups";
 
 const posts = group("posts");
 const authors = group("authors");

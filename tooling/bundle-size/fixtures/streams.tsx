@@ -1,5 +1,6 @@
 import {
 	createQueryClient,
+	group,
 	load,
 	prefetchEntry,
 	QueryClientProvider,
@@ -9,7 +10,6 @@ import {
 } from "@raf-query/react";
 import { Suspense, use } from "react";
 import { createRoot } from "react-dom/client";
-import { group } from "@raf-query/react/groups";
 
 const builds = group("builds");
 

@@ -1,6 +1,6 @@
 import type { Operation } from "./client.ts";
 import { type Fail, isFailValue } from "./fail.ts";
-import type { QueryKey, QueryKeyOption } from "./keys.ts";
+import type { QueryKey } from "./keys.ts";
 import type {
 	BaseOptions,
 	QueryFunctionContext,
@@ -29,7 +29,7 @@ type PageParamFn<TPage, TParam> = (
 ) => TParam | null | undefined;
 
 export interface InfiniteOptions<
-	TKey extends QueryKeyOption,
+	TKey extends QueryKey,
 	TPage,
 	TParam,
 	TData,
@@ -45,7 +45,7 @@ export interface InfiniteOptions<
 
 /** What `infiniteQueryOptions` returns. */
 export type InfiniteQueryOptions<
-	TKey extends QueryKeyOption = QueryKeyOption,
+	TKey extends QueryKey = QueryKey,
 	TPage = unknown,
 	TParam = unknown,
 	TFail = unknown,
@@ -75,7 +75,7 @@ export type InfiniteQueryOptions<
  * ```
  */
 export function infiniteQueryOptions<
-	const TKey extends QueryKeyOption,
+	const TKey extends QueryKey,
 	TResult,
 	TParam,
 	TData = InfiniteData<Exclude<TResult, Fail>, TParam>,

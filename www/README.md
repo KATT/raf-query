@@ -62,8 +62,7 @@ const [settingsThenable] = useQuery(settingsQuery, loaderData.settings, {
 
 ````md
 ```ts twoslash
-import { useIsFetching } from "@raf-query/react";
-import { group } from "@raf-query/react/groups";
+import { group, useIsFetching } from "@raf-query/react";
 
 const comments = group("comments");
 // ---cut---

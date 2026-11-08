@@ -21,12 +21,12 @@ npm install @raf-query/core
 import {
 	createQueryClient,
 	fetchEntry,
+	group,
 	invalidateOne,
 	load,
 	queryOptions,
 	retry,
 } from "@raf-query/core";
-import { group } from "@raf-query/core/groups";
 
 const issues = group("issues");
 
@@ -53,7 +53,7 @@ await invalidateOne(queryClient, issueQuery, { id: 1 });
 | --------------------------- | -------------------------------------------------------------------------------------------- |
 | `@raf-query/core`           | `createQueryClient`, query factories, `load`, the verbs, and the built-in links and features |
 | `@raf-query/core/hydration` | `dehydrate` and `hydrate`, to send a server's cache to the browser                           |
-| `@raf-query/core/groups`    | `group` and `tag`, to invalidate related queries together                                    |
+| `@raf-query/core/groups`    | `tag` and `groups()`, to invalidate queries across groups                                    |
 
 ## License
 

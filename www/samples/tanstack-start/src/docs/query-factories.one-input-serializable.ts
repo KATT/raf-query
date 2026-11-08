@@ -1,12 +1,12 @@
 import {
 	createQueryClient,
+	group,
 	infiniteQueryOptions,
 	load,
 	prefetchEntry,
 } from "@raf-query/react";
 import { postQuery } from "~/queries.ts";
 import { type CommentPage, listComments } from "~/api.ts";
-import { group } from "@raf-query/react/groups";
 
 const qc = createQueryClient();
 const issues = group("issues");

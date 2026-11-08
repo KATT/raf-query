@@ -4,6 +4,7 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
 	action,
+	group,
 	type QueryHandle,
 	ensureEntry,
 	infiniteQueryOptions,
@@ -17,7 +18,6 @@ import { DemoBrowser } from "~/demo-kit/browser.tsx";
 import { FailNextButton, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
-import { group } from "@raf-query/react/groups";
 
 const todos = group("todos");
 

@@ -2,6 +2,7 @@ import { use } from "react";
 import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
+	group,
 	type QueryHandle,
 	ensureEntry,
 	infiniteQueryOptions,
@@ -16,7 +17,6 @@ import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
 import { formatTime, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
-import { group } from "@raf-query/react/groups";
 
 const inbox = group("inbox");
 

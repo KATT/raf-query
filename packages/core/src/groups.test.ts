@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { group, tag } from "./groups.ts";
+import { tag } from "./groups.ts";
 import {
 	fetchEntry,
+	group,
 	invalidateMany,
 	load,
 	queryOptions,

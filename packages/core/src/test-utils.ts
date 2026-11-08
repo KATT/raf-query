@@ -16,6 +16,7 @@ import {
 	type Clock,
 	createQueryClient,
 	fail,
+	group,
 	infiniteQueryOptions,
 	type QueryClient,
 	type QueryClientConfig,
@@ -24,7 +25,7 @@ import {
 	type QueryHandle,
 	queryOptions,
 } from "./index.ts";
-import { group, tag } from "./groups.ts";
+import { tag } from "./groups.ts";
 
 export interface Issue {
 	readonly author: string;

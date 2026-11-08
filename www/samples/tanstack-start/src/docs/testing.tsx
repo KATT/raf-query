@@ -2,6 +2,7 @@ import {
 	createQueryClient,
 	fetchEntry,
 	focusRefetch,
+	group,
 	load,
 	prefetchEntry,
 	type QueryClient,
@@ -15,7 +16,6 @@ import { act, render, screen } from "@testing-library/react";
 import { type ReactNode, Suspense, use } from "react";
 import { afterEach, beforeEach, expect, test } from "./testing.vitest.ts";
 import { postQuery } from "~/queries.ts";
-import { group } from "@raf-query/react/groups";
 
 const count = group("count");
 

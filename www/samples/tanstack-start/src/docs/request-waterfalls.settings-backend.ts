@@ -1,8 +1,7 @@
-import { load, prefetchEntry, queryOptions } from "@raf-query/react";
+import { group, load, prefetchEntry, queryOptions } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { getCurrentOrg } from "~/api.ts";
-import { group } from "@raf-query/react/groups";
 
 const user = group("user");
 const org = group("org");

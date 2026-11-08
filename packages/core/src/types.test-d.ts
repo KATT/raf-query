@@ -11,6 +11,7 @@ import {
 	feature,
 	fetchEntry,
 	getData,
+	group,
 	type InputOf,
 	invalidateMany,
 	invalidateOne,
@@ -29,7 +30,7 @@ import {
 	setData,
 	waterfallHandle,
 } from "./index.ts";
-import { group, groups, tag } from "./groups.ts";
+import { groups, tag } from "./groups.ts";
 import { author, createBackend, featured, issues } from "./test-utils.ts";
 
 const backend = createBackend();
@@ -64,38 +65,42 @@ describe("factory types", () => {
 	});
 });
 
-describe("group keys", () => {
+describe("keys", () => {
 	it("type a group's path and the flat keys it builds", () => {
 		const drafts = group(issues, "drafts");
 
 		expectTypeOf(drafts.path).toEqualTypeOf<readonly ["issues", "drafts"]>();
-		expectTypeOf(drafts("byId", 1)).toExtend<
+		expectTypeOf(drafts("byId", 1)).toEqualTypeOf<
 			readonly ["issues", "drafts", "byId", 1]
 		>();
 		expectTypeOf(drafts("byId", 1)).toExtend<QueryKey>();
-	});
-
-	it("take only group-built keys in queryOptions", () => {
 		const wrong = () => {
-			queryOptions({
-				queryFn: () => 1,
-				// @ts-expect-error -- a hand-written key has no group
-				queryKey: ["issues", "list"],
-			});
-			queryOptions({
-				queryFn: () => 1,
-				// @ts-expect-error -- nor does an `as const` one
-				queryKey: ["issues", "list"] as const,
-			});
-			queryOptions({
-				queryFn: () => 1,
-				// @ts-expect-error -- a spread loses the brand
-				queryKey: [...issues(), "list"],
-			});
 			// @ts-expect-error -- a subgroup's name is a string
 			group(issues, 1);
 		};
 		expectTypeOf(wrong).toBeFunction();
+	});
+
+	it("take hand-written keys in queryOptions, typed as their literal tuple", () => {
+		const list = () =>
+			queryOptions({ queryFn: () => 1, queryKey: ["issues", "list"] });
+		const frozen = () =>
+			queryOptions({
+				queryFn: () => 1,
+				queryKey: ["issues", "list"] as const,
+			});
+		const spread = (input: { readonly id: number }) =>
+			queryOptions({ queryFn: () => 1, queryKey: [...issues("byId"), input] });
+
+		expectTypeOf<QueryHandle<typeof list>["queryKey"]>().toEqualTypeOf<
+			readonly ["issues", "list"]
+		>();
+		expectTypeOf<QueryHandle<typeof frozen>["queryKey"]>().toEqualTypeOf<
+			readonly ["issues", "list"]
+		>();
+		expectTypeOf<QueryHandle<typeof spread>["queryKey"]>().toEqualTypeOf<
+			readonly ["issues", "byId", { readonly id: number }]
+		>();
 	});
 });
 
@@ -193,9 +198,9 @@ describe("verb types", () => {
 			void invalidateOne(client, author, "ada");
 			// @ts-expect-error -- raw strings aren't targets
 			void invalidateMany(client, "issues");
-			// @ts-expect-error -- nor are hand-written tuples: groups come from group()
+			// @ts-expect-error -- nor are hand-written keys
 			void invalidateMany(client, ["issues"] as const);
-			// @ts-expect-error -- nor are keys
+			// @ts-expect-error -- nor are keys a group built
 			void invalidateMany(client, issues("list"));
 		};
 		expectTypeOf(wrong).toBeFunction();

@@ -1,10 +1,10 @@
 import {
 	createQueryClient,
+	group,
 	infiniteQueryOptions,
 	invalidateMany,
 	queryOptions,
 } from "@raf-query/react";
-import { group } from "@raf-query/react/groups";
 import { getTodo, listTodos } from "~/api.ts";
 
 declare function getSpecial(): Promise<unknown>;
@@ -96,4 +96,15 @@ await invalidateMany(qc, todos); // every todo query, archived ones too
 await invalidateMany(qc, archived); // only archived ones
 await invalidateMany(qc, todoListQuery); // every page of every list
 await invalidateMany(qc, todoListQuery, { status: "open" }); // the open lists
+// #endregion
+
+// #region hand-written-keys
+export function todoQuery(input: { id: number }) {
+	return queryOptions({
+		queryKey: ["todos", "byId", input.id],
+		queryFn: () => getTodo(input.id),
+	});
+}
+
+await invalidateMany(qc, todos); // covers it: its key starts with ["todos"]
 // #endregion

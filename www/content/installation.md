@@ -34,7 +34,7 @@ The parts not every app needs are subpath exports of the same package, so there 
 
 | Import                             | For                                                                                |
 | ---------------------------------- | ---------------------------------------------------------------------------------- |
-| `@raf-query/react/groups`          | [Groups and tags](./query-keys.md#groups) to invalidate sets of queries            |
+| `@raf-query/react/groups`          | [Tags](./query-invalidation.md#tags) to invalidate sets of queries across groups   |
 | `@raf-query/react/hydration`       | `dehydrate` and `hydrate` for [SSR without an integration](./ssr-and-hydration.md) |
 | `@raf-query/react/tanstack-router` | [TanStack Start and TanStack Router](./tanstack-start.md) SSR streaming            |
 | `@raf-query/react/devtools`        | The [devtools](./devtools.md) panel; omit the element to tree-shake it             |

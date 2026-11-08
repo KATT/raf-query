@@ -1,8 +1,7 @@
 import { getPost } from "~/api.ts";
 
 // #region a-taste
-import { queryOptions } from "@raf-query/react";
-import { group } from "@raf-query/react/groups";
+import { group, queryOptions } from "@raf-query/react";
 
 const posts = group("posts");
 

@@ -58,7 +58,7 @@ starting-queries
 
 | Entry                              | Use                                                                                    |
 | ---------------------------------- | -------------------------------------------------------------------------------------- |
-| `@raf-query/react/groups`          | [Groups and tags](./query-keys.md), for invalidating sets of queries                   |
+| `@raf-query/react/groups`          | [Tags](./query-invalidation.md#tags), for invalidating sets of queries across groups   |
 | `@raf-query/react/hydration`       | `dehydrate` and `hydrate`, for [moving a cache to the browser](./ssr-and-hydration.md) |
 | `@raf-query/react/tanstack-router` | Streams the router's query cache to the client during SSR                              |
 | `@raf-query/react/devtools`        | [Devtools](./devtools.md) panel for inspecting the cache                               |

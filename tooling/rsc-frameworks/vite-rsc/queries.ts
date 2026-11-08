@@ -1,5 +1,4 @@
-import { queryOptions, type QueryClientConfig } from "@raf-query/react";
-import { group } from "@raf-query/react/groups";
+import { group, queryOptions, type QueryClientConfig } from "@raf-query/react";
 
 const post = group("post");
 const comments = group("comments");

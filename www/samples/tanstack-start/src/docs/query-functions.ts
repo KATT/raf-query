@@ -1,11 +1,11 @@
 import {
 	type ErrorOf,
 	fail,
+	group,
 	infiniteQueryOptions,
 	queryOptions,
 } from "@raf-query/react";
 import type { Post, Todo } from "~/api.ts";
-import { group } from "@raf-query/react/groups";
 
 const todos = group("todos");
 const posts = group("posts");

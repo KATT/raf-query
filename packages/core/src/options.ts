@@ -1,5 +1,5 @@
 import type { Fail } from "./fail.ts";
-import type { AnyFactory, KeyTuple, QueryKey, QueryKeyOption } from "./keys.ts";
+import type { AnyFactory, QueryKey } from "./keys.ts";
 import type { AnyRoot, DefaultTypes, Def, RootTypes } from "./root.ts";
 
 export interface QueryFunctionContext<TKey extends QueryKey = QueryKey> {
@@ -15,7 +15,7 @@ declare const failTag: unique symbol;
 
 /** Options every query takes. */
 export interface BaseOptions<
-	TKey extends QueryKeyOption,
+	TKey extends QueryKey,
 	TTypes extends RootTypes = RootTypes,
 > {
 	/** The root this factory belongs to: `defType<typeof makeQueryClient>()`. */
@@ -30,6 +30,7 @@ export interface BaseOptions<
 	 * link.
 	 */
 	readonly meta?: NoInfer<Partial<TTypes["meta"]>>;
+	/** A plain array, usually built by a `group()`. Handles keep its literal type. */
 	readonly queryKey: TKey;
 	/** How long data stays fresh, in ms. Default `0`. */
 	readonly staleTime?: number;
@@ -39,7 +40,7 @@ export interface BaseOptions<
 
 /** What `queryOptions` and `infiniteQueryOptions` return. */
 export interface QueryOptions<
-	TKey extends QueryKeyOption = QueryKeyOption,
+	TKey extends QueryKey = QueryKey,
 	TQueryFnData = unknown,
 	TFail = unknown,
 	TData = TQueryFnData,
@@ -79,7 +80,7 @@ type Awaitable<T> = PromiseLike<T> | T;
  * and every later chunk updates it in place.
  */
 export function queryOptions<
-	const TKey extends QueryKeyOption,
+	const TKey extends QueryKey,
 	TChunk,
 	TData,
 	TTypes extends RootTypes = DefaultTypes,
@@ -92,7 +93,7 @@ export function queryOptions<
 	},
 ): QueryOptions<TKey, TData, never, TData, TTypes>;
 export function queryOptions<
-	const TKey extends QueryKeyOption,
+	const TKey extends QueryKey,
 	TResult,
 	TData = Exclude<TResult, Fail>,
 	TTypes extends RootTypes = DefaultTypes,
@@ -124,7 +125,7 @@ export function queryOptions(options: QueryOptions): QueryOptions {
 export type QueryFactory = {
 	factory(input: unknown): {
 		readonly queryFn: (context: never) => unknown;
-		readonly queryKey: QueryKeyOption;
+		readonly queryKey: QueryKey;
 	};
 }["factory"];
 
@@ -173,10 +174,9 @@ export type InputArgs<TFactory extends QueryFactory> =
 			? [input: TInput]
 			: [input?: Parameters<TFactory>[0]];
 
-/** A factory's key as a plain tuple, the way handles carry it. */
-export type KeyOf<TFactory extends QueryFactory> = KeyTuple<
-	ReturnType<TFactory>["queryKey"]
->;
+/** A factory's key type, the way handles carry it. */
+export type KeyOf<TFactory extends QueryFactory> =
+	ReturnType<TFactory>["queryKey"];
 
 /** A factory's root, from its `def`; any root without one. */
 export type RootOfFactory<TFactory extends QueryFactory> =

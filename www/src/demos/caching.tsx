@@ -1,6 +1,7 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
+	group,
 	infiniteQueryOptions,
 	load,
 	prefetchEntry,
@@ -13,7 +14,6 @@ import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
 import { formatTime, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
-import { group } from "@raf-query/react/groups";
 
 const todos = group("todos");
 

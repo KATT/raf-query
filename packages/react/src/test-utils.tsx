@@ -1,10 +1,10 @@
 import { act, render, type RenderResult } from "@testing-library/react";
 import { type ReactNode, Suspense } from "react";
 
-import { group } from "./groups.ts";
 import {
 	createQueryClient,
 	fail,
+	group,
 	infiniteQueryOptions,
 	type QueryClient,
 	type QueryClientConfig,

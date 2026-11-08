@@ -1,4 +1,5 @@
 import {
+	group,
 	infiniteQueryOptions,
 	load,
 	prefetchEntry,
@@ -11,7 +12,6 @@ import { Suspense, use } from "react";
 import { createRoot } from "react-dom/client";
 
 import { getIssue, type Issue } from "./api.ts";
-import { group } from "@raf-query/react/groups";
 
 const feed = group("feed");
 

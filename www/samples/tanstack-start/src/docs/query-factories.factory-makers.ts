@@ -2,11 +2,11 @@ import { use } from "react";
 import {
 	createQueryClient,
 	ensureEntry,
+	group,
 	load,
 	queryOptions,
 	useQuery,
 } from "@raf-query/react";
-import { group } from "@raf-query/react/groups";
 
 interface Endpoint<TArgs, TData> {
 	readonly name: string;

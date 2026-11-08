@@ -20,8 +20,7 @@ Requires React 19.2 or newer.
 A query is a factory. The loader and the component call the same one. A paged list, such as comments, uses `infiniteQueryOptions`.
 
 ```tsx
-import { infiniteQueryOptions, queryOptions } from "@raf-query/react";
-import { group } from "@raf-query/react/groups";
+import { group, infiniteQueryOptions, queryOptions } from "@raf-query/react";
 
 const posts = group("posts");
 const comments = group(posts, "comments");
@@ -103,7 +102,7 @@ function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `@raf-query/react`                 | `QueryClientProvider`, `QueryProvider`, `useQuery`, `useInfiniteQuery`, `useIsFetching`, `HydrationBoundary`, and all of core |
 | `@raf-query/react/hydration`       | `dehydrate` and `hydrate` from core                                                                                           |
-| `@raf-query/react/groups`          | `group` and `tag` from core                                                                                                   |
+| `@raf-query/react/groups`          | `tag` and `groups()` from core                                                                                                |
 | `@raf-query/react/tanstack-router` | [TanStack Start and Router](https://raf-query.katt.dev/docs/tanstack-start) SSR streaming                                     |
 | `@raf-query/react/devtools`        | The [devtools](https://raf-query.katt.dev/docs/devtools) panel; omit the element to tree-shake it                             |
 

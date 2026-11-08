@@ -1,5 +1,4 @@
-import { queryOptions } from "@raf-query/react";
-import { group } from "@raf-query/react/groups";
+import { group, queryOptions } from "@raf-query/react";
 import { getPost } from "~/api.ts";
 import { posts } from "~/queries.ts";
 

@@ -2,6 +2,7 @@ import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	createQueryClient,
+	group,
 	load,
 	prefetchEntry,
 	type QueryHandle,
@@ -23,7 +24,6 @@ import { FailNextButton, formatTime, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { seedPosts } from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
-import { group } from "@raf-query/react/groups";
 
 const posts = group("posts");
 

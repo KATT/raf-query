@@ -1,11 +1,11 @@
 import {
 	createQueryClient,
 	fail,
+	group,
 	type QueryClient,
 	queryOptions,
 	waterfallHandle,
 } from "@raf-query/core";
-import { group } from "@raf-query/core/groups";
 import { QueryClientProvider, useQuery } from "@raf-query/react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { Component, type ReactNode, use } from "react";

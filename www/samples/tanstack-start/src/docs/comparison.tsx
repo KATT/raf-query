@@ -1,4 +1,5 @@
 import {
+	group,
 	load,
 	prefetchEntry,
 	type QueryHandle,
@@ -6,7 +7,6 @@ import {
 	useQuery,
 } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
-import { group } from "@raf-query/react/groups";
 import { postQuery } from "~/queries.ts";
 
 const permission = group("permission");

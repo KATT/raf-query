@@ -1,12 +1,12 @@
 import {
 	createQueryClient,
+	group,
 	load,
 	prefetchEntry,
 	queryOptions,
 } from "@raf-query/react";
 
 import { getPost } from "~/api.ts";
-import { group } from "@raf-query/react/groups";
 
 const posts = group("posts");
 

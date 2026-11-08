@@ -1,5 +1,6 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
+	group,
 	infiniteQueryOptions,
 	load,
 	prefetchEntry,
@@ -11,7 +12,6 @@ import { use } from "react";
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
-import { group } from "@raf-query/react/groups";
 
 const messages = group("messages");
 

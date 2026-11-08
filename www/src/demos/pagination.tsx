@@ -1,6 +1,7 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
+	group,
 	load,
 	prefetchEntry,
 	type QueryHandle,
@@ -13,7 +14,6 @@ import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
 import { Segmented, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
-import { group } from "@raf-query/react/groups";
 
 const projects = group("projects");
 

@@ -1,13 +1,13 @@
 import {
 	createQueryClient,
 	fetchEntry,
+	group,
 	invalidateOne,
 	load,
 	queryOptions,
 } from "@raf-query/core";
 
 import { getIssue } from "./api.ts";
-import { group } from "@raf-query/core/groups";
 
 const issues = group("issues");
 

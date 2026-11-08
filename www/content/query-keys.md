@@ -14,7 +14,7 @@ Keys also travel inside [handles](./handles.md), from the server to the browser,
 
 ## Groups
 
-Every key comes from a **group**. A group names a set of queries, so one call can [invalidate](./query-invalidation.md) them all. `group(name)` comes from `@raf-query/react/groups`, and `group(parent, name)` makes a group inside another:
+Build keys with a **group**. A group names a set of queries, so one call can [invalidate](./query-invalidation.md) them all. `group(name)` comes from `@raf-query/react`, and `group(parent, name)` makes a group inside another:
 
 ```sample
 tanstack-start/src/docs/query-keys.ts#groups
@@ -22,9 +22,19 @@ tanstack-start/src/docs/query-keys.ts#groups
 
 Call a group for a key. The key is a flat, plain array that starts with the group's path, `["todos", "archived", "list"]`, so it looks the same in memory, on the wire and in [devtools](./devtools.md). Invalidating a group covers every key that starts with its path: `todos` covers `archived` and every query in it, and `archived` doesn't cover `todos`.
 
-`queryOptions` only takes a key a group built, and verbs take the group itself, never a string or an array. A hand-written key is a type error, so a typo in a group's name can't silently match nothing.
+Verbs take the group itself, never a string or an array, so a typo in a group's name is a type error instead of a target that silently matches nothing.
 
 Two things under one group can't share a name: if `todos("archived", id)` were a query next to the `archived` group, invalidating `archived` would reach it. In development, whichever comes second throws. Production builds leave the check out.
+
+### Hand-written keys
+
+`queryOptions` takes any plain array as a key, so a key doesn't have to come from a group. A group still covers a hand-written key that starts with its path:
+
+```sample
+tanstack-start/src/docs/query-keys.ts#hand-written-keys
+```
+
+Prefer groups: a hand-written key repeats the group's names by hand, and the development check for shared names only sees keys a group built.
 
 ## Simple keys
 

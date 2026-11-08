@@ -1,12 +1,12 @@
 import { assert, asyncProperty, type JsonValue, jsonValue } from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { group } from "./groups.ts";
 import { hydrate } from "./hydration.ts";
 import {
 	ensureEntry,
 	fetchEntry,
 	getData,
+	group,
 	invalidateAll,
 	invalidateMany,
 	invalidateOne,
@@ -94,6 +94,21 @@ describe("invalidation", () => {
 		expect(await cache.refetched()).toEqual([]);
 		await invalidateMany(cache.client, issues);
 		expect(await cache.refetched()).toEqual(["draft", "one", "two"]);
+	});
+
+	it("matches a hand-written key that starts with a group's path", async () => {
+		const client = testClient({ staleTime: Infinity });
+		let calls = 0;
+		const byId = (input: { readonly id: number }) =>
+			queryOptions({
+				queryFn: () => (calls += 1),
+				queryKey: ["issues", "byId", input.id],
+			});
+		await load(client, { one: fetchEntry(byId, { id: 1 }) });
+		await invalidateMany(client, issues);
+		await load(client, { one: fetchEntry(byId, { id: 1 }) });
+
+		expect(calls).toBe(2);
 	});
 
 	it("matches a group by its whole name, not a prefix of it", async () => {

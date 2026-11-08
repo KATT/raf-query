@@ -2,6 +2,7 @@ import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
+	group,
 	infiniteQueryOptions,
 	invalidateAll,
 	invalidateMany,
@@ -13,7 +14,6 @@ import {
 	useQueryClient,
 	useInfiniteQuery,
 } from "@raf-query/react";
-import { group } from "@raf-query/react/groups";
 import { Suspense, use, useTransition } from "react";
 
 import { DemoBrowser } from "~/demo-kit/browser.tsx";

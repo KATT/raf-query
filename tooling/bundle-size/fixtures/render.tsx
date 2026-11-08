@@ -1,4 +1,5 @@
 import {
+	group,
 	load,
 	prefetchEntry,
 	type QueryClient,
@@ -11,7 +12,6 @@ import { type ReactNode, Suspense, use } from "react";
 import { createRoot } from "react-dom/client";
 
 import { getIssue } from "./api.ts";
-import { group } from "@raf-query/react/groups";
 
 const issues = group("issues");
 

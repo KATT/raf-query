@@ -101,9 +101,9 @@ export function invalidateOne<TFactory extends QueryFactory>(
 
 /**
  * Mark queries stale: a factory's (optionally only those whose input
- * matches `partial`), a group's (keys that start with it or a group inside
- * it), or those a target's `where` picks, such as a tag. Groups and tags
- * come from `@raf-query/core/groups`. Read queries refetch now; the rest
+ * matches `partial`), a group's (keys that start with its path, whether
+ * the group built them or not), or those a target's `where` picks, such as
+ * a tag from `@raf-query/core/groups`. Read queries refetch now; the rest
  * when next read. Resolves when the refetches settle.
  */
 export function invalidateMany<TFactory extends QueryFactory>(

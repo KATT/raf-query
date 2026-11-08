@@ -1,5 +1,5 @@
 import { listTodos } from "~/api.ts";
-import { group } from "@raf-query/react/groups";
+import { group } from "@raf-query/react";
 
 declare function listInvoices(input: { orgId: string }): Promise<unknown>;
 

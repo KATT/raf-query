@@ -2,6 +2,7 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	ensureEntry,
 	fetchEntry,
+	group,
 	infiniteQueryOptions,
 	load,
 	prefetchEntry,
@@ -29,7 +30,6 @@ import {
 } from "~/demo-kit/fixtures.ts";
 import { DemoRouter } from "~/demo-kit/router.tsx";
 import { createFakeServer } from "~/demo-kit/server.ts";
-import { group } from "@raf-query/react/groups";
 
 const posts = group("posts");
 
