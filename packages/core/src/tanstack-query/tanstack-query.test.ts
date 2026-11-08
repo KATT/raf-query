@@ -7,7 +7,8 @@
  * just made. A group stamp matches a TanStack key by prefix; a factory
  * stamp and a `where` target only match entries raf has read, because a
  * mirror has no factory or `meta`. One side refetches: raf, when it has a
- * reader, otherwise TanStack when its observer is active.
+ * reader and options, otherwise TanStack when its observer is active. A
+ * `skipToken` entry starts nothing, so there is nothing to mirror.
  */
 import {
 	dehydrate as dehydrateTanStack,
@@ -43,6 +44,7 @@ import {
 	revalidate,
 	resetOne,
 	setData,
+	skipToken,
 	swr,
 } from "../index.ts";
 import {
@@ -590,6 +592,26 @@ describe("hydration", () => {
 		expect(
 			tanstack.getQueryState(posts("byId", { id: 3 }))?.isInvalidated,
 		).toBe(true);
+	});
+
+	it("mirrors nothing for a load entry skipped with skipToken", async () => {
+		const api = createApi();
+		using clients = createClients();
+		mount(clients.client);
+		const [handles, data] = await load(clients.client, {
+			draft: skipToken,
+			post: swr(api.postQuery, { id: 1 }),
+		});
+		await flush();
+
+		expect(handles.draft).toBeUndefined();
+		expect(data).not.toHaveProperty("draft");
+		expect(data.post).toEqual({ id: 1, title: "First" });
+		expect(clients.tanstack.getQueryCache().getAll()).toHaveLength(1);
+		expect(clients.tanstack.getQueryData(posts("byId", { id: 1 }))).toEqual({
+			id: 1,
+			title: "First",
+		});
 	});
 });
 

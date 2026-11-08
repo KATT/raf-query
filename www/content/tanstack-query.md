@@ -93,7 +93,8 @@ Removing a copy the sync made, or its gc, leaves the original. Each copy has its
 ## What doesn't map
 
 - **Requests.** Each cache runs its own `queryFn`. A request in flight, its `signal`, retries and `isFetching` stay in the cache that started it. Two screens that start the same query at once, one on each side, make two requests; the one that lands last wins.
-- **Options.** `staleTime`, `gcTime`, `enabled`, `select`, `meta` and the rest stay with each side's definition. Only state crosses.
+- **Options.** `staleTime`, `gcTime`, `select`, `meta` and the rest stay with each side's definition. Only state crosses. TanStack Query's [`enabled`](https://tanstack.com/query/latest/docs/framework/react/guides/disabling-queries) stays on that side.
+- **A skipped entry.** A [`skipToken`](./starting-queries.md#conditional-queries) starts nothing, so there is no entry to mirror. A [browser-only query](./ssr-and-hydration.md#browser-only-queries) has no loader entry either: its handle is built after hydration, and the sync picks the query up once the browser has it.
 - **`undefined` data.** raf-query caches it; TanStack Query doesn't take it, so the TanStack Query copy is left as it is.
 - **An error with nothing to attach to.** An error reaches the other cache only when that cache already has the query.
 - **Infinite queries** sync their `{ pages, pageParams }` data, but a page fetch runs in the cache that asked for it, with that side's page params.

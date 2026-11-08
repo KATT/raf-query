@@ -10,7 +10,6 @@ import {
 	entryForKey,
 	failWith,
 	invalidate,
-	isEnabled,
 	remove,
 	reset,
 	write,
@@ -244,8 +243,9 @@ export function tanstackQuerySync(
 				const target = queries.get(hash);
 				const latest = current ? latestStamp(current) : 0;
 				if (current && target && latest > link.stamp) {
-					const refetches =
-						current.readers.size > 0 && current.options && isEnabled(current);
+					// Raf refetches a read entry that has options. Without options
+					// `fetchEntry` does not run, so TanStack refetches if it has an observer.
+					const refetches = current.readers.size > 0 && current.options;
 					void queryClient.invalidateQueries({
 						exact: true,
 						queryKey: target.queryKey,
