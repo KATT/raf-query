@@ -10,7 +10,7 @@ import {
 } from "~/content/search.ts";
 
 /** `text` with the words `match` found marked. */
-export function Highlighted(props: {
+function Highlighted(props: {
 	readonly match: SearchMatch;
 	readonly text: string;
 }) {
