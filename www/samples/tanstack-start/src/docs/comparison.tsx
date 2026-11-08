@@ -17,7 +17,7 @@ declare function ErrorNotice(props: {
 	readonly error: unknown;
 }): React.ReactNode;
 
-declare function NotificationsToggle(props: {
+declare function ReplyNotificationsToggle(props: {
 	readonly permission: PermissionState | undefined;
 }): React.ReactNode;
 
@@ -34,16 +34,16 @@ export function permissionQuery(input: { name: PermissionName }) {
 // #endregion queries
 
 // #region component
-function NotificationsSetting() {
+function ReplyNotificationsSetting() {
 	// `false` on the server and while hydrating, `true` after.
 	const hydrated = useHydrated();
 	if (!hydrated) {
-		return <NotificationsToggle permission={undefined} />;
+		return <ReplyNotificationsToggle permission={undefined} />;
 	}
-	return <NotificationsPermission />;
+	return <ReplyNotificationsPermission />;
 }
 
-function NotificationsPermission() {
+function ReplyNotificationsPermission() {
 	// Only the browser has `navigator.permissions`, so the handle is built here.
 	const [handle] = useState(() =>
 		waterfallHandle(permissionQuery, { name: "notifications" }),
@@ -53,7 +53,7 @@ function NotificationsPermission() {
 		permissionThenable.status === "fulfilled"
 			? permissionThenable.value
 			: undefined;
-	return <NotificationsToggle permission={permission} />;
+	return <ReplyNotificationsToggle permission={permission} />;
 }
 // #endregion component
 
@@ -73,4 +73,4 @@ function PostTitle(props: { handle: QueryHandle<typeof postQuery> }) {
 }
 // #endregion thenable
 
-export { NotificationsSetting, PostTitle };
+export { ReplyNotificationsSetting, PostTitle };

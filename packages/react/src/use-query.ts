@@ -242,8 +242,8 @@ export function useQueryRead<TControls extends object>(
  * Read a query by its handle.
  *
  * ```tsx
- * const [issueThenable, issueState] = useQuery(issueQuery, handles.issue);
- * const issue = use(issueThenable);
+ * const [postThenable, postState] = useQuery(postQuery, handles.post);
+ * const post = use(postThenable);
  * ```
  *
  * Reading never refetches stale data: loaders decide freshness. A query no

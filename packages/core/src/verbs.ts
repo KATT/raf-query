@@ -190,7 +190,7 @@ export function invalidateOne<TFactory extends QueryFactory>(
  * call after another runs them one after another instead.
  *
  * ```ts
- * await invalidateMany(client, [todos, [issuesQuery, { status: "open" }], [ownedBy, "billing"]]);
+ * await invalidateMany(client, [authors, [commentsQuery, { slug }], [ownedBy, "editorial"]]);
  * ```
  *
  * @see https://raf-query.katt.dev/docs/query-invalidation#several-targets
@@ -364,7 +364,7 @@ type Updater<TFactory extends QueryFactory> =
  * Write a query's data, as if a request had just returned it. `updater`
  * gets the current data, or `undefined` if there is none. A factory that
  * takes no input (or an optional one) skips the input:
- * `setData(client, todosQuery, updater)`.
+ * `setData(client, feedQuery, updater)`.
  *
  * @see https://raf-query.katt.dev/docs/mutations#updates-from-mutation-responses
  */

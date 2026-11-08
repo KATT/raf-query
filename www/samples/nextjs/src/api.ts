@@ -15,9 +15,10 @@ export interface CommentPage {
 	readonly nextCursor: number | null;
 }
 
-export interface Issue {
-	readonly id: number;
-	readonly title: string;
+export interface PostPage {
+	readonly items: ReadonlyArray<Post>;
+	/** The last page's number. */
+	readonly pageCount: number;
 }
 
 async function request<T>(url: string): Promise<T> {
@@ -38,6 +39,6 @@ export function listComments(input: { cursor: number; slug: string }) {
 	);
 }
 
-export function listIssues(input: { status: "open" | "done" }) {
-	return request<Array<Issue>>(`/api/issues?status=${input.status}`);
+export function listPosts(input: { page: number }) {
+	return request<PostPage>(`/api/posts?page=${input.page}`);
 }

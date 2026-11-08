@@ -61,27 +61,27 @@ Several queries the route can't render without are `swr` entries in the same `lo
 
 A query whose input comes from another query's result is a waterfall by construction. A post page that shows "more by this author" needs `authorQuery({ id: post.authorId })`, and `authorId` is only known once the post has loaded, so the author's request can't start before the post's has finished. Fix it where the data is shaped, so every query a route needs can start from what the URL already holds:
 
-- **Put the input in the route.** If the page is about an organization, its id belongs in the path (`/orgs/$orgId`), not in a lookup on the current user.
-- **Have the backend resolve it.** The server already knows the session and the relations, so an endpoint can return the child with its parent (the post with its author), or be keyed by what the client has (`GET /posts/:slug/author` instead of the post then `GET /authors/:id`, or `GET /me/org` instead of `GET /me` then `GET /orgs/:id`). The demo above does this: its loader starts the author from the post's id.
+- **Put the input in the route.** If the page is about an author, their id belongs in the path (`/authors/$authorId`), not in a lookup on one of their posts.
+- **Have the backend resolve it.** The server already knows the session and the relations, so an endpoint can return the child with its parent (the post with its author), or be keyed by what the client has (`GET /posts/:slug/author` instead of the post then `GET /authors/:id`). The demo above does this: its loader starts the author from the post's id.
 
 <details>
-<summary>Example: the current user's organization</summary>
+<summary>Example: the post's author</summary>
 
-A settings page needs the user and their organization, and the organization's id is a field of the user:
-
-```sample
-tanstack-start/src/docs/request-waterfalls.settings-waterfall.ts#settings-waterfall
-```
-
-With a 150 ms round trip, the organization can't arrive before 300 ms, and the navigation is blocked for the first 150 even though nothing on the page needed the user that early.
-
-Fix it in the backend: the server can find the session's organization itself, so give it an endpoint and a query with no input.
+A post page needs the post and its author, and the author's id is a field of the post:
 
 ```sample
-tanstack-start/src/docs/request-waterfalls.settings-backend.ts#settings-backend
+tanstack-start/src/docs/request-waterfalls.author-waterfall.ts#author-waterfall
 ```
 
-Or fix it in the routes: links into the page come from places that already know the organization (the org switcher, a list of orgs), so they can put its id in the URL.
+With a 150 ms round trip, the author can't arrive before 300 ms, and the navigation waits for the post before the author's request can start.
+
+Fix it in the backend: the server can look up the post's author itself, so give it an endpoint keyed by the slug the URL already has.
+
+```sample
+tanstack-start/src/docs/request-waterfalls.author-backend.ts#author-backend
+```
+
+Or fix it in the routes: a page about the author is linked from places that already know them (a post's byline, a list of authors), so those links can put the author's id in the URL.
 
 Either way, both requests start together, and the page is ready after one round trip instead of two.
 

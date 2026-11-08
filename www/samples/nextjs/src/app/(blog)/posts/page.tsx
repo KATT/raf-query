@@ -1,16 +1,16 @@
 import { load, prefetch } from "@raf-query/react";
 
-import { IssueListInput } from "~/issue-list-input.ts";
-import { issueListQuery } from "~/queries.ts";
+import { PostListInput } from "~/post-list-input.ts";
+import { postsQuery } from "~/queries.ts";
 import { getQueryClient } from "~/query-client.ts";
 
 // #region page
-export default async function IssuesPage(props: {
+export default async function PostsPage(props: {
 	searchParams: Promise<Record<string, string | Array<string>>>;
 }) {
-	const input = IssueListInput.parse(await props.searchParams);
+	const input = PostListInput.parse(await props.searchParams);
 	const [handles] = await load(getQueryClient(), {
-		issues: prefetch(issueListQuery, input),
+		posts: prefetch(postsQuery, input),
 	});
 	// ...
 	// #endregion

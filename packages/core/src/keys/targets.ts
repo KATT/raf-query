@@ -72,7 +72,7 @@ export interface QueryInfo<TMeta = QueryMeta> {
  *
  * ```ts
  * const ownedBy: Target<AppMeta, Team> = { where: (query, team) => query.meta.owner === team };
- * await invalidateMany(client, ownedBy, "posts-team");
+ * await invalidateMany(client, ownedBy, "editorial");
  * ```
  *
  * @see https://raf-query.katt.dev/docs/query-invalidation#targets
