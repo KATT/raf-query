@@ -165,6 +165,21 @@ it(
 );
 
 it(
+	"scrolling inside a popup doesn't place it again",
+	withHovers(() => {
+		element("router").click();
+		const popup = element("router-popup");
+		// Placing a popup clears its max height to measure it, which scrolls a
+		// long type back to its top.
+		popup.style.maxHeight = "123px";
+		popup.dispatchEvent(new Event("scroll"));
+		expect(popup.style.maxHeight).toBe("123px");
+		document.dispatchEvent(new Event("scroll"));
+		expect(popup.style.maxHeight).not.toBe("123px");
+	}),
+);
+
+it(
 	"cleanup closes the popup and stops listening",
 	withHovers((cleanup) => {
 		element("router").click();
