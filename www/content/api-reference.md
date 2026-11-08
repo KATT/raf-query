@@ -110,7 +110,9 @@ Options:
 | `hash`              | Stable string form of the handle's key, for `key` props on Suspense boundaries              |
 | `refetch()`         | Fetch again, or join the request in flight. Returns a promise that resolves when it settles |
 
-`useInfiniteQuery(factory, handle, options?)` reads a paged factory the same way, with the same options. Its state adds `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage` and `isFetchingPreviousPage`. [Infinite queries](./infinite-queries.md)
+The state is tracked. The component re-renders when the thenable changes or settles, or when a field it read while rendering changes. The state object keeps its identity until then, and its functions keep theirs while the component is mounted. A field read only in an effect or a handler isn't tracked and holds its value from the last render. [Tracked state](./render-optimizations.md#tracked-state)
+
+`useInfiniteQuery(factory, handle, options?)` reads a paged factory the same way, with the same options. Its state adds `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage` and `isFetchingPreviousPage`, and it's tracked the same way: a component that reads only the pages doesn't re-render while another page loads, and one that reads `isFetchingNextPage` does. [Infinite queries](./infinite-queries.md)
 
 Read the thenable's `status`, `value` and `reason` to render without Suspense. See [Reading without Suspense](./comparison.md#reading-without-suspense).
 

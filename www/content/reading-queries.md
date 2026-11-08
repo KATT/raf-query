@@ -55,7 +55,7 @@ A component can call the hook with a prefetched handle and hand the thenable to 
 tanstack-start/src/docs/reading-queries.passing-thenables-down.tsx#passing-thenables-down
 ```
 
-The component that calls `useQuery` re-renders whenever the query's state changes, such as `isFetching` during a background refetch. A parent that should stay put can pass the handle down instead, so only the child reads the query.
+The component that calls `useQuery` re-renders when its thenable changes, and when a state field it read changes, such as `isFetching` during a background refetch. A parent that should stay put can pass the handle down instead, so only the child reads the query. See [Tracked state](./render-optimizations.md#tracked-state).
 
 Because `use()` can be called conditionally, a component can also decide **whether** to read:
 

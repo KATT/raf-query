@@ -15,7 +15,7 @@ A query's first load suspends, so Suspense fallbacks cover it. Later requests (r
 tanstack-start/src/docs/background-fetching-indicators.tsx#one-query-isfetching
 ```
 
-A component that calls `useQuery` re-renders whenever the query's state changes, `isFetching` included. Keep the indicator in a small component of its own, and pass the data down to `memo` children (or let [React Compiler](https://react.dev/learn/react-compiler) do it): structural sharing keeps the data's identity across a refetch that changed nothing, so they skip re-rendering.
+A component that reads `isFetching` re-renders when a request starts and when it ends; one that doesn't read it doesn't ([tracked state](./render-optimizations.md#tracked-state)). Keep the indicator in a small component of its own, and pass the data down to `memo` children (or let [React Compiler](https://react.dev/learn/react-compiler) do it): structural sharing keeps the data's identity across a refetch that changed nothing, so they skip re-rendering.
 
 ## Navigations
 

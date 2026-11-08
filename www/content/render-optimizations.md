@@ -1,11 +1,22 @@
 ---
 title: Render optimizations
-description: Structural sharing, stable promises and select keep the data's identity stable, so memoized components re-render only when their data changed.
+description: Tracked state, structural sharing, stable thenables and select keep readers from re-rendering, and the data's identity stable, when nothing they use changed.
 section: Guides
 order: 19
 ---
 
-A component that calls `useQuery` re-renders whenever its query's state changes: new data, a request starting or ending. What raf-query keeps stable is the data: its identity changes only when its content does, so `memo` components, [React Compiler](https://react.dev/learn/react-compiler) and effects below the reader skip work on refetches that changed nothing.
+A component that calls `useQuery` or `useInfiniteQuery` re-renders only when something it uses changed: its thenable, or a state field it read. The data keeps its identity until its content changes, so `memo` components, [React Compiler](https://react.dev/learn/react-compiler) and effects below the reader skip work on refetches that changed nothing.
+
+## Tracked state
+
+The hooks track which state fields a component reads while it renders. A write re-renders the component only when the thenable changed, the thenable settled, or a field it read changed:
+
+- A component that reads only the thenable doesn't re-render while a background refetch starts and ends, or when `isStale` or `updatedAt` change.
+- One that reads `isFetching` re-renders when a request starts and when it ends.
+- The state object keeps its identity until a field the component read changes. Its functions (`refetch()`, `fetchNextPage()`, `fetchPreviousPage()`) keep theirs for as long as the component is mounted, so they're safe as effect dependencies and `memo` props.
+- A field read for the first time in a later render is current, and tracked from then on.
+
+Read fields while rendering. A field read only in an effect or an event handler isn't tracked: it holds its value from the last render, which may be older than the cache.
 
 ## Structural sharing
 
@@ -42,7 +53,7 @@ tanstack-start/src/docs/render-optimizations.ts#selecting-data
 
 - `select` runs again only when the cached data changes, so its result keeps its identity across refetches that changed nothing.
 - It's part of the factory, so every reader of the factory gets the selected data. `getData` and `setData` work on the data before `select`.
-- `select` doesn't stop the reader from re-rendering: the component still re-renders when the query's state changes, but what it passes down stays the same.
+- When `select`'s result is unchanged, the reader's thenable is the same, so a component that reads only the thenable doesn't re-render.
 
 For a derivation only one component needs, derive in render. The data only changes when it actually changed, so with React Compiler (or `useMemo`) the derivation reruns only then:
 
@@ -52,13 +63,13 @@ tanstack-start/src/docs/render-optimizations.tsx#deriving-in-render
 
 ## Reading where the data is used
 
-Since every reader of a query re-renders on its state changes, pass the handle down instead of the data, and call `useQuery` in the components that use it:
+Pass the handle down instead of the data, and call `useQuery` in the components that use it. Each reader re-renders only for what it reads:
 
 ```sample
 tanstack-start/src/docs/render-optimizations.tsx#reading-where-the-data-is-used
 ```
 
-Both components read the same query. When a request starts and ends, they re-render; the page around them doesn't. Handles are small serializable objects that don't change while the page shows the same query, so passing them down costs nothing.
+Both components read the same query. When a request starts and ends, `RefreshButton` re-renders because it reads `isFetching`; `PostBody` reads only the thenable and re-renders when the data changes; the page around them doesn't. Handles are small serializable objects that don't change while the page shows the same query, so passing them down costs nothing.
 
 ## Passing thenables down
 

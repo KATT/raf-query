@@ -146,7 +146,7 @@ Same problem space, fewer knobs:
 | Custom `structuralSharing` merge function                           | Boolean on / off; deep equality on plain objects and arrays                                                     |
 | Query filter `type` / `stale` / `fetchStatus` / `predicate`         | Targets: a factory with a partial input, a group, or `{ where(query, param) }` over key, input, data and `meta` |
 | `cancelQueries` as its own verb                                     | `removeOne` / `removeMany` abort requests; a `queryFn` gets the `signal`                                        |
-| `notifyOnChangeProps`                                               | A reader re-renders when its query's state changes                                                              |
+| `notifyOnChangeProps`                                               | Always tracked: a reader re-renders when its thenable or a state field it read changes                          |
 | `throwOnError` as a function                                        | `fail()` values for expected errors, read as a `Result` with `result: true`; other errors throw                 |
 
 ### Out of scope
