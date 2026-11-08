@@ -47,6 +47,7 @@
 		"babel-plugin-react-compiler": "1.0.0",
 		"effect": "catalog:",
 		"github-slugger": "2.0.0",
+		"happy-dom": "21.0.1",
 		"hast-util-to-html": "9.0.5",
 		"hast-util-to-string": "3.0.1",
 		"rehype-raw": "7.0.0",

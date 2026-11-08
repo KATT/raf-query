@@ -7,7 +7,7 @@ export default defineConfig({
 		tsconfigPaths: true,
 	},
 	test: {
-		include: ["build/**/*.test.ts"],
+		include: ["build/**/*.test.ts", "src/**/*.test.ts"],
 		unstubGlobals: true,
 	},
 });

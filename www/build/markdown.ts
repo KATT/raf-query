@@ -31,6 +31,11 @@ import { visit } from "unist-util-visit";
 import type { DocHeading, DocSegment } from "../src/content/types.ts";
 import { collapseRegions } from "./collapse.ts";
 import { ContentError, messageOf } from "./content-error.ts";
+import {
+	renderPopupMarkdown,
+	renderPopupMarkdownInline,
+	withConciseDocs,
+} from "./popup-docs.ts";
 import { appOf, sampleApps } from "./sample-apps.ts";
 import type { TwoslashCache } from "./twoslash-cache.ts";
 
@@ -389,7 +394,7 @@ const fileImport = /\bfrom\s+["'](?:~\/|\.{1,2}\/)/;
 
 /**
  * Fences with `twoslash` in their meta are compiled, so hovering a name shows
- * its type, `// ^?` pins a type under the line, and `// @errors: 2345` shows
+ * its type and the first paragraph of its JSDoc, `// ^?` pins a type under the line, and `// @errors: 2345` shows
  * an expected error. A compile error the block doesn't expect fails the
  * build.
  *
@@ -496,7 +501,13 @@ const twoslashTransformer = Effect.fn("twoslashTransformer")(function* (
 		flush: session?.flush ?? Effect.void,
 		transformer: createTransformerFactory(
 			twoslasher,
-			rendererRich({ jsdoc: false, queryRendering: "line" }),
+			withConciseDocs(
+				rendererRich({
+					queryRendering: "line",
+					renderMarkdown: renderPopupMarkdown,
+					renderMarkdownInline: renderPopupMarkdownInline,
+				}),
+			),
 		)({ explicitTrigger: true }),
 	};
 });
