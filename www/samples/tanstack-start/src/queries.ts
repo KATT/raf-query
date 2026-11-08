@@ -12,7 +12,7 @@ import {
 	getSettings,
 	getTodo,
 	listPosts,
-	listTodos,
+	listTodoPage,
 } from "./api.ts";
 
 // #region home
@@ -45,9 +45,11 @@ export function commentsQuery(input: { slug: string }) {
 export const todos = group("todos");
 
 export function todosQuery() {
-	return queryOptions({
+	return infiniteQueryOptions({
 		queryKey: todos("list"),
-		queryFn: () => listTodos(),
+		queryFn: (context) => listTodoPage({ cursor: context.pageParam }),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
 	});
 }
 

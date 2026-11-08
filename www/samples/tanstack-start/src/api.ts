@@ -22,6 +22,11 @@ export interface Todo {
 	readonly title: string;
 }
 
+export interface TodoPage {
+	readonly items: ReadonlyArray<Todo>;
+	readonly nextCursor: number | null;
+}
+
 export interface Author {
 	readonly id: string;
 	readonly name: string;
@@ -89,6 +94,17 @@ export function listTodos(input?: { page?: number; status?: "open" | "done" }) {
 	if (input?.page !== undefined) search.set("page", String(input.page));
 	if (input?.status) search.set("status", input.status);
 	return request<ReadonlyArray<Todo>>(`/api/todos?${search}`);
+}
+
+export function listTodoPage(input: {
+	archived?: boolean;
+	cursor: number;
+	status?: "open" | "done";
+}) {
+	const search = new URLSearchParams({ cursor: String(input.cursor) });
+	if (input.archived) search.set("archived", "true");
+	if (input.status) search.set("status", input.status);
+	return request<TodoPage>(`/api/todos?${search}`);
 }
 
 export function getTodo(id: number) {

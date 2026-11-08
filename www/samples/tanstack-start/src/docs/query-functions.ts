@@ -1,18 +1,29 @@
-import { type ErrorOf, fail, group, queryOptions } from "@raf-query/react";
-import type { Post, Todo } from "~/api.ts";
+import {
+	type ErrorOf,
+	fail,
+	group,
+	infiniteQueryOptions,
+	queryOptions,
+} from "@raf-query/react";
+import type { Post, Todo, TodoPage } from "~/api.ts";
 
 const todos = group("todos");
 const posts = group("posts");
 const builds = group("builds");
 
-declare function fetchAllTodos(): Promise<ReadonlyArray<Todo>>;
+declare function fetchTodoPage(cursor: number): Promise<TodoPage>;
 
 declare function fetchTodoById(id: number): Promise<Todo>;
 
 declare const id: number;
 
 // #region intro
-queryOptions({ queryKey: todos(), queryFn: fetchAllTodos });
+infiniteQueryOptions({
+	queryKey: todos(),
+	queryFn: (context) => fetchTodoPage(context.pageParam),
+	initialPageParam: 0,
+	getNextPageParam: (lastPage) => lastPage.nextCursor,
+});
 queryOptions({ queryKey: todos(id), queryFn: () => fetchTodoById(id) });
 queryOptions({
 	queryKey: todos(id),

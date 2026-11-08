@@ -72,6 +72,8 @@ tanstack-start/src/docs/mutations.optimistic-updates.tsx#optimistic-updates
 tanstack-start/src/docs/mutations.ts#optimistic-updates-in-the-cache
 ```
 
+`todosQuery` is [paged](./infinite-queries.md), so its data is `{ pages, pageParams }`: the updater patches the todo in whichever page holds it and keeps `pageParams` as they are.
+
 This is more code, and you're responsible for the rollback. Reach for it only when `useOptimistic` can't reach the readers that need the update.
 
 ## Updates from mutation responses

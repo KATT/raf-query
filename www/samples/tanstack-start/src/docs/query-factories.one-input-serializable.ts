@@ -4,7 +4,6 @@ import {
 	infiniteQueryOptions,
 	load,
 	prefetch,
-	queryOptions,
 } from "@raf-query/react";
 import { postQuery } from "~/queries.ts";
 import { type CommentPage, listComments } from "~/api.ts";
@@ -13,12 +12,17 @@ const qc = createQueryClient();
 const issues = group("issues");
 const comments = group("comments");
 
-declare function listIssues(): Promise<ReadonlyArray<{ id: number }>>;
+declare function listIssues(input: { cursor: number }): Promise<{
+	items: ReadonlyArray<{ id: number }>;
+	nextCursor: number | null;
+}>;
 
 function issuesQuery() {
-	return queryOptions({
+	return infiniteQueryOptions({
 		queryKey: issues(),
-		queryFn: () => listIssues(),
+		queryFn: (context) => listIssues({ cursor: context.pageParam }),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
 	});
 }
 
