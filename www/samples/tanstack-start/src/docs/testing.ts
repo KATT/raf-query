@@ -7,8 +7,8 @@ import {
 	swr,
 } from "@raf-query/react";
 import { expect, test } from "./testing.vitest.ts";
-import type { Todo } from "~/api.ts";
-import { postQuery, todoQuery } from "~/queries.ts";
+import type { Post } from "~/api.ts";
+import { postQuery } from "~/queries.ts";
 
 // #region seeding-the-cache
 const queryClient = createQueryClient({
@@ -88,11 +88,16 @@ function fakeClock(): Clock & { advance(ms: number): void } {
 test("garbage-collects unread entries", () => {
 	const clock = fakeClock();
 	const queryClient = createQueryClient({ clock, isServer: false });
-	const todo: Todo = { id: 1, title: "Write tests", done: false };
+	const post: Post = {
+		slug: "hello",
+		title: "Hello",
+		body: "",
+		authorId: "ada",
+	};
 
-	setData(queryClient, todoQuery, { id: 1 }, todo);
+	setData(queryClient, postQuery, { slug: "hello" }, post);
 	clock.advance(5 * 60 * 1000); // the default gcTime
 
-	expect(getData(queryClient, todoQuery, { id: 1 })).toBeUndefined();
+	expect(getData(queryClient, postQuery, { slug: "hello" })).toBeUndefined();
 });
 // #endregion

@@ -1,5 +1,5 @@
 import { group, queryOptions } from "@raf-query/react";
-import { todos } from "~/queries.ts";
+import { posts } from "~/queries.ts";
 
 interface SearchResult {
 	readonly id: string;
@@ -27,13 +27,13 @@ declare const axios: {
 	get(url: string, options: { signal: AbortSignal }): Promise<unknown>;
 };
 
-declare const input: { id: number };
+declare const input: { slug: string };
 
 // #region using-axios-or-other-clients
 queryOptions({
-	queryKey: todos("byId", input.id),
+	queryKey: posts("bySlug", input.slug),
 	queryFn: (context) =>
-		axios.get(`/api/todos/${input.id}`, { signal: context.signal }),
+		axios.get(`/api/posts/${input.slug}`, { signal: context.signal }),
 });
 // #endregion
 
@@ -46,9 +46,9 @@ declare const client: {
 
 // #region abort-listener
 queryOptions({
-	queryKey: todos("byId", input.id),
+	queryKey: posts("bySlug", input.slug),
 	queryFn: (context) => {
-		const request = client.get(`/todos/${input.id}`);
+		const request = client.get(`/api/posts/${input.slug}`);
 		context.signal.addEventListener("abort", () => request.cancel());
 		return request.promise;
 	},

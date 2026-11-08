@@ -10,9 +10,8 @@ import {
 	getBuild,
 	getMe,
 	getSettings,
-	getTodo,
+	listPostPage,
 	listPosts,
-	listTodoPage,
 } from "./api.ts";
 
 // #region home
@@ -42,22 +41,12 @@ export function commentsQuery(input: { slug: string }) {
 }
 // #endregion home
 
-export const todos = group("todos");
-
-export function todosQuery() {
+export function feedQuery() {
 	return infiniteQueryOptions({
-		queryKey: todos("list"),
-		queryFn: (context) => listTodoPage({ cursor: context.pageParam }),
+		queryKey: posts("feed"),
+		queryFn: (context) => listPostPage({ cursor: context.pageParam }),
 		initialPageParam: 0,
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
-	});
-}
-
-export function todoQuery(input: { id: number }) {
-	return queryOptions({
-		queryKey: todos("byId", input.id),
-		queryFn: () => getTodo(input.id),
-		staleTime: 30_000,
 	});
 }
 

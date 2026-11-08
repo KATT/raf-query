@@ -5,7 +5,7 @@ import {
 	setData,
 } from "@raf-query/react";
 import { updatePost } from "~/api.ts";
-import { authors, postQuery, postsQuery, todosQuery } from "~/queries.ts";
+import { authors, feedQuery, postQuery, postsQuery } from "~/queries.ts";
 
 declare const queryClient: QueryClient;
 
@@ -22,28 +22,29 @@ await invalidateMany(queryClient, [
 ]);
 // #endregion
 
-declare function toggleTodoApi(id: number): Promise<void>;
-
 // #region optimistic-updates-in-the-cache
-async function toggleTodo(queryClient: QueryClient, id: number) {
-	const previous = getData(queryClient, todosQuery);
-	setData(queryClient, todosQuery, (data) => ({
+async function renamePost(
+	queryClient: QueryClient,
+	input: { slug: string; title: string },
+) {
+	const previous = getData(queryClient, feedQuery);
+	setData(queryClient, feedQuery, (data) => ({
 		pageParams: data?.pageParams ?? [],
-		// Patch the todo in whichever page holds it.
+		// Patch the post in whichever page holds it.
 		pages: (data?.pages ?? []).map((page) => ({
 			...page,
-			items: page.items.map((todo) =>
-				todo.id === id ? { ...todo, done: !todo.done } : todo,
+			items: page.items.map((post) =>
+				post.slug === input.slug ? { ...post, title: input.title } : post,
 			),
 		})),
 	}));
 	try {
-		await toggleTodoApi(id);
+		await updatePost(input);
 	} catch (error) {
-		setData(queryClient, todosQuery, previous ?? { pageParams: [], pages: [] });
+		setData(queryClient, feedQuery, previous ?? { pageParams: [], pages: [] });
 		throw error;
 	} finally {
-		await invalidateMany(queryClient, todosQuery);
+		await invalidateMany(queryClient, feedQuery);
 	}
 }
 // #endregion

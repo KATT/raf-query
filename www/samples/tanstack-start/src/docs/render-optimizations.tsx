@@ -1,6 +1,6 @@
 import { type QueryHandle, useQuery } from "@raf-query/react";
 import { type ReactNode, use } from "react";
-import type { Todo } from "~/api.ts";
+import type { PostComment } from "~/api.ts";
 import { postQuery } from "~/queries.ts";
 
 declare const loaderData: { post: QueryHandle<typeof postQuery> };
@@ -35,9 +35,9 @@ function PostBody(props: { handle: QueryHandle<typeof postQuery> }) {
 }
 // #endregion
 
-declare const todosPromise: Promise<ReadonlyArray<Todo>>;
+declare const commentsPromise: Promise<ReadonlyArray<PostComment>>;
 
 // #region deriving-in-render
-const todos = use(todosPromise);
-const done = todos.filter((todo) => todo.done);
+const comments = use(commentsPromise);
+const byAda = comments.filter((comment) => comment.author === "Ada");
 // #endregion

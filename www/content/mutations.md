@@ -52,7 +52,7 @@ Their refetches run side by side, and a query that several targets cover refetch
 
 `useOptimistic` holds a value for as long as an action is running. When the action ends, it falls back to the value passed in, which by then is the refetched data. If the action throws, it falls back to the old data: the rollback is automatic.
 
-Add a todo below. The server is slow, and you can make the next request fail to watch the optimistic item roll back:
+Add a comment below. The server is slow, and you can make the next request fail to watch the optimistic comment roll back:
 
 ```demo
 optimistic-updates
@@ -72,7 +72,7 @@ tanstack-start/src/docs/mutations.optimistic-updates.tsx#optimistic-updates
 tanstack-start/src/docs/mutations.ts#optimistic-updates-in-the-cache
 ```
 
-`todosQuery` is [paged](./infinite-queries.md), so its data is `{ pages, pageParams }`: the updater patches the todo in whichever page holds it and keeps `pageParams` as they are.
+`feedQuery` is [paged](./infinite-queries.md), so its data is `{ pages, pageParams }`: the updater patches the post's title in whichever page holds it and keeps `pageParams` as they are.
 
 This is more code, and you're responsible for the rollback. Reach for it only when `useOptimistic` can't reach the readers that need the update.
 
@@ -84,7 +84,7 @@ When the server responds with the updated object, write it into the cache instea
 tanstack-start/src/docs/mutations.ts#updates-from-mutation-responses
 ```
 
-`setData(queryClient, factory, input, updater)` takes a value or an updater, `(previous) => next`, where `previous` is `undefined` when the cache has no data. A factory without an input leaves it out: `setData(queryClient, todosQuery, updater)`. Readers re-render with the new data at once, without suspending. The entry is created if it doesn't exist yet, and data written with `setData` counts as just fetched, so it's fresh for `staleTime`. `getData(queryClient, factory, input)` reads the cached data back.
+`setData(queryClient, factory, input, updater)` takes a value or an updater, `(previous) => next`, where `previous` is `undefined` when the cache has no data. A factory without an input leaves it out: `setData(queryClient, feedQuery, updater)`. Readers re-render with the new data at once, without suspending. The entry is created if it doesn't exist yet, and data written with `setData` counts as just fetched, so it's fresh for `staleTime`. `getData(queryClient, factory, input)` reads the cached data back.
 
 Keep updaters immutable: return new objects and arrays. Structural sharing compares the new data with the old, so mutating `previous` in place can hide the change from readers.
 

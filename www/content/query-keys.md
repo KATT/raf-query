@@ -20,11 +20,11 @@ Build keys with a **group**. A group names a set of queries, so one call can [in
 tanstack-start/src/docs/query-keys.ts#groups
 ```
 
-Call a group for a key. The key is a flat, plain array that starts with the group's path, `["todos", "archived", "list"]`, so it looks the same in memory, on the wire and in [devtools](./devtools.md). Invalidating a group covers every key that starts with its path: `todos` covers `archived` and every query in it, and `archived` doesn't cover `todos`.
+Call a group for a key. The key is a flat, plain array that starts with the group's path, `["posts", "drafts", "list"]`, so it looks the same in memory, on the wire and in [devtools](./devtools.md). Invalidating a group covers every key that starts with its path: `posts` covers `drafts` and every query in it, and `drafts` doesn't cover `posts`.
 
 Verbs take the group itself, never a string or an array, so a typo in a group's name is a type error instead of a target that silently matches nothing.
 
-Two things under one group can't share a name: if `todos("archived", id)` were a query next to the `archived` group, invalidating `archived` would reach it. In development, whichever comes second throws. Production builds leave the check out.
+Two things under one group can't share a name: if `posts("drafts", id)` were a query next to the `drafts` group, invalidating `drafts` would reach it. In development, whichever comes second throws. Production builds leave the check out.
 
 ### Hand-written keys
 

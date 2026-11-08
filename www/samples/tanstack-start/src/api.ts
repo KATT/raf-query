@@ -16,14 +16,8 @@ export interface CommentPage {
 	readonly nextCursor: number | null;
 }
 
-export interface Todo {
-	readonly done: boolean;
-	readonly id: number;
-	readonly title: string;
-}
-
-export interface TodoPage {
-	readonly items: ReadonlyArray<Todo>;
+export interface PostPage {
+	readonly items: ReadonlyArray<Post>;
 	readonly nextCursor: number | null;
 }
 
@@ -89,26 +83,15 @@ export function updatePost(input: { slug: string; title: string }) {
 	});
 }
 
-export function listTodos(input?: { page?: number; status?: "open" | "done" }) {
-	const search = new URLSearchParams();
-	if (input?.page !== undefined) search.set("page", String(input.page));
-	if (input?.status) search.set("status", input.status);
-	return request<ReadonlyArray<Todo>>(`/api/todos?${search}`);
-}
-
-export function listTodoPage(input: {
-	archived?: boolean;
+export function listPostPage(input: {
+	authorId?: string;
 	cursor: number;
-	status?: "open" | "done";
+	drafts?: boolean;
 }) {
 	const search = new URLSearchParams({ cursor: String(input.cursor) });
-	if (input.archived) search.set("archived", "true");
-	if (input.status) search.set("status", input.status);
-	return request<TodoPage>(`/api/todos?${search}`);
-}
-
-export function getTodo(id: number) {
-	return request<Todo>(`/api/todos/${id}`);
+	if (input.authorId) search.set("authorId", input.authorId);
+	if (input.drafts) search.set("drafts", "true");
+	return request<PostPage>(`/api/posts?${search}`);
 }
 
 export function getAuthor(id: string) {

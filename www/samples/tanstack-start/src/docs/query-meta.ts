@@ -1,17 +1,17 @@
-import { listTodos } from "~/api.ts";
 import { group } from "@raf-query/react";
+import { listPosts } from "~/api.ts";
 
 declare const toast: { error(message: string): void };
 
-const settings = group("settings");
+const posts = group("posts");
 
 // #region intro
 import { queryOptions } from "@raf-query/react";
 
-export function settingsQuery() {
+export function postsQuery(input: { page: number; sort: "newest" | "oldest" }) {
 	return queryOptions({
-		queryKey: settings(),
-		queryFn: () => listTodos(),
+		queryKey: posts("list", input),
+		queryFn: () => listPosts(input),
 		// Read by `retry()` and `focusRefetch()`, which `recommended()` includes.
 		meta: { retry: 1, refetchOnWindowFocus: false },
 	});

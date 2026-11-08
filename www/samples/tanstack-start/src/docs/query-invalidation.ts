@@ -6,7 +6,7 @@ import {
 	recommended,
 } from "@raf-query/react";
 import { getPost } from "~/api.ts";
-import { postQuery, posts, postsQuery, todos } from "~/queries.ts";
+import { authors, postQuery, posts, postsQuery } from "~/queries.ts";
 
 declare const slug: string;
 
@@ -62,7 +62,7 @@ await invalidateMany(qc, posts);
 // One call: the refetches run side by side, and a query that two targets
 // cover refetches once
 await invalidateMany(qc, [
-	todos, // a group
+	authors, // a group
 	postQuery, // a factory: all its queries
 	[postsQuery, { sort: "newest" }], // a factory with a partial input
 	[tags, `post:${slug}`], // a target with its parameter
@@ -72,11 +72,11 @@ await invalidateMany(qc, [
 // #region matching-with-where
 import type { QueryMeta, Target } from "@raf-query/react";
 
-// Every query whose key mentions a todo id
-const mentionsTodo: Target<QueryMeta, number> = {
-	where: (query, id) => query.queryKey.includes(id),
+// Every query whose key mentions a post's slug
+const mentionsPost: Target<QueryMeta, string> = {
+	where: (query, postSlug) => query.queryKey.includes(postSlug),
 };
-await invalidateMany(qc, mentionsTodo, 5);
+await invalidateMany(qc, mentionsPost, slug);
 
 // Every query that has no data yet
 await invalidateMany(qc, { where: (query) => query.data === undefined });

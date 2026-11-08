@@ -1,33 +1,33 @@
 import { group, infiniteQueryOptions, queryOptions } from "@raf-query/react";
-import type { Todo, TodoPage } from "~/api.ts";
+import type { Post, PostPage } from "~/api.ts";
 
-const todos = group("todos");
+const posts = group("posts");
 const builds = group("builds");
 
-declare function fetchTodoPage(cursor: number): Promise<TodoPage>;
+declare function fetchPostPage(cursor: number): Promise<PostPage>;
 
-declare function fetchTodoById(id: number): Promise<Todo>;
+declare function fetchPostBySlug(slug: string): Promise<Post>;
 
-declare const id: number;
+declare const slug: string;
 
 // #region intro
 infiniteQueryOptions({
-	queryKey: todos(),
-	queryFn: (context) => fetchTodoPage(context.pageParam),
+	queryKey: posts(),
+	queryFn: (context) => fetchPostPage(context.pageParam),
 	initialPageParam: 0,
 	getNextPageParam: (lastPage) => lastPage.nextCursor,
 });
-queryOptions({ queryKey: todos(id), queryFn: () => fetchTodoById(id) });
+queryOptions({ queryKey: posts(slug), queryFn: () => fetchPostBySlug(slug) });
 queryOptions({
-	queryKey: todos(id),
+	queryKey: posts(slug),
 	queryFn: async () => {
-		const data = await fetchTodoById(id);
+		const data = await fetchPostBySlug(slug);
 		return data;
 	},
 });
 queryOptions({
-	queryKey: todos(id),
-	queryFn: (context) => fetchTodoById(context.queryKey[1]),
+	queryKey: posts(slug),
+	queryFn: (context) => fetchPostBySlug(context.queryKey[1]),
 });
 // #endregion
 
@@ -39,7 +39,7 @@ declare const data: unknown;
 
 // #region handling-and-throwing-errors
 queryOptions({
-	queryKey: todos(id),
+	queryKey: posts(slug),
 	queryFn: async () => {
 		if (somethingGoesWrong) {
 			throw new Error("Oh no!");
@@ -54,9 +54,9 @@ queryOptions({
 
 // #region with-fetch-and-other-clients-that-dont-throw
 queryOptions({
-	queryKey: todos(id),
+	queryKey: posts(slug),
 	queryFn: async (context) => {
-		const response = await fetch(`/todos/${id}`, { signal: context.signal });
+		const response = await fetch(`/posts/${slug}`, { signal: context.signal });
 		if (!response.ok) {
 			throw new Error(`Request failed: ${response.status}`);
 		}
