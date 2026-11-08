@@ -91,7 +91,7 @@ describe("a server-rendered page", () => {
 				queryFn: () => 1,
 				queryKey: issues("off"),
 			});
-		setData(client, off, undefined, 1);
+		setData(client, off, 1);
 		const sent = new Set<string>();
 		const state = dehydrate(client, { sent });
 

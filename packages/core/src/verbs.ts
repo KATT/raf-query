@@ -324,25 +324,42 @@ export function removeAll(client: QueryClient): void {
 	}
 }
 
+/** New data for `setData`, or a function from the current data to it. */
+type Updater<TFactory extends QueryFactory> =
+	| ((previous: WritableData<TFactory> | undefined) => WritableData<TFactory>)
+	| WritableData<TFactory>;
+
 /**
  * Write a query's data, as if a request had just returned it. `updater`
- * gets the current data, or `undefined` if there is none.
+ * gets the current data, or `undefined` if there is none. A factory that
+ * takes no input (or an optional one) skips the input:
+ * `setData(client, todosQuery, updater)`.
  */
 export function setData<TFactory extends QueryFactory>(
 	client: ClientFor<TFactory>,
 	factory: TFactory,
-	input: Parameters<TFactory>[0],
-	updater:
-		| ((previous: WritableData<TFactory> | undefined) => WritableData<TFactory>)
-		| WritableData<TFactory>,
+	...updater: [] extends Parameters<TFactory>
+		? [updater: Updater<TFactory>]
+		: never
+): void;
+export function setData<TFactory extends QueryFactory>(
+	client: ClientFor<TFactory>,
+	factory: TFactory,
+	input: Parameters<TFactory> extends [] ? never : Parameters<TFactory>[0],
+	updater: Updater<TFactory>,
+): void;
+export function setData<TFactory extends QueryFactory>(
+	client: ClientFor<TFactory>,
+	factory: TFactory,
+	...args: ReadonlyArray<unknown>
 ): void {
+	// By count, not by type: the data itself may be a function.
+	const [input, updater] = args.length < 2 ? [undefined, args[0]] : args;
 	const entry = entryOf(client, factory, input);
 	const previous = entry.state.hasData ? entry.state.data : undefined;
 	const data = isFunction(updater)
-		? updater(
-				// SAFETY: the entry's data is this factory's data.
-				previous as never,
-			)
+		? // SAFETY: the overloads type it as a function of this factory's data.
+			(updater as (previous: unknown) => unknown)(previous)
 		: updater;
 	write(entry, data, client.clock.now(), ++client["~seq"]);
 }

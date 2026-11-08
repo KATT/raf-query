@@ -27,7 +27,7 @@ declare function toggleTodoApi(id: number): Promise<void>;
 // #region optimistic-updates-in-the-cache
 async function toggleTodo(queryClient: QueryClient, id: number) {
 	const previous = getData(queryClient, todosQuery);
-	setData(queryClient, todosQuery, undefined, (data) => ({
+	setData(queryClient, todosQuery, (data) => ({
 		pageParams: data?.pageParams ?? [],
 		pages: (data?.pages ?? []).map((page) => ({
 			...page,
@@ -39,12 +39,7 @@ async function toggleTodo(queryClient: QueryClient, id: number) {
 	try {
 		await toggleTodoApi(id);
 	} catch (error) {
-		setData(
-			queryClient,
-			todosQuery,
-			undefined,
-			previous ?? { pageParams: [], pages: [] },
-		);
+		setData(queryClient, todosQuery, previous ?? { pageParams: [], pages: [] });
 		throw error;
 	} finally {
 		await invalidateMany(queryClient, todosQuery);

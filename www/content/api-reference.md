@@ -124,18 +124,18 @@ Read the thenable's `status`, `value` and `reason` to render without Suspense. S
 
 Each verb takes the client first. A factory matches the queries it built: all of them, or those whose input matches a partial input. A group matches the keys that start with its path. A target (`{ where }`, such as a tag) matches the queries its `where` picks. [Query invalidation](./query-invalidation.md)
 
-| Export                                                                                       | Use                                                                                                             |
-| -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `invalidateOne(client, factory, input)`                                                      | Mark one query stale. If it's read, it refetches; resolves when that settles                                    |
-| `invalidateMany(client, factory, partial?)` / `(client, group)` / `(client, target, param?)` | Mark many queries stale; read ones refetch                                                                      |
-| `invalidateMany(client, [target, [factory, partial], [target, param], …])`                   | Several targets in one call: each read query they cover refetches once, side by side; resolves when all settle  |
-| `invalidateAll(client)`                                                                      | Mark every query stale; read ones refetch                                                                       |
-| `resetOne`, `resetMany`, `resetAll`                                                          | Drop data and errors. Read queries suspend and refetch; resolves when they settle. `resetMany` takes a list too |
-| `removeOne`, `removeMany`, `removeAll`                                                       | Remove entries and abort their requests. `removeMany` takes a list too                                          |
-| `setData(client, factory, input, updater)`                                                   | Write data, as if a request had just returned it. [Mutations](./mutations.md)                                   |
-| `getData(client, factory, input)`                                                            | Cached data (before `select`), or `undefined`                                                                   |
-| `isFetching(client, target?)`                                                                | How many queries have a request in flight                                                                       |
-| `ClientFor<TFactory>`, `PartialInput<TFactory>`, `Target`, `AnyTarget`, `QueryInfo`, `Group` | Types the verbs take. `QueryInfo` is what `where` sees: `queryKey`, `input`, `data`, `meta`                     |
+| Export                                                                                       | Use                                                                                                                             |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `invalidateOne(client, factory, input)`                                                      | Mark one query stale. If it's read, it refetches; resolves when that settles                                                    |
+| `invalidateMany(client, factory, partial?)` / `(client, group)` / `(client, target, param?)` | Mark many queries stale; read ones refetch                                                                                      |
+| `invalidateMany(client, [target, [factory, partial], [target, param], …])`                   | Several targets in one call: each read query they cover refetches once, side by side; resolves when all settle                  |
+| `invalidateAll(client)`                                                                      | Mark every query stale; read ones refetch                                                                                       |
+| `resetOne`, `resetMany`, `resetAll`                                                          | Drop data and errors. Read queries suspend and refetch; resolves when they settle. `resetMany` takes a list too                 |
+| `removeOne`, `removeMany`, `removeAll`                                                       | Remove entries and abort their requests. `removeMany` takes a list too                                                          |
+| `setData(client, factory, input, updater)` / `(client, factory, updater)`                    | Write data, as if a request had just returned it. A factory without an input takes the second form. [Mutations](./mutations.md) |
+| `getData(client, factory, input)`                                                            | Cached data (before `select`), or `undefined`                                                                                   |
+| `isFetching(client, target?)`                                                                | How many queries have a request in flight                                                                                       |
+| `ClientFor<TFactory>`, `PartialInput<TFactory>`, `Target`, `AnyTarget`, `QueryInfo`, `Group` | Types the verbs take. `QueryInfo` is what `where` sees: `queryKey`, `input`, `data`, `meta`                                     |
 
 ## Errors
 

@@ -263,6 +263,32 @@ describe("verb types", () => {
 			title: previous?.title ?? "",
 		}));
 	});
+
+	it("skip the input of setData only for a factory that takes none", () => {
+		const optional = (input?: { readonly id: number }) =>
+			queryOptions({
+				queryFn: () => ({ id: input?.id ?? 0 }),
+				queryKey: issues("optional", input),
+			});
+		setData(client, settings, (previous) => {
+			expectTypeOf(previous).toEqualTypeOf<{ theme: string } | undefined>();
+			return { theme: "light" };
+		});
+		setData(client, settings, { theme: "light" });
+		setData(client, optional, { id: 1 });
+		setData(client, optional, { id: 1 }, (previous) => ({
+			id: previous?.id ?? 1,
+		}));
+		const wrong = () => {
+			// @ts-expect-error -- a factory with an input needs it
+			setData(client, titles, { title: "" });
+			// @ts-expect-error -- and a factory with none takes no input
+			setData(client, settings, undefined, { theme: "light" });
+			// @ts-expect-error -- the short form still checks the data
+			setData(client, settings, { theme: 1 });
+		};
+		expectTypeOf(wrong).toBeFunction();
+	});
 });
 
 describe("root types", () => {

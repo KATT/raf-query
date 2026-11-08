@@ -367,6 +367,26 @@ describe("data", () => {
 		expect(await cache.refetched()).toEqual([]);
 	});
 
+	it("writes a query without an input, from three arguments", () => {
+		const client = testClient();
+		const optional = (input?: { readonly id: number }) =>
+			queryOptions({
+				queryFn: (): Data => null,
+				queryKey: issues("optional", input),
+			});
+		setData(client, any, [1]);
+		setData(client, any, (previous) => [
+			...(Array.isArray(previous) ? previous : []),
+			2,
+		]);
+		setData(client, optional, "none");
+		setData(client, optional, { id: 1 }, "one");
+
+		expect(getData(client, any)).toEqual([1, 2]);
+		expect(getData(client, optional)).toBe("none");
+		expect(getData(client, optional, { id: 1 })).toBe("one");
+	});
+
 	it("reads nothing for a query that is cached without data", async () => {
 		const backend = createBackend();
 		const client = testClient();
@@ -380,10 +400,10 @@ describe("data", () => {
 		await assert(
 			asyncProperty(jsonValue(), jsonValue(), async (previous, next) => {
 				const client = testClient();
-				setData(client, any, undefined, previous);
-				setData(client, any, undefined, structuredClone(next));
+				setData(client, any, previous);
+				setData(client, any, structuredClone(next));
 				const written = getData(client, any);
-				setData(client, any, undefined, structuredClone(next));
+				setData(client, any, structuredClone(next));
 
 				expect(written).toEqual(next);
 				expect(getData(client, any)).toBe(written);
@@ -406,8 +426,8 @@ describe("data", () => {
 			a: { b: 1 },
 			list: [{ id: 1 }, { id: 2 }],
 		} satisfies JsonValue;
-		setData(client, any, undefined, list);
-		setData(client, any, undefined, {
+		setData(client, any, list);
+		setData(client, any, {
 			a: { b: 1 },
 			list: [{ id: 1 }, { id: 3 }],
 		});
@@ -422,15 +442,10 @@ describe("data", () => {
 		const previous: JsonValue = JSON.parse(
 			'{"__proto__":{"admin":false},"id":1}',
 		);
-		setData(client, any, undefined, {});
-		setData(client, any, undefined, previous);
+		setData(client, any, {});
+		setData(client, any, previous);
 		const written = getData(client, any);
-		setData(
-			client,
-			any,
-			undefined,
-			JSON.parse('{"__proto__":{"admin":true},"id":1}'),
-		);
+		setData(client, any, JSON.parse('{"__proto__":{"admin":true},"id":1}'));
 		const shared = getData(client, any);
 
 		expect(written).toEqual(previous);
@@ -453,8 +468,8 @@ describe("data", () => {
 			[sparse(), sparse()],
 			[{ a: undefined }, { b: undefined }],
 		]) {
-			setData(client, any, undefined, previous);
-			setData(client, any, undefined, next);
+			setData(client, any, previous);
+			setData(client, any, next);
 			expect(getData(client, any)).not.toBe(previous);
 			expect(getData(client, any)).toEqual(next);
 		}
