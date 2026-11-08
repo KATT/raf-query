@@ -13,6 +13,7 @@ import {
 	useQueryRead,
 	type UseQueryOptions,
 } from "./use-query.ts";
+import type { Fields } from "./tracked.ts";
 
 /** The paging half of what `useInfiniteQuery` returns. */
 export interface PageControls {
@@ -49,6 +50,22 @@ function hasPage(
 	);
 }
 
+function pageFields(entry: Entry, state: State): Fields {
+	return {
+		actions: {
+			fetchNextPage: () => settled(fetchEntry(entry, { direction: "next" })),
+			fetchPreviousPage: () =>
+				settled(fetchEntry(entry, { direction: "previous" })),
+		},
+		fields: {
+			hasNextPage: hasPage(entry, state, "next"),
+			hasPreviousPage: hasPage(entry, state, "previous"),
+			isFetchingNextPage: state.fetchingDirection === "next",
+			isFetchingPreviousPage: state.fetchingDirection === "previous",
+		},
+	};
+}
+
 /**
  * Read a paged query (`infiniteQueryOptions`) by its handle. The data is
  * `{ pages, pageParams }`, and the controls load more pages.
@@ -66,23 +83,15 @@ export function useInfiniteQuery<
 	handle: QueryHandle<TFactory>,
 	options?: UseQueryOptions<TResult>,
 ): readonly [QueryValue<TFactory, TResult>, InfiniteQueryControls<TFactory>] {
-	const read = useQueryRead(factory, handle, options);
-	const entry = read.entry;
-	// Like the read, paging takes the entry's state as an argument so a
-	// compiler that memoizes it recomputes on every write.
-	const entryState = read.entryState;
+	const read = useQueryRead<InfiniteQueryControls<TFactory>>(
+		factory,
+		handle,
+		options,
+		pageFields,
+	);
 	return [
 		// SAFETY: `QueryValue` describes what was read for this handle.
 		read.thenable as QueryValue<TFactory, TResult>,
-		{
-			...read.controls,
-			fetchNextPage: () => settled(fetchEntry(entry, { direction: "next" })),
-			fetchPreviousPage: () =>
-				settled(fetchEntry(entry, { direction: "previous" })),
-			hasNextPage: hasPage(entry, entryState, "next"),
-			hasPreviousPage: hasPage(entry, entryState, "previous"),
-			isFetchingNextPage: entryState.fetchingDirection === "next",
-			isFetchingPreviousPage: entryState.fetchingDirection === "previous",
-		},
+		read.controls,
 	];
 }

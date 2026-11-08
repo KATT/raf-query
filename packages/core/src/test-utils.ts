@@ -222,7 +222,9 @@ function provider(client: QueryClient) {
 /**
  * Read a query the way a component does, with `useQuery` under a provider:
  * it has a reader, and the client's features run, until `unmount()`.
- * `renders()` counts the renders so far.
+ * `renders()` counts the renders so far. Its result holds a copy of the
+ * state, so every field is read while rendering and a write to any of them
+ * re-renders.
  */
 export function read<
 	TFactory extends SingleQueryFactory,
@@ -237,7 +239,8 @@ export function read<
 	const hook = renderHook(
 		() => {
 			renders += 1;
-			return useQuery(factory, handle, options);
+			const [thenable, state] = useQuery(factory, handle, options);
+			return [thenable, { ...state }] as const;
 		},
 		{ wrapper: provider(client) },
 	);
@@ -258,7 +261,8 @@ export function readPages<
 	const hook = renderHook(
 		() => {
 			renders += 1;
-			return useInfiniteQuery(factory, handle, options);
+			const [thenable, state] = useInfiniteQuery(factory, handle, options);
+			return [thenable, { ...state }] as const;
 		},
 		{ wrapper: provider(client) },
 	);

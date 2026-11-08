@@ -29,11 +29,13 @@ describe("useInfiniteQuery", () => {
 			});
 		});
 		const settled = vi.fn();
+		const fetchers = new Set<() => Promise<void>>();
 		function Pages() {
 			const [pagesThenable, controls] = useInfiniteQuery(
 				backend.pageQuery,
 				handles.pages,
 			);
+			fetchers.add(controls.fetchNextPage);
 			const data = use(pagesThenable);
 			return (
 				<>
@@ -77,5 +79,6 @@ describe("useInfiniteQuery", () => {
 		await backend.respondAll();
 		expect(screen.getByText("0,0,1,1,2,2")).toBeTruthy();
 		expect(settled).toHaveBeenCalledTimes(2);
+		expect(fetchers.size).toBe(1);
 	});
 });

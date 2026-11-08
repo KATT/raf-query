@@ -27,6 +27,13 @@ import {
 import { useCallback, useState, useSyncExternalStore } from "react";
 
 import { assertStartsRequests } from "./browser-only.ts";
+import {
+	createTracker,
+	type Fields,
+	type Read as TrackedRead,
+	renderedChanged,
+	trackedState,
+} from "./tracked.ts";
 import { useQueryClient } from "./provider.tsx";
 
 /** Bundlers replace `process.env.NODE_ENV`; typed here so consumers need no Node types. */
@@ -164,31 +171,86 @@ export function settled(promise: Promise<unknown>): Promise<void> {
 	return promise.then(() => {});
 }
 
-/** What both hooks read: the entry shown, its state, the thenable and the controls. */
-export interface QueryRead<TFactory extends QueryFactory> {
-	readonly controls: QueryControls<TFactory>;
-	readonly entry: Entry;
-	readonly entryState: State;
+/** The state a kind of query adds, from the entry it shows and that entry's state. */
+export type ExtraFields = (entry: Entry, state: State) => Fields;
+
+/**
+ * One read of the entry. It takes both entries' states as arguments: core
+ * writes a new state object with every write (and the thenable that
+ * carries it), so a compiler that memoizes the call recomputes it.
+ */
+function readQuery(
+	current: Entry,
+	state: State,
+	shown: Entry,
+	shownState: State,
+	handle: QueryHandle,
+	options: UseQueryOptions | undefined,
+	extra: ExtraFields | undefined,
+): TrackedRead & { readonly entry: Entry } {
+	const isPrevious =
+		options?.whilePending === "previous" &&
+		!state.hasData &&
+		shown !== current &&
+		shownState.hasData;
+	const entry = isPrevious ? shown : current;
+	const entryState = isPrevious ? shownState : state;
+	const added = extra?.(entry, entryState);
+	return {
+		actions: {
+			refetch: () => settled(fetchEntry(current)),
+			...added?.actions,
+		},
+		entry,
+		fields: {
+			error: state.error,
+			hash: current.hash,
+			input: handle.input,
+			isFetching: state.isFetching,
+			isPending: !state.hasData,
+			isPrevious,
+			isStale: isStale(current),
+			queryKey: handle.queryKey,
+			updatedAt: state.updatedAt,
+			...added?.fields,
+		},
+		source: readOf(entry, entryState),
+	};
+}
+
+/** What both hooks read: the thenable, and the tracked state. */
+export interface QueryRead<TControls> {
+	readonly controls: TControls;
 	readonly thenable: Thenable<unknown>;
 }
 
-/** The read both hooks share. Its caller adds what its kind of query needs. */
-export function useQueryRead<TFactory extends QueryFactory>(
-	factory: TFactory,
-	handle: QueryHandle<TFactory>,
+/**
+ * The read both hooks share: the thenable, and the state with the fields
+ * `extra` adds. The state is tracked: the component re-renders, and gets a
+ * new state object, only when the thenable or a field it read changes.
+ */
+export function useQueryRead<TControls extends object>(
+	factory: QueryFactory,
+	handle: QueryHandle,
 	options: UseQueryOptions | undefined,
-): QueryRead<TFactory> {
+	extra?: ExtraFields,
+): QueryRead<TControls> {
 	const client = useQueryClient();
 	const current = entryOf(client, factory, handle.input);
+	const [tracker] = useState(createTracker);
 	const subscribe = useCallback(
 		(onChange: () => void) => {
-			const unsubscribe = subscribeEntry(current, onChange);
+			const unsubscribe = subscribeEntry(current, () => {
+				if (renderedChanged(tracker)) {
+					onChange();
+				}
+			});
 			if (isInvalidated(current) && isEnabled(current)) {
 				void fetchEntry(current);
 			}
 			return unsubscribe;
 		},
-		[current],
+		[current, tracker],
 	);
 	const getState = () => current.state;
 	const state = useSyncExternalStore(subscribe, getState, getState);
@@ -196,50 +258,41 @@ export function useQueryRead<TFactory extends QueryFactory>(
 	if (shown !== current && state.hasData) {
 		setShown(current);
 	}
-	const shownState = shown.state;
-	const isPrevious =
-		options?.whilePending === "previous" &&
-		!state.hasData &&
-		shown !== current &&
-		shownState.hasData;
-	const entry = isPrevious ? shown : current;
-	// Reads of `entry` below take its state as an argument. Core writes a new
-	// state object with every write (and the thenable that carries it), so a
-	// compiler that memoizes those reads recomputes them.
-	const entryState = isPrevious ? shownState : state;
 	startIfMissing(current, state, isWaterfallHandle(handle));
+	const read = readQuery(
+		current,
+		state,
+		shown,
+		shown.state,
+		handle,
+		options,
+		extra,
+	);
+	const controls = trackedState(tracker, read, () =>
+		readQuery(
+			current,
+			current.state,
+			shown,
+			shown.state,
+			handle,
+			options,
+			extra,
+		),
+	);
 	const caches = useState(() => ({
 		result: new WeakMap(),
 		select: new WeakMap(),
 	}))[0];
-	const select = entry.options?.select;
-	const read = readOf(entry, entryState);
+	const select = read.entry.options?.select;
 	let thenable: Thenable<unknown> = select
-		? mapThenable(caches.select, read, select)
-		: read;
+		? mapThenable(caches.select, read.source, select)
+		: read.source;
 	if (options?.result) {
 		thenable = asResult(caches.result, thenable);
 	}
-	const controls = {
-		error: state.error,
-		hash: current.hash,
-		input: handle.input,
-		isFetching: state.isFetching,
-		isPending: !state.hasData,
-		isPrevious,
-		isStale: isStale(current),
-		queryKey: handle.queryKey,
-		refetch: () => settled(fetchEntry(current)),
-		updatedAt: state.updatedAt,
-	};
-	return {
-		controls:
-			// SAFETY: a handle's `queryKey` is its factory's key as a plain tuple.
-			controls as QueryControls<TFactory>,
-		entry,
-		entryState,
-		thenable,
-	};
+	// SAFETY: `extra` adds the fields the caller's controls type declares to `readQuery`'s.
+	const typed = controls as TControls;
+	return { controls: typed, thenable };
 }
 
 /**
@@ -262,7 +315,7 @@ export function useQuery<
 	handle: QueryHandle<TFactory>,
 	options?: UseQueryOptions<TResult>,
 ): readonly [QueryValue<TFactory, TResult>, QueryControls<TFactory>] {
-	const read = useQueryRead(factory, handle, options);
+	const read = useQueryRead<QueryControls<TFactory>>(factory, handle, options);
 	return [
 		// SAFETY: `QueryValue` describes what was read for this handle.
 		read.thenable as QueryValue<TFactory, TResult>,

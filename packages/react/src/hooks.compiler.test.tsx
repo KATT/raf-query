@@ -1,6 +1,6 @@
 import { act, fireEvent, screen } from "@testing-library/react";
-import { use } from "react";
-import { describe, expect, it } from "vitest";
+import { Profiler, use } from "react";
+import { describe, expect, it, vi } from "vitest";
 
 import {
 	fetchEntry,
@@ -21,6 +21,22 @@ import {
 } from "./test-utils.tsx";
 
 type Backend = ReturnType<typeof createBackend>;
+
+/** Fetch the query again, settle it, and wait for the write. Its data doesn't change. */
+async function refetched(
+	backend: Backend,
+	start: () => Promise<unknown>,
+	whileFetching: () => void = () => {},
+) {
+	let done!: Promise<unknown>;
+	await act(async () => {
+		done = start();
+		await flush();
+	});
+	whileFetching();
+	await backend.respondAll();
+	await done;
+}
 
 async function prefetched<THandle>(
 	backend: Backend,
@@ -107,6 +123,98 @@ describe("hooks compiled by the React Compiler", () => {
 			expect(screen.getByText(shown)).toBeTruthy();
 			expect(screen.getByText("idle")).toBeTruthy();
 		}
+	});
+
+	it("re-render only for the state fields a component read, and track a field from its first read", async () => {
+		const backend = createBackend();
+		const client = testClient();
+		const handle = await prefetched(backend, async () => {
+			const [handles] = await load(client, {
+				issue: prefetchEntry(backend.issueQuery, { id: 1 }),
+			});
+			return handles.issue;
+		});
+		const refetch = () =>
+			load(client, { issue: fetchEntry(backend.issueQuery, { id: 1 }) });
+		function Title(props: {
+			readonly handle: QueryHandle<Backend["issueQuery"]>;
+			readonly showFetching: boolean;
+		}) {
+			const [issueThenable, controls] = useQuery(
+				backend.issueQuery,
+				props.handle,
+			);
+			const issue = use(issueThenable);
+			return (
+				<p>
+					{issue.title}
+					{props.showFetching ? ` fetching ${String(controls.isFetching)}` : ""}
+				</p>
+			);
+		}
+		const renders = vi.fn();
+		const view = await renderWith(
+			client,
+			<Profiler id="title" onRender={renders}>
+				<Title handle={handle} showFetching={false} />
+			</Profiler>,
+		);
+		renders.mockClear();
+		await refetched(backend, refetch);
+		expect(renders).not.toHaveBeenCalled();
+
+		await view.rerender(
+			<Profiler id="title" onRender={renders}>
+				<Title handle={handle} showFetching />
+			</Profiler>,
+		);
+		expect(screen.getByText("First fetching false")).toBeTruthy();
+		renders.mockClear();
+		await refetched(backend, refetch, () => {
+			expect(screen.getByText("First fetching true")).toBeTruthy();
+		});
+		expect(screen.getByText("First fetching false")).toBeTruthy();
+		expect(renders).toHaveBeenCalledTimes(2);
+	});
+
+	it("re-render a page list only for the page fields it read", async () => {
+		const backend = createBackend();
+		const client = testClient();
+		const handle = await prefetched(backend, async () => {
+			const [handles] = await load(client, {
+				pages: prefetchEntry(backend.pageQuery, { size: 1 }),
+			});
+			return handles.pages;
+		});
+		function Pages(props: {
+			readonly handle: QueryHandle<Backend["pageQuery"]>;
+		}) {
+			const [pagesThenable, controls] = useInfiniteQuery(
+				backend.pageQuery,
+				props.handle,
+			);
+			const data = use(pagesThenable);
+			return (
+				<p>
+					pages {data.pages.flat().join(",")}{" "}
+					{controls.hasNextPage ? "more" : "end"}
+				</p>
+			);
+		}
+		const renders = vi.fn();
+		await renderWith(
+			client,
+			<Profiler id="pages" onRender={renders}>
+				<Pages handle={handle} />
+			</Profiler>,
+		);
+		expect(screen.getByText("pages 1 more")).toBeTruthy();
+		renders.mockClear();
+		await refetched(backend, () =>
+			load(client, { pages: fetchEntry(backend.pageQuery, { size: 1 }) }),
+		);
+		expect(renders).not.toHaveBeenCalled();
+		expect(screen.getByText("pages 1 more")).toBeTruthy();
 	});
 
 	it("count every request in flight", async () => {

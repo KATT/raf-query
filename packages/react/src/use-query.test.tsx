@@ -11,6 +11,7 @@ import {
 	load,
 	prefetchEntry,
 	QueryClientProvider,
+	type QueryControls,
 	QueryDisabledError,
 	type QueryHandle,
 	QueryProvider,
@@ -241,6 +242,79 @@ describe("useQuery", () => {
 		await backend.respondAll();
 		expect(settled).toHaveBeenCalledWith(undefined);
 		expect(screen.getByText("Again")).toBeTruthy();
+	});
+
+	describe("tracked state", () => {
+		it("keeps the state object until a field the component read changes, and its functions for good", async () => {
+			const backend = createBackend();
+			const client = testClient();
+			let handles!: { readonly issue: QueryHandle<Backend["issueQuery"]> };
+			await loaded(backend, async () => {
+				[handles] = await load(client, {
+					issue: fetchEntry(backend.issueQuery, { id: 1 }),
+				});
+			});
+			const thenables: Array<Thenable<Issue>> = [];
+			const states: Array<QueryControls<Backend["issueQuery"]>> = [];
+			function Issue(props: { readonly label: string }) {
+				const [issueThenable, controls] = useQuery(
+					backend.issueQuery,
+					handles.issue,
+				);
+				thenables.push(issueThenable);
+				states.push(controls);
+				const issue = use(issueThenable);
+				return (
+					<button onClick={() => void controls.refetch()} type="button">
+						{props.label} {issue.title} {String(controls.isFetching)}
+					</button>
+				);
+			}
+			const view = await renderWith(client, <Issue label="a" />);
+			await view.rerender(<Issue label="b" />);
+			expect(states[1]).toBe(states[0]);
+
+			await act(async () => {
+				fireEvent.click(screen.getByText("b First false"));
+				await flush();
+			});
+			expect(screen.getByText("b First true")).toBeTruthy();
+			await backend.respondAll();
+			expect(screen.getByText("b First false")).toBeTruthy();
+			expect(states).toHaveLength(4);
+			expect(new Set(states).size).toBe(3);
+			expect(new Set(states.map((state) => state.refetch)).size).toBe(1);
+			expect(new Set(thenables).size).toBe(1);
+
+			backend.store.set(1, { id: 1, title: "Again" });
+			const refetching = states[0]?.refetch();
+			await backend.respondAll();
+			await refetching;
+			expect(screen.getByText("b Again false")).toBeTruthy();
+			expect(new Set(thenables).size).toBe(2);
+		});
+
+		it("re-renders a component that reads no field when its thenable settles", async () => {
+			const backend = createBackend();
+			const client = testClient();
+			const [handles] = await load(client, {
+				issue: prefetchEntry(backend.issueQuery, { id: 1 }),
+			});
+			function Issue() {
+				const [issueThenable] = useQuery(backend.issueQuery, handles.issue);
+				return (
+					<p>
+						{issueThenable.status === "fulfilled"
+							? issueThenable.value.title
+							: "waiting"}
+					</p>
+				);
+			}
+			await renderWith(client, <Issue />);
+			expect(screen.getByText("waiting")).toBeTruthy();
+			await backend.respondAll();
+			expect(screen.getByText("First")).toBeTruthy();
+		});
 	});
 
 	describe("result: true", () => {
