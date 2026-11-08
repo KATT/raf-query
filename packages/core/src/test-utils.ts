@@ -18,7 +18,6 @@ import type { ReconnectRefetchMeta } from "./features/reconnect-refetch/reconnec
 import {
 	type Clock,
 	createQueryClient,
-	fail,
 	group,
 	infiniteQueryOptions,
 	load,
@@ -108,6 +107,15 @@ export const featured: Target = {
 	where: (query) => query.meta.featured === true,
 };
 
+/** What the backend's issue query throws for an issue it doesn't have. */
+export class NotFoundError extends Error {
+	readonly id: number;
+	constructor(id: number) {
+		super(`Issue ${id} not found`);
+		this.id = id;
+	}
+}
+
 interface Request {
 	fail(error: unknown): void;
 	readonly id: number;
@@ -142,7 +150,10 @@ export function createBackend() {
 		queryOptions({
 			queryFn: async (context) => {
 				const issue = await get(input.id, context.signal);
-				return issue ?? fail({ _tag: "NotFound", id: input.id });
+				if (!issue) {
+					throw new NotFoundError(input.id);
+				}
+				return issue;
 			},
 			queryKey: issues("byId", input),
 		});

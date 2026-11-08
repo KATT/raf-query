@@ -83,11 +83,10 @@ See [installation](https://raf-query.katt.dev/docs/installation) for requirement
 
 ## Packages
 
-| Package                                    | Contents                                                                                    |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| [`@raf-query/react`](packages/react)       | Hooks, and the TanStack Router, RSC and devtools integrations. Re-exports `@raf-query/core` |
-| [`@raf-query/core`](packages/core)         | The framework-agnostic query client, its links and features, hydration, and groups          |
-| [`@raf-query/boundary`](packages/boundary) | `QueryBoundary`: catches a query's typed errors by tag, with a Suspense fallback            |
+| Package                              | Contents                                                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------------------------- |
+| [`@raf-query/react`](packages/react) | Hooks, and the TanStack Router, RSC and devtools integrations. Re-exports `@raf-query/core` |
+| [`@raf-query/core`](packages/core)   | The framework-agnostic query client, its links and features, hydration, and groups          |
 
 ## Examples
 

@@ -1,4 +1,3 @@
-import type { Fail } from "./fail.ts";
 import type { AnyFactory, QueryKey } from "./keys/keys.ts";
 import type {
 	AnyRoot,
@@ -17,7 +16,6 @@ export interface QueryFunctionContext<TKey extends QueryKey = QueryKey> {
 }
 
 declare const dataTag: unique symbol;
-declare const failTag: unique symbol;
 
 /** Options every query takes. */
 export interface BaseOptions<
@@ -44,7 +42,6 @@ export interface BaseOptions<
 export interface QueryOptions<
 	TKey extends QueryKey = QueryKey,
 	TQueryFnData = unknown,
-	TFail = unknown,
 	TData = TQueryFnData,
 	TTypes extends RootTypes = RootTypes,
 > extends BaseOptions<TKey, TTypes> {
@@ -53,7 +50,6 @@ export interface QueryOptions<
 	/** Set by `infiniteQueryOptions`: runs the request page by page. */
 	readonly "~run"?: (op: never) => Promise<unknown>;
 	readonly [dataTag]?: TData;
-	readonly [failTag]?: TFail;
 	readonly queryFn: (context: never) => unknown;
 	readonly select?: (data: TQueryFnData) => TData;
 	readonly stream?: StreamOptions<TQueryFnData, never>;
@@ -68,6 +64,13 @@ export interface StreamOptions<TData, TChunk> {
 
 type Awaitable<T> = PromiseLike<T> | T;
 
+/**
+ * `T` as a conditional type, so a builder infers its data type from the
+ * `queryFn` alone: an annotated `select` or `getNextPageParam` parameter
+ * doesn't widen it.
+ */
+export type FromQueryFn<T> = T extends unknown ? T : never;
+
 /** `queryOptions`, with `meta` checked against the root `TTypes`. */
 export interface QueryOptionsBuilder<TTypes extends RootTypes> {
 	<const TKey extends QueryKey, TChunk, TData>(
@@ -77,21 +80,15 @@ export interface QueryOptionsBuilder<TTypes extends RootTypes> {
 			) => AsyncIterable<TChunk>;
 			readonly stream: StreamOptions<TData, TChunk>;
 		},
-	): QueryOptions<TKey, TData, never, TData, TTypes>;
-	<const TKey extends QueryKey, TResult, TData = Exclude<TResult, Fail>>(
+	): QueryOptions<TKey, TData, TData, TTypes>;
+	<const TKey extends QueryKey, TQueryFnData, TData = TQueryFnData>(
 		options: BaseOptions<TKey, TTypes> & {
 			readonly queryFn: (
 				context: QueryFunctionContext<TKey>,
-			) => Awaitable<TResult>;
-			readonly select?: (data: Exclude<TResult, Fail>) => TData;
+			) => Awaitable<TQueryFnData>;
+			readonly select?: (data: FromQueryFn<TQueryFnData>) => TData;
 		},
-	): QueryOptions<
-		TKey,
-		Exclude<TResult, Fail>,
-		Extract<TResult, Fail>,
-		TData,
-		TTypes
-	>;
+	): QueryOptions<TKey, TQueryFnData, TData, TTypes>;
 }
 
 /**
@@ -172,12 +169,6 @@ export function optionsOf(factory: AnyFactory, input: unknown): QueryOptions {
 export type DataOf<TFactory extends QueryFactory> =
 	ReturnType<TFactory> extends { readonly [dataTag]?: infer TData }
 		? TData
-		: never;
-
-/** The `fail()` values a factory's `queryFn` returns. */
-export type ErrorOf<TFactory extends QueryFactory> =
-	ReturnType<TFactory> extends { readonly [failTag]?: infer TFail }
-		? TFail
 		: never;
 
 /** A factory's input: its first parameter, or `undefined` if it takes none. */

@@ -10,15 +10,6 @@ export {
 	type QueryClientConfig,
 } from "./client.ts";
 export { abortError } from "./entry.ts";
-export {
-	type Fail,
-	fail,
-	failOf,
-	isFail,
-	isQueryFailure,
-	QueryFailure,
-	type Result,
-} from "./fail.ts";
 export { focusRefetch } from "./features/focus-refetch/focus-refetch.ts";
 export { reconnectRefetch } from "./features/reconnect-refetch/reconnect-refetch.ts";
 export { polling } from "./features/polling/polling.ts";
@@ -61,7 +52,6 @@ export {
 export {
 	bindQueryOptions,
 	type DataOf,
-	type ErrorOf,
 	type InputOf,
 	type InfiniteQueryFactory,
 	type QueryFactory,

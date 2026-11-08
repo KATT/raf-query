@@ -215,8 +215,8 @@ function waitAny(entry: Entry, pages: number | undefined): Promise<Outcome> {
  * Start a loader's queries and return a serializable handle for each. It
  * starts every entry before it waits for any, so the order of the entries
  * can't create a waterfall. Resolves with `[handles, data]` once every
- * `swr` and `revalidate` entry has data, and rejects as soon as one fails:
- * with a `QueryFailure` for a `fail()`, the error itself otherwise.
+ * `swr` and `revalidate` entry has data, and rejects with the error as soon
+ * as one fails.
  * `prefetch` entries never make it reject. A `skipToken` in place of an
  * entry starts nothing and gets no handle.
  *

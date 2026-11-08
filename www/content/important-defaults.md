@@ -43,7 +43,7 @@ Keep these in mind as you read the rest of the guides. Retries, focus and reconn
 
 - **Unread entries are kept for five minutes** (`gcTime: 300_000`). An entry nobody reads is **inactive**: it stays in the cache in case it's needed again, then is garbage-collected.
 
-- **Failed requests retry three times**, with a delay that doubles from one second, up to 30 seconds, before the error reaches the UI. Retries wait while the browser is offline. Expected errors (`fail()`) and thrown `Response`s aren't retried.
+- **Failed requests retry three times**, with a delay that doubles from one second, up to 30 seconds, before the error reaches the UI. Retries wait while the browser is offline. Thrown `Response`s aren't retried.
 
 - **Data is structurally shared.** When a refetch returns data that's deeply equal to what's cached, the cache keeps the old objects, so unchanged parts keep their identity and nothing re-renders. See [Render optimizations](./render-optimizations.md).
 

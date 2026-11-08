@@ -5,8 +5,6 @@ import {
 	bindQueryOptions,
 	createQueryClient,
 	type DataOf,
-	type ErrorOf,
-	type Fail,
 	feature,
 	getData,
 	group,
@@ -51,15 +49,12 @@ const titles = (input: { readonly id: number }) =>
 	});
 
 describe("factory types", () => {
-	it("infer data, expected errors and input", () => {
+	it("infer data and input", () => {
 		expectTypeOf<DataOf<typeof backend.issueQuery>>().toEqualTypeOf<{
 			readonly author: string;
 			readonly id: number;
 			readonly title: string;
 		}>();
-		expectTypeOf<ErrorOf<typeof backend.issueQuery>>().toEqualTypeOf<
-			Fail<{ readonly _tag: "NotFound"; readonly id: number }>
-		>();
 		expectTypeOf<DataOf<typeof titles>>().toEqualTypeOf<string>();
 		expectTypeOf<InputOf<typeof settings>>().toEqualTypeOf<undefined>();
 		expectTypeOf<InputOf<typeof titles>>().toEqualTypeOf<{

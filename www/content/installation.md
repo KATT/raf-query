@@ -17,12 +17,6 @@ yarn add @raf-query/react
 bun add @raf-query/react
 ```
 
-`QueryBoundary`, an error boundary for a query's [typed errors](./query-functions.md#expected-errors), is a package of its own:
-
-```bash
-npm install @raf-query/boundary
-```
-
 ## Requirements
 
 - **React 19.2 or newer.** raf-query reads data with `use()` and relies on transitions, Actions and `useOptimistic`.

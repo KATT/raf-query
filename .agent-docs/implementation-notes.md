@@ -13,7 +13,6 @@ Mechanisms the build should copy, each verified against vendored or local source
 | `dehydrate`, `hydrate`, `dehydrateStream`                                    | `@raf-query/core` (`hydration/`), opt-in                                                  |
 | `useSyncExternalStore` subscription, providers, `useQuery`, `useIsFetching`  | `@raf-query/react`                                                                        |
 | SSR stream glue                                                              | `@raf-query/react/tanstack-router`, `HydrationBoundary`                                   |
-| `QueryBoundary`                                                              | `@raf-query/boundary`                                                                     |
 
 Mirror TanStack's split: `.repos/query/packages/query-core` (no React import anywhere) and `.repos/query/packages/react-query/src/index.ts` (`export * from '@tanstack/query-core'`). Keep `@raf-query/core` free of React types so another binding could sit on it.
 

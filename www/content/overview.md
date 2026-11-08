@@ -48,11 +48,10 @@ starting-queries
 
 ## Packages
 
-| Package               | Contents                                                                                                   |
-| --------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `@raf-query/react`    | Hooks and providers. Re-exports `@raf-query/core`, so apps import this package rather than core            |
-| `@raf-query/core`     | Framework-agnostic: the query client, its links and features, factories, `load` and handles, and the verbs |
-| `@raf-query/boundary` | `QueryBoundary`, which catches a query's [typed errors](./query-functions.md#expected-errors) by tag       |
+| Package            | Contents                                                                                                   |
+| ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `@raf-query/react` | Hooks and providers. Re-exports `@raf-query/core`, so apps import this package rather than core            |
+| `@raf-query/core`  | Framework-agnostic: the query client, its links and features, factories, `load` and handles, and the verbs |
 
 Apps import everything from `@raf-query/react`, hydration and the devtools included: what an app doesn't import stays out of its bundle. The one subpath, `@raf-query/react/tanstack-router`, streams the router's query cache to the browser during SSR.
 

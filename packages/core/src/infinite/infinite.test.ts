@@ -13,14 +13,13 @@
  *   `fetchPreviousPage`): fetch one page past the end, and drop pages
  *   from the other end past `maxPages`.
  *
- * A page that returns `fail()` fails the whole request; pages loaded
+ * A page that throws fails the whole request; pages loaded
  * before stay in the cache. Reading goes through `useInfiniteQuery`.
  */
 import { act } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import {
-	fail,
 	getData,
 	infiniteQueryOptions,
 	load,
@@ -144,16 +143,19 @@ describe("paged queries", () => {
 		expect(view.result.current[1].hasPreviousPage).toBe(false);
 	});
 
-	it("fail with a page's fail(), keeping the pages they had", async () => {
+	it("fail with a page's error, keeping the pages they had", async () => {
 		const client = testClient();
+		const gone = new Error("gone");
 		const failing = (input: { readonly at: number }) =>
 			infiniteQueryOptions({
 				getNextPageParam: (page: number) => page + 1,
 				initialPageParam: 0,
-				queryFn: (context) =>
-					context.pageParam === input.at
-						? fail({ _tag: "Gone" })
-						: context.pageParam,
+				queryFn: async (context) => {
+					if (context.pageParam === input.at) {
+						throw gone;
+					}
+					return context.pageParam;
+				},
 				queryKey: issues("failing", input),
 			});
 		const atFirst = readPages(
@@ -173,7 +175,7 @@ describe("paged queries", () => {
 		expect(atSecond.result.current[0]).toMatchObject({
 			value: { pages: [0] },
 		});
-		expect(atSecond.result.current[1].error).toEqual(fail({ _tag: "Gone" }));
+		expect(atSecond.result.current[1].error).toBe(gone);
 	});
 
 	it("have no next page when written empty", async () => {

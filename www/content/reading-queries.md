@@ -19,7 +19,7 @@ tanstack-start/src/docs/reading-queries.ts#intro
 tanstack-start/src/docs/reading-queries.tsx#post-page
 ```
 
-`options` takes [`whilePending`](./url-state-and-pagination.md) and `result`, which reads [expected errors](./query-functions.md#expected-errors) as a `Result` instead of throwing them. There is no option to change the input: the handle decides what is read. Settings such as polling belong to the query, as [`meta`](./query-meta.md) in its factory.
+`options` takes [`whilePending`](./url-state-and-pagination.md). There is no option to change the input: the handle decides what is read. Settings such as polling belong to the query, as [`meta`](./query-meta.md) in its factory.
 
 ## State
 
@@ -29,7 +29,7 @@ tanstack-start/src/docs/reading-queries.tsx#post-page
 | `isPrevious`        | The thenable holds the previous handle's data while this handle's query loads (`whilePending: "previous"`) |
 | `isFetching`        | A request is in flight: first load, new input, or background refetch                                       |
 | `isStale`           | Data is older than `staleTime`, or was invalidated                                                         |
-| `error`             | The last request's error while it's the latest outcome: a `fail()` value or a defect                       |
+| `error`             | The last request's error while it's the latest outcome                                                     |
 | `updatedAt`         | When the handle's data was fetched; `0` without data                                                       |
 | `queryKey`, `input` | The handle's key and input                                                                                 |
 | `hash`              | Stable string form of the handle's key, for `key` props on Suspense boundaries                             |
@@ -45,7 +45,7 @@ When the cache updates — refetch, invalidation, `setData` — the hook returns
 
 When the **first** load fails, the thenable rejects and `use()` throws to the nearest error boundary. A failed **background** refetch doesn't throw: the old data stays on screen and the state's `error` holds the error, so the component can show it next to the data. [Retries](./retries.md) has a demo of both.
 
-An [expected error](./query-functions.md#expected-errors) (`fail()`) throws a `QueryFailure`. Read it as a value with `{ result: true }`, or catch it by tag with `QueryBoundary` from `@raf-query/boundary`, whose `retry` refetches the query and renders the children again. With another error boundary, call `resetOne(qc, factory, input)` before resetting it, so the query loads again instead of throwing the same error.
+Before resetting the error boundary, call `resetOne(qc, factory, input)`, so the query loads again instead of throwing the same error.
 
 ## Passing thenables down
 

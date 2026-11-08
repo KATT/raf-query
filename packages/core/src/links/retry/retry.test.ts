@@ -9,9 +9,8 @@
  * - Attempts: the query's `meta.retry` (a number, or `false` for none),
  *   else `attempts`, else 3. `meta.retry` is typed only on clients whose
  *   links include `retry()`.
- * - Never retried: `fail()` values (a `queryFn` returns them, so `next(op)`
- *   resolves), a thrown `Response` (a router redirect or not-found), what
- *   `when(error)` rules out, a request whose `op.signal` aborted, and
+ * - Never retried: a thrown `Response` (a router redirect or not-found),
+ *   what `when(error)` rules out, a request whose `op.signal` aborted, and
  *   anything on a server client.
  * - It writes nothing to the cache: the entry records whatever the last
  *   attempt ended with.
@@ -26,8 +25,6 @@ import {
 	bindInfiniteQueryOptions,
 	bindQueryOptions,
 	createQueryClient,
-	fail,
-	isQueryFailure,
 	link,
 	queryOptions,
 	recommended,
@@ -124,7 +121,7 @@ describe("retry()", () => {
 		});
 	});
 
-	it("doesn't retry an expected error, a thrown Response, or what `when` rules out", async () => {
+	it("doesn't retry a thrown Response, or what `when` rules out", async () => {
 		const response = flaky([new Response(null, { status: 302 })]);
 		const ruledOut = flaky([down]);
 		await loadOne(testClient({ links: [retry()] }), swr(response.query));
@@ -132,21 +129,8 @@ describe("retry()", () => {
 			testClient({ links: [retry({ when: (error) => error !== down })] }),
 			swr(ruledOut.query),
 		);
-		let goneCalls = 0;
-		const gone = () =>
-			queryOptions({
-				queryFn: () => {
-					goneCalls += 1;
-					return fail({ _tag: "Gone" });
-				},
-				queryKey: issues("expected"),
-			});
-		const expected = await loadOne(testClient({ links: [retry()] }), swr(gone));
 
-		expect([response.attempts(), ruledOut.attempts(), goneCalls]).toEqual([
-			1, 1, 1,
-		]);
-		expect(expected.error).toSatisfy(isQueryFailure);
+		expect([response.attempts(), ruledOut.attempts()]).toEqual([1, 1]);
 	});
 
 	it("never retries on the server", async () => {

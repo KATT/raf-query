@@ -45,8 +45,8 @@ export interface RetryMeta {
 }
 
 /**
- * Retry failed requests. Expected errors (`fail()`), thrown `Response`s
- * (router redirects and not-founds) and cancelled requests aren't retried,
+ * Retry failed requests. Thrown `Response`s (router redirects and
+ * not-founds) and cancelled requests aren't retried,
  * server clients never retry, and a browser that is offline
  * waits until it's back online before retrying. A query sets its own
  * attempts with `meta: { retry }`.

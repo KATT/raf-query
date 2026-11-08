@@ -119,12 +119,12 @@ react-router/app/components/comments.tsx#component
 ```
 
 - Create the server's client **per request**, in the middleware. A module-level client would share data between requests and users.
-- **`dehydrate(qc)`** takes entries with data, entries that returned a `fail()`, and entries still loading. React Router [streams promises in loader data](https://reactrouter.com/how-to/suspense), so a `prefetch` that is still loading resolves in the browser when the server's request does, and the browser doesn't fetch it again.
+- **`dehydrate(qc)`** takes entries with data and entries still loading. React Router [streams promises in loader data](https://reactrouter.com/how-to/suspense), so a `prefetch` that is still loading resolves in the browser when the server's request does, and the browser doesn't fetch it again.
 - With nested routes, a loader's snapshot holds every entry the client has when the loader returns, other loaders' queries included. The browser keeps the newer copy of an entry, so the overlap only adds to the payload.
 - **`HydrationBoundary`** writes the entries into the provider's client: entries the browser doesn't have yet while it renders, so its children read them, and the rest once it commits. The browser keeps whichever copy of an entry is newer. See [SSR and hydration](./ssr-and-hydration.md#when-the-browser-already-has-data).
 - `load` resolves to `[handles, data]`. `data` holds what the `revalidate` entries waited for, for deciding on a redirect or building another query's input in the loader. A component reads a `revalidate` entry's handle with `use()` without suspending, and follows later refetches. See [Handles](./handles.md).
 - Use `prefetch` and `revalidate` in a `loader`, not `swr`. A `loader` runs on the server for every navigation, client-side ones included, and its client starts empty, so `swr` waits for the request every time, exactly like `revalidate`. See [Starting queries](./starting-queries.md).
-- `load` rejects with a `QueryFailure` when a `revalidate` entry's `queryFn` returns a `fail()`, so the route's [`ErrorBoundary`](https://reactrouter.com/start/framework/route-module#errorboundary) renders it.
+- `load` rejects when a `revalidate` entry's request fails, so the route's [`ErrorBoundary`](https://reactrouter.com/start/framework/route-module#errorboundary) renders it.
 
 ### What the integration is
 

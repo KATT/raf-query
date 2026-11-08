@@ -75,14 +75,11 @@ function pageFields(entry: Entry, state: EntryState): Fields {
  * const pages = use(pagesThenable);
  * ```
  */
-export function useInfiniteQuery<
-	TFactory extends InfiniteQueryFactory,
-	const TResult extends boolean = false,
->(
+export function useInfiniteQuery<TFactory extends InfiniteQueryFactory>(
 	factory: TFactory,
 	handle: QueryHandle<TFactory>,
-	options?: UseQueryOptions<TResult>,
-): readonly [QueryValue<TFactory, TResult>, InfiniteQueryState<TFactory>] {
+	options?: UseQueryOptions,
+): readonly [QueryValue<TFactory>, InfiniteQueryState<TFactory>] {
 	const read = useQueryRead<InfiniteQueryState<TFactory>>(
 		factory,
 		handle,
@@ -91,7 +88,7 @@ export function useInfiniteQuery<
 	);
 	return [
 		// SAFETY: `QueryValue` describes what was read for this handle.
-		read.thenable as QueryValue<TFactory, TResult>,
+		read.thenable as QueryValue<TFactory>,
 		read.controls,
 	];
 }

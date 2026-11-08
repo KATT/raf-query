@@ -71,9 +71,6 @@
 			// Compiler (`*.compiler.test.tsx`).
 			"vitest": { "config": ["vite.config.ts", "vitest.compiler.config.ts"] },
 		},
-		"packages/boundary": {
-			"includeEntryExports": false,
-		},
 		"examples/.shared/ui": {
 			// `package.json` exports are the shadcn kit. Components are added
 			// with the CLI and stay available to the apps.

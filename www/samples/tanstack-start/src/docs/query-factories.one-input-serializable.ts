@@ -46,13 +46,11 @@ commentsOptions;
 // #endregion
 
 // #region type-helpers
-import type { DataOf, ErrorOf, InputOf, QueryHandle } from "@raf-query/react";
+import type { DataOf, InputOf, QueryHandle } from "@raf-query/react";
 
 type PostData = DataOf<typeof postQuery>; // what readers get
 //   ^?
 type PostInput = InputOf<typeof postQuery>;
-//   ^?
-type PostError = ErrorOf<typeof postQuery>; // the fail() values queryFn returns
 //   ^?
 type PostHandle = QueryHandle<typeof postQuery>; // for props
 // #endregion

@@ -41,7 +41,7 @@ tanstack-start/src/docs/query-meta.ts#root
 
 A package that ships a link or feature needs only these exports: `link` and `feature`, the types `Link`, `Feature` and `Operation` (the request a link gets) to name them, and `Target` and `QueryInfo` for a [target](./query-invalidation.md#matching-with-where) that matches on the fields it declares. [Tags](./query-invalidation.md#tags) are built the same way, in a few lines of app code.
 
-`errorToasts` comes before `retry()`, so it sees a request's error only after its retries ran out. `fail()` values are [expected errors](./query-functions.md#expected-errors): a request returns them rather than throws, so they never reach the `catch`.
+`errorToasts` comes before `retry()`, so it sees a request's error only after its retries ran out.
 
 ## Typing meta by its root
 

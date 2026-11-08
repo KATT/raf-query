@@ -50,7 +50,7 @@ Options:
 | `dehydrateOptions` | `filter` which entries are sent; `keepErrors` to send a server request's error instead of a redacted one |
 | `handleRedirects`  | `false` to handle redirects yourself                                                                     |
 
-A query whose server request throws reaches the browser as a `RedactedError`, which names the query but not the cause, so server errors don't leak into the page. [Expected errors](./query-functions.md#expected-errors) (`fail()`) cross as they are.
+A query whose server request throws reaches the browser as a `RedactedError`, which names the query but not the cause, so server errors don't leak into the page.
 
 A component that reads a query no loader started, such as a [`waterfallHandle`](./request-waterfalls.md#render-time-inputs-waterfallhandle)'s, fetches it on the server while rendering. The integration streams that entry too, so the HTML has the data and the browser doesn't fetch it again. It's still a waterfall: the request starts only once the component renders. See [SSR and hydration](./ssr-and-hydration.md#queries-nothing-started-on-the-server).
 

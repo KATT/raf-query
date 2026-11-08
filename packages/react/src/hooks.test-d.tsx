@@ -4,7 +4,6 @@ import {
 	bindQueryOptions,
 	bindUseQueryClient,
 	createQueryClient,
-	type ErrorOf,
 	group,
 	type InfiniteData,
 	type InfiniteQueryState,
@@ -12,7 +11,6 @@ import {
 	type QueryClient,
 	type QueryState,
 	type QueryHandle,
-	type Result,
 	retry,
 	type SingleQueryFactory,
 	type Thenable,
@@ -105,24 +103,6 @@ describe("useInfiniteQuery", () => {
 			expectTypeOf(pagesState.hasPreviousPage).toEqualTypeOf<boolean>();
 			expectTypeOf(pagesState.isFetchingNextPage).toEqualTypeOf<boolean>();
 			expectTypeOf(pagesState.isFetchingPreviousPage).toEqualTypeOf<boolean>();
-			return null;
-		}
-		expectTypeOf(Pages).toBeFunction();
-	});
-
-	it("reads expected errors as a Result", () => {
-		function Pages() {
-			const [pagesThenable] = useInfiniteQuery(backend.pageQuery, pagesHandle, {
-				result: true,
-			});
-			expectTypeOf(pagesThenable).toEqualTypeOf<
-				Thenable<
-					Result<
-						InfiniteData<Array<number>, number>,
-						ErrorOf<Backend["pageQuery"]>
-					>
-				>
-			>();
 			return null;
 		}
 		expectTypeOf(Pages).toBeFunction();

@@ -6,34 +6,34 @@ How the human wants it: one point at a time, shown in code, short, plain words, 
 
 ## Decided and done (commits on `cursor/greenfield-rewrite-0833`)
 
-| Point                                          | Outcome                                                                                                         |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `group()` required, in a subpath               | `group` on the main entry, hand-written keys allowed                                                            |
-| `def: defType<…>()` in every factory           | Per-client typed `meta` kept; `bindQueryOptions` / `bindInfiniteQueryOptions` / `bindUseQueryClient`, zero cost |
-| `action()`                                     | Removed for now ([no-action-helper.md](../decisions/no-action-helper.md))                                       |
-| Several targets in one call                    | `invalidateMany` / `resetMany` / `removeMany` take lists, refetch each entry once                               |
-| `prefetchEntry` / `ensureEntry` / `fetchEntry` | `prefetch` / `swr` / `revalidate` (HTTP `Cache-Control` words); example routes renamed                          |
-| `setData(qc, f, undefined, …)`                 | Overload without input                                                                                          |
-| Partial input matched the key's last segment   | Matches `entry.input`                                                                                           |
-| Invalidate one page of an infinite query       | No: patch with `setData` (RQ removed `refetchPage` too). No `mapItems` helper                                   |
-| `QueryProvider` vs `QueryClientProvider`       | One provider; every app writes the same `Providers` component                                                   |
-| Server render behavior                         | Clients fed by server components skip unstarted queries; Start streams; React Router fetches twice              |
-| Subpaths                                       | One entry point per package; only `/tanstack-router` (and core `/internal`) remain                              |
-| `@raf-query/boundary`                          | Stays a separate package                                                                                        |
-| Quick start                                    | tRPC's blog shape: post (`swr`), comments (`prefetch`, real paging), add comment; author for waterfalls         |
-| `QueryControls`                                | `QueryState` / `InfiniteQueryState`; variables stay `xState`                                                    |
-| `waterfallHandle` remix                        | Third argument is `(input) => next`; returns the same handle when the key doesn't change                        |
-| `load()` tuple                                 | Kept. Maybe pull the data read into its own function later                                                      |
-| Extension-only types                           | Moved to `/internal`; public: `link`, `feature`, `Link`, `Feature`, `Operation`, `Target`, `QueryInfo`          |
-| Reads never refetch stale data on mount        | First item in Important defaults; no opt-in                                                                     |
-| `useQuery(factory, handle)`                    | Kept; one sentence in the docs explains why                                                                     |
-| `enabled`                                      | Removed; `skipToken` skips a `load` entry ([skip-token.md](../decisions/skip-token.md))                         |
-| Tags                                           | Userland recipe on `feature` + `where` (in progress)                                                            |
-| One folder per behavior, tests as author docs  | In progress                                                                                                     |
+| Point                                          | Outcome                                                                                                               |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `group()` required, in a subpath               | `group` on the main entry, hand-written keys allowed                                                                  |
+| `def: defType<…>()` in every factory           | Per-client typed `meta` kept; `bindQueryOptions` / `bindInfiniteQueryOptions` / `bindUseQueryClient`, zero cost       |
+| `action()`                                     | Removed for now ([no-action-helper.md](../decisions/no-action-helper.md))                                             |
+| Several targets in one call                    | `invalidateMany` / `resetMany` / `removeMany` take lists, refetch each entry once                                     |
+| `prefetchEntry` / `ensureEntry` / `fetchEntry` | `prefetch` / `swr` / `revalidate` (HTTP `Cache-Control` words); example routes renamed                                |
+| `setData(qc, f, undefined, …)`                 | Overload without input                                                                                                |
+| Partial input matched the key's last segment   | Matches `entry.input`                                                                                                 |
+| Invalidate one page of an infinite query       | No: patch with `setData` (RQ removed `refetchPage` too). No `mapItems` helper                                         |
+| `QueryProvider` vs `QueryClientProvider`       | One provider; every app writes the same `Providers` component                                                         |
+| Server render behavior                         | Clients fed by server components skip unstarted queries; Start streams; React Router fetches twice                    |
+| Subpaths                                       | One entry point per package; only `/tanstack-router` (and core `/internal`) remain                                    |
+| `@raf-query/boundary`                          | Stays a separate package, in the PR stacked on #230 ([typed-errors-stacked.md](../decisions/typed-errors-stacked.md)) |
+| Quick start                                    | tRPC's blog shape: post (`swr`), comments (`prefetch`, real paging), add comment; author for waterfalls               |
+| `QueryControls`                                | `QueryState` / `InfiniteQueryState`; variables stay `xState`                                                          |
+| `waterfallHandle` remix                        | Third argument is `(input) => next`; returns the same handle when the key doesn't change                              |
+| `load()` tuple                                 | Kept. Maybe pull the data read into its own function later                                                            |
+| Extension-only types                           | Moved to `/internal`; public: `link`, `feature`, `Link`, `Feature`, `Operation`, `Target`, `QueryInfo`                |
+| Reads never refetch stale data on mount        | First item in Important defaults; no opt-in                                                                           |
+| `useQuery(factory, handle)`                    | Kept; one sentence in the docs explains why                                                                           |
+| `enabled`                                      | Removed; `skipToken` skips a `load` entry ([skip-token.md](../decisions/skip-token.md))                               |
+| Tags                                           | Userland recipe on `feature` + `where` (in progress)                                                                  |
+| One folder per behavior, tests as author docs  | In progress                                                                                                           |
 
 ## Still to do
 
-- Typed errors (`fail()`, `Result`, `{ result: true }`, `ErrorOf`) and `@raf-query/boundary` leave #230 and come back in a PR stacked on it. Its follow-ups: errors declared once (`failure("IssueNotFound")<{ id }>()`), `QueryBoundary errors={[…]}` typing handlers from every listed query, `retry` refetching every failed query with a handled tag, and maybe `createErrorBoundary` like raf-effect-atom.
+- Open the PR stacked on #230 that brings back typed errors (`fail()`, `Result`, `{ result: true }`, `ErrorOf`) and `@raf-query/boundary`, by reverting the commit that took them out of #230. Its follow-ups are in [typed-errors-stacked.md](../decisions/typed-errors-stacked.md).
 - Rewrite #230's description (it still describes `action()`, `prefetchEntry`, `QueryProvider`, subpaths, group-only keys, typed errors).
 
 ## Questions for the human

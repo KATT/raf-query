@@ -9,10 +9,8 @@ import { act } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import {
-	fail,
 	getData,
 	invalidateOne,
-	isQueryFailure,
 	load,
 	prefetch,
 	removeOne,
@@ -25,6 +23,7 @@ import {
 	advance,
 	createBackend,
 	flush,
+	NotFoundError,
 	read,
 	start,
 	testClient,
@@ -104,7 +103,7 @@ describe("a read query", () => {
 		});
 	});
 
-	it("rejects with a QueryFailure for fail(), and again after a refetch", async () => {
+	it("rejects with the error for a missing issue, and again after a refetch", async () => {
 		const backend = createBackend();
 		const client = testClient();
 		const view = read(
@@ -114,10 +113,8 @@ describe("a read query", () => {
 		);
 		await backend.respondAll();
 
-		expect(view.result.current[1].error).toEqual(
-			fail({ _tag: "NotFound", id: 9 }),
-		);
-		await expect(view.result.current[0]).rejects.toSatisfy(isQueryFailure);
+		expect(view.result.current[1].error).toEqual(new NotFoundError(9));
+		await expect(view.result.current[0]).rejects.toBeInstanceOf(NotFoundError);
 		const [refetch] = await start(() => view.result.current[1].refetch());
 		expect(view.result.current[0].status).toBe("pending");
 		await backend.respondAll();
@@ -198,7 +195,9 @@ describe("a read query", () => {
 		await backend.respondAll();
 
 		await expect(pending.result.current[0]).resolves.toBe("FIRST");
-		await expect(missing.result.current[0]).rejects.toSatisfy(isQueryFailure);
+		await expect(missing.result.current[0]).rejects.toBeInstanceOf(
+			NotFoundError,
+		);
 		const settled = read(client, title, waterfallHandle(title, { id: 1 }));
 		const failed = read(client, title, waterfallHandle(title, { id: 9 }));
 		expect(settled.result.current[0]).toMatchObject({

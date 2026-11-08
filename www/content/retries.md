@@ -15,7 +15,6 @@ tanstack-start/src/docs/retries.ts#intro
 
 Some requests are never retried:
 
-- **Expected errors.** A `queryFn` that returns `fail(...)` has answered: the error is the result. See [Query functions](./query-functions.md#expected-errors).
 - **Cancelled requests**, whose `signal` was aborted.
 - **Requests on a server client.** The user is waiting for the HTML, and the browser can try again.
 
@@ -67,7 +66,7 @@ What the user sees depends on whether there was data before the failure.
 tanstack-start/src/docs/retries.tsx#showing-errors
 ```
 
-Any error boundary works: [`CatchBoundary`](https://tanstack.com/router/latest/docs/framework/react/api/router/catchBoundaryComponent) from TanStack Router, [`react-error-boundary`](https://github.com/bvaughn/react-error-boundary), Next.js's [`error.tsx`](https://nextjs.org/docs/app/api-reference/file-conventions/error), or your own class component. For expected errors, `QueryBoundary` from `@raf-query/boundary` picks a handler by the error's `_tag` and retries for you.
+Any error boundary works: [`CatchBoundary`](https://tanstack.com/router/latest/docs/framework/react/api/router/catchBoundaryComponent) from TanStack Router, [`react-error-boundary`](https://github.com/bvaughn/react-error-boundary), Next.js's [`error.tsx`](https://nextjs.org/docs/app/api-reference/file-conventions/error), or your own class component.
 
 **A background refetch fails.** The existing data stays on screen: losing it because a refetch failed would be worse than showing it a little longer. The error is on the reader's state as `error`, for a hint:
 

@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { QueryDevtools, QueryDevtoolsPanel } from "./devtools.tsx";
 import {
-	fail,
 	load,
 	prefetch,
 	QueryClientProvider,
@@ -35,7 +34,9 @@ describe("QueryDevtoolsPanel", () => {
 		const backend = loaded.backend;
 		const failing = () =>
 			queryOptions({
-				queryFn: async () => fail({ _tag: "Nope" }),
+				queryFn: async () => {
+					throw new Error("nope");
+				},
 				queryKey: issues("failing"),
 			});
 		await load(client, { failing: prefetch(failing) });

@@ -1,6 +1,6 @@
 ---
 title: API reference
-description: Every export of @raf-query/react, its TanStack Router subpath, @raf-query/core and @raf-query/boundary, with query options and their defaults.
+description: Every export of @raf-query/react, its TanStack Router subpath and @raf-query/core, with query options and their defaults.
 section: Reference
 order: 2
 ---
@@ -42,8 +42,7 @@ Links and features:
 | `infiniteQueryOptions(options)`                                               | Typed options for a paged query factory. [Infinite queries](./infinite-queries.md)                                                      |
 | `group(name)`, `group(parent, name)`, `Group`                                 | Build flat keys under a path; a group is also a target that covers every key under its path. [Query keys](./query-keys.md#groups)       |
 | `bindQueryOptions<typeof makeQueryClient>()`, `bindInfiniteQueryOptions<…>()` | The builder bound to a root: checks `meta` against the root's links and features. [Query meta](./query-meta.md#typing-meta-by-its-root) |
-| `fail(error)`                                                                 | Return an expected error from a `queryFn`: an object with a `_tag`. [Query functions](./query-functions.md#expected-errors)             |
-| `DataOf<TFactory>`, `InputOf<TFactory>`, `ErrorOf<TFactory>`                  | A factory's data, input and `fail()` types                                                                                              |
+| `DataOf<TFactory>`, `InputOf<TFactory>`                                       | A factory's data and input types                                                                                                        |
 | `QueryOptions`, `QueryFunctionContext`, `StreamOptions`                       | Option types. The context has `queryKey`, `signal` and `meta`                                                                           |
 | `InfiniteQueryOptions`, `InfiniteQueryFunctionContext`, `InfiniteData`        | Paged option types. The context adds `pageParam` and `direction`; the data is `{ pages, pageParams }`                                   |
 | `QueryFactory`, `QueryKey`                                                    | A function of an input that returns query options, and a key: any plain array                                                           |
@@ -95,7 +94,6 @@ Options:
 | Option         | Use                                                                                                     |
 | -------------- | ------------------------------------------------------------------------------------------------------- |
 | `whilePending` | `"suspend"` (the default) shows the Suspense fallback for a new input; `"previous"` keeps the last data |
-| `result`       | `true`: read `fail()` values as a `Result` instead of throwing them. Defects still throw                |
 
 | Control             | Meaning                                                                                     |
 | ------------------- | ------------------------------------------------------------------------------------------- |
@@ -139,15 +137,10 @@ Each verb takes the client first. A factory matches the queries it built: all of
 
 ## Errors
 
-| Export                  | Use                                                                                                                                     |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `QueryFailure`          | What reading or loading a query throws when its `queryFn` returned `fail()`: an `Error` with the value in `fail` and the query's `hash` |
-| `isFail(value, tag?)`   | Whether `value` is a `fail()` value or a `QueryFailure`, optionally with that `_tag`                                                    |
-| `failOf(value)`         | The `fail()` value in `value`, unwrapping a `QueryFailure`                                                                              |
-| `isQueryFailure(value)` | Whether `value` is a `QueryFailure`                                                                                                     |
-| `Fail`, `Result`        | A `fail()` value, and what `useQuery` reads with `result: true`: `{ ok: true, value }` or `{ ok: false, error }`                        |
-| `QueryTimeoutError`     | What a request fails with when `timeout()` cuts it off                                                                                  |
-| `abortError()`          | Makes the `AbortError` (a `DOMException`) that a `load` waiting on a removed query rejects with                                         |
+| Export              | Use                                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------------------- |
+| `QueryTimeoutError` | What a request fails with when `timeout()` cuts it off                                          |
+| `abortError()`      | Makes the `AbortError` (a `DOMException`) that a `load` waiting on a removed query rejects with |
 
 ## Providers
 
@@ -174,10 +167,3 @@ Also on the main entry. An app that doesn't import them doesn't bundle them.
 | Entry                              | Exports                                                                                                                       |
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `@raf-query/react/tanstack-router` | `setupRouterIntegration({ queryClient, router, dehydrateOptions?, handleRedirects? })`. [TanStack Start](./tanstack-start.md) |
-
-## @raf-query/boundary
-
-| Export                                | Use                                                                                                                                                                                                  |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `QueryBoundary`                       | A Suspense and error boundary for a query's expected errors. `query` types the `catch` handlers, one per `fail()` tag; each gets the value and a `retry`. Other errors go to the next error boundary |
-| `QueryBoundaryProps`, `CatchHandlers` | Its prop types                                                                                                                                                                                       |
