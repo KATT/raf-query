@@ -32,6 +32,11 @@ import { useQueryClient } from "./provider.tsx";
 /** Bundlers replace `process.env.NODE_ENV`; typed here so consumers need no Node types. */
 declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
+/**
+ * Options for `useQuery` and `useInfiniteQuery`.
+ *
+ * @see https://raf-query.katt.dev/docs/url-state-and-pagination#what-shows-while-the-new-input-loads
+ */
 export interface UseQueryOptions {
 	/**
 	 * While a new handle's query has no data: `"suspend"` (the default) shows
@@ -41,7 +46,11 @@ export interface UseQueryOptions {
 	readonly whilePending?: "previous" | "suspend";
 }
 
-/** What `useQuery` returns next to the data. */
+/**
+ * What `useQuery` returns next to the data.
+ *
+ * @see https://raf-query.katt.dev/docs/reading-queries#state
+ */
 export interface QueryState<TFactory extends QueryFactory = QueryFactory> {
 	/** The last request's error while it's the latest outcome. */
 	readonly error: unknown;
@@ -65,6 +74,8 @@ export interface QueryState<TFactory extends QueryFactory = QueryFactory> {
  * to pass to `use()`.
  * A loader can't promise the data is still cached when a component renders
  * (a write can reset or remove it), so the read may suspend.
+ *
+ * @see https://raf-query.katt.dev/docs/reading-queries
  */
 export type QueryValue<TFactory extends QueryFactory> = Thenable<
 	DataOf<TFactory>
@@ -238,6 +249,8 @@ export function useQueryRead<TControls extends object>(
  * Reading never refetches stale data: loaders decide freshness. A query no
  * loader started fetches while rendering, which is a waterfall (see
  * `waterfallHandle`). Paged queries read with `useInfiniteQuery`.
+ *
+ * @see https://raf-query.katt.dev/docs/reading-queries
  */
 export function useQuery<TFactory extends SingleQueryFactory>(
 	factory: TFactory,

@@ -10,6 +10,7 @@ import { noOverzealousDestructuring } from "./no-overzealous-destructuring.ts";
 import { noUseEffect } from "./no-use-effect.ts";
 import { noUntypedObjectLiteral } from "./no-untyped-object-literal.ts";
 import { noUseMemberAccess } from "./no-use-member-access.ts";
+import { requireDocsLink } from "./require-docs-link.ts";
 
 const plugin = eslintCompatPlugin({
 	meta: {
@@ -26,6 +27,7 @@ const plugin = eslintCompatPlugin({
 		"no-use-effect": noUseEffect,
 		"no-untyped-object-literal": noUntypedObjectLiteral,
 		"no-use-member-access": noUseMemberAccess,
+		"require-docs-link": requireDocsLink,
 	},
 });
 

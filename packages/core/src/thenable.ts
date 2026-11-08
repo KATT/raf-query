@@ -2,6 +2,8 @@
  * Promises that carry their own result in the fields React's `use()` reads
  * before suspending (`status`, `value`, `reason`). A settled one is read
  * synchronously, so React renders it without a fallback.
+ *
+ * @see https://raf-query.katt.dev/docs/reading-queries
  */
 export type Thenable<T> = Promise<T> &
 	(

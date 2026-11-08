@@ -5,7 +5,11 @@
  * as a phantom on the options they build.
  */
 
-/** A query's `meta` when its builder isn't bound to a root. */
+/**
+ * A query's `meta` when its builder isn't bound to a root.
+ *
+ * @see https://raf-query.katt.dev/docs/query-meta
+ */
 export type QueryMeta = Readonly<Record<string, unknown>>;
 
 /** What a link or feature declares: the `meta` fields it reads. */

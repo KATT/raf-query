@@ -664,6 +664,20 @@
 			"rules": {
 				"no-console": "off"
 			}
+		},
+		{
+			// The public entry files (each path in a package's `exports`, but
+			// `./internal`): every export's JSDoc links to its docs page.
+			"files": [
+				"packages/core/src/index.ts",
+				"packages/react/src/index.ts",
+				"packages/react/src/index-react-server.ts",
+				"packages/react/src/tanstack-router.ts",
+				"packages/react/src/tanstack-router-browser.ts"
+			],
+			"rules": {
+				"workspace/require-docs-link": "error"
+			}
 		}
 	]
 }

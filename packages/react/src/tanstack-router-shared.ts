@@ -18,6 +18,11 @@ declare module "@tanstack/react-router" {
 	}
 }
 
+/**
+ * Options for `setupRouterIntegration`.
+ *
+ * @see https://raf-query.katt.dev/docs/tanstack-start#setup
+ */
 export interface RouterIntegrationOptions<TRouter extends AnyRouter> {
 	readonly dehydrateOptions?: DehydrateOptions;
 	/** Navigate when a `queryFn` throws `redirect()`. Default `true`. */

@@ -18,6 +18,11 @@ import {
 
 import { useOptionalQueryClient } from "./provider.tsx";
 
+/**
+ * Props of {@link QueryDevtoolsPanel}.
+ *
+ * @see https://raf-query.katt.dev/docs/devtools#props
+ */
 export interface QueryDevtoolsPanelProps {
 	/** The client to inspect. Default: the nearest `QueryClientProvider`'s. */
 	readonly client?: QueryClient;
@@ -27,6 +32,11 @@ export interface QueryDevtoolsPanelProps {
 	readonly style?: CSSProperties;
 }
 
+/**
+ * Props of {@link QueryDevtools}.
+ *
+ * @see https://raf-query.katt.dev/docs/devtools
+ */
 export interface QueryDevtoolsProps {
 	/** Corner of the toggle button. Default: `"bottom-right"`. */
 	readonly buttonPosition?:
@@ -229,7 +239,11 @@ function Panel(
 	);
 }
 
-/** The devtools panel, to place in your own layout. */
+/**
+ * The devtools panel, to place in your own layout.
+ *
+ * @see https://raf-query.katt.dev/docs/devtools#embedding-the-panel
+ */
 export function QueryDevtoolsPanel(props: QueryDevtoolsPanelProps) {
 	const nearest = useOptionalQueryClient();
 	const client = props.client ?? nearest;
@@ -251,7 +265,11 @@ const corners = {
 	CSSProperties
 >;
 
-/** A toggle button that opens the devtools panel over the page. */
+/**
+ * A toggle button that opens the devtools panel over the page.
+ *
+ * @see https://raf-query.katt.dev/docs/devtools
+ */
 export function QueryDevtools(props: QueryDevtoolsProps) {
 	const [open, setOpen] = useState(props.initialIsOpen ?? false);
 	const corner = corners[props.buttonPosition ?? "bottom-right"];

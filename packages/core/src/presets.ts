@@ -10,7 +10,11 @@ import {
 } from "./features/reconnect-refetch/reconnect-refetch.ts";
 import { retry, type RetryMeta } from "./links/retry/retry.ts";
 
-/** What `recommended()` returns: its parts keep the `meta` they declare. */
+/**
+ * What `recommended()` returns: its parts keep the `meta` they declare.
+ *
+ * @see https://raf-query.katt.dev/docs/important-defaults
+ */
 export interface Recommended {
 	readonly features: readonly [
 		Feature<{ readonly meta: FocusRefetchMeta }>,
@@ -27,6 +31,8 @@ export interface Recommended {
  * ```ts
  * createQueryClient({ ...recommended(), staleTime: 30_000 });
  * ```
+ *
+ * @see https://raf-query.katt.dev/docs/important-defaults
  */
 export function recommended(): Recommended {
 	return {

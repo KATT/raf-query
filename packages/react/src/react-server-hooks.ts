@@ -21,20 +21,46 @@ function clientOnly(name: string): () => never {
 	};
 }
 
+/**
+ * `useQuery` in a server component: throws, since hooks belong in client
+ * components.
+ *
+ * @see https://raf-query.katt.dev/docs/react-server-components
+ */
 export const useQuery: typeof UseQuery = /* @__PURE__ */ clientOnly("useQuery");
 
+/**
+ * `useInfiniteQuery` in a server component: throws, since hooks belong in client
+ * components.
+ *
+ * @see https://raf-query.katt.dev/docs/react-server-components
+ */
 export const useInfiniteQuery: typeof UseInfiniteQuery =
 	/* @__PURE__ */ clientOnly("useInfiniteQuery");
 
+/**
+ * `useIsFetching` in a server component: throws, since hooks belong in client
+ * components.
+ *
+ * @see https://raf-query.katt.dev/docs/react-server-components
+ */
 export const useIsFetching: typeof UseIsFetching =
 	/* @__PURE__ */ clientOnly("useIsFetching");
 
+/**
+ * `useQueryClient` in a server component: throws, since hooks belong in client
+ * components.
+ *
+ * @see https://raf-query.katt.dev/docs/react-server-components
+ */
 export const useQueryClient: typeof UseQueryClient =
 	/* @__PURE__ */ clientOnly("useQueryClient");
 
 /**
  * `bindUseQueryClient` runs at module level in a file server modules may
  * import too, so it works here and returns the throwing `useQueryClient`.
+ *
+ * @see https://raf-query.katt.dev/docs/query-meta#typing-meta-by-its-root
  */
 export function bindUseQueryClient<T>(): () => QueryClient<RootOf<T>> {
 	return useQueryClient;

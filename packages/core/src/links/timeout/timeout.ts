@@ -1,11 +1,19 @@
 import type { Link } from "../../client.ts";
 
-/** What a request that took too long fails with. */
+/**
+ * What a request that took too long fails with.
+ *
+ * @see https://raf-query.katt.dev/docs/retries#timeouts
+ */
 export class QueryTimeoutError extends Error {
 	override readonly name = "QueryTimeoutError";
 }
 
-/** Fail a request (and abort its `signal`) when it takes longer than `ms`. */
+/**
+ * Fail a request (and abort its `signal`) when it takes longer than `ms`.
+ *
+ * @see https://raf-query.katt.dev/docs/retries#timeouts
+ */
 export function timeout(ms: number): Link {
 	return (op, next) => {
 		const controller = new AbortController();
