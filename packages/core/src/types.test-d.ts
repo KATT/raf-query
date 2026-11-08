@@ -28,6 +28,7 @@ import {
 	retry,
 	revalidate,
 	setData,
+	skipToken,
 	swr,
 	type Target,
 	waterfallHandle,
@@ -131,7 +132,37 @@ async function typedLoad() {
 		// @ts-expect-error -- the input has the factory's type
 		revalidate(titles, { id: "1" });
 	}
+	{
+		const isAdmin: boolean = Math.random() > 0.5;
+		const [handles, data] = await load(client, {
+			drafts: isAdmin ? prefetch(titles, { id: 1 }) : skipToken,
+			issue: swr(backend.issueQuery, { id: 1 }),
+			never: skipToken,
+			settings: isAdmin ? revalidate(settings) : skipToken,
+		});
+
+		expectTypeOf(handles.drafts).toEqualTypeOf<
+			QueryHandle<typeof titles> | undefined
+		>();
+		expectTypeOf(handles.settings).toEqualTypeOf<
+			QueryHandle<typeof settings> | undefined
+		>();
+		expectTypeOf(handles.never).toEqualTypeOf<undefined>();
+		expectTypeOf(handles.issue).toEqualTypeOf<
+			QueryHandle<typeof backend.issueQuery>
+		>();
+		expectTypeOf(data).toEqualTypeOf<{
+			readonly issue: DataOf<typeof backend.issueQuery>;
+		}>();
+		// @ts-expect-error -- a reader takes a handle, not `undefined`
+		readHandle(handles.drafts);
+		if (handles.drafts) {
+			readHandle(handles.drafts);
+		}
+	}
 }
+
+declare function readHandle(handle: QueryHandle<typeof titles>): void;
 
 describe("waterfall types", () => {
 	it("type waterfall handles like loaded ones", () => {

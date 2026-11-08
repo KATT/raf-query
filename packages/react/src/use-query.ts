@@ -15,7 +15,6 @@ import {
 	type EntryState,
 	fetchEntry,
 	fulfilled,
-	isEnabled,
 	isInvalidated,
 	isStale,
 	isWaterfallHandle,
@@ -136,11 +135,7 @@ function isIdle(entry: Entry, state: EntryState): boolean {
  */
 function startIfMissing(entry: Entry, state: EntryState, waterfall: boolean) {
 	const client = entry.client;
-	if (
-		!isIdle(entry, state) ||
-		!isEnabled(entry) ||
-		leavesUnstartedToBrowser(client)
-	) {
+	if (!isIdle(entry, state) || leavesUnstartedToBrowser(client)) {
 		return;
 	}
 	if (process.env.NODE_ENV !== "production" && !waterfall && !client.isServer) {
@@ -153,12 +148,12 @@ function startIfMissing(entry: Entry, state: EntryState, waterfall: boolean) {
 }
 
 /**
- * On the server, an entry still idle after `startIfMissing` (disabled, or
- * left to the browser) reads as a rejection: a `use()` of it inside Suspense
+ * In a server render fed by server components, an entry `startIfMissing`
+ * left to the browser reads as a rejection: a `use()` of it inside Suspense
  * renders that boundary's fallback, and the browser renders the content.
  */
 function readOf(entry: Entry, state: EntryState): Thenable<unknown> {
-	return entry.client.isServer && isIdle(entry, state)
+	return leavesUnstartedToBrowser(entry.client) && isIdle(entry, state)
 		? browserRender(entry)
 		: entry.thenable;
 }
@@ -241,7 +236,7 @@ export function useQueryRead<TControls extends object>(
 					onChange();
 				}
 			});
-			if (isInvalidated(current) && isEnabled(current)) {
+			if (isInvalidated(current)) {
 				void fetchEntry(current);
 			}
 			return unsubscribe;

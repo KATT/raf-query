@@ -10,7 +10,6 @@ import {
 	entryForKey,
 	failWith,
 	fetchEntry,
-	isEnabled,
 	isStale,
 	write,
 } from "../entry.ts";
@@ -115,7 +114,7 @@ function dehydrateEntries(
 	const sent = options.sent;
 	const dehydrated: Array<DehydratedEntry> = [];
 	for (const entry of entries) {
-		if (!sent?.has(entry.hash) && isEnabled(entry) && filter(entry)) {
+		if (!sent?.has(entry.hash) && filter(entry)) {
 			sent?.add(entry.hash);
 			dehydrated.push(dehydrateEntry(entry, options));
 		}

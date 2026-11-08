@@ -57,13 +57,6 @@ export function createBackend() {
 			select: (title: string) => title.toUpperCase(),
 		});
 
-	const disabledQuery = (input: { readonly id: number }) =>
-		queryOptions({
-			enabled: false,
-			queryFn: async () => get(input.id),
-			queryKey: issues("disabled", input),
-		});
-
 	const pageQuery = (input: { readonly size: number }) =>
 		infiniteQueryOptions({
 			getNextPageParam: (page: ReadonlyArray<number>) => {
@@ -83,7 +76,6 @@ export function createBackend() {
 		});
 
 	return {
-		disabledQuery,
 		issueQuery,
 		pageQuery,
 		requests,

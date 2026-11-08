@@ -24,8 +24,6 @@ export interface BaseOptions<
 	TKey extends QueryKey,
 	TTypes extends RootTypes = RootTypes,
 > {
-	/** `false`: the query doesn't run. Default `true`. */
-	readonly enabled?: boolean;
 	/** How long an entry with no reader stays cached. Default 5 minutes; never on the server. */
 	readonly gcTime?: number;
 	/**

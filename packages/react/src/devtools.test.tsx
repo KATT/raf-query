@@ -8,7 +8,9 @@ import {
 	prefetch,
 	QueryClientProvider,
 	queryOptions,
+	resetOne,
 	revalidate,
+	setData,
 	useQuery,
 	waterfallHandle,
 } from "./index.ts";
@@ -85,12 +87,9 @@ describe("QueryDevtoolsPanel", () => {
 			await flush();
 		});
 		const pendingQuery = () =>
-			queryOptions({
-				enabled: false,
-				queryFn: async () => 1,
-				queryKey: issues("idle"),
-			});
-		await load(client, { idle: prefetch(pendingQuery) });
+			queryOptions({ queryFn: async () => 1, queryKey: issues("idle") });
+		setData(client, pendingQuery, 1);
+		await resetOne(client, pendingQuery);
 		render(
 			<QueryClientProvider client={client}>
 				<Issue />

@@ -1,7 +1,7 @@
 /**
  * `reconnectRefetch()` is a feature (see `../focus-refetch/` for how
  * features run). It listens for `online` on `window` and refetches every
- * read, enabled, stale query, unless its `meta.refetchOnReconnect` is
+ * read, stale query, unless its `meta.refetchOnReconnect` is
  * `false`. It shares that sweep with `focusRefetch()` (`../shared.ts`).
  */
 import { act } from "@testing-library/react";

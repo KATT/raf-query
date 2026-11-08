@@ -6,8 +6,8 @@
  * - `dehydrate(client)` returns the entries worth sending (`canDehydrate`):
  *   data, `fail()` values, and entries still loading, with a promise of
  *   their result. A request that then throws crosses as a `RedactedError`
- *   unless `keepErrors`. Defects, disabled entries and hashes already in
- *   `sent` stay behind, and so does `meta`, which comes from the factory.
+ *   unless `keepErrors`. Defects and hashes already in `sent` stay
+ *   behind, and so does `meta`, which comes from the factory.
  * - `hydrate(client, state)` writes entries by `queryKey`, and takes only
  *   data newer than what the browser has. A pending entry the browser has
  *   nothing for adopts the sender's promise as its request instead of
@@ -33,8 +33,9 @@ import {
 	isQueryFailure,
 	load,
 	prefetch,
-	queryOptions,
 	removeOne,
+	resetAll,
+	resetOne,
 	revalidate,
 	setData,
 	swr,
@@ -94,7 +95,7 @@ describe("a server-rendered page", () => {
 		expect(page.backend.requests).toHaveLength(0);
 	});
 
-	it("sends fail() values, and leaves out defects, disabled queries and what it already sent", async () => {
+	it("sends fail() values, and leaves out defects and what it already sent", async () => {
 		const backend = createBackend();
 		const client = testClient({ isServer: true });
 		const loading = load(client, {
@@ -104,13 +105,6 @@ describe("a server-rendered page", () => {
 		backend.requests[0]?.fail(new Error("down"));
 		await backend.respondAll();
 		const [handles] = await loading;
-		const off = () =>
-			queryOptions({
-				enabled: false,
-				queryFn: () => 1,
-				queryKey: issues("off"),
-			});
-		setData(client, off, 1);
 		const sent = new Set<string>();
 		const state = dehydrate(client, { sent });
 
@@ -148,6 +142,22 @@ describe("a server-rendered page", () => {
 		expect(backend.requests).toHaveLength(1);
 		await backend.respondAll();
 		expect(view.result.current[0]).toMatchObject({ value: { title: "First" } });
+		expect(backend.requests).toHaveLength(0);
+	});
+
+	it("keeps resuming the sender's request through a reset that comes before any reader", async () => {
+		const backend = createBackend();
+		const client = testClient({ isServer: true });
+		await load(client, { issue: prefetch(backend.issueQuery, { id: 1 }) });
+		const browser = testClient();
+		hydrate(browser, send(dehydrate(client)));
+		const resetting = resetAll(browser);
+		await backend.respondAll();
+		await resetting;
+
+		expect(getData(browser, backend.issueQuery, { id: 1 })).toMatchObject({
+			title: "First",
+		});
 		expect(backend.requests).toHaveLength(0);
 	});
 
@@ -385,13 +395,17 @@ describe("streaming the cache", () => {
 			{ id: 2 },
 		]);
 		removeOne(page.client, page.backend.issueQuery, { id: 4 });
-		const off = () =>
-			queryOptions({
-				enabled: false,
-				queryFn: () => 1,
-				queryKey: issues("off"),
-			});
-		void load(page.client, { off: prefetch(off) });
+		setData(
+			page.client,
+			page.backend.issueQuery,
+			{ id: 5 },
+			{
+				author: "ada",
+				id: 5,
+				title: "Fifth",
+			},
+		);
+		void resetOne(page.client, page.backend.issueQuery, { id: 5 });
 		await flush();
 		stream.close();
 		stream.close();

@@ -9,7 +9,7 @@ export {
 	type QueryClient,
 	type QueryClientConfig,
 } from "./client.ts";
-export { abortError, QueryDisabledError } from "./entry.ts";
+export { abortError } from "./entry.ts";
 export {
 	type Fail,
 	fail,
@@ -54,6 +54,7 @@ export {
 	prefetch,
 	type QueryHandle,
 	revalidate,
+	skipToken,
 	swr,
 	waterfallHandle,
 } from "./load.ts";

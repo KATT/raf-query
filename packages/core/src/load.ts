@@ -3,11 +3,9 @@ import {
 	type Entry,
 	entryOf,
 	fetchEntry,
-	isEnabled,
 	isInvalidated,
 	isStale,
 	type Outcome,
-	QueryDisabledError,
 } from "./entry.ts";
 import { hashKey } from "./keys/keys.ts";
 import {
@@ -108,7 +106,31 @@ export function revalidate<TFactory extends QueryFactory>(
 	return loadEntry("revalidate", factory, args);
 }
 
-type LoadedData<TEntries extends Record<string, LoadEntry>> = {
+/**
+ * In place of a `load` entry: skip the query. Its handle is `undefined` and
+ * `data` has no key for it, so a component renders its reader only when
+ * there's a handle.
+ *
+ * ```ts
+ * const [handles] = await load(queryClient, {
+ *   drafts: user.isAdmin ? prefetch(draftsQuery, { slug }) : skipToken,
+ * });
+ * ```
+ */
+export const skipToken: unique symbol = Symbol("skipToken");
+
+/** What `load` takes per name: an entry, or `skipToken`. */
+type LoadEntries = Record<string, LoadEntry | typeof skipToken>;
+
+type HandleOf<TEntry> = TEntry extends LoadEntry
+	? QueryHandle<TEntry["factory"]>
+	: undefined;
+
+type DataOfEntry<TEntry> = TEntry extends LoadEntry
+	? DataOf<TEntry["factory"]>
+	: never;
+
+type LoadedData<TEntries extends LoadEntries> = {
 	[
 		TName in keyof TEntries as TEntries[TName] extends LoadEntry<
 			QueryFactory,
@@ -116,14 +138,15 @@ type LoadedData<TEntries extends Record<string, LoadEntry>> = {
 		>
 			? TName
 			: never
-	]: DataOf<TEntries[TName]["factory"]>;
+	]: DataOfEntry<TEntries[TName]>;
 };
 
-/** What `load` resolves to: a handle per entry, and the data of `swr` and `revalidate` entries. */
-export type Loaded<TEntries extends Record<string, LoadEntry>> = readonly [
-	handles: {
-		[TName in keyof TEntries]: QueryHandle<TEntries[TName]["factory"]>;
-	},
+/**
+ * What `load` resolves to: a handle per entry (`undefined` for `skipToken`),
+ * and the data of `swr` and `revalidate` entries.
+ */
+export type Loaded<TEntries extends LoadEntries> = readonly [
+	handles: { [TName in keyof TEntries]: HandleOf<TEntries[TName]> },
 	data: LoadedData<TEntries>,
 ];
 
@@ -155,20 +178,9 @@ export function readData(entry: Entry): unknown {
 		: entry.state.data;
 }
 
-function disabled(entry: Entry): Promise<Outcome> {
-	return Promise.resolve({
-		error: new QueryDisabledError(`Query ${entry.hash} is disabled`),
-		ok: false,
-	});
-}
-
 /** Start the entry's request if its data isn't fresh. Never waits. */
 export function startIfStale(entry: Entry): void {
-	if (
-		isEnabled(entry) &&
-		isStale(entry) &&
-		!(entry.client.isServer && entry.state.hasData)
-	) {
+	if (isStale(entry) && !(entry.client.isServer && entry.state.hasData)) {
 		void fetchEntry(entry);
 	}
 }
@@ -185,9 +197,6 @@ function isFresh(entry: Entry): boolean {
 }
 
 function waitFresh(entry: Entry, pages: number | undefined): Promise<Outcome> {
-	if (!isEnabled(entry)) {
-		return disabled(entry);
-	}
 	if (isFresh(entry)) {
 		return Promise.resolve({ ok: true });
 	}
@@ -208,7 +217,8 @@ function waitAny(entry: Entry, pages: number | undefined): Promise<Outcome> {
  * can't create a waterfall. Resolves with `[handles, data]` once every
  * `swr` and `revalidate` entry has data, and rejects as soon as one fails:
  * with a `QueryFailure` for a `fail()`, the error itself otherwise.
- * `prefetch` entries never make it reject.
+ * `prefetch` entries never make it reject. A `skipToken` in place of an
+ * entry starts nothing and gets no handle.
  *
  * ```ts
  * const [handles, data] = await load(queryClient, {
@@ -217,11 +227,15 @@ function waitAny(entry: Entry, pages: number | undefined): Promise<Outcome> {
  * });
  * ```
  */
-export async function load<const TEntries extends Record<string, LoadEntry>>(
+export async function load<const TEntries extends LoadEntries>(
 	client: QueryClient,
 	entries: TEntries,
 ): Promise<Loaded<TEntries>> {
-	const started = Object.entries(entries).map(([name, item]) => {
+	const loading = Object.entries(entries).flatMap(([name, item]) =>
+		item === skipToken ? [] : [{ item, name }],
+	);
+	const started = loading.map((loaded) => {
+		const item = loaded.item;
 		const cached = entryOf(client, item.factory, item.input);
 		let wait: Promise<Outcome> | undefined;
 		if (item.kind === "prefetch") {
@@ -232,7 +246,7 @@ export async function load<const TEntries extends Record<string, LoadEntry>>(
 				item.pages,
 			);
 		}
-		return { entry: cached, item, name, wait };
+		return { entry: cached, item, name: loaded.name, wait };
 	});
 	if (process.env.NODE_ENV !== "production") {
 		const records = loadRecords.get(client) ?? [];
