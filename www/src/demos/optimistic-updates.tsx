@@ -4,20 +4,25 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
 	group,
+	infiniteQueryOptions,
 	invalidateMany,
 	load,
 	type QueryHandle,
-	queryOptions,
 	swr,
-	useQuery,
+	useInfiniteQuery,
 	useQueryClient,
 } from "@raf-query/react";
 import { useActionState, useOptimistic, use } from "react";
 import { useFormStatus } from "react-dom";
 
 import { DemoBrowser } from "~/demo-kit/browser.tsx";
-import { FailNextButton, Spinner } from "~/demo-kit/controls.tsx";
+import {
+	FailNextButton,
+	LoadMoreButton,
+	Spinner,
+} from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
+import { pageOf } from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
 const todos = group("todos");
@@ -30,21 +35,26 @@ interface Todo {
 
 function seedTodos(): Array<Todo> {
 	return [
-		{ id: 1, text: "Write the action" },
-		{ id: 2, text: "Add useOptimistic" },
+		{ id: 4, text: "Invalidate after the write" },
+		{ id: 3, text: "Add useOptimistic" },
+		{ id: 2, text: "Write the action" },
+		{ id: 1, text: "Sketch the form" },
 	];
 }
 
 const server = createFakeServer(() => ({ todos: seedTodos() }));
 
 function todosQuery() {
-	return queryOptions({
+	return infiniteQueryOptions({
 		queryFn: (context) =>
 			server.respond(
-				"GET /todos",
-				(db): ReadonlyArray<Todo> => db.todos,
+				`GET /todos?cursor=${context.pageParam}`,
+				(db) => pageOf<Todo>(db.todos, context.pageParam, 3),
 				context,
 			),
+		// After `queryFn`: TypeScript infers the page type from it.
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		initialPageParam: 0,
 		queryKey: todos(),
 	});
 }
@@ -55,7 +65,8 @@ function postTodo(text: string) {
 			id: Math.max(0, ...db.todos.map((item) => item.id)) + 1,
 			text,
 		};
-		db.todos.push(todo);
+		// Newest first, so a new todo is on the first page.
+		db.todos.unshift(todo);
 		return todo;
 	});
 }
@@ -76,14 +87,18 @@ function SubmitButton() {
 
 function TodoList(props: { readonly handle: QueryHandle<typeof todosQuery> }) {
 	const queryClient = useQueryClient();
-	const [todosThenable] = useQuery(todosQuery, props.handle);
-	const serverTodos = use(todosThenable);
+	const [pagesThenable, todosState] = useInfiniteQuery(
+		todosQuery,
+		props.handle,
+	);
+	const pages = use(pagesThenable);
+	const serverTodos = pages.pages.flatMap((page) => page.items);
 	const [shownTodos, addOptimistic] = useOptimistic<
 		ReadonlyArray<Todo>,
 		string
 	>(serverTodos, (current, text) => [
-		...current,
 		{ id: -current.length - 1, pending: true, text },
+		...current,
 	]);
 	const [message, formAction] = useActionState<string | null, FormData>(
 		async (_previous, formData) => {
@@ -123,6 +138,11 @@ function TodoList(props: { readonly handle: QueryHandle<typeof todosQuery> }) {
 					</li>
 				))}
 			</ul>
+			<LoadMoreButton
+				fetchNextPage={todosState.fetchNextPage}
+				hasNextPage={todosState.hasNextPage}
+				isFetchingNextPage={todosState.isFetchingNextPage}
+			/>
 			<form action={formAction} className="flex gap-2">
 				<Input aria-label="New todo" name="text" placeholder="Add a todo" />
 				<SubmitButton />

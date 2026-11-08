@@ -5,17 +5,18 @@ import {
 	group,
 	invalidateOne,
 	load,
+	infiniteQueryOptions,
 	type QueryHandle,
-	queryOptions,
 	swr,
-	useQuery,
+	useInfiniteQuery,
 	useQueryClient,
 } from "@raf-query/react";
 import { RefreshCw, RotateCcw } from "lucide-react";
 
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
-import { formatTime, Spinner } from "~/demo-kit/controls.tsx";
+import { formatTime, LoadMoreButton, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
+import { pageOf } from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
 const inbox = group("inbox");
@@ -25,13 +26,22 @@ const server = createFakeServer(() => ({
 		{ from: "Ada", id: 1, subject: "Loader review" },
 		{ from: "Grace", id: 2, subject: "Re: abort signals" },
 		{ from: "Linus", id: 3, subject: "Cache sizes" },
+		{ from: "Margaret", id: 4, subject: "Retry budget" },
+		{ from: "Ken", id: 5, subject: "Re: staleTime defaults" },
 	],
 }));
 
 function inboxQuery() {
-	return queryOptions({
+	return infiniteQueryOptions({
 		queryFn: (context) =>
-			server.respond("GET /inbox", (db) => db.messages, context),
+			server.respond(
+				`GET /inbox?cursor=${context.pageParam}`,
+				(db) => pageOf(db.messages, context.pageParam, 3),
+				context,
+			),
+		// After `queryFn`: TypeScript infers the page type from it.
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		initialPageParam: 0,
 		queryKey: inbox(),
 		staleTime: 60_000,
 	});
@@ -46,8 +56,12 @@ type PageData =
 
 function Inbox(props: { readonly handle: QueryHandle<typeof inboxQuery> }) {
 	const queryClient = useQueryClient();
-	const [messagesThenable, inboxState] = useQuery(inboxQuery, props.handle);
-	const messages = use(messagesThenable);
+	const [pagesThenable, inboxState] = useInfiniteQuery(
+		inboxQuery,
+		props.handle,
+	);
+	const pages = use(pagesThenable);
+	const messages = pages.pages.flatMap((page) => page.items);
 	return (
 		<div aria-busy={inboxState.isFetching} className="grid gap-3">
 			<ul className="grid gap-1.5">
@@ -61,6 +75,11 @@ function Inbox(props: { readonly handle: QueryHandle<typeof inboxQuery> }) {
 					</li>
 				))}
 			</ul>
+			<LoadMoreButton
+				fetchNextPage={inboxState.fetchNextPage}
+				hasNextPage={inboxState.hasNextPage}
+				isFetchingNextPage={inboxState.isFetchingNextPage}
+			/>
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
 					disabled={inboxState.isFetching}

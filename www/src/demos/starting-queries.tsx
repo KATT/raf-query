@@ -1,12 +1,14 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	group,
+	infiniteQueryOptions,
 	load,
 	prefetch,
 	type QueryClient,
 	queryOptions,
 	revalidate,
 	swr,
+	useInfiniteQuery,
 	useQuery,
 } from "@raf-query/react";
 import {
@@ -19,9 +21,12 @@ import {
 import { MessageSquare } from "lucide-react";
 import { type ReactNode, Suspense, use, useId } from "react";
 
+import { LoadMoreButton } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import {
 	type Comment,
+	type ListPage,
+	pageOf,
 	type Post,
 	seedComments,
 	seedPosts,
@@ -42,14 +47,23 @@ function createBlog() {
 	}));
 	return {
 		commentsQuery: (input: { postId: number }) =>
-			queryOptions({
+			infiniteQueryOptions({
 				queryFn: (context) =>
 					server.respond(
-						`GET /posts/${input.postId}/comments`,
-						(db): ReadonlyArray<Comment> =>
-							db.comments.filter((comment) => comment.postId === input.postId),
+						`GET /posts/${input.postId}/comments?cursor=${context.pageParam}`,
+						(db) =>
+							pageOf(
+								db.comments.filter(
+									(comment) => comment.postId === input.postId,
+								),
+								context.pageParam,
+								2,
+							),
 						context,
 					),
+				// After `queryFn`: TypeScript infers the page type from it.
+				getNextPageParam: (lastPage) => lastPage.nextCursor,
+				initialPageParam: 0,
 				queryKey: posts(input.postId, "comments"),
 				staleTime: 5000,
 			}),
@@ -65,16 +79,24 @@ function createBlog() {
 				staleTime: 5000,
 			}),
 		postsQuery: () =>
-			queryOptions({
+			infiniteQueryOptions({
 				queryFn: (context) =>
 					server.respond(
-						"GET /posts",
-						(db): ReadonlyArray<PostSummary> =>
-							db.posts
-								.slice(0, 4)
-								.map((post) => ({ id: post.id, title: post.title })),
+						`GET /posts?cursor=${context.pageParam}`,
+						(db) =>
+							pageOf(
+								db.posts.map((post): PostSummary => ({
+									id: post.id,
+									title: post.title,
+								})),
+								context.pageParam,
+								3,
+							),
 						context,
 					),
+				// After `queryFn`: TypeScript infers the page type from it.
+				getNextPageParam: (lastPage) => lastPage.nextCursor,
+				initialPageParam: 0,
 				queryKey: posts(),
 				staleTime: 5000,
 			}),
@@ -147,51 +169,84 @@ function CommentsSkeleton() {
 	);
 }
 
-function CommentList(props: { readonly comments: ReadonlyArray<Comment> }) {
+/** What a list needs from `useInfiniteQuery`'s state for its "Load more" button. */
+interface ListControls {
+	readonly fetchNextPage: () => Promise<void>;
+	readonly hasNextPage: boolean;
+	readonly isFetchingNextPage: boolean;
+}
+
+function CommentList(
+	props: ListControls & {
+		readonly pages: ReadonlyArray<ListPage<Comment>>;
+	},
+) {
 	return (
-		<ul className="grid gap-3">
-			{props.comments.map((comment) => (
-				<li className="flex gap-2.5 text-sm" key={comment.id}>
-					<span
-						aria-hidden="true"
-						className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-medium text-muted-foreground"
-					>
-						{comment.author.charAt(0)}
-					</span>
-					<div className="grid gap-0.5">
-						<span className="font-medium">{comment.author}</span>
-						<p className="text-muted-foreground">{comment.body}</p>
-					</div>
-				</li>
-			))}
-		</ul>
+		<div className="grid gap-3">
+			<ul className="grid gap-3">
+				{props.pages
+					.flatMap((page) => page.items)
+					.map((comment) => (
+						<li className="flex gap-2.5 text-sm" key={comment.id}>
+							<span
+								aria-hidden="true"
+								className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-medium text-muted-foreground"
+							>
+								{comment.author.charAt(0)}
+							</span>
+							<div className="grid gap-0.5">
+								<span className="font-medium">{comment.author}</span>
+								<p className="text-muted-foreground">{comment.body}</p>
+							</div>
+						</li>
+					))}
+			</ul>
+			<LoadMoreButton
+				fetchNextPage={props.fetchNextPage}
+				hasNextPage={props.hasNextPage}
+				isFetchingNextPage={props.isFetchingNextPage}
+			/>
+		</div>
 	);
 }
 
 type PostSummary = Pick<Post, "id" | "title">;
 
-function PostList(props: { readonly posts: ReadonlyArray<PostSummary> }) {
+function PostList(
+	props: ListControls & {
+		readonly pages: ReadonlyArray<ListPage<PostSummary>>;
+	},
+) {
 	return (
-		<ul className="grid gap-1">
-			{props.posts.map((post) => (
-				<li key={post.id}>
-					<BlogLink
-						className="block rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-						params={{ id: String(post.id) }}
-						to="/posts/$id"
-					>
-						{post.title}
-					</BlogLink>
-				</li>
-			))}
-		</ul>
+		<div className="grid gap-2">
+			<ul className="grid gap-1">
+				{props.pages
+					.flatMap((page) => page.items)
+					.map((post) => (
+						<li key={post.id}>
+							<BlogLink
+								className="block rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+								params={{ id: String(post.id) }}
+								to="/posts/$id"
+							>
+								{post.title}
+							</BlogLink>
+						</li>
+					))}
+			</ul>
+			<LoadMoreButton
+				fetchNextPage={props.fetchNextPage}
+				hasNextPage={props.hasNextPage}
+				isFetchingNextPage={props.isFetchingNextPage}
+			/>
+		</div>
 	);
 }
 
 function PostListSkeleton() {
 	return (
 		<div className="grid gap-1">
-			{[0, 1, 2, 3].map((row) => (
+			{[0, 1, 2].map((row) => (
 				<Skeleton className="h-8 w-full" key={row} />
 			))}
 		</div>
@@ -240,19 +295,38 @@ const prefetchList = createRoute({
 });
 const prefetchTree = prefetchRoot.addChildren([prefetchList, prefetchPost]);
 
-function PromisedList(props: {
-	readonly posts: Promise<ReadonlyArray<PostSummary>>;
-}) {
-	const list = use(props.posts);
-	return <PostList posts={list} />;
+function PromisedList(
+	props: ListControls & {
+		readonly posts: Promise<{
+			readonly pages: ReadonlyArray<ListPage<PostSummary>>;
+		}>;
+	},
+) {
+	const data = use(props.posts);
+	return (
+		<PostList
+			fetchNextPage={props.fetchNextPage}
+			hasNextPage={props.hasNextPage}
+			isFetchingNextPage={props.isFetchingNextPage}
+			pages={data.pages}
+		/>
+	);
 }
 
 function PrefetchedList(): ReactNode {
 	const handle = prefetchList.useLoaderData<PrefetchRouter>();
-	const [postsThenable, postsState] = useQuery(prefetching.postsQuery, handle);
+	const [pagesThenable, postsState] = useInfiniteQuery(
+		prefetching.postsQuery,
+		handle,
+	);
 	return (
 		<Suspense fallback={<PostListSkeleton />} key={postsState.hash}>
-			<PromisedList posts={postsThenable} />
+			<PromisedList
+				fetchNextPage={postsState.fetchNextPage}
+				hasNextPage={postsState.hasNextPage}
+				isFetchingNextPage={postsState.isFetchingNextPage}
+				posts={pagesThenable}
+			/>
 		</Suspense>
 	);
 }
@@ -264,9 +338,19 @@ function PromisedPost(props: { readonly post: Promise<Post | undefined> }) {
 
 function PrefetchedComments(): ReactNode {
 	const data = prefetchPost.useLoaderData<PrefetchRouter>();
-	const [commentsThenable] = useQuery(prefetching.commentsQuery, data.comments);
-	const comments = use(commentsThenable);
-	return <CommentList comments={comments} />;
+	const [pagesThenable, commentsState] = useInfiniteQuery(
+		prefetching.commentsQuery,
+		data.comments,
+	);
+	const pages = use(pagesThenable);
+	return (
+		<CommentList
+			fetchNextPage={commentsState.fetchNextPage}
+			hasNextPage={commentsState.hasNextPage}
+			isFetchingNextPage={commentsState.isFetchingNextPage}
+			pages={pages.pages}
+		/>
+	);
 }
 
 function PrefetchedPost(): ReactNode {
@@ -319,22 +403,40 @@ const swrTree = swrRoot.addChildren([swrList, swrPost]);
 
 function SwrList(): ReactNode {
 	const handle = swrList.useLoaderData<SwrRouter>();
-	const [postsThenable] = useQuery(swrBlog.postsQuery, handle);
-	const list = use(postsThenable);
-	return <PostList posts={list} />;
+	const [pagesThenable, postsState] = useInfiniteQuery(
+		swrBlog.postsQuery,
+		handle,
+	);
+	const pages = use(pagesThenable);
+	return (
+		<PostList
+			fetchNextPage={postsState.fetchNextPage}
+			hasNextPage={postsState.hasNextPage}
+			isFetchingNextPage={postsState.isFetchingNextPage}
+			pages={pages.pages}
+		/>
+	);
 }
 
 function SwrPost(): ReactNode {
 	const data = swrPost.useLoaderData<SwrRouter>();
 	const [postThenable] = useQuery(swrBlog.postQuery, data.post);
 	const post = use(postThenable);
-	const [commentsThenable] = useQuery(swrBlog.commentsQuery, data.comments);
+	const [commentsThenable, commentsState] = useInfiniteQuery(
+		swrBlog.commentsQuery,
+		data.comments,
+	);
 	const comments = use(commentsThenable);
 	return (
 		<PostPage>
 			<PostBody post={post} />
 			<CommentsSection>
-				<CommentList comments={comments} />
+				<CommentList
+					fetchNextPage={commentsState.fetchNextPage}
+					hasNextPage={commentsState.hasNextPage}
+					isFetchingNextPage={commentsState.isFetchingNextPage}
+					pages={comments.pages}
+				/>
 			</CommentsSection>
 		</PostPage>
 	);
@@ -373,16 +475,26 @@ const revalidateTree = revalidateRoot.addChildren([
 
 function RevalidatedList(): ReactNode {
 	const handle = revalidateList.useLoaderData<RevalidateRouter>();
-	const [postsThenable] = useQuery(revalidateBlog.postsQuery, handle);
-	const list = use(postsThenable);
-	return <PostList posts={list} />;
+	const [pagesThenable, postsState] = useInfiniteQuery(
+		revalidateBlog.postsQuery,
+		handle,
+	);
+	const pages = use(pagesThenable);
+	return (
+		<PostList
+			fetchNextPage={postsState.fetchNextPage}
+			hasNextPage={postsState.hasNextPage}
+			isFetchingNextPage={postsState.isFetchingNextPage}
+			pages={pages.pages}
+		/>
+	);
 }
 
 function RevalidatedPost(): ReactNode {
 	const data = revalidatePost.useLoaderData<RevalidateRouter>();
 	const [postThenable] = useQuery(revalidateBlog.postQuery, data.post);
 	const post = use(postThenable);
-	const [commentsThenable] = useQuery(
+	const [commentsThenable, commentsState] = useInfiniteQuery(
 		revalidateBlog.commentsQuery,
 		data.comments,
 	);
@@ -391,7 +503,12 @@ function RevalidatedPost(): ReactNode {
 		<PostPage>
 			<PostBody post={post} />
 			<CommentsSection>
-				<CommentList comments={comments} />
+				<CommentList
+					fetchNextPage={commentsState.fetchNextPage}
+					hasNextPage={commentsState.hasNextPage}
+					isFetchingNextPage={commentsState.isFetchingNextPage}
+					pages={comments.pages}
+				/>
 			</CommentsSection>
 		</PostPage>
 	);

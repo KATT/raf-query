@@ -3,6 +3,7 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
 	group,
+	infiniteQueryOptions,
 	invalidateAll,
 	invalidateMany,
 	invalidateOne,
@@ -10,15 +11,15 @@ import {
 	prefetch,
 	type QueryClient,
 	type QueryHandle,
-	queryOptions,
-	useQuery,
+	useInfiniteQuery,
 	useQueryClient,
 } from "@raf-query/react";
 import { Suspense, use, useTransition } from "react";
 
 import { DemoBrowser } from "~/demo-kit/browser.tsx";
-import { formatTime, Spinner } from "~/demo-kit/controls.tsx";
+import { formatTime, LoadMoreButton, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
+import { type ListPage, pageOf } from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
 type Status = "all" | "done";
@@ -33,29 +34,45 @@ const server = createFakeServer(() => ({
 	users: ["Ada", "Grace", "Linus"],
 }));
 
+const pageSize = 2;
+
 const todos = group("todos");
 const users = group("users");
 
 function todosQuery(input: { readonly status: Status }) {
-	return queryOptions({
+	return infiniteQueryOptions({
 		queryFn: (context) =>
 			server.respond(
-				`GET /todos?status=${input.status}`,
+				`GET /todos?status=${input.status}&cursor=${context.pageParam}`,
 				(db) =>
-					db.todos
-						.filter((todo) => input.status === "all" || todo.done)
-						.map((todo) => todo.text),
+					pageOf(
+						db.todos
+							.filter((todo) => input.status === "all" || todo.done)
+							.map((todo) => todo.text),
+						context.pageParam,
+						pageSize,
+					),
 				context,
 			),
+		// After `queryFn`: TypeScript infers the page type from it.
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		initialPageParam: 0,
 		queryKey: todos("list", input),
 		staleTime: Infinity,
 	});
 }
 
 function usersQuery() {
-	return queryOptions({
+	return infiniteQueryOptions({
 		queryFn: (context) =>
-			server.respond("GET /users", (db) => db.users, context),
+			server.respond(
+				`GET /users?cursor=${context.pageParam}`,
+				(db) => pageOf(db.users, context.pageParam, pageSize),
+				context,
+			),
+		// After `queryFn`: TypeScript infers the page type from it.
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		initialPageParam: 0,
 		queryKey: users("list"),
 		staleTime: Infinity,
 	});
@@ -67,25 +84,32 @@ interface PageData {
 	readonly users: QueryHandle<typeof usersQuery>;
 }
 
-function ListCard(props: {
-	readonly itemsThenable: Promise<ReadonlyArray<string>>;
-}) {
-	const items = use(props.itemsThenable);
+interface StringPages {
+	readonly pages: ReadonlyArray<ListPage<string>>;
+}
+
+function ListCard(props: { readonly pagesThenable: Promise<StringPages> }) {
+	const data = use(props.pagesThenable);
 	return (
 		<ul className="grid gap-1 text-sm">
-			{items.map((item) => (
-				<li className="truncate" key={item}>
-					{item}
-				</li>
-			))}
+			{data.pages
+				.flatMap((page) => page.items)
+				.map((item) => (
+					<li className="truncate" key={item}>
+						{item}
+					</li>
+				))}
 		</ul>
 	);
 }
 
 function Card(props: {
 	readonly fetching: boolean;
-	readonly itemsThenable: Promise<ReadonlyArray<string>>;
+	readonly fetchNextPage: () => Promise<void>;
+	readonly hasNextPage: boolean;
+	readonly isFetchingNextPage: boolean;
 	readonly label: string;
+	readonly pagesThenable: Promise<StringPages>;
 	readonly updatedAt: number;
 }) {
 	return (
@@ -108,8 +132,13 @@ function Card(props: {
 					</div>
 				}
 			>
-				<ListCard itemsThenable={props.itemsThenable} />
+				<ListCard pagesThenable={props.pagesThenable} />
 			</Suspense>
+			<LoadMoreButton
+				fetchNextPage={props.fetchNextPage}
+				hasNextPage={props.hasNextPage}
+				isFetchingNextPage={props.isFetchingNextPage}
+			/>
 			<p className="text-[11px] text-muted-foreground tabular-nums">
 				{props.updatedAt ? `Fetched ${formatTime(props.updatedAt)}` : "Loading"}
 			</p>
@@ -121,24 +150,30 @@ function TodosCard(props: {
 	readonly handle: QueryHandle<typeof todosQuery>;
 	readonly label: string;
 }) {
-	const [itemsThenable, state] = useQuery(todosQuery, props.handle);
+	const [pagesThenable, state] = useInfiniteQuery(todosQuery, props.handle);
 	return (
 		<Card
 			fetching={state.isFetching}
-			itemsThenable={itemsThenable}
+			fetchNextPage={state.fetchNextPage}
+			hasNextPage={state.hasNextPage}
+			isFetchingNextPage={state.isFetchingNextPage}
 			label={props.label}
+			pagesThenable={pagesThenable}
 			updatedAt={state.updatedAt}
 		/>
 	);
 }
 
 function UsersCard(props: { readonly handle: QueryHandle<typeof usersQuery> }) {
-	const [itemsThenable, state] = useQuery(usersQuery, props.handle);
+	const [pagesThenable, state] = useInfiniteQuery(usersQuery, props.handle);
 	return (
 		<Card
 			fetching={state.isFetching}
-			itemsThenable={itemsThenable}
+			fetchNextPage={state.fetchNextPage}
+			hasNextPage={state.hasNextPage}
+			isFetchingNextPage={state.isFetchingNextPage}
 			label='[users, "list"]'
+			pagesThenable={pagesThenable}
 			updatedAt={state.updatedAt}
 		/>
 	);

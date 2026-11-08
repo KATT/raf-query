@@ -1,11 +1,13 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	group,
+	infiniteQueryOptions,
 	load,
 	prefetch,
 	type QueryHandle,
 	queryOptions,
 	removeAll,
+	useInfiniteQuery,
 	useQuery,
 	useQueryClient,
 	waterfallHandle,
@@ -13,9 +15,9 @@ import {
 import { Suspense, use, useState } from "react";
 
 import { DemoBrowser, type DemoLoader, DemoLink } from "~/demo-kit/browser.tsx";
-import { Segmented } from "~/demo-kit/controls.tsx";
+import { LoadMoreButton, Segmented } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
-import { seedComments, seedPosts } from "~/demo-kit/fixtures.ts";
+import { pageOf, seedComments, seedPosts } from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
 const posts = group("posts");
@@ -75,14 +77,21 @@ function postAuthorQuery(input: { readonly postId: number }) {
 }
 
 function commentsQuery(input: { readonly postId: number }) {
-	return queryOptions({
+	return infiniteQueryOptions({
 		queryFn: (context) =>
 			server.respond(
-				`GET /posts/${input.postId}/comments`,
+				`GET /posts/${input.postId}/comments?cursor=${context.pageParam}`,
 				(db) =>
-					db.comments.filter((comment) => comment.postId === input.postId),
+					pageOf(
+						db.comments.filter((comment) => comment.postId === input.postId),
+						context.pageParam,
+						2,
+					),
 				context,
 			),
+		// After `queryFn`: TypeScript infers the page type from it.
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		initialPageParam: 0,
 		queryKey: posts(input.postId, "comments"),
 		staleTime: 30_000,
 	});
@@ -135,17 +144,32 @@ function Byline(props: { readonly name: string | undefined }) {
 function CommentList(props: {
 	readonly handle: QueryHandle<typeof commentsQuery>;
 }) {
-	const [commentsThenable] = useQuery(commentsQuery, props.handle);
-	const comments = use(commentsThenable);
+	const [pagesThenable, commentsState] = useInfiniteQuery(
+		commentsQuery,
+		props.handle,
+	);
+	const pages = use(pagesThenable);
 	return (
-		<ul className="grid gap-1.5">
-			{comments.map((comment) => (
-				<li className="rounded-md border px-3 py-1.5 text-sm" key={comment.id}>
-					<span className="mr-2 font-medium">{comment.author}</span>
-					{comment.body}
-				</li>
-			))}
-		</ul>
+		<div className="grid gap-1.5">
+			<ul className="grid gap-1.5">
+				{pages.pages
+					.flatMap((page) => page.items)
+					.map((comment) => (
+						<li
+							className="rounded-md border px-3 py-1.5 text-sm"
+							key={comment.id}
+						>
+							<span className="mr-2 font-medium">{comment.author}</span>
+							{comment.body}
+						</li>
+					))}
+			</ul>
+			<LoadMoreButton
+				fetchNextPage={commentsState.fetchNextPage}
+				hasNextPage={commentsState.hasNextPage}
+				isFetchingNextPage={commentsState.isFetchingNextPage}
+			/>
+		</div>
 	);
 }
 

@@ -5,14 +5,15 @@ import {
 	load,
 	prefetch,
 	type QueryHandle,
-	queryOptions,
-	useQuery,
+	infiniteQueryOptions,
+	useInfiniteQuery,
 } from "@raf-query/react";
 import { use } from "react";
 
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
-import { formatTime, Spinner } from "~/demo-kit/controls.tsx";
+import { formatTime, LoadMoreButton, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
+import { pageOf } from "~/demo-kit/fixtures.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 
 const todos = group("todos");
@@ -28,14 +29,23 @@ const server = createFakeServer(() => ({
 		{ done: true, id: 1, text: "Read about staleTime" },
 		{ done: false, id: 2, text: "Watch an entry go inactive" },
 		{ done: false, id: 3, text: "Wait out gcTime" },
+		{ done: false, id: 4, text: "Load a second page" },
+		{ done: false, id: 5, text: "Come back to both pages" },
 	] satisfies ReadonlyArray<Todo>,
 }));
 
 function todosQuery() {
-	return queryOptions({
+	return infiniteQueryOptions({
 		gcTime: 10_000,
 		queryFn: (context) =>
-			server.respond("GET /todos", (db) => db.todos, context),
+			server.respond(
+				`GET /todos?cursor=${context.pageParam}`,
+				(db) => pageOf(db.todos, context.pageParam, 3),
+				context,
+			),
+		// After `queryFn`: TypeScript infers the page type from it.
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		initialPageParam: 0,
 		queryKey: todos(),
 		staleTime: 5000,
 	});
@@ -57,13 +67,17 @@ function TodosSkeleton() {
 }
 
 function Todos(props: { readonly handle: QueryHandle<typeof todosQuery> }) {
-	const [todosThenable, todosState] = useQuery(todosQuery, props.handle);
-	const list = use(todosThenable);
+	const [pagesThenable, todosState] = useInfiniteQuery(
+		todosQuery,
+		props.handle,
+	);
+	const pages = use(pagesThenable);
+	const list = pages.pages.flatMap((page) => page.items);
 	return (
 		<div aria-busy={todosState.isFetching} className="grid gap-2">
 			<p className="flex items-center gap-2 text-xs text-muted-foreground">
 				Fetched at {formatTime(todosState.updatedAt)}
-				{todosState.isFetching ? (
+				{todosState.isFetching && !todosState.isFetchingNextPage ? (
 					<>
 						<Spinner /> refetching in the background
 					</>
@@ -82,6 +96,11 @@ function Todos(props: { readonly handle: QueryHandle<typeof todosQuery> }) {
 					</li>
 				))}
 			</ul>
+			<LoadMoreButton
+				fetchNextPage={todosState.fetchNextPage}
+				hasNextPage={todosState.hasNextPage}
+				isFetchingNextPage={todosState.isFetchingNextPage}
+			/>
 		</div>
 	);
 }
