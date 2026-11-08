@@ -1,4 +1,4 @@
-import { action } from "@raf-query/react";
+import { invalidateMany, useQueryClient } from "@raf-query/react";
 import { useActionState, useOptimistic } from "react";
 import { todosQuery } from "~/queries.ts";
 
@@ -7,9 +7,8 @@ type Todo = { id: number; pending?: boolean; text: string };
 declare function addTodoApi(text: string): Promise<void>;
 
 // #region optimistic-updates
-const addTodo = action(addTodoApi, { invalidates: [todosQuery] });
-
 function AddTodo(props: { todos: Todo[] }) {
+	const queryClient = useQueryClient();
 	const [todos, addOptimistic] = useOptimistic(
 		props.todos,
 		(current, text: string) => [...current, { id: -1, pending: true, text }],
@@ -19,10 +18,11 @@ function AddTodo(props: { todos: Todo[] }) {
 			const text = String(formData.get("text"));
 			addOptimistic(text);
 			try {
-				await addTodo(text);
+				await addTodoApi(text);
 			} catch (error) {
 				return error instanceof Error ? error.message : "Something went wrong";
 			}
+			await invalidateMany(queryClient, todosQuery);
 			return null;
 		},
 		null,

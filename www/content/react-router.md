@@ -32,7 +32,7 @@ react-router-spa/app/query-client.ts#query-client
 react-router-spa/app/root.tsx#app
 ```
 
-Nothing is on by default: [`recommended()`](./important-defaults.md) adds retries, refetching on window focus and reconnect, polling, and invalidation after actions.
+Nothing is on by default: [`recommended()`](./important-defaults.md) adds retries, refetching on window focus and reconnect, and polling.
 
 Mount DevTools only when [`import.meta.env.DEV`](https://vite.dev/guide/env-and-mode#built-in-constants) is true so Vite drops the panel from production builds.
 
@@ -68,7 +68,7 @@ One query client per browser tab, in the root route's component:
 react-router/app/root.tsx#app
 ```
 
-Nothing is on by default: [`recommended()`](./important-defaults.md) adds retries, refetching on window focus and reconnect, polling, and invalidation after actions.
+Nothing is on by default: [`recommended()`](./important-defaults.md) adds retries, refetching on window focus and reconnect, and polling.
 
 Mount DevTools only when `import.meta.env.DEV` is true so Vite drops the panel from production builds. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
 
@@ -152,7 +152,7 @@ Read search params from `args.request.url` in the `loader` or `clientLoader`, va
 
 ## Mutations
 
-Write from the browser, then invalidate the queries the write changed with `invalidateOne(useQueryClient(), factory, input)` or `invalidateMany`, or wrap the write in `action(write, { invalidates: [...] })`, as in [Mutations](./mutations.md). React Router [actions](https://reactrouter.com/start/framework/actions) work too: after one, React Router runs the page's loaders again. A server `loader`'s new snapshot carries the new data. A `clientLoader` reads the tab's cache, which may still hold the old data as fresh, so `await invalidateOne(queryClient, ...)` in the [`clientAction`](https://reactrouter.com/start/framework/actions#client-actions) before it returns.
+Write from the browser in a React action, then await `invalidateOne(queryClient, factory, input)` or `invalidateMany` with the client from `useQueryClient()`, as in [Mutations](./mutations.md). React Router [actions](https://reactrouter.com/start/framework/actions) work too: after one, React Router runs the page's loaders again. A server `loader`'s new snapshot carries the new data. A `clientLoader` reads the tab's cache, which may still hold the old data as fresh, so `await invalidateOne(queryClient, ...)` in the [`clientAction`](https://reactrouter.com/start/framework/actions#client-actions) before it returns.
 
 ## Example
 

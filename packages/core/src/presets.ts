@@ -1,4 +1,3 @@
-import { invalidateOnAction } from "./action.ts";
 import type { Feature, Link } from "./client.ts";
 import {
 	focusRefetch,
@@ -16,14 +15,13 @@ export interface Recommended {
 		Feature<{ readonly meta: FocusRefetchMeta }>,
 		Feature<{ readonly meta: ReconnectRefetchMeta }>,
 		Feature<{ readonly meta: PollingMeta }>,
-		Feature,
 	];
 	readonly links: readonly [Link<{ readonly meta: RetryMeta }>];
 }
 
 /**
  * The behaviors most apps want: retries, refetching on focus and reconnect,
- * polling, and cache busting after actions. Spread it into the config:
+ * and polling. Spread it into the config:
  *
  * ```ts
  * createQueryClient({ ...recommended(), staleTime: 30_000 });
@@ -31,12 +29,7 @@ export interface Recommended {
  */
 export function recommended(): Recommended {
 	return {
-		features: [
-			focusRefetch(),
-			reconnectRefetch(),
-			polling(),
-			invalidateOnAction(),
-		],
+		features: [focusRefetch(), reconnectRefetch(), polling()],
 		links: [retry()],
 	};
 }

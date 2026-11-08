@@ -28,7 +28,7 @@ React's own guidance is to start fetching before rendering: in the router's load
 - **Thenables in, `use()` out.** The read hook returns a stable thenable for every handle; components read it with `use()`, so reads can be conditional or happen in a child.
 - **The URL is the input.** Anything that changes what a query fetches (filters, sort, page) lives in path or search params, so the loader starts the right query on every navigation. Components never derive query input from local state.
 - **Actions for writes.** Mutations are plain async functions in form actions or transitions. The cache provides invalidation, React provides pending and optimistic state.
-- **Pay for what you use.** The client does nothing on its own. Retries, refetching on focus or reconnect, polling and invalidation after actions are opt-in links and features, so an app ships only what it turns on.
+- **Pay for what you use.** The client does nothing on its own. Retries, refetching on focus or reconnect and polling are opt-in links and features, so an app ships only what it turns on.
 
 ## A taste
 

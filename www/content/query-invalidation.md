@@ -89,13 +89,7 @@ Each comes as `…One`, `…Many` and `…All`, with the same targets; `resetMan
 
 ## Invalidating from mutations
 
-The common pattern is to invalidate at the end of a write, so it covers whatever the write affected. `action()` wraps the write and invalidates what it names when it resolves:
-
-```sample
-tanstack-start/src/docs/query-invalidation.tsx#action
-```
-
-Or call a verb yourself at the end of a form action:
+The common pattern is to invalidate at the end of a write, so it covers whatever the write affected. Await a verb at the end of the action:
 
 ```sample
 tanstack-start/src/docs/query-invalidation.tsx#invalidating-from-mutations

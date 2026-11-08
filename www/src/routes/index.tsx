@@ -238,10 +238,10 @@ const stepsByMode = {
 						page can stream in around it.
 					</p>
 					<p>
-						From then on the cache keeps both up to date: with{" "}
-						<code>recommended()</code>, it refetches stale data when the window
-						regains focus and after an action invalidates it, and each component
-						re-renders with the new data.
+						From then on the cache keeps both up to date: it refetches stale
+						data after an action invalidates it and, with{" "}
+						<code>recommended()</code>, when the window regains focus, and each
+						component re-renders with the new data.
 					</p>
 				</>
 			),
@@ -303,10 +303,10 @@ const stepsByMode = {
 						skeleton shows, so the rest of the page can stream in around it.
 					</p>
 					<p>
-						From then on the cache keeps both up to date: with{" "}
-						<code>recommended()</code>, it refetches stale data when the window
-						regains focus and after an action invalidates it, and each component
-						re-renders with the new data.
+						From then on the cache keeps both up to date: it refetches stale
+						data after an action invalidates it and, with{" "}
+						<code>recommended()</code>, when the window regains focus, and each
+						component re-renders with the new data.
 					</p>
 				</>
 			),
@@ -375,10 +375,10 @@ const stepsByMode = {
 						skeleton shows, so the rest of the page can stream in around it.
 					</p>
 					<p>
-						From then on the cache keeps both up to date: with{" "}
-						<code>recommended()</code>, it refetches stale data when the window
-						regains focus and after an action invalidates it, and each component
-						re-renders with the new data.
+						From then on the cache keeps both up to date: it refetches stale
+						data after an action invalidates it and, with{" "}
+						<code>recommended()</code>, when the window regains focus, and each
+						component re-renders with the new data.
 					</p>
 				</>
 			),
@@ -441,7 +441,7 @@ const mapping: ReadonlyArray<readonly [string, string]> = [
 	],
 	["useInfiniteQuery()", "useQuery() with an infiniteQueryOptions factory"],
 	["placeholderData: keepPreviousData", 'whilePending: "previous"'],
-	["useMutation()", "action(write, { invalidates })"],
+	["useMutation()", "a React action: await write(), then invalidateMany()"],
 	["invalidateQueries(filters)", "invalidateMany(qc, target)"],
 ];
 

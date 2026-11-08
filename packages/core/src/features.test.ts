@@ -5,10 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { groups } from "./groups.ts";
 import {
-	action,
 	focusRefetch,
 	type FocusRefetchMeta,
-	invalidateOnAction,
 	polling,
 	type PollingMeta,
 	type QueryClient,
@@ -25,7 +23,6 @@ import {
 	mount,
 	read,
 	testClient,
-	users,
 } from "./test-utils.ts";
 
 type Meta = {
@@ -174,59 +171,5 @@ describe("polling", () => {
 		advance(client, 500);
 
 		expect(["undefined", "false", "0"].map(counter.calls)).toEqual([1, 1, 1]);
-	});
-});
-
-describe("actions", () => {
-	it("invalidate what they name, and resolve once the refetches settle", async () => {
-		const counter = counted();
-		const client = testClient({ features: [invalidateOnAction()] });
-		await counter.show(client, "issues");
-		const save = action(async (title: string) => title.toUpperCase(), {
-			invalidates: [issues],
-		});
-		const other = action(async () => {}, { invalidates: [users] });
-
-		await act(async () => {
-			expect(await save("done")).toBe("DONE");
-		});
-		expect(counter.calls("issues")).toBe(2);
-		await act(() => other());
-		expect(counter.calls("issues")).toBe(2);
-	});
-
-	it("invalidate every read query by default, and never a server's", async () => {
-		const counter = counted();
-		const active = testClient({ features: [invalidateOnAction()] });
-		const named = testClient({
-			features: [invalidateOnAction({ default: "none" })],
-		});
-		const server = testClient({
-			features: [invalidateOnAction()],
-			isServer: true,
-		});
-		await counter.show(active, "active");
-		await counter.show(named, "named");
-		await counter.show(testClient(), "unregistered");
-		await counter.show(server, "server");
-		await act(() => action(async () => {})());
-
-		expect(
-			["active", "named", "unregistered", "server"].map(counter.calls),
-		).toEqual([2, 1, 1, 1]);
-	});
-
-	it("reach only their client when bound to one", async () => {
-		const counter = counted();
-		const bound = testClient({ features: [invalidateOnAction()] });
-		await counter.show(bound, "bound");
-		await counter.show(
-			testClient({ features: [invalidateOnAction()] }),
-			"other",
-		);
-		await act(() => action(async () => {}, { client: bound })());
-
-		expect(counter.calls("bound")).toBe(2);
-		expect(counter.calls("other")).toBe(1);
 	});
 });

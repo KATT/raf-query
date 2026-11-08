@@ -1,6 +1,6 @@
 ---
 title: Mutations
-description: Write data with action() inside form actions and transitions, keep the UI responsive with useOptimistic, then invalidate or update the cache.
+description: Write data in React actions inside forms and transitions, keep the UI responsive with useOptimistic, then invalidate or update the cache.
 section: Guides
 order: 12
 ---
@@ -15,7 +15,7 @@ The cache's part is what happens after the write: [invalidating](./query-invalid
 
 ## Actions
 
-`action(write, { invalidates })` wraps a write. It returns a plain async function with the same arguments, which invalidates what `invalidates` names once the write resolves:
+A mutation is a React action written in the component: get the client with `useQueryClient()`, await the write, then await a verb that invalidates what the write changed:
 
 ```sample
 tanstack-start/src/docs/mutations.tsx#intro
@@ -23,37 +23,9 @@ tanstack-start/src/docs/mutations.tsx#intro
 
 `updatePost` is a plain async function: a TanStack Start server function, a Next.js server action, or a `fetch` call.
 
-`invalidates` takes factories, which cover every query of the factory, groups and tags, never raw keys. The action resolves once the queries it invalidated that are on screen have refetched. Awaiting it inside the React action keeps that action pending until the fresh data is on screen, so the optimistic value is replaced by the real one without flickering back to the old one in between.
+The verb resolves once the queries it invalidated that are on screen have refetched. Awaiting it inside the action keeps the action pending until the fresh data is on screen, so the optimistic value is replaced by the real one without flickering back to the old one in between.
 
-### The invalidateOnAction feature
-
-Actions bust the cache of the browser clients that have the `invalidateOnAction()` feature, on its own or through `recommended()`. Without it, actions invalidate nothing:
-
-```sample
-tanstack-start/src/docs/mutations.ts#the-invalidateonaction-feature
-```
-
-An action without `invalidates` refetches everything on screen and marks the rest stale, the way routers rerun their loaders after an action. Pass `invalidateOnAction({ default: "none" })` to have such actions invalidate nothing.
-
-Server clients never take part: each belongs to one request, so one request's action can't reach another request's cache.
-
-### One client among several
-
-A page that mounts several clients, such as micro-frontends that each bring their own, can bind an action to one of them with `client`. Then only that client's `invalidateOnAction()` reacts, and the `where` of each target in `invalidates` is checked against that client's `meta` types:
-
-```sample
-tanstack-start/src/docs/mutations.ts#one-client-among-several
-```
-
-Without `client`, every mounted browser client with the feature reacts. A server client never does, bound or not.
-
-## Invalidating by hand
-
-`action()` names what it invalidates up front, and a factory there covers all of its queries. To invalidate one query, or to decide after the write what to invalidate, call a verb yourself:
-
-```sample
-tanstack-start/src/docs/mutations.ts#invalidating-by-hand
-```
+The action decides what to invalidate after the write, so it can use the action's arguments and the write's result. Verbs take factories, groups and tags, never raw keys:
 
 | Verb                                          | Marks stale                                         |
 | --------------------------------------------- | --------------------------------------------------- |
@@ -61,9 +33,20 @@ tanstack-start/src/docs/mutations.ts#invalidating-by-hand
 | `invalidateMany(queryClient, factory, part?)` | A factory's queries, optionally only matching input |
 | `invalidateMany(queryClient, group)`          | Every query in a group                              |
 | `invalidateMany(queryClient, tag, param?)`    | Every query with a tag                              |
+| `invalidateMany(queryClient, [target, …])`    | Every query any of the targets matches              |
 | `invalidateAll(queryClient)`                  | Every query                                         |
 
-Queries on screen refetch at once, the rest when they're next loaded. Each verb resolves when those refetches settle. See [Query invalidation](./query-invalidation.md).
+Queries on screen refetch at once, the rest when they're next loaded. See [Query invalidation](./query-invalidation.md).
+
+### Several things at once
+
+When a write changes more than one thing, pass the targets to one `invalidateMany` call:
+
+```sample
+tanstack-start/src/docs/mutations.ts#several-targets
+```
+
+Their refetches run side by side, and a query that several targets cover refetches once. Awaiting one verb after another serializes them: the second verb's refetches start only once the first's have settled, and the action stays pending for both in a row.
 
 ## Optimistic updates
 
@@ -109,7 +92,7 @@ Wrap the action in `useActionState` and return the caught error, as the demo doe
 
 ## Pending state
 
-Inside a form, [`useFormStatus()`](https://react.dev/reference/react-dom/hooks/useFormStatus) gives a submit button the form's pending state. Outside one, [`useTransition`](https://react.dev/reference/react/useTransition) returns `isPending` for the actions you start with its `startTransition`:
+Inside a form, [`useFormStatus()`](https://react.dev/reference/react-dom/hooks/useFormStatus) gives a submit button the form's pending state. Outside one, [`useTransition`](https://react.dev/reference/react/useTransition) returns `isPending` for the actions you start with its `startTransition`. Either way, the pending state lasts until the awaited verb's refetches settle:
 
 ```sample
 tanstack-start/src/docs/mutations.tsx#pending-state

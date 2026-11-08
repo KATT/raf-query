@@ -8,7 +8,7 @@ Mechanisms the build should copy, each verified against vendored or local source
 | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | Entries, dedupe, gc, lazy staleness, infinite paging, streams, `load`, verbs | `@raf-query/core` (`entry.ts`, `client.ts`, `load.ts`, `verbs.ts`)                     |
 | Keys, invalidation stamps and targets (the provisional seam)                 | `@raf-query/core` (`keys.ts`, with `group`; tags in `groups.ts` on `/groups`)          |
-| Retry and timeout links; focus, reconnect, polling and action features       | `@raf-query/core` (`links.ts`, `features.ts`, `action.ts`), opt-in                     |
+| Retry and timeout links; focus, reconnect and polling features               | `@raf-query/core` (`links.ts`, `features.ts`), opt-in                                  |
 | Stable thenables per (key, data version)                                     | `@raf-query/core` (React-agnostic: a thenable with `status`/`value` is just an object) |
 | `dehydrate`, `hydrate`, `dehydrateStream`                                    | `@raf-query/core/hydration`, opt-in                                                    |
 | `useSyncExternalStore` subscription, providers, `useQuery`, `useIsFetching`  | `@raf-query/react`                                                                     |

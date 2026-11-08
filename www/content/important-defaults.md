@@ -5,7 +5,7 @@ section: Guides
 order: 1
 ---
 
-A client from `createQueryClient()` caches, dedupes and garbage-collects, and nothing else. Retries, refetching on focus and reconnect, polling and invalidating after actions are **links** and **features** you pass to the client. `recommended()` returns the set most apps want:
+A client from `createQueryClient()` caches, dedupes and garbage-collects, and nothing else. Retries, refetching on focus and reconnect, and polling are **links** and **features** you pass to the client. `recommended()` returns the set most apps want:
 
 ```ts twoslash
 import { createQueryClient, recommended } from "@raf-query/react";
@@ -15,13 +15,12 @@ export function makeQueryClient() {
 }
 ```
 
-| Part                   | Kind    | What it does                                                                      |
-| ---------------------- | ------- | --------------------------------------------------------------------------------- |
-| `retry()`              | link    | Retries failed requests. See [Retries](./retries.md)                              |
-| `focusRefetch()`       | feature | Refetches read, stale queries when the window regains focus                       |
-| `reconnectRefetch()`   | feature | Refetches read, stale queries when the browser comes back online                  |
-| `polling()`            | feature | Refetches read queries on a timer set by `meta.refetchInterval`                   |
-| `invalidateOnAction()` | feature | Lets [`action()`](./query-invalidation.md#invalidating-from-mutations) invalidate |
+| Part                 | Kind    | What it does                                                     |
+| -------------------- | ------- | ---------------------------------------------------------------- |
+| `retry()`            | link    | Retries failed requests. See [Retries](./retries.md)             |
+| `focusRefetch()`     | feature | Refetches read, stale queries when the window regains focus      |
+| `reconnectRefetch()` | feature | Refetches read, stale queries when the browser comes back online |
+| `polling()`          | feature | Refetches read queries on a timer set by `meta.refetchInterval`  |
 
 Pass `links` and `features` yourself to pick some of them, or to add your own. [Query meta](./query-meta.md) covers how they're configured per query.
 
@@ -36,7 +35,7 @@ With `recommended()`, keep these in mind as you read the rest of the guides:
   - a loader or server component starts the query again with `load`, which TanStack Router does on every navigation
   - the window becomes visible again ([window focus refetching](./window-focus-refetching.md)), for queries being read
   - the browser comes back online, for queries being read
-  - the query is [invalidated](./query-invalidation.md), including by an `action()`
+  - the query is [invalidated](./query-invalidation.md), such as at the end of an action that [writes data](./mutations.md)
 
 - **Mounting a component never fetches.** Unlike TanStack Query, raf-query has no refetch on mount: whatever started the query decides when it loads. Rendering the same handle in ten components reads one cache entry.
 
@@ -84,6 +83,5 @@ const queryClient = createQueryClient({
 | `meta.refetchInterval`             | Query, with `polling()`          | None                                                                                                                                        |
 | `meta.refetchOnWindowFocus`        | Query, with `focusRefetch()`     | `true`                                                                                                                                      |
 | `meta.refetchOnReconnect`          | Query, with `reconnectRefetch()` | `true`                                                                                                                                      |
-| `invalidateOnAction({ default })`  | Client feature                   | `"active"`: an action without `invalidates` refetches every read query                                                                      |
 
 Watch the defaults at work in [Caching](./caching.md), which has a live demo of an entry going from fresh to stale to garbage-collected.

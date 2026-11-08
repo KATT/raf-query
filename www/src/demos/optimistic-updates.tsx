@@ -3,13 +3,14 @@ import { Input } from "@examples/ui/components/input";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
-	action,
 	group,
 	type QueryHandle,
 	ensureEntry,
 	infiniteQueryOptions,
+	invalidateMany,
 	load,
 	useInfiniteQuery,
+	useQueryClient,
 } from "@raf-query/react";
 import { useActionState, useOptimistic, use } from "react";
 import { useFormStatus } from "react-dom";
@@ -70,8 +71,6 @@ function postTodo(text: string) {
 	});
 }
 
-const addTodo = action(postTodo, { invalidates: [todosQuery] });
-
 interface PageData {
 	readonly todos: QueryHandle<typeof todosQuery>;
 }
@@ -87,6 +86,7 @@ function SubmitButton() {
 }
 
 function TodoList(props: { readonly handle: QueryHandle<typeof todosQuery> }) {
+	const queryClient = useQueryClient();
 	const [pagesThenable] = useInfiniteQuery(todosQuery, props.handle);
 	const pages = use(pagesThenable);
 	const serverTodos = pages.pages.flatMap((page) => page.items);
@@ -105,10 +105,11 @@ function TodoList(props: { readonly handle: QueryHandle<typeof todosQuery> }) {
 			}
 			addOptimistic(text);
 			try {
-				await addTodo(text);
+				await postTodo(text);
 			} catch (error) {
 				return error instanceof Error ? error.message : "Something went wrong";
 			}
+			await invalidateMany(queryClient, todosQuery);
 			return null;
 		},
 		null,

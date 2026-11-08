@@ -1,7 +1,6 @@
 import {
 	createQueryClient,
 	focusRefetch,
-	invalidateOnAction,
 	polling,
 	queryOptions,
 	recommended,
@@ -23,7 +22,7 @@ const withEverything = createQueryClient({ ...recommended() });
 // `recommended()` without focusRefetch() and reconnectRefetch()
 const withoutFocus = createQueryClient({
 	links: [retry()],
-	features: [polling(), invalidateOnAction()],
+	features: [polling()],
 });
 // #endregion
 

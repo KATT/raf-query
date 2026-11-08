@@ -158,7 +158,7 @@ Write with a server action, then invalidate in the browser:
 nextjs/src/components/update-issue-form.tsx#form
 ```
 
-`invalidateOne` resolves when the refetch of the query on screen settles, so the form stays pending until the new data shows. `action(updateIssue, { invalidates: [issueQuery] })` wraps the server action to do both, on a browser client with the `invalidateOnAction()` feature, which `recommended()` includes. See [Mutations](./mutations.md).
+`invalidateOne` resolves when the refetch of the query on screen settles, so the form stays pending until the new data shows. When the write changes more than one thing, pass a list to one `invalidateMany` call, so the refetches run side by side. See [Mutations](./mutations.md).
 
 If the action also calls [`revalidatePath`](https://nextjs.org/docs/app/api-reference/functions/revalidatePath) or [`refresh()`](https://nextjs.org/docs/app/api-reference/functions/refresh), server components render again and send their entries, and the browser keeps whichever copy is newest.
 

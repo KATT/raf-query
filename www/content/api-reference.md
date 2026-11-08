@@ -16,7 +16,7 @@ tanstack-start/src/docs/api-reference.ts#createqueryclient
 | Export                                      | Use                                                                                                                                                                                    |
 | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `createQueryClient(config?)`                | Make a query cache. `config`: `links`, `features`, `staleTime`, `gcTime`, `structuralSharing`, `isServer`, `clock`. [Important defaults](./important-defaults.md)                      |
-| `recommended()`                             | `{ links: [retry()], features: [focusRefetch(), reconnectRefetch(), polling(), invalidateOnAction()] }`, to spread into the config                                                     |
+| `recommended()`                             | `{ links: [retry()], features: [focusRefetch(), reconnectRefetch(), polling()] }`, to spread into the config                                                                           |
 | `QueryClient<TTypes>`                       | The client type. Bare `QueryClient` takes a client of any root; verbs take `ClientFor<typeof factory>`. [Query meta](./query-meta.md#typing-meta-by-its-root)                          |
 | `client.subscribe(listener, { signal }?)`   | Cache events: `added`, `updated`, `removed`, and `readers` (a reader subscribed or left)                                                                                               |
 | `client.isServer`                           | Set from `config.isServer`, else from whether `window` exists. Server clients don't retry, never gc, and reuse cached data. [SSR and hydration](./ssr-and-hydration.md#server-clients) |
@@ -26,15 +26,14 @@ tanstack-start/src/docs/api-reference.ts#createqueryclient
 
 Links and features:
 
-| Export                              | Kind    | Use                                                                                                                                                                                           |
-| ----------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `retry({ attempts, delay, when }?)` | link    | Retry failed requests: 3 attempts, doubling from 1 s up to 30 s. `meta.retry` per query. [Retries](./retries.md)                                                                              |
-| `timeout(ms)`                       | link    | Fail a request with `QueryTimeoutError`, and abort its `signal`, when it takes longer than `ms`                                                                                               |
-| `focusRefetch()`                    | feature | Refetch read, stale queries on window focus; `meta.refetchOnWindowFocus: false` opts out. [Window focus refetching](./window-focus-refetching.md)                                             |
-| `reconnectRefetch()`                | feature | Refetch read, stale queries when the browser comes back online; `meta.refetchOnReconnect: false` opts out                                                                                     |
-| `polling()`                         | feature | Refetch read queries every `meta.refetchInterval` ms. [Polling](./polling.md)                                                                                                                 |
-| `invalidateOnAction({ default }?)`  | feature | Lets `action()` invalidate this browser client's queries (server clients never take part). `default: "active"` (the default) refetches every read query after an action without `invalidates` |
-| `groups()`                          | feature | From `@raf-query/react/groups`: gives queries `meta.tags`. [Query invalidation](./query-invalidation.md#tags)                                                                                 |
+| Export                              | Kind    | Use                                                                                                                                               |
+| ----------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `retry({ attempts, delay, when }?)` | link    | Retry failed requests: 3 attempts, doubling from 1 s up to 30 s. `meta.retry` per query. [Retries](./retries.md)                                  |
+| `timeout(ms)`                       | link    | Fail a request with `QueryTimeoutError`, and abort its `signal`, when it takes longer than `ms`                                                   |
+| `focusRefetch()`                    | feature | Refetch read, stale queries on window focus; `meta.refetchOnWindowFocus: false` opts out. [Window focus refetching](./window-focus-refetching.md) |
+| `reconnectRefetch()`                | feature | Refetch read, stale queries when the browser comes back online; `meta.refetchOnReconnect: false` opts out                                         |
+| `polling()`                         | feature | Refetch read queries every `meta.refetchInterval` ms. [Polling](./polling.md)                                                                     |
+| `groups()`                          | feature | From `@raf-query/react/groups`: gives queries `meta.tags`. [Query invalidation](./query-invalidation.md#tags)                                     |
 
 ## Query factories
 
@@ -126,19 +125,18 @@ Read the thenable's `status`, `value` and `reason` to render without Suspense. S
 
 Each verb takes the client first. A factory matches the queries it built: all of them, or those whose input matches a partial input. A group matches the keys that start with its path. A target (`{ where }`, such as a tag) matches the queries its `where` picks. [Query invalidation](./query-invalidation.md)
 
-| Export                                                                                       | Use                                                                                                                                            |
-| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `invalidateOne(client, factory, input)`                                                      | Mark one query stale. If it's read, it refetches; resolves when that settles                                                                   |
-| `invalidateMany(client, factory, partial?)` / `(client, group)` / `(client, target, param?)` | Mark many queries stale; read ones refetch                                                                                                     |
-| `invalidateMany(client, [target, [factory, partial], [target, param], …])`                   | Several targets in one call: each read query they cover refetches once, side by side; resolves when all settle                                 |
-| `invalidateAll(client)`                                                                      | Mark every query stale; read ones refetch                                                                                                      |
-| `resetOne`, `resetMany`, `resetAll`                                                          | Drop data and errors. Read queries suspend and refetch; resolves when they settle. `resetMany` takes a list too                                |
-| `removeOne`, `removeMany`, `removeAll`                                                       | Remove entries and abort their requests. `removeMany` takes a list too                                                                         |
-| `setData(client, factory, input, updater)`                                                   | Write data, as if a request had just returned it. [Mutations](./mutations.md)                                                                  |
-| `getData(client, factory, input)`                                                            | Cached data (before `select`), or `undefined`                                                                                                  |
-| `isFetching(client, target?)`                                                                | How many queries have a request in flight                                                                                                      |
-| `action(write, { client, invalidates }?)`                                                    | Wrap a write so the cache catches up after it; usable as a React Action. Needs `invalidateOnAction()`. `client` binds it to one browser client |
-| `ClientFor<TFactory>`, `PartialInput<TFactory>`, `Target`, `AnyTarget`, `QueryInfo`, `Group` | Types the verbs take. `QueryInfo` is what `where` sees: `queryKey`, `input`, `data`, `meta`                                                    |
+| Export                                                                                       | Use                                                                                                             |
+| -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `invalidateOne(client, factory, input)`                                                      | Mark one query stale. If it's read, it refetches; resolves when that settles                                    |
+| `invalidateMany(client, factory, partial?)` / `(client, group)` / `(client, target, param?)` | Mark many queries stale; read ones refetch                                                                      |
+| `invalidateMany(client, [target, [factory, partial], [target, param], …])`                   | Several targets in one call: each read query they cover refetches once, side by side; resolves when all settle  |
+| `invalidateAll(client)`                                                                      | Mark every query stale; read ones refetch                                                                       |
+| `resetOne`, `resetMany`, `resetAll`                                                          | Drop data and errors. Read queries suspend and refetch; resolves when they settle. `resetMany` takes a list too |
+| `removeOne`, `removeMany`, `removeAll`                                                       | Remove entries and abort their requests. `removeMany` takes a list too                                          |
+| `setData(client, factory, input, updater)`                                                   | Write data, as if a request had just returned it. [Mutations](./mutations.md)                                   |
+| `getData(client, factory, input)`                                                            | Cached data (before `select`), or `undefined`                                                                   |
+| `isFetching(client, target?)`                                                                | How many queries have a request in flight                                                                       |
+| `ClientFor<TFactory>`, `PartialInput<TFactory>`, `Target`, `AnyTarget`, `QueryInfo`, `Group` | Types the verbs take. `QueryInfo` is what `where` sees: `queryKey`, `input`, `data`, `meta`                     |
 
 ## Errors
 

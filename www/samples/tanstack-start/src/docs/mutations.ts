@@ -1,38 +1,25 @@
 import {
-	action,
-	createQueryClient,
 	getData,
 	invalidateMany,
-	invalidateOne,
-	invalidateOnAction,
 	type QueryClient,
-	recommended,
 	setData,
 } from "@raf-query/react";
 import { updatePost } from "~/api.ts";
-import { postQuery, todosQuery } from "~/queries.ts";
+import { authors, postQuery, postsQuery, todosQuery } from "~/queries.ts";
 
-// #region the-invalidateonaction-feature
-const queryClient = createQueryClient({ features: [invalidateOnAction()] });
-// or
-const withEverything = createQueryClient({ ...recommended() });
-// #endregion
-
-// #region one-client-among-several
-const widgetClient = createQueryClient({ features: [invalidateOnAction()] });
-const savePost = action(updatePost, {
-	client: widgetClient,
-	invalidates: [postQuery],
-});
-// #endregion
+declare const queryClient: QueryClient;
 
 declare const slug: string;
 
 declare const title: string;
 
-// #region invalidating-by-hand
+// #region several-targets
 await updatePost({ slug, title });
-await invalidateOne(queryClient, postQuery, { slug });
+await invalidateMany(queryClient, [
+	[postQuery, slug], // this post
+	postsQuery, // every post list
+	authors, // and the authors' post counts
+]);
 // #endregion
 
 declare function toggleTodoApi(id: number): Promise<void>;

@@ -59,13 +59,13 @@ tanstack-start/src/routes/todos.tsx#component
 
 ## 5. Write data with an Action
 
-There is no `useMutation`. Wrap the write with `action`, name what it changes, and use it as a form action:
+There is no `useMutation`. Write a form action in the component: await the write, then invalidate what it changed with the client from `useQueryClient()`:
 
 ```sample
 tanstack-start/src/components/add-todo.tsx#add-todo
 ```
 
-The action resolves once every todo query being read has refetched, so the form stays pending until the new todo is on screen. See [Mutations](./mutations.md) for optimistic updates and errors.
+`invalidateMany` resolves once every todo query being read has refetched, so the form stays pending until the new todo is on screen. See [Mutations](./mutations.md) for optimistic updates and errors.
 
 ## What you get
 
