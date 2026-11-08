@@ -133,8 +133,8 @@ function twoslashCode(lines: ReadonlyArray<Line>, filename: string) {
  * without `#name`):
  *
  * ````md
- * ```sample title="src/routes/todos.tsx"
- * tanstack-start/src/routes/todos.tsx#loader
+ * ```sample title="src/routes/posts.tsx"
+ * tanstack-start/src/routes/posts.tsx#loader
  * ```
  * ````
  *

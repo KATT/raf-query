@@ -137,7 +137,7 @@ describe("makeTwoslashCache", () => {
 			const dirs = yield* setup();
 			const markdown = [
 				"```ts twoslash",
-				'const keys = ["todos", 1] as const;',
+				'const keys = ["posts", 1] as const;',
 				"//    ^?",
 				"```",
 			].join("\n");
@@ -149,7 +149,7 @@ describe("makeTwoslashCache", () => {
 			});
 			expect(compiled.stats).toEqual({ hits: 0, misses: 1 });
 			expect(first.typeQueries).toEqual([
-				['const keys: readonly ["todos", 1]'],
+				['const keys: readonly ["posts", 1]'],
 			]);
 
 			const cached = makeTwoslashCache(dirs.options);
