@@ -2,7 +2,7 @@ import { NodeServices } from "@effect/platform-node";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, FileSystem, Path } from "effect";
 
-import { renderMarkdown } from "./markdown.ts";
+import { renderMarkdown, searchSectionsOf } from "./markdown.ts";
 
 /** A samples dir whose `tanstack-start` app compiles inline blocks, removed when the test ends. */
 const samples = Effect.gen(function* () {
@@ -49,5 +49,50 @@ describe("renderMarkdown", () => {
 				['const second: "b"'],
 			]);
 		}).pipe(Effect.provide(NodeServices.layer)),
+	);
+});
+
+describe("searchSectionsOf", () => {
+	it.effect("splits a page's text at its headings, without code", () =>
+		Effect.gen(function* () {
+			const markdown = [
+				"Intro with `inline` code and a [link](./caching.md).",
+				"",
+				"> [!NOTE]",
+				"> Read this first.",
+				"",
+				"## Retry delay",
+				"",
+				"| Option | Default |",
+				"| ------ | ------- |",
+				"| `retry` | 3 |",
+				"",
+				"```ts twoslash",
+				"const hidden = 1;",
+				"```",
+				"",
+				"```demo",
+				"retries",
+				"```",
+				"",
+				"### Retry delay",
+				"",
+				"- one",
+				"- two",
+			].join("\n");
+			const outline = yield* searchSectionsOf(markdown);
+			expect(outline.headings).toEqual([
+				{ depth: 2, id: "retry-delay", text: "Retry delay" },
+				{ depth: 3, id: "retry-delay-1", text: "Retry delay" },
+			]);
+			expect(outline.sections).toEqual([
+				{
+					id: undefined,
+					text: "Intro with inline code and a link. Read this first.",
+				},
+				{ id: "retry-delay", text: "Option Default retry 3" },
+				{ id: "retry-delay-1", text: "one two" },
+			]);
+		}),
 	);
 });

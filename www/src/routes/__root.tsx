@@ -17,6 +17,7 @@ import { SiteFooter } from "~/components/site-footer.tsx";
 import { SiteHeader } from "~/components/site-header.tsx";
 import { themeScript } from "~/components/theme-toggle.tsx";
 import { frameworkModeScript } from "~/framework-mode.ts";
+import { querySearchSchema } from "~/search-page.ts";
 import { site } from "~/site.ts";
 import appCss from "~/styles.css?url";
 
@@ -59,6 +60,8 @@ export const Route = createRootRouteWithContext<{
 	}),
 	component: Outlet,
 	shellComponent: RootDocument,
+	// `?q=` on any page opens the search dialog on it.
+	validateSearch: querySearchSchema,
 });
 
 function RootDocument(props: { readonly children: ReactNode }) {

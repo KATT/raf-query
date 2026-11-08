@@ -31,6 +31,11 @@ import { visit } from "unist-util-visit";
 import type { DocHeading, DocSegment } from "../src/content/types.ts";
 import { collapseRegions } from "./collapse.ts";
 import { ContentError, messageOf } from "./content-error.ts";
+import {
+	renderPopupMarkdown,
+	renderPopupMarkdownInline,
+	withConciseDocs,
+} from "./popup-docs.ts";
 import { appOf, sampleApps } from "./sample-apps.ts";
 import type { TwoslashCache } from "./twoslash-cache.ts";
 
@@ -389,7 +394,7 @@ const fileImport = /\bfrom\s+["'](?:~\/|\.{1,2}\/)/;
 
 /**
  * Fences with `twoslash` in their meta are compiled, so hovering a name shows
- * its type, `// ^?` pins a type under the line, and `// @errors: 2345` shows
+ * its type and the first paragraph of its JSDoc, `// ^?` pins a type under the line, and `// @errors: 2345` shows
  * an expected error. A compile error the block doesn't expect fails the
  * build.
  *
@@ -496,8 +501,117 @@ const twoslashTransformer = Effect.fn("twoslashTransformer")(function* (
 		flush: session?.flush ?? Effect.void,
 		transformer: createTransformerFactory(
 			twoslasher,
-			rendererRich({ jsdoc: false, queryRendering: "line" }),
+			withConciseDocs(
+				rendererRich({
+					queryRendering: "line",
+					renderMarkdown: renderPopupMarkdown,
+					renderMarkdownInline: renderPopupMarkdownInline,
+				}),
+			),
 		)({ explicitTrigger: true }),
+	};
+});
+
+/**
+ * A page's pipeline up to its headings' ids, which the rendered page and its
+ * search text share, so a search result's `#id` is the heading's.
+ */
+function parsing(headings: Array<DocHeading>, demos: Array<string>) {
+	return unified()
+		.use(remarkParse)
+		.use(remarkGfm)
+		.use(remarkAlerts)
+		.use(remarkDocLinks)
+		.use(remarkDemos(demos))
+		.use(remarkCodeMeta)
+		.use(remarkRehype, { allowDangerousHtml: true })
+		.use(rehypeRaw)
+		.use(rehypeHeadings(headings));
+}
+
+/** Elements inside a line of text, which don't split words apart. */
+const inlineTags = new Set([
+	"a",
+	"abbr",
+	"b",
+	"code",
+	"del",
+	"em",
+	"i",
+	"kbd",
+	"mark",
+	"s",
+	"span",
+	"strong",
+	"sub",
+	"sup",
+]);
+
+/**
+ * What search reads of a node: its text without code blocks, demos or an
+ * alert's title, with a space between blocks and table cells.
+ */
+function searchTextOf(node: HastRoot["children"][number]): string {
+	if (node.type === "text") {
+		return node.value;
+	}
+	if (node.type !== "element") {
+		return "";
+	}
+	const className = node.properties.className;
+	if (
+		node.tagName === "pre" ||
+		node.tagName === "raf-demo" ||
+		(Array.isArray(className) && className.includes("callout-title"))
+	) {
+		return " ";
+	}
+	const text = node.children.map(searchTextOf).join("");
+	return inlineTags.has(node.tagName) ? text : ` ${text} `;
+}
+
+/** A section's text: before the first heading (`id` undefined), or under one. */
+export interface SearchSection {
+	readonly id: string | undefined;
+	readonly text: string;
+}
+
+/**
+ * The text of a page's sections, split at its `h2` and `h3` headings, for
+ * search. It doesn't compile or highlight code, so it's quick.
+ */
+export const searchSectionsOf = Effect.fn("searchSectionsOf")(function* (
+	markdown: string,
+) {
+	const headings: Array<DocHeading> = [];
+	const processor = parsing(headings, []);
+	const tree = yield* Effect.tryPromise({
+		catch: (cause) => new ContentError({ cause, message: messageOf(cause) }),
+		try: async () => processor.run(processor.parse(markdown)),
+	});
+	const sections: Array<{ id: string | undefined; text: string }> = [
+		{ id: undefined, text: "" },
+	];
+	for (const child of tree.children) {
+		if (
+			child.type === "element" &&
+			(child.tagName === "h2" || child.tagName === "h3")
+		) {
+			// `rehypeHeadings` gave it its id.
+			sections.push({ id: String(child.properties.id), text: "" });
+		} else {
+			const last = sections.at(-1);
+			if (last) {
+				last.text += searchTextOf(child);
+			}
+		}
+	}
+	return {
+		headings,
+		sections: sections.map((section): SearchSection => ({
+			id: section.id,
+			text: section.text.replaceAll(/\s+/g, " ").trim(),
+		})),
 	};
 });
 
@@ -521,16 +635,7 @@ export const renderMarkdown = Effect.fn("renderMarkdown")(function* (
 		options.samplesDir,
 		options.twoslashCache,
 	);
-	const processor = unified()
-		.use(remarkParse)
-		.use(remarkGfm)
-		.use(remarkAlerts)
-		.use(remarkDocLinks)
-		.use(remarkDemos(demos))
-		.use(remarkCodeMeta)
-		.use(remarkRehype, { allowDangerousHtml: true })
-		.use(rehypeRaw)
-		.use(rehypeHeadings(headings))
+	const processor = parsing(headings, demos)
 		.use(rehypeShiki, {
 			defaultColor: false,
 			// Loading all of Shiki's languages took seconds per process, so
