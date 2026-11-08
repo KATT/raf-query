@@ -50,7 +50,7 @@ A loader starts every query its route needs with `load` and returns the handles:
 tanstack-start/src/routes/posts.$slug.tsx
 ```
 
-See [Starting queries](./starting-queries.md) for choosing between `prefetchEntry`, `ensureEntry` and `fetchEntry`.
+See [Starting queries](./starting-queries.md) for choosing between `prefetch`, `swr` and `revalidate`.
 
 ### Handles in route context
 
@@ -73,7 +73,7 @@ Importing `@raf-query/react/tanstack-router` registers handles as serializable, 
 
 ### Pending UI
 
-While a loader's `ensureEntry` is still loading, the previous page stays on screen. Show that a navigation is in progress with the router — not [`useIsFetching`](./background-fetching-indicators.md#useisfetching):
+While a loader's `swr` entry is still loading, the previous page stays on screen. Show that a navigation is in progress with the router — not [`useIsFetching`](./background-fetching-indicators.md#useisfetching):
 
 - **`pendingComponent` and `pendingMs`** show a full-page skeleton after the delay (1 second by default) for routes whose loader waits for slow data.
 - **`useRouterState({ select: (state) => state.isLoading })`** drives a progress bar or spinner in the layout for any pending navigation:
@@ -114,7 +114,7 @@ tanstack-start/src/forwarded-headers.ts
 
 ## Static prerendering
 
-These docs are a TanStack Start app, prerendered to static HTML. Every page's loader waits for its content with `ensureEntry` during the build, the content crosses in the page's HTML, and later navigations load it in the browser. See the [source](https://github.com/KATT/raf-query/tree/main/www).
+These docs are a TanStack Start app, prerendered to static HTML. Every page's loader waits for its content with `swr` during the build, the content crosses in the page's HTML, and later navigations load it in the browser. See the [source](https://github.com/KATT/raf-query/tree/main/www).
 
 ## Example
 

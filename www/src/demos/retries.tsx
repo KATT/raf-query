@@ -4,7 +4,7 @@ import {
 	createQueryClient,
 	group,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryHandle,
 	queryOptions,
 	recommended,
@@ -119,7 +119,7 @@ function PostError(props: ErrorComponentProps) {
 			<Button
 				onClick={() => {
 					// A failed query stays failed until something starts it again.
-					void load(queryClient, { post: prefetchEntry(postQuery, input) });
+					void load(queryClient, { post: prefetch(postQuery, input) });
 					props.reset();
 				}}
 				size="xs"
@@ -189,7 +189,7 @@ function Retries() {
 						return { page: "list" };
 					}
 					const [handles] = await load(args.client, {
-						post: prefetchEntry(postQuery, { id }),
+						post: prefetch(postQuery, { id }),
 					});
 					return { page: "post", post: handles.post };
 				}}

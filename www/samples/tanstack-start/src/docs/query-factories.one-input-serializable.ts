@@ -3,7 +3,7 @@ import {
 	group,
 	infiniteQueryOptions,
 	load,
-	prefetchEntry,
+	prefetch,
 } from "@raf-query/react";
 import { postQuery } from "~/queries.ts";
 import { type CommentPage, listComments } from "~/api.ts";
@@ -26,8 +26,8 @@ function issuesQuery() {
 
 // #region one-input-serializable
 await load(qc, {
-	post: prefetchEntry(postQuery, { slug: "hello-world" }),
-	issues: prefetchEntry(issuesQuery), // a factory without input
+	post: prefetch(postQuery, { slug: "hello-world" }),
+	issues: prefetch(issuesQuery), // a factory without input
 });
 // #endregion
 

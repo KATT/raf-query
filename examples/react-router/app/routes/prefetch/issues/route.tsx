@@ -1,7 +1,7 @@
 import { IssueListInput } from "@examples/db/types";
 import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
-import { HydrationBoundary, load, prefetchEntry } from "@raf-query/react";
+import { HydrationBoundary, load, prefetch } from "@raf-query/react";
 import { dehydrate } from "@raf-query/react/hydration";
 import { Suspense } from "react";
 
@@ -22,8 +22,8 @@ export async function loader(args: Route.LoaderArgs) {
 		// `prefetch` starts each query and returns its handle at once. The page
 		// streams in behind skeletons.
 		const [handles] = await load(queryClient, {
-			counts: prefetchEntry(issueCountsQuery),
-			issues: prefetchEntry(issueListQuery, input),
+			counts: prefetch(issueCountsQuery),
+			issues: prefetch(issueListQuery, input),
 		});
 		return {
 			counts: handles.counts,

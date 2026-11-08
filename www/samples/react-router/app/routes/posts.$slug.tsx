@@ -1,9 +1,9 @@
 import {
-	type QueryHandle,
-	fetchEntry,
 	HydrationBoundary,
 	load,
-	prefetchEntry,
+	prefetch,
+	type QueryHandle,
+	revalidate,
 	useQuery,
 } from "@raf-query/react";
 import { dehydrate } from "@raf-query/react/hydration";
@@ -22,9 +22,9 @@ export async function loader(args: Route.LoaderArgs) {
 	const { slug } = args.params;
 	const [handles, data] = await load(qc, {
 		// Doesn't wait: the comments stream in after the page renders.
-		comments: prefetchEntry(commentsQuery, { slug }),
+		comments: prefetch(commentsQuery, { slug }),
 		// Waits, so the post is in the page's first HTML.
-		post: fetchEntry(postQuery, { slug }),
+		post: revalidate(postQuery, { slug }),
 	});
 	// `data` holds what the loader waited for: here, the post.
 	if (data.post.slug !== slug) {

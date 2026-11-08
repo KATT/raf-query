@@ -55,7 +55,7 @@ Inside a loader, put every query in one `load`. It starts every entry before it 
 tanstack-start/src/docs/request-waterfalls.ts#start-every-query-before-awaiting-any
 ```
 
-Several queries the route can't render without are `ensureEntry`s in the same `load`, which waits for them together.
+Several queries the route can't render without are `swr` entries in the same `load`, which waits for them together.
 
 ## Dependent queries
 
@@ -89,7 +89,7 @@ Either way, both requests start together, and the page is ready after one round 
 
 When the data really can't be reshaped (a third-party API you don't control), you have two options, and both pay the extra round trip:
 
-- **In the loader**: load the parent with `fetchEntry`, then build the child's input from `load`'s data. The navigation waits for both.
+- **In the loader**: load the parent with `revalidate`, then build the child's input from `load`'s data. The navigation waits for both.
 - **In a component**: read the child with a `waterfallHandle`, below. The rest of the page renders first.
 
 ## Render-time inputs: waterfallHandle

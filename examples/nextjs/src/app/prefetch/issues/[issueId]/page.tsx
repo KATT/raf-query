@@ -1,5 +1,5 @@
 import { IssueId } from "@examples/db/types";
-import { HydrationBoundary, load, prefetchEntry } from "@raf-query/react";
+import { HydrationBoundary, load, prefetch } from "@raf-query/react";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -24,9 +24,9 @@ export default async function Page(props: {
 	// streams in behind skeletons, and finds out about a missing issue when
 	// it reads it.
 	const [handles] = await load(qc, {
-		assignee: prefetchEntry(assigneeQuery, { issueId: id }),
-		comments: prefetchEntry(commentsQuery, { issueId: id }),
-		issue: prefetchEntry(issueQuery, { id }),
+		assignee: prefetch(assigneeQuery, { issueId: id }),
+		comments: prefetch(commentsQuery, { issueId: id }),
+		issue: prefetch(issueQuery, { id }),
 	});
 
 	return (

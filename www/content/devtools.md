@@ -31,7 +31,7 @@ A button in the corner opens a panel docked to the bottom of the viewport. It li
 | `inactive` | Has data, and nothing reads it: removed at `gcTime` |
 | `pending`  | No data yet                                         |
 
-Below the entries, **Loads** lists the latest `load` calls, newest first, with each entry's name and kind (`prefetch`, `ensure` or `fetch`). Loads are recorded in development builds only.
+Below the entries, **Loads** lists the latest `load` calls, newest first, with each entry's name and kind (`prefetch`, `swr` or `revalidate`). Loads are recorded in development builds only.
 
 Select an entry to see its data (or its error) and when it was last updated, and to act on it:
 

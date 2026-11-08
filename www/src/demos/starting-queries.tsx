@@ -1,15 +1,15 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
-	ensureEntry,
-	fetchEntry,
 	group,
 	infiniteQueryOptions,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryClient,
 	queryOptions,
-	useQuery,
+	revalidate,
+	swr,
 	useInfiniteQuery,
+	useQuery,
 } from "@raf-query/react";
 import {
 	createRootRouteWithContext,
@@ -119,8 +119,8 @@ interface RouterContext {
 // The docs site registers its own router, so the hooks and links below name
 // the demo's. Every variant's routes have the same paths.
 type PrefetchRouter = Router<typeof prefetchTree>;
-type EnsureRouter = Router<typeof ensureTree>;
-type FetchRouter = Router<typeof fetchTree>;
+type SwrRouter = Router<typeof swrTree>;
+type RevalidateRouter = Router<typeof revalidateTree>;
 
 function BlogLink<const TTo extends string>(
 	props: LinkComponentProps<"a", PrefetchRouter, string, TTo, string, "">,
@@ -254,8 +254,8 @@ const prefetchPost = createRoute({
 	loader: async (args) => {
 		const id = Number(args.params.id);
 		const [handles] = await load(args.context.queryClient, {
-			comments: prefetchEntry(prefetching.commentsQuery, { postId: id }),
-			post: prefetchEntry(prefetching.postQuery, { id }),
+			comments: prefetch(prefetching.commentsQuery, { postId: id }),
+			post: prefetch(prefetching.postQuery, { id }),
 		});
 		return handles;
 	},
@@ -266,7 +266,7 @@ const prefetchList = createRoute({
 	getParentRoute: () => prefetchRoot,
 	loader: async (args) => {
 		const [handles] = await load(args.context.queryClient, {
-			posts: prefetchEntry(prefetching.postsQuery),
+			posts: prefetch(prefetching.postsQuery),
 		});
 		return handles.posts;
 	},
@@ -333,47 +333,47 @@ function PrefetchedPost(): ReactNode {
 	);
 }
 
-const ensuring = createBlog();
-const ensureRoot = createRootRouteWithContext<RouterContext>()();
-const ensurePost = createRoute({
-	component: EnsuredPost,
-	getParentRoute: () => ensureRoot,
+const swrBlog = createBlog();
+const swrRoot = createRootRouteWithContext<RouterContext>()();
+const swrPost = createRoute({
+	component: SwrPost,
+	getParentRoute: () => swrRoot,
 	loader: async (args) => {
 		const id = Number(args.params.id);
 		const [handles] = await load(args.context.queryClient, {
-			comments: ensureEntry(ensuring.commentsQuery, { postId: id }),
-			post: ensureEntry(ensuring.postQuery, { id }),
+			comments: swr(swrBlog.commentsQuery, { postId: id }),
+			post: swr(swrBlog.postQuery, { id }),
 		});
 		return handles;
 	},
 	path: "/posts/$id",
 });
-const ensureList = createRoute({
-	component: EnsuredList,
-	getParentRoute: () => ensureRoot,
+const swrList = createRoute({
+	component: SwrList,
+	getParentRoute: () => swrRoot,
 	loader: async (args) => {
 		const [handles] = await load(args.context.queryClient, {
-			posts: ensureEntry(ensuring.postsQuery),
+			posts: swr(swrBlog.postsQuery),
 		});
 		return handles.posts;
 	},
 	path: "/posts",
 });
-const ensureTree = ensureRoot.addChildren([ensureList, ensurePost]);
+const swrTree = swrRoot.addChildren([swrList, swrPost]);
 
-function EnsuredList(): ReactNode {
-	const handle = ensureList.useLoaderData<EnsureRouter>();
-	const [pagesThenable] = useInfiniteQuery(ensuring.postsQuery, handle);
+function SwrList(): ReactNode {
+	const handle = swrList.useLoaderData<SwrRouter>();
+	const [pagesThenable] = useInfiniteQuery(swrBlog.postsQuery, handle);
 	const pages = use(pagesThenable);
 	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
 }
 
-function EnsuredPost(): ReactNode {
-	const data = ensurePost.useLoaderData<EnsureRouter>();
-	const [postThenable] = useQuery(ensuring.postQuery, data.post);
+function SwrPost(): ReactNode {
+	const data = swrPost.useLoaderData<SwrRouter>();
+	const [postThenable] = useQuery(swrBlog.postQuery, data.post);
 	const post = use(postThenable);
 	const [pagesThenable] = useInfiniteQuery(
-		ensuring.commentsQuery,
+		swrBlog.commentsQuery,
 		data.comments,
 	);
 	const pages = use(pagesThenable);
@@ -387,47 +387,50 @@ function EnsuredPost(): ReactNode {
 	);
 }
 
-const fetching = createBlog();
-const fetchRoot = createRootRouteWithContext<RouterContext>()();
-const fetchPost = createRoute({
-	component: FetchedPost,
-	getParentRoute: () => fetchRoot,
+const revalidateBlog = createBlog();
+const revalidateRoot = createRootRouteWithContext<RouterContext>()();
+const revalidatePost = createRoute({
+	component: RevalidatedPost,
+	getParentRoute: () => revalidateRoot,
 	loader: async (args) => {
 		const id = Number(args.params.id);
 		const [handles] = await load(args.context.queryClient, {
-			comments: fetchEntry(fetching.commentsQuery, { postId: id }),
-			post: fetchEntry(fetching.postQuery, { id }),
+			comments: revalidate(revalidateBlog.commentsQuery, { postId: id }),
+			post: revalidate(revalidateBlog.postQuery, { id }),
 		});
 		return handles;
 	},
 	path: "/posts/$id",
 });
-const fetchList = createRoute({
-	component: FetchedList,
-	getParentRoute: () => fetchRoot,
+const revalidateList = createRoute({
+	component: RevalidatedList,
+	getParentRoute: () => revalidateRoot,
 	loader: async (args) => {
 		const [handles] = await load(args.context.queryClient, {
-			posts: fetchEntry(fetching.postsQuery),
+			posts: revalidate(revalidateBlog.postsQuery),
 		});
 		return handles.posts;
 	},
 	path: "/posts",
 });
-const fetchTree = fetchRoot.addChildren([fetchList, fetchPost]);
+const revalidateTree = revalidateRoot.addChildren([
+	revalidateList,
+	revalidatePost,
+]);
 
-function FetchedList(): ReactNode {
-	const handle = fetchList.useLoaderData<FetchRouter>();
-	const [pagesThenable] = useInfiniteQuery(fetching.postsQuery, handle);
+function RevalidatedList(): ReactNode {
+	const handle = revalidateList.useLoaderData<RevalidateRouter>();
+	const [pagesThenable] = useInfiniteQuery(revalidateBlog.postsQuery, handle);
 	const pages = use(pagesThenable);
 	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
 }
 
-function FetchedPost(): ReactNode {
-	const data = fetchPost.useLoaderData<FetchRouter>();
-	const [postThenable] = useQuery(fetching.postQuery, data.post);
+function RevalidatedPost(): ReactNode {
+	const data = revalidatePost.useLoaderData<RevalidateRouter>();
+	const [postThenable] = useQuery(revalidateBlog.postQuery, data.post);
 	const post = use(postThenable);
 	const [pagesThenable] = useInfiniteQuery(
-		fetching.commentsQuery,
+		revalidateBlog.commentsQuery,
 		data.comments,
 	);
 	const pages = use(pagesThenable);
@@ -442,28 +445,30 @@ function FetchedPost(): ReactNode {
 }
 
 export default defineDemo({
-	hint: "Open a post with each, then switch back and forth: each keeps its own page and queries. The requests start at the same moment every time. Go back and reopen the post after 5 seconds, once its cache is stale, to see ensureEntry and fetchEntry differ.",
-	title: "prefetchEntry, ensureEntry or fetchEntry",
+	hint: "Open a post with each, then switch back and forth: each keeps its own page and queries. The requests start at the same moment every time. Go back and reopen the post after 5 seconds, once its cache is stale, to see swr and revalidate differ.",
+	title: "prefetch, swr or revalidate",
 	variants: [
 		{
 			Component: () => <DemoRouter initial="/posts" routeTree={prefetchTree} />,
 			description: "Opens the post at once, with skeletons.",
-			label: "prefetchEntry",
+			label: "prefetch",
 			server: prefetching.server,
 		},
 		{
-			Component: () => <DemoRouter initial="/posts" routeTree={ensureTree} />,
+			Component: () => <DemoRouter initial="/posts" routeTree={swrTree} />,
 			description:
 				"Stays on the list until the post and its comments load. Cached data opens at once and refetches in the background.",
-			label: "ensureEntry",
-			server: ensuring.server,
+			label: "swr",
+			server: swrBlog.server,
 		},
 		{
-			Component: () => <DemoRouter initial="/posts" routeTree={fetchTree} />,
+			Component: () => (
+				<DemoRouter initial="/posts" routeTree={revalidateTree} />
+			),
 			description:
 				"Stays on the list until the post and its comments load, and waits for the refetch whenever the cache is stale.",
-			label: "fetchEntry",
-			server: fetching.server,
+			label: "revalidate",
+			server: revalidateBlog.server,
 		},
 	],
 	variantsLabel: "Load each page with",

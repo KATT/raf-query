@@ -10,7 +10,7 @@ declare const loaderData: { post: QueryHandle<typeof postQuery> };
 
 function Parent() {
 	// #region passing-thenables-down
-	const [postThenable] = useQuery(postQuery, loaderData.post); // from `prefetchEntry`
+	const [postThenable] = useQuery(postQuery, loaderData.post); // from `prefetch`
 	return (
 		<Suspense fallback={<Spinner />}>
 			<PostBody post={postThenable} />

@@ -39,7 +39,7 @@ export type HydrationBoundaryProps =
  *
  * ```tsx
  * const client = getQueryClient();
- * const [handles] = await load(client, { comments: prefetchEntry(commentsQuery, { slug }) });
+ * const [handles] = await load(client, { comments: prefetch(commentsQuery, { slug }) });
  * return (
  *   <HydrationBoundary client={client}>
  *     <Comments handle={handles.comments} />

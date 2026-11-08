@@ -3,9 +3,9 @@ import { use } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
-	fetchEntry,
 	load,
 	type QueryHandle,
+	revalidate,
 	useInfiniteQuery,
 } from "./index.ts";
 import { createBackend, flush, renderWith, testClient } from "./test-utils.tsx";
@@ -25,7 +25,7 @@ describe("useInfiniteQuery", () => {
 		let handles!: { readonly pages: QueryHandle<Backend["pageQuery"]> };
 		await loaded(backend, async () => {
 			[handles] = await load(client, {
-				pages: fetchEntry(backend.pageQuery, { size: 2 }),
+				pages: revalidate(backend.pageQuery, { size: 2 }),
 			});
 		});
 		const settled = vi.fn();

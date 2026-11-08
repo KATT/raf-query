@@ -4,15 +4,15 @@ import { createElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
-	ensureEntry,
-	fetchEntry,
 	getData,
 	invalidateOne,
 	isFail,
 	isQueryFailure,
 	load,
-	prefetchEntry,
+	prefetch,
 	queryOptions,
+	revalidate,
+	swr,
 	waterfallHandle,
 } from "./index.ts";
 import {
@@ -29,9 +29,9 @@ describe("load", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const loading = load(client, {
-			first: fetchEntry(backend.issueQuery, { id: 1 }),
-			second: ensureEntry(backend.issueQuery, { id: 2 }),
-			third: prefetchEntry(backend.issueQuery, { id: 3 }),
+			first: revalidate(backend.issueQuery, { id: 1 }),
+			second: swr(backend.issueQuery, { id: 2 }),
+			third: prefetch(backend.issueQuery, { id: 3 }),
 		});
 
 		expect(backend.requests.map((request) => request.id)).toEqual([1, 2, 3]);
@@ -73,13 +73,13 @@ describe("load", () => {
 		);
 		const loads = Promise.all([
 			load(client, {
-				repo: fetchEntry(byOwner, { owner: "ada", repo: "raf" }),
+				repo: revalidate(byOwner, { owner: "ada", repo: "raf" }),
 			}),
 			load(client, {
 				// oxlint-disable-next-line perfectionist/sort-objects -- the other field order
-				repo: ensureEntry(byOwner, { repo: "raf", owner: "ada" }),
+				repo: swr(byOwner, { repo: "raf", owner: "ada" }),
 			}),
-			load(client, { repo: ensureEntry(byOwner, bare) }),
+			load(client, { repo: swr(byOwner, bare) }),
 		]);
 		gate.resolve();
 		const values = (await loads).map(([, data]) => data.repo);
@@ -88,21 +88,21 @@ describe("load", () => {
 		expect(values).toEqual(["ada/raf", "ada/raf", "ada/raf"]);
 	});
 
-	it("uses fresh data, and refetches stale data for fetch entries", async () => {
+	it("uses fresh data, and refetches stale data for revalidate entries", async () => {
 		const backend = createBackend();
 		const client = testClient({ staleTime: 1000 });
 		const first = load(client, {
-			issue: fetchEntry(backend.issueQuery, { id: 1 }),
+			issue: revalidate(backend.issueQuery, { id: 1 }),
 		});
 		await backend.respondAll();
 		await first;
-		await load(client, { issue: fetchEntry(backend.issueQuery, { id: 1 }) });
+		await load(client, { issue: revalidate(backend.issueQuery, { id: 1 }) });
 
 		expect(backend.requests).toHaveLength(0);
 		advance(client, 1000);
 		backend.store.set(1, { author: "ada", id: 1, title: "Renamed" });
 		const second = load(client, {
-			issue: fetchEntry(backend.issueQuery, { id: 1 }),
+			issue: revalidate(backend.issueQuery, { id: 1 }),
 		});
 		expect(backend.requests).toHaveLength(1);
 		await backend.respondAll();
@@ -118,27 +118,27 @@ describe("load", () => {
 			...backend.issueQuery(input),
 			staleTime: 0,
 		});
-		const first = load(client, { issue: fetchEntry(brief, { id: 1 }) });
+		const first = load(client, { issue: revalidate(brief, { id: 1 }) });
 		await backend.respondAll();
 		await first;
-		void load(client, { issue: fetchEntry(brief, { id: 1 }) });
+		void load(client, { issue: revalidate(brief, { id: 1 }) });
 
 		expect(backend.requests).toHaveLength(1);
 		await backend.respondAll();
 	});
 
-	it("resolves ensure entries with stale data at once, and revalidates them", async () => {
+	it("resolves swr entries with stale data at once, and refetches them in the background", async () => {
 		const backend = createBackend();
 		const client = testClient();
 		const first = load(client, {
-			issue: ensureEntry(backend.issueQuery, { id: 1 }),
+			issue: swr(backend.issueQuery, { id: 1 }),
 		});
 		await backend.respondAll();
 		await first;
 		backend.store.set(1, { author: "ada", id: 1, title: "Renamed" });
 
 		const [, data] = await load(client, {
-			issue: ensureEntry(backend.issueQuery, { id: 1 }),
+			issue: swr(backend.issueQuery, { id: 1 }),
 		});
 		expect(data.issue.title).toBe("First");
 		await backend.respondAll();
@@ -151,8 +151,8 @@ describe("load", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const loading = load(client, {
-			missing: fetchEntry(backend.issueQuery, { id: 9 }),
-			other: prefetchEntry(backend.issueQuery, { id: 1 }),
+			missing: revalidate(backend.issueQuery, { id: 9 }),
+			other: prefetch(backend.issueQuery, { id: 1 }),
 		}).catch((error: unknown) => error);
 		await backend.respondAll();
 		const failure = await loading;
@@ -169,7 +169,7 @@ describe("load", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const loading = load(client, {
-			issue: ensureEntry(backend.issueQuery, { id: 1 }),
+			issue: swr(backend.issueQuery, { id: 1 }),
 		});
 		const defect = new Error("down");
 		backend.requests[0]?.fail(defect);
@@ -182,7 +182,7 @@ describe("load", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const loading = load(client, {
-			issue: prefetchEntry(backend.issueQuery, { id: 1 }),
+			issue: prefetch(backend.issueQuery, { id: 1 }),
 		});
 		backend.requests[0]?.fail(new Error("down"));
 
@@ -202,10 +202,10 @@ describe("load", () => {
 				queryKey: issues("disabled"),
 			});
 
-		await expect(load(client, { value: fetchEntry(disabled) })).rejects.toThrow(
+		await expect(load(client, { value: revalidate(disabled) })).rejects.toThrow(
 			'Query ["issues","disabled"] is disabled',
 		);
-		await load(client, { value: prefetchEntry(disabled) });
+		await load(client, { value: prefetch(disabled) });
 		expect(calls).toBe(0);
 	});
 
@@ -213,33 +213,33 @@ describe("load", () => {
 		const backend = createBackend();
 		const client = testClient({ isServer: true });
 		const first = load(client, {
-			issue: fetchEntry(backend.issueQuery, { id: 1 }),
+			issue: revalidate(backend.issueQuery, { id: 1 }),
 		});
 		await backend.respondAll();
 		await first;
 		await load(client, {
-			ensured: ensureEntry(backend.issueQuery, { id: 1 }),
-			prefetched: prefetchEntry(backend.issueQuery, { id: 1 }),
+			cached: swr(backend.issueQuery, { id: 1 }),
+			prefetched: prefetch(backend.issueQuery, { id: 1 }),
 		});
 
 		expect(backend.requests).toHaveLength(0);
 	});
 
-	it("reuses a server request's data in a fetch entry until a write invalidates it", async () => {
+	it("reuses a server request's data in a revalidate entry until a write invalidates it", async () => {
 		const backend = createBackend();
 		const client = testClient({ isServer: true });
 		const first = load(client, {
-			issue: fetchEntry(backend.issueQuery, { id: 1 }),
+			issue: revalidate(backend.issueQuery, { id: 1 }),
 		});
 		await backend.respondAll();
 		await first;
 		advance(client, 60_000);
-		await load(client, { issue: fetchEntry(backend.issueQuery, { id: 1 }) });
+		await load(client, { issue: revalidate(backend.issueQuery, { id: 1 }) });
 
 		expect(backend.requests).toHaveLength(0);
 		await invalidateOne(client, backend.issueQuery, { id: 1 });
 		const after = load(client, {
-			issue: fetchEntry(backend.issueQuery, { id: 1 }),
+			issue: revalidate(backend.issueQuery, { id: 1 }),
 		});
 		expect(backend.requests).toHaveLength(1);
 		await backend.respondAll();
@@ -254,7 +254,7 @@ describe("load", () => {
 				queryKey: issues("titled"),
 				select: (issue) => issue.title.toUpperCase(),
 			});
-		const [, data] = await load(client, { title: fetchEntry(titled) });
+		const [, data] = await load(client, { title: revalidate(titled) });
 
 		expect(data.title).toBe("HELLO");
 		expect(getData(client, titled)).toEqual({ title: "hello" });
@@ -264,8 +264,8 @@ describe("load", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const loading = load(client, {
-			few: fetchEntry(backend.pageQuery, { size: 2 }, { pages: 2 }),
-			many: ensureEntry(backend.pageQuery, { size: 5 }, { pages: 9 }),
+			few: revalidate(backend.pageQuery, { size: 2 }, { pages: 2 }),
+			many: swr(backend.pageQuery, { size: 5 }, { pages: 9 }),
 		});
 		for (let round = 0; round < 3; round++) {
 			await backend.respondAll();
@@ -287,16 +287,16 @@ describe("load", () => {
 		const client = testClient();
 		mount(client, createElement(QueryDevtoolsPanel));
 		const loading = load(client, {
-			issue: prefetchEntry(backend.issueQuery, { id: 1 }),
-			title: ensureEntry(backend.draftQuery, { id: 2 }),
+			issue: prefetch(backend.issueQuery, { id: 1 }),
+			title: swr(backend.draftQuery, { id: 2 }),
 		});
 		await backend.respondAll();
 		await loading;
 
-		expect(screen.getByText("issue (prefetch), title (ensure)")).toBeDefined();
+		expect(screen.getByText("issue (prefetch), title (swr)")).toBeDefined();
 		vi.stubEnv("NODE_ENV", "production");
 		const quiet = testClient();
-		await load(quiet, { issue: prefetchEntry(backend.issueQuery, { id: 1 }) });
+		await load(quiet, { issue: prefetch(backend.issueQuery, { id: 1 }) });
 		await backend.respondAll();
 		const panel = mount(quiet, createElement(QueryDevtoolsPanel));
 		expect(panel.container.textContent).toContain("Loads");

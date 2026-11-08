@@ -1,5 +1,5 @@
 import { use } from "react";
-import { ensureEntry, load, prefetchEntry, useQuery } from "@raf-query/react";
+import { load, prefetch, swr, useQuery } from "@raf-query/react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Pencil } from "lucide-react";
 
@@ -24,10 +24,10 @@ export const Route = createFileRoute("/docs/$slug")({
 			load(
 				qc,
 				Object.fromEntries(
-					meta.demos.map((id) => [id, prefetchEntry(demoQuery, { id })]),
+					meta.demos.map((id) => [id, prefetch(demoQuery, { id })]),
 				),
 			),
-			load(qc, { doc: ensureEntry(docQuery, { slug: args.params.slug }) }),
+			load(qc, { doc: swr(docQuery, { slug: args.params.slug }) }),
 		]);
 		return { demos, doc: handles.doc };
 	},

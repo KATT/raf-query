@@ -19,15 +19,15 @@ What each part of the app shows:
 
 | Screen or action                                        | Shows                                                                                                                                                                       |
 | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Loader verb                                             | The URL's first segment picks how loaders start queries with `load`: [`prefetchEntry`, `ensureEntry` or `fetchEntry`](./starting-queries.md) (`/ensure/issues/3`)           |
-| Progress bar along the top                              | The router's own pending state while `ensureEntry` and `fetchEntry` wait: `useRouterState`, `useNavigation`, or Next.js's `useLinkStatus`                                   |
+| Loader verb                                             | The URL's first segment picks how loaders start queries with `load`: [`prefetch`, `swr` or `revalidate`](./starting-queries.md) (`/swr/issues/3`)                           |
+| Progress bar along the top                              | The router's own pending state while `swr` and `revalidate` wait: `useRouterState`, `useNavigation`, or Next.js's `useLinkStatus`                                           |
 | Issue list with status filter and sort                  | Search params → loader → paged query, infinite scroll, `whilePending: "previous"`, `isPrevious` dimming                                                                     |
-| Issue detail                                            | Under `prefetch` the page opens onto skeletons for the title, body, and status; `ensure` and `fetch` wait for them                                                          |
+| Issue detail                                            | Under `prefetch` the page opens onto skeletons for the title, body, and status; `swr` and `revalidate` wait for them                                                        |
 | Comments under an issue                                 | A paged query, streamed under `prefetch`, infinite scroll                                                                                                                   |
 | Assignee card                                           | The loader or server component starts the assignee by issue id, next to the issue, so neither waits on the other                                                            |
 | Inline-edit title and body; change status from the list | Form Actions / transitions, `useOptimistic` and `await invalidateMany(queryClient, issues)`, which invalidates every query in the `issues` [group](./query-invalidation.md) |
 
-Data comes from an in-memory database with artificial latency (400 ms ± 50% per call), behind a small REST API the three apps share. The top bar's **Loader** select switches the loader verb, and keeps the page you are on. On Next.js and React Router every navigation renders on the server with a new client, so `ensure` waits as long as `fetch` there; in the TanStack Start app, loaders run in the browser and `ensure` shows cached data at once. The top bar sets that latency, how links prefetch, and how long cached data stays fresh. **Reset** clears those choices and the query cache, then reloads. Data the server loads for the first render streams in with the HTML; later loads show up in the browser's network tab.
+Data comes from an in-memory database with artificial latency (400 ms ± 50% per call), behind a small REST API the three apps share. The top bar's **Loader** select switches the loader verb, and keeps the page you are on. On Next.js and React Router every navigation renders on the server with a new client, so `swr` waits as long as `revalidate` there; in the TanStack Start app, loaders run in the browser and `swr` shows cached data at once. The top bar sets that latency, how links prefetch, and how long cached data stays fresh. **Reset** clears those choices and the query cache, then reloads. Data the server loads for the first render streams in with the HTML; later loads show up in the browser's network tab.
 
 ## Run them locally
 
@@ -44,7 +44,7 @@ pnpm dev:react-router  # React Router on http://localhost:3006
 
 The guides embed live demos that run entirely in your browser. Each has its own query client and a fake server with adjustable latency, and shows its requests as a waterfall and its cache entries as they change. **Expand** opens the same demo in a dialog next to the [devtools](./devtools.md) panel. Good places to start:
 
-- [Starting queries](./starting-queries.md): prefetch, ensure and fetch
+- [Starting queries](./starting-queries.md): `prefetch`, `swr` and `revalidate`
 - [Caching](./caching.md): fresh, stale, inactive and garbage-collected entries
 - [URL state and pagination](./url-state-and-pagination.md): `whilePending`
 - [Mutations](./mutations.md): optimistic updates that roll back

@@ -3,20 +3,17 @@ import { describe, expect, it } from "vitest";
 
 import { hydrate } from "./hydration.ts";
 import {
-	ensureEntry,
-	fetchEntry,
 	getData,
 	group,
+	type InputOf,
 	invalidateAll,
 	invalidateMany,
 	invalidateOne,
 	isFetching,
 	load,
-	prefetchEntry,
-	type InputOf,
 	type PartialInput,
+	prefetch,
 	type QueryMeta,
-	type Target,
 	queryOptions,
 	removeAll,
 	removeMany,
@@ -24,7 +21,10 @@ import {
 	resetAll,
 	resetMany,
 	resetOne,
+	revalidate,
 	setData,
+	swr,
+	type Target,
 } from "./index.ts";
 import {
 	author,
@@ -43,18 +43,18 @@ async function cached() {
 	const backend = createBackend();
 	const client = testClient({ staleTime: Infinity });
 	const loading = load(client, {
-		draft: fetchEntry(backend.draftQuery, { id: 3 }),
-		one: fetchEntry(backend.issueQuery, { id: 1 }),
-		two: fetchEntry(backend.issueQuery, { id: 2 }),
+		draft: revalidate(backend.draftQuery, { id: 3 }),
+		one: revalidate(backend.issueQuery, { id: 1 }),
+		two: revalidate(backend.issueQuery, { id: 2 }),
 	});
 	await backend.respondAll();
 	const [handles] = await loading;
-	/** Which of them the next fetch entries refetch: the stale ones. */
+	/** Which of them the next revalidate entries refetch: the stale ones. */
 	const refetched = async () => {
 		void load(client, {
-			draft: fetchEntry(backend.draftQuery, { id: 3 }),
-			one: fetchEntry(backend.issueQuery, { id: 1 }),
-			two: fetchEntry(backend.issueQuery, { id: 2 }),
+			draft: revalidate(backend.draftQuery, { id: 3 }),
+			one: revalidate(backend.issueQuery, { id: 1 }),
+			two: revalidate(backend.issueQuery, { id: 2 }),
 		});
 		const ids = backend.requests.map((request) =>
 			request.id === 3 ? "draft" : request.id === 1 ? "one" : "two",
@@ -105,9 +105,9 @@ describe("invalidation", () => {
 				queryFn: () => (calls += 1),
 				queryKey: ["issues", "byId", input.id],
 			});
-		await load(client, { one: fetchEntry(byId, { id: 1 }) });
+		await load(client, { one: revalidate(byId, { id: 1 }) });
 		await invalidateMany(client, issues);
-		await load(client, { one: fetchEntry(byId, { id: 1 }) });
+		await load(client, { one: revalidate(byId, { id: 1 }) });
 
 		expect(calls).toBe(2);
 	});
@@ -120,9 +120,9 @@ describe("invalidation", () => {
 				queryFn: () => (calls += 1),
 				queryKey: group("issues-archive")("list"),
 			});
-		await load(client, { list: fetchEntry(archived) });
+		await load(client, { list: revalidate(archived) });
 		await invalidateMany(client, issues);
-		await load(client, { list: fetchEntry(archived) });
+		await load(client, { list: revalidate(archived) });
 
 		expect(calls).toBe(1);
 	});
@@ -150,11 +150,11 @@ describe("invalidation", () => {
 				queryKey: issues("list", input),
 			});
 		const input: InputOf<typeof list> = { filter: { ids: [1, 2], open: true } };
-		await load(client, { list: fetchEntry(list, input) });
+		await load(client, { list: revalidate(list, input) });
 		const refetches = async (partial: PartialInput<typeof list>) => {
 			const before = calls;
 			await invalidateMany(client, list, partial);
-			await load(client, { list: fetchEntry(list, input) });
+			await load(client, { list: revalidate(list, input) });
 			return calls > before;
 		};
 
@@ -255,8 +255,8 @@ describe("invalidation", () => {
 		hydrate(client, { entries: [issue(1, "ada"), issue(2, "bob")] });
 		await invalidateMany(client, author, "ada");
 		const loading = load(client, {
-			one: fetchEntry(backend.issueQuery, { id: 1 }),
-			two: fetchEntry(backend.issueQuery, { id: 2 }),
+			one: revalidate(backend.issueQuery, { id: 1 }),
+			two: revalidate(backend.issueQuery, { id: 2 }),
 		});
 
 		expect(backend.requests.map((request) => request.id)).toEqual([1]);
@@ -295,7 +295,7 @@ describe("reset and remove", () => {
 	it("reset a query loading for nobody by starting it over", async () => {
 		const backend = createBackend();
 		const client = testClient();
-		void load(client, { issue: prefetchEntry(backend.issueQuery, { id: 1 }) });
+		void load(client, { issue: prefetch(backend.issueQuery, { id: 1 }) });
 		const [old] = backend.requests;
 		const resetting = resetMany(client, issues);
 
@@ -320,7 +320,7 @@ describe("reset and remove", () => {
 		removeMany(cache.client, [drafts, [author, "ada"]]);
 		expect(has()).toEqual([false, true, false]);
 		const loading = load(cache.client, {
-			one: ensureEntry(cache.backend.issueQuery, { id: 1 }),
+			one: swr(cache.backend.issueQuery, { id: 1 }),
 		}).catch((error: unknown) => error);
 		removeAll(cache.client);
 		expect(has()).toEqual([false, false, false]);
@@ -370,7 +370,7 @@ describe("data", () => {
 	it("reads nothing for a query that is cached without data", async () => {
 		const backend = createBackend();
 		const client = testClient();
-		void load(client, { issue: prefetchEntry(backend.issueQuery, { id: 1 }) });
+		void load(client, { issue: prefetch(backend.issueQuery, { id: 1 }) });
 
 		expect(getData(client, backend.issueQuery, { id: 1 })).toBeUndefined();
 		await backend.respondAll();

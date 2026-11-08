@@ -5,18 +5,18 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
 	createQueryClient,
-	ensureEntry,
-	fetchEntry,
 	invalidateOne,
 	load,
-	prefetchEntry,
+	prefetch,
 	QueryClientProvider,
 	type QueryControls,
 	QueryDisabledError,
 	type QueryHandle,
 	QueryProvider,
 	removeOne,
+	revalidate,
 	setData,
+	swr,
 	type Thenable,
 	useQuery,
 	waterfallHandle,
@@ -49,7 +49,7 @@ describe("useQuery", () => {
 		let handle!: QueryHandle<Backend["issueQuery"]>;
 		await loaded(backend, async () => {
 			[{ issue: handle }] = await load(client, {
-				issue: fetchEntry(backend.issueQuery, { id: 1 }),
+				issue: revalidate(backend.issueQuery, { id: 1 }),
 			});
 		});
 		function Issue() {
@@ -78,8 +78,8 @@ describe("useQuery", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const [handles] = await load(client, {
-			found: prefetchEntry(backend.issueQuery, { id: 1 }),
-			missing: prefetchEntry(backend.issueQuery, { id: 9 }),
+			found: prefetch(backend.issueQuery, { id: 1 }),
+			missing: prefetch(backend.issueQuery, { id: 9 }),
 		});
 		function Issue(props: {
 			readonly handle: QueryHandle<Backend["issueQuery"]>;
@@ -112,7 +112,7 @@ describe("useQuery", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const [handles] = await load(client, {
-			issue: prefetchEntry(backend.issueQuery, { id: 2 }),
+			issue: prefetch(backend.issueQuery, { id: 2 }),
 		});
 		function Issue() {
 			const [issueThenable] = useQuery(backend.issueQuery, handles.issue);
@@ -169,7 +169,7 @@ describe("useQuery", () => {
 		let handles!: { readonly title: QueryHandle<Backend["titleQuery"]> };
 		await loaded(backend, async () => {
 			[handles] = await load(client, {
-				title: ensureEntry(backend.titleQuery, { id: 1 }),
+				title: swr(backend.titleQuery, { id: 1 }),
 			});
 		});
 		function Title() {
@@ -187,7 +187,7 @@ describe("useQuery", () => {
 		let handles!: { readonly issue: QueryHandle<Backend["issueQuery"]> };
 		await loaded(backend, async () => {
 			[handles] = await load(client, {
-				issue: fetchEntry(backend.issueQuery, { id: 1 }),
+				issue: revalidate(backend.issueQuery, { id: 1 }),
 			});
 		});
 		void invalidateOne(client, backend.issueQuery, { id: 1 });
@@ -217,7 +217,7 @@ describe("useQuery", () => {
 		let handles!: { readonly issue: QueryHandle<Backend["issueQuery"]> };
 		await loaded(backend, async () => {
 			[handles] = await load(client, {
-				issue: fetchEntry(backend.issueQuery, { id: 1 }),
+				issue: revalidate(backend.issueQuery, { id: 1 }),
 			});
 		});
 		const settled = vi.fn();
@@ -251,7 +251,7 @@ describe("useQuery", () => {
 			let handles!: { readonly issue: QueryHandle<Backend["issueQuery"]> };
 			await loaded(backend, async () => {
 				[handles] = await load(client, {
-					issue: fetchEntry(backend.issueQuery, { id: 1 }),
+					issue: revalidate(backend.issueQuery, { id: 1 }),
 				});
 			});
 			const thenables: Array<Thenable<Issue>> = [];
@@ -298,7 +298,7 @@ describe("useQuery", () => {
 			const backend = createBackend();
 			const client = testClient();
 			const [handles] = await load(client, {
-				issue: prefetchEntry(backend.issueQuery, { id: 1 }),
+				issue: prefetch(backend.issueQuery, { id: 1 }),
 			});
 			function Issue() {
 				const [issueThenable] = useQuery(backend.issueQuery, handles.issue);
@@ -339,7 +339,7 @@ describe("useQuery", () => {
 			const backend = createBackend();
 			const client = testClient();
 			const [handles] = await load(client, {
-				issue: prefetchEntry(backend.issueQuery, { id: 1 }),
+				issue: prefetch(backend.issueQuery, { id: 1 }),
 			});
 			await renderWith(
 				client,
@@ -353,7 +353,7 @@ describe("useQuery", () => {
 			const backend = createBackend();
 			const client = testClient();
 			const [handles] = await load(client, {
-				issue: prefetchEntry(backend.issueQuery, { id: 9 }),
+				issue: prefetch(backend.issueQuery, { id: 9 }),
 			});
 			const view = await renderWith(
 				client,
@@ -374,7 +374,7 @@ describe("useQuery", () => {
 			const client = testClient();
 			vi.spyOn(console, "error").mockImplementation(() => {});
 			const [handles] = await load(client, {
-				issue: prefetchEntry(backend.issueQuery, { id: 1 }),
+				issue: prefetch(backend.issueQuery, { id: 1 }),
 			});
 			const errors: Array<unknown> = [];
 			const thenables: Array<Thenable<unknown>> = [];
@@ -446,7 +446,7 @@ describe("useQuery", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const [handles] = await load(client, {
-			issue: prefetchEntry(backend.issueQuery, { id: 9 }),
+			issue: prefetch(backend.issueQuery, { id: 9 }),
 		});
 		await backend.respondAll();
 		function Issue() {

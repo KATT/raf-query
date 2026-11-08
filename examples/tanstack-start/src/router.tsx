@@ -33,7 +33,7 @@ export function getRouter() {
 		defaultPreloadStaleTime: 0,
 		// A revisit waits for its loader, as the URL's verb says. With the
 		// default (`"background"`), the router renders the route's last loader
-		// data and reruns the loader behind it, so `fetch` would never wait.
+		// data and reruns the loader behind it, so `revalidate` would never wait.
 		defaultStaleReloadMode: "blocking",
 		routeTree,
 		scrollRestoration: true,

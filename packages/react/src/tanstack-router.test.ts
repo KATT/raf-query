@@ -12,7 +12,7 @@ import {
 	createQueryClient,
 	getData,
 	load,
-	prefetchEntry,
+	prefetch,
 	queryOptions,
 	setData,
 } from "./index.ts";
@@ -84,11 +84,11 @@ describe("setupRouterIntegration", () => {
 		setupRouterIntegration({ queryClient: browser, router: browserRouter });
 
 		setData(server, backend.issueQuery, { id: 1 }, { id: 1, title: "Cached" });
-		await load(server, { two: prefetchEntry(backend.issueQuery, { id: 2 }) });
+		await load(server, { two: prefetch(backend.issueQuery, { id: 2 }) });
 		const dehydrated = await serverRouter.options.dehydrate?.();
 		await browserRouter.options.hydrate?.(dehydrated ?? {});
 		backend.store.set(3, { id: 3, title: "Third" });
-		await load(server, { three: prefetchEntry(backend.issueQuery, { id: 3 }) });
+		await load(server, { three: prefetch(backend.issueQuery, { id: 3 }) });
 		await flush();
 		for (const request of backend.requests.splice(0)) {
 			request.respond();
@@ -166,7 +166,7 @@ describe("setupRouterIntegration", () => {
 				},
 				queryKey: issues("private"),
 			});
-		await load(browser, { secret: prefetchEntry(privateQuery) });
+		await load(browser, { secret: prefetch(privateQuery) });
 		await flush();
 		expect(navigate).toHaveBeenCalledOnce();
 		expect(navigate.mock.calls[0]?.[0]).toMatchObject({ to: "/login" });
@@ -188,7 +188,7 @@ describe("setupRouterIntegration", () => {
 				},
 				queryKey: issues("private"),
 			});
-		await load(browser, { secret: prefetchEntry(privateQuery) });
+		await load(browser, { secret: prefetch(privateQuery) });
 		await flush();
 		expect(navigate).not.toHaveBeenCalled();
 	});

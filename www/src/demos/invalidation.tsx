@@ -8,11 +8,11 @@ import {
 	invalidateMany,
 	invalidateOne,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryClient,
 	type QueryHandle,
-	useQueryClient,
 	useInfiniteQuery,
+	useQueryClient,
 } from "@raf-query/react";
 import { Suspense, use, useTransition } from "react";
 
@@ -239,9 +239,9 @@ function Invalidation() {
 			initial={{ path: "/dashboard" }}
 			loader={async (args): Promise<PageData> => {
 				const [handles] = await load(args.client, {
-					all: prefetchEntry(todosQuery, { status: "all" }),
-					done: prefetchEntry(todosQuery, { status: "done" }),
-					users: prefetchEntry(usersQuery),
+					all: prefetch(todosQuery, { status: "all" }),
+					done: prefetch(todosQuery, { status: "done" }),
+					users: prefetch(usersQuery),
 				});
 				return handles;
 			}}

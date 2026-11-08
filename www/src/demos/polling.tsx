@@ -2,10 +2,10 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
 	group,
-	type QueryHandle,
-	ensureEntry,
 	load,
+	type QueryHandle,
 	queryOptions,
+	swr,
 	useQuery,
 } from "@raf-query/react";
 import { useState, use } from "react";
@@ -105,7 +105,7 @@ function Polling() {
 				key={interval}
 				loader={async (args): Promise<PageData> => {
 					const [handles] = await load(args.client, {
-						visitors: ensureEntry(visitorsQuery, {
+						visitors: swr(visitorsQuery, {
 							interval: interval === "off" ? false : Number(interval),
 						}),
 					});

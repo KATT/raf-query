@@ -51,17 +51,17 @@ nextjs/src/app/(blog)/components/comments.tsx#component
 - `client` works only in server components. The bundler resolves `@raf-query/react` with the `react-server` [export condition](https://nodejs.org/api/packages.html#conditional-exports) there, which picks the `HydrationBoundary` that dehydrates the client. Client components get the one that takes a dehydrated `state`, as in [React Router](./react-router.md).
 - Pending entries stream as promises through the RSC payload: the page's shell renders while `comments` loads.
 - `options` takes [`dehydrate`](./ssr-and-hydration.md)'s options, such as `keepErrors` and `filter`.
-- Use `prefetchEntry` and `fetchEntry` in server components, not `ensureEntry`. Each request's client starts empty, so `ensureEntry` waits for the request every time, exactly like `fetchEntry`. See [Starting queries](./starting-queries.md).
+- Use `prefetch` and `revalidate` in server components, not `swr`. Each request's client starts empty, so `swr` waits for the request every time, exactly like `revalidate`. See [Starting queries](./starting-queries.md).
 
 ### Data in the server component
 
-To render a query's data in the server component itself, wait for it with `fetchEntry`. `load` resolves to the handles and the data of the entries it waited for:
+To render a query's data in the server component itself, wait for it with `revalidate`. `load` resolves to the handles and the data of the entries it waited for:
 
 ```sample
 nextjs/src/docs/nextjs.fetch.tsx#fetch
 ```
 
-`handles.post` came from a `fetchEntry`: a client component reads it with `use()` without suspending, and follows later refetches. The handle carries no data: the post crosses once, in the `HydrationBoundary`'s entries.
+`handles.post` came from a `revalidate` entry: a client component reads it with `use()` without suspending, and follows later refetches. The handle carries no data: the post crosses once, in the `HydrationBoundary`'s entries.
 
 ```sample
 nextjs/src/app/(blog)/components/post-title.tsx#component

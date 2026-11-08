@@ -1,9 +1,9 @@
 import {
-	fetchEntry,
 	group,
 	load,
-	prefetchEntry,
+	prefetch,
 	queryOptions,
+	revalidate,
 } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 
@@ -32,10 +32,10 @@ export const Route = createFileRoute("/settings")({
 	loader: async (args) => {
 		const qc = args.context.queryClient;
 		const [userHandles, data] = await load(qc, {
-			user: fetchEntry(currentUserQuery),
+			user: revalidate(currentUserQuery),
 		});
 		const [orgHandles] = await load(qc, {
-			org: prefetchEntry(orgQuery, { orgId: data.user.orgId }),
+			org: prefetch(orgQuery, { orgId: data.user.orgId }),
 		});
 		return { ...userHandles, ...orgHandles };
 	},

@@ -1,10 +1,10 @@
 import {
 	createQueryClient,
-	ensureEntry,
 	HydrationBoundary,
 	load,
-	prefetchEntry,
+	prefetch,
 	QueryProvider,
+	swr,
 } from "@raf-query/react";
 import { Suspense } from "react";
 
@@ -16,8 +16,8 @@ import { commentsQuery, postQuery, queryClientConfig } from "./queries.ts";
 export async function Page() {
 	const qc = createQueryClient(queryClientConfig);
 	const [handles] = await load(qc, {
-		comments: prefetchEntry(commentsQuery, { slug: "hello" }),
-		post: ensureEntry(postQuery, { slug: "hello" }),
+		comments: prefetch(commentsQuery, { slug: "hello" }),
+		post: swr(postQuery, { slug: "hello" }),
 	});
 	return (
 		<html lang="en">

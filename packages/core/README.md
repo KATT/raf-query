@@ -20,12 +20,12 @@ npm install @raf-query/core
 ```ts
 import {
 	createQueryClient,
-	fetchEntry,
 	group,
 	invalidateOne,
 	load,
 	queryOptions,
 	retry,
+	revalidate,
 } from "@raf-query/core";
 
 const issues = group("issues");
@@ -40,7 +40,7 @@ export function issueQuery(input: { id: number }) {
 const queryClient = createQueryClient({ links: [retry()], staleTime: 5000 });
 
 const [, data] = await load(queryClient, {
-	issue: fetchEntry(issueQuery, { id: 1 }),
+	issue: revalidate(issueQuery, { id: 1 }),
 });
 console.log(data.issue.title);
 

@@ -1,7 +1,7 @@
 // #region loader
 import {
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryHandle,
 	useInfiniteQuery,
 } from "@raf-query/react";
@@ -13,7 +13,7 @@ import { todosQuery } from "~/queries.ts";
 export const Route = createFileRoute("/todos")({
 	loader: async (args) => {
 		const [handles] = await load(args.context.queryClient, {
-			todos: prefetchEntry(todosQuery),
+			todos: prefetch(todosQuery),
 		});
 		return handles;
 	},

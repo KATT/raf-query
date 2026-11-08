@@ -1,10 +1,10 @@
 import {
 	createQueryClient,
-	ensureEntry,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryClientConfig,
 	type QueryHandle,
+	swr,
 	useQuery,
 	type UseQueryOptions,
 } from "@raf-query/react";
@@ -21,8 +21,8 @@ declare const slug: string;
 
 // #region load
 const [handles, data] = await load(queryClient, {
-	comments: prefetchEntry(commentsQuery, { slug }),
-	post: ensureEntry(postQuery, { slug }),
+	comments: prefetch(commentsQuery, { slug }),
+	post: swr(postQuery, { slug }),
 });
 // #endregion
 

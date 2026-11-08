@@ -12,7 +12,7 @@ declare function Comments(props: {
 // #region post-page
 function PostPage() {
 	const loaderData = Route.useLoaderData();
-	// `post` came from `ensureEntry`, `comments` from `prefetchEntry`.
+	// `post` came from `swr`, `comments` from `prefetch`.
 	const [postThenable, postState] = useQuery(postQuery, loaderData.post);
 	const post = use(postThenable);
 

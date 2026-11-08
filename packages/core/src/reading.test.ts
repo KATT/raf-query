@@ -3,16 +3,16 @@ import { describe, expect, it } from "vitest";
 
 import {
 	fail,
-	fetchEntry,
 	getData,
 	infiniteQueryOptions,
 	invalidateOne,
 	isQueryFailure,
 	load,
-	prefetchEntry,
+	prefetch,
 	queryOptions,
 	removeOne,
 	resetOne,
+	revalidate,
 	setData,
 	waterfallHandle,
 } from "./index.ts";
@@ -33,7 +33,7 @@ describe("a read query", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const [handles] = await load(client, {
-			issue: prefetchEntry(backend.issueQuery, { id: 1 }),
+			issue: prefetch(backend.issueQuery, { id: 1 }),
 		});
 		const view = read(client, backend.issueQuery, handles.issue);
 		const thenable = view.result.current[0];
@@ -117,9 +117,9 @@ describe("a read query", () => {
 			[testClient({ structuralSharing: false }), {}],
 			[testClient(), { off: true }],
 		] as const) {
-			await load(client, { value: fetchEntry(shared, input) });
+			await load(client, { value: revalidate(shared, input) });
 			const first = getData(client, shared, input);
-			await load(client, { value: fetchEntry(shared, input) });
+			await load(client, { value: revalidate(shared, input) });
 
 			expect(getData(client, shared, input)).not.toBe(first);
 			expect(getData(client, shared, input)).toEqual(first);
@@ -213,7 +213,7 @@ describe("a read query", () => {
 		const backend = createBackend();
 		const client = testClient({ staleTime: Infinity });
 		const loading = load(client, {
-			issue: fetchEntry(backend.issueQuery, { id: 1 }),
+			issue: revalidate(backend.issueQuery, { id: 1 }),
 		});
 		await backend.respondAll();
 		const [handles] = await loading;
@@ -279,8 +279,8 @@ describe("garbage collection", () => {
 		const backend = createBackend();
 		const client = testClient({ gcTime: 1000 });
 		const loading = load(client, {
-			issue: fetchEntry(backend.issueQuery, { id: 1 }),
-			other: fetchEntry(backend.issueQuery, { id: 2 }),
+			issue: revalidate(backend.issueQuery, { id: 1 }),
+			other: revalidate(backend.issueQuery, { id: 2 }),
 		});
 		await backend.respondAll();
 		const [handles] = await loading;
@@ -303,7 +303,7 @@ describe("garbage collection", () => {
 			...backend.issueQuery(input),
 			gcTime: 10,
 		});
-		void load(client, { issue: prefetchEntry(brief, { id: 1 }) });
+		void load(client, { issue: prefetch(brief, { id: 1 }) });
 		advance(client, 10);
 		await backend.respondAll();
 
@@ -315,12 +315,12 @@ describe("garbage collection", () => {
 	it("leaves an entry that was removed while its collection waited", async () => {
 		const backend = createBackend();
 		const client = testClient({ gcTime: 10 });
-		void load(client, { issue: prefetchEntry(backend.issueQuery, { id: 1 }) });
+		void load(client, { issue: prefetch(backend.issueQuery, { id: 1 }) });
 		advance(client, 10);
 		removeOne(client, backend.issueQuery, { id: 1 });
 		await flush();
 		advance(client, 10);
-		await load(client, { issue: prefetchEntry(backend.issueQuery, { id: 1 }) });
+		await load(client, { issue: prefetch(backend.issueQuery, { id: 1 }) });
 
 		expect(backend.requests).toHaveLength(2);
 		await backend.respondAll();
@@ -331,8 +331,8 @@ describe("garbage collection", () => {
 		const backend = createBackend();
 		const server = testClient({ isServer: true });
 		const browser = testClient({ gcTime: Infinity });
-		void load(server, { issue: prefetchEntry(backend.issueQuery, { id: 1 }) });
-		void load(browser, { issue: prefetchEntry(backend.issueQuery, { id: 1 }) });
+		void load(server, { issue: prefetch(backend.issueQuery, { id: 1 }) });
+		void load(browser, { issue: prefetch(backend.issueQuery, { id: 1 }) });
 		await backend.respondAll();
 
 		expect([timersOf(server), timersOf(browser)]).toEqual([0, 0]);
@@ -344,7 +344,7 @@ describe("reset", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const loading = load(client, {
-			issue: fetchEntry(backend.issueQuery, { id: 1 }),
+			issue: revalidate(backend.issueQuery, { id: 1 }),
 		});
 		await backend.respondAll();
 		const [handles] = await loading;
@@ -407,7 +407,7 @@ describe("paged queries", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const loading = load(client, {
-			pages: fetchEntry(backend.pageQuery, { size: 3 }, { pages: 2 }),
+			pages: revalidate(backend.pageQuery, { size: 3 }, { pages: 2 }),
 		});
 		await backend.respondAll();
 		await backend.respondAll();

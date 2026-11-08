@@ -21,7 +21,7 @@ raf-query aborts a request only when it replaces or drops it:
 - **The query is removed** (`removeOne`, `removeMany`, `removeAll`). Its request is aborted, and a `load` waiting for it rejects with an `AbortError`, as an aborted `fetch` would.
 - **A `timeout(ms)` link** gives up on it. See [Retries and errors](./retries.md#timeouts).
 
-Nothing else aborts a request. When the last component reading a query unmounts, its request runs to the end and the result is cached: the query is likely to be read again, and `gcTime` only removes an entry once its request has finished. Requests nothing has read yet, like a loader's `prefetchEntry`, run to the end too.
+Nothing else aborts a request. When the last component reading a query unmounts, its request runs to the end and the result is cached: the query is likely to be read again, and `gcTime` only removes an entry once its request has finished. Requests nothing has read yet, like a loader's `prefetch`, run to the end too.
 
 Try it below. The inbox's `queryFn` passes its signal to the server, so aborted requests show up in the Queries panel:
 

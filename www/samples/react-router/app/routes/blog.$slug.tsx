@@ -1,10 +1,10 @@
 import {
 	HydrationBoundary,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryHandle,
-	useQuery,
 	useInfiniteQuery,
+	useQuery,
 } from "@raf-query/react";
 import { dehydrate } from "@raf-query/react/hydration";
 import { Suspense, use } from "react";
@@ -19,8 +19,8 @@ import type { Route } from "./+types/blog.$slug";
 declare function Comment(props: { comment: PostComment }): React.ReactNode;
 declare function PostSkeleton(): React.ReactNode;
 
-// Homepage sample: both queries stream. `posts.$slug.tsx` keeps fetch +
-// prefetch for the guide that teaches that split.
+// Homepage sample: both queries stream. `posts.$slug.tsx` keeps
+// revalidate + prefetch for the guide that teaches that split.
 
 // #region hero
 // #region loader
@@ -29,8 +29,8 @@ export async function loader(args: Route.LoaderArgs) {
 	const { slug } = args.params;
 	// Never waits: both load while the page renders.
 	const [handles] = await load(qc, {
-		comments: prefetchEntry(commentsQuery, { slug }),
-		post: prefetchEntry(postQuery, { slug }),
+		comments: prefetch(commentsQuery, { slug }),
+		post: prefetch(postQuery, { slug }),
 	});
 	return { ...handles, dehydratedState: dehydrate(qc) };
 }

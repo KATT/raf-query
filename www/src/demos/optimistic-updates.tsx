@@ -4,11 +4,11 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
 	group,
-	type QueryHandle,
-	ensureEntry,
 	infiniteQueryOptions,
 	invalidateMany,
 	load,
+	type QueryHandle,
+	swr,
 	useInfiniteQuery,
 	useQueryClient,
 } from "@raf-query/react";
@@ -159,7 +159,7 @@ function OptimisticUpdates() {
 				initial={{ path: "/todos" }}
 				loader={async (args): Promise<PageData> => {
 					const [handles] = await load(args.client, {
-						todos: ensureEntry(todosQuery),
+						todos: swr(todosQuery),
 					});
 					return handles;
 				}}

@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { tag } from "./groups.ts";
 import {
-	fetchEntry,
 	group,
 	invalidateMany,
 	load,
 	queryOptions,
+	revalidate,
 	waterfallHandle,
 } from "./index.ts";
 import {
@@ -23,7 +23,7 @@ describe("groups", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const loading = load(client, {
-			issue: fetchEntry(backend.issueQuery, { id: 1 }),
+			issue: revalidate(backend.issueQuery, { id: 1 }),
 		});
 		await backend.respondAll();
 		const [handles] = await loading;
@@ -39,9 +39,9 @@ describe("groups", () => {
 		let calls = 0;
 		const all = () =>
 			queryOptions({ queryFn: () => (calls += 1), queryKey: issues() });
-		await load(client, { all: fetchEntry(all) });
+		await load(client, { all: revalidate(all) });
 		await invalidateMany(client, issues);
-		await load(client, { all: fetchEntry(all) });
+		await load(client, { all: revalidate(all) });
 
 		expect(calls).toBe(2);
 	});

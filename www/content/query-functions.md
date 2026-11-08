@@ -37,7 +37,7 @@ tanstack-start/src/docs/query-functions.ts#expected-errors
 
 An expected error is never retried, and it crosses SSR and the router's serializer as it is. Where it ends up depends on who reads it:
 
-- A `load` waiting for the query (an `ensureEntry` or `fetchEntry`) rejects with a `QueryFailure`, an `Error` that carries the `fail()` value in `.fail`. `isFail(error, "NotFound")` checks for one by tag:
+- A `load` waiting for the query (an `swr` or `revalidate`) rejects with a `QueryFailure`, an `Error` that carries the `fail()` value in `.fail`. `isFail(error, "NotFound")` checks for one by tag:
 
 ```sample
 tanstack-start/src/docs/query-functions.expected-errors.tsx#loader

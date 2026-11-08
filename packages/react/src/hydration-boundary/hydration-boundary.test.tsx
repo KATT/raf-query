@@ -6,11 +6,11 @@ import { dehydrate } from "../hydration.ts";
 import { HydrationBoundary as ServerHydrationBoundary } from "../index-react-server.ts";
 import {
 	createQueryClient,
-	fetchEntry,
 	getData,
 	HydrationBoundary,
 	load,
-	prefetchEntry,
+	prefetch,
+	revalidate,
 	setData,
 	useQuery,
 	waterfallHandle,
@@ -28,7 +28,7 @@ function Issue(props: { readonly backend: Backend; readonly id: number }) {
 
 async function serverState(backend: Backend, id: number, title: string) {
 	const server = createQueryClient({ isServer: true });
-	const done = load(server, { issue: fetchEntry(backend.issueQuery, { id }) });
+	const done = load(server, { issue: revalidate(backend.issueQuery, { id }) });
 	backend.store.set(id, { id, title });
 	for (const request of backend.requests.splice(0)) {
 		request.respond();
@@ -94,8 +94,8 @@ describe("HydrationBoundary (react-server)", () => {
 		const backend = createBackend();
 		const server = createQueryClient({ isServer: true });
 		await load(server, {
-			one: prefetchEntry(backend.issueQuery, { id: 1 }),
-			two: prefetchEntry(backend.issueQuery, { id: 2 }),
+			one: prefetch(backend.issueQuery, { id: 1 }),
+			two: prefetch(backend.issueQuery, { id: 2 }),
 		});
 		const client = testClient();
 		await renderWith(

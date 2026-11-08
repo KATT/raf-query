@@ -1,7 +1,7 @@
 import { Badge } from "@examples/ui/components/badge";
 import { buttonVariants } from "@examples/ui/components/button";
 import { cn } from "@examples/ui/lib/utils";
-import { load, prefetchEntry } from "@raf-query/react";
+import { load, prefetch } from "@raf-query/react";
 import {
 	createFileRoute,
 	Link,
@@ -57,7 +57,7 @@ export const Route = createFileRoute("/")({
 	},
 	loader: async (args) => {
 		const [handles] = await load(args.context.queryClient, {
-			demo: prefetchEntry(demoQuery, { id: "starting-queries" }),
+			demo: prefetch(demoQuery, { id: "starting-queries" }),
 		});
 		return handles;
 	},
@@ -206,18 +206,18 @@ const stepsByMode = {
 					</p>
 					<p>
 						<code>load</code> takes named entries and starts them together. A{" "}
-						<code>prefetchEntry</code> never holds the response: the page
-						streams while the post and comments load. <code>load</code> returns
-						a <strong className="text-foreground">handle</strong> for each entry
-						— the query’s key and input, without the data.{" "}
+						<code>prefetch</code> never holds the response: the page streams
+						while the post and comments load. <code>load</code> returns a{" "}
+						<strong className="text-foreground">handle</strong> for each entry —
+						the query’s key and input, without the data.{" "}
 						<code>HydrationBoundary</code> streams the cache to the browser next
 						to those handles, so nothing is fetched twice.
 					</p>
 					<p>
-						Use <code>fetchEntry</code> when the server component itself renders
-						the data. Prefer <code>prefetchEntry</code> when a client component
-						will read it under Suspense — the usual App Router shape, and what
-						the example app does.
+						Use <code>revalidate</code> when the server component itself renders
+						the data. Prefer <code>prefetch</code> when a client component will
+						read it under Suspense — the usual App Router shape, and what the
+						example app does.
 					</p>
 				</>
 			),
@@ -270,19 +270,19 @@ const stepsByMode = {
 					</p>
 					<p>
 						<code>load</code> takes named entries and starts them together. A{" "}
-						<code>prefetchEntry</code> never holds the navigation: the page
-						renders while the post and comments load. <code>load</code> returns
-						a <strong className="text-foreground">handle</strong> for each entry
-						— the query’s key and input, without the data. The loader returns
-						the handles with <code>dehydrate(qc)</code>, and React Router
-						streams the queries still loading to the browser, so nothing is
-						fetched twice.
+						<code>prefetch</code> never holds the navigation: the page renders
+						while the post and comments load. <code>load</code> returns a{" "}
+						<strong className="text-foreground">handle</strong> for each entry —
+						the query’s key and input, without the data. The loader returns the
+						handles with <code>dehydrate(qc)</code>, and React Router streams
+						the queries still loading to the browser, so nothing is fetched
+						twice.
 					</p>
 					<p>
-						Use <code>ensureEntry</code> when the route can’t lay out without
-						the data. Prefer <code>prefetchEntry</code> when a component will
-						read it under Suspense — the usual shape, and what the example app
-						does for streamed parts of the page.
+						Use <code>swr</code> when the route can’t lay out without the data.
+						Prefer <code>prefetch</code> when a component will read it under
+						Suspense — the usual shape, and what the example app does for
+						streamed parts of the page.
 					</p>
 				</>
 			),
@@ -345,18 +345,18 @@ const stepsByMode = {
 					</p>
 					<p>
 						<code>load</code> takes named entries and starts them together. A{" "}
-						<code>prefetchEntry</code> never holds the navigation: the page
-						renders while the post and comments load. <code>load</code> returns
-						a <strong className="text-foreground">handle</strong> for each entry
-						— the query’s key and input, without the data. During SSR, the cache
+						<code>prefetch</code> never holds the navigation: the page renders
+						while the post and comments load. <code>load</code> returns a{" "}
+						<strong className="text-foreground">handle</strong> for each entry —
+						the query’s key and input, without the data. During SSR, the cache
 						streams to the browser next to those handles, so nothing is fetched
 						twice.
 					</p>
 					<p>
-						Use <code>ensureEntry</code> when the route can’t lay out without
-						the data. Prefer <code>prefetchEntry</code> when a component will
-						read it under Suspense — the usual shape, and what the example app
-						does for streamed parts of the page.
+						Use <code>swr</code> when the route can’t lay out without the data.
+						Prefer <code>prefetch</code> when a component will read it under
+						Suspense — the usual shape, and what the example app does for
+						streamed parts of the page.
 					</p>
 				</>
 			),
@@ -426,15 +426,9 @@ const howItWorksByMode = {
 } as const satisfies Record<FrameworkMode, ReactNode>;
 
 const mapping: ReadonlyArray<readonly [string, string]> = [
-	[
-		"queryClient.prefetchQuery()",
-		"load(qc, { x: prefetchEntry(factory, input) })",
-	],
-	[
-		"queryClient.ensureQueryData()",
-		"load(qc, { x: ensureEntry(factory, input) })",
-	],
-	["queryClient.fetchQuery()", "load(qc, { x: fetchEntry(factory, input) })"],
+	["queryClient.prefetchQuery()", "load(qc, { x: prefetch(factory, input) })"],
+	["queryClient.ensureQueryData()", "load(qc, { x: swr(factory, input) })"],
+	["queryClient.fetchQuery()", "load(qc, { x: revalidate(factory, input) })"],
 	[
 		"useSuspenseQuery()",
 		"use() on the thenable from useQuery(factory, handle)",
@@ -649,7 +643,7 @@ function HomePage() {
 							id="try-it"
 						>
 							<HashLink id="try-it">
-								Try it: prefetchEntry, ensureEntry or fetchEntry
+								Try it: prefetch, swr or revalidate
 							</HashLink>
 						</h2>
 						<p className="max-w-2xl text-muted-foreground">

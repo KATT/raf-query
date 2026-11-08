@@ -100,7 +100,7 @@ tanstack-start/src/docs/mutations.tsx#pending-state
 
 ## Mutations that navigate
 
-After creating a post, you usually navigate to it. Navigate after the action resolves, and the destination's loader finds the cache already up to date. If the destination's loader ensures the new post with `ensureEntry`, you can skip invalidating it entirely: a cache miss always fetches.
+After creating a post, you usually navigate to it. Navigate after the action resolves, and the destination's loader finds the cache already up to date. If the destination's loader starts the new post with `swr`, you can skip invalidating it entirely: a cache miss always fetches.
 
 ## Serial mutations
 

@@ -1,8 +1,8 @@
 import {
-	type QueryHandle,
-	ensureEntry,
 	load,
-	prefetchEntry,
+	prefetch,
+	type QueryHandle,
+	swr,
 	useQuery,
 } from "@raf-query/react";
 import { Suspense, use } from "react";
@@ -18,10 +18,10 @@ export async function clientLoader(args: Route.ClientLoaderArgs) {
 	const { slug } = args.params;
 	const [handles] = await load(queryClient, {
 		// Doesn't wait: the comments stream in after the page renders.
-		comments: prefetchEntry(commentsQuery, { slug }),
+		comments: prefetch(commentsQuery, { slug }),
 		// Waits on the first visit only. Coming back shows the cached post at
 		// once, and refetches it behind the page once it's stale.
-		post: ensureEntry(postQuery, { slug }),
+		post: swr(postQuery, { slug }),
 	});
 	return handles;
 }

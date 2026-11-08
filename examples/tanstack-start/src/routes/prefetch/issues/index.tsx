@@ -1,4 +1,4 @@
-import { load, prefetchEntry } from "@raf-query/react";
+import { load, prefetch } from "@raf-query/react";
 import { IssueListInput } from "@examples/db/types";
 import { IssueListSkeleton } from "@examples/kit/components/issue-list";
 import { Skeleton } from "@examples/ui/components/skeleton";
@@ -18,8 +18,8 @@ export const Route = createFileRoute("/prefetch/issues/")({
 		// `prefetch` starts each query and returns its handle at once. The
 		// page shows skeletons until the data lands.
 		const [handles] = await load(qc, {
-			counts: prefetchEntry(issueCountsQuery),
-			issues: prefetchEntry(issueListQuery, args.deps),
+			counts: prefetch(issueCountsQuery),
+			issues: prefetch(issueListQuery, args.deps),
 		});
 		return handles;
 	},

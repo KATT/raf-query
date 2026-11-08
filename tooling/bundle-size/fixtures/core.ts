@@ -1,10 +1,10 @@
 import {
 	createQueryClient,
-	fetchEntry,
 	group,
 	invalidateOne,
 	load,
 	queryOptions,
+	revalidate,
 } from "@raf-query/core";
 
 import { getIssue } from "./api.ts";
@@ -19,7 +19,7 @@ const issueQuery = (input: { readonly id: number }) =>
 
 const client = createQueryClient();
 const [, data] = await load(client, {
-	issue: fetchEntry(issueQuery, { id: 1 }),
+	issue: revalidate(issueQuery, { id: 1 }),
 });
 document.title = data.issue.title;
 document.addEventListener("click", () => {

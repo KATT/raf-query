@@ -3,13 +3,13 @@ import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	group,
-	type QueryHandle,
-	ensureEntry,
 	infiniteQueryOptions,
 	invalidateOne,
 	load,
-	useQueryClient,
+	type QueryHandle,
+	swr,
 	useInfiniteQuery,
+	useQueryClient,
 } from "@raf-query/react";
 import { RefreshCw, RotateCcw } from "lucide-react";
 
@@ -149,7 +149,7 @@ function Cancellation() {
 					return { page: "settings" };
 				}
 				const [handles] = await load(args.client, {
-					inbox: ensureEntry(inboxQuery),
+					inbox: swr(inboxQuery),
 				});
 				return { inbox: handles.inbox, page: "inbox" };
 			}}

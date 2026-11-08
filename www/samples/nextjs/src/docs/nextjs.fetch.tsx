@@ -1,8 +1,8 @@
 import {
-	fetchEntry,
 	HydrationBoundary,
 	load,
-	prefetchEntry,
+	prefetch,
+	revalidate,
 } from "@raf-query/react";
 import { Suspense } from "react";
 
@@ -17,9 +17,9 @@ declare const slug: string;
 // #region fetch
 const qc = getQueryClient();
 const [handles, data] = await load(qc, {
-	comments: prefetchEntry(commentsQuery, { slug }),
+	comments: prefetch(commentsQuery, { slug }),
 	// Waits, so the server component can render the post.
-	post: fetchEntry(postQuery, { slug }),
+	post: revalidate(postQuery, { slug }),
 });
 
 <HydrationBoundary client={qc}>

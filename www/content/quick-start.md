@@ -47,7 +47,7 @@ The loader starts the query with `load` and returns its **handle**, a small `{ q
 tanstack-start/src/routes/todos.tsx#loader
 ```
 
-`prefetchEntry` starts the request without waiting for it, so the page renders while the data is on its way. Use `ensureEntry` instead when the page can't lay out without the data: the navigation then waits for it. [Starting queries](./starting-queries.md) covers the trade-off.
+`prefetch` starts the request without waiting for it, so the page renders while the data is on its way. Use `swr` instead when the page can't lay out without the data: the navigation then waits for it. [Starting queries](./starting-queries.md) covers the trade-off.
 
 ## 4. Read it in a component
 

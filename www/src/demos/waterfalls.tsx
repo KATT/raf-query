@@ -3,14 +3,14 @@ import {
 	group,
 	infiniteQueryOptions,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryHandle,
 	queryOptions,
 	removeAll,
+	useInfiniteQuery,
 	useQuery,
 	useQueryClient,
 	waterfallHandle,
-	useInfiniteQuery,
 } from "@raf-query/react";
 import { Suspense, use, useState } from "react";
 
@@ -127,9 +127,9 @@ function loaderFor(strategy: Strategy): DemoLoader<PageData> {
 			return { id, page: "render" };
 		}
 		const [handles] = await load(args.client, {
-			author: prefetchEntry(postAuthorQuery, { postId: id }),
-			comments: prefetchEntry(commentsQuery, { postId: id }),
-			post: prefetchEntry(postQuery, { id }),
+			author: prefetch(postAuthorQuery, { postId: id }),
+			comments: prefetch(commentsQuery, { postId: id }),
+			post: prefetch(postQuery, { id }),
 		});
 		return { ...handles, page: "loader" };
 	};

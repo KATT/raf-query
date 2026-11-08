@@ -13,7 +13,7 @@ tanstack-start/src/docs/reading-queries.ts#intro
 
 `postThenable` is a stable `Thenable<Data>` owned by the cache: a `Promise` that also carries `status`, `value` and `reason`, the fields React's [`use()`](https://react.dev/reference/react/use) reads. Read it with `use()` on its own line. When the cache already has the data, the thenable is fulfilled and `use()` returns it synchronously; otherwise `use()` suspends until it lands.
 
-`useQuery` returns a thenable for every handle. A handle from `ensureEntry` or `fetchEntry` had its data loaded before the route rendered, so `use()` doesn't suspend on it. If the cache dropped the data since (garbage collection, `resetOne`, `removeOne`), `use()` suspends while the query refetches. See [Handles](./handles.md#reading-a-handle).
+`useQuery` returns a thenable for every handle. A handle from `swr` or `revalidate` had its data loaded before the route rendered, so `use()` doesn't suspend on it. If the cache dropped the data since (garbage collection, `resetOne`, `removeOne`), `use()` suspends while the query refetches. See [Handles](./handles.md#reading-a-handle).
 
 ```sample
 tanstack-start/src/docs/reading-queries.tsx#post-page

@@ -1,10 +1,10 @@
 import {
-	ensureEntry,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryHandle,
-	useQuery,
+	swr,
 	useInfiniteQuery,
+	useQuery,
 } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense, use } from "react";
@@ -18,9 +18,9 @@ export const Route = createFileRoute("/posts/$slug")({
 		const { slug } = args.params;
 		const [handles] = await load(args.context.queryClient, {
 			// Never waits: the comments load while the page renders.
-			comments: prefetchEntry(commentsQuery, { slug }),
+			comments: prefetch(commentsQuery, { slug }),
 			// Waits only if the post isn't in the cache yet.
-			post: ensureEntry(postQuery, { slug }),
+			post: swr(postQuery, { slug }),
 		});
 		return handles;
 	},

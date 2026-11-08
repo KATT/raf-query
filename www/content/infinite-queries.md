@@ -48,7 +48,7 @@ infinite-scroll
 
 ## Loading several pages up front
 
-A loader's `ensureEntry` and `fetchEntry` load the first page. Pass `{ pages: n }` after the input to load more:
+A loader's `swr` and `revalidate` load the first page. Pass `{ pages: n }` after the input to load more:
 
 ```sample
 tanstack-start/src/docs/infinite-queries.loading-several-pages-up-front.ts#loading-several-pages-up-front

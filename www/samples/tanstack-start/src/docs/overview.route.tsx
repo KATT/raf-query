@@ -1,5 +1,5 @@
 import { use } from "react";
-import { ensureEntry, load, useQuery } from "@raf-query/react";
+import { load, swr, useQuery } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { postQuery } from "~/queries.ts";
@@ -8,7 +8,7 @@ import { postQuery } from "~/queries.ts";
 export const Route = createFileRoute("/posts/$slug")({
 	loader: async (args) => {
 		const [handles] = await load(args.context.queryClient, {
-			post: ensureEntry(postQuery, { slug: args.params.slug }),
+			post: swr(postQuery, { slug: args.params.slug }),
 		});
 		return handles;
 	},

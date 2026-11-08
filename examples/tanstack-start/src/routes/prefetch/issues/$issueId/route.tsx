@@ -8,12 +8,7 @@ import { AssigneeCardSkeleton } from "@examples/kit/components/user";
 import { Button, buttonVariants } from "@examples/ui/components/button";
 import { cn } from "@examples/ui/lib/utils";
 import { Separator } from "@examples/ui/components/separator";
-import {
-	load,
-	prefetchEntry,
-	type QueryHandle,
-	useQuery,
-} from "@raf-query/react";
+import { load, prefetch, type QueryHandle, useQuery } from "@raf-query/react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Suspense, use } from "react";
@@ -37,9 +32,9 @@ export const Route = createFileRoute("/prefetch/issues/$issueId")({
 		// page shows skeletons until the data lands, and finds out about a
 		// missing issue when it reads it.
 		const [handles] = await load(qc, {
-			assignee: prefetchEntry(assigneeQuery, { issueId: id }),
-			comments: prefetchEntry(commentsQuery, { issueId: id }),
-			issue: prefetchEntry(issueQuery, { id }),
+			assignee: prefetch(assigneeQuery, { issueId: id }),
+			comments: prefetch(commentsQuery, { issueId: id }),
+			issue: prefetch(issueQuery, { id }),
 		});
 		return handles;
 	},

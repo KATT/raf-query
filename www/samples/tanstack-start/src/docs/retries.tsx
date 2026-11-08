@@ -1,6 +1,6 @@
 import {
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryHandle,
 	useQueryClient,
 } from "@raf-query/react";
@@ -46,7 +46,7 @@ function CommentsError(props: ErrorComponentProps) {
 			<button
 				onClick={() => {
 					void load(queryClient, {
-						comments: prefetchEntry(commentsQuery, loaderData.comments.input),
+						comments: prefetch(commentsQuery, loaderData.comments.input),
 					});
 					props.reset();
 				}}

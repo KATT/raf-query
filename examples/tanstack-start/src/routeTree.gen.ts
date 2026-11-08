@@ -12,12 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiSplatRouteImport } from './routes/api.$'
 import { Route as IssuesSplatRouteImport } from './routes/issues.$'
-import { Route as EnsureIssuesIndexRouteImport } from './routes/ensure/issues/index'
-import { Route as EnsureIssuesIssueIdRouteRouteImport } from './routes/ensure/issues/$issueId/route'
-import { Route as FetchIssuesIndexRouteImport } from './routes/fetch/issues/index'
-import { Route as FetchIssuesIssueIdRouteRouteImport } from './routes/fetch/issues/$issueId/route'
 import { Route as PrefetchIssuesIndexRouteImport } from './routes/prefetch/issues/index'
 import { Route as PrefetchIssuesIssueIdRouteRouteImport } from './routes/prefetch/issues/$issueId/route'
+import { Route as RevalidateIssuesIndexRouteImport } from './routes/revalidate/issues/index'
+import { Route as RevalidateIssuesIssueIdRouteRouteImport } from './routes/revalidate/issues/$issueId/route'
+import { Route as SwrIssuesIndexRouteImport } from './routes/swr/issues/index'
+import { Route as SwrIssuesIssueIdRouteRouteImport } from './routes/swr/issues/$issueId/route'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,27 +34,6 @@ const IssuesSplatRoute = IssuesSplatRouteImport.update({
   path: '/issues/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EnsureIssuesIndexRoute = EnsureIssuesIndexRouteImport.update({
-  id: '/ensure/issues/',
-  path: '/ensure/issues/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EnsureIssuesIssueIdRouteRoute =
-  EnsureIssuesIssueIdRouteRouteImport.update({
-    id: '/ensure/issues/$issueId',
-    path: '/ensure/issues/$issueId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const FetchIssuesIndexRoute = FetchIssuesIndexRouteImport.update({
-  id: '/fetch/issues/',
-  path: '/fetch/issues/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FetchIssuesIssueIdRouteRoute = FetchIssuesIssueIdRouteRouteImport.update({
-  id: '/fetch/issues/$issueId',
-  path: '/fetch/issues/$issueId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PrefetchIssuesIndexRoute = PrefetchIssuesIndexRouteImport.update({
   id: '/prefetch/issues/',
   path: '/prefetch/issues/',
@@ -66,40 +45,61 @@ const PrefetchIssuesIssueIdRouteRoute =
     path: '/prefetch/issues/$issueId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const RevalidateIssuesIndexRoute = RevalidateIssuesIndexRouteImport.update({
+  id: '/revalidate/issues/',
+  path: '/revalidate/issues/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RevalidateIssuesIssueIdRouteRoute =
+  RevalidateIssuesIssueIdRouteRouteImport.update({
+    id: '/revalidate/issues/$issueId',
+    path: '/revalidate/issues/$issueId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SwrIssuesIndexRoute = SwrIssuesIndexRouteImport.update({
+  id: '/swr/issues/',
+  path: '/swr/issues/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SwrIssuesIssueIdRouteRoute = SwrIssuesIssueIdRouteRouteImport.update({
+  id: '/swr/issues/$issueId',
+  path: '/swr/issues/$issueId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/$': typeof ApiSplatRoute
   '/issues/$': typeof IssuesSplatRoute
-  '/ensure/issues/$issueId': typeof EnsureIssuesIssueIdRouteRoute
-  '/fetch/issues/$issueId': typeof FetchIssuesIssueIdRouteRoute
   '/prefetch/issues/$issueId': typeof PrefetchIssuesIssueIdRouteRoute
-  '/ensure/issues/': typeof EnsureIssuesIndexRoute
-  '/fetch/issues/': typeof FetchIssuesIndexRoute
+  '/revalidate/issues/$issueId': typeof RevalidateIssuesIssueIdRouteRoute
+  '/swr/issues/$issueId': typeof SwrIssuesIssueIdRouteRoute
   '/prefetch/issues/': typeof PrefetchIssuesIndexRoute
+  '/revalidate/issues/': typeof RevalidateIssuesIndexRoute
+  '/swr/issues/': typeof SwrIssuesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/$': typeof ApiSplatRoute
   '/issues/$': typeof IssuesSplatRoute
-  '/ensure/issues/$issueId': typeof EnsureIssuesIssueIdRouteRoute
-  '/fetch/issues/$issueId': typeof FetchIssuesIssueIdRouteRoute
   '/prefetch/issues/$issueId': typeof PrefetchIssuesIssueIdRouteRoute
-  '/ensure/issues': typeof EnsureIssuesIndexRoute
-  '/fetch/issues': typeof FetchIssuesIndexRoute
+  '/revalidate/issues/$issueId': typeof RevalidateIssuesIssueIdRouteRoute
+  '/swr/issues/$issueId': typeof SwrIssuesIssueIdRouteRoute
   '/prefetch/issues': typeof PrefetchIssuesIndexRoute
+  '/revalidate/issues': typeof RevalidateIssuesIndexRoute
+  '/swr/issues': typeof SwrIssuesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/$': typeof ApiSplatRoute
   '/issues/$': typeof IssuesSplatRoute
-  '/ensure/issues/$issueId': typeof EnsureIssuesIssueIdRouteRoute
-  '/fetch/issues/$issueId': typeof FetchIssuesIssueIdRouteRoute
   '/prefetch/issues/$issueId': typeof PrefetchIssuesIssueIdRouteRoute
-  '/ensure/issues/': typeof EnsureIssuesIndexRoute
-  '/fetch/issues/': typeof FetchIssuesIndexRoute
+  '/revalidate/issues/$issueId': typeof RevalidateIssuesIssueIdRouteRoute
+  '/swr/issues/$issueId': typeof SwrIssuesIssueIdRouteRoute
   '/prefetch/issues/': typeof PrefetchIssuesIndexRoute
+  '/revalidate/issues/': typeof RevalidateIssuesIndexRoute
+  '/swr/issues/': typeof SwrIssuesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -107,46 +107,46 @@ export interface FileRouteTypes {
     | '/'
     | '/api/$'
     | '/issues/$'
-    | '/ensure/issues/$issueId'
-    | '/fetch/issues/$issueId'
     | '/prefetch/issues/$issueId'
-    | '/ensure/issues/'
-    | '/fetch/issues/'
+    | '/revalidate/issues/$issueId'
+    | '/swr/issues/$issueId'
     | '/prefetch/issues/'
+    | '/revalidate/issues/'
+    | '/swr/issues/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/api/$'
     | '/issues/$'
-    | '/ensure/issues/$issueId'
-    | '/fetch/issues/$issueId'
     | '/prefetch/issues/$issueId'
-    | '/ensure/issues'
-    | '/fetch/issues'
+    | '/revalidate/issues/$issueId'
+    | '/swr/issues/$issueId'
     | '/prefetch/issues'
+    | '/revalidate/issues'
+    | '/swr/issues'
   id:
     | '__root__'
     | '/'
     | '/api/$'
     | '/issues/$'
-    | '/ensure/issues/$issueId'
-    | '/fetch/issues/$issueId'
     | '/prefetch/issues/$issueId'
-    | '/ensure/issues/'
-    | '/fetch/issues/'
+    | '/revalidate/issues/$issueId'
+    | '/swr/issues/$issueId'
     | '/prefetch/issues/'
+    | '/revalidate/issues/'
+    | '/swr/issues/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiSplatRoute: typeof ApiSplatRoute
   IssuesSplatRoute: typeof IssuesSplatRoute
-  EnsureIssuesIssueIdRouteRoute: typeof EnsureIssuesIssueIdRouteRoute
-  FetchIssuesIssueIdRouteRoute: typeof FetchIssuesIssueIdRouteRoute
   PrefetchIssuesIssueIdRouteRoute: typeof PrefetchIssuesIssueIdRouteRoute
-  EnsureIssuesIndexRoute: typeof EnsureIssuesIndexRoute
-  FetchIssuesIndexRoute: typeof FetchIssuesIndexRoute
+  RevalidateIssuesIssueIdRouteRoute: typeof RevalidateIssuesIssueIdRouteRoute
+  SwrIssuesIssueIdRouteRoute: typeof SwrIssuesIssueIdRouteRoute
   PrefetchIssuesIndexRoute: typeof PrefetchIssuesIndexRoute
+  RevalidateIssuesIndexRoute: typeof RevalidateIssuesIndexRoute
+  SwrIssuesIndexRoute: typeof SwrIssuesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,34 +172,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IssuesSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ensure/issues/': {
-      id: '/ensure/issues/'
-      path: '/ensure/issues'
-      fullPath: '/ensure/issues/'
-      preLoaderRoute: typeof EnsureIssuesIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ensure/issues/$issueId': {
-      id: '/ensure/issues/$issueId'
-      path: '/ensure/issues/$issueId'
-      fullPath: '/ensure/issues/$issueId'
-      preLoaderRoute: typeof EnsureIssuesIssueIdRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fetch/issues/': {
-      id: '/fetch/issues/'
-      path: '/fetch/issues'
-      fullPath: '/fetch/issues/'
-      preLoaderRoute: typeof FetchIssuesIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fetch/issues/$issueId': {
-      id: '/fetch/issues/$issueId'
-      path: '/fetch/issues/$issueId'
-      fullPath: '/fetch/issues/$issueId'
-      preLoaderRoute: typeof FetchIssuesIssueIdRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/prefetch/issues/': {
       id: '/prefetch/issues/'
       path: '/prefetch/issues'
@@ -214,6 +186,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrefetchIssuesIssueIdRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/revalidate/issues/': {
+      id: '/revalidate/issues/'
+      path: '/revalidate/issues'
+      fullPath: '/revalidate/issues/'
+      preLoaderRoute: typeof RevalidateIssuesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/revalidate/issues/$issueId': {
+      id: '/revalidate/issues/$issueId'
+      path: '/revalidate/issues/$issueId'
+      fullPath: '/revalidate/issues/$issueId'
+      preLoaderRoute: typeof RevalidateIssuesIssueIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/swr/issues/': {
+      id: '/swr/issues/'
+      path: '/swr/issues'
+      fullPath: '/swr/issues/'
+      preLoaderRoute: typeof SwrIssuesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/swr/issues/$issueId': {
+      id: '/swr/issues/$issueId'
+      path: '/swr/issues/$issueId'
+      fullPath: '/swr/issues/$issueId'
+      preLoaderRoute: typeof SwrIssuesIssueIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -221,12 +221,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiSplatRoute: ApiSplatRoute,
   IssuesSplatRoute: IssuesSplatRoute,
-  EnsureIssuesIssueIdRouteRoute: EnsureIssuesIssueIdRouteRoute,
-  FetchIssuesIssueIdRouteRoute: FetchIssuesIssueIdRouteRoute,
   PrefetchIssuesIssueIdRouteRoute: PrefetchIssuesIssueIdRouteRoute,
-  EnsureIssuesIndexRoute: EnsureIssuesIndexRoute,
-  FetchIssuesIndexRoute: FetchIssuesIndexRoute,
+  RevalidateIssuesIssueIdRouteRoute: RevalidateIssuesIssueIdRouteRoute,
+  SwrIssuesIssueIdRouteRoute: SwrIssuesIssueIdRouteRoute,
   PrefetchIssuesIndexRoute: PrefetchIssuesIndexRoute,
+  RevalidateIssuesIndexRoute: RevalidateIssuesIndexRoute,
+  SwrIssuesIndexRoute: SwrIssuesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

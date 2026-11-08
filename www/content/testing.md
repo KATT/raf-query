@@ -37,7 +37,7 @@ To render with known data and no request at all, write it with `setData` before 
 tanstack-start/src/docs/testing.ts#seeding-the-cache
 ```
 
-`ensureEntry` resolves at once when the cache has data. It also refetches stale data in the background, and data written with `setData` is fresh only for `staleTime`, which is `0` by default: give the test client a `staleTime` so the seeded data stays as it is.
+`swr` resolves at once when the cache has data. It also refetches stale data in the background, and data written with `setData` is fresh only for `staleTime`, which is `0` by default: give the test client a `staleTime` so the seeded data stays as it is.
 
 ## Mocking the network
 
@@ -55,7 +55,7 @@ A loader is a function of its context. Export it from the route file, call it wi
 tanstack-start/src/docs/testing.loader-test.ts#testing-loaders
 ```
 
-`getData` reads what an ensured or fetched entry loaded, and `isFetching(queryClient, target)` counts the requests still in flight, such as a prefetch's.
+`getData` reads what an `swr` or `revalidate` entry loaded, and `isFetching(queryClient, target)` counts the requests still in flight, such as a prefetch's.
 
 ## Time
 

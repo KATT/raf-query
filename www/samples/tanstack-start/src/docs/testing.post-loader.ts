@@ -1,9 +1,4 @@
-import {
-	ensureEntry,
-	load,
-	prefetchEntry,
-	type QueryClient,
-} from "@raf-query/react";
+import { load, prefetch, type QueryClient, swr } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { commentsQuery, postQuery } from "~/queries.ts";
@@ -13,8 +8,8 @@ export async function postLoader(args: {
 	params: { slug: string };
 }) {
 	const [handles] = await load(args.context.queryClient, {
-		comments: prefetchEntry(commentsQuery, { slug: args.params.slug }),
-		post: ensureEntry(postQuery, { slug: args.params.slug }),
+		comments: prefetch(commentsQuery, { slug: args.params.slug }),
+		post: swr(postQuery, { slug: args.params.slug }),
 	});
 	return handles;
 }

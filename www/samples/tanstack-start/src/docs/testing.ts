@@ -1,10 +1,10 @@
 import {
 	type Clock,
 	createQueryClient,
-	ensureEntry,
 	getData,
 	load,
 	setData,
+	swr,
 } from "@raf-query/react";
 import { expect, test } from "./testing.vitest.ts";
 import type { Todo } from "~/api.ts";
@@ -23,7 +23,7 @@ setData(
 	{ slug: "hello", title: "Hello", body: "", authorId: "" },
 );
 const [handles] = await load(queryClient, {
-	post: ensureEntry(postQuery, { slug: "hello" }),
+	post: swr(postQuery, { slug: "hello" }),
 });
 // #endregion
 

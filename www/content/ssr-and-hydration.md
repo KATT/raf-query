@@ -12,7 +12,7 @@ Your components never deal with this. A handle only carries a key and an input, 
 ## What happens on a request
 
 1. **The server creates a query client for the request.** Each request gets its own, so users never see each other's data.
-2. **Loaders or server components call `load`.** Fetch and ensure entries wait for their data; prefetch entries don't.
+2. **Loaders or server components call `load`.** `swr` and `revalidate` entries wait for their data; `prefetch` entries don't.
 3. **React renders and streams HTML.** Components reading a pending query suspend, and their Suspense fallbacks go out first.
 4. **The cache streams alongside the HTML.** Each entry is sent once, as soon as it starts or settles. Entries still pending cross as **promises**, which resolve in the browser when the server's request finishes.
 5. **The browser hydrates.** Its query client receives each entry. A pending entry resumes the server's request instead of starting a new one, so a query never runs twice.
@@ -22,14 +22,14 @@ Your components never deal with this. A handle only carries a key and an input, 
 
 `createQueryClient` makes a server client where `window` doesn't exist (set `isServer` to choose). A server client renders once, so it behaves differently:
 
-| Behavior            | Browser                                                          | Server                                                                                     |
-| ------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Retries             | With the `retry()` link                                          | None, even with `retry()`                                                                  |
-| `gcTime`            | 5 minutes by default                                             | Never collected: the cache lives as long as the request                                    |
-| Stale cached data   | Refetched (ensure entries resolve with it and refetch alongside) | Reused: `staleTime` doesn't apply within a request; fetch entries refetch invalidated data |
-| Focus and reconnect | Refetch read, stale queries, with their feature                  | Not watched: features start when a provider mounts                                         |
+| Behavior            | Browser                                                         | Server                                                                                            |
+| ------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Retries             | With the `retry()` link                                         | None, even with `retry()`                                                                         |
+| `gcTime`            | 5 minutes by default                                            | Never collected: the cache lives as long as the request                                           |
+| Stale cached data   | Refetched (`swr` entries resolve with it and refetch alongside) | Reused: `staleTime` doesn't apply within a request; `revalidate` entries refetch invalidated data |
+| Focus and reconnect | Refetch read, stale queries, with their feature                 | Not watched: features start when a provider mounts                                                |
 
-So in a server render, every entry makes at most one request per query, whatever its `staleTime`, unless a write invalidates the query and a fetch entry reads it again.
+So in a server render, every entry makes at most one request per query, whatever its `staleTime`, unless a write invalidates the query and a `revalidate` entry reads it again.
 
 ## Errors
 
@@ -45,7 +45,7 @@ Some data only the browser can know: a push subscription, a notification permiss
 tanstack-start/src/docs/ssr-and-hydration.ts#browser-only-queries
 ```
 
-A server client never starts a disabled query and never sends it. A loader that also runs on the server starts it with a prefetch entry: `load` returns its handle on the server too, and the browser starts the request when the loader or the first read runs there. Fetch and ensure entries can't wait for it on the server, so `load` rejects with `QueryDisabledError`.
+A server client never starts a disabled query and never sends it. A loader that also runs on the server starts it with a `prefetch` entry: `load` returns its handle on the server too, and the browser starts the request when the loader or the first read runs there. `swr` and `revalidate` entries can't wait for it on the server, so `load` rejects with `QueryDisabledError`.
 
 On the server, a disabled query with no data reads as a thenable that rejects with `QueryDisabledError`, and `use()` throws it. Put the component that `use()`s it inside a Suspense boundary: React sends the fallback from the server and renders the content in the browser.
 

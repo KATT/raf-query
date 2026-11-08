@@ -56,14 +56,14 @@ export {
 	timeout,
 } from "./links.ts";
 export {
-	ensureEntry,
-	type EntryOptions,
-	fetchEntry,
 	load,
 	type Loaded,
 	type LoadEntry,
-	prefetchEntry,
+	type LoadEntryOptions,
+	prefetch,
 	type QueryHandle,
+	revalidate,
+	swr,
 	waterfallHandle,
 } from "./load.ts";
 export {

@@ -2,7 +2,7 @@ import {
 	group,
 	infiniteQueryOptions,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryClient,
 	QueryClientProvider,
 	type QueryHandle,
@@ -46,7 +46,7 @@ function Feed(props: { readonly handle: QueryHandle<typeof feedQuery> }) {
 
 /** Load a paged query with `client` and render it in its own root. */
 export async function renderPages(client: QueryClient) {
-	const [handles] = await load(client, { feed: prefetchEntry(feedQuery) });
+	const [handles] = await load(client, { feed: prefetch(feedQuery) });
 	const root = document.createElement("section");
 	document.body.append(root);
 	createRoot(root).render(

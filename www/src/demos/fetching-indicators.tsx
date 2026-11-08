@@ -3,11 +3,11 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
 	group,
-	type QueryHandle,
-	ensureEntry,
 	invalidateMany,
 	load,
+	type QueryHandle,
 	queryOptions,
+	swr,
 	useIsFetching,
 	useQuery,
 	useQueryClient,
@@ -132,9 +132,9 @@ function FetchingIndicators() {
 			initial={{ path: "/dashboard" }}
 			loader={async (args): Promise<PageData> => {
 				const [handles] = await load(args.client, {
-					orders: ensureEntry(statQuery, { stat: "orders" }),
-					signups: ensureEntry(statQuery, { stat: "signups" }),
-					tickets: ensureEntry(statQuery, { stat: "tickets" }),
+					orders: swr(statQuery, { stat: "orders" }),
+					signups: swr(statQuery, { stat: "signups" }),
+					tickets: swr(statQuery, { stat: "tickets" }),
 				});
 				return handles;
 			}}

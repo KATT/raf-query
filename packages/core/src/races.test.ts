@@ -11,13 +11,13 @@ import { describe, expect, it } from "vitest";
 
 import { dehydrate, hydrate } from "./hydration.ts";
 import {
-	fetchEntry,
 	invalidateMany,
 	isFetching,
 	load,
-	prefetchEntry,
+	prefetch,
 	removeMany,
 	resetMany,
+	revalidate,
 	waterfallHandle,
 } from "./index.ts";
 import {
@@ -71,7 +71,7 @@ describe("racing loads, reads, invalidations and removals", () => {
 						case "hydrate": {
 							const serverClient = testClient({ isServer: true });
 							void load(serverClient, {
-								issue: prefetchEntry(server.issueQuery, { id: 1 }),
+								issue: prefetch(server.issueQuery, { id: 1 }),
 							});
 							hydrate(client, dehydrate(serverClient));
 							for (const request of server.requests.splice(0)) {
@@ -85,7 +85,7 @@ describe("racing loads, reads, invalidations and removals", () => {
 						case "load":
 							loads.push(
 								load(client, {
-									issue: fetchEntry(backend.issueQuery, { id: 1 }),
+									issue: revalidate(backend.issueQuery, { id: 1 }),
 								}).catch((error: unknown) => error),
 							);
 							break;

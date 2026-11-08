@@ -3,7 +3,7 @@ import {
 	group,
 	infiniteQueryOptions,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryHandle,
 	useInfiniteQuery,
 } from "@raf-query/react";
@@ -192,7 +192,7 @@ function InfiniteScroll() {
 			initial={{ path: "/messages", search: { filter: "all" } }}
 			loader={async (args): Promise<PageData> => {
 				const [handles] = await load(args.client, {
-					messages: prefetchEntry(messagesQuery, {
+					messages: prefetch(messagesQuery, {
 						filter: filterOf(args.location.search?.filter),
 					}),
 				});

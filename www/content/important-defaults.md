@@ -51,7 +51,7 @@ With `recommended()`, keep these in mind as you read the rest of the guides:
 
 A server client (one per request) renders once, so it behaves differently:
 
-- **Cached data is reused**, whatever `staleTime` says: what the request fetched is fresh for that request, and a refetch could only repeat a request whose result is never shown. Fetch entries refetch invalidated data, so they see a write made earlier in the request.
+- **Cached data is reused**, whatever `staleTime` says: what the request fetched is fresh for that request, and a refetch could only repeat a request whose result is never shown. `revalidate` entries refetch invalidated data, so they see a write made earlier in the request.
 - **No retries**, even with `retry()`, and **no garbage collection**: the cache lives as long as the request.
 - **No features run.** A provider starts them when it mounts, which only happens in the browser.
 - `useIsFetching()` returns `0`, so loading indicators never appear in server HTML.

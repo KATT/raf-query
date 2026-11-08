@@ -5,11 +5,9 @@ import {
 	bindQueryOptions,
 	createQueryClient,
 	type DataOf,
-	ensureEntry,
 	type ErrorOf,
 	type Fail,
 	feature,
-	fetchEntry,
 	getData,
 	group,
 	type InputOf,
@@ -17,19 +15,21 @@ import {
 	invalidateOne,
 	link,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryClient,
 	type QueryHandle,
 	type QueryInfo,
-	type Target,
 	type QueryKey,
 	queryOptions,
 	type Recommended,
 	removeMany,
 	resetMany,
 	retry,
+	revalidate,
 	type RootOf,
 	setData,
+	swr,
+	type Target,
 	waterfallHandle,
 } from "./index.ts";
 import { groups, tag } from "./groups.ts";
@@ -115,9 +115,9 @@ describe("load types", () => {
 async function typedLoad() {
 	{
 		const [handles, data] = await load(client, {
-			issue: ensureEntry(backend.issueQuery, { id: 1 }),
-			settings: fetchEntry(settings),
-			title: prefetchEntry(titles, { id: 1 }),
+			issue: swr(backend.issueQuery, { id: 1 }),
+			settings: revalidate(settings),
+			title: prefetch(titles, { id: 1 }),
 		});
 
 		expectTypeOf(handles.issue).toEqualTypeOf<
@@ -127,9 +127,9 @@ async function typedLoad() {
 		expectTypeOf(data.settings).toEqualTypeOf<{ theme: string }>();
 		expectTypeOf(data).not.toHaveProperty("title");
 		// @ts-expect-error -- the input is required
-		fetchEntry(titles);
+		revalidate(titles);
 		// @ts-expect-error -- the input has the factory's type
-		fetchEntry(titles, { id: "1" });
+		revalidate(titles, { id: "1" });
 	}
 }
 
@@ -159,13 +159,13 @@ describe("inline factory makers", () => {
 
 	it("infer their own type parameters in entries, handles and verbs", async () => {
 		const [handles, data] = await load(client, {
-			ensured: ensureEntry(makeFactory("post", getPost), { id: 1 }),
-			fetched: fetchEntry(makeFactory("post", getPost), { id: 1 }),
-			prefetched: prefetchEntry(makeFactory("post", getPost), { id: 1 }),
+			cached: swr(makeFactory("post", getPost), { id: 1 }),
+			fetched: revalidate(makeFactory("post", getPost), { id: 1 }),
+			prefetched: prefetch(makeFactory("post", getPost), { id: 1 }),
 		});
 		const handle = waterfallHandle(makeFactory("post", getPost), { id: 1 });
 
-		expectTypeOf(data.ensured).toEqualTypeOf<{ title: string }>();
+		expectTypeOf(data.cached).toEqualTypeOf<{ title: string }>();
 		expectTypeOf(data.fetched).toEqualTypeOf<{ title: string }>();
 		expectTypeOf(handles.prefetched.input).toEqualTypeOf<{
 			readonly id: number;
@@ -173,7 +173,7 @@ describe("inline factory makers", () => {
 		expectTypeOf(handle.input).toEqualTypeOf<{ readonly id: number }>();
 		await invalidateOne(client, makeFactory("post", getPost), { id: 1 });
 		// @ts-expect-error -- the input still has the maker's type
-		ensureEntry(makeFactory("post", getPost), { id: "1" });
+		swr(makeFactory("post", getPost), { id: "1" });
 		// @ts-expect-error -- and so does a waterfall handle's
 		waterfallHandle(makeFactory("post", getPost), { id: "1" });
 	});

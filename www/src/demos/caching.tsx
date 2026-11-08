@@ -4,7 +4,7 @@ import {
 	group,
 	infiniteQueryOptions,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryHandle,
 	useInfiniteQuery,
 } from "@raf-query/react";
@@ -143,7 +143,7 @@ function Caching() {
 					return { page: "about" };
 				}
 				const [handles] = await load(args.client, {
-					todos: prefetchEntry(todosQuery),
+					todos: prefetch(todosQuery),
 				});
 				return { page: "todos", todos: handles.todos };
 			}}

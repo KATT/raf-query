@@ -4,7 +4,7 @@ import {
 	createQueryClient,
 	getData,
 	load,
-	prefetchEntry,
+	prefetch,
 	queryOptions,
 } from "./index.ts";
 import { issues } from "./test-utils.ts";
@@ -16,7 +16,7 @@ describe("a client with the defaults", () => {
 	it("runs on the real clock and drops unread data after five minutes", async () => {
 		vi.useFakeTimers();
 		const client = createQueryClient();
-		await load(client, { count: prefetchEntry(count, { name: "a" }) });
+		await load(client, { count: prefetch(count, { name: "a" }) });
 		await vi.advanceTimersByTimeAsync(0);
 
 		expect(client.isServer).toBe(false);
@@ -40,12 +40,12 @@ describe("cache events", () => {
 		client.subscribe(() => seen.push("aborted"), {
 			signal: AbortSignal.abort(),
 		})();
-		await load(client, { a: prefetchEntry(count, { name: "a" }) });
+		await load(client, { a: prefetch(count, { name: "a" }) });
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		controller.abort();
 		unsubscribe();
 		const before = [...seen];
-		await load(client, { b: prefetchEntry(count, { name: "b" }) });
+		await load(client, { b: prefetch(count, { name: "b" }) });
 		await new Promise((resolve) => setTimeout(resolve, 0));
 
 		expect(before).toEqual(["added", "updated", "updated"]);

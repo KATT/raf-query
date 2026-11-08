@@ -11,7 +11,7 @@ Filters, sort order and pagination are search params. The loader turns them into
 tanstack-start/src/routes/posts.tsx#route
 ```
 
-Clicking a link navigates, the loader starts `{ sort: "oldest", page: 1 }` with `prefetchEntry` without blocking, and the component receives a new handle.
+Clicking a link navigates, the loader starts `{ sort: "oldest", page: 1 }` with `prefetch` without blocking, and the component receives a new handle.
 
 ## What shows while the new input loads
 

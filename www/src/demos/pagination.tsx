@@ -3,7 +3,7 @@ import { cn } from "@examples/ui/lib/utils";
 import {
 	group,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryHandle,
 	queryOptions,
 	useQuery,
@@ -137,7 +137,7 @@ function Pagination() {
 				loader={async (args): Promise<PageData> => {
 					const page = Math.max(1, Number(args.location.search?.page ?? 1));
 					const [handles] = await load(args.client, {
-						projects: prefetchEntry(projectsQuery, { page }),
+						projects: prefetch(projectsQuery, { page }),
 					});
 					return { page, projects: handles.projects };
 				}}

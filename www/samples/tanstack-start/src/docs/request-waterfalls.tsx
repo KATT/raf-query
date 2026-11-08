@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import {
 	createQueryClient,
-	fetchEntry,
 	load,
-	prefetchEntry,
+	prefetch,
+	revalidate,
 } from "@raf-query/react";
 import { authorQuery, postQuery } from "~/queries.ts";
 
@@ -36,9 +36,9 @@ declare const slug: string;
 
 // #region fetch-then-prefetch
 const [postHandles, data] = await load(qc, {
-	post: fetchEntry(postQuery, { slug }),
+	post: revalidate(postQuery, { slug }),
 });
 const [authorHandles] = await load(qc, {
-	author: prefetchEntry(authorQuery, { id: data.post.authorId }),
+	author: prefetch(authorQuery, { id: data.post.authorId }),
 });
 // #endregion

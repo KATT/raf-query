@@ -1,10 +1,10 @@
 import { use } from "react";
 import {
 	createQueryClient,
-	ensureEntry,
 	group,
 	load,
 	queryOptions,
+	swr,
 	useQuery,
 } from "@raf-query/react";
 
@@ -40,7 +40,7 @@ function endpointQuery<TArgs, TData>(endpoint: Endpoint<TArgs, TData>) {
 const getPostQuery = endpointQuery(api.posts.get);
 
 const [handles] = await load(qc, {
-	post: ensureEntry(getPostQuery, { slug }),
+	post: swr(getPostQuery, { slug }),
 });
 const [postThenable] = useQuery(getPostQuery, handles.post);
 const post = use(postThenable);

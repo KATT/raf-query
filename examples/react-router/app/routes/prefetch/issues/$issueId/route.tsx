@@ -11,7 +11,7 @@ import { cn } from "@examples/ui/lib/utils";
 import {
 	HydrationBoundary,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryHandle,
 	useQuery,
 } from "@raf-query/react";
@@ -44,9 +44,9 @@ export async function loader(args: Route.LoaderArgs) {
 		// streams in behind skeletons, and finds out about a missing
 		// issue when it reads it.
 		const [handles] = await load(queryClient, {
-			assignee: prefetchEntry(assigneeQuery, { issueId: id }),
-			comments: prefetchEntry(commentsQuery, { issueId: id }),
-			issue: prefetchEntry(issueQuery, { id }),
+			assignee: prefetch(assigneeQuery, { issueId: id }),
+			comments: prefetch(commentsQuery, { issueId: id }),
+			issue: prefetch(issueQuery, { id }),
 		});
 		return {
 			assignee: handles.assignee,

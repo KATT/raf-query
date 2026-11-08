@@ -2,7 +2,7 @@ import {
 	createQueryClient,
 	group,
 	load,
-	prefetchEntry,
+	prefetch,
 	QueryClientProvider,
 	type QueryHandle,
 	queryOptions,
@@ -37,7 +37,7 @@ function Log(props: { readonly handle: QueryHandle<typeof logQuery> }) {
 
 const client = createQueryClient();
 const [handles] = await load(client, {
-	log: prefetchEntry(logQuery, { id: 1 }),
+	log: prefetch(logQuery, { id: 1 }),
 });
 createRoot(document.body).render(
 	<QueryClientProvider client={client}>

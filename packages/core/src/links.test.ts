@@ -5,18 +5,18 @@ import {
 	bindInfiniteQueryOptions,
 	bindQueryOptions,
 	createQueryClient,
-	ensureEntry,
 	fail,
 	isQueryFailure,
 	link,
 	load,
-	type QueryClient,
 	type LoadEntry,
-	QueryTimeoutError,
+	type QueryClient,
 	queryOptions,
+	QueryTimeoutError,
 	recommended,
 	removeOne,
 	retry,
+	swr,
 	timeout,
 } from "./index.ts";
 import { advance, flush, issues, testClient } from "./test-utils.ts";
@@ -46,7 +46,7 @@ interface Outcome {
 }
 
 /** Start loading `entry` and report how it ends, without waiting for it. */
-async function ensure(client: QueryClient, entry: LoadEntry) {
+async function loadOne(client: QueryClient, entry: LoadEntry) {
 	const outcome: Outcome = {};
 	load(client, { value: entry }).then(
 		([handles]) => Object.assign(outcome, { done: true, value: handles }),
@@ -62,7 +62,7 @@ describe("retry", () => {
 	it("retries after growing delays, and gives up after its attempts", async () => {
 		const flakes = flaky([down, down, down, down]);
 		const client = testClient({ links: [retry()] });
-		const outcome = await ensure(client, ensureEntry(flakes.query));
+		const outcome = await loadOne(client, swr(flakes.query));
 
 		for (const [wait, attempts] of [
 			[999, 1],
@@ -83,7 +83,7 @@ describe("retry", () => {
 		const client = testClient({
 			links: [retry({ attempts: 2, delay: () => 10 })],
 		});
-		const outcome = await ensure(client, ensureEntry(flakes.query));
+		const outcome = await loadOne(client, swr(flakes.query));
 		advance(client, 10);
 		await flush();
 		advance(client, 10);
@@ -123,9 +123,9 @@ describe("retry", () => {
 				queryKey: issues("failing-pages"),
 			});
 		const client = makeClient();
-		const once = await ensure(client, ensureEntry(failing, { retry: 1 }));
-		const never = await ensure(client, ensureEntry(failing, { retry: false }));
-		const pages = await ensure(client, ensureEntry(failingPages));
+		const once = await loadOne(client, swr(failing, { retry: 1 }));
+		const never = await loadOne(client, swr(failing, { retry: false }));
+		const pages = await loadOne(client, swr(failingPages));
 		advance(client, 0);
 		await flush();
 
@@ -140,10 +140,10 @@ describe("retry", () => {
 	it("doesn't retry an expected error, a thrown Response, or what `when` rules out", async () => {
 		const response = flaky([new Response(null, { status: 302 })]);
 		const ruledOut = flaky([down]);
-		await ensure(testClient({ links: [retry()] }), ensureEntry(response.query));
-		await ensure(
+		await loadOne(testClient({ links: [retry()] }), swr(response.query));
+		await loadOne(
 			testClient({ links: [retry({ when: (error) => error !== down })] }),
-			ensureEntry(ruledOut.query),
+			swr(ruledOut.query),
 		);
 		let goneCalls = 0;
 		const gone = () =>
@@ -154,10 +154,7 @@ describe("retry", () => {
 				},
 				queryKey: issues("expected"),
 			});
-		const expected = await ensure(
-			testClient({ links: [retry()] }),
-			ensureEntry(gone),
-		);
+		const expected = await loadOne(testClient({ links: [retry()] }), swr(gone));
 
 		expect([response.attempts(), ruledOut.attempts(), goneCalls]).toEqual([
 			1, 1, 1,
@@ -167,9 +164,9 @@ describe("retry", () => {
 
 	it("never retries on the server", async () => {
 		const flakes = flaky([down]);
-		const outcome = await ensure(
+		const outcome = await loadOne(
 			testClient({ isServer: true, links: [retry({ delay: () => 0 })] }),
-			ensureEntry(flakes.query),
+			swr(flakes.query),
 		);
 
 		expect(outcome.error).toBe(down);
@@ -179,7 +176,7 @@ describe("retry", () => {
 	it("stops when the query is removed, waiting or mid-request", async () => {
 		const flakes = flaky([down, down]);
 		const client = testClient({ links: [retry({ delay: () => 10 })] });
-		await ensure(client, ensureEntry(flakes.query));
+		await loadOne(client, swr(flakes.query));
 		removeOne(client, flakes.query);
 		advance(client, 100);
 		await flush();
@@ -206,7 +203,7 @@ describe("retry", () => {
 				}),
 			],
 		});
-		await ensure(counting, ensureEntry(slow));
+		await loadOne(counting, swr(slow));
 		removeOne(counting, slow);
 		advance(counting, 100);
 		await flush();
@@ -217,7 +214,7 @@ describe("retry", () => {
 		const flakes = flaky([down]);
 		const client = testClient({ links: [retry({ delay: () => 0 })] });
 		const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
-		const outcome = await ensure(client, ensureEntry(flakes.query));
+		const outcome = await loadOne(client, swr(flakes.query));
 		advance(client, 100);
 		await flush();
 		expect(flakes.attempts()).toBe(1);
@@ -249,7 +246,7 @@ describe("timeout", () => {
 				}),
 			],
 		});
-		const outcome = await ensure(client, ensureEntry(hanging));
+		const outcome = await loadOne(client, swr(hanging));
 		advance(client, 100);
 		await flush();
 
@@ -259,10 +256,10 @@ describe("timeout", () => {
 
 	it("lets faster requests and their errors through", async () => {
 		const client = testClient({ links: [timeout(100)] });
-		const fast = await ensure(client, ensureEntry(flaky([]).query));
-		const failing = await ensure(
+		const fast = await loadOne(client, swr(flaky([]).query));
+		const failing = await loadOne(
 			testClient({ links: [timeout(100)] }),
-			ensureEntry(flaky([down]).query),
+			swr(flaky([down]).query),
 		);
 		advance(client, 200);
 
@@ -275,7 +272,7 @@ describe("the recommended setup", () => {
 	it("retries failed requests", async () => {
 		const flakes = flaky([down]);
 		const client = testClient(recommended());
-		const outcome = await ensure(client, ensureEntry(flakes.query));
+		const outcome = await loadOne(client, swr(flakes.query));
 		advance(client, 1000);
 		await flush();
 

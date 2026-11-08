@@ -1,9 +1,9 @@
 import {
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryHandle,
-	useQuery,
 	useInfiniteQuery,
+	useQuery,
 } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense, use } from "react";
@@ -13,7 +13,7 @@ import { commentsQuery, postQuery } from "~/queries.ts";
 
 declare function PostSkeleton(): React.ReactNode;
 
-// Homepage sample: one file. `posts.$slug.tsx` keeps ensure+prefetch for the
+// Homepage sample: one file. `posts.$slug.tsx` keeps swr+prefetch for the
 // guides that teach that split.
 
 // #region hero
@@ -23,8 +23,8 @@ export const Route = createFileRoute("/blog/$slug")({
 		const { slug } = args.params;
 		// Never waits: both load while the page renders.
 		const [handles] = await load(args.context.queryClient, {
-			comments: prefetchEntry(commentsQuery, { slug }),
-			post: prefetchEntry(postQuery, { slug }),
+			comments: prefetch(commentsQuery, { slug }),
+			post: prefetch(postQuery, { slug }),
 		});
 		return handles;
 	},

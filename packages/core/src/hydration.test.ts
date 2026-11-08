@@ -9,16 +9,16 @@ import {
 	RedactedError,
 } from "./hydration.ts";
 import {
-	ensureEntry,
 	fail,
-	fetchEntry,
 	getData,
 	isQueryFailure,
 	load,
-	prefetchEntry,
+	prefetch,
 	queryOptions,
 	removeOne,
+	revalidate,
 	setData,
+	swr,
 	waterfallHandle,
 } from "./index.ts";
 import {
@@ -45,7 +45,7 @@ async function server() {
 	const backend = createBackend();
 	const client = testClient({ isServer: true });
 	const loading = load(client, {
-		issue: prefetchEntry(backend.issueQuery, { id: 1 }),
+		issue: prefetch(backend.issueQuery, { id: 1 }),
 	});
 	await backend.respondAll();
 	const [handles] = await loading;
@@ -79,8 +79,8 @@ describe("a server-rendered page", () => {
 		const backend = createBackend();
 		const client = testClient({ isServer: true });
 		const loading = load(client, {
-			broken: prefetchEntry(backend.issueQuery, { id: 1 }),
-			missing: prefetchEntry(backend.issueQuery, { id: 9 }),
+			broken: prefetch(backend.issueQuery, { id: 1 }),
+			missing: prefetch(backend.issueQuery, { id: 9 }),
 		});
 		backend.requests[0]?.fail(new Error("down"));
 		await backend.respondAll();
@@ -119,7 +119,7 @@ describe("a server-rendered page", () => {
 		const backend = createBackend();
 		const client = testClient({ isServer: true });
 		const [handles] = await load(client, {
-			issue: prefetchEntry(backend.issueQuery, { id: 1 }),
+			issue: prefetch(backend.issueQuery, { id: 1 }),
 		});
 		const browser = testClient();
 		hydrate(browser, send(dehydrate(client)));
@@ -136,8 +136,8 @@ describe("a server-rendered page", () => {
 		const backend = createBackend();
 		const client = testClient({ isServer: true });
 		const [handles] = await load(client, {
-			broken: prefetchEntry(backend.issueQuery, { id: 1 }),
-			missing: prefetchEntry(backend.issueQuery, { id: 9 }),
+			broken: prefetch(backend.issueQuery, { id: 1 }),
+			missing: prefetch(backend.issueQuery, { id: 9 }),
 		});
 		const redacted = dehydrate(client);
 		const kept = dehydrate(client, { keepErrors: true });
@@ -171,9 +171,9 @@ describe("hydrating a query the browser has", () => {
 		const backend = createBackend();
 		const client = testClient({ staleTime: 10 });
 		const loading = load(client, {
-			fresh: ensureEntry(backend.issueQuery, { id: 1 }),
-			stale: ensureEntry(backend.issueQuery, { id: 2 }),
-			unread: ensureEntry(backend.issueQuery, { id: 3 }),
+			fresh: swr(backend.issueQuery, { id: 1 }),
+			stale: swr(backend.issueQuery, { id: 2 }),
+			unread: swr(backend.issueQuery, { id: 3 }),
 		});
 		await backend.respondAll();
 		const [handles] = await loading;
@@ -209,7 +209,7 @@ describe("hydrating a query the browser has", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const loading = load(client, {
-			issue: ensureEntry(backend.issueQuery, { id: 1 }),
+			issue: swr(backend.issueQuery, { id: 1 }),
 		});
 		await backend.respondAll();
 		const [handles] = await loading;
@@ -242,7 +242,7 @@ describe("hydrating a query the browser has", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const loading = load(client, {
-			issue: prefetchEntry(backend.issueQuery, { id: 1 }),
+			issue: prefetch(backend.issueQuery, { id: 1 }),
 		});
 		backend.requests[0]?.fail(new Error("down"));
 		const [handles] = await loading;
@@ -272,14 +272,14 @@ describe("hydrating a query the browser has", () => {
 		const backend = createBackend();
 		const client = testClient();
 		const loading = load(client, {
-			broken: prefetchEntry(backend.issueQuery, { id: 1 }),
-			loaded: prefetchEntry(backend.issueQuery, { id: 2 }),
+			broken: prefetch(backend.issueQuery, { id: 1 }),
+			loaded: prefetch(backend.issueQuery, { id: 2 }),
 		});
 		backend.requests[0]?.fail(new Error("down"));
 		await backend.respondAll();
 		const [handles] = await loading;
 		void load(client, {
-			loading: prefetchEntry(backend.issueQuery, { id: 3 }),
+			loading: prefetch(backend.issueQuery, { id: 3 }),
 		});
 		const notFound = (id: number) => ({
 			fail: fail({ _tag: "NotFound" }),
@@ -355,9 +355,9 @@ describe("streaming the cache", () => {
 		expect(stream.initial.entries).toHaveLength(1);
 		const reader = stream.updates.getReader();
 		void load(page.client, {
-			again: fetchEntry(page.backend.issueQuery, { id: 1 }),
-			four: prefetchEntry(page.backend.issueQuery, { id: 4 }),
-			two: prefetchEntry(page.backend.issueQuery, { id: 2 }),
+			again: revalidate(page.backend.issueQuery, { id: 1 }),
+			four: prefetch(page.backend.issueQuery, { id: 4 }),
+			two: prefetch(page.backend.issueQuery, { id: 2 }),
 		});
 		const update = await reader.read();
 
@@ -372,7 +372,7 @@ describe("streaming the cache", () => {
 				queryFn: () => 1,
 				queryKey: issues("off"),
 			});
-		void load(page.client, { off: prefetchEntry(off) });
+		void load(page.client, { off: prefetch(off) });
 		await flush();
 		stream.close();
 		stream.close();
@@ -385,7 +385,7 @@ describe("streaming the cache", () => {
 		const client = testClient({ isServer: true });
 		const stream = dehydrateStream(client);
 		const reader = stream.updates.getReader();
-		void load(client, { one: prefetchEntry(backend.issueQuery, { id: 1 }) });
+		void load(client, { one: prefetch(backend.issueQuery, { id: 1 }) });
 		stream.close();
 
 		expect((await reader.read()).value?.entries).toHaveLength(1);

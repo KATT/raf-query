@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	ensureEntry,
 	fail,
 	getData,
 	invalidateOne,
@@ -10,6 +9,7 @@ import {
 	load,
 	queryOptions,
 	removeOne,
+	swr,
 	waterfallHandle,
 } from "./index.ts";
 import { flush, issues, read, testClient } from "./test-utils.ts";
@@ -67,7 +67,7 @@ describe("a streamed query", () => {
 	it("is ready at its first chunk, and folds every later chunk into the data", async () => {
 		const stream = source();
 		const client = testClient();
-		const loading = load(client, { sum: ensureEntry(stream.sum) });
+		const loading = load(client, { sum: swr(stream.sum) });
 		await stream.push(2);
 		const [handles] = await loading;
 		const view = read(client, stream.sum, handles.sum);
@@ -103,7 +103,7 @@ describe("a streamed query", () => {
 			isFetching: false,
 		});
 		const other = source();
-		const failed = load(testClient(), { sum: ensureEntry(other.sum) }).catch(
+		const failed = load(testClient(), { sum: swr(other.sum) }).catch(
 			(error: unknown) => error,
 		);
 		await other.push(new Error("refused"));
@@ -114,7 +114,7 @@ describe("a streamed query", () => {
 		const client = testClient();
 		for (const late of [7, new Error("late"), undefined]) {
 			const stream = source();
-			const loading = load(client, { sum: ensureEntry(stream.sum) });
+			const loading = load(client, { sum: swr(stream.sum) });
 			// oxlint-disable-next-line no-await-in-loop -- one stream at a time
 			await stream.push(1);
 			// oxlint-disable-next-line no-await-in-loop -- one stream at a time
@@ -145,7 +145,7 @@ describe("a streamed query", () => {
 		const client = testClient({
 			links: [link(async () => fail({ _tag: "Offline" }))],
 		});
-		const loading = load(client, { sum: ensureEntry(stream.sum) });
+		const loading = load(client, { sum: swr(stream.sum) });
 
 		await expect(loading).rejects.toSatisfy(isQueryFailure);
 		expect(stream.runs).toHaveLength(0);

@@ -1,4 +1,4 @@
-import { group, load, prefetchEntry, queryOptions } from "@raf-query/react";
+import { group, load, prefetch, queryOptions } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { getCurrentOrg } from "~/api.ts";
@@ -26,8 +26,8 @@ export function currentOrgQuery() {
 export const Route = createFileRoute("/settings")({
 	loader: async (args) => {
 		const [handles] = await load(args.context.queryClient, {
-			org: prefetchEntry(currentOrgQuery),
-			user: prefetchEntry(currentUserQuery),
+			org: prefetch(currentOrgQuery),
+			user: prefetch(currentUserQuery),
 		});
 		return handles;
 	},

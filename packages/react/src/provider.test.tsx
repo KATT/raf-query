@@ -7,7 +7,7 @@ import {
 	createQueryClient,
 	type Feature,
 	load,
-	prefetchEntry,
+	prefetch,
 	QueryClientProvider,
 	QueryProvider,
 	useIsFetching,
@@ -96,8 +96,8 @@ describe("useIsFetching", () => {
 		expect(screen.getByText("0 0 0")).toBeTruthy();
 		await act(async () => {
 			await load(client, {
-				one: prefetchEntry(backend.issueQuery, { id: 1 }),
-				two: prefetchEntry(backend.issueQuery, { id: 2 }),
+				one: prefetch(backend.issueQuery, { id: 1 }),
+				two: prefetch(backend.issueQuery, { id: 2 }),
 			});
 		});
 		expect(screen.getByText("2 2 0")).toBeTruthy();
@@ -109,7 +109,7 @@ describe("useIsFetching", () => {
 		const backend = createBackend();
 		const client = createQueryClient({ isServer: true });
 		await load(client, {
-			one: prefetchEntry(backend.issueQuery, { id: 1 }),
+			one: prefetch(backend.issueQuery, { id: 1 }),
 		});
 		function Count() {
 			return <p>{useIsFetching()}</p>;

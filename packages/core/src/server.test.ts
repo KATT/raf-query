@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import { createQueryClient, ensureEntry, load, queryOptions } from "./index.ts";
+import { createQueryClient, load, queryOptions, swr } from "./index.ts";
 import { issues } from "./test-utils.ts";
 
 describe("a client created without a window", () => {
@@ -13,8 +13,8 @@ describe("a client created without a window", () => {
 				queryKey: issues("count"),
 			});
 		const client = createQueryClient();
-		await load(client, { count: ensureEntry(count) });
-		await load(client, { count: ensureEntry(count) });
+		await load(client, { count: swr(count) });
+		await load(client, { count: swr(count) });
 
 		expect(client.isServer).toBe(true);
 		expect(calls).toBe(1);

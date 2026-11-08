@@ -7,8 +7,8 @@ order: 3
 
 React Router apps load data in one of two places, and raf-query fits each differently. Find yours, then read its section. Each one stands on its own:
 
-- **[Client-only](#client-only-apps)**: [SPA Mode](https://reactrouter.com/how-to/spa) (`ssr: false`) with [`clientLoader`](https://reactrouter.com/start/framework/data-loading#client-data-loading), or [Data Mode](https://reactrouter.com/start/modes#data)'s [`createBrowserRouter`](https://reactrouter.com/api/data-routers/createBrowserRouter). Loaders run in the browser, on the tab's one query client, and nothing is hydrated. `prefetchEntry`, `ensureEntry` and `fetchEntry` work as in [Starting queries](./starting-queries.md).
-- **[Server rendering](#server-rendering)**: [Framework Mode](https://reactrouter.com/start/modes#framework) with [`ssr: true`](https://reactrouter.com/api/framework-conventions/react-router.config.ts#ssr) (the default) and [`loader`](https://reactrouter.com/start/framework/data-loading#server-data-loading). Loaders run on the server with one query client per request, which a root middleware creates, and dehydrate it into the loader data. `HydrationBoundary` writes it into the browser's client. Use `prefetchEntry` and `fetchEntry` there: `ensureEntry` waits like `fetchEntry`.
+- **[Client-only](#client-only-apps)**: [SPA Mode](https://reactrouter.com/how-to/spa) (`ssr: false`) with [`clientLoader`](https://reactrouter.com/start/framework/data-loading#client-data-loading), or [Data Mode](https://reactrouter.com/start/modes#data)'s [`createBrowserRouter`](https://reactrouter.com/api/data-routers/createBrowserRouter). Loaders run in the browser, on the tab's one query client, and nothing is hydrated. `prefetch`, `swr` and `revalidate` work as in [Starting queries](./starting-queries.md).
+- **[Server rendering](#server-rendering)**: [Framework Mode](https://reactrouter.com/start/modes#framework) with [`ssr: true`](https://reactrouter.com/api/framework-conventions/react-router.config.ts#ssr) (the default) and [`loader`](https://reactrouter.com/start/framework/data-loading#server-data-loading). Loaders run on the server with one query client per request, which a root middleware creates, and dehydrate it into the loader data. `HydrationBoundary` writes it into the browser's client. Use `prefetch` and `revalidate` there: `swr` waits like `revalidate`.
 
 If you can choose the router, prefer [TanStack Start](./tanstack-start.md). A link preloaded on hover runs its route's loaders in the browser, so the next page's queries start in the browser's cache and the click uses them. React Router's `prefetch="intent"` doesn't: see [Prefetching links](#prefetching-links).
 
@@ -52,8 +52,8 @@ react-router-spa/app/routes/posts.$slug.tsx#component
 react-router-spa/app/components/comments.tsx#component
 ```
 
-- The client outlives navigations, so the entries differ as in [Starting queries](./starting-queries.md): `ensureEntry` holds up only the first visit, and returning to a page shows the cached data at once, then refetches it behind the page once it's stale. `fetchEntry` waits whenever the data is stale.
-- `ensureEntry` and `fetchEntry` handles read without suspending: their thenable is already fulfilled when the component renders.
+- The client outlives navigations, so the entries differ as in [Starting queries](./starting-queries.md): `swr` holds up only the first visit, and returning to a page shows the cached data at once, then refetches it behind the page once it's stale. `revalidate` waits whenever the data is stale.
+- `swr` and `revalidate` handles read without suspending: their thenable is already fulfilled when the component renders.
 - React Router runs a route's `clientLoader` again on every navigation to it. Data that is still fresh costs no request.
 - A module's client is safe only when nothing renders on the server. With `ssr: true`, every request would share it: see [Server rendering](#server-rendering).
 - In Data Mode, a route's `loader` runs in the browser too: start queries in it the same way, on a client from a module.
@@ -105,12 +105,12 @@ react-router/app/components/comments.tsx#component
 ```
 
 - Create the server's client **per request**, in the middleware. A module-level client would share data between requests and users.
-- **`dehydrate(qc)`** takes entries with data, entries that returned a `fail()`, and entries still loading. React Router [streams promises in loader data](https://reactrouter.com/how-to/suspense), so a `prefetchEntry` that is still loading resolves in the browser when the server's request does, and the browser doesn't fetch it again.
+- **`dehydrate(qc)`** takes entries with data, entries that returned a `fail()`, and entries still loading. React Router [streams promises in loader data](https://reactrouter.com/how-to/suspense), so a `prefetch` that is still loading resolves in the browser when the server's request does, and the browser doesn't fetch it again.
 - With nested routes, a loader's snapshot holds every entry the client has when the loader returns, other loaders' queries included. The browser keeps the newer copy of an entry, so the overlap only adds to the payload.
 - **`HydrationBoundary`** writes the entries into the provider's client: entries the browser doesn't have yet while it renders, so its children read them, and the rest once it commits. The browser keeps whichever copy of an entry is newer. See [SSR and hydration](./ssr-and-hydration.md#when-the-browser-already-has-data).
-- `load` resolves to `[handles, data]`. `data` holds what the `fetchEntry` entries waited for, for deciding on a redirect or building another query's input in the loader. A component reads a `fetchEntry`'s handle with `use()` without suspending, and follows later refetches. See [Handles](./handles.md).
-- Use `prefetchEntry` and `fetchEntry` in a `loader`, not `ensureEntry`. A `loader` runs on the server for every navigation, client-side ones included, and its client starts empty, so `ensureEntry` waits for the request every time, exactly like `fetchEntry`. See [Starting queries](./starting-queries.md).
-- `load` rejects with a `QueryFailure` when a `fetchEntry`'s `queryFn` returns a `fail()`, so the route's [`ErrorBoundary`](https://reactrouter.com/start/framework/route-module#errorboundary) renders it.
+- `load` resolves to `[handles, data]`. `data` holds what the `revalidate` entries waited for, for deciding on a redirect or building another query's input in the loader. A component reads a `revalidate` entry's handle with `use()` without suspending, and follows later refetches. See [Handles](./handles.md).
+- Use `prefetch` and `revalidate` in a `loader`, not `swr`. A `loader` runs on the server for every navigation, client-side ones included, and its client starts empty, so `swr` waits for the request every time, exactly like `revalidate`. See [Starting queries](./starting-queries.md).
+- `load` rejects with a `QueryFailure` when a `revalidate` entry's `queryFn` returns a `fail()`, so the route's [`ErrorBoundary`](https://reactrouter.com/start/framework/route-module#errorboundary) renders it.
 
 ### What the integration is
 
@@ -142,7 +142,7 @@ Per-query background refetches after the page has rendered use `controls.isFetch
 [`prefetch="intent"`](https://reactrouter.com/api/components/Link#prefetch) on a `Link` or `NavLink` preloads the route's modules when the user hovers or focuses the link (`"render"` does it when the link renders, `"viewport"` when it scrolls into view, and `"none"`, the default, never). With either kind of loader, the click doesn't start from the prefetch's queries:
 
 - **A server `loader`**: the prefetch also requests the loader data, which runs the loaders on the server, but React Router doesn't keep the response. The click requests the loader data again, and the loaders and their queries run a second time. What the prefetch saves is loading the route's code.
-- **A `clientLoader`**: the prefetch doesn't run it; it runs on the click. To start its queries earlier, call `load(queryClient, { … })` with `prefetchEntry` entries from the link's `onPointerEnter`. See [Starting queries](./starting-queries.md).
+- **A `clientLoader`**: the prefetch doesn't run it; it runs on the click. To start its queries earlier, call `load(queryClient, { … })` with `prefetch` entries from the link's `onPointerEnter`. See [Starting queries](./starting-queries.md).
 
 In TanStack Router, the navigation reuses a route preloaded in the last 30 seconds, or joins its loader if it's still running ([Preloading](https://tanstack.com/router/latest/docs/framework/react/guide/preloading)). Its loaders run in the browser, so the queries a preload starts land in the browser's cache, and the navigation's loader finds them there even once the preload is stale. See [TanStack Start](./tanstack-start.md).
 

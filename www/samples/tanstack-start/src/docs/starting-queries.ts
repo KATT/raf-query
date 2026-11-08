@@ -1,4 +1,4 @@
-import { ensureEntry, load, type QueryClient } from "@raf-query/react";
+import { load, type QueryClient, swr } from "@raf-query/react";
 import { authorQuery, postQuery } from "~/queries.ts";
 
 declare const qc: QueryClient;
@@ -8,8 +8,8 @@ declare const slug: string;
 async function loader() {
 	// #region awaiting-several-queries
 	const [handles, data] = await load(qc, {
-		post: ensureEntry(postQuery, { slug }),
-		author: ensureEntry(authorQuery, { id: slug }),
+		post: swr(postQuery, { slug }),
+		author: swr(authorQuery, { id: slug }),
 	});
 	data.author.name;
 	//   ^?

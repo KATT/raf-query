@@ -41,7 +41,7 @@ Walk the list top to bottom for a broad regression, then finish with [cross-app 
 - [Inline editing](inline-editing.md): edit the title and description in place, cancel, validation.
 - [Comments](comments.md): paged comments, posting with an optimistic row.
 - [Settings bar](settings-bar.md): loader verb, link prefetch, stale time, latency, Reset.
-- [Loader verb](loader-verb.md): `prefetch`, `ensure` or `fetch` from the URL and the header's `Loader` select, and what each waits for.
+- [Loader verb](loader-verb.md): `prefetch`, `swr` or `revalidate` from the URL and the header's `Loader` select, and what each waits for.
 - [Navigation progress bar](navigation-progress.md): the bar along the top while a navigation waits.
 - [Devtools](devtools.md): the raf-query devtools panel.
 - [Not found](not-found.md): unknown URLs and missing issues.

@@ -1,7 +1,7 @@
 import {
 	group,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryClient,
 	QueryClientProvider,
 	type QueryHandle,
@@ -39,7 +39,7 @@ export async function render(
 	wrap: (children: ReactNode) => ReactNode = (children) => children,
 ) {
 	const [handles] = await load(client, {
-		issue: prefetchEntry(issueQuery, { id: 1 }),
+		issue: prefetch(issueQuery, { id: 1 }),
 	});
 	createRoot(document.body).render(
 		<QueryClientProvider client={client}>

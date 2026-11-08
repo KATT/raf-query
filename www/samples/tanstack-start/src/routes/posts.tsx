@@ -1,4 +1,4 @@
-import { load, prefetchEntry, useQuery } from "@raf-query/react";
+import { load, prefetch, useQuery } from "@raf-query/react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { use } from "react";
 
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/posts")({
 	loaderDeps: (args) => args.search,
 	loader: async (args) => {
 		const [handles] = await load(args.context.queryClient, {
-			posts: prefetchEntry(postsQuery, args.deps),
+			posts: prefetch(postsQuery, args.deps),
 		});
 		return handles;
 	},

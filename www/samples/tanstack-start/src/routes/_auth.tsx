@@ -1,4 +1,4 @@
-import { ensureEntry, load } from "@raf-query/react";
+import { load, swr } from "@raf-query/react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { meQuery } from "~/queries.ts";
@@ -6,7 +6,7 @@ import { meQuery } from "~/queries.ts";
 export const Route = createFileRoute("/_auth")({
 	beforeLoad: async (args) => {
 		const [handles, data] = await load(args.context.queryClient, {
-			me: ensureEntry(meQuery),
+			me: swr(meQuery),
 		});
 		if (data.me === null) {
 			throw redirect({ to: "/login" });

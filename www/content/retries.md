@@ -83,9 +83,9 @@ retries
 
 ## Errors from loaders
 
-A failed `prefetchEntry` never makes `load` reject: the error surfaces where the data is read, and only that part of the page shows it. A failed `ensureEntry` or `fetchEntry` makes `load` reject, so it reaches the route's error boundary (`errorComponent` in TanStack Router, `error.tsx` in Next.js), replacing the page.
+A failed `prefetch` never makes `load` reject: the error surfaces where the data is read, and only that part of the page shows it. A failed `swr` or `revalidate` makes `load` reject, so it reaches the route's error boundary (`errorComponent` in TanStack Router, `error.tsx` in Next.js), replacing the page.
 
-This is one more reason to choose per query: ensure what the page can't do without, and prefetch the rest, so a failing sidebar doesn't take the whole page down.
+This is one more reason to choose per query: wait with `swr` for what the page can't do without, and `prefetch` the rest, so a failing sidebar doesn't take the whole page down.
 
 ## One place for every error
 

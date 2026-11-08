@@ -11,7 +11,7 @@ declare function PostSkeleton(): ReactNode;
 
 function PostPage() {
 	// #region skeletons-for-unrelated-content
-	// This loader starts the post with `prefetchEntry`.
+	// This loader starts the post with `prefetch`.
 	const [postThenable, controls] = useQuery(postQuery, loaderData.post);
 
 	return (

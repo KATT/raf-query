@@ -72,15 +72,15 @@ Query options, for `queryOptions` and `infiniteQueryOptions`:
 tanstack-start/src/docs/api-reference.ts#load
 ```
 
-| Export                                    | Use                                                                                                                                           |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `load(client, entries)`                   | Start every entry, then resolve with `[handles, data]`. Rejects when a fetch or ensure entry fails. [Starting queries](./starting-queries.md) |
-| `prefetchEntry(factory, input, options?)` | Start the query if the cache has no fresh data; never waits                                                                                   |
-| `ensureEntry(factory, input, options?)`   | Wait only when the cache has no data; stale data resolves at once and refetches                                                               |
-| `fetchEntry(factory, input, options?)`    | Wait for fresh data                                                                                                                           |
-| `waterfallHandle(factory, input)`         | The handle of a query whose input is only known while rendering. [Request waterfalls](./request-waterfalls.md)                                |
-| `QueryHandle<TFactory>`                   | `{ queryKey, input }`, serializable; what `load` returns for every entry. [Handles](./handles.md)                                             |
-| `LoadEntry`, `Loaded`, `EntryOptions`     | Entry and result types. `EntryOptions` is `{ pages }`: how many pages a paged factory's first load fetches                                    |
+| Export                                    | Use                                                                                                                                                  |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `load(client, entries)`                   | Start every entry, then resolve with `[handles, data]`. Rejects when an `swr` or `revalidate` entry fails. [Starting queries](./starting-queries.md) |
+| `prefetch(factory, input, options?)`      | Start the query if the cache has no fresh data; never waits                                                                                          |
+| `swr(factory, input, options?)`           | Wait only when the cache has no data; stale data resolves at once and refetches                                                                      |
+| `revalidate(factory, input, options?)`    | Wait for fresh data; fresh cached data resolves without a refetch                                                                                    |
+| `waterfallHandle(factory, input)`         | The handle of a query whose input is only known while rendering. [Request waterfalls](./request-waterfalls.md)                                       |
+| `QueryHandle<TFactory>`                   | `{ queryKey, input }`, serializable; what `load` returns for every entry. [Handles](./handles.md)                                                    |
+| `LoadEntry`, `Loaded`, `LoadEntryOptions` | Entry and result types. `LoadEntryOptions` is `{ pages }`: how many pages a paged factory's first load fetches                                       |
 
 ## Reading queries
 
@@ -139,16 +139,16 @@ Each verb takes the client first. A factory matches the queries it built: all of
 
 ## Errors
 
-| Export                  | Use                                                                                                                                                      |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `QueryFailure`          | What reading or loading a query throws when its `queryFn` returned `fail()`: an `Error` with the value in `fail` and the query's `hash`                  |
-| `isFail(value, tag?)`   | Whether `value` is a `fail()` value or a `QueryFailure`, optionally with that `_tag`                                                                     |
-| `failOf(value)`         | The `fail()` value in `value`, unwrapping a `QueryFailure`                                                                                               |
-| `isQueryFailure(value)` | Whether `value` is a `QueryFailure`                                                                                                                      |
-| `Fail`, `Result`        | A `fail()` value, and what `useQuery` reads with `result: true`: `{ ok: true, value }` or `{ ok: false, error }`                                         |
-| `QueryDisabledError`    | Why a disabled query has no data: `load` rejects with it for fetch and ensure entries, and on the server the thenable `useQuery` returns rejects with it |
-| `QueryTimeoutError`     | What a request fails with when `timeout()` cuts it off                                                                                                   |
-| `abortError()`          | Makes the `AbortError` (a `DOMException`) that a `load` waiting on a removed query rejects with                                                          |
+| Export                  | Use                                                                                                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `QueryFailure`          | What reading or loading a query throws when its `queryFn` returned `fail()`: an `Error` with the value in `fail` and the query's `hash`                        |
+| `isFail(value, tag?)`   | Whether `value` is a `fail()` value or a `QueryFailure`, optionally with that `_tag`                                                                           |
+| `failOf(value)`         | The `fail()` value in `value`, unwrapping a `QueryFailure`                                                                                                     |
+| `isQueryFailure(value)` | Whether `value` is a `QueryFailure`                                                                                                                            |
+| `Fail`, `Result`        | A `fail()` value, and what `useQuery` reads with `result: true`: `{ ok: true, value }` or `{ ok: false, error }`                                               |
+| `QueryDisabledError`    | Why a disabled query has no data: `load` rejects with it for `swr` and `revalidate` entries, and on the server the thenable `useQuery` returns rejects with it |
+| `QueryTimeoutError`     | What a request fails with when `timeout()` cuts it off                                                                                                         |
+| `abortError()`          | Makes the `AbortError` (a `DOMException`) that a `load` waiting on a removed query rejects with                                                                |
 
 ## Providers
 

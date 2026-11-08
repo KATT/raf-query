@@ -4,11 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 import { QueryDevtools, QueryDevtoolsPanel } from "./devtools.tsx";
 import {
 	fail,
-	fetchEntry,
 	load,
-	prefetchEntry,
+	prefetch,
 	QueryClientProvider,
 	queryOptions,
+	revalidate,
 	useQuery,
 	waterfallHandle,
 } from "./index.ts";
@@ -18,8 +18,8 @@ async function loadedClient() {
 	const backend = createBackend();
 	const client = testClient();
 	const done = load(client, {
-		issue: fetchEntry(backend.issueQuery, { id: 1 }),
-		later: prefetchEntry(backend.issueQuery, { id: 2 }),
+		issue: revalidate(backend.issueQuery, { id: 1 }),
+		later: prefetch(backend.issueQuery, { id: 2 }),
 	});
 	backend.requests.splice(0, 1)[0]?.respond();
 	await done;
@@ -36,7 +36,7 @@ describe("QueryDevtoolsPanel", () => {
 				queryFn: async () => fail({ _tag: "Nope" }),
 				queryKey: issues("failing"),
 			});
-		await load(client, { failing: prefetchEntry(failing) });
+		await load(client, { failing: prefetch(failing) });
 		await flush();
 		const onClose = vi.fn();
 		render(<QueryDevtoolsPanel client={client} onClose={onClose} />);
@@ -45,7 +45,7 @@ describe("QueryDevtoolsPanel", () => {
 		expect(screen.getAllByText("fetching")).toHaveLength(1);
 		expect(screen.getAllByText("error")).toHaveLength(1);
 		expect(
-			screen.getByText(/^issue \(fetch\), later \(prefetch\)$/u),
+			screen.getByText(/^issue \(revalidate\), later \(prefetch\)$/u),
 		).toBeTruthy();
 		expect(screen.getByText("Select a query")).toBeTruthy();
 
@@ -90,7 +90,7 @@ describe("QueryDevtoolsPanel", () => {
 				queryFn: async () => 1,
 				queryKey: issues("idle"),
 			});
-		await load(client, { idle: prefetchEntry(pendingQuery) });
+		await load(client, { idle: prefetch(pendingQuery) });
 		render(
 			<QueryClientProvider client={client}>
 				<Issue />

@@ -19,13 +19,13 @@ Every entry gives the same `QueryHandle`, whether the loader waited for it or no
 
 ## Reading a handle
 
-`useQuery` returns a thenable for every handle, and `use()` reads it. What the loader did decides whether that read suspends: an `ensureEntry` or `fetchEntry` handle's thenable is already fulfilled, so `use()` returns the data at once, and a `prefetchEntry` handle's suspends until the data lands:
+`useQuery` returns a thenable for every handle, and `use()` reads it. What the loader did decides whether that read suspends: an `swr` or `revalidate` handle's thenable is already fulfilled, so `use()` returns the data at once, and a `prefetch` handle's suspends until the data lands:
 
 ```sample
 tanstack-start/src/docs/handles.tsx#reading-a-handle
 ```
 
-So a prop takes a `QueryHandle` whichever entry fed it, and switching a loader from `prefetchEntry` to `ensureEntry` changes nothing in the components.
+So a prop takes a `QueryHandle` whichever entry fed it, and switching a loader from `prefetch` to `swr` changes nothing in the components.
 
 A handle's type names its factory, and a factory's type includes its key's shape (`readonly ["posts", "bySlug", string]`). So `useQuery(draftQuery, handle)` is a type error when `handle` came from `postQuery`, even when both take the same input and return the same data. Factories whose keys have the same shape read the same entries, so their handles mix.
 

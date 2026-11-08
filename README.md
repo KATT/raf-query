@@ -31,9 +31,9 @@ export const Route = createFileRoute("/posts/$slug")({
 	loader: async (args) => {
 		const [handles] = await load(args.context.queryClient, {
 			// Comments stream in after the route changes, under the skeleton below.
-			comments: prefetchEntry(commentsQuery, { slug: args.params.slug }),
+			comments: prefetch(commentsQuery, { slug: args.params.slug }),
 			// The route change waits for the post.
-			post: ensureEntry(postQuery, { slug: args.params.slug }),
+			post: swr(postQuery, { slug: args.params.slug }),
 		});
 		return handles;
 	},

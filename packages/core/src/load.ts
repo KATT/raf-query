@@ -2,7 +2,7 @@ import type { QueryClient } from "./client.ts";
 import {
 	type Entry,
 	entryOf,
-	fetchEntry as request,
+	fetchEntry,
 	isEnabled,
 	isInvalidated,
 	isStale,
@@ -32,12 +32,12 @@ export interface QueryHandle<TFactory extends QueryFactory = QueryFactory> {
 	readonly queryKey: KeyOf<TFactory>;
 }
 
-type EntryKind = "ensure" | "fetch" | "prefetch";
+type LoadKind = "prefetch" | "revalidate" | "swr";
 
 /** A query for `load` to start. Building one starts nothing. */
 export interface LoadEntry<
 	TFactory extends QueryFactory = QueryFactory,
-	TKind extends EntryKind = EntryKind,
+	TKind extends LoadKind = LoadKind,
 > {
 	readonly factory: TFactory;
 	readonly input: InputOf<TFactory>;
@@ -46,74 +46,80 @@ export interface LoadEntry<
 	readonly pages?: number;
 }
 
-export interface EntryOptions {
+export interface LoadEntryOptions {
 	/** For paged factories: how many pages a first load fetches. Default 1. */
 	readonly pages?: number;
 }
 
-type EntryArgs<TFactory extends QueryFactory> =
-	| [input: InputOf<TFactory>, options?: EntryOptions]
+type LoadEntryArgs<TFactory extends QueryFactory> =
+	| [input: InputOf<TFactory>, options?: LoadEntryOptions]
 	| InputArgs<TFactory>;
 
-function makeEntry<TFactory extends QueryFactory, TKind extends EntryKind>(
+function loadEntry<TFactory extends QueryFactory, TKind extends LoadKind>(
 	kind: TKind,
 	factory: TFactory,
 	args: ReadonlyArray<unknown>,
 ): LoadEntry<TFactory, TKind> {
 	// SAFETY: the overloads below type `args` from the factory.
 	const input = args[0] as InputOf<TFactory>;
-	// SAFETY: as above; the second argument is always `EntryOptions`.
-	const options = args[1] as EntryOptions | undefined;
+	// SAFETY: as above; the second argument is always `LoadEntryOptions`.
+	const options = args[1] as LoadEntryOptions | undefined;
 	return { factory, input, kind, pages: options?.pages };
 }
 
 /**
- * An entry that starts the query without waiting for it. It fetches only if
- * the cache has no fresh data, and never makes the load reject: errors show
- * up where a component reads the handle.
+ * Start the query if the cache has no fresh data, and don't wait for it.
+ * It never makes the load reject: errors show up where a component reads
+ * the handle.
  */
-export function prefetchEntry<TFactory extends QueryFactory>(
+export function prefetch<TFactory extends QueryFactory>(
 	factory: TFactory,
-	...args: EntryArgs<TFactory>
+	...args: LoadEntryArgs<TFactory>
 ): LoadEntry<TFactory, "prefetch"> {
-	return makeEntry("prefetch", factory, args);
+	return loadEntry("prefetch", factory, args);
 }
 
 /**
- * An entry that waits for fresh data: cached data only counts if it isn't
- * stale. The load rejects if the fetch fails.
+ * Use cached data even when it's stale, and wait only when the cache has
+ * none. Stale data resolves at once and refetches in the background, as
+ * HTTP's
+ * [`stale-while-revalidate`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control#stale-while-revalidate)
+ * does. The load rejects if the fetch it waits for fails.
  */
-export function fetchEntry<TFactory extends QueryFactory>(
+export function swr<TFactory extends QueryFactory>(
 	factory: TFactory,
-	...args: EntryArgs<TFactory>
-): LoadEntry<TFactory, "fetch"> {
-	return makeEntry("fetch", factory, args);
+	...args: LoadEntryArgs<TFactory>
+): LoadEntry<TFactory, "swr"> {
+	return loadEntry("swr", factory, args);
 }
 
 /**
- * An entry that waits only when the cache has no data. Stale data resolves
- * at once and revalidates in the background. The load rejects if the fetch
- * it waits for fails.
+ * Wait for fresh data, as HTTP's
+ * [`must-revalidate`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control#must-revalidate)
+ * does. Fresh cached data resolves at once without a refetch (`staleTime`
+ * is the max-age); with stale data or none it waits for the fetch. On a
+ * server client, data counts as fresh until a write invalidates it. The
+ * load rejects if the fetch fails.
  */
-export function ensureEntry<TFactory extends QueryFactory>(
+export function revalidate<TFactory extends QueryFactory>(
 	factory: TFactory,
-	...args: EntryArgs<TFactory>
-): LoadEntry<TFactory, "ensure"> {
-	return makeEntry("ensure", factory, args);
+	...args: LoadEntryArgs<TFactory>
+): LoadEntry<TFactory, "revalidate"> {
+	return loadEntry("revalidate", factory, args);
 }
 
 type LoadedData<TEntries extends Record<string, LoadEntry>> = {
 	[
 		TName in keyof TEntries as TEntries[TName] extends LoadEntry<
 			QueryFactory,
-			"ensure" | "fetch"
+			"revalidate" | "swr"
 		>
 			? TName
 			: never
 	]: DataOf<TEntries[TName]["factory"]>;
 };
 
-/** What `load` resolves to: a handle per entry, and the data of fetch and ensure entries. */
+/** What `load` resolves to: a handle per entry, and the data of `swr` and `revalidate` entries. */
 export type Loaded<TEntries extends Record<string, LoadEntry>> = readonly [
 	handles: {
 		[TName in keyof TEntries]: QueryHandle<TEntries[TName]["factory"]>;
@@ -125,7 +131,7 @@ export type Loaded<TEntries extends Record<string, LoadEntry>> = readonly [
 export interface LoadRecord {
 	readonly entries: ReadonlyArray<{
 		readonly hash: string;
-		readonly kind: EntryKind;
+		readonly kind: LoadKind;
 		readonly name: string;
 	}>;
 	readonly startedAt: number;
@@ -157,18 +163,18 @@ function disabled(entry: Entry): Promise<Outcome> {
 }
 
 /** Start the entry's request if its data isn't fresh. Never waits. */
-export function prefetch(entry: Entry): void {
+export function startIfStale(entry: Entry): void {
 	if (
 		isEnabled(entry) &&
 		isStale(entry) &&
 		!(entry.client.isServer && entry.state.hasData)
 	) {
-		void request(entry);
+		void fetchEntry(entry);
 	}
 }
 
 /**
- * Whether `fetchEntry` can use the entry's data. A server client belongs to
+ * Whether `revalidate` can use the entry's data. A server client belongs to
  * one request, so what it fetched is fresh for that request until a write
  * invalidates it.
  */
@@ -185,29 +191,29 @@ function waitFresh(entry: Entry, pages: number | undefined): Promise<Outcome> {
 	if (isFresh(entry)) {
 		return Promise.resolve({ ok: true });
 	}
-	return request(entry, { pages });
+	return fetchEntry(entry, { pages });
 }
 
 function waitAny(entry: Entry, pages: number | undefined): Promise<Outcome> {
 	if (!entry.state.hasData) {
 		return waitFresh(entry, pages);
 	}
-	prefetch(entry);
+	startIfStale(entry);
 	return Promise.resolve({ ok: true });
 }
 
 /**
  * Start a loader's queries and return a serializable handle for each. It
  * starts every entry before it waits for any, so the order of the entries
- * can't create a waterfall. Resolves with `[handles, data]` once every fetch
- * and ensure entry has data, and rejects as soon as one fails: with a
- * `QueryFailure` for a `fail()`, the error itself otherwise. Prefetch
- * entries never make it reject.
+ * can't create a waterfall. Resolves with `[handles, data]` once every
+ * `swr` and `revalidate` entry has data, and rejects as soon as one fails:
+ * with a `QueryFailure` for a `fail()`, the error itself otherwise.
+ * `prefetch` entries never make it reject.
  *
  * ```ts
  * const [handles, data] = await load(queryClient, {
- *   comments: prefetchEntry(commentsQuery, { issueId: id }),
- *   issue: ensureEntry(issueQuery, { id }),
+ *   comments: prefetch(commentsQuery, { issueId: id }),
+ *   issue: swr(issueQuery, { id }),
  * });
  * ```
  */
@@ -219,9 +225,12 @@ export async function load<const TEntries extends Record<string, LoadEntry>>(
 		const cached = entryOf(client, item.factory, item.input);
 		let wait: Promise<Outcome> | undefined;
 		if (item.kind === "prefetch") {
-			prefetch(cached);
+			startIfStale(cached);
 		} else {
-			wait = (item.kind === "fetch" ? waitFresh : waitAny)(cached, item.pages);
+			wait = (item.kind === "revalidate" ? waitFresh : waitAny)(
+				cached,
+				item.pages,
+			);
 		}
 		return { entry: cached, item, name, wait };
 	});

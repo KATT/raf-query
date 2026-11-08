@@ -20,7 +20,7 @@ export {
 	isWaterfallHandle,
 	type LoadRecord,
 	loadsOf,
-	prefetch,
+	startIfStale,
 	readData,
 } from "./load.ts";
 export { fulfilled, mapThenable, pending, rejected } from "./thenable.ts";

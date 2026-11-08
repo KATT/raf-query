@@ -1,15 +1,15 @@
 import {
 	createQueryClient,
-	fetchEntry,
 	focusRefetch,
 	group,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryClient,
 	QueryClientProvider,
 	type QueryHandle,
 	queryOptions,
 	removeAll,
+	revalidate,
 	useQuery,
 } from "@raf-query/react";
 import { act, render, screen } from "@testing-library/react";
@@ -48,7 +48,7 @@ function renderWithClient(ui: ReactNode) {
 // #region testing-a-component
 test("shows the post", async () => {
 	const [handles] = await load(queryClient, {
-		post: prefetchEntry(postQuery, { slug: "hello" }),
+		post: prefetch(postQuery, { slug: "hello" }),
 	});
 
 	await renderWithClient(<Post handle={handles.post} />);
@@ -73,7 +73,7 @@ test("refetches on focus", async () => {
 		features: [focusRefetch()],
 	});
 	const [handles] = await load(queryClient, {
-		count: fetchEntry(countQuery),
+		count: revalidate(countQuery),
 	});
 	await renderWithClient(<Count handle={handles.count} />);
 

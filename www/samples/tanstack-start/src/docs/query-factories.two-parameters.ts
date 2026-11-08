@@ -2,7 +2,7 @@ import {
 	createQueryClient,
 	group,
 	load,
-	prefetchEntry,
+	prefetch,
 	queryOptions,
 } from "@raf-query/react";
 
@@ -22,6 +22,6 @@ function postPageQuery(slug: string, page: number) {
 
 await load(qc, {
 	// @ts-expect-error -- 2345: a factory takes one input
-	post: prefetchEntry(postPageQuery, "hello-world"),
+	post: prefetch(postPageQuery, "hello-world"),
 });
 // #endregion

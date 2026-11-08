@@ -1,7 +1,7 @@
 import {
 	group,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryHandle,
 	queryOptions,
 	useQuery,
@@ -39,7 +39,7 @@ export function permissionQuery(input: { name: PermissionName }) {
 export const Route = createFileRoute("/settings")({
 	loader: async ({ context }) => {
 		const [handles] = await load(context.queryClient, {
-			notifications: prefetchEntry(permissionQuery, { name: "notifications" }),
+			notifications: prefetch(permissionQuery, { name: "notifications" }),
 		});
 		return handles;
 	},

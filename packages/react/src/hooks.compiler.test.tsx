@@ -3,10 +3,10 @@ import { Profiler, use } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
-	fetchEntry,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryHandle,
+	revalidate,
 	setData,
 	useInfiniteQuery,
 	useIsFetching,
@@ -55,7 +55,7 @@ describe("hooks compiled by the React Compiler", () => {
 		const client = testClient();
 		const handle = await prefetched(backend, async () => {
 			const [handles] = await load(client, {
-				issue: prefetchEntry(backend.issueQuery, { id: 1 }),
+				issue: prefetch(backend.issueQuery, { id: 1 }),
 			});
 			return handles.issue;
 		});
@@ -86,7 +86,7 @@ describe("hooks compiled by the React Compiler", () => {
 		const client = testClient();
 		const handle = await prefetched(backend, async () => {
 			const [handles] = await load(client, {
-				pages: prefetchEntry(backend.pageQuery, { size: 1 }),
+				pages: prefetch(backend.pageQuery, { size: 1 }),
 			});
 			return handles.pages;
 		});
@@ -130,12 +130,12 @@ describe("hooks compiled by the React Compiler", () => {
 		const client = testClient();
 		const handle = await prefetched(backend, async () => {
 			const [handles] = await load(client, {
-				issue: prefetchEntry(backend.issueQuery, { id: 1 }),
+				issue: prefetch(backend.issueQuery, { id: 1 }),
 			});
 			return handles.issue;
 		});
 		const refetch = () =>
-			load(client, { issue: fetchEntry(backend.issueQuery, { id: 1 }) });
+			load(client, { issue: revalidate(backend.issueQuery, { id: 1 }) });
 		function Title(props: {
 			readonly handle: QueryHandle<Backend["issueQuery"]>;
 			readonly showFetching: boolean;
@@ -182,7 +182,7 @@ describe("hooks compiled by the React Compiler", () => {
 		const client = testClient();
 		const handle = await prefetched(backend, async () => {
 			const [handles] = await load(client, {
-				pages: prefetchEntry(backend.pageQuery, { size: 1 }),
+				pages: prefetch(backend.pageQuery, { size: 1 }),
 			});
 			return handles.pages;
 		});
@@ -211,7 +211,7 @@ describe("hooks compiled by the React Compiler", () => {
 		expect(screen.getByText("pages 1 more")).toBeTruthy();
 		renders.mockClear();
 		await refetched(backend, () =>
-			load(client, { pages: fetchEntry(backend.pageQuery, { size: 1 }) }),
+			load(client, { pages: revalidate(backend.pageQuery, { size: 1 }) }),
 		);
 		expect(renders).not.toHaveBeenCalled();
 		expect(screen.getByText("pages 1 more")).toBeTruthy();
@@ -229,7 +229,7 @@ describe("hooks compiled by the React Compiler", () => {
 			let done!: Promise<unknown>;
 			await act(async () => {
 				done = load(client, {
-					issue: fetchEntry(backend.issueQuery, { id: 1 }),
+					issue: revalidate(backend.issueQuery, { id: 1 }),
 				});
 				await flush();
 			});

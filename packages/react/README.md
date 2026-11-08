@@ -43,14 +43,14 @@ export function commentsQuery(input: { slug: string }) {
 }
 ```
 
-A loader names its queries in one `load` call. **`prefetchEntry`** starts a request without waiting for it: the page renders now, and `use()` suspends whatever is still loading under its Suspense fallback. **`ensureEntry`** holds the navigation until the data is cached, so `use()` returns it without suspending. `useQuery` returns a thenable for every handle, because the cache can drop a query between the loader and the render.
+A loader names its queries in one `load` call. **`prefetch`** starts a request without waiting for it: the page renders now, and `use()` suspends whatever is still loading under its Suspense fallback. **`swr`** holds the navigation until the data is cached, so `use()` returns it without suspending. `useQuery` returns a thenable for every handle, because the cache can drop a query between the loader and the render.
 
 ```tsx
 import {
-	ensureEntry,
 	load,
-	prefetchEntry,
+	prefetch,
 	type QueryHandle,
+	swr,
 	useInfiniteQuery,
 	useQuery,
 } from "@raf-query/react";
@@ -60,8 +60,8 @@ export const Route = createFileRoute("/posts/$slug")({
 	loader: async (args) => {
 		const { slug } = args.params;
 		const [handles] = await load(args.context.queryClient, {
-			comments: prefetchEntry(commentsQuery, { slug }),
-			post: ensureEntry(postQuery, { slug }),
+			comments: prefetch(commentsQuery, { slug }),
+			post: swr(postQuery, { slug }),
 		});
 		return handles;
 	},

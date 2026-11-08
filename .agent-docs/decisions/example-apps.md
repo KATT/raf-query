@@ -10,13 +10,13 @@
 
 App scope, small enough to read in one sitting, covering every documented feature:
 
-| Screen / action                               | Exercises                                                                                                         |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Issue list with status filter and sort in URL | search params → loader → paged `prefetchEntry`, infinite scroll, `whilePending: "previous"`, `isPrevious` dimming |
-| Issue detail                                  | `prefetchEntry` + skeletons. The route opens at once; title, body, and status suspend                             |
-| Comments under an issue                       | `useInfiniteQuery`, streamed `prefetchEntry`, infinite scroll                                                     |
-| Assignee card                                 | Loader / server component: `prefetchEntry` the issue's assignee beside the issue                                  |
-| Inline edit title/body; change status in list | form Actions / transitions + `useOptimistic` + `await invalidateMany(queryClient, issues)`                        |
+| Screen / action                               | Exercises                                                                                                    |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Issue list with status filter and sort in URL | search params → loader → paged `prefetch`, infinite scroll, `whilePending: "previous"`, `isPrevious` dimming |
+| Issue detail                                  | `prefetch` + skeletons. The route opens at once; title, body, and status suspend                             |
+| Comments under an issue                       | `useInfiniteQuery`, streamed `prefetch`, infinite scroll                                                     |
+| Assignee card                                 | Loader / server component: `prefetch` the issue's assignee beside the issue                                  |
+| Inline edit title/body; change status in list | form Actions / transitions + `useOptimistic` + `await invalidateMany(queryClient, issues)`                   |
 
 App: **issue tracker** (confirmed). Data: an in-memory fake DB with artificial latency, shared by every app so their behavior matches. **`queryFn`s call the shared REST API** (`@examples/api`, human asked; see `examples-rest-api.md`), not server functions.
 
