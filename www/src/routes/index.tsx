@@ -449,8 +449,8 @@ const leaveOuts: ReadonlyArray<{
 		why: "Actions, useOptimistic and useActionState already cover pending, optimistic and error state.",
 	},
 	{
-		feature: "skipToken / placeholderData",
-		why: "The route owns the input, so it starts a query only once the input exists. whilePending keeps the previous page.",
+		feature: "enabled / placeholderData",
+		why: "The route owns the input, so it starts a query only once the input exists, or skips it with skipToken. whilePending keeps the previous page.",
 	},
 	{
 		feature: "refetchOnMount",

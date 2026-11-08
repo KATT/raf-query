@@ -72,16 +72,15 @@ const queryClient = createQueryClient({
 });
 ```
 
-| Option                             | Where                            | Default                                                                                                                                     |
-| ---------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `staleTime`                        | Client or query                  | `0` ms                                                                                                                                      |
-| `gcTime`                           | Client or query                  | 5 minutes; never on the server                                                                                                              |
-| `structuralSharing`                | Client or query                  | `true`                                                                                                                                      |
-| `enabled`                          | Query                            | `true`; `false` [disables it](./query-factories.md#disabling-a-query), such as [on the server](./ssr-and-hydration.md#browser-only-queries) |
-| `retry({ attempts, delay, when })` | Client link                      | 3 attempts, doubling from 1 s up to 30 s, every error but a thrown `Response`                                                               |
-| `meta.retry`                       | Query, with `retry()`            | The link's `attempts`; `false` turns retries off                                                                                            |
-| `meta.refetchInterval`             | Query, with `polling()`          | None                                                                                                                                        |
-| `meta.refetchOnWindowFocus`        | Query, with `focusRefetch()`     | `true`                                                                                                                                      |
-| `meta.refetchOnReconnect`          | Query, with `reconnectRefetch()` | `true`                                                                                                                                      |
+| Option                             | Where                            | Default                                                                       |
+| ---------------------------------- | -------------------------------- | ----------------------------------------------------------------------------- |
+| `staleTime`                        | Client or query                  | `0` ms                                                                        |
+| `gcTime`                           | Client or query                  | 5 minutes; never on the server                                                |
+| `structuralSharing`                | Client or query                  | `true`                                                                        |
+| `retry({ attempts, delay, when })` | Client link                      | 3 attempts, doubling from 1 s up to 30 s, every error but a thrown `Response` |
+| `meta.retry`                       | Query, with `retry()`            | The link's `attempts`; `false` turns retries off                              |
+| `meta.refetchInterval`             | Query, with `polling()`          | None                                                                          |
+| `meta.refetchOnWindowFocus`        | Query, with `focusRefetch()`     | `true`                                                                        |
+| `meta.refetchOnReconnect`          | Query, with `reconnectRefetch()` | `true`                                                                        |
 
 Watch the defaults at work in [Caching](./caching.md), which has a live demo of an entry going from fresh to stale to garbage-collected.

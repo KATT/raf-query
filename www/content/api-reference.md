@@ -51,17 +51,16 @@ Links and features:
 
 Query options, for `queryOptions` and `infiniteQueryOptions`:
 
-| Option                                                                                                                                                     | Default                                                 |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `queryKey`                                                                                                                                                 | Required. [Query keys](./query-keys.md)                 |
-| `queryFn`                                                                                                                                                  | Required. [Query functions](./query-functions.md)       |
-| `staleTime`                                                                                                                                                | The client's, else `0` ms                               |
-| `gcTime`                                                                                                                                                   | The client's, else 5 minutes; never on the server       |
-| `structuralSharing` (keep deeply equal parts of data)                                                                                                      | The client's, else `true`                               |
-| `enabled` (`false`: [the query doesn't run](./query-factories.md#disabling-a-query), such as [on the server](./ssr-and-hydration.md#browser-only-queries)) | `true`                                                  |
-| `select` (derive what readers get from the data)                                                                                                           | None                                                    |
-| `stream` (`{ initial, reduce }`, for a `queryFn` that returns an async iterable)                                                                           | None. [Query functions](./query-functions.md#streaming) |
-| [`meta`](./query-meta.md) (settings for the root's links and features)                                                                                     | None                                                    |
+| Option                                                                           | Default                                                 |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `queryKey`                                                                       | Required. [Query keys](./query-keys.md)                 |
+| `queryFn`                                                                        | Required. [Query functions](./query-functions.md)       |
+| `staleTime`                                                                      | The client's, else `0` ms                               |
+| `gcTime`                                                                         | The client's, else 5 minutes; never on the server       |
+| `structuralSharing` (keep deeply equal parts of data)                            | The client's, else `true`                               |
+| `select` (derive what readers get from the data)                                 | None                                                    |
+| `stream` (`{ initial, reduce }`, for a `queryFn` that returns an async iterable) | None. [Query functions](./query-functions.md#streaming) |
+| [`meta`](./query-meta.md) (settings for the root's links and features)           | None                                                    |
 
 `infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam` and `maxPages`.
 
@@ -77,9 +76,10 @@ tanstack-start/src/docs/api-reference.ts#load
 | `prefetch(factory, input, options?)`       | Start the query if the cache has no fresh data; never waits                                                                                                                    |
 | `swr(factory, input, options?)`            | Wait only when the cache has no data; stale data resolves at once and refetches                                                                                                |
 | `revalidate(factory, input, options?)`     | Wait for fresh data; fresh cached data resolves without a refetch                                                                                                              |
+| `skipToken`                                | In place of an entry: start nothing. Its handle is `undefined` and `data` has no key for it. [Conditional queries](./starting-queries.md#conditional-queries)                  |
 | `waterfallHandle(factory, input)`          | The handle of a query whose input is only known while rendering. [Request waterfalls](./request-waterfalls.md)                                                                 |
 | `waterfallHandle(factory, handle, update)` | A handle with `update(handle.input)` as its input, or `handle` itself while that maps to the same query. [URL state](./url-state-and-pagination.md#input-typed-before-the-url) |
-| `QueryHandle<TFactory>`                    | `{ queryKey, input }`, serializable; what `load` returns for every entry. [Handles](./handles.md)                                                                              |
+| `QueryHandle<TFactory>`                    | `{ queryKey, input }`, serializable; what `load` returns for every entry but a `skipToken`. [Handles](./handles.md)                                                            |
 | `LoadEntry`, `Loaded`, `LoadEntryOptions`  | Entry and result types. `LoadEntryOptions` is `{ pages }`: how many pages a paged factory's first load fetches                                                                 |
 
 ## Reading queries
@@ -146,7 +146,6 @@ Each verb takes the client first. A factory matches the queries it built: all of
 | `failOf(value)`         | The `fail()` value in `value`, unwrapping a `QueryFailure`                                                                              |
 | `isQueryFailure(value)` | Whether `value` is a `QueryFailure`                                                                                                     |
 | `Fail`, `Result`        | A `fail()` value, and what `useQuery` reads with `result: true`: `{ ok: true, value }` or `{ ok: false, error }`                        |
-| `QueryDisabledError`    | Why a disabled query has no data: `load` rejects with it for `swr` and `revalidate` entries                                             |
 | `QueryTimeoutError`     | What a request fails with when `timeout()` cuts it off                                                                                  |
 | `abortError()`          | Makes the `AbortError` (a `DOMException`) that a `load` waiting on a removed query rejects with                                         |
 

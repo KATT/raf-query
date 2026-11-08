@@ -1,12 +1,12 @@
 import {
 	group,
-	load,
-	prefetch,
 	type QueryHandle,
 	queryOptions,
 	useQuery,
+	waterfallHandle,
 } from "@raf-query/react";
-import { createFileRoute } from "@tanstack/react-router";
+import { useHydrated } from "@tanstack/react-router";
+import { useState } from "react";
 import { postQuery } from "~/queries.ts";
 
 const permission = group("permission");
@@ -29,34 +29,26 @@ export function permissionQuery(input: { name: PermissionName }) {
 			const status = await navigator.permissions.query(input);
 			return status.state;
 		},
-		// Only the browser has `navigator.permissions`.
-		enabled: typeof window !== "undefined",
 	});
 }
 // #endregion queries
 
-// #region route
-export const Route = createFileRoute("/settings")({
-	loader: async ({ context }) => {
-		const [handles] = await load(context.queryClient, {
-			notifications: prefetch(permissionQuery, { name: "notifications" }),
-		});
-		return handles;
-	},
-	component: NotificationsSetting,
-});
-// #endregion route
-
-declare const loaderData: {
-	notifications: QueryHandle<typeof permissionQuery>;
-};
-
 // #region component
 function NotificationsSetting() {
-	const [permissionThenable] = useQuery(
-		permissionQuery,
-		loaderData.notifications,
+	// `false` on the server and while hydrating, `true` after.
+	const hydrated = useHydrated();
+	if (!hydrated) {
+		return <NotificationsToggle permission={undefined} />;
+	}
+	return <NotificationsPermission />;
+}
+
+function NotificationsPermission() {
+	// Only the browser has `navigator.permissions`, so the handle is built here.
+	const [handle] = useState(() =>
+		waterfallHandle(permissionQuery, { name: "notifications" }),
 	);
+	const [permissionThenable] = useQuery(permissionQuery, handle);
 	const permission =
 		permissionThenable.status === "fulfilled"
 			? permissionThenable.value
@@ -81,4 +73,4 @@ function PostTitle(props: { handle: QueryHandle<typeof postQuery> }) {
 }
 // #endregion thenable
 
-export { PostTitle };
+export { NotificationsSetting, PostTitle };

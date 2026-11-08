@@ -41,28 +41,12 @@ Options set in the factory override the client's (`staleTime`, `gcTime`, `struct
 | `staleTime`         | How long data counts as fresh, in ms                                                                            |
 | `gcTime`            | How long an unread entry stays cached, in ms                                                                    |
 | `structuralSharing` | See [Render optimizations](./render-optimizations.md)                                                           |
-| `enabled`           | `false` keeps the query from running. See [Disabling a query](#disabling-a-query). Default `true`               |
 | `stream`            | Folds the chunks of a `queryFn` that returns an async iterable. See [Streaming](./query-functions.md#streaming) |
 | `meta`              | Settings for the client's links and features, such as `retry`. See [Query meta](./query-meta.md)                |
 
 Per-query retries, polling and focus refetching are `meta` fields, read by the link or feature that does them: `meta: { retry: 1 }` with `retry()`, `meta: { refetchInterval: 5000 }` with `polling()`. See [Retries](./retries.md), [Polling](./polling.md) and [Window focus refetching](./window-focus-refetching.md).
 
 `infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam` and `maxPages`. See [Infinite queries](./infinite-queries.md).
-
-## Disabling a query
-
-As in [TanStack Query](https://tanstack.com/query/latest/docs/framework/react/guides/disabling-queries), set `enabled: false` to keep a query from running, such as a feature behind a flag:
-
-```sample
-tanstack-start/src/docs/query-factories.disabling-a-query.ts#disabling-a-query
-```
-
-Every call runs the factory again, so `enabled` is decided per call: a later call that returns `true`, such as the loader running after the flag turned on, starts the query. While it's disabled:
-
-- Nothing runs it: not `prefetch`, not its readers, not an invalidation or `refetch()`. A `load` with an `swr` or `revalidate` for it rejects with `QueryDisabledError`, unless an `swr` finds cached data.
-- Readers see `isPending`. In the browser its thenable stays pending, so a reader that calls `use()` shows its Suspense fallback until the query is enabled and loads.
-
-`enabled: typeof window !== "undefined"` disables a query on the server only. See [Browser-only queries](./ssr-and-hydration.md#browser-only-queries).
 
 ## Type inference
 

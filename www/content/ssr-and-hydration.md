@@ -73,21 +73,22 @@ A query sent while pending crosses as a promise. If it returns `fail()` on the s
 
 ## Browser-only queries
 
-Some data only the browser can know: a push subscription, a notification permission, a service worker, a media query. That still belongs in the cache, with the same factory, handle and invalidation. Disable it where `window` doesn't exist, so the server never runs it:
+Some data only the browser can know: a push subscription, a notification permission, a service worker, a media query. That still belongs in the cache, with the same factory, handle and invalidation. Its factory is an ordinary one:
 
 ```sample
 tanstack-start/src/docs/ssr-and-hydration.ts#browser-only-queries
 ```
 
-A server client never starts a disabled query and never sends it. A loader that also runs on the server starts it with a `prefetch` entry: `load` returns its handle on the server too, and the browser starts the request when the loader or the first read runs there. `swr` and `revalidate` entries can't wait for it on the server, so `load` rejects with `QueryDisabledError`.
-
-On any server client, a disabled query with no data reads as a thenable that rejects, and `use()` throws it. Put the component that `use()`s it inside a Suspense boundary: React sends the fallback from the server and renders the content in the browser.
+What keeps it off the server is where its handle comes from. A loader also runs on the server, so it has no entry for the query. The component builds the handle in the browser, after hydration, with `waterfallHandle`, and reading it starts the request:
 
 ```sample
 tanstack-start/src/docs/ssr-and-hydration.tsx#push-state
 ```
 
-React reports that boundary as an error it recovers from, as for [a query left to the browser](#queries-nothing-started-on-the-server). Next.js reports nothing; other frameworks see it in the server render's `onError` and the browser's `onRecoverableError`.
+- TanStack Router's [`useHydrated()`](https://tanstack.com/start/latest/docs/framework/react/guide/execution-model#usehydrated-hook) is `false` on the server and while the page hydrates, and `true` after. Until then, render what the server renders, so hydration matches: here, the switch with no state.
+- `useQuery` can't be called conditionally, so the query is read in a child component that renders only once hydrated.
+- The child builds the handle once, in [`useState`](https://react.dev/reference/react/useState)'s initializer, so every render reads the same handle.
+- The server never sees the handle, so it never runs the `queryFn` or sends the query. On a client-side navigation, `useHydrated()` is `true` from the first render, and the query starts as the component mounts.
 
 ## When the browser already has data
 

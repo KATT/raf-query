@@ -47,6 +47,22 @@ Several waiting entries in one `load` wait together, and `data` has each one's d
 tanstack-start/src/docs/starting-queries.ts#awaiting-several-queries
 ```
 
+## Conditional queries
+
+Some queries only start for some requests, such as drafts that only an admin sees. Put `skipToken` in place of the entry when the query shouldn't start:
+
+```sample
+tanstack-start/src/docs/starting-queries.conditional-queries.tsx#loader
+```
+
+A `skipToken` starts nothing. Its handle is `undefined`, so the handle's type is `QueryHandle<typeof draftsQuery> | undefined`, and `data` has no key for it. `useQuery` takes only a handle, so render the component that reads the query only when there is one:
+
+```sample
+tanstack-start/src/docs/starting-queries.conditional-queries.tsx#component
+```
+
+The condition is decided where the loader runs, from what it knows: the route's params and search, its context, or another entry's data that it waited for. Data only the browser has, such as a permission, has no loader entry: see [Browser-only queries](./ssr-and-hydration.md#browser-only-queries).
+
 ## When to use revalidate
 
 `revalidate` is `swr` that also waits on stale data. Use it when the code that starts the query needs the data to be fresh, not just present:
@@ -69,7 +85,7 @@ A client-only React Router app is different: its [`clientLoader`](https://reactr
 - Every entry dedupes against the cache: a request already in flight for the entry is joined, not repeated.
 - Loaders run on every navigation (TanStack Router reruns them when [its own `staleTime`](https://tanstack.com/router/latest/docs/guide/data-loading#using-staletime-to-control-how-long-data-is-considered-fresh) has passed, `0` by default), so returning to a page shows what's cached at once and then fresh data. With [`defaultPreload: "intent"`](https://tanstack.com/router/latest/docs/guide/preloading), also set [`defaultPreloadStaleTime: 0`](https://tanstack.com/router/latest/docs/guide/preloading#built-in-preloading-freshness-and-retention): otherwise the router reuses a hover's preload for 30 seconds instead of running the loader on click, and the query cache never hears about the navigation.
 - On the server, `staleTime` doesn't apply: the client belongs to one request, so what it fetched is fresh for that request. `prefetch` and `swr` reuse cached data even after an [invalidation](./query-invalidation.md#invalidation-on-the-server). `revalidate` reuses it until an invalidation, then waits for the refetch.
-- A [browser-only query](./ssr-and-hydration.md#browser-only-queries) never runs on the server: start it with `prefetch` there. A load with an `swr` or `revalidate` for it rejects with `QueryDisabledError`.
+- A `skipToken` in place of an entry starts nothing and gets an `undefined` handle. See [Conditional queries](#conditional-queries).
 - A failed `prefetch` never makes the load reject. The error surfaces where the data is read.
 - A failed `swr` or `revalidate` makes the load reject, so it reaches the route's error boundary. An [expected error](./query-functions.md#expected-errors) rejects it with a `QueryFailure`.
 
