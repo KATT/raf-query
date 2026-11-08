@@ -12,7 +12,8 @@
 		"typecheck": "tsc"
 	},
 	"dependencies": {
-		"@oxlint/plugins": "1.85.0"
+		"@oxlint/plugins": "1.85.0",
+		"github-slugger": "2.0.0"
 	},
 	"devDependencies": {
 		"@types/node": "26.6.4",
