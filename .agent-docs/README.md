@@ -1,6 +1,6 @@
 # Agent docs
 
-Working memory for coding agents on this repo. **Agents own this folder** — create, edit, and delete freely. Prefer durable facts over chat transcript fluff.
+Working memory for coding agents on this repo. **Agents own this folder** (human: "your folder to do WHATEVER YOU WANT with"). Create, edit, delete, rename and restructure it at any time, in any format other agents can use: notes, checklists, plans, scripts, tables. Prefer durable facts over chat transcript fluff.
 
 | Doc                                                  | What belongs here                                                                     |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------- |
@@ -9,6 +9,7 @@ Working memory for coding agents on this repo. **Agents own this folder** — cr
 | [implementation-notes.md](./implementation-notes.md) | Verified mechanisms to copy from TanStack / React source, and which package owns what |
 | [bundle-size.md](./bundle-size.md)                   | Bundle size numbers against TanStack Query, and what defeats tree-shaking             |
 | [open-questions.md](./open-questions.md)             | Questions with no sign-off                                                            |
+| [notes/](./notes/)                                   | Work in progress: review checklists, plans, hand-offs between sessions                |
 
 ## Rules of thumb
 
