@@ -11,7 +11,7 @@ import {
 } from "@examples/kit/components/issue-list";
 import { LoadMore } from "@examples/kit/components/load-more";
 import { cn } from "@examples/ui/lib/utils";
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import { type QueryHandle, useInfiniteQuery } from "@raf-query/react";
 
 import { AppLink } from "~/components/settings.tsx";
 import { StatusSelect } from "~/components/status-select.tsx";
@@ -20,7 +20,7 @@ import { issueListQuery } from "~/queries.ts";
 export function IssueList(props: {
 	readonly handle: QueryHandle<typeof issueListQuery>;
 }) {
-	const [pagesThenable, list] = useQuery(issueListQuery, props.handle, {
+	const [pagesThenable, list] = useInfiniteQuery(issueListQuery, props.handle, {
 		whilePending: "previous",
 	});
 	const pages = use(pagesThenable);

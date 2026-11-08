@@ -1,5 +1,5 @@
 import { use } from "react";
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import { type QueryHandle, useInfiniteQuery } from "@raf-query/react";
 import { Card } from "@examples/ui/components/card";
 import {
 	IssueListSummary,
@@ -18,7 +18,7 @@ import { issueListQuery } from "~/queries.ts";
 export function IssueList(props: {
 	readonly handle: QueryHandle<typeof issueListQuery>;
 }) {
-	const [pagesThenable, list] = useQuery(issueListQuery, props.handle, {
+	const [pagesThenable, list] = useInfiniteQuery(issueListQuery, props.handle, {
 		whilePending: "previous",
 	});
 	const pages = use(pagesThenable);

@@ -5,7 +5,7 @@ import {
 	load,
 	prefetchEntry,
 	type QueryHandle,
-	useQuery,
+	useInfiniteQuery,
 } from "@raf-query/react";
 import { use } from "react";
 
@@ -72,7 +72,7 @@ function TodosSkeleton() {
 }
 
 function Todos(props: { readonly handle: QueryHandle<typeof todosQuery> }) {
-	const [pagesThenable, controls] = useQuery(todosQuery, props.handle);
+	const [pagesThenable, controls] = useInfiniteQuery(todosQuery, props.handle);
 	const pages = use(pagesThenable);
 	const list = pages.pages.flatMap((page) => page.items);
 	return (

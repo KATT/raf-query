@@ -35,7 +35,7 @@ tanstack-start/src/docs/reading-queries.tsx#post-page
 | `hash`              | Stable string form of the handle's key, for `key` props on Suspense boundaries                             |
 | `refetch()`         | Refetch now. Returns a promise, so it can be awaited inside a transition or action                         |
 
-Paged factories add `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage` and `isFetchingPreviousPage`. See [Infinite queries](./infinite-queries.md).
+Paged factories read with `useInfiniteQuery`, whose state adds `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage` and `isFetchingPreviousPage`. See [Infinite queries](./infinite-queries.md).
 
 ## Updates never suspend
 

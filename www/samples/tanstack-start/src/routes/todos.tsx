@@ -3,7 +3,7 @@ import {
 	load,
 	prefetchEntry,
 	type QueryHandle,
-	useQuery,
+	useInfiniteQuery,
 } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense, use } from "react";
@@ -32,7 +32,10 @@ function TodosPage() {
 }
 
 function TodoList(props: { handle: QueryHandle<typeof todosQuery> }) {
-	const [pagesThenable, todosState] = useQuery(todosQuery, props.handle);
+	const [pagesThenable, todosState] = useInfiniteQuery(
+		todosQuery,
+		props.handle,
+	);
 	const pages = use(pagesThenable);
 	return (
 		<ul aria-busy={todosState.isFetching}>

@@ -8,7 +8,7 @@ import {
 	ensureEntry,
 	infiniteQueryOptions,
 	load,
-	useQuery,
+	useInfiniteQuery,
 } from "@raf-query/react";
 import { useActionState, useOptimistic, use } from "react";
 import { useFormStatus } from "react-dom";
@@ -87,7 +87,7 @@ function SubmitButton() {
 }
 
 function TodoList(props: { readonly handle: QueryHandle<typeof todosQuery> }) {
-	const [pagesThenable] = useQuery(todosQuery, props.handle);
+	const [pagesThenable] = useInfiniteQuery(todosQuery, props.handle);
 	const pages = use(pagesThenable);
 	const serverTodos = pages.pages.flatMap((page) => page.items);
 	const [shownTodos, addOptimistic] = useOptimistic<

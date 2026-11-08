@@ -10,8 +10,8 @@ import {
 	prefetchEntry,
 	type QueryClient,
 	type QueryHandle,
-	useQuery,
 	useQueryClient,
+	useInfiniteQuery,
 } from "@raf-query/react";
 import { group } from "@raf-query/react/groups";
 import { Suspense, use, useTransition } from "react";
@@ -146,7 +146,7 @@ function TodosCard(props: {
 	readonly handle: QueryHandle<typeof todosQuery>;
 	readonly label: string;
 }) {
-	const [itemsThenable, state] = useQuery(todosQuery, props.handle);
+	const [itemsThenable, state] = useInfiniteQuery(todosQuery, props.handle);
 	return (
 		<Card
 			fetching={state.isFetching}
@@ -158,7 +158,7 @@ function TodosCard(props: {
 }
 
 function UsersCard(props: { readonly handle: QueryHandle<typeof usersQuery> }) {
-	const [itemsThenable, state] = useQuery(usersQuery, props.handle);
+	const [itemsThenable, state] = useInfiniteQuery(usersQuery, props.handle);
 	return (
 		<Card
 			fetching={state.isFetching}

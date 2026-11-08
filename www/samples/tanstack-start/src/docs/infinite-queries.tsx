@@ -1,4 +1,4 @@
-import { type QueryHandle, useQuery } from "@raf-query/react";
+import { type QueryHandle, useInfiniteQuery } from "@raf-query/react";
 import { type ReactNode, use } from "react";
 import { commentsQuery } from "~/queries.ts";
 
@@ -9,7 +9,10 @@ declare function Comment(props: {
 
 // #region reading-pages
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
-	const [pagesThenable, comments] = useQuery(commentsQuery, props.handle);
+	const [pagesThenable, comments] = useInfiniteQuery(
+		commentsQuery,
+		props.handle,
+	);
 	const data = use(pagesThenable);
 	//    ^?
 
@@ -39,7 +42,7 @@ declare function CommentSkeletons(): ReactNode;
 
 declare const props: { handle: QueryHandle<typeof commentsQuery> };
 
-const [, comments] = useQuery(commentsQuery, props.handle);
+const [, comments] = useInfiniteQuery(commentsQuery, props.handle);
 
 // #region infinite-scroll
 {

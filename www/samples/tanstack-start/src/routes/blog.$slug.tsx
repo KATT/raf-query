@@ -3,6 +3,7 @@ import {
 	prefetchEntry,
 	type QueryHandle,
 	useQuery,
+	useInfiniteQuery,
 } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense, use } from "react";
@@ -56,7 +57,7 @@ function Post(props: { handle: QueryHandle<typeof postQuery> }) {
 // ---collapse---
 function PostComments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	// May still be loading. If so, use() suspends until it lands.
-	const [pagesThenable] = useQuery(commentsQuery, props.handle);
+	const [pagesThenable] = useInfiniteQuery(commentsQuery, props.handle);
 	const pages = use(pagesThenable);
 	return pages.pages.flatMap((page) => page.items).map(renderComment);
 }

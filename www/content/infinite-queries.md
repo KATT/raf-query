@@ -5,7 +5,7 @@ section: Guides
 order: 10
 ---
 
-Lists that load more data onto what's already shown, such as "load more" buttons and infinite scroll, are a common UI pattern. A paged factory returns `infiniteQueryOptions(...)`; everything else uses the same `load`, `useQuery` and verbs as any query.
+Lists that load more data onto what's already shown, such as "load more" buttons and infinite scroll, are a common UI pattern. A paged factory returns `infiniteQueryOptions(...)`, and components read it with `useInfiniteQuery`. Loaders and verbs take it like any query.
 
 ```sample title="src/queries.ts"
 tanstack-start/src/docs/infinite-queries.ts#intro
@@ -18,7 +18,7 @@ tanstack-start/src/docs/infinite-queries.ts#intro
 
 ## Reading pages
 
-With a paged factory, `useQuery` returns the same tuple. The data is `{ pages, pageParams }`, and the controls add paging:
+`useInfiniteQuery(factory, handle, options?)` returns the same `[thenable, state]` tuple as [`useQuery`](./reading-queries.md), with the same options. The data is `{ pages, pageParams }`, and the state adds paging:
 
 ```sample
 tanstack-start/src/docs/infinite-queries.tsx#reading-pages
@@ -30,7 +30,7 @@ tanstack-start/src/docs/infinite-queries.tsx#reading-pages
 | `hasNextPage`, `hasPreviousPage`               | Whether the page param functions found one          |
 | `isFetchingNextPage`, `isFetchingPreviousPage` | A page is loading at that end                       |
 
-They exist only on the type for paged factories.
+`useInfiniteQuery` takes only paged factories, and `useQuery` only factories that aren't: passing the other kind is a type error. The paging code is in `useInfiniteQuery` alone, so an app that never pages doesn't ship it.
 
 ## Infinite scroll
 

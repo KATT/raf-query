@@ -47,7 +47,7 @@ tanstack-start/src/docs/url-state-and-pagination.tsx#skeletons-for-unrelated-con
 They differ in where the page lives:
 
 - **Pagination**: the page is a search param and part of the input, so each page is its own query and the URL links to it.
-- **Infinite scroll**: filters and sort are search params, and pages are loaded into one paged query per input with `infiniteQueryOptions` and `fetchNextPage`. Changing a filter starts a new list from its first page. See [Infinite queries](./infinite-queries.md).
+- **Infinite scroll**: filters and sort are search params, and pages are loaded into one paged query per input with `infiniteQueryOptions`, read with `useInfiniteQuery` and extended with `fetchNextPage`. Changing a filter starts a new list from its first page. See [Infinite queries](./infinite-queries.md).
 
 ## Why not local state?
 

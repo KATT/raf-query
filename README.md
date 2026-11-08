@@ -58,7 +58,7 @@ function PostPage() {
 
 function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 	// Still loading. use() suspends until the pages stream in.
-	const [pagesThenable] = useQuery(commentsQuery, props.handle);
+	const [pagesThenable] = useInfiniteQuery(commentsQuery, props.handle);
 	//     ^?
 	const pages = use(pagesThenable);
 	return pages.pages

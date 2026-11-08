@@ -9,6 +9,7 @@ import {
 	useQuery,
 	useQueryClient,
 	waterfallHandle,
+	useInfiniteQuery,
 } from "@raf-query/react";
 import { Suspense, use, useState } from "react";
 
@@ -151,7 +152,7 @@ function Byline(props: { readonly name: string | undefined }) {
 function CommentList(props: {
 	readonly handle: QueryHandle<typeof commentsQuery>;
 }) {
-	const [pagesThenable] = useQuery(commentsQuery, props.handle);
+	const [pagesThenable] = useInfiniteQuery(commentsQuery, props.handle);
 	const pages = use(pagesThenable);
 	return (
 		<ul className="grid gap-1.5">

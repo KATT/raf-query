@@ -4,7 +4,7 @@ import {
 	load,
 	prefetchEntry,
 	type QueryHandle,
-	useQuery,
+	useInfiniteQuery,
 } from "@raf-query/react";
 import { use } from "react";
 
@@ -93,7 +93,10 @@ function MessageSkeletons() {
 function Messages(props: {
 	readonly handle: QueryHandle<typeof messagesQuery>;
 }) {
-	const [pagesThenable, controls] = useQuery(messagesQuery, props.handle);
+	const [pagesThenable, controls] = useInfiniteQuery(
+		messagesQuery,
+		props.handle,
+	);
 	const data = use(pagesThenable);
 	const items = data.pages.flatMap((page) => page.items);
 	return (

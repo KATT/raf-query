@@ -89,7 +89,7 @@ tanstack-start/src/docs/api-reference.ts#load
 tanstack-start/src/docs/api-reference.ts#usequery
 ```
 
-`useQuery(factory, handle, options?)` returns a `Thenable<Data>` for every handle, next to its state. Read it with `use()`, which returns at once when the data is cached and suspends otherwise. A query nothing loaded fetches while rendering. [Reading queries](./reading-queries.md)
+`useQuery(factory, handle, options?)` returns a `Thenable<Data>` for every handle, next to its state. Read it with `use()`, which returns at once when the data is cached and suspends otherwise. A query nothing loaded fetches while rendering. It takes factories that aren't paged. [Reading queries](./reading-queries.md)
 
 Options:
 
@@ -110,14 +110,14 @@ Options:
 | `hash`              | Stable string form of the handle's key, for `key` props on Suspense boundaries              |
 | `refetch()`         | Fetch again, or join the request in flight. Returns a promise that resolves when it settles |
 
-Paged factories add `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage` and `isFetchingPreviousPage`.
+`useInfiniteQuery(factory, handle, options?)` reads a paged factory the same way, with the same options. Its state adds `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage` and `isFetchingPreviousPage`. [Infinite queries](./infinite-queries.md)
 
 Read the thenable's `status`, `value` and `reason` to render without Suspense. See [Reading without Suspense](./comparison.md#reading-without-suspense).
 
-| Export                                                                       | Use                                                                                                                                                                           |
-| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `useIsFetching(target?)`                                                     | How many queries have a request in flight: all, or a factory's, group's or target's. `0` on the server. [Background fetching indicators](./background-fetching-indicators.md) |
-| `QueryControls`, `PageControls`, `QueryValue`, `UseQueryOptions`, `Thenable` | Types of what `useQuery` takes and returns                                                                                                                                    |
+| Export                                                                                                | Use                                                                                                                                                                           |
+| ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `useIsFetching(target?)`                                                                              | How many queries have a request in flight: all, or a factory's, group's or target's. `0` on the server. [Background fetching indicators](./background-fetching-indicators.md) |
+| `QueryControls`, `InfiniteQueryControls`, `PageControls`, `QueryValue`, `UseQueryOptions`, `Thenable` | Types of what `useQuery` and `useInfiniteQuery` take and return                                                                                                               |
 
 ## Changing the cache
 

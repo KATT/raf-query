@@ -7,8 +7,8 @@ import {
 	infiniteQueryOptions,
 	invalidateOne,
 	load,
-	useQuery,
 	useQueryClient,
+	useInfiniteQuery,
 } from "@raf-query/react";
 import { RefreshCw, RotateCcw } from "lucide-react";
 
@@ -65,7 +65,7 @@ type PageData =
 
 function Inbox(props: { readonly handle: QueryHandle<typeof inboxQuery> }) {
 	const queryClient = useQueryClient();
-	const [pagesThenable, controls] = useQuery(inboxQuery, props.handle);
+	const [pagesThenable, controls] = useInfiniteQuery(inboxQuery, props.handle);
 	const pages = use(pagesThenable);
 	const messages = pages.pages.flatMap((page) => page.items);
 	return (

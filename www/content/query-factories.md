@@ -29,7 +29,7 @@ tanstack-start/src/docs/query-factories.two-parameters.ts#two-parameters
 
 ## The factory decides everything
 
-The factory is the only place a query is declared, including whether it's paged. Every other API — `prefetchEntry`, `ensureEntry`, `fetchEntry`, `waterfallHandle`, `useQuery`, `invalidateOne`, `setData` — takes either kind and infers the rest from the factory's type: the data, the input, the expected errors, and for paged queries the page and page param types.
+The factory is the only place a query is declared, including whether it's paged. Every other API — `prefetchEntry`, `ensureEntry`, `fetchEntry`, `waterfallHandle`, `invalidateOne`, `setData` — takes either kind and infers the rest from the factory's type: the data, the input, the expected errors, and for paged queries the page and page param types. Components read the two kinds with their own hooks, `useQuery` and `useInfiniteQuery`.
 
 Options set in the factory override the client's (`staleTime`, `gcTime`, `structuralSharing`):
 

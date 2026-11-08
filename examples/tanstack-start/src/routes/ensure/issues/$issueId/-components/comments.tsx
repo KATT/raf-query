@@ -10,8 +10,8 @@ import { warnMockDbWrite } from "@examples/kit/lib/mock-db-toast";
 import {
 	type QueryHandle,
 	invalidateMany,
-	useQuery,
 	useQueryClient,
+	useInfiniteQuery,
 } from "@raf-query/react";
 import { useOptimistic, useRef, use } from "react";
 
@@ -22,7 +22,10 @@ export function Comments(props: {
 }) {
 	const queryClient = useQueryClient();
 	const formRef = useRef<HTMLFormElement>(null);
-	const [pagesThenable, comments] = useQuery(commentsQuery, props.handle);
+	const [pagesThenable, comments] = useInfiniteQuery(
+		commentsQuery,
+		props.handle,
+	);
 	const pages = use(pagesThenable);
 	const issueId = props.handle.input.issueId;
 	const loaded = pages.pages.flatMap((page) => page.comments);

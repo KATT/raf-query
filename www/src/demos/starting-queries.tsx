@@ -8,6 +8,7 @@ import {
 	type QueryClient,
 	queryOptions,
 	useQuery,
+	useInfiniteQuery,
 } from "@raf-query/react";
 import {
 	createRootRouteWithContext,
@@ -286,7 +287,10 @@ function PromisedList(props: {
 
 function PrefetchedList(): ReactNode {
 	const handle = prefetchList.useLoaderData<PrefetchRouter>();
-	const [postsThenable, postsState] = useQuery(prefetching.postsQuery, handle);
+	const [postsThenable, postsState] = useInfiniteQuery(
+		prefetching.postsQuery,
+		handle,
+	);
 	return (
 		<Suspense fallback={<PostListSkeleton />} key={postsState.hash}>
 			<PromisedList posts={postsThenable} />
@@ -301,7 +305,10 @@ function PromisedPost(props: { readonly post: Promise<Post | undefined> }) {
 
 function PrefetchedComments(): ReactNode {
 	const data = prefetchPost.useLoaderData<PrefetchRouter>();
-	const [commentsThenable] = useQuery(prefetching.commentsQuery, data.comments);
+	const [commentsThenable] = useInfiniteQuery(
+		prefetching.commentsQuery,
+		data.comments,
+	);
 	const pages = use(commentsThenable);
 	return <CommentList comments={commentItems(pages)} />;
 }
@@ -356,7 +363,7 @@ const ensureTree = ensureRoot.addChildren([ensureList, ensurePost]);
 
 function EnsuredList(): ReactNode {
 	const handle = ensureList.useLoaderData<EnsureRouter>();
-	const [pagesThenable] = useQuery(ensuring.postsQuery, handle);
+	const [pagesThenable] = useInfiniteQuery(ensuring.postsQuery, handle);
 	const pages = use(pagesThenable);
 	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
 }
@@ -365,7 +372,10 @@ function EnsuredPost(): ReactNode {
 	const data = ensurePost.useLoaderData<EnsureRouter>();
 	const [postThenable] = useQuery(ensuring.postQuery, data.post);
 	const post = use(postThenable);
-	const [pagesThenable] = useQuery(ensuring.commentsQuery, data.comments);
+	const [pagesThenable] = useInfiniteQuery(
+		ensuring.commentsQuery,
+		data.comments,
+	);
 	const pages = use(pagesThenable);
 	return (
 		<PostPage>
@@ -407,7 +417,7 @@ const fetchTree = fetchRoot.addChildren([fetchList, fetchPost]);
 
 function FetchedList(): ReactNode {
 	const handle = fetchList.useLoaderData<FetchRouter>();
-	const [pagesThenable] = useQuery(fetching.postsQuery, handle);
+	const [pagesThenable] = useInfiniteQuery(fetching.postsQuery, handle);
 	const pages = use(pagesThenable);
 	return <PostList posts={pages.pages.flatMap((page) => page.items)} />;
 }
@@ -416,7 +426,10 @@ function FetchedPost(): ReactNode {
 	const data = fetchPost.useLoaderData<FetchRouter>();
 	const [postThenable] = useQuery(fetching.postQuery, data.post);
 	const post = use(postThenable);
-	const [pagesThenable] = useQuery(fetching.commentsQuery, data.comments);
+	const [pagesThenable] = useInfiniteQuery(
+		fetching.commentsQuery,
+		data.comments,
+	);
 	const pages = use(pagesThenable);
 	return (
 		<PostPage>
