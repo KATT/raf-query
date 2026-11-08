@@ -325,15 +325,25 @@ describe("waterfallHandle", () => {
 		expect(warn).not.toHaveBeenCalled();
 	});
 
-	it("keeps the handle while a new input maps to the same query", () => {
+	it("keeps the handle while the updated input maps to the same query", () => {
 		const backend = createBackend();
 		const handle = waterfallHandle(backend.issueQuery, { id: 1 });
+		const inputs: Array<{ readonly id: number }> = [];
 
-		expect(waterfallHandle(backend.issueQuery, handle, { id: 1 })).toBe(handle);
 		expect(
-			waterfallHandle(backend.issueQuery, handle, { id: 2 }).input,
-		).toEqual({
-			id: 2,
-		});
+			waterfallHandle(backend.issueQuery, handle, (input) => {
+				inputs.push(input);
+				return { ...input };
+			}),
+		).toBe(handle);
+		expect(inputs).toEqual([{ id: 1 }]);
+		const next = waterfallHandle(backend.issueQuery, handle, (input) => ({
+			id: input.id + 1,
+		}));
+		expect(next).not.toBe(handle);
+		expect(next.input).toEqual({ id: 2 });
+		expect(waterfallHandle(backend.issueQuery, next, () => ({ id: 2 }))).toBe(
+			next,
+		);
 	});
 });

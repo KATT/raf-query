@@ -1,5 +1,5 @@
 import { act, fireEvent, screen } from "@testing-library/react";
-import { Suspense, use } from "react";
+import { Suspense, use, useState } from "react";
 import { renderToReadableStream, renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -71,6 +71,48 @@ describe("useQuery", () => {
 		expect(warn).toHaveBeenCalledOnce();
 		await backend.respondAll();
 		expect(screen.getByText(/First/u)).toBeTruthy();
+	});
+
+	it("keeps a loaded handle while waterfallHandle's updater returns the same input", async () => {
+		const backend = createBackend();
+		const client = testClient();
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		let handle!: QueryHandle<Backend["issueQuery"]>;
+		await loaded(backend, async () => {
+			[{ issue: handle }] = await load(client, {
+				issue: revalidate(backend.issueQuery, { id: 1 }),
+			});
+		});
+		const read: Array<QueryHandle<Backend["issueQuery"]>> = [];
+		function Issue() {
+			const [id, setId] = useState(handle.input.id);
+			const issueHandle = waterfallHandle(
+				backend.issueQuery,
+				handle,
+				(input) => ({ ...input, id }),
+			);
+			read.push(issueHandle);
+			const [issueThenable] = useQuery(backend.issueQuery, issueHandle, {
+				whilePending: "previous",
+			});
+			const issue = use(issueThenable);
+			return (
+				<button onClick={() => setId(2)} type="button">
+					{issue.title}
+				</button>
+			);
+		}
+		await renderWith(client, <Issue />);
+		expect(read.length).toBeGreaterThan(0);
+		expect(read.every((each) => each === handle)).toBe(true);
+		expect(backend.requests).toHaveLength(0);
+
+		fireEvent.click(screen.getByText("First"));
+		expect(read.at(-1)?.input).toEqual({ id: 2 });
+		expect(backend.requests).toHaveLength(1);
+		await backend.respondAll();
+		expect(screen.getByText("Second")).toBeTruthy();
+		expect(warn).not.toHaveBeenCalled();
 	});
 
 	it("reads without suspending by switching on the thenable's status", async () => {

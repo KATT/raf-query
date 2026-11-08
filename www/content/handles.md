@@ -40,6 +40,6 @@ A loader can't promise the data is still there when a component renders. If the 
 ## Where handles come from
 
 - `load(qc, entries)` resolves to a `QueryHandle` per entry.
-- `waterfallHandle(factory, input)` returns a `QueryHandle` that starts nothing: the component that reads it fetches while rendering. It's an [escape hatch](./request-waterfalls.md#render-time-inputs-waterfallhandle).
+- `waterfallHandle(factory, input)` returns a `QueryHandle` that starts nothing: the component that reads it fetches while rendering. It's an [escape hatch](./request-waterfalls.md#render-time-inputs-waterfallhandle). `waterfallHandle(factory, handle, (input) => next)` derives one from another handle's input, such as a loader's, and returns that handle as is while `next` maps to the same query ([URL state](./url-state-and-pagination.md#input-typed-before-the-url)).
 
 You never build handles by hand: the factory's key and input must agree, and `load` and `waterfallHandle` guarantee it.

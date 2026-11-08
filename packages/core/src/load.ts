@@ -295,9 +295,14 @@ function toHandle<TFactory extends QueryFactory>(
  * it fetches when it renders, which makes it a request waterfall, and the
  * name keeps that visible. Prefer starting queries in a loader with `load`.
  *
- * With a handle and a new input (say, a search term being typed), it
- * switches the handle to that input, and returns the handle as is while
- * the new input maps to the same query.
+ * With a handle and an updater, it derives a handle from that one: the
+ * updater gets the handle's input and returns the new one (say, with a
+ * search term being typed). While the new input maps to the same query, it
+ * returns the handle as is, so readers keep it.
+ *
+ * ```ts
+ * const searchHandle = waterfallHandle(searchQuery, props.search, (input) => ({ ...input, q }));
+ * ```
  */
 export function waterfallHandle<TFactory extends QueryFactory>(
 	factory: TFactory,
@@ -306,7 +311,7 @@ export function waterfallHandle<TFactory extends QueryFactory>(
 export function waterfallHandle<TFactory extends QueryFactory>(
 	factory: TFactory,
 	handle: QueryHandle<TFactory>,
-	input: InputOf<TFactory>,
+	update: (input: InputOf<TFactory>) => InputOf<TFactory>,
 ): QueryHandle<TFactory>;
 export function waterfallHandle<TFactory extends QueryFactory>(
 	factory: TFactory,
@@ -315,8 +320,11 @@ export function waterfallHandle<TFactory extends QueryFactory>(
 	if (args.length < 2) {
 		return toHandle(factory, args[0]);
 	}
-	// SAFETY: the two-argument overload passes a handle first.
-	const handle = args[0] as QueryHandle<TFactory>;
-	const next = toHandle(factory, args[1]);
+	// SAFETY: the two-argument overload passes a handle, then an updater of its input.
+	const [handle, update] = args as [
+		QueryHandle<TFactory>,
+		(input: unknown) => unknown,
+	];
+	const next = toHandle(factory, update(handle.input));
 	return hashKey(next.queryKey) === hashKey(handle.queryKey) ? handle : next;
 }

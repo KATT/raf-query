@@ -42,6 +42,16 @@ tanstack-start/src/docs/url-state-and-pagination.tsx#skeletons-for-unrelated-con
 
 `hash` on the state is the stable string form of the query's key.
 
+## Input typed before it reaches the URL
+
+A search box changes the input on every keystroke, faster than navigations should run. Keep what's being typed in state, and derive the reader's handle from the loader's with `waterfallHandle(factory, handle, update)`. `update` gets the handle's input and returns the new one:
+
+```sample
+tanstack-start/src/docs/url-state-and-pagination.tsx#input-typed-before-the-url
+```
+
+While `q` is still the URL's, the new input maps to the same query, so `waterfallHandle` returns the loader's handle itself and `useQuery` reads it as before. Each new `q` is a query no loader started: the component fetches it while rendering, a [request waterfall](./request-waterfalls.md#render-time-inputs-waterfallhandle) the name keeps visible. Write the term to the URL when the user submits or pauses, so the next loader starts it and links share it.
+
 ## Pagination versus infinite scroll
 
 They differ in where the page lives:

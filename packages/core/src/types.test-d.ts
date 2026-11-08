@@ -139,9 +139,16 @@ describe("waterfall types", () => {
 		const handle = waterfallHandle(titles, { id: 1 });
 
 		expectTypeOf(handle).toEqualTypeOf<QueryHandle<typeof titles>>();
-		expectTypeOf(waterfallHandle(titles, handle, { id: 2 })).toEqualTypeOf(
-			handle,
-		);
+		expectTypeOf(
+			waterfallHandle(titles, handle, (input) => {
+				expectTypeOf(input).toEqualTypeOf<{ readonly id: number }>();
+				return { ...input, id: 2 };
+			}),
+		).toEqualTypeOf(handle);
+		// @ts-expect-error -- the remix form takes an updater, not an input
+		waterfallHandle(titles, handle, { id: 2 });
+		// @ts-expect-error -- the updater returns the factory's input
+		waterfallHandle(titles, handle, (input) => ({ ...input, id: "2" }));
 	});
 });
 

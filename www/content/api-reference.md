@@ -72,15 +72,16 @@ Query options, for `queryOptions` and `infiniteQueryOptions`:
 tanstack-start/src/docs/api-reference.ts#load
 ```
 
-| Export                                    | Use                                                                                                                                                  |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `load(client, entries)`                   | Start every entry, then resolve with `[handles, data]`. Rejects when an `swr` or `revalidate` entry fails. [Starting queries](./starting-queries.md) |
-| `prefetch(factory, input, options?)`      | Start the query if the cache has no fresh data; never waits                                                                                          |
-| `swr(factory, input, options?)`           | Wait only when the cache has no data; stale data resolves at once and refetches                                                                      |
-| `revalidate(factory, input, options?)`    | Wait for fresh data; fresh cached data resolves without a refetch                                                                                    |
-| `waterfallHandle(factory, input)`         | The handle of a query whose input is only known while rendering. [Request waterfalls](./request-waterfalls.md)                                       |
-| `QueryHandle<TFactory>`                   | `{ queryKey, input }`, serializable; what `load` returns for every entry. [Handles](./handles.md)                                                    |
-| `LoadEntry`, `Loaded`, `LoadEntryOptions` | Entry and result types. `LoadEntryOptions` is `{ pages }`: how many pages a paged factory's first load fetches                                       |
+| Export                                     | Use                                                                                                                                                                            |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `load(client, entries)`                    | Start every entry, then resolve with `[handles, data]`. Rejects when an `swr` or `revalidate` entry fails. [Starting queries](./starting-queries.md)                           |
+| `prefetch(factory, input, options?)`       | Start the query if the cache has no fresh data; never waits                                                                                                                    |
+| `swr(factory, input, options?)`            | Wait only when the cache has no data; stale data resolves at once and refetches                                                                                                |
+| `revalidate(factory, input, options?)`     | Wait for fresh data; fresh cached data resolves without a refetch                                                                                                              |
+| `waterfallHandle(factory, input)`          | The handle of a query whose input is only known while rendering. [Request waterfalls](./request-waterfalls.md)                                                                 |
+| `waterfallHandle(factory, handle, update)` | A handle with `update(handle.input)` as its input, or `handle` itself while that maps to the same query. [URL state](./url-state-and-pagination.md#input-typed-before-the-url) |
+| `QueryHandle<TFactory>`                    | `{ queryKey, input }`, serializable; what `load` returns for every entry. [Handles](./handles.md)                                                                              |
+| `LoadEntry`, `Loaded`, `LoadEntryOptions`  | Entry and result types. `LoadEntryOptions` is `{ pages }`: how many pages a paged factory's first load fetches                                                                 |
 
 ## Reading queries
 
