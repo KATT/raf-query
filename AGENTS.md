@@ -21,6 +21,7 @@
 
 ## Commits and pull requests
 
+- Open a PR as soon as the work is pushed, without asking first.
 - Open PRs ready for review, not as drafts. Use a draft only for experiments and prototypes that aren't meant to merge as they are.
 - Commit early and often: one commit per step that works, not one at the end.
 - Split a big body of work into stacked PRs instead of finishing it all first. Open each PR as soon as its piece stands on its own, with the previous PR's branch as its base, so review starts while you build the next piece. Say in each PR description where it sits in the stack and link the other PRs.
