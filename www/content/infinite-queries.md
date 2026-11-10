@@ -87,7 +87,9 @@ Scripts, tests and bindings to other frameworks page with verbs that take the cl
 tanstack-start/src/docs/infinite-queries.outside-react.ts#outside-react
 ```
 
-`fetchNextPage(client, factory, input)` and `fetchPreviousPage(…)` resolve when the page is there, or the request settles. Without a page at that end, they do nothing. An error is in the query's state, as with the hook.
+`fetchNextPage(client, factory, input)` and `fetchPreviousPage(…)` resolve when the page is there, or the request settles. Without a page at that end, they do nothing. An error is in the query's state, as with the hook. `hasNextPage(client, factory, input)` and `hasPreviousPage(…)` say whether there is a page at that end.
+
+Paging lives in `@raf-query/core`: `useInfiniteQuery`'s controls are core's `PageControls`, the same requests and the same state these verbs read.
 
 ## Changing the input
 

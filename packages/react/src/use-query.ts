@@ -127,7 +127,7 @@ function readOf(entry: Entry, state: EntryState): Thenable<unknown> {
 		: entry.thenable;
 }
 
-export function settled(promise: Promise<unknown>): Promise<void> {
+function settled(promise: Promise<unknown>): Promise<void> {
 	return promise.then(() => {});
 }
 

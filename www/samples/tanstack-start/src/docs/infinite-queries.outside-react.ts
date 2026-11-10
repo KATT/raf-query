@@ -1,6 +1,7 @@
 import {
 	fetchNextPage,
 	getData,
+	hasNextPage,
 	load,
 	type QueryClient,
 	swr,
@@ -13,7 +14,9 @@ declare const slug: string;
 
 // #region outside-react
 await load(queryClient, { comments: swr(commentsQuery, { slug }) });
-await fetchNextPage(queryClient, commentsQuery, { slug });
+if (hasNextPage(queryClient, commentsQuery, { slug })) {
+	await fetchNextPage(queryClient, commentsQuery, { slug });
+}
 
 const comments = getData(queryClient, commentsQuery, { slug });
 comments?.pages.length;

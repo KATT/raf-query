@@ -33,6 +33,15 @@ export {
 	type InfiniteQueryOptionsBuilder,
 	infiniteQueryOptions,
 } from "./infinite/infinite.ts";
+export {
+	fetchNextPage,
+	fetchPreviousPage,
+	hasNextPage,
+	hasPreviousPage,
+	type PageControls,
+	type PageDirection,
+	type PageState,
+} from "./infinite/paging.ts";
 export { type Group, group, type QueryKey } from "./keys/keys.ts";
 export type { QueryInfo, Target } from "./keys/targets.ts";
 export { retry, type RetryOptions } from "./links/retry/retry.ts";
@@ -67,8 +76,6 @@ export { type Recommended, recommended } from "./presets.ts";
 export type { Thenable } from "./thenable.ts";
 export {
 	type ClientFor,
-	fetchNextPage,
-	fetchPreviousPage,
 	getData,
 	invalidateAll,
 	invalidateMany,

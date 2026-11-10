@@ -24,7 +24,7 @@ export {
 export type { FocusRefetchMeta } from "./features/focus-refetch/focus-refetch.ts";
 export type { PollingMeta } from "./features/polling/polling.ts";
 export type { ReconnectRefetchMeta } from "./features/reconnect-refetch/reconnect-refetch.ts";
-export { pageParamAfter } from "./infinite/infinite.ts";
+export { fetchPage, pageState } from "./infinite/paging.ts";
 export { type AnyFactory, hashKey } from "./keys/keys.ts";
 export type { AnyTarget } from "./keys/targets.ts";
 export type { RetryMeta } from "./links/retry/retry.ts";

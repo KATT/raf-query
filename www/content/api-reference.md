@@ -110,7 +110,7 @@ Options:
 
 The state is tracked. The component re-renders when the thenable changes or settles, or when a field it read while rendering changes. The state object keeps its identity until then, and its functions keep theirs while the component is mounted. A field read only in an effect or a handler isn't tracked and holds its value from the last render. [Tracked state](./render-optimizations.md#tracked-state)
 
-`useInfiniteQuery(factory, handle, options?)` reads a paged factory the same way, with the same options. Its state adds `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage` and `isFetchingPreviousPage`, and it's tracked the same way: a component that reads only the pages doesn't re-render while another page loads, and one that reads `isFetchingNextPage` does. [Infinite queries](./infinite-queries.md)
+`useInfiniteQuery(factory, handle, options?)` reads a paged factory the same way, with the same options. Its state adds core's `PageControls`: `fetchNextPage()`, `fetchPreviousPage()`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage` and `isFetchingPreviousPage`, and it's tracked the same way: a component that reads only the pages doesn't re-render while another page loads, and one that reads `isFetchingNextPage` does. [Infinite queries](./infinite-queries.md)
 
 Read the thenable's `status`, `value` and `reason` to render without Suspense. See [Reading without Suspense](./comparison.md#reading-without-suspense).
 
@@ -135,6 +135,7 @@ Each verb takes the client first. A factory matches the queries it built: all of
 | `getData(client, factory, input)`                                                            | Cached data (before `select`), or `undefined`                                                                                   |
 | `isFetching(client, target?)`                                                                | How many queries have a request in flight                                                                                       |
 | `fetchNextPage(client, factory, input)` / `fetchPreviousPage(…)`                             | Load a page at either end of a paged query, outside React. [Infinite queries](./infinite-queries.md#outside-react)              |
+| `hasNextPage(client, factory, input)` / `hasPreviousPage(…)`                                 | Whether a paged query has a page at that end. [Infinite queries](./infinite-queries.md#outside-react)                           |
 | `ClientFor<TFactory>`, `PartialInput<TFactory>`, `Target`, `QueryInfo`, `Group`              | Types the verbs take. `QueryInfo` is what `where` sees: `queryKey`, `input`, `data`, `meta`                                     |
 
 ## Errors

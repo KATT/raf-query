@@ -23,6 +23,8 @@ import {
 	fetchNextPage,
 	fetchPreviousPage,
 	getData,
+	hasNextPage,
+	hasPreviousPage,
 	type InfiniteData,
 	infiniteQueryOptions,
 	load,
@@ -187,8 +189,11 @@ describe("paged queries", () => {
 		const loading = load(client, {
 			pages: swr(backend.pageQuery, { size: 5 }),
 		});
+		expect(hasNextPage(client, backend.pageQuery, { size: 5 })).toBe(false);
 		await backend.respondAll();
 		await loading;
+		expect(hasNextPage(client, backend.pageQuery, { size: 5 })).toBe(true);
+		expect(hasPreviousPage(client, backend.pageQuery, { size: 5 })).toBe(false);
 		const next = fetchNextPage(client, backend.pageQuery, { size: 5 });
 		await backend.respondAll();
 		await next;
@@ -196,6 +201,7 @@ describe("paged queries", () => {
 		await fetchPreviousPage(client, backend.pageQuery, { size: 5 });
 
 		// Both ends are loaded: nothing more to fetch, no request made.
+		expect(hasNextPage(client, backend.pageQuery, { size: 5 })).toBe(false);
 		expect(backend.requests).toHaveLength(0);
 		expect(getData(client, backend.pageQuery, { size: 5 })).toEqual({
 			pageParams: [0, 5],
