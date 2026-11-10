@@ -310,6 +310,44 @@ describe("verb types", () => {
 		}));
 	});
 
+	it("infer a factory a generic maker builds inline", () => {
+		// Like an integration with one maker per backend function
+		// (`queryFor(api.messages.list)`), called where the factory is passed.
+		interface FunctionRef<TArgs, TResult> {
+			readonly args?: TArgs;
+			readonly name: string;
+			readonly result?: TResult;
+		}
+		function queryFor<TArgs, TResult>(ref: FunctionRef<TArgs, TResult>) {
+			return (args: TArgs) =>
+				queryOptions({
+					queryFn: (): Promise<TResult> => Promise.reject(new Error(ref.name)),
+					queryKey: issues("fn", ref.name, args),
+				});
+		}
+		const list: FunctionRef<
+			{ readonly room: string },
+			ReadonlyArray<string>
+		> = {
+			name: "messages:list",
+		};
+		setData(client, queryFor(list), { room: "a" }, ["hi"]);
+		setData(client, queryFor(list), { room: "a" }, (previous) => [
+			...(previous ?? []),
+			"hi",
+		]);
+		expectTypeOf(getData(client, queryFor(list), { room: "a" })).toEqualTypeOf<
+			ReadonlyArray<string> | undefined
+		>();
+		const wrong = () => {
+			// @ts-expect-error -- the data is still checked
+			setData(client, queryFor(list), { room: "a" }, [1]);
+			// @ts-expect-error -- and so is the input
+			setData(client, queryFor(list), { room: 1 }, ["hi"]);
+		};
+		expectTypeOf(wrong).toBeFunction();
+	});
+
 	it("skip the input of setData only for a factory that takes none", () => {
 		const optional = (input?: { readonly id: number }) =>
 			queryOptions({

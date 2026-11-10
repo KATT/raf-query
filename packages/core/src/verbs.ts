@@ -25,10 +25,10 @@ import {
 	type InputOf,
 	optionsOf,
 	type QueryFactory,
+	type QueryFnDataOf,
 	type RootOfFactory,
 } from "./options.ts";
 import type { IsAnyRoot, RootTypes } from "./root.ts";
-import type { InfiniteData } from "./infinite/infinite.ts";
 
 type DeepPartial<T> = T extends object
 	? { readonly [TName in keyof T]?: DeepPartial<T[TName]> }
@@ -122,12 +122,7 @@ type AnyTargets =
 	| ReadonlyArray<AnyInvalidation | readonly [AnyInvalidation, unknown]>;
 
 /** The data `setData` writes: plain for a query, paged for an infinite one. */
-type WritableData<TFactory extends QueryFactory> =
-	ReturnType<TFactory> extends {
-		readonly select?: (data: infer TData) => unknown;
-	}
-		? TData
-		: InfiniteData<unknown>;
+type WritableData<TFactory extends QueryFactory> = QueryFnDataOf<TFactory>;
 
 function hashOf(factory: AnyFactory, input: unknown): string {
 	return hashKey(optionsOf(factory, input).queryKey);
