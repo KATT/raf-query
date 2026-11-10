@@ -8,7 +8,7 @@
 /**
  * A query's `meta` when its builder isn't bound to a root.
  *
- * @see https://raf-query.katt.dev/docs/query-meta
+ * @see https://raf-query.katt.dev/docs/links-and-features
  */
 export type QueryMeta = Readonly<Record<string, unknown>>;
 

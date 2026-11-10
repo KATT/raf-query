@@ -55,7 +55,7 @@ export const systemClock: Clock = {
 /**
  * One request, as links see it. `TMeta` is what the link declares.
  *
- * @see https://raf-query.katt.dev/docs/query-meta#links-and-features
+ * @see https://raf-query.katt.dev/docs/links-and-features#links-and-features
  */
 export interface Operation<TMeta extends object = object> {
 	readonly client: QueryClient;
@@ -80,7 +80,7 @@ export interface Operation<TMeta extends object = object> {
  * the chain; the last link is the query's own `queryFn`. `TDecl` is the
  * `meta` it reads: see {@link link}.
  *
- * @see https://raf-query.katt.dev/docs/query-meta#links-and-features
+ * @see https://raf-query.katt.dev/docs/links-and-features#links-and-features
  */
 export type Link<TDecl extends Decl = Decl> = LinkFunction & Declares<TDecl>;
 
@@ -88,7 +88,7 @@ export type Link<TDecl extends Decl = Decl> = LinkFunction & Declares<TDecl>;
  * A cache-wide behavior, started when a provider mounts the client and
  * stopped by `signal`. `TDecl` is the `meta` it reads: see {@link feature}.
  *
- * @see https://raf-query.katt.dev/docs/query-meta#links-and-features
+ * @see https://raf-query.katt.dev/docs/links-and-features#links-and-features
  */
 export type Feature<TDecl extends Decl = Decl> = FeatureFunction &
 	Declares<TDecl>;
@@ -103,7 +103,7 @@ export type Feature<TDecl extends Decl = Decl> = FeatureFunction &
  * );
  * ```
  *
- * @see https://raf-query.katt.dev/docs/query-meta#links-and-features
+ * @see https://raf-query.katt.dev/docs/links-and-features#links-and-features
  */
 export function link<TDecl extends Decl = Decl>(
 	run: (
@@ -126,7 +126,7 @@ const noop = () => {};
  * const ownership = feature<{ meta: { owner?: "posts-team" | "users-team" } }>();
  * ```
  *
- * @see https://raf-query.katt.dev/docs/query-meta#links-and-features
+ * @see https://raf-query.katt.dev/docs/links-and-features#links-and-features
  */
 export function feature<TDecl extends Decl = Decl>(
 	setup: FeatureFunction = noop,

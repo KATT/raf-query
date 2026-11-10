@@ -48,7 +48,7 @@ export type PartialInput<TFactory extends QueryFactory> = DeepPartial<
  * The clients a factory's verbs take: its root's, or any client for a
  * factory from an unbound builder.
  *
- * @see https://raf-query.katt.dev/docs/query-meta#typing-meta-by-its-root
+ * @see https://raf-query.katt.dev/docs/links-and-features#typing-meta-by-its-root
  */
 export type ClientFor<TFactory extends QueryFactory> = QueryClient<
 	RootOfFactory<TFactory>
