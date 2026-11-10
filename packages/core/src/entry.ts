@@ -306,6 +306,7 @@ function terminal(op: Operation): Promise<unknown> {
 				: options.queryFn(
 						// SAFETY: the factory's own context type.
 						{
+							client: op.client,
 							meta: op.meta,
 							queryKey: op.queryKey,
 							signal: op.signal,

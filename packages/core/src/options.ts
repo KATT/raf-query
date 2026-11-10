@@ -1,3 +1,4 @@
+import type { QueryClient } from "./client.ts";
 import type { AnyFactory, QueryKey } from "./keys/keys.ts";
 import type {
 	AnyRoot,
@@ -8,11 +9,18 @@ import type {
 } from "./root.ts";
 
 /**
- * What a `queryFn` gets: the query's key, `meta` and abort `signal`.
+ * What a `queryFn` gets: the client making the request, the query's key,
+ * `meta` and abort `signal`.
  *
  * @see https://raf-query.katt.dev/docs/query-functions#the-query-function-context
  */
 export interface QueryFunctionContext<TKey extends QueryKey = QueryKey> {
+	/**
+	 * The client making the request. A server makes one per request, so it
+	 * keys per-request services, such as an API client with the request's
+	 * cookies.
+	 */
+	readonly client: QueryClient;
 	/** The query's `meta`, typed by its root where the query is defined. */
 	readonly meta: object;
 	readonly queryKey: TKey;
