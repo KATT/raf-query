@@ -67,6 +67,8 @@ export { type Recommended, recommended } from "./presets.ts";
 export type { Thenable } from "./thenable.ts";
 export {
 	type ClientFor,
+	fetchNextPage,
+	fetchPreviousPage,
 	getData,
 	invalidateAll,
 	invalidateMany,

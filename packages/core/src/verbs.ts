@@ -2,6 +2,7 @@ import type { QueryClient } from "./client.ts";
 import {
 	type Entry,
 	entryOf,
+	fetchEntry,
 	invalidate,
 	type Outcome,
 	remove,
@@ -21,6 +22,7 @@ import {
 } from "./keys/targets.ts";
 import { isArray, isFunction } from "./guards.ts";
 import {
+	type InfiniteQueryFactory,
 	type InputArgs,
 	type InputOf,
 	optionsOf,
@@ -425,4 +427,38 @@ export function isFetching(
 	return entriesMatching(client, [stamp]).filter(
 		(entry) => entry.state.isFetching,
 	).length;
+}
+
+/**
+ * Load the page after the last one of a paged query, as `useInfiniteQuery`'s
+ * `fetchNextPage()` does: for scripts, tests and bindings outside React.
+ * Resolves when the page is there, or the request settles; does nothing
+ * without a next page.
+ *
+ * @see https://raf-query.katt.dev/docs/infinite-queries#outside-react
+ */
+export function fetchNextPage<TFactory extends InfiniteQueryFactory>(
+	client: ClientFor<TFactory>,
+	factory: TFactory,
+	...input: InputArgs<TFactory>
+): Promise<void> {
+	return settle([
+		fetchEntry(entryOf(client, factory, input[0]), { direction: "next" }),
+	]);
+}
+
+/**
+ * Load the page before the first one of a paged query, as
+ * `useInfiniteQuery`'s `fetchPreviousPage()` does. See {@link fetchNextPage}.
+ *
+ * @see https://raf-query.katt.dev/docs/infinite-queries#outside-react
+ */
+export function fetchPreviousPage<TFactory extends InfiniteQueryFactory>(
+	client: ClientFor<TFactory>,
+	factory: TFactory,
+	...input: InputArgs<TFactory>
+): Promise<void> {
+	return settle([
+		fetchEntry(entryOf(client, factory, input[0]), { direction: "previous" }),
+	]);
 }

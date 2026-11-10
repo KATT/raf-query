@@ -134,6 +134,7 @@ Each verb takes the client first. A factory matches the queries it built: all of
 | `setData(client, factory, input, updater)` / `(client, factory, updater)`                    | Write data, as if a request had just returned it. A factory without an input takes the second form. [Mutations](./mutations.md) |
 | `getData(client, factory, input)`                                                            | Cached data (before `select`), or `undefined`                                                                                   |
 | `isFetching(client, target?)`                                                                | How many queries have a request in flight                                                                                       |
+| `fetchNextPage(client, factory, input)` / `fetchPreviousPage(…)`                             | Load a page at either end of a paged query, outside React. [Infinite queries](./infinite-queries.md#outside-react)              |
 | `ClientFor<TFactory>`, `PartialInput<TFactory>`, `Target`, `QueryInfo`, `Group`              | Types the verbs take. `QueryInfo` is what `where` sees: `queryKey`, `input`, `data`, `meta`                                     |
 
 ## Errors

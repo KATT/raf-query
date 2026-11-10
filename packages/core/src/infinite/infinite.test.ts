@@ -20,6 +20,8 @@ import { act } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import {
+	fetchNextPage,
+	fetchPreviousPage,
 	getData,
 	type InfiniteData,
 	infiniteQueryOptions,
@@ -177,6 +179,31 @@ describe("paged queries", () => {
 			value: { pages: [0] },
 		});
 		expect(atSecond.result.current[1].error).toBe(gone);
+	});
+
+	it("load pages with the verbs, outside React", async () => {
+		const backend = createBackend();
+		const client = testClient();
+		const loading = load(client, {
+			pages: swr(backend.pageQuery, { size: 5 }),
+		});
+		await backend.respondAll();
+		await loading;
+		const next = fetchNextPage(client, backend.pageQuery, { size: 5 });
+		await backend.respondAll();
+		await next;
+		await fetchNextPage(client, backend.pageQuery, { size: 5 });
+		await fetchPreviousPage(client, backend.pageQuery, { size: 5 });
+
+		// Both ends are loaded: nothing more to fetch, no request made.
+		expect(backend.requests).toHaveLength(0);
+		expect(getData(client, backend.pageQuery, { size: 5 })).toEqual({
+			pageParams: [0, 5],
+			pages: [
+				[0, 1, 2, 3, 4],
+				[5, 6, 7, 8, 9],
+			],
+		});
 	});
 
 	it("have no next page when written empty", async () => {
