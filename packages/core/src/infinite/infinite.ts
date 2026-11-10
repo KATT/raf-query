@@ -75,7 +75,7 @@ export type InfiniteQueryOptions<
 /**
  * `infiniteQueryOptions`, with `meta` checked against the root `TTypes`.
  *
- * @see https://raf-query.katt.dev/docs/query-meta#typing-meta-by-its-root
+ * @see https://raf-query.katt.dev/docs/links-and-features#typing-meta-by-its-root
  */
 export interface InfiniteQueryOptionsBuilder<TTypes extends RootTypes> {
 	<
@@ -138,7 +138,7 @@ export const infiniteQueryOptions: InfiniteQueryOptionsBuilder<DefaultTypes> = (
  * export const infiniteQueryOptions = bindInfiniteQueryOptions<typeof makeQueryClient>();
  * ```
  *
- * @see https://raf-query.katt.dev/docs/query-meta#typing-meta-by-its-root
+ * @see https://raf-query.katt.dev/docs/links-and-features#typing-meta-by-its-root
  */
 export function bindInfiniteQueryOptions<T>(): InfiniteQueryOptionsBuilder<
 	RootOf<T>

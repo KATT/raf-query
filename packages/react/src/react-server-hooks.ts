@@ -60,7 +60,7 @@ export const useQueryClient: typeof UseQueryClient =
  * `bindUseQueryClient` runs at module level in a file server modules may
  * import too, so it works here and returns the throwing `useQueryClient`.
  *
- * @see https://raf-query.katt.dev/docs/query-meta#typing-meta-by-its-root
+ * @see https://raf-query.katt.dev/docs/links-and-features#typing-meta-by-its-root
  */
 export function bindUseQueryClient<T>(): () => QueryClient<RootOf<T>> {
 	return useQueryClient;

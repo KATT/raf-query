@@ -25,7 +25,7 @@ declare const process: { readonly env: { readonly NODE_ENV?: string } };
  * input. It carries no data; readers get that from the cache. Handles of
  * different factories have different types.
  *
- * @see https://raf-query.katt.dev/docs/handles
+ * @see https://raf-query.katt.dev/docs/reading-queries#handles
  */
 export interface QueryHandle<TFactory extends QueryFactory = QueryFactory> {
 	readonly input: InputOf<TFactory>;
@@ -114,7 +114,7 @@ export function swr<TFactory extends QueryFactory>(
  * server client, data counts as fresh until a write invalidates it. The
  * load rejects if the fetch fails.
  *
- * @see https://raf-query.katt.dev/docs/starting-queries#when-to-use-revalidate
+ * @see https://raf-query.katt.dev/docs/starting-queries#the-three-entries
  */
 export function revalidate<TFactory extends QueryFactory>(
 	factory: TFactory,

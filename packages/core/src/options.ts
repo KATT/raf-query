@@ -88,7 +88,7 @@ export type FromQueryFn<T> = T extends unknown ? T : never;
 /**
  * `queryOptions`, with `meta` checked against the root `TTypes`.
  *
- * @see https://raf-query.katt.dev/docs/query-meta#typing-meta-by-its-root
+ * @see https://raf-query.katt.dev/docs/links-and-features#typing-meta-by-its-root
  */
 export interface QueryOptionsBuilder<TTypes extends RootTypes> {
 	<const TKey extends QueryKey, TChunk, TData>(
@@ -145,7 +145,7 @@ export const queryOptions: QueryOptionsBuilder<DefaultTypes> = <TOptions>(
  *
  * It returns `queryOptions` itself; only the types change.
  *
- * @see https://raf-query.katt.dev/docs/query-meta#typing-meta-by-its-root
+ * @see https://raf-query.katt.dev/docs/links-and-features#typing-meta-by-its-root
  */
 export function bindQueryOptions<T>(): QueryOptionsBuilder<RootOf<T>> {
 	// SAFETY: the root is a phantom; the builder never reads it.
