@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.13.2](https://github.com/KATT/raf-query/compare/0.13.1...0.13.2) (2026-11-10)
+
+### Bug Fixes
+
+- **core:** a prefetch never drops pages keepPages turns down ([#249](https://github.com/KATT/raf-query/issues/249)) ([3c66020](https://github.com/KATT/raf-query/commit/3c66020ee7562c6e2592017a1b11af94bc89e340))
+
 ## [0.13.1](https://github.com/KATT/raf-query/compare/0.13.0...0.13.1) (2026-11-10)
 
 ### Features
