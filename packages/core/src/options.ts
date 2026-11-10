@@ -72,6 +72,8 @@ export interface QueryOptions<
 	TData = TQueryFnData,
 	TTypes extends RootTypes = RootTypes,
 > extends BaseOptions<TKey, TTypes> {
+	/** Set by `infiniteQueryOptions` from `keepPages`: whether `load` keeps the cached pages. */
+	readonly "~keep"?: (data: never) => boolean;
 	/** Phantom: the root the builder is bound to. Never set at runtime. */
 	readonly "~root"?: RootTag<TTypes>;
 	/** Set by `infiniteQueryOptions`: runs the request page by page. */

@@ -43,3 +43,24 @@ infiniteQueryOptions({
 	getPreviousPageParam: (firstPage) => firstPage.previousCursor,
 });
 // #endregion
+
+// #region opened-at-an-item
+infiniteQueryOptions({
+	// The thread, wherever it opens: one entry for every linked comment.
+	queryKey: comments(input.slug, "around"),
+	queryFn: (context) =>
+		listCommentsAround({
+			cursor: context.pageParam,
+			signal: context.signal,
+			slug: input.slug,
+		}),
+	initialPageParam: input.comment,
+	getNextPageParam: (lastPage) => lastPage.nextCursor,
+	getPreviousPageParam: (firstPage) => firstPage.previousCursor,
+	// The thread on screen has the linked comment: keep it.
+	keepPages: (data) =>
+		data.pages.some((page) =>
+			page.items.some((comment) => comment.id === input.comment),
+		),
+});
+// #endregion

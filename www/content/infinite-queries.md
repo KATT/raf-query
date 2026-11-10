@@ -1,6 +1,6 @@
 ---
 title: Infinite queries
-description: Paged queries with infiniteQueryOptions, "load more" buttons, infinite scroll, bidirectional lists and maxPages.
+description: Paged queries with infiniteQueryOptions, "load more" buttons, infinite scroll, bidirectional lists, lists opened at an item and maxPages.
 section: Guides
 order: 12
 ---
@@ -75,6 +75,16 @@ tanstack-start/src/docs/infinite-queries.ts#bidirectional-lists
 
 `context.direction` tells the `queryFn` which way it's loading: `"backward"` for a page before the first, `"forward"` otherwise.
 
+## Opening at an item
+
+With the linked comment in the key, every link is its own list. Following a link to a comment the page already shows then starts a new list there, and the pages the reader scrolled through are gone. To keep them, leave the comment out of the key and let `keepPages` say when the cached list still suits the link:
+
+```sample
+tanstack-start/src/docs/infinite-queries.ts#opened-at-an-item
+```
+
+Every link now shares one entry, which keeps the `initialPageParam` it was first loaded with: refetches and new pages grow from there. `load` asks `keepPages(data)` before it uses the cached pages. On `true` it uses them as they are, so moving between comments on screen, or back and forward, reads nothing. On `false` it drops them, and the list loads again from this link's `initialPageParam`. Readers never ask, so a list doesn't start over under someone reading it.
+
 ## Limiting pages with maxPages
 
 Long sessions can accumulate many pages. `maxPages` keeps at most that many: when a new page is added, the page at the far end is dropped. Refetches then load fewer pages, too. With `maxPages`, define both `getNextPageParam` and `getPreviousPageParam`, so a dropped page can be loaded again when the user scrolls back.
@@ -93,4 +103,4 @@ Paging lives in `@raf-query/core`: `useInfiniteQuery`'s controls are core's `Pag
 
 ## Changing the input
 
-Pages belong to one input. A filter or sort in the URL changes the input, and with it the key, so a new list starts from its first page. The old list stays cached under its own key until `gcTime`, which is why switching back is instant. See [URL state and pagination](./url-state-and-pagination.md).
+Pages belong to one key. A filter or sort in the URL changes the input, and with it the key, so a new list starts from its first page. The old list stays cached under its own key until `gcTime`, which is why switching back is instant. See [URL state and pagination](./url-state-and-pagination.md).
