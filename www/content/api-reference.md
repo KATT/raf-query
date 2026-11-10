@@ -13,16 +13,16 @@ raf-query's API is functions, not methods: the client is a cache you pass to `lo
 tanstack-start/src/docs/api-reference.ts#createqueryclient
 ```
 
-| Export                                    | Use                                                                                                                                                                                    |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `createQueryClient(config?)`              | Make a query cache. `config`: `links`, `features`, `staleTime`, `gcTime`, `structuralSharing`, `isServer`, `clock`. [Important defaults](./important-defaults.md)                      |
-| `recommended()`                           | `{ links: [retry()], features: [focusRefetch(), reconnectRefetch(), polling()] }`, to spread into the config                                                                           |
-| `QueryClient<TTypes>`                     | The client type. Bare `QueryClient` takes a client of any root; verbs take `ClientFor<typeof factory>`. [Query meta](./links-and-features.md#typing-meta-by-its-root)                  |
-| `client.subscribe(listener, { signal }?)` | Cache events: `added`, `updated`, `removed`, and `readers` (a reader subscribed or left)                                                                                               |
-| `client.isServer`                         | Set from `config.isServer`, else from whether `window` exists. Server clients don't retry, never gc, and reuse cached data. [SSR and hydration](./ssr-and-hydration.md#server-clients) |
-| `link(run)`, `Link`, `Operation`          | Wrap every request, outermost first. `link<{ meta: … }>(run)` declares the `meta` it reads. [Query meta](./links-and-features.md#links-and-features)                                   |
-| `feature(setup?)`, `Feature`              | A cache-wide behavior, started while a provider mounts the client. `feature<{ meta: … }>()` without `setup` only declares `meta` fields                                                |
-| `Clock`                                   | The type of `config.clock`: time and timers. Pass a fake one in tests. [Testing](./testing.md)                                                                                         |
+| Export                                            | Use                                                                                                                                                                                                                      |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `createQueryClient(config?)`                      | Make a query cache. `config`: `links`, `features`, `staleTime`, `gcTime`, `structuralSharing`, `isServer`, `clock`. [Important defaults](./important-defaults.md)                                                        |
+| `recommended()`                                   | `{ links: [retry()], features: [focusRefetch(), reconnectRefetch(), polling()] }`, to spread into the config                                                                                                             |
+| `QueryClient<TTypes>`                             | The client type. Bare `QueryClient` takes a client of any root; verbs take `ClientFor<typeof factory>`. [Query meta](./links-and-features.md#typing-meta-by-its-root)                                                    |
+| `client.subscribe(listener, { signal, replay }?)` | Cache events: `added`, `updated`, `removed`, and `readers` (a reader subscribed or left). `replay: true` first sends an `added` for every entry already cached, so a feature that syncs entries starts from what's there |
+| `client.isServer`                                 | Set from `config.isServer`, else from whether `window` exists. Server clients don't retry, never gc, and reuse cached data. [SSR and hydration](./ssr-and-hydration.md#server-clients)                                   |
+| `link(run)`, `Link`, `Operation`                  | Wrap every request, outermost first. `link<{ meta: … }>(run)` declares the `meta` it reads. [Query meta](./links-and-features.md#links-and-features)                                                                     |
+| `feature(setup?)`, `Feature`                      | A cache-wide behavior, started while a provider mounts the client. `feature<{ meta: … }>()` without `setup` only declares `meta` fields                                                                                  |
+| `Clock`                                           | The type of `config.clock`: time and timers. Pass a fake one in tests. [Testing](./testing.md)                                                                                                                           |
 
 Links and features:
 

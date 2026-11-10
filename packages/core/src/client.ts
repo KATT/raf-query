@@ -180,10 +180,15 @@ export interface QueryClient<TTypes extends RootTypes = AnyRoot> {
 	readonly clock: Clock;
 	readonly config: QueryClientConfig;
 	readonly isServer: boolean;
-	/** Cache events: entries added, updated, removed, or gaining and losing readers. */
+	/**
+	 * Cache events: entries added, updated, removed, or gaining and losing
+	 * readers. With `replay: true`, the listener first gets an `added` event
+	 * for every entry the cache already holds, so a feature that keeps
+	 * entries in sync starts from what's there.
+	 */
 	subscribe(
 		listener: (event: ClientEvent) => void,
-		options?: SubscribeOptions,
+		options?: SubscribeOptions & { readonly replay?: boolean },
 	): () => void;
 }
 
@@ -212,16 +217,25 @@ export function createQueryClient<
 	} = {},
 ): QueryClient<{ readonly meta: MetaOf<[...TLinks, ...TFeatures]> }> {
 	const events = listeners<ClientEvent>();
+	const entries = new Map<string, Entry>();
 	return {
 		"~changed": new Set(),
-		"~entries": new Map(),
+		"~entries": entries,
 		"~events": events,
 		"~seq": 0,
 		"~stamps": [],
 		clock: config.clock ?? systemClock,
 		config,
 		isServer: config.isServer ?? !("window" in globalThis),
-		subscribe: (listener, options) => events.subscribe(listener, options),
+		subscribe: (listener, options) => {
+			const unsubscribe = events.subscribe(listener, options);
+			if (options?.replay && !options.signal?.aborted) {
+				for (const entry of entries.values()) {
+					listener({ entry, type: "added" });
+				}
+			}
+			return unsubscribe;
+		},
 	};
 }
 
