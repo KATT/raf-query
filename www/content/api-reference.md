@@ -62,7 +62,7 @@ Query options, for `queryOptions` and `infiniteQueryOptions`:
 | `ssr` (`false`: only a browser runs it)                                          | `true`. [Browser-only queries](./ssr-and-hydration.md#browser-only-queries) |
 | [`meta`](./links-and-features.md) (settings for the root's links and features)   | None                                                                        |
 
-`infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam` and `maxPages`.
+`infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam`, [`keepPages`](./infinite-queries.md#opening-at-an-item) and `maxPages`.
 
 ## Starting queries
 

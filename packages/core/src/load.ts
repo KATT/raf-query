@@ -7,6 +7,7 @@ import {
 	isInvalidated,
 	isStale,
 	type Outcome,
+	reset,
 } from "./entry.ts";
 import { hashKey } from "./keys/keys.ts";
 import {
@@ -218,6 +219,24 @@ function isFresh(entry: Entry): boolean {
 		: !isStale(entry);
 }
 
+/**
+ * Drop pages the entry's `keepPages` turns down for the input it was just
+ * loaded with, so they load again from that input's `initialPageParam`.
+ */
+function dropUnkeptPages(entry: Entry): void {
+	const keep = entry.options?.["~keep"];
+	if (
+		keep &&
+		entry.state.hasData &&
+		!keep(
+			/* SAFETY: the entry holds this query's data. */ entry.state
+				.data as never,
+		)
+	) {
+		void reset(entry);
+	}
+}
+
 function waitFresh(entry: Entry, pages: number | undefined): Promise<Outcome> {
 	if (isFresh(entry)) {
 		return Promise.resolve({ ok: true });
@@ -261,6 +280,7 @@ export async function load<const TEntries extends LoadEntries>(
 	const started = loading.map((loaded) => {
 		const item = loaded.item;
 		const cached = entryOf(client, item.factory, item.input);
+		dropUnkeptPages(cached);
 		let wait: Promise<Outcome> | undefined;
 		if (item.kind === "prefetch") {
 			startIfStale(cached);

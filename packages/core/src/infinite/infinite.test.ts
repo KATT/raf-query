@@ -369,3 +369,85 @@ describe("writes while pages load", () => {
 		]);
 	});
 });
+
+describe("lists opened at an item", () => {
+	/**
+	 * A list of numbers opened at `at`, two per page. `at` picks only where
+	 * the list starts, so it stays out of the key: every input shares one
+	 * entry, and `keepPages` keeps the pages while they show `at`.
+	 */
+	function openedAt() {
+		const reads: Array<number> = [];
+		const factory = (input: { readonly at: number }) =>
+			infiniteQueryOptions({
+				getNextPageParam: (page: ReadonlyArray<number>) => {
+					const last = Math.max(...page);
+					return last < 9 ? last + 1 : undefined;
+				},
+				initialPageParam: input.at,
+				keepPages: (data) => data.pages.some((page) => page.includes(input.at)),
+				queryFn: async (context) => {
+					reads.push(context.pageParam);
+					return [context.pageParam, context.pageParam + 1];
+				},
+				queryKey: issues("opened"),
+				// Fresh, so a kept list reads nothing.
+				staleTime: Infinity,
+			});
+		return { factory, reads };
+	}
+
+	it("keep the pages while they show the item, and start over at one they don't", async () => {
+		const list = openedAt();
+		const client = testClient();
+		await load(client, { list: swr(list.factory, { at: 0 }, { pages: 2 }) });
+
+		const [kept, keptData] = await load(client, {
+			list: swr(list.factory, { at: 3 }),
+		});
+		expect(kept.list.queryKey).toEqual(["issues", "opened"]);
+		expect(keptData.list).toEqual({
+			pageParams: [0, 2],
+			pages: [
+				[0, 1],
+				[2, 3],
+			],
+		});
+		expect(list.reads).toEqual([0, 2]);
+
+		const [, moved] = await load(client, {
+			list: revalidate(list.factory, { at: 6 }),
+		});
+		expect(moved.list).toEqual({ pageParams: [6], pages: [[6, 7]] });
+		expect(list.reads).toEqual([0, 2, 6]);
+	});
+
+	it("leave pages a reader shows to load, and load again once for one that drops them", async () => {
+		const list = openedAt();
+		const client = testClient();
+		await load(client, { list: swr(list.factory, { at: 0 }) });
+		const view = readPages(
+			client,
+			list.factory,
+			waterfallHandle(list.factory, { at: 8 }),
+		);
+		await flush();
+
+		// A reader never drops pages, whatever its input.
+		expect(view.result.current[0]).toMatchObject({
+			value: { pageParams: [0], pages: [[0, 1]] },
+		});
+		expect(list.reads).toEqual([0]);
+
+		await act(() => load(client, { list: swr(list.factory, { at: 8 }) }));
+
+		expect(list.reads).toEqual([0, 8]);
+		expect(getData(client, list.factory, { at: 8 })).toEqual({
+			pageParams: [8],
+			pages: [[8, 9]],
+		});
+		expect(view.result.current[0]).toMatchObject({
+			value: { pageParams: [8], pages: [[8, 9]] },
+		});
+	});
+});

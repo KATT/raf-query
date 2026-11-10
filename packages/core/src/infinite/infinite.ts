@@ -47,6 +47,16 @@ interface InfiniteOptions<
 	readonly getNextPageParam: PageParamFn<TPage, TParam>;
 	readonly getPreviousPageParam?: PageParamFn<TPage, TParam>;
 	readonly initialPageParam: TParam;
+	/**
+	 * Whether the cached pages suit this input. Pages grow from the
+	 * `initialPageParam` the entry was first loaded with; when part of the
+	 * input picks only that start and stays out of the key (the item a list
+	 * opens at), inputs that differ there share one entry. `load` asks
+	 * before it uses the pages: on `false` it drops them, and the list loads
+	 * again from this input's `initialPageParam`. Readers never drop pages.
+	 * Default: keep them.
+	 */
+	readonly keepPages?: (data: InfiniteData<TPage, TParam>) => boolean;
 	/** Keep at most this many pages, dropping from the other end. */
 	readonly maxPages?: number;
 	readonly select?: (data: InfiniteData<TPage, TParam>) => TData;
@@ -121,6 +131,7 @@ export const infiniteQueryOptions: InfiniteQueryOptionsBuilder<DefaultTypes> = (
 	options,
 ) => ({
 	...options,
+	"~keep": options.keepPages,
 	"~run": (op) =>
 		runPages(
 			op,
