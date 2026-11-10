@@ -1,15 +1,19 @@
 /**
  * `createQueryClient()` with no config: the system clock, a 5-minute
- * `gcTime`, and cache events through `client.subscribe`.
+ * `gcTime`, and cache events through `client.subscribe`. A `queryFn` gets
+ * the client making the request, which keys per-client services.
  */
 import { describe, expect, it, vi } from "vitest";
 
 import {
 	createQueryClient,
 	getData,
+	infiniteQueryOptions,
 	load,
 	prefetch,
+	type QueryClient,
 	queryOptions,
+	swr,
 } from "./index.ts";
 import { issues } from "./test-utils.ts";
 
@@ -30,6 +34,35 @@ describe("a client with the defaults", () => {
 		await vi.advanceTimersByTimeAsync(1);
 		expect(getData(client, count, { name: "a" })).toBeUndefined();
 		vi.useRealTimers();
+	});
+});
+
+describe("the client making a request", () => {
+	it("is in the queryFn's context, plain or paged, so it keys per-client services", async () => {
+		// One "API client" per query client, as a server keeps one per request.
+		const users = new WeakMap<QueryClient, string>();
+		const userOf = (client: QueryClient) => users.get(client) ?? "nobody";
+		const whoAmI = () =>
+			queryOptions({
+				queryFn: (context) => userOf(context.client),
+				queryKey: issues("whoAmI"),
+			});
+		const pages = () =>
+			infiniteQueryOptions({
+				getNextPageParam: () => null,
+				initialPageParam: 0,
+				queryFn: (context) => `${userOf(context.client)}'s page`,
+				queryKey: issues("pages"),
+			});
+		const ada = createQueryClient({ isServer: true });
+		const bob = createQueryClient({ isServer: true });
+		users.set(ada, "ada");
+		users.set(bob, "bob");
+		const [, adas] = await load(ada, { me: swr(whoAmI), pages: swr(pages) });
+		const [, bobs] = await load(bob, { me: swr(whoAmI), pages: swr(pages) });
+
+		expect([adas.me, adas.pages.pages]).toEqual(["ada", ["ada's page"]]);
+		expect([bobs.me, bobs.pages.pages]).toEqual(["bob", ["bob's page"]]);
 	});
 });
 

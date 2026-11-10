@@ -54,6 +54,11 @@ Each `queryFn` receives a context object:
 - `queryKey`, the query's [key](./query-keys.md), typed as the factory wrote it
 - `signal: AbortSignal`, aborted when the request is cancelled. Pass it to `fetch` so [cancelled requests](./query-cancellation.md) stop using the network.
 - `meta`, the query's [`meta`](./links-and-features.md), or `{}` when it has none
+- `client`, the query client making the request. A server makes one per request, so a [`WeakMap`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap) keyed by client holds per-request services, such as an API client that sends the request's cookies:
+
+```sample
+tanstack-start/src/docs/query-functions.ts#client
+```
 
 [Paged queries](./infinite-queries.md) also get:
 

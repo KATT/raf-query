@@ -205,6 +205,7 @@ async function runPages(op: Operation, source: PagedSource): Promise<unknown> {
 	const fetchPage = (pageParam: unknown, direction: "backward" | "forward") =>
 		Promise.resolve(
 			source.queryFn({
+				client: op.client,
 				direction,
 				meta: op.meta,
 				pageParam,
