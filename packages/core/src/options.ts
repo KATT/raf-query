@@ -21,6 +21,7 @@ export interface QueryFunctionContext<TKey extends QueryKey = QueryKey> {
 }
 
 declare const dataTag: unique symbol;
+declare const queryFnDataTag: unique symbol;
 
 /** Options every query takes. */
 export interface BaseOptions<
@@ -60,6 +61,12 @@ export interface QueryOptions<
 	readonly "~run"?: (op: never) => Promise<unknown>;
 	readonly [dataTag]?: TData;
 	readonly queryFn: (context: never) => unknown;
+	/**
+	 * Phantom: the `queryFn`'s data, before `select`. What `setData` writes,
+	 * read from a property rather than `select`'s parameter, so a factory
+	 * built inline by a generic maker still infers where it's passed.
+	 */
+	readonly [queryFnDataTag]?: TQueryFnData;
 	readonly select?: (data: TQueryFnData) => TData;
 	readonly stream?: StreamOptions<TQueryFnData, never>;
 }
@@ -196,6 +203,12 @@ export function optionsOf(factory: AnyFactory, input: unknown): QueryOptions {
 	const call = factory as (input: unknown) => QueryOptions;
 	return call(input);
 }
+
+/** The `queryFn`'s data, before `select`: what `setData` writes and `getData` reads. */
+export type QueryFnDataOf<TFactory extends QueryFactory> =
+	ReturnType<TFactory> extends { readonly [queryFnDataTag]?: infer TData }
+		? TData
+		: unknown;
 
 /**
  * What a reader gets: the `select`ed data, or else the `queryFn`'s.
