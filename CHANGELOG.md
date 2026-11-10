@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.13.1](https://github.com/KATT/raf-query/compare/0.13.0...0.13.1) (2026-11-10)
+
+### Features
+
+- **core:** keepPages, for lists whose start stays out of the key ([#248](https://github.com/KATT/raf-query/issues/248)) ([164c88c](https://github.com/KATT/raf-query/commit/164c88c4509a34c9ec51f089c3b70c03ea13cac0))
+
 ## [0.13.0](https://github.com/KATT/raf-query/compare/0.12.0...0.13.0) (2026-11-10)
 
 ### ⚠ BREAKING CHANGES
