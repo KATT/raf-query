@@ -225,14 +225,34 @@ export function createQueryClient<
 	};
 }
 
+interface Mounted {
+	readonly controller: AbortController;
+	count: number;
+}
+
+const mounted = new WeakMap<QueryClient, Mounted>();
+
 /**
  * Start the client's features. Providers call it while mounted; the
- * returned function stops them.
+ * returned function stops them. Mounts are counted, so features start once
+ * however many providers share the client, and stop with the last.
  */
 export function mount(client: QueryClient): () => void {
-	const controller = new AbortController();
-	for (const start of client.config.features ?? []) {
-		start(client, controller.signal);
+	let current = mounted.get(client);
+	if (!current) {
+		current = { controller: new AbortController(), count: 0 };
+		mounted.set(client, current);
+		for (const start of client.config.features ?? []) {
+			start(client, current.controller.signal);
+		}
 	}
-	return () => controller.abort();
+	const shared = current;
+	shared.count += 1;
+	return () => {
+		shared.count -= 1;
+		if (shared.count === 0) {
+			mounted.delete(client);
+			shared.controller.abort();
+		}
+	};
 }

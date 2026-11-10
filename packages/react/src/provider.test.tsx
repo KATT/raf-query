@@ -33,6 +33,23 @@ describe("QueryClientProvider", () => {
 		expect(signals.map((signal) => signal.aborted)).toEqual([true]);
 	});
 
+	it("starts the features once for providers that share a client, and stops them with the last", () => {
+		const signals: Array<AbortSignal> = [];
+		const feature: Feature = (_client, signal) => {
+			signals.push(signal);
+		};
+		const client = testClient({ features: [feature] });
+		const first = render(<QueryClientProvider client={client} />);
+		const second = render(<QueryClientProvider client={client} />);
+		expect(signals.map((signal) => signal.aborted)).toEqual([false]);
+		first.unmount();
+		expect(signals.map((signal) => signal.aborted)).toEqual([false]);
+		second.unmount();
+		expect(signals.map((signal) => signal.aborted)).toEqual([true]);
+		render(<QueryClientProvider client={client} />).unmount();
+		expect(signals.map((signal) => signal.aborted)).toEqual([true, true]);
+	});
+
 	it("useQueryClient throws outside a provider", () => {
 		vi.spyOn(console, "error").mockImplementation(() => {});
 		function Reader() {
