@@ -9,6 +9,7 @@ import {
 	load,
 	prefetch,
 	QueryClientProvider,
+	queryOptions,
 	type QueryState,
 	type QueryHandle,
 	removeOne,
@@ -484,6 +485,75 @@ describe("useQuery", () => {
 			]);
 			expect(reads[1]).toBe(reads[0]);
 			expect(backend.requests).toHaveLength(0);
+			expect(warn).not.toHaveBeenCalled();
+		});
+
+		it("leaves an ssr: false query to the browser, without running it", async () => {
+			const errors: Array<unknown> = [];
+			let calls = 0;
+			const pushState = (input: { readonly slug: string }) =>
+				queryOptions({
+					queryFn: async () => {
+						calls += 1;
+						return "on";
+					},
+					queryKey: ["pushState", input.slug],
+					ssr: false,
+				});
+			const client = createQueryClient({ isServer: true });
+			const [handles] = await load(client, {
+				push: prefetch(pushState, { slug: "hello" }),
+			});
+			const statuses: Array<string> = [];
+			function Push() {
+				const [pushThenable] = useQuery(pushState, handles.push);
+				return <p>push {use(pushThenable)}</p>;
+			}
+			function PushStatus() {
+				const [pushThenable, state] = useQuery(pushState, handles.push);
+				statuses.push(`${pushThenable.status} ${String(state.isPending)}`);
+				return null;
+			}
+			const stream = await renderToReadableStream(
+				<QueryClientProvider client={client}>
+					<Suspense fallback={<p>in the browser</p>}>
+						<Push />
+					</Suspense>
+					<PushStatus />
+				</QueryClientProvider>,
+				{ onError: (error) => void errors.push(error) },
+			);
+			await stream.allReady;
+			const html = await new Response(stream).text();
+
+			// `use()` renders the boundary's fallback instead of holding the
+			// response open; a reader of the status renders "not loaded yet".
+			expect(html).toContain("in the browser");
+			expect(errors).toEqual([expect.objectContaining(bailoutError)]);
+			expect(statuses).toEqual(["rejected true"]);
+			expect(calls).toBe(0);
+		});
+
+		it("starts an ssr: false query when the browser reads it, without a warning", async () => {
+			const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+			const pushState = (input: { readonly slug: string }) =>
+				queryOptions({
+					queryFn: async () => "on",
+					queryKey: ["pushState", input.slug],
+					ssr: false,
+				});
+			// The handle a server loader sent: a plain object after serialization.
+			const sent: QueryHandle<typeof pushState> = {
+				input: { slug: "hello" },
+				queryKey: ["pushState", "hello"],
+			};
+			function Push() {
+				const [pushThenable] = useQuery(pushState, sent);
+				return <p>push {use(pushThenable)}</p>;
+			}
+			await renderWith(testClient(), <Push />);
+
+			expect(await screen.findByText("push on")).toBeTruthy();
 			expect(warn).not.toHaveBeenCalled();
 		});
 

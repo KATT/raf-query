@@ -50,16 +50,17 @@ Links and features:
 
 Query options, for `queryOptions` and `infiniteQueryOptions`:
 
-| Option                                                                           | Default                                                 |
-| -------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `queryKey`                                                                       | Required. [Query keys](./query-keys.md)                 |
-| `queryFn`                                                                        | Required. [Query functions](./query-functions.md)       |
-| `staleTime`                                                                      | The client's, else `0` ms                               |
-| `gcTime`                                                                         | The client's, else 5 minutes; never on the server       |
-| `structuralSharing` (keep deeply equal parts of data)                            | The client's, else `true`                               |
-| `select` (derive what readers get from the data)                                 | None                                                    |
-| `stream` (`{ initial, reduce }`, for a `queryFn` that returns an async iterable) | None. [Query functions](./query-functions.md#streaming) |
-| [`meta`](./links-and-features.md) (settings for the root's links and features)   | None                                                    |
+| Option                                                                           | Default                                                                     |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `queryKey`                                                                       | Required. [Query keys](./query-keys.md)                                     |
+| `queryFn`                                                                        | Required. [Query functions](./query-functions.md)                           |
+| `staleTime`                                                                      | The client's, else `0` ms                                                   |
+| `gcTime`                                                                         | The client's, else 5 minutes; never on the server                           |
+| `structuralSharing` (keep deeply equal parts of data)                            | The client's, else `true`                                                   |
+| `select` (derive what readers get from the data)                                 | None                                                                        |
+| `stream` (`{ initial, reduce }`, for a `queryFn` that returns an async iterable) | None. [Query functions](./query-functions.md#streaming)                     |
+| `ssr` (`false`: only a browser runs it)                                          | `true`. [Browser-only queries](./ssr-and-hydration.md#browser-only-queries) |
+| [`meta`](./links-and-features.md) (settings for the root's links and features)   | None                                                                        |
 
 `infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam` and `maxPages`.
 

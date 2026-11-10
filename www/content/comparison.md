@@ -23,7 +23,7 @@ What changes is the API around the cache. TanStack Query lets any component star
 | `useQuery()` refetches stale data on mount (`refetchOnMount: true`)                                              | Reading never refetches; the loader decides freshness                           | Stale data refreshes when the next loader starts it, on invalidation, focus, reconnect or polling. [Important defaults](./important-defaults.md)      |
 | `useQuery().data` (doesn't suspend)                                                                              | `switch (postThenable.status)` on the thenable `useQuery` returns               | [Reading without Suspense](#reading-without-suspense)                                                                                                 |
 | [`enabled: false`](https://tanstack.com/query/latest/docs/framework/react/guides/disabling-queries), `skipToken` | `skipToken` in place of a `load` entry                                          | Its handle is `undefined`; render the reader only with a handle. [Conditional queries](./starting-queries.md#conditional-queries)                     |
-| `enabled: typeof window !== "undefined"`                                                                         | `waterfallHandle` in a component that renders once hydrated                     | No loader entry. [Browser-only queries](./ssr-and-hydration.md#browser-only-queries)                                                                  |
+| `enabled: typeof window !== "undefined"`                                                                         | `ssr: false` in the factory                                                     | The loader prefetches it; the server never starts it. [Browser-only queries](./ssr-and-hydration.md#browser-only-queries)                             |
 | `useInfiniteQuery()`                                                                                             | `useInfiniteQuery(factory, handle)` with an `infiniteQueryOptions` factory      | [Infinite queries](./infinite-queries.md)                                                                                                             |
 | `placeholderData: keepPreviousData`                                                                              | `useQuery(f, h, { whilePending: "previous" })`                                  | `isPrevious` instead of `isPlaceholderData`                                                                                                           |
 | `throwOnError`                                                                                                   | Read the thenable's `status` and `reason` instead of calling `use()`            | A first load's error rejects the thenable, and `use()` throws it to the nearest error boundary. [Reading without Suspense](#reading-without-suspense) |
@@ -45,7 +45,7 @@ Where a TanStack Query app renders [`useQuery`](https://tanstack.com/query/lates
 - **`swr`** when the page can't render without the data. The loader waits for it, and `use()` returns its data without suspending. In code that only runs on the server, such as a server component, use `revalidate`: its client starts empty every time.
 - **`prefetch`** when the UI can render without it. The loader doesn't wait, and `use()` suspends until the data lands.
 - **`skipToken`** in place of an entry when the route doesn't need the query, such as drafts only an admin sees. Its handle is `undefined`. See [Conditional queries](./starting-queries.md#conditional-queries).
-- **`waterfallHandle`** only as a last resort. The component that reads it fetches when it renders, which is a [request waterfall](./request-waterfalls.md). It's also how a component reads data only the browser has, such as [`localStorage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) or the [Permissions API](https://developer.mozilla.org/en-US/docs/Web/API/Permissions_API), once the page has hydrated. See [Browser-only queries](./ssr-and-hydration.md#browser-only-queries).
+- **`waterfallHandle`** only as a last resort. The component that reads it fetches when it renders, which is a [request waterfall](./request-waterfalls.md).
 
 ```sample framework="tanstack-start"
 tanstack-start/src/routes/posts.$slug.tsx#route
@@ -81,13 +81,13 @@ A post page's "notify me about replies" toggle, which shows the browser's notifi
 tanstack-start/src/docs/comparison.tanstack.tsx#tanstack
 ```
 
-With raf-query, the factory is an ordinary one, and no loader starts it: a loader also runs on the server.
+With raf-query, the factory says `ssr: false`, and the loader prefetches it like any query:
 
 ```sample
 tanstack-start/src/docs/comparison.tsx#queries
 ```
 
-The handle is built in the browser instead. On the server and while the page hydrates, TanStack Router's [`useHydrated()`](https://tanstack.com/start/latest/docs/framework/react/guide/execution-model#usehydrated-hook) is `false`, and the toggle renders without a permission. Once it's `true`, a child component builds a `waterfallHandle` once and reads it: `useQuery` can't be called conditionally, so the read lives in that child. Reading the handle starts the query, and the toggle re-renders with the permission. The child reads the thenable's `status` instead of calling `use()`, so it never suspends. The server never runs the `queryFn`.
+The server never runs the `queryFn` or sends the query, and the toggle renders without a permission. In the browser, the loader's `prefetch` starts it on a client-side navigation; after a server render, the toggle's read starts it. The toggle reads the thenable's `status` instead of calling `use()`, so it never suspends, and re-renders with the permission once it's there.
 
 ```sample
 tanstack-start/src/docs/comparison.tsx#component
@@ -111,7 +111,7 @@ tanstack-start/src/docs/comparison.tsx#component
 - **`meta` is typed by the client.** Links and features declare the `meta` fields they read, and factories built with `queryOptions` bound to that client are checked against them.
 - **`undefined` is a valid result.** A `queryFn` typed `Promise<User | undefined>` caches `undefined` like any other value. TanStack Query treats it as an error.
 - **No `placeholderData`.** Use `whilePending: "previous"` to keep showing the last page.
-- **No `enabled`.** The loader decides which queries start: `skipToken` in place of an entry starts nothing, and the component renders that query's reader only when it has a handle. Data only the browser has gets its handle in the browser, after hydration.
+- **No `enabled`.** The loader decides which queries start: `skipToken` in place of an entry starts nothing, and the component renders that query's reader only when it has a handle. Data only the browser has says `ssr: false` in its factory, and the server never starts it.
 - **Mutations aren't a hook.** Actions, `useOptimistic` and `useActionState` already give you pending, optimistic and error state. The action awaits the write, then a verb that invalidates what it changed.
 - **Hydration is a stream.** Handles carry only a key and an input. The server's cache streams to the browser as queries start and settle, and pending queries cross as promises.
 

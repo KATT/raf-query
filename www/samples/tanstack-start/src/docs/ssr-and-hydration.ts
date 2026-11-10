@@ -1,5 +1,11 @@
-import { group, queryOptions, type QueryClient } from "@raf-query/react";
-import { canDehydrate } from "@raf-query/react";
+import {
+	canDehydrate,
+	group,
+	load,
+	prefetch,
+	queryOptions,
+	type QueryClient,
+} from "@raf-query/react";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 
 const pushState = group("pushState");
@@ -12,11 +18,22 @@ export function pushStateQuery(input: { slug: string }) {
 	return queryOptions({
 		queryKey: pushState(input.slug),
 		queryFn: () => detectPushState(input.slug),
+		// Only the browser can tell: the server never runs it.
+		ssr: false,
 	});
 }
 // #endregion
 
 declare const queryClient: QueryClient;
+
+// #region browser-only-loader
+export async function loader(slug: string) {
+	const [handles] = await load(queryClient, {
+		push: prefetch(pushStateQuery, { slug }),
+	});
+	return handles;
+}
+// #endregion browser-only-loader
 
 declare const router: Parameters<typeof setupRouterIntegration>[0]["router"];
 

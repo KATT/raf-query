@@ -46,6 +46,15 @@ export interface BaseOptions<
 	readonly meta?: NoInfer<Partial<TTypes["meta"]>>;
 	/** A plain array, usually built by a `group()`. Handles keep its literal type. */
 	readonly queryKey: TKey;
+	/**
+	 * `false` for a query only a browser can run (a permission, the service
+	 * worker, `localStorage`): a server client never starts it, never sends
+	 * it, and reads it as not loaded yet, so the browser runs it once it
+	 * renders. Default `true`.
+	 *
+	 * @see https://raf-query.katt.dev/docs/ssr-and-hydration#browser-only-queries
+	 */
+	readonly ssr?: boolean;
 	/** How long data stays fresh, in ms. Default `0`. */
 	readonly staleTime?: number;
 	/** Keep the deeply equal parts of new data, so they keep their identity. Default `true`. */

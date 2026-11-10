@@ -86,7 +86,7 @@ A `skipToken` starts nothing. Its handle is `undefined`, typed `QueryHandle<type
 tanstack-start/src/docs/starting-queries.conditional-queries.tsx#component
 ```
 
-The condition comes from what the code that starts the query knows: the route's params and search, its context, or another entry's data. Data only the browser has, such as a permission, has no loader entry: see [Browser-only queries](./ssr-and-hydration.md#browser-only-queries).
+The condition comes from what the code that starts the query knows: the route's params and search, its context, or another entry's data. Data only the browser has, such as a permission, doesn't need a condition: its factory says `ssr: false`, and the loader prefetches it everywhere. See [Browser-only queries](./ssr-and-hydration.md#browser-only-queries).
 
 ## Preloading on intent
 

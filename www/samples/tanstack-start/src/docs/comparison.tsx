@@ -1,12 +1,12 @@
 import {
 	group,
+	load,
+	prefetch,
+	type QueryClient,
 	type QueryHandle,
 	queryOptions,
 	useQuery,
-	waterfallHandle,
 } from "@raf-query/react";
-import { useHydrated } from "@tanstack/react-router";
-import { useState } from "react";
 import { postQuery } from "~/queries.ts";
 
 const permission = group("permission");
@@ -21,6 +21,8 @@ declare function ReplyNotificationsToggle(props: {
 	readonly permission: PermissionState | undefined;
 }): React.ReactNode;
 
+declare const queryClient: QueryClient;
+
 // #region queries
 export function permissionQuery(input: { name: PermissionName }) {
 	return queryOptions({
@@ -29,26 +31,25 @@ export function permissionQuery(input: { name: PermissionName }) {
 			const status = await navigator.permissions.query(input);
 			return status.state;
 		},
+		// Only the browser has `navigator.permissions`.
+		ssr: false,
 	});
+}
+
+async function loader(slug: string) {
+	const [handles] = await load(queryClient, {
+		post: prefetch(postQuery, { slug }),
+		permission: prefetch(permissionQuery, { name: "notifications" }),
+	});
+	return handles;
 }
 // #endregion queries
 
 // #region component
-function ReplyNotificationsSetting() {
-	// `false` on the server and while hydrating, `true` after.
-	const hydrated = useHydrated();
-	if (!hydrated) {
-		return <ReplyNotificationsToggle permission={undefined} />;
-	}
-	return <ReplyNotificationsPermission />;
-}
-
-function ReplyNotificationsPermission() {
-	// Only the browser has `navigator.permissions`, so the handle is built here.
-	const [handle] = useState(() =>
-		waterfallHandle(permissionQuery, { name: "notifications" }),
-	);
-	const [permissionThenable] = useQuery(permissionQuery, handle);
+function ReplyNotificationsSetting(props: {
+	handle: QueryHandle<typeof permissionQuery>;
+}) {
+	const [permissionThenable] = useQuery(permissionQuery, props.handle);
 	const permission =
 		permissionThenable.status === "fulfilled"
 			? permissionThenable.value
@@ -73,4 +74,4 @@ function PostTitle(props: { handle: QueryHandle<typeof postQuery> }) {
 }
 // #endregion thenable
 
-export { ReplyNotificationsSetting, PostTitle };
+export { loader, ReplyNotificationsSetting, PostTitle };

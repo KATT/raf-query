@@ -3,6 +3,7 @@ import {
 	type Entry,
 	entryOf,
 	fetchEntry,
+	isBrowserOnly,
 	isInvalidated,
 	isStale,
 	type Outcome,
@@ -263,6 +264,13 @@ export async function load<const TEntries extends LoadEntries>(
 		let wait: Promise<Outcome> | undefined;
 		if (item.kind === "prefetch") {
 			startIfStale(cached);
+		} else if (isBrowserOnly(cached) && !cached.state.hasData) {
+			wait = Promise.resolve({
+				error: new Error(
+					`raf-query: ${cached.hash} has \`ssr: false\`, so the server can't wait for it. Load it with prefetch() instead of ${item.kind}().`,
+				),
+				ok: false,
+			});
 		} else {
 			wait = (item.kind === "revalidate" ? waitFresh : waitAny)(
 				cached,

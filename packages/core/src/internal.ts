@@ -14,6 +14,7 @@ export {
 	entryOf,
 	type EntryState,
 	fetchEntry,
+	isBrowserOnly,
 	isInvalidated,
 	isStale,
 	remove,
