@@ -28,6 +28,7 @@ import {
 	type InfiniteData,
 	infiniteQueryOptions,
 	load,
+	prefetch,
 	revalidate,
 	setData,
 	swr,
@@ -420,6 +421,25 @@ describe("lists opened at an item", () => {
 		});
 		expect(moved.list).toEqual({ pageParams: [6], pages: [[6, 7]] });
 		expect(list.reads).toEqual([0, 2, 6]);
+	});
+
+	it("never drop pages for a prefetch", async () => {
+		const list = openedAt();
+		const client = testClient();
+		await load(client, { list: swr(list.factory, { at: 0 }) });
+
+		// A preload of a link elsewhere: a hint, not a request to start over.
+		const [handles] = await load(client, {
+			list: prefetch(list.factory, { at: 6 }),
+		});
+		await flush();
+
+		expect(handles.list.queryKey).toEqual(["issues", "opened"]);
+		expect(list.reads).toEqual([0]);
+		expect(getData(client, list.factory, { at: 0 })).toEqual({
+			pageParams: [0],
+			pages: [[0, 1]],
+		});
 	});
 
 	it("leave pages a reader shows to load, and load again once for one that drops them", async () => {
