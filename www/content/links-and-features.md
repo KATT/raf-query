@@ -31,7 +31,7 @@ A field does something only when the client has the part that reads it: `meta: {
 A client's behavior comes from two kinds of part, both passed to `createQueryClient`:
 
 - A **link** wraps every request, like a [tRPC link](https://trpc.io/docs/client/links): it gets the request as `op` and calls `next(op)` to run the rest of the chain. The last link is the query's own `queryFn`. Links run outermost first. `retry()` and `timeout(ms)` are links.
-- A **feature** is a cache-wide behavior. It starts when a provider mounts the client and stops when it unmounts. `focusRefetch()`, `reconnectRefetch()` and `polling()` are features.
+- A **feature** is a cache-wide behavior. It starts when a provider mounts the client and stops when the last provider of that client unmounts, so it runs once however many providers share the client. `focusRefetch()`, `reconnectRefetch()` and `polling()` are features.
 
 Each part declares the `meta` fields it reads, with `link<{ meta: … }>(fn)` or `feature<{ meta: … }>(setup)`. A feature without `setup` only declares fields: an app's own data, for targets to match on. Here a link toasts a per-query message when a request fails, and a feature declares an `owner`:
 
