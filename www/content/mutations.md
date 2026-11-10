@@ -84,7 +84,7 @@ When the server responds with the updated object, write it into the cache instea
 tanstack-start/src/docs/mutations.ts#updates-from-mutation-responses
 ```
 
-`setData(queryClient, factory, input, updater)` takes a value or an updater, `(previous) => next`, where `previous` is `undefined` when the cache has no data. A factory without an input leaves it out: `setData(queryClient, feedQuery, updater)`. Readers re-render with the new data at once, without suspending. The entry is created if it doesn't exist yet, and data written with `setData` counts as just fetched, so it's fresh for `staleTime`. `getData(queryClient, factory, input)` reads the cached data back.
+`setData(queryClient, factory, input, updater)` takes a value or an updater, `(previous) => next`, where `previous` is `undefined` when the cache has no data. A factory without an input leaves it out: `setData(queryClient, feedQuery, updater)`. Readers re-render with the new data at once, without suspending. The entry is created if it doesn't exist yet, and data written with `setData` counts as just fetched, so it's fresh for `staleTime`. A write made while the query's request is in flight wins over that request's answer: the cache can't tell which is newer, but a live source sends every later change again, while a dropped write never comes back. Paged queries keep such writes page by page ([Infinite queries](./infinite-queries.md#refetching)). `getData(queryClient, factory, input)` reads the cached data back.
 
 Keep updaters immutable: return new objects and arrays. Structural sharing compares the new data with the old, so mutating `previous` in place can hide the change from readers.
 

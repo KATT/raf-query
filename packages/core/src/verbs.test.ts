@@ -9,7 +9,8 @@
  * - `reset…` drops data and errors; read or loading entries start over.
  * - `remove…` drops entries and aborts their requests.
  * - `setData` writes through the same `write` a response uses, so readers
- *   update and structural sharing applies; `getData` reads; `isFetching`
+ *   update and structural sharing applies. A write made while a request
+ *   ran wins over that request's answer. `getData` reads; `isFetching`
  *   counts entries with a request in flight.
  */
 import type { JsonValue } from "fast-check";
@@ -32,6 +33,7 @@ import {
 	resetOne,
 	setData,
 	swr,
+	waterfallHandle,
 } from "./index.ts";
 import {
 	author,
@@ -40,6 +42,7 @@ import {
 	drafts,
 	featured,
 	flush,
+	type Issue,
 	issues,
 	read,
 	testClient,
@@ -224,6 +227,40 @@ describe("data", () => {
 		expect(getData(client, any)).toEqual([1, 2]);
 		expect(getData(client, optional)).toBe("none");
 		expect(getData(client, optional, { id: 1 })).toBe("one");
+	});
+
+	it("keeps data written while a request ran over the request's answer", async () => {
+		const backend = createBackend();
+		const client = testClient();
+		const view = read(
+			client,
+			backend.issueQuery,
+			waterfallHandle(backend.issueQuery, { id: 1 }),
+		);
+		await backend.respondAll();
+		const refetching = view.result.current[1].refetch();
+		const written: Issue = { author: "ada", id: 1, title: "Written live" };
+		setData(client, backend.issueQuery, { id: 1 }, written);
+		await backend.respondAll();
+		await refetching;
+
+		// A live writer sends every later change again; a dropped write never
+		// comes back. So the write made after the request started wins.
+		expect(getData(client, backend.issueQuery, { id: 1 })).toEqual(written);
+		expect(view.result.current[1].isFetching).toBe(false);
+		setData(
+			client,
+			backend.issueQuery,
+			{ id: 1 },
+			{
+				...written,
+				title: "Written before",
+			},
+		);
+		const refetch = view.result.current[1].refetch();
+		await backend.respondAll();
+		await refetch;
+		expect(getData(client, backend.issueQuery, { id: 1 })?.title).toBe("First");
 	});
 
 	it("reads nothing for a query that is cached without data", async () => {

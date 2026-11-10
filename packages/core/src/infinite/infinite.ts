@@ -1,5 +1,5 @@
 import type { Operation } from "../client.ts";
-import type { QueryKey } from "../keys/keys.ts";
+import { hashKey, type QueryKey } from "../keys/keys.ts";
 import type {
 	BaseOptions,
 	FromQueryFn,
@@ -175,6 +175,32 @@ export function pageParamAfter(
 	return getParam(page, data.pages, data.pageParams[index]) ?? undefined;
 }
 
+/**
+ * The entry's data as it is now, which writes may have changed since `op`
+ * started, or `fallback` while it has none.
+ */
+function latest<TFallback extends InfiniteData<unknown> | undefined>(
+	op: Operation,
+	fallback: TFallback,
+): InfiniteData<unknown> | TFallback {
+	const state = op.client["~entries"].get(op.hash)?.state;
+	return state?.hasData
+		? // SAFETY: a paged entry's data is always `InfiniteData`.
+			(state.data as InfiniteData<unknown>)
+		: fallback;
+}
+
+function sameParam(a: unknown, b: unknown): boolean {
+	return hashKey([a]) === hashKey([b]);
+}
+
+/** The page `data` holds for `pageParam`, if any. */
+function pageFor(data: InfiniteData<unknown> | undefined, pageParam: unknown) {
+	const index =
+		data?.pageParams.findIndex((param) => sameParam(param, pageParam)) ?? -1;
+	return index === -1 ? undefined : data?.pages[index];
+}
+
 async function runPages(op: Operation, source: PagedSource): Promise<unknown> {
 	const fetchPage = (pageParam: unknown, direction: "backward" | "forward") =>
 		Promise.resolve(
@@ -200,22 +226,34 @@ async function runPages(op: Operation, source: PagedSource): Promise<unknown> {
 			pageParam,
 			direction === "next" ? "forward" : "backward",
 		);
+		// Add the page to the data as it is now, so writes made while it
+		// loaded stay. A write that moved the end being loaded wins: the page
+		// wouldn't follow the pages it would be added to.
+		const current = latest(op, previous);
+		const edge = (data: InfiniteData<unknown>) =>
+			direction === "next" ? data.pageParams.at(-1) : data.pageParams[0];
+		if (!sameParam(edge(current), edge(previous))) {
+			return current;
+		}
 		const max = source.maxPages ?? Infinity;
 		return direction === "next"
 			? {
-					pageParams: [...previous.pageParams, pageParam].slice(-max),
-					pages: [...previous.pages, page].slice(-max),
+					pageParams: [...current.pageParams, pageParam].slice(-max),
+					pages: [...current.pages, page].slice(-max),
 				}
 			: {
-					pageParams: [pageParam, ...previous.pageParams].slice(0, max),
-					pages: [page, ...previous.pages].slice(0, max),
+					pageParams: [pageParam, ...current.pageParams].slice(0, max),
+					pages: [page, ...current.pages].slice(0, max),
 				};
 	}
 	const count = previous?.pages.length ?? op.pages ?? 1;
 	const pages: Array<unknown> = [];
 	const pageParams: Array<unknown> = [];
+	/** The page the entry held for each param when that page's read started. */
+	const before: Array<unknown> = [];
 	let pageParam = previous?.pageParams[0] ?? source.initialPageParam;
 	while (pages.length < count) {
+		before.push(pageFor(latest(op, undefined), pageParam));
 		const page = await fetchPage(pageParam, "forward");
 		pages.push(page);
 		pageParams.push(pageParam);
@@ -225,5 +263,17 @@ async function runPages(op: Operation, source: PagedSource): Promise<unknown> {
 		}
 		pageParam = next;
 	}
-	return { pageParams, pages };
+	// A page written after its read started wins over the read: a live
+	// writer sends every later change again, while a dropped write never
+	// comes back. One written before its read started was read again.
+	const now = latest(op, undefined);
+	return {
+		pageParams,
+		pages: pages.map((page, index) => {
+			const written = pageFor(now, pageParams[index]);
+			return written !== undefined && written !== before[index]
+				? written
+				: page;
+		}),
+	};
 }
