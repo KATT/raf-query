@@ -42,6 +42,7 @@ Options set in the factory override the client's (`staleTime`, `gcTime`, `struct
 | `gcTime`            | How long an unread entry stays cached, in ms                                                                    |
 | `structuralSharing` | See [Render optimizations](./render-optimizations.md)                                                           |
 | `stream`            | Folds the chunks of a `queryFn` that returns an async iterable. See [Streaming](./query-functions.md#streaming) |
+| `ssr`               | `false` for data only a browser has. See [Browser-only queries](./ssr-and-hydration.md#browser-only-queries)    |
 | `meta`              | Settings for the client's links and features, such as `retry`. See [Query meta](./links-and-features.md)        |
 
 Per-query retries, polling and focus refetching are `meta` fields, read by the link or feature that does them: `meta: { retry: 1 }` with `retry()`, `meta: { refetchInterval: 5000 }` with `polling()`. See [Retries](./retries.md), [Polling](./polling.md) and [Window focus refetching](./window-focus-refetching.md).

@@ -11,6 +11,7 @@ import {
 	entryOf,
 	type EntryState,
 	fetchEntry,
+	isBrowserOnly,
 	isInvalidated,
 	isStale,
 	isWaterfallHandle,
@@ -91,12 +92,22 @@ function isIdle(entry: Entry, state: EntryState): boolean {
  * waterfall handle, or of a query the cache dropped. A server render fed by
  * server components leaves it to the browser: nothing would send its data.
  */
+/**
+ * Whether a server render leaves this idle entry to the browser: on a client
+ * fed by server components, or a query only the browser runs (`ssr: false`).
+ */
+function leftToBrowser(entry: Entry): boolean {
+	return leavesUnstartedToBrowser(entry.client) || isBrowserOnly(entry);
+}
+
 function startIfMissing(entry: Entry, state: EntryState, waterfall: boolean) {
 	const client = entry.client;
-	if (!isIdle(entry, state) || leavesUnstartedToBrowser(client)) {
+	if (!isIdle(entry, state) || leftToBrowser(entry)) {
 		return;
 	}
-	if (process.env.NODE_ENV !== "production" && !waterfall && !client.isServer) {
+	// An `ssr: false` query is expected to start here after a server render.
+	const expected = waterfall || entry.options?.ssr === false;
+	if (process.env.NODE_ENV !== "production" && !expected && !client.isServer) {
 		// oxlint-disable-next-line no-console -- a development-only hint
 		console.warn(
 			`raf-query: ${entry.hash} was read before anything loaded it, so it fetches while rendering. Start it in a loader with load(), or build the handle with waterfallHandle() to make the waterfall explicit.`,
@@ -106,12 +117,12 @@ function startIfMissing(entry: Entry, state: EntryState, waterfall: boolean) {
 }
 
 /**
- * In a server render fed by server components, an entry `startIfMissing`
- * left to the browser reads as a rejection: a `use()` of it inside Suspense
- * renders that boundary's fallback, and the browser renders the content.
+ * In a server render, an entry `startIfMissing` left to the browser reads as
+ * a rejection: a `use()` of it inside Suspense renders that boundary's
+ * fallback, and the browser renders the content.
  */
 function readOf(entry: Entry, state: EntryState): Thenable<unknown> {
-	return leavesUnstartedToBrowser(entry.client) && isIdle(entry, state)
+	return leftToBrowser(entry) && isIdle(entry, state)
 		? browserRender(entry)
 		: entry.thenable;
 }

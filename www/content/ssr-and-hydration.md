@@ -73,22 +73,28 @@ A query sent while pending crosses as a promise. If it throws on the server, the
 
 ## Browser-only queries
 
-Some data only the browser can know: a push subscription, a notification permission, a service worker, a media query. That still belongs in the cache, with the same factory, handle and invalidation. Its factory is an ordinary one:
+Some data only the browser can know: a push subscription, a notification permission, a service worker, a media query. That still belongs in the cache, with the same factory, handle and invalidation. Mark its factory `ssr: false`:
 
 ```sample
 tanstack-start/src/docs/ssr-and-hydration.ts#browser-only-queries
 ```
 
-What keeps it off the server is where its handle comes from. A loader also runs on the server, so it has no entry for the query. The component builds the handle in the browser, after hydration, with `waterfallHandle`, and reading it starts the request:
+A loader starts it like any other query, with `prefetch`:
+
+```sample
+tanstack-start/src/docs/ssr-and-hydration.ts#browser-only-loader
+```
+
+- **On the server**, a client never starts it: `prefetch` returns its handle and starts nothing, and nothing is sent for it. `swr` and `revalidate` reject, since the server can never have its data (unless something wrote it with `setData`).
+- **In the browser**, `prefetch` starts it on a client-side navigation, alongside the route's other queries. After a server render, no loader runs, so the first read starts it.
+
+Read it without suspending, so the server renders a placeholder and the browser fills it in:
 
 ```sample
 tanstack-start/src/docs/ssr-and-hydration.tsx#push-state
 ```
 
-- TanStack Router's [`useHydrated()`](https://tanstack.com/start/latest/docs/framework/react/guide/execution-model#usehydrated-hook) is `false` on the server and while the page hydrates, and `true` after. Until then, render what the server renders, so hydration matches: here, the switch with no state.
-- `useQuery` can't be called conditionally, so the query is read in a child component that renders only once hydrated.
-- The child builds the handle once, in [`useState`](https://react.dev/reference/react/useState)'s initializer, so every render reads the same handle.
-- The server never sees the handle, so it never runs the `queryFn` or sends the query. On a client-side navigation, `useHydrated()` is `true` from the first render, and the query starts as the component mounts.
+On the server, the thenable is `"rejected"` with the error React uses to render a boundary in the browser instead (digest `BAILOUT_TO_CLIENT_SIDE_RENDERING`). A `use()` of it renders the nearest Suspense fallback, and the browser renders the content once the query loads. Next.js reports nothing for that error. Other frameworks report it to the server render's `onError`, and an error outside every Suspense boundary fails the render, so put such a reader under one.
 
 ## When the browser already has data
 

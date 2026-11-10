@@ -5,7 +5,7 @@ section: Guides
 order: 22
 ---
 
-raf-query is a cache for **asynchronous data**: anything you load with a promise, that can go out of date, and that many components may need. Most of that is data a backend owns — posts, users, comments. It also fits work only the browser can do: a push subscription, a notification permission, a service worker. Their handles are [built in the browser after hydration](./ssr-and-hydration.md#browser-only-queries), so they never run during SSR, and they use the same factories, handles, invalidation and readers as everything else.
+raf-query is a cache for **asynchronous data**: anything you load with a promise, that can go out of date, and that many components may need. Most of that is data a backend owns — posts, users, comments. It also fits work only the browser can do: a push subscription, a notification permission, a service worker. Their factories say [`ssr: false`](./ssr-and-hydration.md#browser-only-queries), so they never run during SSR, and they use the same factories, handles, loaders, invalidation and readers as everything else.
 
 It's not a general-purpose state manager for synchronous UI state.
 

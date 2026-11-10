@@ -187,6 +187,11 @@ export function isInvalidated(entry: Entry): boolean {
 	);
 }
 
+/** Whether the entry is a browser-only query (`ssr: false`) on a server client: nothing starts it there. */
+export function isBrowserOnly(entry: Entry): boolean {
+	return entry.client.isServer && entry.options?.ssr === false;
+}
+
 /** Whether the entry's data should be refetched before it's trusted. */
 export function isStale(entry: Entry): boolean {
 	const state = entry.state;
@@ -348,8 +353,9 @@ export function fetchEntry(
 		return current.done.promise;
 	}
 	const options = entry.options;
-	if (!options) {
-		// A hydrated entry no factory call has given options yet.
+	if (!options || isBrowserOnly(entry)) {
+		// A hydrated entry no factory call has given options yet, or a query
+		// only the browser runs.
 		return Promise.resolve({ ok: true });
 	}
 	current?.controller.abort();

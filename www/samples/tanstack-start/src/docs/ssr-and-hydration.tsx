@@ -1,6 +1,5 @@
-import { useQuery, waterfallHandle } from "@raf-query/react";
-import { useHydrated } from "@tanstack/react-router";
-import { Suspense, use, useState, type ReactNode } from "react";
+import { type QueryHandle, useQuery } from "@raf-query/react";
+import type { ReactNode } from "react";
 
 import { pushStateQuery } from "./ssr-and-hydration.ts";
 
@@ -9,25 +8,11 @@ declare function PushSwitch(props: {
 }): ReactNode;
 
 // #region push-state
-function PushSettings() {
-	// `false` on the server and while hydrating, `true` after.
-	const hydrated = useHydrated();
-	if (!hydrated) {
-		return <PushSwitch state="unknown" />;
-	}
-	return (
-		<Suspense fallback={<PushSwitch state="unknown" />}>
-			<PushState />
-		</Suspense>
-	);
-}
-
-function PushState() {
-	const [handle] = useState(() =>
-		waterfallHandle(pushStateQuery, { slug: "hello-world" }),
-	);
-	const [pushThenable] = useQuery(pushStateQuery, handle);
-	const push = use(pushThenable);
+function PushSettings(props: { handle: QueryHandle<typeof pushStateQuery> }) {
+	const [pushThenable] = useQuery(pushStateQuery, props.handle);
+	// "unknown" on the server and until the browser has detected it.
+	const push =
+		pushThenable.status === "fulfilled" ? pushThenable.value : "unknown";
 	return <PushSwitch state={push} />;
 }
 // #endregion push-state
