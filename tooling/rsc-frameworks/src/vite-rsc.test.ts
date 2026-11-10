@@ -1,23 +1,13 @@
 import { NodeServices } from "@effect/platform-node";
 import { describe, expect, it, vi } from "@effect/vitest";
 import { Effect, Path } from "effect";
-import { createBuilder } from "vite";
 
 type Handler = (request: Request) => Promise<Response>;
 
-/** Builds `vite-rsc/` into its `dist/` and imports the RSC entry. */
-const buildApp = Effect.fn("buildApp")(function* () {
+/** Imports the RSC entry `build-app.ts` built before the tests. */
+const importApp = Effect.fn("importApp")(function* () {
 	const path = yield* Path.Path;
-	const root = path.join(import.meta.dirname, "../vite-rsc");
-	yield* Effect.tryPromise(async () => {
-		const builder = await createBuilder({
-			configFile: path.join(root, "vite.config.ts"),
-			logLevel: "warn",
-			root,
-		});
-		await builder.buildApp();
-	});
-	const entry = path.join(root, "dist/rsc/index.js");
+	const entry = path.join(import.meta.dirname, "../vite-rsc/dist/rsc/index.js");
 	const module = yield* Effect.tryPromise(
 		(): Promise<{ default: Handler }> => import(entry),
 	);
@@ -35,10 +25,9 @@ describe("@vitejs/plugin-rsc", () => {
 		"renders what the server component's HydrationBoundary sent, and starts each query once",
 		() =>
 			Effect.gen(function* () {
-				// A production build, as deployed. Vitest sets `test`, which
-				// builds development JSX.
+				// The production build `build-app.ts` made, as deployed.
 				vi.stubEnv("NODE_ENV", "production");
-				const handler = yield* buildApp();
+				const handler = yield* importApp();
 
 				const html = yield* request(handler, "http://localhost/");
 				expect(html).toContain("<h1>Post hello</h1>");
