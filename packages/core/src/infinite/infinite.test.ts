@@ -21,6 +21,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	getData,
+	type InfiniteData,
 	infiniteQueryOptions,
 	load,
 	revalidate,
@@ -197,5 +198,141 @@ describe("paged queries", () => {
 		);
 
 		expect(view.result.current[1].hasNextPage).toBe(false);
+	});
+});
+
+describe("writes while pages load", () => {
+	// A live cache `setData`s pages it has loaded as the server changes them.
+	// Page loads keep those writes, so the live writer doesn't have to send
+	// them again after every load.
+	it("add a page to data written while it loaded", async () => {
+		const backend = createBackend();
+		const client = testClient();
+		const view = readPages(
+			client,
+			backend.pageQuery,
+			waterfallHandle(backend.pageQuery, { size: 2 }),
+		);
+		await backend.respondAll();
+		const [next] = await start(() => view.result.current[1].fetchNextPage());
+		act(() => {
+			setData(
+				client,
+				backend.pageQuery,
+				{ size: 2 },
+				{
+					pageParams: [0],
+					pages: [[0, 1, 100]],
+				},
+			);
+		});
+		await backend.respondAll();
+		await next;
+
+		expect(getData(client, backend.pageQuery, { size: 2 })).toEqual({
+			pageParams: [0, 2],
+			pages: [
+				[0, 1, 100],
+				[2, 3],
+			],
+		});
+	});
+
+	it("drop a loaded page when a write moved the end it would follow", async () => {
+		const backend = createBackend();
+		const client = testClient();
+		const view = readPages(
+			client,
+			backend.pageQuery,
+			waterfallHandle(backend.pageQuery, { size: 2 }),
+		);
+		await backend.respondAll();
+		const [next] = await start(() => view.result.current[1].fetchNextPage());
+		const written: InfiniteData<Array<number>, number> = {
+			pageParams: [0, 5],
+			pages: [
+				[0, 1],
+				[5, 6],
+			],
+		};
+		act(() => {
+			setData(client, backend.pageQuery, { size: 2 }, written);
+		});
+		await backend.respondAll();
+		await next;
+
+		expect(getData(client, backend.pageQuery, { size: 2 })).toEqual(written);
+	});
+
+	it("keep a page written during a refetch, after its read started", async () => {
+		const backend = createBackend();
+		const client = testClient();
+		const loading = load(client, {
+			pages: revalidate(backend.pageQuery, { size: 2 }, { pages: 2 }),
+		});
+		await backend.respondAll();
+		await backend.respondAll();
+		const [handles] = await loading;
+		const view = readPages(client, backend.pageQuery, handles.pages);
+		const [refetch] = await start(() => view.result.current[1].refetch());
+		// The first page's read is under way.
+		act(() => {
+			setData(
+				client,
+				backend.pageQuery,
+				{ size: 2 },
+				{
+					pageParams: [0, 2],
+					pages: [
+						[0, 1, 100],
+						[2, 3],
+					],
+				},
+			);
+		});
+		await backend.respondAll();
+		await backend.respondAll();
+		await refetch;
+
+		expect(getData(client, backend.pageQuery, { size: 2 })?.pages).toEqual([
+			[0, 1, 100],
+			[2, 3],
+		]);
+	});
+
+	it("read a page again that was written during a refetch, before its read started", async () => {
+		const backend = createBackend();
+		const client = testClient();
+		const loading = load(client, {
+			pages: revalidate(backend.pageQuery, { size: 2 }, { pages: 2 }),
+		});
+		await backend.respondAll();
+		await backend.respondAll();
+		const [handles] = await loading;
+		const view = readPages(client, backend.pageQuery, handles.pages);
+		const [refetch] = await start(() => view.result.current[1].refetch());
+		// Only the first page's read is under way; the second's starts after.
+		act(() => {
+			setData(
+				client,
+				backend.pageQuery,
+				{ size: 2 },
+				{
+					pageParams: [0, 2],
+					pages: [
+						[0, 1],
+						[2, 3, 100],
+					],
+				},
+			);
+		});
+		await backend.respondAll();
+		await backend.respondAll();
+		await refetch;
+
+		expect(getData(client, backend.pageQuery, { size: 2 })?.pages).toEqual([
+			[0, 1],
+			[2, 3],
+		]);
 	});
 });

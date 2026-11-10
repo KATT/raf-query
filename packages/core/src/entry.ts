@@ -392,6 +392,14 @@ export function fetchEntry(
 				void pump(entry, run, result, options.stream);
 				return;
 			}
+			if (!options["~run"] && entry.requestedAt > run.startedAt) {
+				// A `setData` landed while this request ran. The cache can't tell
+				// which is newer, but a live writer sends every later change
+				// again while a dropped write never comes back, so the write wins.
+				// Paged requests merge with such writes page by page instead.
+				finish(entry, run, { ok: true });
+				return;
+			}
 			write(entry, result, client.clock.now(), run.startedAt);
 			finish(entry, run, { ok: true });
 		},

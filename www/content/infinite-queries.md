@@ -60,7 +60,10 @@ The option only changes a first load: a query that already has pages keeps the o
 
 When a paged query refetches (invalidated, refetched on focus, stale in a loader), every loaded page is refetched **in order**, starting from the first, so cursors stay consistent: page two's param is recomputed from the new page one. A refetch stops early if `getNextPageParam` finds no more pages.
 
-Loading a page starts from the data as it was when the request started, and replaces the data when the page arrives.
+Pages written with [`setData`](./mutations.md#updates-from-mutation-responses) while a request runs stay, so a live source that writes the pages it has loaded (a subscription per page) doesn't have to send them again after every load:
+
+- `fetchNextPage()` and `fetchPreviousPage()` add the new page to the data as it is when the page arrives. If a write moved the end the page was loaded for, the write wins and the page is dropped.
+- A refetch keeps a page written after that page's read started. A page written before its read started is read again, and the read wins.
 
 ## Bidirectional lists
 
