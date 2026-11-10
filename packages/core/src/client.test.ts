@@ -88,4 +88,30 @@ describe("cache events", () => {
 		expect(before).toEqual(["added", "updated", "updated"]);
 		expect(seen).toEqual(before);
 	});
+
+	it("start with every cached entry for a subscriber that asks to replay them", async () => {
+		const client = createQueryClient();
+		await load(client, {
+			a: prefetch(count, { name: "a" }),
+			b: prefetch(count, { name: "b" }),
+		});
+		const replayed: Array<string> = [];
+		client.subscribe(
+			(event) =>
+				replayed.push(`${event.type} ${JSON.stringify(event.entry.key[2])}`),
+			{ replay: true },
+		);
+		client.subscribe(() => replayed.push("aborted"), {
+			replay: true,
+			signal: AbortSignal.abort(),
+		});
+		await load(client, { c: prefetch(count, { name: "c" }) });
+
+		expect(replayed.slice(0, 3)).toEqual([
+			'added {"name":"a"}',
+			'added {"name":"b"}',
+			'added {"name":"c"}',
+		]);
+		expect(replayed).not.toContain("aborted");
+	});
 });
