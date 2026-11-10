@@ -1,38 +1,26 @@
-import type { InfiniteQueryFactory, QueryHandle } from "@raf-query/core";
+import type {
+	InfiniteQueryFactory,
+	PageControls,
+	QueryHandle,
+} from "@raf-query/core";
 import {
 	type Entry,
 	type EntryState,
-	fetchEntry,
-	pageParamAfter,
+	fetchPage,
+	pageState,
 } from "@raf-query/core/internal";
 
 import {
 	type QueryState,
 	type QueryValue,
-	settled,
 	useQueryRead,
 	type UseQueryOptions,
 } from "./use-query.ts";
 import type { Fields } from "./tracked.ts";
 
 /**
- * The paging half of what `useInfiniteQuery` returns.
- *
- * @see https://raf-query.katt.dev/docs/infinite-queries#reading-pages
- */
-export interface PageControls {
-	/** Load the page after the last one. Resolves when it's there. */
-	fetchNextPage(): Promise<void>;
-	/** Load the page before the first one. Resolves when it's there. */
-	fetchPreviousPage(): Promise<void>;
-	readonly hasNextPage: boolean;
-	readonly hasPreviousPage: boolean;
-	readonly isFetchingNextPage: boolean;
-	readonly isFetchingPreviousPage: boolean;
-}
-
-/**
- * What `useInfiniteQuery` returns next to the data.
+ * What `useInfiniteQuery` returns next to the data: core's paging controls
+ * and the query's state.
  *
  * @see https://raf-query.katt.dev/docs/infinite-queries#reading-pages
  */
@@ -41,36 +29,14 @@ export interface InfiniteQueryState<
 >
 	extends PageControls, QueryState<TFactory> {}
 
-function hasPage(
-	entry: Entry,
-	state: EntryState,
-	direction: "next" | "previous",
-): boolean {
-	return (
-		state.hasData &&
-		pageParamAfter(
-			// SAFETY: `useInfiniteQuery` reads factories from `infiniteQueryOptions`, and `entryOf` set their options.
-			entry.options as never,
-			// SAFETY: and the data they fetch is `InfiniteData`.
-			state.data as never,
-			direction,
-		) !== undefined
-	);
-}
-
+/** Core's paging controls, split into stable actions and tracked fields. */
 function pageFields(entry: Entry, state: EntryState): Fields {
 	return {
 		actions: {
-			fetchNextPage: () => settled(fetchEntry(entry, { direction: "next" })),
-			fetchPreviousPage: () =>
-				settled(fetchEntry(entry, { direction: "previous" })),
+			fetchNextPage: () => fetchPage(entry, "next"),
+			fetchPreviousPage: () => fetchPage(entry, "previous"),
 		},
-		fields: {
-			hasNextPage: hasPage(entry, state, "next"),
-			hasPreviousPage: hasPage(entry, state, "previous"),
-			isFetchingNextPage: state.fetchingDirection === "next",
-			isFetchingPreviousPage: state.fetchingDirection === "previous",
-		},
+		fields: { ...pageState(entry, state) },
 	};
 }
 

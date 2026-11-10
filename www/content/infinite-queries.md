@@ -79,6 +79,18 @@ tanstack-start/src/docs/infinite-queries.ts#bidirectional-lists
 
 Long sessions can accumulate many pages. `maxPages` keeps at most that many: when a new page is added, the page at the far end is dropped. Refetches then load fewer pages, too. With `maxPages`, define both `getNextPageParam` and `getPreviousPageParam`, so a dropped page can be loaded again when the user scrolls back.
 
+## Outside React
+
+Scripts, tests and bindings to other frameworks page with verbs that take the client first, like the hook's controls:
+
+```sample
+tanstack-start/src/docs/infinite-queries.outside-react.ts#outside-react
+```
+
+`fetchNextPage(client, factory, input)` and `fetchPreviousPage(…)` resolve when the page is there, or the request settles. Without a page at that end, they do nothing. An error is in the query's state, as with the hook. `hasNextPage(client, factory, input)` and `hasPreviousPage(…)` say whether there is a page at that end.
+
+Paging lives in `@raf-query/core`: `useInfiniteQuery`'s controls are core's `PageControls`, the same requests and the same state these verbs read.
+
 ## Changing the input
 
 Pages belong to one input. A filter or sort in the URL changes the input, and with it the key, so a new list starts from its first page. The old list stays cached under its own key until `gcTime`, which is why switching back is instant. See [URL state and pagination](./url-state-and-pagination.md).
