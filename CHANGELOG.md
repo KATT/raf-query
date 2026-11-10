@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.13.0](https://github.com/KATT/raf-query/compare/0.12.0...0.13.0) (2026-11-10)
+
+### ⚠ BREAKING CHANGES
+
+- **core:** paging lives in core; useInfiniteQuery reads core's PageControls ([#246](https://github.com/KATT/raf-query/issues/246))
+
+### Features
+
+- **core:** paging lives in core; useInfiniteQuery reads core's PageControls ([#246](https://github.com/KATT/raf-query/issues/246)) ([f6b4ed2](https://github.com/KATT/raf-query/commit/f6b4ed210340b4b25bf3316ef08a9c8ceb9ed112))
+- **core:** pass the client making the request to queryFn ([#241](https://github.com/KATT/raf-query/issues/241)) ([8c85746](https://github.com/KATT/raf-query/commit/8c85746c230bc3d8a426b32a130a260fa7e8ca62))
+- **core:** replay cached entries to a new client subscriber ([#243](https://github.com/KATT/raf-query/issues/243)) ([1455eed](https://github.com/KATT/raf-query/commit/1455eed2612fe69f0f10bfec08cfd552ef90c786))
+- **core:** ssr: false for queries only a browser can run ([#240](https://github.com/KATT/raf-query/issues/240)) ([077de62](https://github.com/KATT/raf-query/commit/077de6223a92b8bd8d35f7df043d1efe147ca403))
+
+### Bug Fixes
+
+- **core:** infer factories built inline by a generic maker in setData ([#244](https://github.com/KATT/raf-query/issues/244)) ([da87c07](https://github.com/KATT/raf-query/commit/da87c07a3463a919c154ac3ac5fba3d546b3231e))
+- **core:** keep data written while a request ran ([#239](https://github.com/KATT/raf-query/issues/239)) ([4cb7cc0](https://github.com/KATT/raf-query/commit/4cb7cc0605a2d4637591eb365153c5e955eb41a8))
+- **core:** start features once for providers that share a client ([#242](https://github.com/KATT/raf-query/issues/242)) ([d5968fb](https://github.com/KATT/raf-query/commit/d5968fb140429a1b2e7fb94662c266a52e877cc0))
+
+### Documentation
+
+- every example is the blog's posts, comments and authors ([#236](https://github.com/KATT/raf-query/issues/236)) ([2551e97](https://github.com/KATT/raf-query/commit/2551e9710aa7b149be333a1675dae31d9d1f5efd)), references [#230](https://github.com/KATT/raf-query/issues/230)
+
+### Miscellaneous Chores
+
+- **lint:** require a docs link on every public export ([#237](https://github.com/KATT/raf-query/issues/237)) ([b5c8133](https://github.com/KATT/raf-query/commit/b5c8133c129e0412e82cd2f24da6a2516b4a2012))
+- unblock CI: [@see](https://github.com/see) links and the RSC test's build ([#245](https://github.com/KATT/raf-query/issues/245)) ([84927e4](https://github.com/KATT/raf-query/commit/84927e4a900f7608e1e17b022e28afadbe00e4ae)), references [#243](https://github.com/KATT/raf-query/issues/243) [#246](https://github.com/KATT/raf-query/issues/246) [#240](https://github.com/KATT/raf-query/issues/240) [#238](https://github.com/KATT/raf-query/issues/238)
+
 ## [0.12.0](https://github.com/KATT/raf-query/compare/0.11.1...0.12.0) (2026-11-08)
 
 ### ⚠ BREAKING CHANGES
