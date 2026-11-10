@@ -83,7 +83,7 @@ With the linked comment in the key, every link is its own list. Following a link
 tanstack-start/src/docs/infinite-queries.ts#opened-at-an-item
 ```
 
-Every link now shares one entry, which keeps the `initialPageParam` it was first loaded with: refetches and new pages grow from there. `load` asks `keepPages(data)` before it uses the cached pages. On `true` it uses them as they are, so moving between comments on screen, or back and forward, reads nothing. On `false` it drops them, and the list loads again from this link's `initialPageParam`. Readers never ask, so a list doesn't start over under someone reading it.
+Every link now shares one entry, which keeps the `initialPageParam` it was first loaded with: refetches and new pages grow from there. `load` asks `keepPages(data)` before it uses the cached pages. On `true` it uses them as they are, so moving between comments on screen, or back and forward, reads nothing. On `false` it drops them, and the list loads again from this link's `initialPageParam`. Readers never ask, and a `prefetch` leaves pages it would drop alone: it's a hint, so a list never starts over under someone reading it. A router that preloads links runs loaders for links to other comments too, so load the list with `prefetch` while preloading (in TanStack Router, when the loader's [`preload`](https://tanstack.com/router/latest/docs/framework/react/guide/preloading) is `true`), and with `swr` when navigating.
 
 ## Limiting pages with maxPages
 

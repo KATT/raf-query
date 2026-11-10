@@ -219,22 +219,17 @@ function isFresh(entry: Entry): boolean {
 		: !isStale(entry);
 }
 
-/**
- * Drop pages the entry's `keepPages` turns down for the input it was just
- * loaded with, so they load again from that input's `initialPageParam`.
- */
-function dropUnkeptPages(entry: Entry): void {
+/** Whether the entry's `keepPages` takes its cached pages for the input it was just loaded with. */
+function keepsPages(entry: Entry): boolean {
 	const keep = entry.options?.["~keep"];
-	if (
-		keep &&
-		entry.state.hasData &&
-		!keep(
+	return (
+		!keep ||
+		!entry.state.hasData ||
+		keep(
 			/* SAFETY: the entry holds this query's data. */ entry.state
 				.data as never,
 		)
-	) {
-		void reset(entry);
-	}
+	);
 }
 
 function waitFresh(entry: Entry, pages: number | undefined): Promise<Outcome> {
@@ -280,10 +275,13 @@ export async function load<const TEntries extends LoadEntries>(
 	const started = loading.map((loaded) => {
 		const item = loaded.item;
 		const cached = entryOf(client, item.factory, item.input);
-		dropUnkeptPages(cached);
+		const kept = keepsPages(cached);
 		let wait: Promise<Outcome> | undefined;
 		if (item.kind === "prefetch") {
-			startIfStale(cached);
+			// A prefetch is a hint: it never drops pages someone may be reading.
+			if (kept) {
+				startIfStale(cached);
+			}
 		} else if (isBrowserOnly(cached) && !cached.state.hasData) {
 			wait = Promise.resolve({
 				error: new Error(
@@ -292,6 +290,10 @@ export async function load<const TEntries extends LoadEntries>(
 				ok: false,
 			});
 		} else {
+			if (!kept) {
+				// Drop the pages, so they load again from this input's `initialPageParam`.
+				void reset(cached);
+			}
 			wait = (item.kind === "revalidate" ? waitFresh : waitAny)(
 				cached,
 				item.pages,
