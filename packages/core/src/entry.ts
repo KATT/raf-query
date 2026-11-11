@@ -119,16 +119,13 @@ function optionOf<TName extends keyof CoreOptions>(
 /** A query's options over the client's defaults: an option it leaves `undefined` takes the default. */
 function withDefaults(
 	options: QueryOptions,
-	defaults: object | undefined,
+	client: QueryClient,
 ): QueryOptions {
-	const merged: Record<string, unknown> = { ...defaults };
-	for (const [name, value] of Object.entries(options)) {
-		if (value !== undefined) {
-			merged[name] = value;
-		}
-	}
-	// SAFETY: every field of `options` that is set is copied over.
-	return merged as unknown as QueryOptions;
+	const set = Object.fromEntries(
+		Object.entries(options).filter((field) => field[1] !== undefined),
+	);
+	// SAFETY: `set` has every field of `options` that isn't `undefined`.
+	return { ...client.config.defaults, ...set } as unknown as QueryOptions;
 }
 
 function gcTime(entry: Entry): number {
@@ -425,7 +422,7 @@ export function fetchEntry(
 		hasData: state.hasData,
 		hash: entry.hash,
 		input: entry.input,
-		options: withDefaults(options, client.config.defaults),
+		options: withDefaults(options, client),
 		pages: request.pages,
 		queryKey: entry.key,
 		signal: run.controller.signal,
