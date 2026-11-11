@@ -13,7 +13,7 @@ import {
 import { NavigationProgress } from "@examples/kit/components/navigation-progress";
 import { SettingsControls } from "@examples/kit/components/settings";
 import { withLoaderVerb } from "@examples/kit/lib/loader-verb";
-import { removeAll, useQueryClient } from "@raf-query/react";
+import { removeAll } from "@raf-query/react";
 import Link, { useLinkStatus } from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -26,6 +26,7 @@ import {
 } from "react";
 
 import { useStaleTimeDefaults } from "~/components/app-query-provider.tsx";
+import { useQueryClient } from "~/raf.ts";
 import {
 	clearCookie,
 	DEFAULT_PREFETCH,

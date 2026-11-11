@@ -3,27 +3,19 @@ import {
 	DEFAULT_STALE_TIME,
 	queryTimeDefaults,
 } from "@examples/db/types";
-import {
-	createQueryClient,
-	QueryClientProvider,
-	QueryDevtools,
-	recommended,
-} from "@raf-query/react";
+import { QueryClientProvider, QueryDevtools } from "@raf-query/react";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import { createRouter } from "@tanstack/react-router";
 
+import { makeQueryClient } from "./query-client.ts";
 import { routeTree } from "./routeTree.gen.ts";
 import { readPrefetch, readStaleTime, toDefaultPreload } from "./settings.ts";
 
 export function getRouter() {
 	const staleTime = readStaleTime() ?? DEFAULT_STALE_TIME;
 	const queryDefaults = queryTimeDefaults(staleTime);
-	// The client reads its defaults live, so the settings panel can change
-	// `staleTime` without a new client. A server client leaves `gcTime` unset.
-	const queryClient = createQueryClient({
-		defaults: queryDefaults,
-		parts: recommended(),
-	});
+	// A server client leaves `gcTime` unset.
+	const queryClient = makeQueryClient(queryDefaults);
 	if (!queryClient.isServer) {
 		applyStaleTime(queryDefaults, staleTime);
 	}

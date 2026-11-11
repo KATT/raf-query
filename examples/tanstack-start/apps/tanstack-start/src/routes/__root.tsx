@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { type QueryClient, removeAll } from "@raf-query/react";
+import { removeAll } from "@raf-query/react";
 import type { QueryTimeDefaults } from "@examples/db/types";
 import { AppHeader } from "@examples/kit/components/app-header";
 import { Logo } from "@examples/kit/components/logo";
@@ -21,11 +21,13 @@ import {
 import { type ReactNode, useState } from "react";
 
 import { Settings } from "~/components/settings.tsx";
+import type { makeQueryClient } from "~/query-client.ts";
 import { readPrefetch, toDefaultPreload } from "~/settings.ts";
 import appCss from "~/styles.css?url";
 
 export const Route = createRootRouteWithContext<{
-	queryClient: QueryClient;
+	// The app's client, not the bare `QueryClient`: loaders run the app's factories on it.
+	queryClient: ReturnType<typeof makeQueryClient>;
 	queryDefaults: QueryTimeDefaults;
 }>()({
 	head: () => ({
