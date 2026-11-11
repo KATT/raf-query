@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.16.0](https://github.com/KATT/raf-query/compare/0.15.0...0.16.0) (2026-11-11)
+
+### ⚠ BREAKING CHANGES
+
+- **core:** plugins, and builders that are always bound ([#252](https://github.com/KATT/raf-query/issues/252))
+
+### Features
+
+- **core:** plugins, and builders that are always bound ([#252](https://github.com/KATT/raf-query/issues/252)) ([df4059f](https://github.com/KATT/raf-query/commit/df4059f39f24bf68117bd97a934bb44f1e823913))
+
 ## [0.15.0](https://github.com/KATT/raf-query/compare/0.14.0...0.15.0) (2026-11-11)
 
 ### ⚠ BREAKING CHANGES
