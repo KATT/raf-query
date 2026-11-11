@@ -9,11 +9,12 @@ import { createContext } from "react-router";
 /** A query client for one server request (or the browser tab), with the bar's stale time. */
 export function createAppQueryClient(staleTime: number) {
 	const queryDefaults = queryTimeDefaults(staleTime);
-	// The client reads its config live, so the settings panel can change
+	// The client reads its defaults live, so the settings panel can change
 	// `staleTime` without a new client. A server client leaves `gcTime` unset.
-	const queryClient = createQueryClient(
-		Object.assign(queryDefaults, recommended()),
-	);
+	const queryClient = createQueryClient({
+		defaults: queryDefaults,
+		parts: recommended(),
+	});
 	if (!queryClient.isServer) {
 		applyStaleTime(queryDefaults, staleTime);
 	}

@@ -15,8 +15,7 @@ declare const state: DehydratedState;
 
 await render(
 	createQueryClient({
-		features: [focusRefetch(), reconnectRefetch(), polling()],
-		links: [retry()],
+		parts: [retry(), focusRefetch(), reconnectRefetch(), polling()],
 	}),
 	(children) => <HydrationBoundary state={state}>{children}</HydrationBoundary>,
 );

@@ -4,7 +4,7 @@ import { cache } from "react";
 
 /** The server render's client. The browser client's times come from the menu. */
 const queryClientConfig = {
-	staleTime: DEFAULT_STALE_TIME,
+	defaults: { staleTime: DEFAULT_STALE_TIME },
 } as const satisfies QueryClientConfig;
 
 /** The server components' query client, one per request. */
