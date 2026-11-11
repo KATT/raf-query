@@ -116,6 +116,21 @@ function optionOf<TName extends keyof CoreOptions>(
 	return entry.options?.[name] ?? defaults?.[name];
 }
 
+/** A query's options over the client's defaults: an option it leaves `undefined` takes the default. */
+function withDefaults(
+	options: QueryOptions,
+	defaults: object | undefined,
+): QueryOptions {
+	const merged: Record<string, unknown> = { ...defaults };
+	for (const [name, value] of Object.entries(options)) {
+		if (value !== undefined) {
+			merged[name] = value;
+		}
+	}
+	// SAFETY: every field of `options` that is set is copied over.
+	return merged as unknown as QueryOptions;
+}
+
 function gcTime(entry: Entry): number {
 	return optionOf(entry, "gcTime") ?? fiveMinutes;
 }
@@ -331,6 +346,17 @@ function terminal(op: Operation): Promise<unknown> {
 	});
 }
 
+/**
+ * The operation a link passed on, with its `context` over the one the link
+ * got: a link adds to the context, or replaces a field of it, and can't
+ * drop what the plugins before it gave.
+ */
+function passedOn(got: Operation, next: Operation): Operation {
+	return next.context === got.context
+		? next
+		: { ...next, context: { ...got.context, ...next.context } };
+}
+
 function chain(op: Operation): Promise<unknown> {
 	const plugins = pluginsOf(op.client);
 	const call = (index: number, current: Operation): Promise<unknown> => {
@@ -339,7 +365,7 @@ function chain(op: Operation): Promise<unknown> {
 			return terminal(current);
 		}
 		return one.link
-			? one.link(current, (next) => call(index + 1, next))
+			? one.link(current, (next) => call(index + 1, passedOn(current, next)))
 			: call(index + 1, current);
 	};
 	return call(0, op);
@@ -399,7 +425,7 @@ export function fetchEntry(
 		hasData: state.hasData,
 		hash: entry.hash,
 		input: entry.input,
-		options: { ...client.config.defaults, ...options },
+		options: withDefaults(options, client.config.defaults),
 		pages: request.pages,
 		queryKey: entry.key,
 		signal: run.controller.signal,

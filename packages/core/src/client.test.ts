@@ -91,11 +91,9 @@ describe("a client's plugins", () => {
 		}
 		let requests = 0;
 		const traced = plugin<Traced>({
+			// Only its own field: the kernel keeps what the other plugins gave.
 			link: (op, next) =>
-				next({
-					...op,
-					context: { ...op.context, traceId: `trace-${(requests += 1)}` },
-				}),
+				next({ ...op, context: { traceId: `trace-${(requests += 1)}` } }),
 		});
 		const seen: Array<unknown> = [];
 		const inner = plugin({
@@ -238,6 +236,30 @@ describe("a client's plugins", () => {
 			plugins: [retry({ delay: () => 0 })],
 		});
 		const outcome = await loadOne(client, swr(failing));
+		await flush();
+
+		expect(outcome.error).toBe(down);
+		expect(attempts).toBe(1);
+	});
+
+	it("take the default for an option a query leaves undefined", async () => {
+		const makeClient = () =>
+			testClient({
+				defaults: { retry: false },
+				plugins: [retry({ delay: () => 0 })],
+			});
+		const retryQueryOptions = bindQueryOptions<typeof makeClient>();
+		let attempts = 0;
+		const failing = (input: { readonly retry?: number }) =>
+			retryQueryOptions({
+				queryFn: async () => {
+					attempts += 1;
+					throw down;
+				},
+				queryKey: issues("failing-undefined"),
+				retry: input.retry,
+			});
+		const outcome = await loadOne(makeClient(), swr(failing, {}));
 		await flush();
 
 		expect(outcome.error).toBe(down);

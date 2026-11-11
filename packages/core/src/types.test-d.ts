@@ -415,14 +415,12 @@ describe("root types", () => {
 		});
 
 	it("give a root the options and context its plugins declare", () => {
-		expectTypeOf<RootOf<typeof makeQueryClient>>().toEqualTypeOf<{
-			readonly context: {
-				readonly api: (path: string) => Promise<string>;
-			};
-			readonly options: {
-				readonly owner: "posts-team" | "users-team" | undefined;
-				readonly retry: number | false | undefined;
-			};
+		expectTypeOf<RootOf<typeof makeQueryClient>["context"]>().toEqualTypeOf<{
+			readonly api: (path: string) => Promise<string>;
+		}>();
+		expectTypeOf<RootOf<typeof makeQueryClient>["options"]>().toEqualTypeOf<{
+			readonly owner: "posts-team" | "users-team" | undefined;
+			readonly retry: number | false | undefined;
 		}>();
 		expectTypeOf<
 			RootOf<ReturnType<typeof createQueryClient<Recommended>>>["options"]
@@ -698,6 +696,31 @@ describe("root types", () => {
 			void invalidateMany(qc, [ownedBy]);
 			// @ts-expect-error -- of its type
 			removeMany(qc, [[ownedBy, "nobody"]]);
+		};
+		expectTypeOf(wrong).toBeFunction();
+	});
+
+	it("run a factory only where its options mean the same to the client's plugins", () => {
+		interface AnyOwner {
+			readonly options: { readonly owner?: string };
+		}
+		const looseQueryOptions = bindQueryOptions<AnyOwner>();
+		const looseQuery = () =>
+			looseQueryOptions({
+				owner: "nobody",
+				queryFn: async () => 1,
+				queryKey: posts("loose"),
+			});
+		const loose = createQueryClient({ plugins: [plugin<AnyOwner>()] });
+		const strict = createQueryClient({ plugins: [ownership] });
+		void invalidateOne(loose, looseQuery);
+		const wrong = () => {
+			// @ts-expect-error -- this client's plugin reads a narrower `owner`
+			void invalidateOne(strict, looseQuery);
+			void load(strict, {
+				// @ts-expect-error -- in `load` too
+				loose: swr(looseQuery),
+			});
 		};
 		expectTypeOf(wrong).toBeFunction();
 	});

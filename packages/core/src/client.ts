@@ -54,7 +54,8 @@ export interface Operation<TDecl extends Decl = Decl> {
 	/**
 	 * What the `queryFn` gets beside the client, key and signal: the plugins'
 	 * context, as the links before this one left it. Pass `next` an
-	 * operation with another `context` to change it for this request.
+	 * operation with a `context` to add to it, or to replace a field of
+	 * it, for this request: the fields it leaves out stay.
 	 */
 	readonly context: Partial<ContextOfDecl<TDecl>>;
 	/** The entry's data when the request started (paged queries extend it). */
@@ -195,7 +196,7 @@ interface OptionsDecl {
  * }
  * const session = plugin<Session>({
  *   link: async (op, next) =>
- *     next({ ...op, context: { ...op.context, token: await freshToken() } }),
+ *     next({ ...op, context: { token: await freshToken() } }),
  * });
  * ```
  *

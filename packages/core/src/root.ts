@@ -25,6 +25,7 @@ export interface NoDecl {
 
 /** A root's types: what a client's plugins declare, together. */
 export interface RootTypes {
+	readonly "~options": object;
 	readonly context: object;
 	readonly options: object;
 }
@@ -97,11 +98,24 @@ type Present<T> = T extends unknown
 type Plain<T> = T extends unknown ? { readonly [K in keyof T]: T[K] } : never;
 
 /**
+ * Each option as a function of its own type, so two roots agree on an
+ * option only when its type is the same in both. A client's plugins read
+ * the options a factory sets: a factory built for `owner?: string` must not
+ * run on a client whose plugin reads `owner?: "a" | "b"`. The key set stays
+ * open, so a client with more plugins still runs the factory.
+ */
+type Exact<T> = T extends unknown
+	? { readonly [K in Exclude<keyof T, never>]: (value: T[K]) => T[K] }
+	: never;
+
+/**
  * The root of a declaration, or of several intersected. Every declared
  * option is present and may be `undefined`; queries set a `Partial` of them.
  */
 export type Root<TDecl> = TDecl extends unknown
 	? {
+			/** Phantom: holds each option's type exactly, for comparing roots. */
+			readonly "~options": Exact<OptionsOfDecl<TDecl>>;
 			readonly context: Plain<ContextOfDecl<TDecl>>;
 			readonly options: Present<OptionsOfDecl<TDecl>>;
 		}
