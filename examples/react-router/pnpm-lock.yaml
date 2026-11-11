@@ -185,8 +185,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@raf-query/react':
-        specifier: 0.14.0
-        version: 0.14.0(react@19.3.0)
+        specifier: 0.15.0
+        version: 0.15.0(react@19.3.0)
       '@react-router/node':
         specifier: 8.4.0
         version: 8.4.0(react-router@8.4.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(typescript@7.0.2)
@@ -1075,12 +1075,12 @@ packages:
       '@types/react':
         optional: true
 
-  '@raf-query/core@0.14.0':
-    resolution: {integrity: sha512-Rd54/SIOteeZ0k153k9NOIGw3BhK38Iuw0/OwcInz3qs0RMGju0AibdYCh0HIl4TXZulm3gXVEaDH5p6T6XIdg==}
+  '@raf-query/core@0.15.0':
+    resolution: {integrity: sha512-dyID5Y9M3tz5RJ4/xSGDdH4nZJ+Eb3GaTR9noBtbql7QRYhnsRWsFgbgTvrxi83WOjXgsJVgxDsGeFQoO4T0MQ==}
     engines: {node: '>=22'}
 
-  '@raf-query/react@0.14.0':
-    resolution: {integrity: sha512-uA4Jwcp9NvPJKHtuwHZQc13o5iQ8rV3W4ItFAFXWyWQpGmPn0DiTtf5T10XXxOsNSTT68s9UYUWMEb/ZbVSvtw==}
+  '@raf-query/react@0.15.0':
+    resolution: {integrity: sha512-T3W1VyFDAqjTX/1bYdEgNOG4AStpKkuPnk+BZGiIv+tZXJ9oojgkT8ZzP4vYeCH45j35IikEgkYeKNUHRyHxUQ==}
     engines: {node: '>=22'}
     peerDependencies:
       '@tanstack/react-router': ^1.170.0
@@ -4298,11 +4298,11 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  '@raf-query/core@0.14.0': {}
+  '@raf-query/core@0.15.0': {}
 
-  '@raf-query/react@0.14.0(react@19.3.0)':
+  '@raf-query/react@0.15.0(react@19.3.0)':
     dependencies:
-      '@raf-query/core': 0.14.0
+      '@raf-query/core': 0.15.0
       react: 19.3.0
 
   '@react-router/dev@8.4.0(@react-router/serve@8.4.0(react-router@8.4.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(typescript@7.0.2))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(jiti@2.7.0)(typescript@7.0.2))(react-router@8.4.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(typescript@7.0.2)':
