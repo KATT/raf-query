@@ -4,12 +4,11 @@ import { describe, expect, it } from "vitest";
 import { createAppQueryClient } from "./query-client.ts";
 
 describe("createAppQueryClient", () => {
-	it("spreads recommended(), like the other examples", () => {
-		const preset = recommended();
-		const { queryClient } = createAppQueryClient(5000);
+	it("has the recommended() parts, like the other examples", () => {
+		const app = createAppQueryClient(5000);
 
-		expect(queryClient.config.links).toHaveLength(preset.links.length);
-		expect(queryClient.config.features).toHaveLength(preset.features.length);
-		expect(queryClient.config.staleTime).toBe(5000);
+		expect(app.queryClient.config.parts).toHaveLength(recommended().length);
+		expect(app.queryClient.config.defaults).toBe(app.queryDefaults);
+		expect(app.queryDefaults.staleTime).toBe(5000);
 	});
 });
