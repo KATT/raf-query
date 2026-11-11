@@ -1,13 +1,13 @@
 ---
 title: Retries and errors
-description: Retry failed requests with the retry() link, set attempts per query in meta, choose delays and which errors to retry, time requests out, and show errors.
+description: Retry failed requests with retry(), set attempts per query or per client, choose delays and which errors to retry, time requests out, and show errors.
 section: Guides
 order: 13
 ---
 
-The `retry()` link retries failed requests. With its defaults, a request that fails in the browser is retried **3 times**, waiting 1, 2 and then 4 seconds, before the query counts as failed. Readers keep suspending, or keep showing their current data, the whole time.
+`retry()` is a [part](./links-and-features.md#parts) of the client that retries failed requests. With its defaults, a request that fails in the browser is retried **3 times**, waiting 1, 2 and then 4 seconds, before the query counts as failed. Readers keep suspending, or keep showing their current data, the whole time.
 
-Nothing retries unless the client has the link, on its own or through `recommended()`:
+Nothing retries unless the client has it, on its own or through `recommended()`:
 
 ```sample
 tanstack-start/src/docs/retries.ts#intro
@@ -20,21 +20,27 @@ Some requests are never retried:
 
 ## Attempts per query
 
-A query sets its own attempts with `meta: { retry }`: a number of retries after the first attempt, or `false` for none. It wins over the link's `attempts`:
+A query sets its own attempts with `retry`: a number of retries after the first attempt, or `false` for none. It wins over the part's `attempts`:
 
 ```sample
 tanstack-start/src/docs/retries.ts#attempts-per-query
 ```
 
-The `retry()` link declares the field, so a factory built with a bound `queryOptions` gets it typed only when the root has the link: see [Query meta](./links-and-features.md#typing-meta-by-its-root). On a client without the link, `meta.retry` does nothing.
+`retry()` declares the option, so it's set with the `queryOptions` an app [binds to its client](./links-and-features.md#typing-options-by-the-client), here in `raf.ts`. The `queryOptions` that `@raf-query/react` exports doesn't take it, and neither does one bound to a client without `retry()`.
+
+The client's `defaults` set it for every query that doesn't set its own:
+
+```sample
+tanstack-start/src/docs/retries.ts#attempts-per-client
+```
 
 ## Options
 
-`retry({ attempts, delay, when })` sets the defaults for every query of the client:
+`retry({ attempts, delay, when })` configures the part:
 
 | Option     | Default                                                                                                                              |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `attempts` | `3`: retries after the first attempt                                                                                                 |
+| `attempts` | `3`: retries after the first attempt, for queries with no `retry` of their own and no default for it                                 |
 | `delay`    | Doubling from 1 second, at most 30 seconds                                                                                           |
 | `when`     | Every error but a thrown [`Response`](https://developer.mozilla.org/en-US/docs/Web/API/Response): whether an error is worth retrying |
 
@@ -50,7 +56,7 @@ In the browser, a retry waits while [`navigator.onLine`](https://developer.mozil
 
 ## Timeouts
 
-`timeout(ms)` is another link: it fails a request that takes longer than `ms` with a `QueryTimeoutError`, and aborts its `signal`. Links wrap each other in order, outermost first, so where it goes decides what it times:
+`timeout(ms)` is another part: it fails a request that takes longer than `ms` with a `QueryTimeoutError`, and aborts its `signal`. Both wrap each request with a link, and links wrap each other in the order of `parts`, outermost first, so where it goes decides what it times:
 
 ```sample
 tanstack-start/src/docs/retries.ts#timeouts
@@ -88,7 +94,7 @@ This is one more reason to choose per query: wait with `swr` for what the page c
 
 ## One place for every error
 
-A link sees every request of the client, so it's the place for logging and toasts. Put it before `retry()` to see each request's final error, after its retries. It can declare a `meta` field of its own, for a per-query message:
+A part's link sees every request of the client, so it's the place for logging and toasts. Put it before `retry()` to see each request's final error, after its retries. It can declare an option of its own, for a per-query message:
 
 ```sample
 tanstack-start/src/docs/retries.ts#one-place-for-every-error

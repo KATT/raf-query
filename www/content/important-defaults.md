@@ -5,13 +5,16 @@ section: Guides
 order: 1
 ---
 
-A client from `createQueryClient()` caches, dedupes and garbage-collects, and nothing else. Retries, refetching on focus and reconnect, and polling are **links** and **features** you pass to the client. `recommended()` returns the set most apps want:
+A client from `createQueryClient()` caches, dedupes and garbage-collects, and nothing else. Retries, refetching on focus and reconnect, and polling are [**parts**](./links-and-features.md#parts) you give the client. `recommended()` returns the ones most apps want:
 
 ```ts twoslash
 import { createQueryClient, recommended } from "@raf-query/react";
 // ---cut---
 export function makeQueryClient() {
-	return createQueryClient({ ...recommended(), staleTime: 30_000 });
+	return createQueryClient({
+		parts: recommended(),
+		defaults: { staleTime: 30_000 },
+	});
 }
 ```
 
@@ -20,9 +23,17 @@ export function makeQueryClient() {
 | `retry()`            | link    | Retries failed requests. See [Retries](./retries.md)             |
 | `focusRefetch()`     | feature | Refetches read, stale queries when the window regains focus      |
 | `reconnectRefetch()` | feature | Refetches read, stale queries when the browser comes back online |
-| `polling()`          | feature | Refetches read queries on a timer set by `meta.refetchInterval`  |
+| `polling()`          | feature | Refetches read queries on a timer set by `refetchInterval`       |
 
-Pass `links` and `features` yourself to pick some of them, or to add your own. [Query meta](./links-and-features.md) covers how they're configured per query.
+A link wraps every request; a feature runs while a provider has the client mounted. `recommended()` is an array: pass `parts` yourself to pick some of them, or spread it among your own, `parts: [...recommended(), myPart]`.
+
+Each part declares the per-query options it reads, such as `retry` and `refetchInterval`. A factory sets them through a `queryOptions` that the app binds to its client, once, in a file of its own:
+
+```sample title="src/raf.ts"
+tanstack-start/src/raf.ts
+```
+
+The `queryOptions` that `@raf-query/react` exports takes the core's options only: `staleTime`, `gcTime`, `structuralSharing` and `ssr`. [Parts, options and context](./links-and-features.md) covers both, and writing parts of your own.
 
 Keep these in mind as you read the rest of the guides. Where they mention retries, focus and reconnect refetching, or polling, they assume `recommended()`:
 
@@ -30,16 +41,16 @@ Keep these in mind as you read the rest of the guides. Where they mention retrie
   - when the next loader or server component starts the query with `load`, which happens on every navigation to the page
   - when the query is [invalidated](./query-invalidation.md), such as at the end of an action that [writes data](./mutations.md)
   - on [window focus](./window-focus-refetching.md) and on reconnect, for queries being read, with `focusRefetch()` and `reconnectRefetch()`
-  - on a timer, with `polling()` and `meta.refetchInterval` ([Polling](./polling.md))
+  - on a timer, with `polling()` and a query's `refetchInterval` ([Polling](./polling.md))
 
   Rendering the same handle in ten components reads one cache entry.
 
 - **Cached data is stale immediately** (`staleTime: 0`).
 
   > [!TIP]
-  > Set `staleTime` per query in its factory, or for the whole client in `createQueryClient`. A longer `staleTime` means fewer refetches. `Infinity` never refetches on its own: only [invalidation](./query-invalidation.md) does.
+  > Set `staleTime` per query in its factory, or for the whole client in `createQueryClient`'s `defaults`. A longer `staleTime` means fewer refetches. `Infinity` never refetches on its own: only [invalidation](./query-invalidation.md) does.
 
-- **Polling is per query.** `meta: { refetchInterval }` refetches on a timer while a component reads the query, independent of `staleTime`. See [Polling](./polling.md).
+- **Polling is per query.** `refetchInterval` refetches on a timer while a component reads the query, independent of `staleTime`. See [Polling](./polling.md).
 
 - **Unread entries are kept for five minutes** (`gcTime: 300_000`). An entry nobody reads is **inactive**: it stays in the cache in case it's needed again, then is garbage-collected.
 
@@ -60,27 +71,32 @@ See [SSR and hydration](./ssr-and-hydration.md#server-clients).
 
 ## Changing the defaults
 
-`staleTime`, `gcTime` and `structuralSharing` can be set for the whole client, or per query in its factory. A query's own option wins:
+`defaults` sets an option for every query of the client: the core's `staleTime`, `gcTime` and `structuralSharing`, and the options the client's parts declare. A query's own option, set in its factory, wins:
 
 ```ts twoslash
-import { createQueryClient, retry } from "@raf-query/react";
+import { createQueryClient, recommended } from "@raf-query/react";
 // ---cut---
 const queryClient = createQueryClient({
-	links: [retry({ attempts: 1 })],
-	staleTime: 30_000,
-	gcTime: 10 * 60_000,
+	parts: recommended(),
+	defaults: {
+		staleTime: 30_000,
+		gcTime: 10 * 60_000,
+		// Options of `retry()` and `focusRefetch()`
+		retry: 1,
+		refetchOnWindowFocus: false,
+	},
 });
 ```
 
-| Option                             | Where                            | Default                                                                       |
-| ---------------------------------- | -------------------------------- | ----------------------------------------------------------------------------- |
-| `staleTime`                        | Client or query                  | `0` ms                                                                        |
-| `gcTime`                           | Client or query                  | 5 minutes; never on the server                                                |
-| `structuralSharing`                | Client or query                  | `true`                                                                        |
-| `retry({ attempts, delay, when })` | Client link                      | 3 attempts, doubling from 1 s up to 30 s, every error but a thrown `Response` |
-| `meta.retry`                       | Query, with `retry()`            | The link's `attempts`; `false` turns retries off                              |
-| `meta.refetchInterval`             | Query, with `polling()`          | None                                                                          |
-| `meta.refetchOnWindowFocus`        | Query, with `focusRefetch()`     | `true`                                                                        |
-| `meta.refetchOnReconnect`          | Query, with `reconnectRefetch()` | `true`                                                                        |
+| Option                             | Where                                      | Default                                                                       |
+| ---------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
+| `staleTime`                        | Client or query                            | `0` ms                                                                        |
+| `gcTime`                           | Client or query                            | 5 minutes; never on the server                                                |
+| `structuralSharing`                | Client or query                            | `true`                                                                        |
+| `retry({ attempts, delay, when })` | The part                                   | 3 attempts, doubling from 1 s up to 30 s, every error but a thrown `Response` |
+| `retry`                            | Client or query, with `retry()`            | The part's `attempts`; `false` turns retries off                              |
+| `refetchInterval`                  | Client or query, with `polling()`          | None                                                                          |
+| `refetchOnWindowFocus`             | Client or query, with `focusRefetch()`     | `true`                                                                        |
+| `refetchOnReconnect`               | Client or query, with `reconnectRefetch()` | `true`                                                                        |
 
 Watch the defaults at work in [Caching](./caching.md), which has a live demo of an entry going from fresh to stale to garbage-collected.

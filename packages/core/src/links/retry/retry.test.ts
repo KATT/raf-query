@@ -6,9 +6,9 @@
  * (doubling from 1 s, at most 30 s, or `delay(attempt)`), waits for
  * `online` if `navigator.onLine` is `false`, and calls `next(op)` again.
  *
- * - Attempts: the query's `meta.retry` (a number, or `false` for none),
- *   else `attempts`, else 3. `meta.retry` is typed only on clients whose
- *   links include `retry()`.
+ * - Attempts: the query's `retry` (a number, or `false` for none),
+ *   else `attempts`, else 3. `retry` is typed only on clients whose
+ * parts include `retry()`.
  * - Never retried: a thrown `Response` (a router redirect or not-found),
  *   what `when(error)` rules out, a request whose `op.signal` aborted, and
  *   anything on a server client.

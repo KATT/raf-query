@@ -1,62 +1,97 @@
 import { group } from "@raf-query/react";
-import { listPosts } from "~/api.ts";
+import { type CommentPage, listPosts, type Post } from "~/api.ts";
 
 declare const toast: { error(message: string): void };
+
+/** The app's API client: on a server, one per request, with its cookies. */
+export interface ApiClient {
+	getPost(slug: string, init: { signal: AbortSignal }): Promise<Post>;
+	listComments(
+		input: { cursor: number; slug: string },
+		init: { signal: AbortSignal },
+	): Promise<CommentPage>;
+}
 
 const posts = group("posts");
 
 // #region intro
-import { queryOptions } from "@raf-query/react";
+import { queryOptions } from "~/raf.ts";
 
 export function postsQuery(input: { page: number; sort: "newest" | "oldest" }) {
 	return queryOptions({
 		queryKey: posts("list", input),
 		queryFn: () => listPosts(input),
-		// Read by `retry()` and `focusRefetch()`, which `recommended()` includes.
-		meta: { retry: 1, refetchOnWindowFocus: false },
+		// Options of `retry()` and `focusRefetch()`, which `recommended()` includes.
+		retry: 1,
+		refetchOnWindowFocus: false,
 	});
 }
 // #endregion
 
-// #region root
-import {
-	createQueryClient,
-	feature,
-	link,
-	recommended,
-} from "@raf-query/react";
+// #region link
+import { part } from "@raf-query/react";
 
-// A link that reads `meta.errorMessage`: one toast per failed request.
-const errorToasts = link<{ meta: { errorMessage?: string } }>(
-	async (op, next) => {
+interface ErrorToasts {
+	readonly options: { readonly errorMessage?: string };
+}
+
+// One toast per failed request, with the query's own message.
+const errorToasts = part<ErrorToasts>({
+	link: async (op, next) => {
 		try {
 			return await next(op);
 		} catch (error) {
-			toast.error(op.meta.errorMessage ?? "Something went wrong");
+			toast.error(op.options.errorMessage ?? "Something went wrong");
 			throw error;
 		}
 	},
-);
-
-// A feature with no behavior: it only declares a field, for targets to match on.
-const ownership = feature<{ meta: { owner?: "editorial" | "community" } }>();
-
-export function makeQueryClient() {
-	const { features, links } = recommended();
-	return createQueryClient({
-		links: [errorToasts, ...links],
-		features: [...features, ownership],
-	});
-}
+});
 // #endregion
 
-// #region selecting-queries-by-meta
-import { invalidateMany } from "@raf-query/react";
+// #region feature
+import { invalidateAll } from "@raf-query/react";
 
-const qc = makeQueryClient();
-
-await invalidateMany(qc, {
-	where: (query) => query.meta.owner === "community",
-	//                         ^?
+// Refetches what's on screen when the server says something changed.
+const liveUpdates = part({
+	setup: (client, signal) => {
+		const events = new EventSource("/api/events");
+		events.addEventListener("message", () => void invalidateAll(client));
+		signal.addEventListener("abort", () => events.close());
+	},
 });
+// #endregion
+
+// #region context
+interface Api {
+	readonly context: { readonly api: ApiClient };
+}
+
+// A function, so each client is given its own API client.
+const api = (apiClient: ApiClient) =>
+	part<Api>({ context: { api: apiClient } });
+// #endregion
+
+// #region declaration
+export interface Ownership {
+	readonly options: { readonly owner?: "editorial" | "community" };
+}
+
+// No link, setup or context: it only declares `owner`.
+const ownership = part<Ownership>();
+// #endregion
+
+// #region root
+import { createQueryClient, recommended } from "@raf-query/react";
+
+export function makeQueryClient(apiClient: ApiClient) {
+	return createQueryClient({
+		parts: [
+			errorToasts,
+			...recommended(),
+			liveUpdates,
+			api(apiClient),
+			ownership,
+		],
+	});
+}
 // #endregion

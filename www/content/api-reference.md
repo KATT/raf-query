@@ -13,54 +13,57 @@ raf-query's API is functions, not methods: the client is a cache you pass to `lo
 tanstack-start/src/docs/api-reference.ts#createqueryclient
 ```
 
-| Export                                            | Use                                                                                                                                                                                                                      |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `createQueryClient(config?)`                      | Make a query cache. `config`: `links`, `features`, `staleTime`, `gcTime`, `structuralSharing`, `isServer`, `clock`. [Important defaults](./important-defaults.md)                                                        |
-| `recommended()`                                   | `{ links: [retry()], features: [focusRefetch(), reconnectRefetch(), polling()] }`, to spread into the config                                                                                                             |
-| `QueryClient<TTypes>`                             | The client type. Bare `QueryClient` takes a client of any root; verbs take `ClientFor<typeof factory>`. [Query meta](./links-and-features.md#typing-meta-by-its-root)                                                    |
-| `client.subscribe(listener, { signal, replay }?)` | Cache events: `added`, `updated`, `removed`, and `readers` (a reader subscribed or left). `replay: true` first sends an `added` for every entry already cached, so a feature that syncs entries starts from what's there |
-| `client.isServer`                                 | Set from `config.isServer`, else from whether `window` exists. Server clients don't retry, never gc, and reuse cached data. [SSR and hydration](./ssr-and-hydration.md#server-clients)                                   |
-| `link(run)`, `Link`, `Operation`                  | Wrap every request, outermost first. `link<{ meta: … }>(run)` declares the `meta` it reads. [Query meta](./links-and-features.md#links-and-features)                                                                     |
-| `feature(setup?)`, `Feature`                      | A cache-wide behavior, started while a provider mounts the client. `feature<{ meta: … }>()` without `setup` only declares `meta` fields                                                                                  |
-| `Clock`                                           | The type of `config.clock`: time and timers. Pass a fake one in tests. [Testing](./testing.md)                                                                                                                           |
+| Export                                                                     | Use                                                                                                                                                                                                                                                                                    |
+| -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createQueryClient(config?)`                                               | Make a query cache. `config`: `parts`, `defaults`, `isServer`, `clock`. [Important defaults](./important-defaults.md)                                                                                                                                                                  |
+| `recommended()`, `Recommended`                                             | The parts most apps want, as an array (and its type): `[retry(), focusRefetch(), reconnectRefetch(), polling()]`. Pass it as `parts`, or spread it among your own                                                                                                                      |
+| `QueryClient<TTypes>`                                                      | The client type. `createQueryClient` returns one typed by its parts; the bare `QueryClient` stands for any client, and verbs given one take only what needs no part. [Typing options by the client](./links-and-features.md#typing-options-by-the-client)                              |
+| `client.subscribe(listener, { signal, replay }?)`                          | Cache events: `added`, `updated`, `removed`, and `readers` (a reader subscribed or left). `replay: true` first sends an `added` for every entry already cached, so a feature that syncs entries starts from what's there                                                               |
+| `client.isServer`                                                          | Set from `config.isServer`, else from whether `window` exists. Server clients don't retry, never gc, and reuse cached data. [SSR and hydration](./ssr-and-hydration.md#server-clients)                                                                                                 |
+| `client.context`                                                           | What the client's parts give every `queryFn`. [Context for every queryFn](./links-and-features.md#context-for-every-queryfn)                                                                                                                                                           |
+| `part<Decl>({ link?, setup?, context? })`, `Part<Decl>`, `Operation<Decl>` | One piece of a client's behavior: a link that wraps every request, a feature's `setup`, and `context` for every `queryFn`. `Decl` is an interface with the `options` it reads and the `context` it gives; `part<Decl>()` only declares options. [Parts](./links-and-features.md#parts) |
+| `Retry`, `Polling`, `FocusRefetch`, `ReconnectRefetch`                     | What the built-in parts declare, to name them in a binding. [Several clients](./links-and-features.md#several-clients)                                                                                                                                                                 |
+| `Clock`                                                                    | The type of `config.clock`: time and timers. Pass a fake one in tests. [Testing](./testing.md)                                                                                                                                                                                         |
 
-Links and features:
+Parts:
 
-| Export                              | Kind    | Use                                                                                                                                               |
-| ----------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `retry({ attempts, delay, when }?)` | link    | Retry failed requests: 3 attempts, doubling from 1 s up to 30 s. `meta.retry` per query. [Retries](./retries.md)                                  |
-| `timeout(ms)`                       | link    | Fail a request with `QueryTimeoutError`, and abort its `signal`, when it takes longer than `ms`                                                   |
-| `focusRefetch()`                    | feature | Refetch read, stale queries on window focus; `meta.refetchOnWindowFocus: false` opts out. [Window focus refetching](./window-focus-refetching.md) |
-| `reconnectRefetch()`                | feature | Refetch read, stale queries when the browser comes back online; `meta.refetchOnReconnect: false` opts out                                         |
-| `polling()`                         | feature | Refetch read queries every `meta.refetchInterval` ms. [Polling](./polling.md)                                                                     |
+| Export                              | Kind    | Use                                                                                                                                                  |
+| ----------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `retry({ attempts, delay, when }?)` | link    | Retry failed requests: 3 attempts, doubling from 1 s up to 30 s. `retry` per query. [Retries](./retries.md)                                          |
+| `timeout(ms)`                       | link    | Fail a request with `QueryTimeoutError`, and abort its `signal`, when it takes longer than `ms`                                                      |
+| `focusRefetch()`                    | feature | Refetch read, stale queries on window focus; `refetchOnWindowFocus: false` opts a query out. [Window focus refetching](./window-focus-refetching.md) |
+| `reconnectRefetch()`                | feature | Refetch read, stale queries when the browser comes back online; `refetchOnReconnect: false` opts a query out                                         |
+| `polling()`                         | feature | Refetch read queries every `refetchInterval` ms. [Polling](./polling.md)                                                                             |
 
 ## Query factories
 
-| Export                                                                        | Use                                                                                                                                             |
-| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `queryOptions(options)`                                                       | Typed options for a query factory. [Query factories](./query-factories.md)                                                                      |
-| `infiniteQueryOptions(options)`                                               | Typed options for a paged query factory. [Infinite queries](./infinite-queries.md)                                                              |
-| `group(name)`, `group(parent, name)`, `Group`                                 | Build flat keys under a path; a group is also a target that covers every key under its path. [Query keys](./query-keys.md#groups)               |
-| `bindQueryOptions<typeof makeQueryClient>()`, `bindInfiniteQueryOptions<…>()` | The builder bound to a root: checks `meta` against the root's links and features. [Query meta](./links-and-features.md#typing-meta-by-its-root) |
-| `DataOf<TFactory>`, `InputOf<TFactory>`                                       | A factory's data and input types                                                                                                                |
-| `QueryOptions`, `QueryFunctionContext`, `StreamOptions`                       | Option types. The context has `queryKey`, `signal` and `meta`                                                                                   |
-| `InfiniteQueryOptions`, `InfiniteQueryFunctionContext`, `InfiniteData`        | Paged option types. The context adds `pageParam` and `direction`; the data is `{ pages, pageParams }`                                           |
-| `QueryFactory`, `QueryKey`                                                    | A function of an input that returns query options, and a key: any plain array                                                                   |
-| `QueryMeta`, `QueryOptionsBuilder`, `InfiniteQueryOptionsBuilder`             | A query's `meta` when its builder isn't bound to a root, and the types of the bound builders                                                    |
+| Export                                                                        | Use                                                                                                                                                                                                            |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `queryOptions(options)`                                                       | Typed options for a query factory, with the core's options. [Query factories](./query-factories.md)                                                                                                            |
+| `infiniteQueryOptions(options)`                                               | Typed options for a paged query factory, with the core's options. [Infinite queries](./infinite-queries.md)                                                                                                    |
+| `group(name)`, `group(parent, name)`, `Group`                                 | Build flat keys under a path; a group is also a target that covers every key under its path. [Query keys](./query-keys.md#groups)                                                                              |
+| `bindQueryOptions<typeof makeQueryClient>()`, `bindInfiniteQueryOptions<…>()` | The builder bound to a client: it takes the options the client's parts declare, and its `queryFn`s get their context. [Typing options by the client](./links-and-features.md#typing-options-by-the-client)     |
+| `Optional<Decl>`                                                              | In a library's binding, `bindQueryOptions<Cms & Optional<Retry>>()`: a part whose options its queries set without needing it. [Binding a library to parts](./links-and-features.md#binding-a-library-to-parts) |
+| `OptionsOf<typeof makeQueryClient>`                                           | The options a bound builder lets a query set, for a fragment several factories share. [Options several factories share](./links-and-features.md#options-several-factories-share)                               |
+| `DataOf<TFactory>`, `InputOf<TFactory>`                                       | A factory's data and input types                                                                                                                                                                               |
+| `QueryOptions`, `CoreOptions`, `QueryFunctionContext`, `StreamOptions`        | Option types. `CoreOptions` is `staleTime`, `gcTime`, `structuralSharing` and `ssr`. The context has `client`, `queryKey`, `signal` and what the client's parts give                                           |
+| `InfiniteQueryOptions`, `InfiniteQueryFunctionContext`, `InfiniteData`        | Paged option types. The context adds `pageParam` and `direction`; the data is `{ pages, pageParams }`                                                                                                          |
+| `QueryFactory`, `QueryKey`                                                    | A function of an input that returns query options, and a key: any plain array                                                                                                                                  |
+| `QueryOptionsBuilder`, `InfiniteQueryOptionsBuilder`                          | The types of the builders, bound or not                                                                                                                                                                        |
 
 Query options, for `queryOptions` and `infiniteQueryOptions`:
 
-| Option                                                                           | Default                                                                     |
-| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `queryKey`                                                                       | Required. [Query keys](./query-keys.md)                                     |
-| `queryFn`                                                                        | Required. [Query functions](./query-functions.md)                           |
-| `staleTime`                                                                      | The client's, else `0` ms                                                   |
-| `gcTime`                                                                         | The client's, else 5 minutes; never on the server                           |
-| `structuralSharing` (keep deeply equal parts of data)                            | The client's, else `true`                                                   |
-| `select` (derive what readers get from the data)                                 | None                                                                        |
-| `stream` (`{ initial, reduce }`, for a `queryFn` that returns an async iterable) | None. [Query functions](./query-functions.md#streaming)                     |
-| `ssr` (`false`: only a browser runs it)                                          | `true`. [Browser-only queries](./ssr-and-hydration.md#browser-only-queries) |
-| [`meta`](./links-and-features.md) (settings for the root's links and features)   | None                                                                        |
+| Option                                                                                                                               | Default                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| `queryKey`                                                                                                                           | Required. [Query keys](./query-keys.md)                                     |
+| `queryFn`                                                                                                                            | Required. [Query functions](./query-functions.md)                           |
+| `staleTime`                                                                                                                          | The client's default, else `0` ms                                           |
+| `gcTime`                                                                                                                             | The client's default, else 5 minutes; never on the server                   |
+| `structuralSharing` (keep deeply equal parts of data)                                                                                | The client's default, else `true`                                           |
+| `select` (derive what readers get from the data)                                                                                     | None                                                                        |
+| `stream` (`{ initial, reduce }`, for a `queryFn` that returns an async iterable)                                                     | None. [Query functions](./query-functions.md#streaming)                     |
+| `ssr` (`false`: only a browser runs it)                                                                                              | `true`. [Browser-only queries](./ssr-and-hydration.md#browser-only-queries) |
+| An option a part of the client declares, such as `retry`, on a [bound builder](./links-and-features.md#typing-options-by-the-client) | The client's default, else the part's                                       |
 
 `infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam`, [`keepPages`](./infinite-queries.md#opening-at-an-item) and `maxPages`.
 
@@ -123,20 +126,20 @@ Read the thenable's `status`, `value` and `reason` to render without Suspense. S
 
 Each verb takes the client first. A factory matches the queries it built: all of them, or those whose input matches a partial input (`PartialInput<TFactory>`, part of the factory's input, whatever its key looks like). A group matches the keys that start with its path. A target (`{ where }`, such as a tag) matches the queries its `where` picks. [Query invalidation](./query-invalidation.md)
 
-| Export                                                                                       | Use                                                                                                                             |
-| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `invalidateOne(client, factory, input)`                                                      | Mark one query stale. If it's read, it refetches; resolves when that settles                                                    |
-| `invalidateMany(client, factory, partial?)` / `(client, group)` / `(client, target, param?)` | Mark many queries stale; read ones refetch                                                                                      |
-| `invalidateMany(client, [target, [factory, partial], [target, param], …])`                   | Several targets in one call: each read query they cover refetches once, side by side; resolves when all settle                  |
-| `invalidateAll(client)`                                                                      | Mark every query stale; read ones refetch                                                                                       |
-| `resetOne`, `resetMany`, `resetAll`                                                          | Drop data and errors. Read queries suspend and refetch; resolves when they settle. `resetMany` takes a list too                 |
-| `removeOne`, `removeMany`, `removeAll`                                                       | Remove entries and abort their requests. `removeMany` takes a list too                                                          |
-| `setData(client, factory, input, updater)` / `(client, factory, updater)`                    | Write data, as if a request had just returned it. A factory without an input takes the second form. [Mutations](./mutations.md) |
-| `getData(client, factory, input)`                                                            | Cached data (before `select`), or `undefined`                                                                                   |
-| `isFetching(client, target?)`                                                                | How many queries have a request in flight                                                                                       |
-| `fetchNextPage(client, factory, input)` / `fetchPreviousPage(…)`                             | Load a page at either end of a paged query, outside React. [Infinite queries](./infinite-queries.md#outside-react)              |
-| `hasNextPage(client, factory, input)` / `hasPreviousPage(…)`                                 | Whether a paged query has a page at that end. [Infinite queries](./infinite-queries.md#outside-react)                           |
-| `ClientFor<TFactory>`, `PartialInput<TFactory>`, `Target`, `QueryInfo`, `Group`              | Types the verbs take. `QueryInfo` is what `where` sees: `queryKey`, `input`, `data`, `meta`                                     |
+| Export                                                                                       | Use                                                                                                                                           |
+| -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `invalidateOne(client, factory, input)`                                                      | Mark one query stale. If it's read, it refetches; resolves when that settles                                                                  |
+| `invalidateMany(client, factory, partial?)` / `(client, group)` / `(client, target, param?)` | Mark many queries stale; read ones refetch                                                                                                    |
+| `invalidateMany(client, [target, [factory, partial], [target, param], …])`                   | Several targets in one call: each read query they cover refetches once, side by side; resolves when all settle                                |
+| `invalidateAll(client)`                                                                      | Mark every query stale; read ones refetch                                                                                                     |
+| `resetOne`, `resetMany`, `resetAll`                                                          | Drop data and errors. Read queries suspend and refetch; resolves when they settle. `resetMany` takes a list too                               |
+| `removeOne`, `removeMany`, `removeAll`                                                       | Remove entries and abort their requests. `removeMany` takes a list too                                                                        |
+| `setData(client, factory, input, updater)` / `(client, factory, updater)`                    | Write data, as if a request had just returned it. A factory without an input takes the second form. [Mutations](./mutations.md)               |
+| `getData(client, factory, input)`                                                            | Cached data (before `select`), or `undefined`                                                                                                 |
+| `isFetching(client, target?)`                                                                | How many queries have a request in flight                                                                                                     |
+| `fetchNextPage(client, factory, input)` / `fetchPreviousPage(…)`                             | Load a page at either end of a paged query, outside React. [Infinite queries](./infinite-queries.md#outside-react)                            |
+| `hasNextPage(client, factory, input)` / `hasPreviousPage(…)`                                 | Whether a paged query has a page at that end. [Infinite queries](./infinite-queries.md#outside-react)                                         |
+| `ClientFor<TFactory>`, `PartialInput<TFactory>`, `Target`, `QueryInfo`, `Group`              | Types the verbs take. `ClientFor` is a client that runs the factory. `QueryInfo` is what `where` sees: `queryKey`, `input`, `data`, `options` |
 
 ## Errors
 
@@ -147,12 +150,12 @@ Each verb takes the client first. A factory matches the queries it built: all of
 
 ## Providers
 
-| Export                                         | Use                                                                                                                                             |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `QueryClientProvider`                          | Provides a client to the tree, and runs its features while mounted. In every framework; see [the provider](./ssr-and-hydration.md#the-provider) |
-| `useQueryClient()`                             | Read the client                                                                                                                                 |
-| `bindUseQueryClient<typeof makeQueryClient>()` | `useQueryClient`, typed with a root, so verbs check factories against it. [Query meta](./links-and-features.md#typing-meta-by-its-root)         |
-| `HydrationBoundary`                            | Writes server data into the client: a loader's `state`, or in server components the request's `client`. [React Router](./react-router.md)       |
+| Export                                         | Use                                                                                                                                                              |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `QueryClientProvider`                          | Provides a client to the tree, and runs its features while mounted. In every framework; see [the provider](./ssr-and-hydration.md#the-provider)                  |
+| `useQueryClient()`                             | Read the client, typed as any client                                                                                                                             |
+| `bindUseQueryClient<typeof makeQueryClient>()` | `useQueryClient`, typed with the app's client, so verbs take its factories. [Typing options by the client](./links-and-features.md#typing-options-by-the-client) |
+| `HydrationBoundary`                            | Writes server data into the client: a loader's `state`, or in server components the request's `client`. [React Router](./react-router.md)                        |
 
 ## Hydration and devtools
 

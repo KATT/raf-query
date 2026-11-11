@@ -1,16 +1,10 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
-import {
-	group,
-	load,
-	type QueryHandle,
-	queryOptions,
-	swr,
-	useQuery,
-} from "@raf-query/react";
+import { group, load, type QueryHandle, swr, useQuery } from "@raf-query/react";
 import { useState, use } from "react";
 
 import { DemoBrowser } from "~/demo-kit/browser.tsx";
+import { queryOptions } from "~/demo-kit/client.ts";
 import { formatTime, Segmented, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
@@ -33,7 +27,6 @@ function readersQuery(input: {
 	readonly postId: number;
 }) {
 	return queryOptions({
-		meta: { refetchInterval: input.interval },
 		queryFn: (context) =>
 			server.respond(
 				`GET /posts/${input.postId}/readers`,
@@ -47,6 +40,7 @@ function readersQuery(input: {
 				context,
 			),
 		queryKey: posts(input.postId, "readers", input.interval),
+		refetchInterval: input.interval,
 	});
 }
 
@@ -126,5 +120,5 @@ export default defineDemo({
 	Component: Polling,
 	hint: "The post's live reader count refetches on the chosen interval while it's on screen. Each interval is the query's input, so each is its own query: switch and watch the last one go inactive and stop polling.",
 	server,
-	title: "Polling with meta.refetchInterval",
+	title: "Polling with refetchInterval",
 });

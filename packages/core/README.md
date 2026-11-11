@@ -1,6 +1,6 @@
 # @raf-query/core
 
-The framework-agnostic query client behind [raf-query](https://raf-query.katt.dev): a small cache that dedupes requests, keeps entries fresh, and hands out serializable handles. Retries, timeouts, refetch on focus or reconnect, polling and hydration are opt-in links, features and exports, so a client bundles only what it turns on.
+The framework-agnostic query client behind [raf-query](https://raf-query.katt.dev): a small cache that dedupes requests, keeps entries fresh, and hands out serializable handles. Retries, timeouts, refetch on focus or reconnect, polling and hydration are opt-in, as parts you give the client or exports you import, so a client bundles only what it turns on.
 
 **[Documentation](https://raf-query.katt.dev)** · [API reference](https://raf-query.katt.dev/docs/api-reference#raf-querycore) · [GitHub](https://github.com/KATT/raf-query)
 
@@ -37,7 +37,10 @@ export function issueQuery(input: { id: number }) {
 	});
 }
 
-const queryClient = createQueryClient({ links: [retry()], staleTime: 5000 });
+const queryClient = createQueryClient({
+	parts: [retry()],
+	defaults: { staleTime: 5000 },
+});
 
 const [, data] = await load(queryClient, {
 	issue: revalidate(issueQuery, { id: 1 }),
@@ -49,9 +52,9 @@ await invalidateOne(queryClient, issueQuery, { id: 1 });
 
 ## Entry points
 
-| Import            | Use                                                                                                                          |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `@raf-query/core` | `createQueryClient`, query factories, `load`, the verbs, the built-in links and features, `group`, `dehydrate` and `hydrate` |
+| Import            | Use                                                                                                                                                |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@raf-query/core` | `createQueryClient`, query factories, `load`, the verbs, the built-in parts (`retry()`, `polling()` and so on), `group`, `dehydrate` and `hydrate` |
 
 ## License
 

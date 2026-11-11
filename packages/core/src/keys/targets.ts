@@ -71,7 +71,7 @@ export interface QueryInfo<TOptions = object> {
  * parameter the verb was called with.
  *
  * ```ts
- * const ownedBy: Target<Ownership["options"], Team> = { where: (query, team) => query.options.owner === team };
+ * const ownedBy: Target<RootOf<Ownership>["options"], Team> = { where: (query, team) => query.options.owner === team };
  * await invalidateMany(client, ownedBy, "editorial");
  * ```
  *

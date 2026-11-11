@@ -8,7 +8,7 @@ Render-as-you-fetch data fetching for React.
 
 Queries start in route loaders and React Server Components, travel to components as small serializable **handles**, and are read with React's `use()` under Suspense. Fetch-on-render is an explicitly named escape hatch, not the default.
 
-The cache's mechanics (dedupe, staleness, infinite paging, SSR hydration) follow [TanStack Query](https://tanstack.com/query); the public API is built around loaders, RSC and `use()` instead of `useQuery`-in-render. The client is small and pay-as-you-go: retries, refetch on focus or reconnect, polling and hydration are opt-in links and features, so an app ships only what it turns on.
+The cache's mechanics (dedupe, staleness, infinite paging, SSR hydration) follow [TanStack Query](https://tanstack.com/query); the public API is built around loaders, RSC and `use()` instead of `useQuery`-in-render. The client is small and pay-as-you-go: retries, refetch on focus or reconnect, polling and hydration are opt-in, so an app ships only what it turns on.
 
 > [!NOTE]
 > raf-query is early. The packages are on npm at `0.x`, the API can still change between minor releases, and you use it at your own risk.
@@ -83,10 +83,10 @@ See [installation](https://raf-query.katt.dev/docs/installation) for requirement
 
 ## Packages
 
-| Package                              | Contents                                                                                    |
-| ------------------------------------ | ------------------------------------------------------------------------------------------- |
-| [`@raf-query/react`](packages/react) | Hooks, and the TanStack Router, RSC and devtools integrations. Re-exports `@raf-query/core` |
-| [`@raf-query/core`](packages/core)   | The framework-agnostic query client, its links and features, hydration, and groups          |
+| Package                              | Contents                                                                                                    |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| [`@raf-query/react`](packages/react) | Hooks, and the TanStack Router, RSC and devtools integrations. Re-exports `@raf-query/core`                 |
+| [`@raf-query/core`](packages/core)   | The framework-agnostic query client, its opt-in parts (retries, polling, refetching), hydration, and groups |
 
 ## Examples
 

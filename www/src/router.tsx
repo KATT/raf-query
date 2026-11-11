@@ -14,7 +14,7 @@ import { routeTree } from "./routeTree.gen.ts";
 export function getRouter() {
 	// Pages and demo code only change with a deploy: nothing to refetch on
 	// focus, and no actions to invalidate after.
-	const queryClient = createQueryClient({ links: [retry()] });
+	const queryClient = createQueryClient({ parts: [retry()] });
 	const router = createRouter({
 		context: { queryClient },
 		defaultNotFoundComponent: NotFound,

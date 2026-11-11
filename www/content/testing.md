@@ -15,7 +15,8 @@ Create a new client for every test, so no cached data leaks between them:
 tanstack-start/src/docs/testing.tsx#a-client-per-test
 ```
 
-- A client starts with no links and no features: no retries, no refetching on focus, no polling. A failing request fails at once. Add only the parts a test is about. If your app makes its client in a function, let that function take the parts, so tests can leave `retry()` out.
+- A client starts with no [parts](./links-and-features.md#parts): no retries, no refetching on focus, no polling. A failing request fails at once. Add only the parts a test is about.
+- A factory built with a [bound builder](./links-and-features.md#typing-options-by-the-client) runs only on a client that has the parts the builder is bound to. For those, give the test's client the app's parts and turn a behavior off in its `defaults`: `createQueryClient({ parts: recommended(), defaults: { retry: false } })`.
 - `removeAll` drops every query and aborts requests in flight, so nothing runs after the test ends. Features stop when the `QueryClientProvider` unmounts, which Testing Library's `cleanup` does after each test.
 - `isServer: false` makes it a browser client even where `window` isn't defined. See [Server rendering](#server-rendering).
 
@@ -37,7 +38,7 @@ To render with known data and no request at all, write it with `setData` before 
 tanstack-start/src/docs/testing.ts#seeding-the-cache
 ```
 
-`swr` resolves at once when the cache has data. It also refetches stale data in the background, and data written with `setData` is fresh only for `staleTime`, which is `0` by default: give the test client a `staleTime` so the seeded data stays as it is.
+`swr` resolves at once when the cache has data. It also refetches stale data in the background, and data written with `setData` is fresh only for `staleTime`, which is `0` by default: give the test client a default `staleTime` so the seeded data stays as it is.
 
 ## Mocking the network
 
@@ -69,7 +70,7 @@ The default clock calls `Date.now()` and `setTimeout` each time, so [`vi.useFake
 
 ## Focus and the network
 
-`focusRefetch()` and `reconnectRefetch()` listen to the page's own events, so a test in a DOM environment fires them. Give the client the feature, render under a `QueryClientProvider` (features only run while one has the client mounted), and dispatch the event:
+`focusRefetch()` and `reconnectRefetch()` listen to the page's own events, so a test in a DOM environment fires them. Give the client the part, render under a `QueryClientProvider` (features only run while one has the client mounted), and dispatch the event:
 
 ```sample
 tanstack-start/src/docs/testing.tsx#focus-and-the-network

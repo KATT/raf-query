@@ -14,16 +14,15 @@ import {
 } from "@examples/ui/components/tabs";
 import { cn } from "@examples/ui/lib/utils";
 import {
-	createQueryClient,
 	type QueryClient,
 	QueryClientProvider,
 	QueryDevtoolsPanel,
-	recommended,
 	removeAll,
 } from "@raf-query/react";
 import { Expand, FlaskConical, Shrink } from "lucide-react";
 import { Activity, type ReactNode, Suspense, useId, useState } from "react";
 
+import { createDemoClient } from "./client.ts";
 import type { DemoDefinition, DemoVariant } from "./define.ts";
 import { QueriesPanel } from "./queries-panel.tsx";
 import { type FakeServer, latencies } from "./server.ts";
@@ -49,7 +48,7 @@ function createSession(
 	location?: string,
 ): Session {
 	sessionCount++;
-	const client = demo.createClient?.() ?? createQueryClient(recommended());
+	const client = demo.createClient?.() ?? createDemoClient();
 	trackCache(client);
 	const session = { client, id: sessionCount, location };
 	liveSessions.set(variant, session);

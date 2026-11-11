@@ -92,4 +92,4 @@ A group matches every key that starts with its path. A factory matches the queri
 tanstack-start/src/docs/query-keys.ts#design-keys-for-invalidation
 ```
 
-For sets of queries that cut across groups, such as every query that shows one author, give them [tags](./query-invalidation.md#tags): a `where` target over `meta`, written in your app. See [Query invalidation](./query-invalidation.md) for every target.
+For sets of queries that cut across groups, such as every query that shows one author, give them [tags](./query-invalidation.md#tags): a `where` target over an option your app declares. See [Query invalidation](./query-invalidation.md) for every target.

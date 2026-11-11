@@ -1,16 +1,16 @@
 ---
 title: Window focus refetching
-description: Refetch stale queries on screen when the user comes back to the tab or reconnects, with the focusRefetch() and reconnectRefetch() features, and opt queries out in meta.
+description: Refetch stale queries on screen when the user comes back to the tab or reconnects, with focusRefetch() and reconnectRefetch(), and opt queries out.
 section: Guides
 order: 14
 ---
 
-When the user leaves your app and comes back, the data on screen may be out of date. Two features refetch it:
+When the user leaves your app and comes back, the data on screen may be out of date. Two [parts](./links-and-features.md#parts) refetch it:
 
 - `focusRefetch()` refetches every **read, stale** query when the window regains focus.
 - `reconnectRefetch()` does the same when the browser comes back online.
 
-Neither is on by default. Add them to the client, or spread `recommended()`, which has both:
+Neither is on by default. Add them to the client, or pass `recommended()`, which has both:
 
 ```sample
 tanstack-start/src/docs/window-focus-refetching.ts#the-features
@@ -18,23 +18,23 @@ tanstack-start/src/docs/window-focus-refetching.ts#the-features
 
 Only queries that a component is reading refetch, and only stale ones: data within its `staleTime` stays as it is. With the default `staleTime` of `0`, that's everything on screen.
 
-Features run while a `QueryClientProvider` has the client mounted, so they only ever run in the browser.
+Both are features: they run while a `QueryClientProvider` has the client mounted, so they only ever run in the browser.
 
 ## Turning it off
 
-For every query, leave the feature out of the client:
+For every query, leave the part out of the client:
 
 ```sample
 tanstack-start/src/docs/window-focus-refetching.ts#turning-it-off
 ```
 
-For one query, set `meta: { refetchOnWindowFocus: false }` or `meta: { refetchOnReconnect: false }` in its factory. The features declare these fields, so a factory built with a bound `queryOptions` gets them typed only when the root has the feature: see [Query meta](./links-and-features.md#typing-meta-by-its-root).
+For one query, set `refetchOnWindowFocus: false` or `refetchOnReconnect: false` in its factory. The parts declare these options, so they're set with the `queryOptions` an app [binds to its client](./links-and-features.md#typing-options-by-the-client), here in `raf.ts`:
 
 ```sample
 tanstack-start/src/docs/window-focus-refetching.ts#per-query
 ```
 
-A long `staleTime` is often the better fix: the data then refetches on focus only once it's actually old.
+The client's `defaults` take the same options, for every query that doesn't set its own. A long `staleTime` is often the better fix: the data then refetches on focus only once it's actually old.
 
 ## What counts as focus
 

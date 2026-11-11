@@ -25,7 +25,7 @@ A query function that **throws** or returns a **rejected promise** fails. The er
 tanstack-start/src/docs/query-functions.ts#handling-and-throwing-errors
 ```
 
-With the `retry()` link, which `recommended()` includes, failed requests are [retried](./retries.md) three times before they count as failed.
+With `retry()`, which `recommended()` includes, failed requests are [retried](./retries.md) three times before they count as failed.
 
 ## With `fetch` and other clients that don't throw
 
@@ -53,17 +53,22 @@ Each `queryFn` receives a context object:
 
 - `queryKey`, the query's [key](./query-keys.md), typed as the factory wrote it
 - `signal: AbortSignal`, aborted when the request is cancelled. Pass it to `fetch` so [cancelled requests](./query-cancellation.md) stop using the network.
-- `meta`, the query's [`meta`](./links-and-features.md), or `{}` when it has none
-- `client`, the query client making the request. A server makes one per request, so a [`WeakMap`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap) keyed by client holds per-request services, such as an API client that sends the request's cookies:
-
-```sample
-tanstack-start/src/docs/query-functions.ts#client
-```
+- `client`, the query client making the request
 
 [Paged queries](./infinite-queries.md) also get:
 
 - `pageParam`, the page to load
 - `direction: "forward" | "backward"`, which end of the list the page is added to
+
+### Context from the client's parts
+
+A client's [parts](./links-and-features.md#context-for-every-queryfn) can add to the context. A part that declares a `context` gives its fields to every `queryFn` the client runs. A server makes one client per request, so this is where per-request services go, such as an API client that sends the request's cookies:
+
+```sample
+tanstack-start/src/docs/query-functions.context.ts#context
+```
+
+`api` is typed because this `queryOptions` is [bound to the client](./links-and-features.md#typing-options-by-the-client). With the `queryOptions` that `@raf-query/react` exports, a `queryFn` gets `queryKey`, `signal` and `client` only.
 
 ## Redirects
 

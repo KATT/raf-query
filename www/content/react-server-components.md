@@ -17,7 +17,7 @@ One function makes the app's clients. Server components get one per request, sco
 nextjs/src/query-client.ts
 ```
 
-Client components get theirs from a `Providers` client component, which creates one client per server render and one per browser tab. Links and features, such as the ones [`recommended()`](./important-defaults.md) returns, are functions, which a server component can't pass to a client component, so the client is made on the client side of that boundary. The same component works in [every framework](./ssr-and-hydration.md#the-provider):
+Client components get theirs from a `Providers` client component, which creates one client per server render and one per browser tab. A client's parts, such as the ones [`recommended()`](./important-defaults.md) returns, hold functions, which a server component can't pass to a client component, so the client is made on the client side of that boundary. The same component works in [every framework](./ssr-and-hydration.md#the-provider):
 
 ```sample
 nextjs/src/components/providers.tsx

@@ -4,7 +4,7 @@
  * on the client's `Clock`. If `next(op)` hasn't settled after `ms`, it
  * aborts that signal with a `QueryTimeoutError` and rejects with it; a
  * request that settles first clears the timer and passes through as it
- * is. It reads no `meta` and writes nothing to the cache.
+ * is. It reads no option and writes nothing to the cache.
  */
 import { describe, expect, it } from "vitest";
 

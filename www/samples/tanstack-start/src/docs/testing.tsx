@@ -67,7 +67,7 @@ test("refetches on focus", async () => {
 
 	queryClient = createQueryClient({
 		isServer: false,
-		features: [focusRefetch()],
+		parts: [focusRefetch()],
 	});
 	const [handles] = await load(queryClient, {
 		views: revalidate(viewsQuery),

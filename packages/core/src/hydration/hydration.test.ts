@@ -6,7 +6,7 @@
  * - `dehydrate(client)` returns the entries worth sending (`canDehydrate`):
  *   data, and entries still loading, with a promise of their result. A
  *   request that then throws crosses as a `RedactedError` unless
- *   `keepErrors`. Errors and hashes already in `sent` stay behind, and so does `meta`, which comes from the factory.
+ *   `keepErrors`. Errors and hashes already in `sent` stay behind, and so do the query's options, which come from the factory.
  * - `hydrate(client, state)` writes entries by `queryKey`, and takes only
  *   data newer than what the browser has. A pending entry the browser has
  *   nothing for adopts the sender's promise as its request instead of

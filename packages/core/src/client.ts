@@ -169,7 +169,8 @@ export interface QueryClientConfig {
 	readonly clock?: Clock;
 	/**
 	 * Client-wide defaults for per-query options: the core's (`staleTime`,
-	 * `gcTime`, `structuralSharing`) and those the parts declare.
+	 * `gcTime`, `structuralSharing`) and those the parts declare. `ssr` is a
+	 * query's own.
 	 */
 	readonly defaults?: object;
 	/** Default: no `window`. Server clients never gc and never revalidate cached data. */
@@ -241,7 +242,7 @@ export function createQueryClient<
 >(
 	config: Omit<QueryClientConfig, "defaults" | "parts"> & {
 		readonly defaults?: NoInfer<
-			CoreOptions & Partial<RootOfParts<TParts>["options"]>
+			Omit<CoreOptions, "ssr"> & Partial<RootOfParts<TParts>["options"]>
 		>;
 		readonly parts?: TParts;
 	} = {},

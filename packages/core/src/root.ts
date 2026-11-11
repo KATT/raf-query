@@ -73,7 +73,7 @@ export type OptionsOfDecl<TDecl> = TDecl extends {
 	: unknown;
 
 /** The `queryFn` context a declaration adds to its root. */
-export type ContextOfDecl<TDecl> = TDecl extends {
+type ContextOfDecl<TDecl> = TDecl extends {
 	readonly context?: infer TContext extends object;
 }
 	? TContext

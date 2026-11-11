@@ -2,7 +2,6 @@ import {
 	createQueryClient,
 	invalidateMany,
 	invalidateOne,
-	queryOptions,
 	recommended,
 } from "@raf-query/react";
 import { getPost } from "~/api.ts";
@@ -11,30 +10,37 @@ import { authors, postQuery, posts, postsQuery } from "~/queries.ts";
 declare const slug: string;
 
 // #region tags
-import { feature } from "@raf-query/react";
+import { bindQueryOptions, part } from "@raf-query/react";
 
-// Declares `meta.tags` on the clients that have it
-const tagged = feature<{ meta: { tags?: ReadonlyArray<string> } }>();
+interface Tags {
+	readonly options: { readonly tags?: ReadonlyArray<string> };
+}
 
-type Tagged = { readonly tags: ReadonlyArray<string> | undefined };
-
-// Every query that lists the tag
-const tag = (name: string): Target<Tagged> => ({
-	where: (query) => query.meta.tags?.includes(name) ?? false,
-});
+// Declares the `tags` option on the clients that have it
+const tagged = part<Tags>();
 
 export function makeQueryClient() {
-	const { features, links } = recommended();
-	return createQueryClient({ links, features: [...features, tagged] });
+	return createQueryClient({ parts: [...recommended(), tagged] });
 }
+
+// In the app's `raf.ts`
+const queryOptions = bindQueryOptions<typeof makeQueryClient>();
 
 export function postBySlugQuery(input: { slug: string }) {
 	return queryOptions({
 		queryKey: posts("bySlug", input.slug),
 		queryFn: () => getPost(input.slug),
-		meta: { tags: ["content", `post:${input.slug}`] },
+		tags: ["content", `post:${input.slug}`],
 	});
 }
+
+// The option the way a client with `tagged` has it
+type Tagged = { readonly tags: ReadonlyArray<string> | undefined };
+
+// Every query that lists the tag
+const tag = (name: string): Target<Tagged> => ({
+	where: (query) => query.options.tags?.includes(name) ?? false,
+});
 
 const qc = makeQueryClient();
 
@@ -44,7 +50,7 @@ await invalidateMany(qc, tag("content"));
 // #region tags-param
 // One target for every tag: the tag is its parameter
 const tags: Target<Tagged, string> = {
-	where: (query, name) => query.meta.tags?.includes(name) ?? false,
+	where: (query, name) => query.options.tags?.includes(name) ?? false,
 };
 
 await invalidateMany(qc, tags, `post:${slug}`);
@@ -70,10 +76,10 @@ await invalidateMany(qc, [
 // #endregion
 
 // #region matching-with-where
-import type { QueryMeta, Target } from "@raf-query/react";
+import type { Target } from "@raf-query/react";
 
 // Every query whose key mentions a post's slug
-const mentionsPost: Target<QueryMeta, string> = {
+const mentionsPost: Target<object, string> = {
 	where: (query, postSlug) => query.queryKey.includes(postSlug),
 };
 await invalidateMany(qc, mentionsPost, slug);

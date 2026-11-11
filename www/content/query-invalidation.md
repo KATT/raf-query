@@ -60,23 +60,23 @@ The refetches run side by side, a query that several targets cover refetches onc
 
 ### Matching with where
 
-A target is any object with `where(query, param)`, typed `Target<TMeta, TParam>`. Its `where` gets each query's `queryKey`, `input`, `meta` and `data` (before `select`), and the parameter the verb was called with:
+A target is any object with `where(query, param)`, typed `Target<TOptions, TParam>`. Its `where` gets each query's `queryKey`, `input`, `options` and `data` (before `select`), and the parameter the verb was called with:
 
 ```sample
 tanstack-start/src/docs/query-invalidation.ts#matching-with-where
 ```
 
-`input` is the input of the latest factory call for that entry. An entry that was only hydrated, and not yet read or started on this client, has `undefined` input and `{}` as its `meta`, so match on `queryKey` to include those. On a client of a typed root, `query.meta` has the root's fields: see [Query meta](./links-and-features.md#selecting-queries-by-meta).
+`input` is the input of the latest factory call for that entry. An entry that was only hydrated, and not yet read or started on this client, has `undefined` input and `{}` as its `options`, so match on `queryKey` to include those. `TOptions` is the options the target reads; `object` fits a target that reads none. `query.options` has the options the client's parts declare: see [Selecting queries by options](./links-and-features.md#selecting-queries-by-options).
 
 ### Tags
 
-A tag cuts across groups: every query that shows some content, wherever its key starts. raf-query has no tags of its own, because a tag is a `where` target over a `meta` field: a few lines in your app. A [feature](./links-and-features.md#links-and-features) without a setup function declares `meta.tags`, and `tag(name)` matches the queries that list `name`:
+A tag cuts across groups: every query that shows some content, wherever its key starts. raf-query has no tags of its own, because a tag is a `where` target over an option: a few lines in your app. A [part](./links-and-features.md#options-only) that only declares a `tags` option gives it to the client's queries, and `tag(name)` matches the queries that list `name`:
 
 ```sample
 tanstack-start/src/docs/query-invalidation.ts#tags
 ```
 
-`Tagged` names the field the way a client's root has it: present, and possibly `undefined`. Typed that way, `tag()` fits only clients made with `tagged`, and TypeScript rejects it on the others. To have one target for every tag, take the tag as the parameter:
+`Tagged` names the option the way a client with the part has it: present, and possibly `undefined`. Typed that way, `tag()` fits only clients made with `tagged`, and TypeScript rejects it on the others. To have one target for every tag, take the tag as the parameter:
 
 ```sample
 tanstack-start/src/docs/query-invalidation.ts#tags-param
