@@ -2,12 +2,12 @@ import {
 	group,
 	load,
 	prefetch,
-	type QueryClient,
 	type QueryHandle,
-	queryOptions,
 	useQuery,
 } from "@raf-query/react";
+import { queryOptions } from "~/raf.ts";
 import { postQuery } from "~/queries.ts";
+import type { makeQueryClient } from "~/query-client.ts";
 
 const permission = group("permission");
 
@@ -21,7 +21,7 @@ declare function ReplyNotificationsToggle(props: {
 	readonly permission: PermissionState | undefined;
 }): React.ReactNode;
 
-declare const queryClient: QueryClient;
+declare const queryClient: ReturnType<typeof makeQueryClient>;
 
 // #region queries
 export function permissionQuery(input: { name: PermissionName }) {

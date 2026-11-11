@@ -9,7 +9,7 @@ interface ApiClient {
 import {
 	bindQueryOptions,
 	createQueryClient,
-	part,
+	plugin,
 	recommended,
 } from "@raf-query/react";
 
@@ -21,7 +21,7 @@ interface Api {
 // request's cookies.
 export function makeQueryClient(apiClient: ApiClient) {
 	return createQueryClient({
-		parts: [...recommended(), part<Api>({ context: { api: apiClient } })],
+		plugins: [...recommended(), plugin<Api>({ context: { api: apiClient } })],
 	});
 }
 

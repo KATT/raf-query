@@ -1,11 +1,8 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	group,
-	infiniteQueryOptions,
 	load,
 	prefetch,
-	type QueryClient,
-	queryOptions,
 	revalidate,
 	swr,
 	useInfiniteQuery,
@@ -21,6 +18,11 @@ import {
 import { MessageSquare } from "lucide-react";
 import { type ReactNode, Suspense, use, useId } from "react";
 
+import {
+	type DemoClient,
+	infiniteQueryOptions,
+	queryOptions,
+} from "~/demo-kit/client.ts";
 import { LoadMoreButton } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import {
@@ -105,7 +107,7 @@ function createBlog() {
 }
 
 interface RouterContext {
-	readonly queryClient: QueryClient;
+	readonly queryClient: DemoClient;
 }
 
 // The docs site registers its own router, so the hooks and links below name

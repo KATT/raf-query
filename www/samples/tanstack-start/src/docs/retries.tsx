@@ -1,9 +1,5 @@
-import {
-	load,
-	prefetch,
-	type QueryHandle,
-	useQueryClient,
-} from "@raf-query/react";
+import { load, prefetch, type QueryHandle } from "@raf-query/react";
+import { useQueryClient } from "~/raf.ts";
 import {
 	CatchBoundary,
 	type ErrorComponentProps,

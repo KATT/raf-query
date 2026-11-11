@@ -173,7 +173,9 @@ const factoryStepBody = (modeNote?: ReactNode) => (
 			<code>queryOptions</code>, as in TanStack Query: a key, a{" "}
 			<code>queryFn</code>, and options like <code>staleTime</code>. Comments
 			load a page at a time, so <code>commentsQuery</code> uses{" "}
-			<code>infiniteQueryOptions</code>.
+			<code>infiniteQueryOptions</code>. Both come from the app’s{" "}
+			<code>raf.ts</code>, which binds them to its query client, so a factory
+			takes the options that client’s plugins declare.
 		</p>
 		{modeNote}
 		<p>
@@ -677,9 +679,10 @@ function HomePage() {
 							</a>{" "}
 							closely: query keys, deduping, staleness, garbage collection,
 							structural sharing and infinite pages. Retries and focus and
-							reconnect refetching are there too, as parts you give the client.
-							If you know TanStack Query, you already know how raf-query caches.
-							What changes is where queries start and how components read them.
+							reconnect refetching are there too, as plugins you give the
+							client. If you know TanStack Query, you already know how raf-query
+							caches. What changes is where queries start and how components
+							read them.
 						</p>
 						<div className="flex flex-wrap gap-3">
 							<Link

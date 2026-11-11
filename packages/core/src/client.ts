@@ -47,7 +47,7 @@ export const systemClock: Clock = {
  * One request, as a plugin's link sees it. `TDecl` is what the plugin declares:
  * `options` has the fields it reads.
  *
- * @see https://raf-query.katt.dev/docs/plugins#plugins
+ * @see https://raf-query.katt.dev/docs/plugins#writing-a-plugin
  */
 export interface Operation<TDecl extends Decl = Decl> {
 	readonly client: QueryClient;
@@ -85,7 +85,7 @@ type SetupFunction = (client: QueryClient, signal: AbortSignal) => void;
  * a feature's `setup`, and values for every `queryFn`'s context. `TDecl` is
  * what it declares: see {@link plugin}.
  *
- * @see https://raf-query.katt.dev/docs/plugins#plugins
+ * @see https://raf-query.katt.dev/docs/plugins#writing-a-plugin
  */
 export interface Plugin<TDecl extends Decl = NoDecl> extends Declares<TDecl> {
 	readonly context?: object;
@@ -200,7 +200,7 @@ interface OptionsDecl {
  * });
  * ```
  *
- * @see https://raf-query.katt.dev/docs/plugins#plugins
+ * @see https://raf-query.katt.dev/docs/plugins#writing-a-plugin
  */
 export function plugin<TDecl extends OptionsDecl = NoDecl>(
 	definition?: PlainDefinition<NoInfer<TDecl>>,

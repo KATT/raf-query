@@ -1,11 +1,21 @@
-import { DEFAULT_STALE_TIME } from "@examples/db/types";
-import { createQueryClient, type QueryClientConfig } from "@raf-query/react";
+import { DEFAULT_STALE_TIME, type QueryTimeDefaults } from "@examples/db/types";
+import { createQueryClient, recommended } from "@raf-query/react";
 import { cache } from "react";
 
-/** The server render's client. The browser client's times come from the menu. */
-const queryClientConfig = {
-	defaults: { staleTime: DEFAULT_STALE_TIME },
-} as const satisfies QueryClientConfig;
+/**
+ * The app's query client. Server components and client components each
+ * make theirs here, so both have the same plugins and run the same
+ * factories. It reads `defaults` live, so the settings menu changes
+ * `staleTime` by mutating that object, without a new client.
+ */
+export function makeQueryClient(defaults: QueryTimeDefaults) {
+	return createQueryClient({ defaults, plugins: recommended() });
+}
 
-/** The server components' query client, one per request. */
-export const getQueryClient = cache(() => createQueryClient(queryClientConfig));
+/**
+ * The server components' query client, one per request. The browser
+ * client's times come from the menu.
+ */
+export const getQueryClient = cache(() =>
+	makeQueryClient({ staleTime: DEFAULT_STALE_TIME }),
+);

@@ -10,17 +10,17 @@ import { authors, postQuery, posts, postsQuery } from "~/queries.ts";
 declare const slug: string;
 
 // #region tags
-import { bindQueryOptions, part } from "@raf-query/react";
+import { bindQueryOptions, plugin } from "@raf-query/react";
 
 interface Tags {
 	readonly options: { readonly tags?: ReadonlyArray<string> };
 }
 
 // Declares the `tags` option on the clients that have it
-const tagged = part<Tags>();
+const tagged = plugin<Tags>();
 
 export function makeQueryClient() {
-	return createQueryClient({ parts: [...recommended(), tagged] });
+	return createQueryClient({ plugins: [...recommended(), tagged] });
 }
 
 // In the app's `raf.ts`

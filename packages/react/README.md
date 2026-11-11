@@ -17,10 +17,31 @@ Requires React 19.2 or newer.
 
 ## Usage
 
+One function makes the app's query client, and one file binds the builders to it, so queries take the options of the client's plugins:
+
+```tsx
+// raf.ts
+import {
+	bindInfiniteQueryOptions,
+	bindQueryOptions,
+	createQueryClient,
+	recommended,
+} from "@raf-query/react";
+
+export const makeQueryClient = () =>
+	createQueryClient({ plugins: recommended() });
+
+export const queryOptions = bindQueryOptions<typeof makeQueryClient>();
+export const infiniteQueryOptions =
+	bindInfiniteQueryOptions<typeof makeQueryClient>();
+```
+
 A query is a factory. The loader and the component call the same one. A paged list, such as comments, uses `infiniteQueryOptions`.
 
 ```tsx
-import { group, infiniteQueryOptions, queryOptions } from "@raf-query/react";
+import { group } from "@raf-query/react";
+
+import { infiniteQueryOptions, queryOptions } from "./raf.ts";
 
 const posts = group("posts");
 const comments = group(posts, "comments");
@@ -98,10 +119,10 @@ function Comments(props: { handle: QueryHandle<typeof commentsQuery> }) {
 
 ## Entry points
 
-| Import                             | Use                                                                                                                                                                                                                 |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@raf-query/react`                 | `QueryClientProvider`, `useQuery`, `useInfiniteQuery`, `useIsFetching`, `HydrationBoundary`, `QueryDevtools`, and all of core (`group`, `dehydrate`, `hydrate`); what an app doesn't import stays out of its bundle |
-| `@raf-query/react/tanstack-router` | [TanStack Start and Router](https://raf-query.katt.dev/docs/tanstack-start) SSR streaming                                                                                                                           |
+| Import                             | Use                                                                                                                                                                                                                                                   |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@raf-query/react`                 | `QueryClientProvider`, `useQuery`, `useInfiniteQuery`, `useIsFetching`, `HydrationBoundary`, `QueryDevtools`, and all of core (`createQueryClient`, the binders, `group`, `dehydrate`, `hydrate`); what an app doesn't import stays out of its bundle |
+| `@raf-query/react/tanstack-router` | [TanStack Start and Router](https://raf-query.katt.dev/docs/tanstack-start) SSR streaming                                                                                                                                                             |
 
 ## License
 

@@ -13,7 +13,7 @@ import {
 
 /** The builders of factories that need no plugin: they run on any client. */
 export const queryOptions = bindQueryOptions();
-export const infiniteQueryOptions = bindInfiniteQueryOptions();
+const infiniteQueryOptions = bindInfiniteQueryOptions();
 
 export interface Issue {
 	readonly id: number;

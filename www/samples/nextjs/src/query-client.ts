@@ -3,7 +3,7 @@ import { cache } from "react";
 
 export function makeQueryClient() {
 	return createQueryClient({
-		parts: recommended(),
+		plugins: recommended(),
 		defaults: { staleTime: 5000 },
 	});
 }

@@ -1,12 +1,7 @@
 import { use } from "react";
-import {
-	createQueryClient,
-	group,
-	load,
-	queryOptions,
-	swr,
-	useQuery,
-} from "@raf-query/react";
+import { group, load, swr, useQuery } from "@raf-query/react";
+import { queryOptions } from "~/raf.ts";
+import { makeQueryClient } from "~/query-client.ts";
 
 interface Endpoint<TArgs, TData> {
 	readonly name: string;
@@ -25,7 +20,7 @@ declare const api: {
 
 declare const slug: string;
 
-const qc = createQueryClient();
+const qc = makeQueryClient();
 
 // #region factory-makers
 function endpointQuery<TArgs, TData>(endpoint: Endpoint<TArgs, TData>) {

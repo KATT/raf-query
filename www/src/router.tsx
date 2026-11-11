@@ -1,20 +1,17 @@
 import {
 	canDehydrate,
-	createQueryClient,
 	QueryClientProvider,
 	QueryDevtools,
-	retry,
 } from "@raf-query/react";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
 import { createRouter } from "@tanstack/react-router";
 
 import { NotFound } from "./components/not-found.tsx";
+import { makeQueryClient } from "./query-client.ts";
 import { routeTree } from "./routeTree.gen.ts";
 
 export function getRouter() {
-	// Pages and demo code only change with a deploy: nothing to refetch on
-	// focus, and no actions to invalidate after.
-	const queryClient = createQueryClient({ parts: [retry()] });
+	const queryClient = makeQueryClient();
 	const router = createRouter({
 		context: { queryClient },
 		defaultNotFoundComponent: NotFound,

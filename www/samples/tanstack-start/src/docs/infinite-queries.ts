@@ -1,4 +1,4 @@
-import { infiniteQueryOptions } from "@raf-query/react";
+import { infiniteQueryOptions } from "~/raf.ts";
 import { listComments, type PostComment } from "~/api.ts";
 import { comments } from "~/queries.ts";
 

@@ -1,4 +1,5 @@
-import { invalidateMany, useQueryClient } from "@raf-query/react";
+import { invalidateMany } from "@raf-query/react";
+import { useQueryClient } from "~/raf.ts";
 import { useActionState, useOptimistic } from "react";
 import { addComment, type PostComment } from "~/api.ts";
 import { commentsQuery } from "~/queries.ts";

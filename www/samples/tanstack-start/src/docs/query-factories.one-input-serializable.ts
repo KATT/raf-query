@@ -1,14 +1,10 @@
-import {
-	createQueryClient,
-	group,
-	infiniteQueryOptions,
-	load,
-	prefetch,
-} from "@raf-query/react";
+import { group, load, prefetch } from "@raf-query/react";
+import { infiniteQueryOptions } from "~/raf.ts";
 import { feedQuery, postQuery } from "~/queries.ts";
 import { type CommentPage, listComments } from "~/api.ts";
+import { makeQueryClient } from "~/query-client.ts";
 
-const qc = createQueryClient();
+const qc = makeQueryClient();
 const comments = group("comments");
 
 // #region one-input-serializable

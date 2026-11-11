@@ -1,16 +1,15 @@
 import {
 	createQueryClient,
-	focusRefetch,
 	load,
 	prefetch,
-	type QueryClient,
 	QueryClientProvider,
 	type QueryHandle,
-	queryOptions,
+	recommended,
 	removeAll,
 	revalidate,
 	useQuery,
 } from "@raf-query/react";
+import { queryOptions } from "~/raf.ts";
 import { act, render, screen } from "@testing-library/react";
 import { type ReactNode, Suspense, use } from "react";
 import { afterEach, beforeEach, expect, test } from "./testing.vitest.ts";
@@ -21,10 +20,20 @@ declare function Post(props: {
 }): ReactNode;
 
 // #region a-client-per-test
-let queryClient: QueryClient;
+// The app's plugins, so the client runs the app's factories. No retries:
+// a failing request fails at once.
+function makeTestClient() {
+	return createQueryClient({
+		isServer: false,
+		plugins: recommended(),
+		defaults: { retry: false },
+	});
+}
+
+let queryClient: ReturnType<typeof makeTestClient>;
 
 beforeEach(() => {
-	queryClient = createQueryClient({ isServer: false });
+	queryClient = makeTestClient();
 });
 
 afterEach(() => {
@@ -65,10 +74,6 @@ test("refetches on focus", async () => {
 		return <p>{views} views</p>;
 	}
 
-	queryClient = createQueryClient({
-		isServer: false,
-		parts: [focusRefetch()],
-	});
 	const [handles] = await load(queryClient, {
 		views: revalidate(viewsQuery),
 	});

@@ -3,20 +3,22 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
 	group,
-	infiniteQueryOptions,
 	invalidateAll,
 	invalidateMany,
 	invalidateOne,
 	load,
 	prefetch,
-	type QueryClient,
 	type QueryHandle,
 	useInfiniteQuery,
-	useQueryClient,
 } from "@raf-query/react";
 import { Suspense, use, useTransition } from "react";
 
 import { DemoBrowser } from "~/demo-kit/browser.tsx";
+import {
+	type DemoClient,
+	infiniteQueryOptions,
+	useQueryClient,
+} from "~/demo-kit/client.ts";
 import { formatTime, LoadMoreButton, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { type ListPage, pageOf, seedPosts } from "~/demo-kit/fixtures.ts";
@@ -178,7 +180,7 @@ function AuthorsCard(props: {
 
 const actions: ReadonlyArray<{
 	readonly code: string;
-	readonly run: (queryClient: QueryClient) => Promise<void>;
+	readonly run: (queryClient: DemoClient) => Promise<void>;
 }> = [
 	{
 		code: "invalidateMany(qc, posts)",

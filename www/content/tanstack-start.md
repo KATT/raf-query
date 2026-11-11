@@ -9,9 +9,17 @@ TanStack Router's loaders are where raf-query wants queries to start, and its SS
 
 ## Setup
 
+A function makes the app's query client, and `raf.ts` [binds the builders to it](./plugins.md#typing-options-by-the-client). Factories import `queryOptions` and `infiniteQueryOptions` from that file, and components import `useQueryClient`:
+
 ```sample
 tanstack-start/src/query-client.ts
 ```
+
+```sample
+tanstack-start/src/raf.ts
+```
+
+The router makes a client and hands it to the integration:
 
 ```sample
 tanstack-start/src/router.tsx
@@ -25,7 +33,7 @@ tanstack-start/src/providers.tsx
 
 Mount DevTools only when `import.meta.env.DEV` is true so Vite drops the panel from production builds. The [example app](./examples.md) always renders it, so the panel stays available in the deployed demo.
 
-Type the router context in the root route, so loaders see `queryClient`:
+Type the [router context](https://tanstack.com/router/latest/docs/framework/react/guide/router-context) in the root route, so loaders see `queryClient`. It's the app's client, `ReturnType<typeof makeQueryClient>`, so `load` runs the app's factories on it; the bare `QueryClient` type stands for any client, whatever its plugins:
 
 ```sample
 tanstack-start/src/routes/__root.tsx

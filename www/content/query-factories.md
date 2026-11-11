@@ -11,6 +11,16 @@ A query is a **factory**: a function of zero or one argument that returns `query
 tanstack-start/src/docs/query-factories.ts#intro
 ```
 
+## The builders come from your app
+
+`queryOptions` and `infiniteQueryOptions` aren't imported from `@raf-query/react`. An app binds them to the function that makes its client, once, in its own `raf.ts`, and every factory imports them from there:
+
+```sample title="src/raf.ts"
+tanstack-start/src/raf.ts
+```
+
+A bound builder knows the client's [plugins](./plugins.md): it takes the options they declare, such as `retry`, its `queryFn` gets the context they give, and its factories run on the clients that have them. [Typing options by the client](./plugins.md#typing-options-by-the-client) covers binding, and what a package that can't name your client does instead.
+
 ## One input, serializable
 
 Factories take **at most one argument**; the type rejects two or more. That argument is the query's **input**, and it must be serializable, because it's what a [handle](./reading-queries.md#handles) carries from the loader (or the server) to the component.
@@ -44,7 +54,7 @@ Options set in the factory override the client's [defaults](./important-defaults
 | `stream`            | Folds the chunks of a `queryFn` that returns an async iterable. See [Streaming](./query-functions.md#streaming) |
 | `ssr`               | `false` for data only a browser has. See [Browser-only queries](./ssr-and-hydration.md#browser-only-queries)    |
 
-Per-query retries, polling and focus refetching are options of the client's [parts](./links-and-features.md): `retry: 1` with `retry()`, `refetchInterval: 5000` with `polling()`. The `queryOptions` that `@raf-query/react` exports takes the options in the table. To set a part's option, build the factory with the `queryOptions` your app [binds to its client](./links-and-features.md#typing-options-by-the-client). See [Retries](./retries.md), [Polling](./polling.md) and [Window focus refetching](./window-focus-refetching.md).
+Per-query retries, polling and focus refetching are options of the client's [plugins](./plugins.md): `retry: 1` with `retry()`, `refetchInterval: 5000` with `polling()`. The builders take them because they're bound to a client that has those plugins. See [Retries](./retries.md), [Polling](./polling.md) and [Window focus refetching](./window-focus-refetching.md).
 
 `infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam` and `maxPages`. See [Infinite queries](./infinite-queries.md).
 
@@ -66,7 +76,7 @@ The key's shape is part of the factory's type too (`readonly ["posts", "bySlug",
 
 ## Factory makers
 
-A library can wrap a typed API in a function that returns a factory, generic over the endpoint. Name the factory it returns, and use that wherever a factory goes; the types flow from the endpoint:
+A library can wrap a typed API in a function that returns a factory, generic over the endpoint. Name the factory it returns, and use that wherever a factory goes; the types flow from the endpoint. In a package, the maker's `queryOptions` is one [bound to the plugins it needs](./plugins.md#binding-a-library-to-plugins):
 
 ```sample
 tanstack-start/src/docs/query-factories.factory-makers.ts#factory-makers

@@ -66,17 +66,17 @@ A target is any object with `where(query, param)`, typed `Target<TOptions, TPara
 tanstack-start/src/docs/query-invalidation.ts#matching-with-where
 ```
 
-`input` is the input of the latest factory call for that entry. An entry that was only hydrated, and not yet read or started on this client, has `undefined` input and `{}` as its `options`, so match on `queryKey` to include those. `TOptions` is the options the target reads; `object` fits a target that reads none. `query.options` has the options the client's parts declare: see [Selecting queries by options](./links-and-features.md#selecting-queries-by-options).
+`input` is the input of the latest factory call for that entry. An entry that was only hydrated, and not yet read or started on this client, has `undefined` input and `{}` as its `options`, so match on `queryKey` to include those. `TOptions` is the options the target reads; `object` fits a target that reads none. `query.options` has the options the client's plugins declare: see [Selecting queries by options](./plugins.md#selecting-queries-by-options).
 
 ### Tags
 
-A tag cuts across groups: every query that shows some content, wherever its key starts. raf-query has no tags of its own, because a tag is a `where` target over an option: a few lines in your app. A [part](./links-and-features.md#options-only) that only declares a `tags` option gives it to the client's queries, and `tag(name)` matches the queries that list `name`:
+A tag cuts across groups: every query that shows some content, wherever its key starts. raf-query has no tags of its own, because a tag is a `where` target over an option: a few lines in your app. A [plugin](./plugins.md#options-only) that only declares a `tags` option gives it to the client's queries, and `tag(name)` matches the queries that list `name`:
 
 ```sample
 tanstack-start/src/docs/query-invalidation.ts#tags
 ```
 
-`Tagged` names the option the way a client with the part has it: present, and possibly `undefined`. Typed that way, `tag()` fits only clients made with `tagged`, and TypeScript rejects it on the others. To have one target for every tag, take the tag as the parameter:
+`Tagged` names the option the way a client with the plugin has it: present, and possibly `undefined`. Typed that way, `tag()` fits only clients made with `tagged`, and TypeScript rejects it on the others. To have one target for every tag, take the tag as the parameter:
 
 ```sample
 tanstack-start/src/docs/query-invalidation.ts#tags-param

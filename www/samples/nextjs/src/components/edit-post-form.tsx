@@ -1,9 +1,10 @@
 "use client";
 
-import { invalidateOne, useQueryClient } from "@raf-query/react";
+import { invalidateOne } from "@raf-query/react";
 
 import { updatePost } from "~/actions.ts";
 import { postQuery } from "~/queries.ts";
+import { useQueryClient } from "~/raf.ts";
 
 export function EditPostForm(props: { slug: string }) {
 	const qc = useQueryClient();

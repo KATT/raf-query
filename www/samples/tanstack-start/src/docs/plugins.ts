@@ -29,14 +29,14 @@ export function postsQuery(input: { page: number; sort: "newest" | "oldest" }) {
 // #endregion
 
 // #region link
-import { part } from "@raf-query/react";
+import { plugin } from "@raf-query/react";
 
 interface ErrorToasts {
 	readonly options: { readonly errorMessage?: string };
 }
 
 // One toast per failed request, with the query's own message.
-const errorToasts = part<ErrorToasts>({
+const errorToasts = plugin<ErrorToasts>({
 	link: async (op, next) => {
 		try {
 			return await next(op);
@@ -52,7 +52,7 @@ const errorToasts = part<ErrorToasts>({
 import { invalidateAll } from "@raf-query/react";
 
 // Refetches what's on screen when the server says something changed.
-const liveUpdates = part({
+const liveUpdates = plugin({
 	setup: (client, signal) => {
 		const events = new EventSource("/api/events");
 		events.addEventListener("message", () => void invalidateAll(client));
@@ -68,7 +68,7 @@ interface Api {
 
 // A function, so each client is given its own API client.
 const api = (apiClient: ApiClient) =>
-	part<Api>({ context: { api: apiClient } });
+	plugin<Api>({ context: { api: apiClient } });
 // #endregion
 
 // #region declaration
@@ -77,7 +77,7 @@ export interface Ownership {
 }
 
 // No link, setup or context: it only declares `owner`.
-const ownership = part<Ownership>();
+const ownership = plugin<Ownership>();
 // #endregion
 
 // #region root
@@ -85,7 +85,7 @@ import { createQueryClient, recommended } from "@raf-query/react";
 
 export function makeQueryClient(apiClient: ApiClient) {
 	return createQueryClient({
-		parts: [
+		plugins: [
 			errorToasts,
 			...recommended(),
 			liveUpdates,

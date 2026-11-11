@@ -1,12 +1,7 @@
-import {
-	canDehydrate,
-	group,
-	load,
-	prefetch,
-	queryOptions,
-	type QueryClient,
-} from "@raf-query/react";
+import { canDehydrate, group, load, prefetch } from "@raf-query/react";
+import { queryOptions } from "~/raf.ts";
 import { setupRouterIntegration } from "@raf-query/react/tanstack-router";
+import type { makeQueryClient } from "~/query-client.ts";
 
 const pushState = group("pushState");
 
@@ -24,7 +19,7 @@ export function pushStateQuery(input: { slug: string }) {
 }
 // #endregion
 
-declare const queryClient: QueryClient;
+declare const queryClient: ReturnType<typeof makeQueryClient>;
 
 // #region browser-only-loader
 export async function loader(slug: string) {

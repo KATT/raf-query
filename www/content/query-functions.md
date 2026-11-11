@@ -60,17 +60,17 @@ Each `queryFn` receives a context object:
 - `pageParam`, the page to load
 - `direction: "forward" | "backward"`, which end of the list the page is added to
 
-### Context from the client's parts
+### Context from the client's plugins
 
-A client's [parts](./links-and-features.md#context-for-every-queryfn) can add to the context. A part that declares a `context` gives its fields to every `queryFn` the client runs. A server makes one client per request, so this is where per-request services go, such as an API client that sends the request's cookies:
+A client's [plugins](./plugins.md#context-for-every-queryfn) can add to the context. A plugin that declares a `context` gives its fields to every `queryFn` the client runs. A server makes one client per request, so this is where per-request services go, such as an API client that sends the request's cookies:
 
 ```sample
 tanstack-start/src/docs/query-functions.context.ts#context
 ```
 
-A part can give its context [per request](./links-and-features.md#context-per-request) instead, from its link.
+A plugin can give its context [per request](./plugins.md#context-per-request) instead, from its link.
 
-`api` is typed because this `queryOptions` is [bound to the client](./links-and-features.md#typing-options-by-the-client). With the `queryOptions` that `@raf-query/react` exports, a `queryFn` gets `queryKey`, `signal` and `client` only.
+`api` is typed because this `queryOptions` is [bound to the client](./plugins.md#typing-options-by-the-client) that has the plugin. A `queryFn` built for a client without it gets `queryKey`, `signal` and `client` only.
 
 ## Redirects
 

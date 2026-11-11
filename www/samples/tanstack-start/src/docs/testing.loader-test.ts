@@ -1,4 +1,9 @@
-import { createQueryClient, getData, isFetching } from "@raf-query/react";
+import {
+	createQueryClient,
+	getData,
+	isFetching,
+	recommended,
+} from "@raf-query/react";
 import { expect, test } from "./testing.vitest.ts";
 
 import { commentsQuery, postQuery } from "~/queries.ts";
@@ -7,7 +12,10 @@ import { postLoader } from "./testing.post-loader.ts";
 
 // #region testing-loaders
 test("the post loader starts both queries", async () => {
-	const queryClient = createQueryClient({ isServer: false });
+	const queryClient = createQueryClient({
+		isServer: false,
+		plugins: recommended(),
+	});
 	await postLoader({
 		context: { queryClient },
 		params: { slug: "hello" },

@@ -5,7 +5,7 @@ section: Guides
 order: 13
 ---
 
-`retry()` is a [part](./links-and-features.md#parts) of the client that retries failed requests. With its defaults, a request that fails in the browser is retried **3 times**, waiting 1, 2 and then 4 seconds, before the query counts as failed. Readers keep suspending, or keep showing their current data, the whole time.
+`retry()` is a [plugin](./plugins.md) that retries a client's failed requests. With its defaults, a request that fails in the browser is retried **3 times**, waiting 1, 2 and then 4 seconds, before the query counts as failed. Readers keep suspending, or keep showing their current data, the whole time.
 
 Nothing retries unless the client has it, on its own or through `recommended()`:
 
@@ -20,13 +20,13 @@ Some requests are never retried:
 
 ## Attempts per query
 
-A query sets its own attempts with `retry`: a number of retries after the first attempt, or `false` for none. It wins over the part's `attempts`:
+A query sets its own attempts with `retry`: a number of retries after the first attempt, or `false` for none. It wins over the plugin's `attempts`:
 
 ```sample
 tanstack-start/src/docs/retries.ts#attempts-per-query
 ```
 
-`retry()` declares the option, so it's set with the `queryOptions` an app [binds to its client](./links-and-features.md#typing-options-by-the-client), here in `raf.ts`. The `queryOptions` that `@raf-query/react` exports doesn't take it, and neither does one bound to a client without `retry()`.
+`retry()` declares the option, so a factory can set it when its `queryOptions`, the one the app's `raf.ts` [binds to its client](./plugins.md#typing-options-by-the-client), is bound to a client that has `retry()`. On any other builder, `retry` is a type error.
 
 The client's `defaults` set it for every query that doesn't set its own:
 
@@ -36,7 +36,7 @@ tanstack-start/src/docs/retries.ts#attempts-per-client
 
 ## Options
 
-`retry({ attempts, delay, when })` configures the part:
+`retry({ attempts, delay, when })` configures the plugin:
 
 | Option     | Default                                                                                                                              |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
@@ -56,7 +56,7 @@ In the browser, a retry waits while [`navigator.onLine`](https://developer.mozil
 
 ## Timeouts
 
-`timeout(ms)` is another part: it fails a request that takes longer than `ms` with a `QueryTimeoutError`, and aborts its `signal`. Both wrap each request with a link, and links wrap each other in the order of `parts`, outermost first, so where it goes decides what it times:
+`timeout(ms)` is another plugin: it fails a request that takes longer than `ms` with a `QueryTimeoutError`, and aborts its `signal`. Both wrap each request with a link, and links wrap each other in the order of `plugins`, outermost first, so where it goes decides what it times:
 
 ```sample
 tanstack-start/src/docs/retries.ts#timeouts
@@ -94,7 +94,7 @@ This is one more reason to choose per query: wait with `swr` for what the page c
 
 ## One place for every error
 
-A part's link sees every request of the client, so it's the place for logging and toasts. Put it before `retry()` to see each request's final error, after its retries. It can declare an option of its own, for a per-query message:
+A plugin's link sees every request of the client, so it's the place for logging and toasts. Put it before `retry()` to see each request's final error, after its retries. It can declare an option of its own, for a per-query message:
 
 ```sample
 tanstack-start/src/docs/retries.ts#one-place-for-every-error

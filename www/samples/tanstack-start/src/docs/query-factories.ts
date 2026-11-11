@@ -1,7 +1,9 @@
 import { getPost, listComments } from "~/api.ts";
 
 // #region intro
-import { group, infiniteQueryOptions, queryOptions } from "@raf-query/react";
+import { group } from "@raf-query/react";
+
+import { infiniteQueryOptions, queryOptions } from "~/raf.ts";
 
 export const posts = group("posts");
 

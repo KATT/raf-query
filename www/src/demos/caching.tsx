@@ -4,12 +4,12 @@ import {
 	load,
 	prefetch,
 	type QueryHandle,
-	infiniteQueryOptions,
 	useInfiniteQuery,
 } from "@raf-query/react";
 import { use } from "react";
 
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
+import { infiniteQueryOptions } from "~/demo-kit/client.ts";
 import { formatTime, LoadMoreButton, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { pageOf, seedPosts } from "~/demo-kit/fixtures.ts";

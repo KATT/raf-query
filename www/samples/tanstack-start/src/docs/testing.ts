@@ -3,6 +3,7 @@ import {
 	createQueryClient,
 	getData,
 	load,
+	recommended,
 	setData,
 	swr,
 } from "@raf-query/react";
@@ -13,6 +14,7 @@ import { postQuery } from "~/queries.ts";
 // #region seeding-the-cache
 const queryClient = createQueryClient({
 	isServer: false,
+	plugins: recommended(),
 	defaults: { staleTime: Number.POSITIVE_INFINITY },
 });
 
@@ -87,7 +89,11 @@ function fakeClock(): Clock & { advance(ms: number): void } {
 
 test("garbage-collects unread entries", () => {
 	const clock = fakeClock();
-	const queryClient = createQueryClient({ clock, isServer: false });
+	const queryClient = createQueryClient({
+		clock,
+		isServer: false,
+		plugins: recommended(),
+	});
 	const post: Post = {
 		slug: "hello",
 		title: "Hello",

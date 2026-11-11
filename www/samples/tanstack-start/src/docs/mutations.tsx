@@ -1,8 +1,5 @@
-import {
-	invalidateMany,
-	invalidateOne,
-	useQueryClient,
-} from "@raf-query/react";
+import { invalidateMany, invalidateOne } from "@raf-query/react";
+import { useQueryClient } from "~/raf.ts";
 import { useOptimistic, useTransition } from "react";
 import { type Post, updatePost } from "~/api.ts";
 import { authors, postQuery, postsQuery } from "~/queries.ts";

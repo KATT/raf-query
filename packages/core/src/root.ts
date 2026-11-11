@@ -11,7 +11,7 @@
  * What a plugin declares: the per-query `options` it reads, and the `context`
  * it gives every `queryFn`, for the client or per request from its link.
  *
- * @see https://raf-query.katt.dev/docs/plugins#plugins
+ * @see https://raf-query.katt.dev/docs/plugins#writing-a-plugin
  */
 export interface Decl {
 	readonly context?: object;
@@ -122,7 +122,7 @@ export type Root<TDecl> = TDecl extends unknown
 	: never;
 
 /**
- * The root of a client with no plugins, and of the unbound builders. Every
+ * The root of a client with no plugins, and of a builder bound to none. Every
  * client has it, so the bare `QueryClient` type takes any client.
  */
 export type NoPlugins = Root<unknown>;

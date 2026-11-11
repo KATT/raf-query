@@ -15,7 +15,7 @@ The cache's part is what happens after the write: [invalidating](./query-invalid
 
 ## Actions
 
-A mutation is a React action written in the component: get the client with `useQueryClient()`, await the write, then await a verb that invalidates what the write changed:
+A mutation is a React action written in the component: get the client with `useQueryClient()`, the one your `raf.ts` [binds to the app's client](./plugins.md#typing-options-by-the-client), await the write, then await a verb that invalidates what the write changed:
 
 ```sample
 tanstack-start/src/docs/mutations.tsx#intro
@@ -27,14 +27,14 @@ The verb resolves once the queries it invalidated that are on screen have refetc
 
 The action decides what to invalidate after the write, so it can use the action's arguments and the write's result. Verbs take factories, groups and `where` targets, never raw keys:
 
-| Verb                                          | Marks stale                                         |
-| --------------------------------------------- | --------------------------------------------------- |
-| `invalidateOne(queryClient, factory, input)`  | One query                                           |
-| `invalidateMany(queryClient, factory, part?)` | A factory's queries, optionally only matching input |
-| `invalidateMany(queryClient, group)`          | Every query in a group                              |
-| `invalidateMany(queryClient, tag, param?)`    | Every query with a tag                              |
-| `invalidateMany(queryClient, [target, …])`    | Every query any of the targets matches              |
-| `invalidateAll(queryClient)`                  | Every query                                         |
+| Verb                                             | Marks stale                                         |
+| ------------------------------------------------ | --------------------------------------------------- |
+| `invalidateOne(queryClient, factory, input)`     | One query                                           |
+| `invalidateMany(queryClient, factory, partial?)` | A factory's queries, optionally only matching input |
+| `invalidateMany(queryClient, group)`             | Every query in a group                              |
+| `invalidateMany(queryClient, tag, param?)`       | Every query with a tag                              |
+| `invalidateMany(queryClient, [target, …])`       | Every query any of the targets matches              |
+| `invalidateAll(queryClient)`                     | Every query                                         |
 
 Queries on screen refetch at once, the rest when they're next loaded. See [Query invalidation](./query-invalidation.md).
 
@@ -71,6 +71,8 @@ tanstack-start/src/docs/mutations.optimistic-updates.tsx#optimistic-updates
 ```sample
 tanstack-start/src/docs/mutations.ts#optimistic-updates-in-the-cache
 ```
+
+`renamePost` takes the app's client, `ReturnType<typeof makeQueryClient>`: the type the `useQueryClient()` from `raf.ts` returns, and the one that runs the app's factories.
 
 `feedQuery` is [paged](./infinite-queries.md), so its data is `{ pages, pageParams }`: the updater patches the post's title in whichever page holds it and keeps `pageParams` as they are.
 

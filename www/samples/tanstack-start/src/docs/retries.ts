@@ -1,6 +1,6 @@
 import {
 	createQueryClient,
-	part,
+	plugin,
 	recommended,
 	retry,
 	timeout,
@@ -10,9 +10,9 @@ import { getPost, HttpError } from "~/api.ts";
 import { posts } from "~/queries.ts";
 
 // #region intro
-const queryClient = createQueryClient({ parts: [retry()] });
+const queryClient = createQueryClient({ plugins: [retry()] });
 // or
-const withEverything = createQueryClient({ parts: recommended() });
+const withEverything = createQueryClient({ plugins: recommended() });
 // #endregion
 
 // #region attempts-per-query
@@ -29,14 +29,14 @@ export function postQuery(input: { slug: string }) {
 
 // #region attempts-per-client
 const once = createQueryClient({
-	parts: recommended(),
+	plugins: recommended(),
 	defaults: { retry: 1 },
 });
 // #endregion
 
 // #region options
 const patient = createQueryClient({
-	parts: [
+	plugins: [
 		retry({
 			attempts: 5,
 			delay: (attempt) => 500 * (attempt + 1),
@@ -48,10 +48,10 @@ const patient = createQueryClient({
 
 // #region timeouts
 // Each attempt gets 10 seconds.
-const perAttempt = createQueryClient({ parts: [retry(), timeout(10_000)] });
+const perAttempt = createQueryClient({ plugins: [retry(), timeout(10_000)] });
 
 // The request and all its retries get 30 seconds.
-const overall = createQueryClient({ parts: [timeout(30_000), retry()] });
+const overall = createQueryClient({ plugins: [timeout(30_000), retry()] });
 // #endregion
 
 declare function showToast(message: string): void;
@@ -66,7 +66,7 @@ interface ErrorReports {
 	readonly options: { readonly errorMessage?: string };
 }
 
-const reportErrors = part<ErrorReports>({
+const reportErrors = plugin<ErrorReports>({
 	link: async (op, next) => {
 		try {
 			return await next(op);
@@ -80,12 +80,12 @@ const reportErrors = part<ErrorReports>({
 	},
 });
 
-const reporting = createQueryClient({ parts: [reportErrors, retry()] });
+const reporting = createQueryClient({ plugins: [reportErrors, retry()] });
 // #endregion
 
 // #region redirects
 const withRedirects = createQueryClient({
-	parts: [
+	plugins: [
 		retry({
 			when: (error) =>
 				!isRedirect(error) &&

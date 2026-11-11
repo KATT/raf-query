@@ -1,7 +1,8 @@
-import { load, type QueryClient, swr } from "@raf-query/react";
+import { load, swr } from "@raf-query/react";
 import { commentsQuery } from "~/queries.ts";
+import type { makeQueryClient } from "~/query-client.ts";
 
-declare const queryClient: QueryClient;
+declare const queryClient: ReturnType<typeof makeQueryClient>;
 
 declare const slug: string;
 

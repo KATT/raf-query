@@ -6,16 +6,15 @@ import {
 	invalidateMany,
 	load,
 	type QueryHandle,
-	queryOptions,
 	swr,
 	useIsFetching,
 	useQuery,
-	useQueryClient,
 } from "@raf-query/react";
 import { RefreshCw } from "lucide-react";
 import { startTransition, use } from "react";
 
 import { DemoBrowser } from "~/demo-kit/browser.tsx";
+import { queryOptions, useQueryClient } from "~/demo-kit/client.ts";
 import { Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";

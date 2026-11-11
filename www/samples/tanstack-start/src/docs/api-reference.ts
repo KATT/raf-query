@@ -2,8 +2,8 @@ import {
 	createQueryClient,
 	load,
 	prefetch,
-	type QueryClientConfig,
 	type QueryHandle,
+	recommended,
 	swr,
 	useQuery,
 	type UseQueryOptions,
@@ -11,10 +11,11 @@ import {
 import { use } from "react";
 import { commentsQuery, postQuery } from "~/queries.ts";
 
-declare const config: QueryClientConfig | undefined;
-
 // #region createqueryclient
-const queryClient = createQueryClient(config);
+const queryClient = createQueryClient({
+	plugins: recommended(),
+	defaults: { staleTime: 30_000 },
+});
 // #endregion
 
 declare const slug: string;

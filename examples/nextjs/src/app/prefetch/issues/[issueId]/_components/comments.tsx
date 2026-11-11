@@ -12,12 +12,12 @@ import { warnMockDbWrite } from "@examples/kit/lib/mock-db-toast";
 import {
 	invalidateMany,
 	type QueryHandle,
-	useQueryClient,
 	useInfiniteQuery,
 } from "@raf-query/react";
 import { use, useOptimistic, useRef } from "react";
 
 import { commentsQuery, issues } from "~/queries.ts";
+import { useQueryClient } from "~/raf.ts";
 
 export function Comments(props: {
 	readonly handle: QueryHandle<typeof commentsQuery>;

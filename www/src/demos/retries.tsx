@@ -8,11 +8,9 @@ import {
 	polling,
 	prefetch,
 	type QueryHandle,
-	queryOptions,
 	reconnectRefetch,
 	retry,
 	useQuery,
-	useQueryClient,
 } from "@raf-query/react";
 import {
 	CatchBoundary,
@@ -22,6 +20,7 @@ import { RefreshCw } from "lucide-react";
 import { createContext, startTransition, Suspense, use } from "react";
 
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
+import { queryOptions, useQueryClient } from "~/demo-kit/client.ts";
 import { FailNextButton, formatTime, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { seedPosts } from "~/demo-kit/fixtures.ts";
@@ -206,7 +205,7 @@ export default defineDemo({
 	Component: Retries,
 	createClient: () =>
 		createQueryClient({
-			parts: [
+			plugins: [
 				retry({ attempts: 2, delay: (attempt) => 500 * 2 ** attempt }),
 				focusRefetch(),
 				reconnectRefetch(),

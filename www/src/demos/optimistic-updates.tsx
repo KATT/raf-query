@@ -4,20 +4,22 @@ import { Skeleton } from "@examples/ui/components/skeleton";
 import { cn } from "@examples/ui/lib/utils";
 import {
 	group,
-	infiniteQueryOptions,
-	queryOptions,
 	invalidateMany,
 	load,
 	type QueryHandle,
 	swr,
 	useInfiniteQuery,
 	useQuery,
-	useQueryClient,
 } from "@raf-query/react";
 import { useActionState, useOptimistic, use } from "react";
 import { useFormStatus } from "react-dom";
 
 import { DemoBrowser } from "~/demo-kit/browser.tsx";
+import {
+	infiniteQueryOptions,
+	queryOptions,
+	useQueryClient,
+} from "~/demo-kit/client.ts";
 import {
 	FailNextButton,
 	LoadMoreButton,

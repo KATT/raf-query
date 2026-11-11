@@ -5,35 +5,35 @@ section: Guides
 order: 1
 ---
 
-A client from `createQueryClient()` caches, dedupes and garbage-collects, and nothing else. Retries, refetching on focus and reconnect, and polling are [**parts**](./links-and-features.md#parts) you give the client. `recommended()` returns the ones most apps want:
+A client from `createQueryClient()` caches, dedupes and garbage-collects, and nothing else. Retries, refetching on focus and reconnect, and polling are [**plugins**](./plugins.md) you give the client. `recommended()` returns the ones most apps want:
 
 ```ts twoslash
 import { createQueryClient, recommended } from "@raf-query/react";
 // ---cut---
 export function makeQueryClient() {
 	return createQueryClient({
-		parts: recommended(),
+		plugins: recommended(),
 		defaults: { staleTime: 30_000 },
 	});
 }
 ```
 
-| Part                 | Kind    | What it does                                                     |
+| Plugin               | Kind    | What it does                                                     |
 | -------------------- | ------- | ---------------------------------------------------------------- |
 | `retry()`            | link    | Retries failed requests. See [Retries](./retries.md)             |
 | `focusRefetch()`     | feature | Refetches read, stale queries when the window regains focus      |
 | `reconnectRefetch()` | feature | Refetches read, stale queries when the browser comes back online |
 | `polling()`          | feature | Refetches read queries on a timer set by `refetchInterval`       |
 
-A link wraps every request; a feature runs while a provider has the client mounted. `recommended()` is an array: pass `parts` yourself to pick some of them, or spread it among your own, `parts: [...recommended(), myPart]`.
+A link wraps every request; a feature runs while a provider has the client mounted. `recommended()` is an array: pass `plugins` yourself to pick some of them, or spread it among your own, `plugins: [...recommended(), myPlugin]`.
 
-Each part declares the per-query options it reads, such as `retry` and `refetchInterval`. A factory sets them through a `queryOptions` that the app binds to its client, once, in a file of its own:
+Each plugin declares the per-query options it reads, such as `retry` and `refetchInterval`. A factory can set them because its `queryOptions` is the one the app binds to that client, once, in a file of its own:
 
 ```sample title="src/raf.ts"
 tanstack-start/src/raf.ts
 ```
 
-The `queryOptions` that `@raf-query/react` exports takes the core's options only: `staleTime`, `gcTime`, `structuralSharing` and `ssr`. [Parts, options and context](./links-and-features.md) covers both, and writing parts of your own.
+Beside the plugins' options, every builder takes the core's: `staleTime`, `gcTime`, `structuralSharing` and `ssr`. [Plugins](./plugins.md) covers binding, and writing plugins of your own.
 
 Keep these in mind as you read the rest of the guides. Where they mention retries, focus and reconnect refetching, or polling, they assume `recommended()`:
 
@@ -71,13 +71,13 @@ See [SSR and hydration](./ssr-and-hydration.md#server-clients).
 
 ## Changing the defaults
 
-`defaults` sets an option for every query of the client: the core's `staleTime`, `gcTime` and `structuralSharing`, and the options the client's parts declare. A query's own option, set in its factory, wins:
+`defaults` sets an option for every query of the client: the core's `staleTime`, `gcTime` and `structuralSharing`, and the options the client's plugins declare. A query's own option, set in its factory, wins:
 
 ```ts twoslash
 import { createQueryClient, recommended } from "@raf-query/react";
 // ---cut---
 const queryClient = createQueryClient({
-	parts: recommended(),
+	plugins: recommended(),
 	defaults: {
 		staleTime: 30_000,
 		gcTime: 10 * 60_000,
@@ -93,8 +93,8 @@ const queryClient = createQueryClient({
 | `staleTime`                        | Client or query                            | `0` ms                                                                        |
 | `gcTime`                           | Client or query                            | 5 minutes; never on the server                                                |
 | `structuralSharing`                | Client or query                            | `true`                                                                        |
-| `retry({ attempts, delay, when })` | The part                                   | 3 attempts, doubling from 1 s up to 30 s, every error but a thrown `Response` |
-| `retry`                            | Client or query, with `retry()`            | The part's `attempts`; `false` turns retries off                              |
+| `retry({ attempts, delay, when })` | The plugin                                 | 3 attempts, doubling from 1 s up to 30 s, every error but a thrown `Response` |
+| `retry`                            | Client or query, with `retry()`            | The plugin's `attempts`; `false` turns retries off                            |
 | `refetchInterval`                  | Client or query, with `polling()`          | None                                                                          |
 | `refetchOnWindowFocus`             | Client or query, with `focusRefetch()`     | `true`                                                                        |
 | `refetchOnReconnect`               | Client or query, with `reconnectRefetch()` | `true`                                                                        |

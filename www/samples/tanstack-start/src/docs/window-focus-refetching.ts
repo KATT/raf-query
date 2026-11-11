@@ -11,15 +11,15 @@ import { posts } from "~/queries.ts";
 
 // #region the-features
 const queryClient = createQueryClient({
-	parts: [focusRefetch(), reconnectRefetch()],
+	plugins: [focusRefetch(), reconnectRefetch()],
 });
 // or
-const withEverything = createQueryClient({ parts: recommended() });
+const withEverything = createQueryClient({ plugins: recommended() });
 // #endregion
 
 // #region turning-it-off
 // `recommended()` without focusRefetch() and reconnectRefetch()
-const withoutFocus = createQueryClient({ parts: [retry(), polling()] });
+const withoutFocus = createQueryClient({ plugins: [retry(), polling()] });
 // #endregion
 
 // #region per-query

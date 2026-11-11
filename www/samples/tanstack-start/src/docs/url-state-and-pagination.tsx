@@ -1,10 +1,10 @@
 import {
 	group,
 	type QueryHandle,
-	queryOptions,
 	useQuery,
 	waterfallHandle,
 } from "@raf-query/react";
+import { queryOptions } from "~/raf.ts";
 import { type ReactNode, Suspense, use, useState } from "react";
 import type { Post } from "~/api.ts";
 import { postQuery } from "~/queries.ts";

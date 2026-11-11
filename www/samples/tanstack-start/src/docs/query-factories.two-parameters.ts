@@ -1,16 +1,12 @@
-import {
-	createQueryClient,
-	group,
-	load,
-	prefetch,
-	queryOptions,
-} from "@raf-query/react";
+import { group, load, prefetch } from "@raf-query/react";
+import { queryOptions } from "~/raf.ts";
+import { makeQueryClient } from "~/query-client.ts";
 
 import { getPost } from "~/api.ts";
 
 const posts = group("posts");
 
-const qc = createQueryClient();
+const qc = makeQueryClient();
 
 // #region two-parameters
 function postPageQuery(slug: string, page: number) {

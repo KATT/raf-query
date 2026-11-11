@@ -535,3 +535,64 @@ html[data-announcement-dismissed] .announcement-bar {
 		transform: translateX(300%);
 	}
 }
+
+/* Diagrams inlined in the docs as SVG: themed by the site's tokens, and
+   scrolled sideways on a narrow screen rather than shrunk until unreadable. */
+.doc-diagram {
+	margin: 1.5rem 0;
+	overflow-x: auto;
+}
+
+.doc-diagram svg {
+	display: block;
+	width: 100%;
+	min-width: 640px;
+	max-width: 780px;
+	height: auto;
+	font-family: var(--font-sans);
+}
+
+.doc-diagram .box {
+	fill: var(--card);
+	stroke: var(--border);
+	stroke-width: 1;
+}
+
+.doc-diagram .result {
+	stroke: var(--primary);
+}
+
+.doc-diagram .code {
+	font-family: var(--font-mono);
+	font-size: 13px;
+	fill: var(--foreground);
+}
+
+.doc-diagram .note {
+	font-size: 12px;
+	fill: var(--muted-foreground);
+}
+
+.doc-diagram .head {
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	fill: var(--muted-foreground);
+}
+
+.doc-diagram .arrow {
+	fill: none;
+	stroke: var(--muted-foreground);
+	stroke-width: 1.25;
+}
+
+.doc-diagram .arrowhead {
+	fill: var(--muted-foreground);
+}
+
+.doc-diagram figcaption {
+	margin-top: 0.5rem;
+	font-size: 0.875rem;
+	color: var(--muted-foreground);
+}

@@ -9,14 +9,14 @@ Components that read queries need a query client and handles. In tests, create b
 
 ## A client per test
 
-Create a new client for every test, so no cached data leaks between them:
+Create a new client for every test, so no cached data leaks between them. Give it the app's plugins: the app's factories are [bound to its client](./plugins.md#typing-options-by-the-client), so `load` and the verbs run them only on a client that has those plugins.
 
 ```sample
 tanstack-start/src/docs/testing.tsx#a-client-per-test
 ```
 
-- A client starts with no [parts](./links-and-features.md#parts): no retries, no refetching on focus, no polling. A failing request fails at once. Add only the parts a test is about.
-- A factory built with a [bound builder](./links-and-features.md#typing-options-by-the-client) runs only on a client that has the parts the builder is bound to. For those, give the test's client the app's parts and turn a behavior off in its `defaults`: `createQueryClient({ parts: recommended(), defaults: { retry: false } })`.
+- `plugins` is what the app's `makeQueryClient` passes, here `recommended()`. A client with other plugins, or none, is a type error where a test hands it an app factory.
+- `defaults` turn a behavior off for the tests: with `retry: false`, a failing request fails at once.
 - `removeAll` drops every query and aborts requests in flight, so nothing runs after the test ends. Features stop when the `QueryClientProvider` unmounts, which Testing Library's `cleanup` does after each test.
 - `isServer: false` makes it a browser client even where `window` isn't defined. See [Server rendering](#server-rendering).
 
@@ -70,7 +70,7 @@ The default clock calls `Date.now()` and `setTimeout` each time, so [`vi.useFake
 
 ## Focus and the network
 
-`focusRefetch()` and `reconnectRefetch()` listen to the page's own events, so a test in a DOM environment fires them. Give the client the part, render under a `QueryClientProvider` (features only run while one has the client mounted), and dispatch the event:
+`focusRefetch()` and `reconnectRefetch()` listen to the page's own events, so a test in a DOM environment fires them. The client needs the plugin, which the test client has through `recommended()`. Render under a `QueryClientProvider` (features only run while one has the client mounted), and dispatch the event:
 
 ```sample
 tanstack-start/src/docs/testing.tsx#focus-and-the-network
@@ -83,7 +83,10 @@ tanstack-start/src/docs/testing.tsx#focus-and-the-network
 A client created where `window` isn't defined is a server client: no retries, no garbage collection, and cached data is never revalidated. To test browser behavior in Node without a DOM environment, pass `isServer: false`:
 
 ```ts twoslash
-import { createQueryClient } from "@raf-query/react";
+import { createQueryClient, recommended } from "@raf-query/react";
 // ---cut---
-const queryClient = createQueryClient({ isServer: false });
+const queryClient = createQueryClient({
+	isServer: false,
+	plugins: recommended(),
+});
 ```

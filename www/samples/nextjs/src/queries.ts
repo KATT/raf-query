@@ -1,7 +1,8 @@
 // #region home
-import { group, infiniteQueryOptions, queryOptions } from "@raf-query/react";
+import { group } from "@raf-query/react";
 
 import { getPost, listComments } from "./api.ts";
+import { infiniteQueryOptions, queryOptions } from "./raf.ts";
 
 // #endregion home
 import { listPosts } from "./api.ts";

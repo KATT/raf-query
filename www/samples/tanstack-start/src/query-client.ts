@@ -2,7 +2,7 @@ import { createQueryClient, recommended } from "@raf-query/react";
 
 export function makeQueryClient() {
 	return createQueryClient({
-		parts: recommended(),
+		plugins: recommended(),
 		defaults: { staleTime: 30_000 },
 	});
 }

@@ -1,7 +1,8 @@
-import { createQueryClient, load, prefetch, swr } from "@raf-query/react";
+import { load, prefetch, swr } from "@raf-query/react";
 import { commentsQuery, postQuery } from "~/queries.ts";
+import { makeQueryClient } from "~/query-client.ts";
 
-const qc = createQueryClient();
+const qc = makeQueryClient();
 
 declare const slug: string;
 
