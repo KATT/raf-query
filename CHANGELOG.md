@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.15.0](https://github.com/KATT/raf-query/compare/0.14.0...0.15.0) (2026-11-11)
+
+### ⚠ BREAKING CHANGES
+
+- **core:** a part's link can give or change the queryFn context per request ([#251](https://github.com/KATT/raf-query/issues/251))
+
+### Features
+
+- **core:** a part's link can give or change the queryFn context per request ([#251](https://github.com/KATT/raf-query/issues/251)) ([3358dde](https://github.com/KATT/raf-query/commit/3358ddeb1a0a19b0459af55d70b6e23a05a902d5))
+
 ## [0.14.0](https://github.com/KATT/raf-query/compare/0.13.2...0.14.0) (2026-11-11)
 
 ### ⚠ BREAKING CHANGES
