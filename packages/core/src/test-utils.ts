@@ -12,10 +12,9 @@ import {
 } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 
-import type { FocusRefetchMeta } from "./features/focus-refetch/focus-refetch.ts";
-import type { PollingMeta } from "./features/polling/polling.ts";
-import type { ReconnectRefetchMeta } from "./features/reconnect-refetch/reconnect-refetch.ts";
+import type { AnyPart } from "./client.ts";
 import {
+	bindQueryOptions,
 	type Clock,
 	createQueryClient,
 	group,
@@ -23,12 +22,15 @@ import {
 	load,
 	type LoadEntry,
 	type QueryClient,
-	type QueryClientConfig,
 	type InfiniteQueryFactory,
 	type SingleQueryFactory,
+	type FocusRefetch,
+	type Optional,
+	type OptionsOf,
+	type Polling,
 	type QueryHandle,
-	type QueryMeta,
 	queryOptions,
+	type ReconnectRefetch,
 	revalidate,
 	type Target,
 	waterfallHandle,
@@ -93,7 +95,7 @@ export const issues = group("issues");
 export const drafts = group(issues, "drafts");
 export const users = group("users");
 /** Issues by one author, or without a parameter every issue: a `where` target over data. */
-export const author: Target<QueryMeta, string | undefined> = {
+export const author: Target<object, string | undefined> = {
 	where: (query, name) => {
 		const issue =
 			// SAFETY: the backend's queries hold an issue, a draft string or pages.
@@ -102,10 +104,18 @@ export const author: Target<QueryMeta, string | undefined> = {
 		return by !== undefined && (name === undefined || by === name);
 	},
 };
-/** Queries whose `meta` says they're featured: the drafts. */
-export const featured: Target = {
-	where: (query) => query.meta.featured === true,
+/** What the drafts set: an option no part reads, for {@link featured} to match on. */
+interface Featured {
+	readonly options: { readonly featured?: boolean };
+}
+
+/** Queries whose options say they're featured: the drafts. */
+export const featured: Target<Featured["options"]> = {
+	where: (query) => query.options.featured === true,
 };
+
+/** Sets `featured` on any client, whether or not it declares it. */
+const featuredQueryOptions = bindQueryOptions<Optional<Featured>>();
 
 /** What the backend's issue query throws for an issue it doesn't have. */
 export class NotFoundError extends Error {
@@ -159,8 +169,8 @@ export function createBackend() {
 		});
 
 	const draftQuery = (input: { readonly id: number }) =>
-		queryOptions({
-			meta: { featured: true },
+		featuredQueryOptions({
+			featured: true,
 			queryFn: async (context) =>
 				JSON.stringify(await get(input.id, context.signal)),
 			queryKey: drafts("byId", input),
@@ -224,7 +234,9 @@ export async function start<T>(
 }
 
 /** A browser client on a fake clock. */
-export function testClient(config: QueryClientConfig = {}): QueryClient {
+export function testClient<const TParts extends ReadonlyArray<AnyPart> = []>(
+	config: Parameters<typeof createQueryClient<TParts>>[0] = {},
+) {
 	return createQueryClient({ clock: fakeClock(), isServer: false, ...config });
 }
 
@@ -308,7 +320,7 @@ export function mount(client: QueryClient, ui: ReactNode = null): RenderResult {
 /** A client with issues 1 and 2 and draft 3 cached and fresh forever. */
 export async function cached() {
 	const backend = createBackend();
-	const client = testClient({ staleTime: Infinity });
+	const client = testClient({ defaults: { staleTime: Infinity } });
 	const loading = load(client, {
 		draft: revalidate(backend.draftQuery, { id: 3 }),
 		one: revalidate(backend.issueQuery, { id: 1 }),
@@ -332,18 +344,22 @@ export async function cached() {
 	return { backend, client, handles, refetched };
 }
 
-type Meta = {
-	readonly refetchInterval?: PollingMeta["refetchInterval"];
-	readonly refetchOnReconnect?: ReconnectRefetchMeta["refetchOnReconnect"];
-	readonly refetchOnWindowFocus?: FocusRefetchMeta["refetchOnWindowFocus"];
-};
+type Refetching = Optional<FocusRefetch & Polling & ReconnectRefetch>;
 
-/** Queries that count their requests, each with its own `meta`. */
+/** The refetch features' options, for a query that sets them where the client has the feature. */
+type RefetchOptions = OptionsOf<Refetching>;
+
+const refetchingQueryOptions = bindQueryOptions<Refetching>();
+
+/** Queries that count their requests, each with its own options. */
 export function counted() {
 	const calls = new Map<string, number>();
-	const query = (input: { readonly meta?: Meta; readonly name: string }) =>
-		queryOptions({
-			meta: input.meta,
+	const query = (input: {
+		readonly name: string;
+		readonly options?: RefetchOptions;
+	}) =>
+		refetchingQueryOptions({
+			...input.options,
 			queryFn: () => {
 				const count = (calls.get(input.name) ?? 0) + 1;
 				calls.set(input.name, count);
@@ -352,8 +368,16 @@ export function counted() {
 			queryKey: issues("counted", input.name),
 		});
 	/** Read the named query in a component, under its own provider; it loads at once. */
-	const show = async (client: QueryClient, name: string, meta?: Meta) => {
-		const reader = read(client, query, waterfallHandle(query, { meta, name }));
+	const show = async (
+		client: QueryClient,
+		name: string,
+		options?: RefetchOptions,
+	) => {
+		const reader = read(
+			client,
+			query,
+			waterfallHandle(query, { name, options }),
+		);
 		await flush();
 		return reader;
 	};

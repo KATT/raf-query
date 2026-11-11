@@ -10,14 +10,15 @@
  *   path, `drafts("byId", input)` is `["posts", "drafts", "byId", input]`.
  *   It matches every key that starts with its path, whoever built the key,
  *   so it covers its subgroups and their queries.
- * - Any object with `where(query, param)`, typed by the client's root
- *   `meta`: predicates over a query's key, input, `meta` or data. Tags
- *   are one, written in user code over a `meta.tags` a feature declares.
+ * - Any object with `where(query, param)`, typed by the options the
+ *   client's parts declare: predicates over a query's key, input, options
+ *   or data. Tags are one, written in user code over a `tags` option a
+ *   part declares.
  *
  * Invalidation records a stamp per target. An entry is invalidated when a
  * matching stamp is newer than the request its data came from. Entries with
  * readers refetch at once; the rest are checked when they are next read,
- * which always goes through their factory, so `where` sees their `meta`.
+ * which always goes through their factory, so `where` sees their options.
  *
  * An entry that was only hydrated has no factory or input until it's read.
  * A factory target covers it from that first read: invalidation through its
@@ -31,7 +32,6 @@ import {
 	isPlainRecord,
 	type QueryKey,
 } from "./keys.ts";
-import type { QueryMeta } from "../root.ts";
 
 /** Whether `actual` matches `expected`: equal, or for objects, every field `expected` has. */
 function partialMatch(actual: unknown, expected: unknown): boolean {
@@ -57,12 +57,12 @@ function partialMatch(actual: unknown, expected: unknown): boolean {
  *
  * @see https://raf-query.katt.dev/docs/query-invalidation#matching-with-where
  */
-export interface QueryInfo<TMeta = QueryMeta> {
+export interface QueryInfo<TOptions = object> {
 	/** The query's data, before `select`; `undefined` without data. */
 	readonly data: unknown;
 	readonly input: unknown;
-	/** The `meta` its factory gave it. An entry only hydrated has `{}` until it's read. */
-	readonly meta: TMeta;
+	/** The options its factory gave it. An entry only hydrated has `{}` until it's read. */
+	readonly options: TOptions;
 	readonly queryKey: QueryKey;
 }
 
@@ -71,17 +71,17 @@ export interface QueryInfo<TMeta = QueryMeta> {
  * parameter the verb was called with.
  *
  * ```ts
- * const ownedBy: Target<AppMeta, Team> = { where: (query, team) => query.meta.owner === team };
+ * const ownedBy: Target<Ownership["options"], Team> = { where: (query, team) => query.options.owner === team };
  * await invalidateMany(client, ownedBy, "editorial");
  * ```
  *
  * @see https://raf-query.katt.dev/docs/query-invalidation#targets
  */
-export interface Target<TMeta = QueryMeta, TParam = never> {
-	readonly where: (query: QueryInfo<TMeta>, param: TParam) => boolean;
+export interface Target<TOptions = object, TParam = never> {
+	readonly where: (query: QueryInfo<TOptions>, param: TParam) => boolean;
 }
 
-/** A target of any meta and parameter. */
+/** A target of any options and parameter. */
 export interface AnyTarget {
 	readonly where: (query: never, param: never) => boolean;
 }
@@ -101,7 +101,7 @@ export interface Matchable {
 	readonly hash: string;
 	readonly input: unknown;
 	readonly key: QueryKey;
-	readonly options: { readonly meta?: object } | undefined;
+	readonly options: object | undefined;
 	readonly state: { readonly data: unknown };
 }
 
@@ -153,7 +153,7 @@ function infoOf(entry: Matchable): QueryInfo<object> {
 	return {
 		data: entry.state.data,
 		input: entry.input,
-		meta: entry.options?.meta ?? {},
+		options: entry.options ?? {},
 		queryKey: entry.key,
 	};
 }
@@ -174,7 +174,7 @@ export function matches(entry: Matchable, stamp: Stamp): boolean {
 		case "group":
 			return stamp.path.every((segment, i) => entry.key[i] === segment);
 		case "target": {
-			// SAFETY: the verb typed `param` and the meta against this target.
+			// SAFETY: the verb typed `param` and the options against this target.
 			const where = stamp.target.where as (
 				query: QueryInfo<object>,
 				param: unknown,

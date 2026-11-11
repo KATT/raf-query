@@ -1,8 +1,13 @@
-import type { Operation, QueryClient } from "./client.ts";
+import { type Operation, partsOf, type QueryClient } from "./client.ts";
 import { isObject } from "./guards.ts";
 import { type AnyFactory, hashKey, type QueryKey } from "./keys/keys.ts";
 import { matches, type Stamp } from "./keys/targets.ts";
-import { optionsOf, type QueryOptions, type StreamOptions } from "./options.ts";
+import {
+	type CoreOptions,
+	optionsOf,
+	type QueryOptions,
+	type StreamOptions,
+} from "./options.ts";
 import { replaceEqualDeep } from "./structural-sharing/structural-sharing.ts";
 import {
 	listeners,
@@ -102,8 +107,17 @@ function newPending(entry: Entry) {
 	entry.thenable = next.promise;
 }
 
+/** One of the core's options for the entry: the query's, or else the client's default. */
+function optionOf<TName extends keyof CoreOptions>(
+	entry: Entry,
+	name: TName,
+): CoreOptions[TName] {
+	const defaults: CoreOptions | undefined = entry.client.config.defaults;
+	return entry.options?.[name] ?? defaults?.[name];
+}
+
 function gcTime(entry: Entry): number {
-	return entry.options?.gcTime ?? entry.client.config.gcTime ?? fiveMinutes;
+	return optionOf(entry, "gcTime") ?? fiveMinutes;
 }
 
 function scheduleGc(entry: Entry) {
@@ -198,8 +212,7 @@ export function isStale(entry: Entry): boolean {
 	if (!state.hasData) {
 		return true;
 	}
-	const staleTime =
-		entry.options?.staleTime ?? entry.client.config.staleTime ?? 0;
+	const staleTime = optionOf(entry, "staleTime") ?? 0;
 	return (
 		entry.client.clock.now() - state.updatedAt >= staleTime ||
 		isInvalidated(entry)
@@ -214,10 +227,7 @@ export function write(
 	startedAt: number,
 ): void {
 	const previous = entry.state;
-	const sharing =
-		entry.options?.structuralSharing ??
-		entry.client.config.structuralSharing ??
-		true;
+	const sharing = optionOf(entry, "structuralSharing") ?? true;
 	const next =
 		sharing && previous.hasData ? replaceEqualDeep(previous.data, data) : data;
 	entry.requestedAt = Math.max(entry.requestedAt, startedAt);
@@ -311,8 +321,8 @@ function terminal(op: Operation): Promise<unknown> {
 				: options.queryFn(
 						// SAFETY: the factory's own context type.
 						{
+							...op.client.context,
 							client: op.client,
-							meta: op.meta,
 							queryKey: op.queryKey,
 							signal: op.signal,
 						} as never,
@@ -322,12 +332,15 @@ function terminal(op: Operation): Promise<unknown> {
 }
 
 function chain(op: Operation): Promise<unknown> {
-	const links = op.client.config.links ?? [];
+	const parts = partsOf(op.client);
 	const call = (index: number, current: Operation): Promise<unknown> => {
-		const link = links[index];
-		return link
-			? link(current, (next) => call(index + 1, next))
-			: terminal(current);
+		const one = parts[index];
+		if (!one) {
+			return terminal(current);
+		}
+		return one.link
+			? one.link(current, (next) => call(index + 1, next))
+			: call(index + 1, current);
 	};
 	return call(0, op);
 }
@@ -385,8 +398,7 @@ export function fetchEntry(
 		hasData: state.hasData,
 		hash: entry.hash,
 		input: entry.input,
-		meta: options.meta ?? {},
-		options,
+		options: { ...client.config.defaults, ...options },
 		pages: request.pages,
 		queryKey: entry.key,
 		signal: run.controller.signal,

@@ -1,29 +1,19 @@
 import type { Entry } from "./entry.ts";
 import type { QueryKey } from "./keys/keys.ts";
 import type { Stamp } from "./keys/targets.ts";
-import type { QueryOptions } from "./options.ts";
+import type { CoreOptions, QueryOptions } from "./options.ts";
 import type {
-	AnyPart,
-	AnyRoot,
+	AnyDeclares,
 	Decl,
 	Declares,
-	MetaOf,
-	MetaOfDecl,
+	NoDecl,
+	NoParts,
+	OptionsOfDecl,
+	Root,
+	RootOfParts,
 	RootTypes,
 } from "./root.ts";
 
-type LinkFunction = (
-	op: Operation,
-	next: (op: Operation) => Promise<unknown>,
-) => Promise<unknown>;
-
-type FeatureFunction = (client: QueryClient, signal: AbortSignal) => void;
-
-/** Any link, whatever `meta` it reads. */
-export type AnyLink = LinkFunction & AnyPart;
-
-/** Any feature, whatever `meta` it reads. */
-export type AnyFeature = FeatureFunction & AnyPart;
 import {
 	listeners,
 	type Listeners,
@@ -53,11 +43,12 @@ export const systemClock: Clock = {
 };
 
 /**
- * One request, as links see it. `TMeta` is what the link declares.
+ * One request, as a part's link sees it. `TDecl` is what the part declares:
+ * `options` has the fields it reads.
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#links-and-features
+ * @see https://raf-query.katt.dev/docs/links-and-features#parts
  */
-export interface Operation<TMeta extends object = object> {
+export interface Operation<TDecl extends Decl = Decl> {
 	readonly client: QueryClient;
 	/** The entry's data when the request started (paged queries extend it). */
 	readonly data: unknown;
@@ -66,72 +57,103 @@ export interface Operation<TMeta extends object = object> {
 	readonly hasData: boolean;
 	readonly hash: string;
 	readonly input: unknown;
-	/** The query's `meta`, `{}` when it has none. */
-	readonly meta: TMeta;
-	readonly options: QueryOptions;
+	/** The query's options, over the client's `defaults`. */
+	readonly options: Partial<OptionsOfDecl<TDecl>> & QueryOptions;
 	/** For paged queries: how many pages a first load fetches. */
 	readonly pages: number | undefined;
 	readonly queryKey: QueryKey;
 	readonly signal: AbortSignal;
 }
 
-/**
- * Wraps every request, like a tRPC link. Call `next(op)` to run the rest of
- * the chain; the last link is the query's own `queryFn`. `TDecl` is the
- * `meta` it reads: see {@link link}.
- *
- * @see https://raf-query.katt.dev/docs/links-and-features#links-and-features
- */
-export type Link<TDecl extends Decl = Decl> = LinkFunction & Declares<TDecl>;
+type LinkFunction = (
+	op: Operation,
+	next: (op: Operation) => Promise<unknown>,
+) => Promise<unknown>;
+
+type SetupFunction = (client: QueryClient, signal: AbortSignal) => void;
 
 /**
- * A cache-wide behavior, started when a provider mounts the client and
- * stopped by `signal`. `TDecl` is the `meta` it reads: see {@link feature}.
+ * One piece of a client's behavior: any of a link that wraps every request,
+ * a feature's `setup`, and values for every `queryFn`'s context. `TDecl` is
+ * what it declares: see {@link part}.
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#links-and-features
+ * @see https://raf-query.katt.dev/docs/links-and-features#parts
  */
-export type Feature<TDecl extends Decl = Decl> = FeatureFunction &
-	Declares<TDecl>;
-
-/**
- * A link that declares the `meta` fields it reads. A root's queries take
- * those fields only when the root has the link.
- *
- * ```ts
- * const traced = link<{ meta: { traceId?: string } }>((op, next) =>
- *   withTrace(op.meta.traceId, () => next(op)),
- * );
- * ```
- *
- * @see https://raf-query.katt.dev/docs/links-and-features#links-and-features
- */
-export function link<TDecl extends Decl = Decl>(
-	run: (
-		op: Operation<MetaOfDecl<TDecl> & object>,
-		next: (op: Operation) => Promise<unknown>,
-	) => Promise<unknown>,
-): Link<TDecl> {
-	// SAFETY: a query's `meta` is checked against its root's, which includes this link's.
-	return run as Link<TDecl>;
+export interface Part<TDecl extends Decl = NoDecl> extends Declares<TDecl> {
+	readonly context?: object;
+	readonly link?: LinkFunction;
+	readonly setup?: SetupFunction;
 }
 
-const noop = () => {};
+/** Any part, whatever it declares. */
+export interface AnyPart extends AnyDeclares {
+	readonly context?: object;
+	readonly link?: LinkFunction;
+	readonly setup?: SetupFunction;
+}
+
+/** What {@link part} takes: `context` is required when the part declares one. */
+export type PartDefinition<TDecl extends Decl> = (TDecl extends {
+	readonly context: infer TContext extends object;
+}
+	? {
+			/** Merged into the context of every `queryFn` the client runs. */
+			readonly context: TContext;
+		}
+	: { readonly context?: never }) & {
+	/**
+	 * Wraps every request, like a tRPC link. Call `next(op)` to run the
+	 * rest of the chain; the last link is the query's own `queryFn`.
+	 */
+	readonly link?: (
+		op: Operation<TDecl>,
+		next: (op: Operation) => Promise<unknown>,
+	) => Promise<unknown>;
+	/**
+	 * A cache-wide behavior, started when a provider mounts the client and
+	 * stopped by `signal`. The client is typed with this part, so it runs
+	 * the factories of a builder bound to it.
+	 */
+	readonly setup?: (
+		client: QueryClient<Root<TDecl>>,
+		signal: AbortSignal,
+	) => void;
+};
+
+/** A declaration without a `context`: its part needs no definition. */
+interface OptionsDecl {
+	readonly context?: never;
+	readonly options?: object;
+}
 
 /**
- * A feature that declares the `meta` fields it reads. Without `setup`, it
- * only declares them: a root's own fields, such as an `owner` its targets
- * match on.
+ * A part of a client, with what it declares: the per-query `options` it
+ * reads and the `context` it gives every `queryFn`. A client's queries take
+ * those options, and get that context, only when the client has the part.
  *
  * ```ts
- * const ownership = feature<{ meta: { owner?: "posts-team" | "users-team" } }>();
+ * interface Traced {
+ *   readonly options: { readonly traceId?: string };
+ * }
+ * const traced = part<Traced>({
+ *   link: (op, next) => withTrace(op.options.traceId, () => next(op)),
+ * });
  * ```
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#links-and-features
+ * A part without a link or `setup` only declares: an app's own options, such
+ * as an `owner` its targets match on.
+ *
+ * @see https://raf-query.katt.dev/docs/links-and-features#parts
  */
-export function feature<TDecl extends Decl = Decl>(
-	setup: FeatureFunction = noop,
-): Feature<TDecl> {
-	return setup;
+export function part<TDecl extends OptionsDecl = NoDecl>(
+	definition?: PartDefinition<NoInfer<TDecl>>,
+): Part<NoInfer<TDecl>>;
+export function part<TDecl extends Decl>(
+	definition: PartDefinition<NoInfer<TDecl>>,
+): Part<NoInfer<TDecl>>;
+export function part(definition: AnyPart = {}): AnyPart {
+	// A query's options are checked against its root's, which includes this part's.
+	return definition;
 }
 
 export type ClientEvent =
@@ -139,34 +161,34 @@ export type ClientEvent =
 	| { readonly entry: Entry; readonly type: "readers" };
 
 /**
- * What `createQueryClient` takes: links, features and the cache-wide defaults.
+ * What `createQueryClient` takes: its parts and the cache-wide defaults.
  *
  * @see https://raf-query.katt.dev/docs/important-defaults#changing-the-defaults
  */
 export interface QueryClientConfig {
 	readonly clock?: Clock;
-	/** Behaviors started while a provider has the client mounted. */
-	readonly features?: ReadonlyArray<AnyFeature>;
-	/** Default `gcTime`: 5 minutes. Server clients never gc. */
-	readonly gcTime?: number;
+	/**
+	 * Client-wide defaults for per-query options: the core's (`staleTime`,
+	 * `gcTime`, `structuralSharing`) and those the parts declare.
+	 */
+	readonly defaults?: object;
 	/** Default: no `window`. Server clients never gc and never revalidate cached data. */
 	readonly isServer?: boolean;
-	/** Wrap every request, outermost first. */
-	readonly links?: ReadonlyArray<AnyLink>;
-	/** Default `staleTime`: `0`. */
-	readonly staleTime?: number;
-	/** Default `structuralSharing`: `true`. */
-	readonly structuralSharing?: boolean;
+	/**
+	 * The client's behaviors. Links wrap every request, outermost first;
+	 * features start while a provider has the client mounted.
+	 */
+	readonly parts?: ReadonlyArray<AnyPart>;
 }
 
 /**
- * A query cache. `TTypes` is its root's types, which factories built with
- * `bindQueryOptions<typeof makeQueryClient>()` are checked against. The bare
- * `QueryClient` type takes a client of any root.
+ * A query cache. `TTypes` is its root's types: what its parts declare. It
+ * runs the factories of builders bound to those parts, or to fewer of them,
+ * so the bare `QueryClient` type takes any client.
  *
  * @see https://raf-query.katt.dev/docs/api-reference#the-client
  */
-export interface QueryClient<TTypes extends RootTypes = AnyRoot> {
+export interface QueryClient<TTypes extends RootTypes = NoParts> {
 	/** Entries changed since the last notification. */
 	readonly "~changed": Set<Entry>;
 	readonly "~entries": Map<string, Entry>;
@@ -175,10 +197,12 @@ export interface QueryClient<TTypes extends RootTypes = AnyRoot> {
 	"~seq": number;
 	/** Invalidations not yet older than every entry's data. */
 	"~stamps": Array<Stamp>;
-	/** Phantom: the root's types, invariant. `undefined` at runtime. */
-	readonly "~types"?: { readonly root: (types: TTypes) => TTypes };
+	/** Phantom: the root's types. `undefined` at runtime. */
+	readonly "~types"?: { readonly root: TTypes };
 	readonly clock: Clock;
 	readonly config: QueryClientConfig;
+	/** What the parts give every `queryFn`, beside the client, key and signal. */
+	readonly context: TTypes["context"];
 	readonly isServer: boolean;
 	/**
 	 * Cache events: entries added, updated, removed, or gaining and losing
@@ -193,13 +217,18 @@ export interface QueryClient<TTypes extends RootTypes = AnyRoot> {
 }
 
 /**
- * Create a query client. Behaviors are opt-in: pass `links` and `features`,
- * or spread `recommended()`. The client's `meta` type is what they declare.
+ * Create a query client. Behaviors are opt-in: pass `parts`, such as
+ * `recommended()`. The client's root is what they declare.
  *
  * ```ts
- * const ownership = feature<{ meta: { owner?: "posts-team" | "users-team" } }>();
+ * interface Ownership {
+ *   readonly options: { readonly owner?: "posts-team" | "users-team" };
+ * }
  * export const makeQueryClient = () =>
- *   createQueryClient({ links: [retry()], features: [ownership], staleTime: 30_000 });
+ *   createQueryClient({
+ *     parts: [retry(), part<Ownership>()],
+ *     defaults: { staleTime: 30_000 },
+ *   });
  * ```
  *
  * Make one per request on the server (in a loader or a request-scoped
@@ -208,14 +237,15 @@ export interface QueryClient<TTypes extends RootTypes = AnyRoot> {
  * @see https://raf-query.katt.dev/docs/important-defaults
  */
 export function createQueryClient<
-	const TLinks extends ReadonlyArray<AnyLink> = [],
-	const TFeatures extends ReadonlyArray<AnyFeature> = [],
+	const TParts extends ReadonlyArray<AnyPart> = [],
 >(
-	config: QueryClientConfig & {
-		readonly features?: TFeatures;
-		readonly links?: TLinks;
+	config: Omit<QueryClientConfig, "defaults" | "parts"> & {
+		readonly defaults?: NoInfer<
+			CoreOptions & Partial<RootOfParts<TParts>["options"]>
+		>;
+		readonly parts?: TParts;
 	} = {},
-): QueryClient<{ readonly meta: MetaOf<[...TLinks, ...TFeatures]> }> {
+): QueryClient<RootOfParts<TParts>> {
 	const events = listeners<ClientEvent>();
 	const entries = new Map<string, Entry>();
 	return {
@@ -226,6 +256,12 @@ export function createQueryClient<
 		"~stamps": [],
 		clock: config.clock ?? systemClock,
 		config,
+		context:
+			// SAFETY: each part's `context` is typed by what it declares.
+			Object.assign(
+				{},
+				...(config.parts ?? []).map((one) => one.context),
+			) as RootOfParts<TParts>["context"],
 		isServer: config.isServer ?? !("window" in globalThis),
 		subscribe: (listener, options) => {
 			const unsubscribe = events.subscribe(listener, options);
@@ -239,6 +275,11 @@ export function createQueryClient<
 	};
 }
 
+/** The client's parts, as the kernel runs them. */
+export function partsOf(client: QueryClient): ReadonlyArray<AnyPart> {
+	return client.config.parts ?? [];
+}
+
 interface Mounted {
 	readonly controller: AbortController;
 	count: number;
@@ -247,7 +288,7 @@ interface Mounted {
 const mounted = new WeakMap<QueryClient, Mounted>();
 
 /**
- * Start the client's features. Providers call it while mounted; the
+ * Start the features of the client's parts. Providers call it while mounted; the
  * returned function stops them. Mounts are counted, so features start once
  * however many providers share the client, and stop with the last.
  */
@@ -256,8 +297,8 @@ export function mount(client: QueryClient): () => void {
 	if (!current) {
 		current = { controller: new AbortController(), count: 0 };
 		mounted.set(client, current);
-		for (const start of client.config.features ?? []) {
-			start(client, current.controller.signal);
+		for (const one of partsOf(client)) {
+			one.setup?.(client, current.controller.signal);
 		}
 	}
 	const shared = current;

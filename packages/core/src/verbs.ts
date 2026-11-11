@@ -28,7 +28,7 @@ import {
 	type QueryFnDataOf,
 	type RootOfFactory,
 } from "./options.ts";
-import type { IsAnyRoot, RootTypes } from "./root.ts";
+import type { RootTypes } from "./root.ts";
 
 type DeepPartial<T> = T extends object
 	? { readonly [TName in keyof T]?: DeepPartial<T[TName]> }
@@ -45,24 +45,23 @@ export type PartialInput<TFactory extends QueryFactory> = DeepPartial<
 >;
 
 /**
- * The clients a factory's verbs take: its root's, or any client for a
- * factory from an unbound builder.
+ * The clients a factory runs on: those with the parts its builder is bound
+ * to, or any client for a factory from an unbound builder.
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#typing-meta-by-its-root
+ * @see https://raf-query.katt.dev/docs/links-and-features#typing-options-by-the-client
  */
 export type ClientFor<TFactory extends QueryFactory> = QueryClient<
 	RootOfFactory<TFactory>
 >;
 
 /**
- * A target a client's root can match: its `where` reads that root's `meta`.
- * A client typed only as `QueryClient` (from `useQueryClient()`, say) may
- * be of any root, so it takes any target.
+ * A target a client's root can match: its `where` reads the options that
+ * root's parts declare.
  */
-export type TargetFor<TTypes extends RootTypes, TParam> =
-	IsAnyRoot<TTypes> extends true
-		? Target<never, TParam>
-		: Target<NoInfer<TTypes["meta"]>, TParam>;
+export type TargetFor<TTypes extends RootTypes, TParam> = Target<
+	NoInfer<TTypes["options"]>,
+	TParam
+>;
 
 type ParamOf<TTarget> = TTarget extends {
 	readonly where: (query: never, param: infer TParam) => boolean;
@@ -70,7 +69,7 @@ type ParamOf<TTarget> = TTarget extends {
 	? TParam
 	: never;
 
-/** A factory, if the client's root is its root; else nothing fits. */
+/** A factory, if the client has the parts it needs; else nothing fits. */
 type FactoryFor<TTypes extends RootTypes, TFactory extends QueryFactory> = [
 	QueryClient<TTypes>,
 ] extends [ClientFor<TFactory>]

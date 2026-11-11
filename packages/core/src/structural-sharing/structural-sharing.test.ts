@@ -67,7 +67,7 @@ describe("structural sharing", () => {
 				structuralSharing: input.off ? false : undefined,
 			});
 		for (const [client, input] of [
-			[testClient({ structuralSharing: false }), {}],
+			[testClient({ defaults: { structuralSharing: false } }), {}],
 			[testClient(), { off: true }],
 		] as const) {
 			await load(client, { value: revalidate(shared, input) });

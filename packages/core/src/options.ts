@@ -1,51 +1,40 @@
 import type { QueryClient } from "./client.ts";
 import type { AnyFactory, QueryKey } from "./keys/keys.ts";
-import type {
-	AnyRoot,
-	DefaultTypes,
-	RootOf,
-	RootTag,
-	RootTypes,
-} from "./root.ts";
+import type { NoParts, RootOf, RootTag, RootTypes, SetsOf } from "./root.ts";
 
 /**
- * What a `queryFn` gets: the client making the request, the query's key,
- * `meta` and abort `signal`.
+ * What a `queryFn` gets: the client making the request, the query's key and
+ * abort `signal`, and what the client's parts give every `queryFn`.
  *
  * @see https://raf-query.katt.dev/docs/query-functions#the-query-function-context
  */
-export interface QueryFunctionContext<TKey extends QueryKey = QueryKey> {
+export type QueryFunctionContext<
+	TKey extends QueryKey = QueryKey,
+	TTypes extends RootTypes = NoParts,
+> = TTypes["context"] & {
 	/**
-	 * The client making the request. A server makes one per request, so it
-	 * keys per-request services, such as an API client with the request's
-	 * cookies.
+	 * The client making the request. A server makes one per request, so
+	 * what its parts give the context belongs to that request, such as an
+	 * API client with the request's cookies.
 	 */
-	readonly client: QueryClient;
-	/** The query's `meta`, typed by its root where the query is defined. */
-	readonly meta: object;
+	readonly client: QueryClient<TTypes>;
 	readonly queryKey: TKey;
 	/** Aborted when the request is restarted or its entry is removed. */
 	readonly signal: AbortSignal;
-}
+};
 
 declare const dataTag: unique symbol;
 declare const queryFnDataTag: unique symbol;
 
-/** Options every query takes. */
-export interface BaseOptions<
-	TKey extends QueryKey,
-	TTypes extends RootTypes = RootTypes,
-> {
+/**
+ * The per-query options the core reads, whatever parts the client has. A
+ * client's `defaults` set them for every query.
+ *
+ * @see https://raf-query.katt.dev/docs/important-defaults#changing-the-defaults
+ */
+export interface CoreOptions {
 	/** How long an entry with no reader stays cached. Default 5 minutes; never on the server. */
 	readonly gcTime?: number;
-	/**
-	 * Settings for the root's links and features, and data for targets: the
-	 * fields the root's parts declare, such as `retry` with the `retry()`
-	 * link.
-	 */
-	readonly meta?: NoInfer<Partial<TTypes["meta"]>>;
-	/** A plain array, usually built by a `group()`. Handles keep its literal type. */
-	readonly queryKey: TKey;
 	/**
 	 * `false` for a query only a browser can run (a permission, the service
 	 * worker, `localStorage`): a server client never starts it, never sends
@@ -61,6 +50,25 @@ export interface BaseOptions<
 	readonly structuralSharing?: boolean;
 }
 
+/** Options every query takes. */
+export interface BaseOptions<TKey extends QueryKey> extends CoreOptions {
+	/** A plain array, usually built by a `group()`. Handles keep its literal type. */
+	readonly queryKey: TKey;
+}
+
+/**
+ * The options a builder bound to `T` lets a query set, beside its key and
+ * `queryFn`: the core's, and those `T`'s parts declare. For a fragment
+ * several factories share:
+ *
+ * ```ts
+ * const pinned = { retry: false, staleTime: Infinity } satisfies OptionsOf<typeof makeQueryClient>;
+ * ```
+ *
+ * @see https://raf-query.katt.dev/docs/links-and-features#typing-options-by-the-client
+ */
+export type OptionsOf<T> = CoreOptions & Partial<SetsOf<T>["options"]>;
+
 /**
  * What `queryOptions` and `infiniteQueryOptions` return.
  *
@@ -71,7 +79,7 @@ export interface QueryOptions<
 	TQueryFnData = unknown,
 	TData = TQueryFnData,
 	TTypes extends RootTypes = RootTypes,
-> extends BaseOptions<TKey, TTypes> {
+> extends BaseOptions<TKey> {
 	/** Set by `infiniteQueryOptions` from `keepPages`: whether `load` keeps the cached pages. */
 	readonly "~keep"?: (data: never) => boolean;
 	/** Phantom: the root the builder is bound to. Never set at runtime. */
@@ -112,26 +120,32 @@ type Awaitable<T> = PromiseLike<T> | T;
 export type FromQueryFn<T> = T extends unknown ? T : never;
 
 /**
- * `queryOptions`, with `meta` checked against the root `TTypes`.
+ * `queryOptions` for a root: `TTypes` is what the factories it builds need
+ * of a client, and `TSets` the options they can set.
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#typing-meta-by-its-root
+ * @see https://raf-query.katt.dev/docs/links-and-features#typing-options-by-the-client
  */
-export interface QueryOptionsBuilder<TTypes extends RootTypes> {
+export interface QueryOptionsBuilder<
+	TTypes extends RootTypes,
+	TSets extends RootTypes = TTypes,
+> {
 	<const TKey extends QueryKey, TChunk, TData>(
-		options: BaseOptions<TKey, TTypes> & {
-			readonly queryFn: (
-				context: QueryFunctionContext<TKey>,
-			) => AsyncIterable<TChunk>;
-			readonly stream: StreamOptions<TData, TChunk>;
-		},
+		options: BaseOptions<TKey> &
+			Partial<TSets["options"]> & {
+				readonly queryFn: (
+					context: QueryFunctionContext<TKey, TTypes>,
+				) => AsyncIterable<TChunk>;
+				readonly stream: StreamOptions<TData, TChunk>;
+			},
 	): QueryOptions<TKey, TData, TData, TTypes>;
 	<const TKey extends QueryKey, TQueryFnData, TData = TQueryFnData>(
-		options: BaseOptions<TKey, TTypes> & {
-			readonly queryFn: (
-				context: QueryFunctionContext<TKey>,
-			) => Awaitable<TQueryFnData>;
-			readonly select?: (data: FromQueryFn<TQueryFnData>) => TData;
-		},
+		options: BaseOptions<TKey> &
+			Partial<TSets["options"]> & {
+				readonly queryFn: (
+					context: QueryFunctionContext<TKey, TTypes>,
+				) => Awaitable<TQueryFnData>;
+				readonly select?: (data: FromQueryFn<TQueryFnData>) => TData;
+			},
 	): QueryOptions<TKey, TQueryFnData, TData, TTypes>;
 }
 
@@ -150,32 +164,44 @@ export interface QueryOptionsBuilder<TTypes extends RootTypes> {
  * fold its chunks into the data. Readers get the data after the first chunk,
  * and every later chunk updates it in place.
  *
- * Its `meta` is any record. To check `meta` against a client's links and
- * features, use the builder {@link bindQueryOptions} returns.
+ * It takes the core's options only, and its factories run on any client.
+ * For the options and the `queryFn` context a client's parts declare, use
+ * the builder {@link bindQueryOptions} returns.
  *
  * @see https://raf-query.katt.dev/docs/query-factories
  */
-export const queryOptions: QueryOptionsBuilder<DefaultTypes> = <TOptions>(
+export const queryOptions: QueryOptionsBuilder<NoParts> = <TOptions>(
 	options: TOptions,
 ) => options;
 
 /**
- * `queryOptions` bound to a root: `meta` takes the fields the root's links
- * and features declare, and verbs take only that root's clients. `T` is the
- * client's type, or the type of a function that makes it. Bind once per app:
+ * `queryOptions` bound to a root: it takes the options the root's parts
+ * declare, its `queryFn`s get their context, and its factories run on the
+ * clients that have those parts. `T` is the client's type, or the type of a
+ * function that makes it. Bind once per client:
  *
  * ```ts
  * // raf.ts
  * export const queryOptions = bindQueryOptions<typeof makeQueryClient>();
  * ```
  *
+ * A library names the parts its factories need by their declarations, and
+ * as `Optional` the ones whose options it sets where the client has them:
+ *
+ * ```ts
+ * const queryOptions = bindQueryOptions<Convex & Optional<Retry>>();
+ * ```
+ *
  * It returns `queryOptions` itself; only the types change.
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#typing-meta-by-its-root
+ * @see https://raf-query.katt.dev/docs/links-and-features#typing-options-by-the-client
  */
-export function bindQueryOptions<T>(): QueryOptionsBuilder<RootOf<T>> {
+export function bindQueryOptions<T>(): QueryOptionsBuilder<
+	RootOf<T>,
+	SetsOf<T>
+> {
 	// SAFETY: the root is a phantom; the builder never reads it.
-	return queryOptions as QueryOptionsBuilder<RootOf<T>>;
+	return queryOptions as QueryOptionsBuilder<RootOf<T>, SetsOf<T>>;
 }
 
 /**
@@ -259,10 +285,8 @@ export type InputArgs<TFactory extends QueryFactory> =
 export type KeyOf<TFactory extends QueryFactory> =
 	ReturnType<TFactory>["queryKey"];
 
-/** The root a factory's builder is bound to; any root for an unbound one. */
+/** The root a factory's builder is bound to: what the factory needs of a client. */
 export type RootOfFactory<TFactory extends QueryFactory> =
 	ReturnType<TFactory> extends { readonly "~root"?: RootTag<infer TTypes> }
-		? TTypes extends DefaultTypes
-			? AnyRoot
-			: TTypes
-		: AnyRoot;
+		? TTypes
+		: NoParts;

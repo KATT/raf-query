@@ -81,7 +81,7 @@ describe("a server-rendered page", () => {
 				updatedAt: page.client.clock.now(),
 			},
 		]);
-		const browser = testClient({ staleTime: Infinity });
+		const browser = testClient({ defaults: { staleTime: Infinity } });
 		hydrate(browser, send(state));
 		const view = read(browser, page.backend.issueQuery, page.handles.issue);
 
@@ -176,7 +176,7 @@ describe("a server-rendered page", () => {
 describe("hydrating a query the browser has", () => {
 	it("keeps the browser's newer data, and refetches a read stale query", async () => {
 		const backend = createBackend();
-		const client = testClient({ staleTime: 10 });
+		const client = testClient({ defaults: { staleTime: 10 } });
 		const loading = load(client, {
 			fresh: swr(backend.issueQuery, { id: 1 }),
 			stale: swr(backend.issueQuery, { id: 2 }),

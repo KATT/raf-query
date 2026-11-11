@@ -9,7 +9,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	link,
+	part,
 	queryOptions,
 	QueryTimeoutError,
 	swr,
@@ -34,11 +34,13 @@ describe("timeout(ms)", () => {
 			});
 		let signal: AbortSignal | undefined;
 		const client = testClient({
-			links: [
+			parts: [
 				timeout(100),
-				link((op, next) => {
-					signal = op.signal;
-					return next(op);
+				part({
+					link: (op, next) => {
+						signal = op.signal;
+						return next(op);
+					},
 				}),
 			],
 		});
@@ -51,10 +53,10 @@ describe("timeout(ms)", () => {
 	});
 
 	it("lets faster requests and their errors through", async () => {
-		const client = testClient({ links: [timeout(100)] });
+		const client = testClient({ parts: [timeout(100)] });
 		const fast = await loadOne(client, swr(flaky([]).query));
 		const failing = await loadOne(
-			testClient({ links: [timeout(100)] }),
+			testClient({ parts: [timeout(100)] }),
 			swr(flaky([down]).query),
 		);
 		advance(client, 200);

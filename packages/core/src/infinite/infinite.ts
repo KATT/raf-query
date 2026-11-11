@@ -6,7 +6,7 @@ import type {
 	QueryFunctionContext,
 	QueryOptions,
 } from "../options.ts";
-import type { DefaultTypes, RootOf, RootTypes } from "../root.ts";
+import type { NoParts, RootOf, RootTypes, SetsOf } from "../root.ts";
 
 /**
  * A paged query's data.
@@ -23,13 +23,14 @@ export interface InfiniteData<TPage, TParam = unknown> {
  *
  * @see https://raf-query.katt.dev/docs/infinite-queries
  */
-export interface InfiniteQueryFunctionContext<
+export type InfiniteQueryFunctionContext<
 	TKey extends QueryKey,
 	TParam,
-> extends QueryFunctionContext<TKey> {
+	TTypes extends RootTypes = NoParts,
+> = QueryFunctionContext<TKey, TTypes> & {
 	readonly direction: "backward" | "forward";
 	readonly pageParam: TParam;
-}
+};
 
 type PageParamFn<TPage, TParam> = (
 	page: TPage,
@@ -42,8 +43,7 @@ interface InfiniteOptions<
 	TPage,
 	TParam,
 	TData,
-	TTypes extends RootTypes = RootTypes,
-> extends BaseOptions<TKey, TTypes> {
+> extends BaseOptions<TKey> {
 	readonly getNextPageParam: PageParamFn<TPage, TParam>;
 	readonly getPreviousPageParam?: PageParamFn<TPage, TParam>;
 	readonly initialPageParam: TParam;
@@ -75,7 +75,7 @@ export type InfiniteQueryOptions<
 	TTypes extends RootTypes = RootTypes,
 > = QueryOptions<TKey, InfiniteData<TPage, TParam>, TData, TTypes> &
 	Pick<
-		InfiniteOptions<TKey, TPage, TParam, TData, TTypes>,
+		InfiniteOptions<TKey, TPage, TParam, TData>,
 		| "getNextPageParam"
 		| "getPreviousPageParam"
 		| "initialPageParam"
@@ -83,28 +83,27 @@ export type InfiniteQueryOptions<
 	> & { readonly "~run": (op: Operation) => Promise<unknown> };
 
 /**
- * `infiniteQueryOptions`, with `meta` checked against the root `TTypes`.
+ * `infiniteQueryOptions` for a root: `TTypes` is what the factories it
+ * builds need of a client, and `TSets` the options they can set.
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#typing-meta-by-its-root
+ * @see https://raf-query.katt.dev/docs/links-and-features#typing-options-by-the-client
  */
-export interface InfiniteQueryOptionsBuilder<TTypes extends RootTypes> {
+export interface InfiniteQueryOptionsBuilder<
+	TTypes extends RootTypes,
+	TSets extends RootTypes = TTypes,
+> {
 	<
 		const TKey extends QueryKey,
 		TPage,
 		TParam,
 		TData = InfiniteData<TPage, TParam>,
 	>(
-		options: InfiniteOptions<
-			TKey,
-			FromQueryFn<TPage>,
-			TParam,
-			TData,
-			TTypes
-		> & {
-			readonly queryFn: (
-				context: InfiniteQueryFunctionContext<TKey, TParam>,
-			) => PromiseLike<TPage> | TPage;
-		},
+		options: InfiniteOptions<TKey, FromQueryFn<TPage>, TParam, TData> &
+			Partial<TSets["options"]> & {
+				readonly queryFn: (
+					context: InfiniteQueryFunctionContext<TKey, TParam, TTypes>,
+				) => PromiseLike<TPage> | TPage;
+			},
 	): InfiniteQueryOptions<TKey, TPage, TParam, TData, TTypes>;
 }
 
@@ -122,12 +121,13 @@ export interface InfiniteQueryOptionsBuilder<TTypes extends RootTypes> {
  *   });
  * ```
  *
- * Its `meta` is any record. To check `meta` against a client's links and
- * features, use the builder {@link bindInfiniteQueryOptions} returns.
+ * It takes the core's options only. For the options and the `queryFn`
+ * context a client's parts declare, use the builder
+ * {@link bindInfiniteQueryOptions} returns.
  *
  * @see https://raf-query.katt.dev/docs/infinite-queries
  */
-export const infiniteQueryOptions: InfiniteQueryOptionsBuilder<DefaultTypes> = (
+export const infiniteQueryOptions: InfiniteQueryOptionsBuilder<NoParts> = (
 	options,
 ) => ({
 	...options,
@@ -149,13 +149,17 @@ export const infiniteQueryOptions: InfiniteQueryOptionsBuilder<DefaultTypes> = (
  * export const infiniteQueryOptions = bindInfiniteQueryOptions<typeof makeQueryClient>();
  * ```
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#typing-meta-by-its-root
+ * @see https://raf-query.katt.dev/docs/links-and-features#typing-options-by-the-client
  */
 export function bindInfiniteQueryOptions<T>(): InfiniteQueryOptionsBuilder<
-	RootOf<T>
+	RootOf<T>,
+	SetsOf<T>
 > {
 	// SAFETY: the root is a phantom; the builder never reads it.
-	return infiniteQueryOptions as InfiniteQueryOptionsBuilder<RootOf<T>>;
+	return infiniteQueryOptions as InfiniteQueryOptionsBuilder<
+		RootOf<T>,
+		SetsOf<T>
+	>;
 }
 
 interface PagedSource {
@@ -216,9 +220,9 @@ async function runPages(op: Operation, source: PagedSource): Promise<unknown> {
 	const fetchPage = (pageParam: unknown, direction: "backward" | "forward") =>
 		Promise.resolve(
 			source.queryFn({
+				...op.client.context,
 				client: op.client,
 				direction,
-				meta: op.meta,
 				pageParam,
 				queryKey: op.queryKey,
 				signal: op.signal,

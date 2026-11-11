@@ -5,8 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	bindUseQueryClient,
 	createQueryClient,
-	type Feature,
 	load,
+	part,
 	prefetch,
 	QueryClientProvider,
 	useIsFetching,
@@ -23,10 +23,12 @@ import {
 describe("QueryClientProvider", () => {
 	it("runs the client's features while mounted", () => {
 		const signals: Array<AbortSignal> = [];
-		const feature: Feature = (_client, signal) => {
-			signals.push(signal);
-		};
-		const client = testClient({ features: [feature] });
+		const feature = part({
+			setup: (_client, signal) => {
+				signals.push(signal);
+			},
+		});
+		const client = testClient({ parts: [feature] });
 		const view = render(<QueryClientProvider client={client} />);
 		expect(signals.map((signal) => signal.aborted)).toEqual([false]);
 		view.unmount();
@@ -35,10 +37,12 @@ describe("QueryClientProvider", () => {
 
 	it("starts the features once for providers that share a client, and stops them with the last", () => {
 		const signals: Array<AbortSignal> = [];
-		const feature: Feature = (_client, signal) => {
-			signals.push(signal);
-		};
-		const client = testClient({ features: [feature] });
+		const feature = part({
+			setup: (_client, signal) => {
+				signals.push(signal);
+			},
+		});
+		const client = testClient({ parts: [feature] });
 		const first = render(<QueryClientProvider client={client} />);
 		const second = render(<QueryClientProvider client={client} />);
 		expect(signals.map((signal) => signal.aborted)).toEqual([false]);

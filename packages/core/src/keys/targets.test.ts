@@ -29,7 +29,6 @@ import {
 	load,
 	type PartialInput,
 	type QueryKey,
-	type QueryMeta,
 	queryOptions,
 	removeMany,
 	resetMany,
@@ -58,7 +57,7 @@ describe("targets", () => {
 	});
 
 	it("matches part of an input with nested objects and arrays", async () => {
-		const client = testClient({ staleTime: Infinity });
+		const client = testClient({ defaults: { staleTime: Infinity } });
 		let calls = 0;
 		const list = (input: {
 			readonly filter: {
@@ -87,7 +86,7 @@ describe("targets", () => {
 	});
 
 	it("matches a partial against the input, whatever the key ends with", async () => {
-		const client = testClient({ staleTime: Infinity });
+		const client = testClient({ defaults: { staleTime: Infinity } });
 		const calls: Array<string> = [];
 		const bySlug = (input: { readonly slug: string }) =>
 			queryOptions({
@@ -117,7 +116,7 @@ describe("targets", () => {
 	});
 
 	it("matches a partial against a hydrated query once its factory reads it", async () => {
-		const client = testClient({ staleTime: Infinity });
+		const client = testClient({ defaults: { staleTime: Infinity } });
 		const calls: Array<string> = [];
 		const bySlug = (input: { readonly slug: string }) =>
 			queryOptions({
@@ -153,7 +152,7 @@ describe("targets", () => {
 
 	it("matches a one-off where target with its parameter", async () => {
 		const cache = await cached();
-		const byTitle: Target<QueryMeta, string> = {
+		const byTitle: Target<object, string> = {
 			where: (query, title) =>
 				// SAFETY: every query this test caches holds an issue or a draft string.
 				(query.data as { readonly title?: string } | undefined)?.title ===
@@ -180,7 +179,7 @@ describe("targets", () => {
 
 	it("applies invalidations to hydrated queries once a factory reads them", async () => {
 		const backend = createBackend();
-		const client = testClient({ staleTime: Infinity });
+		const client = testClient({ defaults: { staleTime: Infinity } });
 		const hydrated = (queryKey: QueryKey, data: unknown) => ({
 			data,
 			queryKey,

@@ -44,7 +44,7 @@ describe("groups", () => {
 	});
 
 	it("key a query by the group alone", async () => {
-		const client = testClient({ staleTime: Infinity });
+		const client = testClient({ defaults: { staleTime: Infinity } });
 		let calls = 0;
 		const all = () =>
 			queryOptions({ queryFn: () => (calls += 1), queryKey: issues() });
@@ -85,7 +85,7 @@ describe("groups", () => {
 	});
 
 	it("matches a hand-written key that starts with a group's path", async () => {
-		const client = testClient({ staleTime: Infinity });
+		const client = testClient({ defaults: { staleTime: Infinity } });
 		let calls = 0;
 		const byId = (input: { readonly id: number }) =>
 			queryOptions({
@@ -100,7 +100,7 @@ describe("groups", () => {
 	});
 
 	it("matches a group by its whole name, not a prefix of it", async () => {
-		const client = testClient({ staleTime: Infinity });
+		const client = testClient({ defaults: { staleTime: Infinity } });
 		let calls = 0;
 		const archived = () =>
 			queryOptions({

@@ -4,7 +4,7 @@
  * aborting `signal` when it unmounts. It listens for `visibilitychange`
  * and `focus`; when the document is visible, it refetches every query
  * that is read (has a mounted reader) and stale, unless the
- * query's `meta.refetchOnWindowFocus` is `false`. The refetch is the
+ * query's `refetchOnWindowFocus` is `false`. The refetch is the
  * entry's ordinary request, so the data lands in the cache as usual.
  */
 import { act } from "@testing-library/react";
@@ -24,7 +24,10 @@ function focus(state: DocumentVisibilityState = "visible") {
 describe("focusRefetch()", () => {
 	it("refetches read, stale queries when the window becomes visible", async () => {
 		const counter = counted();
-		const client = testClient({ features: [focusRefetch()], staleTime: 10 });
+		const client = testClient({
+			defaults: { staleTime: 10 },
+			parts: [focusRefetch()],
+		});
 		await counter.show(client, "stale");
 		advance(client, 10);
 		focus("hidden");
@@ -38,18 +41,21 @@ describe("focusRefetch()", () => {
 
 	it("leaves fresh and unread queries alone, and those that opt out", async () => {
 		const counter = counted();
-		const client = testClient({ features: [focusRefetch()], staleTime: 10 });
+		const client = testClient({
+			defaults: { staleTime: 10 },
+			parts: [focusRefetch()],
+		});
 		const unread = await counter.show(client, "unread");
 		unread.unmount();
 		await counter.show(client, "opted out", { refetchOnWindowFocus: false });
-		await counter.show(client, "other meta", { refetchOnReconnect: false });
+		await counter.show(client, "other option", { refetchOnReconnect: false });
 		advance(client, 10);
 		await counter.show(client, "fresh");
 		focus();
 		await flush();
 
 		expect(
-			["unread", "opted out", "other meta", "fresh"].map(counter.calls),
+			["unread", "opted out", "other option", "fresh"].map(counter.calls),
 		).toEqual([1, 1, 2, 1]);
 	});
 });

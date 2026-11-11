@@ -1,18 +1,22 @@
 export {
 	type Clock,
 	createQueryClient,
-	type Feature,
-	feature,
-	type Link,
-	link,
 	type Operation,
+	type Part,
+	part,
 	type QueryClient,
 	type QueryClientConfig,
 } from "./client.ts";
 export { abortError } from "./entry.ts";
-export { focusRefetch } from "./features/focus-refetch/focus-refetch.ts";
-export { reconnectRefetch } from "./features/reconnect-refetch/reconnect-refetch.ts";
-export { polling } from "./features/polling/polling.ts";
+export {
+	type FocusRefetch,
+	focusRefetch,
+} from "./features/focus-refetch/focus-refetch.ts";
+export {
+	type ReconnectRefetch,
+	reconnectRefetch,
+} from "./features/reconnect-refetch/reconnect-refetch.ts";
+export { type Polling, polling } from "./features/polling/polling.ts";
 export {
 	canDehydrate,
 	type DehydratedEntry,
@@ -44,7 +48,7 @@ export {
 } from "./infinite/paging.ts";
 export { type Group, group, type QueryKey } from "./keys/keys.ts";
 export type { QueryInfo, Target } from "./keys/targets.ts";
-export { retry, type RetryOptions } from "./links/retry/retry.ts";
+export { type Retry, retry, type RetryOptions } from "./links/retry/retry.ts";
 export { QueryTimeoutError, timeout } from "./links/timeout/timeout.ts";
 export {
 	load,
@@ -60,9 +64,11 @@ export {
 } from "./load.ts";
 export {
 	bindQueryOptions,
+	type CoreOptions,
 	type DataOf,
 	type InputOf,
 	type InfiniteQueryFactory,
+	type OptionsOf,
 	type QueryFactory,
 	type SingleQueryFactory,
 	type QueryFunctionContext,
@@ -71,7 +77,7 @@ export {
 	queryOptions,
 	type StreamOptions,
 } from "./options.ts";
-export type { QueryMeta } from "./root.ts";
+export type { Optional } from "./root.ts";
 export { type Recommended, recommended } from "./presets.ts";
 export type { Thenable } from "./thenable.ts";
 export {
