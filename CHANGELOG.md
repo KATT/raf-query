@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.14.0](https://github.com/KATT/raf-query/compare/0.13.2...0.14.0) (2026-11-11)
+
+### ⚠ BREAKING CHANGES
+
+- **core:** parts declare the options and queryFn context a client's queries get ([#250](https://github.com/KATT/raf-query/issues/250))
+
+### Features
+
+- **core:** parts declare the options and queryFn context a client's queries get ([#250](https://github.com/KATT/raf-query/issues/250)) ([931b7ed](https://github.com/KATT/raf-query/commit/931b7ed83837576c607b63e2dfdd1c795129cd41))
+
 ## [0.13.2](https://github.com/KATT/raf-query/compare/0.13.1...0.13.2) (2026-11-10)
 
 ### Bug Fixes
