@@ -321,7 +321,7 @@ function terminal(op: Operation): Promise<unknown> {
 				: options.queryFn(
 						// SAFETY: the factory's own context type.
 						{
-							...op.client.context,
+							...op.context,
 							client: op.client,
 							queryKey: op.queryKey,
 							signal: op.signal,
@@ -393,6 +393,7 @@ export function fetchEntry(
 	const state = entry.state;
 	chain({
 		client,
+		context: client["~context"],
 		data: state.data,
 		direction: request.direction,
 		hasData: state.hasData,

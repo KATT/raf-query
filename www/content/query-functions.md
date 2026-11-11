@@ -68,6 +68,8 @@ A client's [parts](./links-and-features.md#context-for-every-queryfn) can add to
 tanstack-start/src/docs/query-functions.context.ts#context
 ```
 
+A part can give its context [per request](./links-and-features.md#context-per-request) instead, from its link.
+
 `api` is typed because this `queryOptions` is [bound to the client](./links-and-features.md#typing-options-by-the-client). With the `queryOptions` that `@raf-query/react` exports, a `queryFn` gets `queryKey`, `signal` and `client` only.
 
 ## Redirects
