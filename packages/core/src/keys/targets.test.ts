@@ -29,7 +29,6 @@ import {
 	load,
 	type PartialInput,
 	type QueryKey,
-	queryOptions,
 	removeMany,
 	resetMany,
 	revalidate,
@@ -42,6 +41,7 @@ import {
 	drafts,
 	featured,
 	issues,
+	queryOptions,
 	testClient,
 	users,
 } from "../test-utils.ts";

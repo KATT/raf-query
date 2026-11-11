@@ -2,14 +2,18 @@ import { act, render, type RenderResult } from "@testing-library/react";
 import { type ReactNode, Suspense } from "react";
 
 import {
+	bindInfiniteQueryOptions,
+	bindQueryOptions,
 	createQueryClient,
 	group,
-	infiniteQueryOptions,
 	type QueryClient,
 	type QueryClientConfig,
 	QueryClientProvider,
-	queryOptions,
 } from "./index.ts";
+
+/** The builders of factories that need no plugin: they run on any client. */
+export const queryOptions = bindQueryOptions();
+export const infiniteQueryOptions = bindInfiniteQueryOptions();
 
 export interface Issue {
 	readonly id: number;

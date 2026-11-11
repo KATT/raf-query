@@ -1,4 +1,4 @@
-import { type Part, part } from "../../client.ts";
+import { type Plugin, plugin } from "../../client.ts";
 import { refetchStaleReads } from "../shared.ts";
 
 /**
@@ -19,8 +19,8 @@ export interface ReconnectRefetch {
  *
  * @see https://raf-query.katt.dev/docs/testing#focus-and-the-network
  */
-export function reconnectRefetch(): Part<ReconnectRefetch> {
-	return part<ReconnectRefetch>({
+export function reconnectRefetch(): Plugin<ReconnectRefetch> {
+	return plugin<ReconnectRefetch>({
 		setup: (client, signal) => {
 			window.addEventListener(
 				"online",

@@ -1,4 +1,4 @@
-import { type Part, part } from "../../client.ts";
+import { type Plugin, plugin } from "../../client.ts";
 import { refetchStaleReads } from "../shared.ts";
 
 /**
@@ -19,8 +19,8 @@ export interface FocusRefetch {
  *
  * @see https://raf-query.katt.dev/docs/window-focus-refetching
  */
-export function focusRefetch(): Part<FocusRefetch> {
-	return part<FocusRefetch>({
+export function focusRefetch(): Plugin<FocusRefetch> {
+	return plugin<FocusRefetch>({
 		setup: (client, signal) => {
 			const onFocus = () => {
 				if (document.visibilityState === "visible") {

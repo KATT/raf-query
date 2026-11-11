@@ -1,5 +1,5 @@
 /**
- * A third-party part, written with the public exports only: everything
+ * A third-party plugin, written with the public exports only: everything
  * below imports from `./index.ts`, the published entry.
  */
 import { describe, expectTypeOf, it } from "vitest";
@@ -11,8 +11,8 @@ import {
 	invalidateMany,
 	type Operation,
 	type Optional,
-	type Part,
-	part,
+	type Plugin,
+	plugin,
 	type QueryClient,
 	type QueryInfo,
 	type Retry,
@@ -32,8 +32,8 @@ function label(op: Operation<Traced>): string {
 }
 
 /** Logs every request, tagged with the query's `traceId`. */
-function traced(log: (line: string) => void): Part<Traced> {
-	return part<Traced>({
+function traced(log: (line: string) => void): Plugin<Traced> {
+	return plugin<Traced>({
 		link: async (op, next) => {
 			log(`start ${label(op)}`);
 			try {
@@ -51,15 +51,15 @@ interface Ownership {
 }
 
 /** Counts cache events, and declares `owner`. */
-function ownership(onEvent: (type: string) => void): Part<Ownership> {
-	return part<Ownership>({
+function ownership(onEvent: (type: string) => void): Plugin<Ownership> {
+	return plugin<Ownership>({
 		setup: (client, signal) => {
 			client.subscribe((event) => onEvent(event.type), { signal });
 		},
 	});
 }
 
-/** A target over the option the part declares. */
+/** A target over the option the plugin declares. */
 const ownedBy: Target<Ownership["options"], Ownership["options"]["owner"]> = {
 	where: (query: QueryInfo<Ownership["options"]>, owner) =>
 		query.options.owner === owner,
@@ -73,8 +73,8 @@ interface Reports {
 }
 
 /** Gives every `queryFn` the request's reports client. */
-function reports(baseUrl: string): Part<Reports> {
-	return part<Reports>({
+function reports(baseUrl: string): Plugin<Reports> {
+	return plugin<Reports>({
 		context: {
 			reports: { get: async (id) => ({ id: id + baseUrl.length }) },
 		},
@@ -98,13 +98,13 @@ function seedReport(client: QueryClient<RootOf<Reports>>, id: number) {
 
 const makeQueryClient = () =>
 	createQueryClient({
-		parts: [traced(() => {}), ownership(() => {}), reports("/api")],
+		plugins: [traced(() => {}), ownership(() => {}), reports("/api")],
 	});
 
 const queryOptions = bindQueryOptions<typeof makeQueryClient>();
 
 describe("extensions with public exports only", () => {
-	it("type a root's options and context by what its parts declare", () => {
+	it("type a root's options and context by what its plugins declare", () => {
 		const reportQuery = (input: { readonly id: number }) =>
 			queryOptions({
 				owner: "billing",
@@ -115,25 +115,25 @@ describe("extensions with public exports only", () => {
 		expectTypeOf(reportQuery).returns.not.toBeAny();
 
 		queryOptions({
-			// @ts-expect-error -- `owner` takes the part's values only
+			// @ts-expect-error -- `owner` takes the plugin's values only
 			owner: "sales",
 			queryFn: () => 1,
 			queryKey: reportKeys("bad-owner"),
 		});
 		queryOptions({
-			// @ts-expect-error -- no part declares `priority`
+			// @ts-expect-error -- no plugin declares `priority`
 			priority: 1,
 			queryFn: () => 1,
 			queryKey: reportKeys("bad-key"),
 		});
 	});
 
-	it("run a package's factories on the clients that have its part", () => {
+	it("run a package's factories on the clients that have its plugin", () => {
 		expectTypeOf(
 			invalidateMany(makeQueryClient(), packageReportQuery),
 		).resolves.toBeVoid();
 		seedReport(makeQueryClient(), 1);
-		const retrying = createQueryClient({ parts: [retry()] });
+		const retrying = createQueryClient({ plugins: [retry()] });
 		// @ts-expect-error -- this client has no `reports()`
 		void invalidateMany(retrying, packageReportQuery);
 		// @ts-expect-error -- nor for the package's own functions

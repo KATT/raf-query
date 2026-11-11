@@ -3,7 +3,7 @@ import type { QueryClient } from "../client.ts";
 import { type Entry, fetchEntry, isStale } from "../entry.ts";
 import { isObject } from "../guards.ts";
 
-/** An option a part declares, for the entry: the query's, or else the client's default. */
+/** An option a plugin declares, for the entry: the query's, or else the client's default. */
 export function optionOf(entry: Entry, name: string): unknown {
 	for (const options of [entry.options, entry.client.config.defaults]) {
 		if (isObject(options) && name in options) {

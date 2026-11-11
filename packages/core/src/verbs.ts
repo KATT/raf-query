@@ -45,10 +45,10 @@ export type PartialInput<TFactory extends QueryFactory> = DeepPartial<
 >;
 
 /**
- * The clients a factory runs on: those with the parts its builder is bound
+ * The clients a factory runs on: those with the plugins its builder is bound
  * to, or any client for a factory from an unbound builder.
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#typing-options-by-the-client
+ * @see https://raf-query.katt.dev/docs/plugins#typing-options-by-the-client
  */
 export type ClientFor<TFactory extends QueryFactory> = QueryClient<
 	RootOfFactory<TFactory>
@@ -56,7 +56,7 @@ export type ClientFor<TFactory extends QueryFactory> = QueryClient<
 
 /**
  * A target a client's root can match: its `where` reads the options that
- * root's parts declare.
+ * root's plugins declare.
  */
 export type TargetFor<TTypes extends RootTypes, TParam> = Target<
 	NoInfer<TTypes["options"]>,
@@ -69,7 +69,7 @@ type ParamOf<TTarget> = TTarget extends {
 	? TParam
 	: never;
 
-/** A factory, if the client has the parts it needs; else nothing fits. */
+/** A factory, if the client has the plugins it needs; else nothing fits. */
 type FactoryFor<TTypes extends RootTypes, TFactory extends QueryFactory> = [
 	QueryClient<TTypes>,
 ] extends [ClientFor<TFactory>]

@@ -52,9 +52,9 @@ export function Hydrate(props: {
 		readonly state: DehydratedState;
 	}>();
 	if (hydrated?.state !== state) {
-		const parts = split(client, state);
-		hydrate(client, parts.now);
-		setHydrated({ deferred: parts.deferred, state });
+		const plugins = split(client, state);
+		hydrate(client, plugins.now);
+		setHydrated({ deferred: plugins.deferred, state });
 	}
 	const deferred = hydrated?.deferred;
 	useEffect(() => {

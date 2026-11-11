@@ -2,4 +2,4 @@ import { createQueryClient, reconnectRefetch } from "@raf-query/react";
 
 import { render } from "./render.tsx";
 
-await render(createQueryClient({ parts: [reconnectRefetch()] }));
+await render(createQueryClient({ plugins: [reconnectRefetch()] }));

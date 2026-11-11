@@ -6,14 +6,19 @@ import {
 	load,
 	prefetch,
 	QueryClientProvider,
-	queryOptions,
 	resetOne,
 	revalidate,
 	setData,
 	useQuery,
 	waterfallHandle,
 } from "./index.ts";
-import { createBackend, flush, issues, testClient } from "./test-utils.tsx";
+import {
+	createBackend,
+	flush,
+	issues,
+	queryOptions,
+	testClient,
+} from "./test-utils.tsx";
 
 async function loadedClient() {
 	const backend = createBackend();

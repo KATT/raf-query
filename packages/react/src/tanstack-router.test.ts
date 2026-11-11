@@ -13,12 +13,11 @@ import {
 	getData,
 	load,
 	prefetch,
-	queryOptions,
 	setData,
 } from "./index.ts";
 import { setupRouterIntegration as setupBrowser } from "./tanstack-router-browser.ts";
 import { setupRouterIntegration } from "./tanstack-router.ts";
-import { createBackend, flush, issues } from "./test-utils.tsx";
+import { createBackend, flush, issues, queryOptions } from "./test-utils.tsx";
 
 function routerFor(isServer: boolean) {
 	const rootRoute = createRootRoute();

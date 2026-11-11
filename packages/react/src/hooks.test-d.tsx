@@ -12,7 +12,6 @@ import {
 	type QueryState,
 	type QueryHandle,
 	polling,
-	queryOptions as plainQueryOptions,
 	retry,
 	type SingleQueryFactory,
 	type Thenable,
@@ -122,8 +121,10 @@ describe("useInfiniteQuery", () => {
 	});
 });
 
+const plainQueryOptions = bindQueryOptions();
+
 describe("bindUseQueryClient", () => {
-	const makeQueryClient = () => createQueryClient({ parts: [retry()] });
+	const makeQueryClient = () => createQueryClient({ plugins: [retry()] });
 	const queryOptions = bindQueryOptions<typeof makeQueryClient>();
 	const useRootClient = bindUseQueryClient<typeof makeQueryClient>();
 	const posts = group("posts");
@@ -133,7 +134,7 @@ describe("bindUseQueryClient", () => {
 			queryKey: posts(input.id),
 			retry: 1,
 		});
-	const makeOtherClient = () => createQueryClient({ parts: [polling()] });
+	const makeOtherClient = () => createQueryClient({ plugins: [polling()] });
 	const otherQuery = () =>
 		bindQueryOptions<typeof makeOtherClient>()({
 			queryFn: async () => 1,
@@ -157,7 +158,7 @@ describe("bindUseQueryClient", () => {
 		expectTypeOf(Post).toBeFunction();
 	});
 
-	it("leaves the unbound useQueryClient with a client of any root, which runs what needs no part", () => {
+	it("leaves the unbound useQueryClient with a client of any root, which runs what needs no plugin", () => {
 		const plainQuery = () =>
 			plainQueryOptions({
 				queryFn: async () => 1,

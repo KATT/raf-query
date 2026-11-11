@@ -1,4 +1,4 @@
-import { type Part, part } from "../../client.ts";
+import { type Plugin, plugin } from "../../client.ts";
 
 /**
  * What a request that took too long fails with.
@@ -14,8 +14,8 @@ export class QueryTimeoutError extends Error {
  *
  * @see https://raf-query.katt.dev/docs/retries#timeouts
  */
-export function timeout(ms: number): Part {
-	return part({
+export function timeout(ms: number): Plugin {
+	return plugin({
 		link: (op, next) => {
 			const controller = new AbortController();
 			const signal = AbortSignal.any([op.signal, controller.signal]);

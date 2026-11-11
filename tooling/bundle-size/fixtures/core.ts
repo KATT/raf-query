@@ -3,11 +3,13 @@ import {
 	group,
 	invalidateOne,
 	load,
-	queryOptions,
+	bindQueryOptions,
 	revalidate,
 } from "@raf-query/core";
 
 import { getIssue } from "./api.ts";
+
+const queryOptions = bindQueryOptions();
 
 const issues = group("issues");
 

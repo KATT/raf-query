@@ -4,7 +4,7 @@
  * `replaceEqualDeep`: every part of the new data that deeply equals the
  * old keeps the old object, and fully equal data keeps the old value
  * itself, so its thenable and every memoized reader stay put. Only plain
- * objects and dense arrays are compared part by part, by own keys (a JSON
+ * objects and dense arrays are compared plugin by plugin, by own keys (a JSON
  * `"__proto__"` key stays data); anything else is replaced. The client's
  * `structuralSharing: false`, or a query's, turns it off.
  */
@@ -14,7 +14,6 @@ import { describe, expect, it } from "vitest";
 import {
 	getData,
 	load,
-	queryOptions,
 	revalidate,
 	setData,
 	waterfallHandle,
@@ -22,6 +21,7 @@ import {
 import {
 	createBackend,
 	issues,
+	queryOptions,
 	read,
 	start,
 	testClient,
@@ -141,7 +141,7 @@ describe("structural sharing", () => {
 		expect(Object.hasOwn(Object.prototype, "admin")).toBe(false);
 	});
 
-	it("replaces data it can't compare part by part", () => {
+	it("replaces data it can't compare plugin by plugin", () => {
 		const client = testClient();
 		// A list with a hole at 1, which structural sharing doesn't treat as plain.
 		const sparse = (): Array<number> =>

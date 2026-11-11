@@ -12,13 +12,12 @@ import {
 	invalidateOne,
 	load,
 	prefetch,
-	queryOptions,
 	resetOne,
 	revalidate,
 	setData,
 	swr,
 } from "./index.ts";
-import { issues } from "./test-utils.ts";
+import { issues, queryOptions } from "./test-utils.ts";
 
 /** A query only a browser can run, counting its requests. */
 function browserOnly() {

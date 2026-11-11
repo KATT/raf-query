@@ -11,18 +11,13 @@
  */
 import { describe, expect, it, vi } from "vitest";
 
-import {
-	group,
-	invalidateMany,
-	load,
-	queryOptions,
-	revalidate,
-} from "../index.ts";
+import { group, invalidateMany, load, revalidate } from "../index.ts";
 import {
 	cached,
 	createBackend,
 	drafts,
 	issues,
+	queryOptions,
 	testClient,
 	users,
 } from "../test-utils.ts";

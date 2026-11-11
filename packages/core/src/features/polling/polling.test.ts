@@ -24,7 +24,7 @@ import {
 describe("polling()", () => {
 	it("refetches a read query every refetchInterval, until nothing reads it", async () => {
 		const counter = counted();
-		const client = testClient({ parts: [polling()] });
+		const client = testClient({ plugins: [polling()] });
 		const handle = waterfallHandle(counter.query, {
 			name: "polled",
 			options: { refetchInterval: 100 },
@@ -52,7 +52,7 @@ describe("polling()", () => {
 
 	it("stops for a query that is removed or no longer read", async () => {
 		const counter = counted();
-		const client = testClient({ parts: [polling()] });
+		const client = testClient({ plugins: [polling()] });
 		await counter.show(client, "removed", { refetchInterval: 100 });
 		const left = await counter.show(client, "left", { refetchInterval: 100 });
 		removeOne(client, counter.query, { name: "removed" });
@@ -65,7 +65,7 @@ describe("polling()", () => {
 
 	it("leaves queries without an interval alone", async () => {
 		const counter = counted();
-		const client = testClient({ parts: [polling()] });
+		const client = testClient({ plugins: [polling()] });
 		const intervals: Array<Polling["options"]["refetchInterval"]> = [
 			undefined,
 			false,
@@ -84,7 +84,7 @@ describe("polling()", () => {
 		const counter = counted();
 		const client = testClient({
 			defaults: { refetchInterval: 100 },
-			parts: [polling()],
+			plugins: [polling()],
 		});
 		await counter.show(client, "default");
 		await counter.show(client, "off", { refetchInterval: false });

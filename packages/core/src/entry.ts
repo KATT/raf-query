@@ -1,4 +1,4 @@
-import { type Operation, partsOf, type QueryClient } from "./client.ts";
+import { type Operation, pluginsOf, type QueryClient } from "./client.ts";
 import { isObject } from "./guards.ts";
 import { type AnyFactory, hashKey, type QueryKey } from "./keys/keys.ts";
 import { matches, type Stamp } from "./keys/targets.ts";
@@ -332,9 +332,9 @@ function terminal(op: Operation): Promise<unknown> {
 }
 
 function chain(op: Operation): Promise<unknown> {
-	const parts = partsOf(op.client);
+	const plugins = pluginsOf(op.client);
 	const call = (index: number, current: Operation): Promise<unknown> => {
-		const one = parts[index];
+		const one = plugins[index];
 		if (!one) {
 			return terminal(current);
 		}

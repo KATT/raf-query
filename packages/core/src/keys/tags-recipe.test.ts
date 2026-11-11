@@ -2,7 +2,7 @@
  * Tags aren't part of core: they're a recipe an app writes with two public
  * pieces, the same as the docs show (`www/content/query-invalidation.md#tags`).
  *
- * - `part<{ options: … }>()` without a link or a setup function does
+ * - `plugin<{ options: … }>()` without a link or a setup function does
  *   nothing at runtime. It only declares the `tags` option, so a client
  *   that has it, and the builders bound to that client, type the field.
  * - A target is any object with `where(query, param)`. A verb calls it for
@@ -16,7 +16,7 @@ import {
 	bindQueryOptions,
 	createQueryClient,
 	invalidateMany,
-	part,
+	plugin,
 	retry,
 	type Target,
 	waterfallHandle,
@@ -27,7 +27,7 @@ import { flush, issues, read, testClient } from "../test-utils.ts";
 interface Tags {
 	readonly options: { readonly tags?: ReadonlyArray<string> };
 }
-const tagged = part<Tags>();
+const tagged = plugin<Tags>();
 
 type Tagged = { readonly tags: ReadonlyArray<string> | undefined };
 
@@ -39,7 +39,7 @@ const withTag: Target<Tagged, string> = {
 	where: (query, name) => query.options.tags?.includes(name) ?? false,
 };
 
-const makeQueryClient = () => createQueryClient({ parts: [tagged] });
+const makeQueryClient = () => createQueryClient({ plugins: [tagged] });
 const queryOptions = bindQueryOptions<typeof makeQueryClient>();
 
 function counted(name: string, tags?: ReadonlyArray<string>) {
@@ -55,7 +55,7 @@ function counted(name: string, tags?: ReadonlyArray<string>) {
 
 describe("tags written in user code", () => {
 	it("refetch the read queries that list the tag, and leave the rest", async () => {
-		const client = testClient({ parts: [tagged] });
+		const client = testClient({ plugins: [tagged] });
 		const post = counted("post", ["content", "post"]);
 		const page = counted("page", ["content"]);
 		const settings = counted("settings");
@@ -70,11 +70,11 @@ describe("tags written in user code", () => {
 		expect([post.calls(), page.calls(), settings.calls()]).toEqual([3, 2, 1]);
 	});
 
-	it("type tags only on a client that has the part", () => {
+	it("type tags only on a client that has the plugin", () => {
 		expectTypeOf<RootOf<typeof makeQueryClient>["options"]>().toEqualTypeOf<{
 			readonly tags: ReadonlyArray<string> | undefined;
 		}>();
-		const bare = () => createQueryClient({ parts: [retry()] });
+		const bare = () => createQueryClient({ plugins: [retry()] });
 		const bareQueryOptions = bindQueryOptions<typeof bare>();
 		const wrong = () => {
 			bareQueryOptions({

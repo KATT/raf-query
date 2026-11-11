@@ -2,8 +2,8 @@ export {
 	type Clock,
 	createQueryClient,
 	type Operation,
-	type Part,
-	part,
+	type Plugin,
+	plugin,
 	type QueryClient,
 	type QueryClientConfig,
 } from "./client.ts";
@@ -35,7 +35,6 @@ export {
 	type InfiniteQueryFunctionContext,
 	type InfiniteQueryOptions,
 	type InfiniteQueryOptionsBuilder,
-	infiniteQueryOptions,
 } from "./infinite/infinite.ts";
 export {
 	fetchNextPage,
@@ -74,7 +73,6 @@ export {
 	type QueryFunctionContext,
 	type QueryOptions,
 	type QueryOptionsBuilder,
-	queryOptions,
 	type StreamOptions,
 } from "./options.ts";
 export type { Optional, RootOf } from "./root.ts";

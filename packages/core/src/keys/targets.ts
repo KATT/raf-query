@@ -11,9 +11,9 @@
  *   It matches every key that starts with its path, whoever built the key,
  *   so it covers its subgroups and their queries.
  * - Any object with `where(query, param)`, typed by the options the
- *   client's parts declare: predicates over a query's key, input, options
+ *   client's plugins declare: predicates over a query's key, input, options
  *   or data. Tags are one, written in user code over a `tags` option a
- *   part declares.
+ *   plugin declares.
  *
  * Invalidation records a stamp per target. An entry is invalidated when a
  * matching stamp is newer than the request its data came from. Entries with
@@ -41,7 +41,7 @@ function partialMatch(actual: unknown, expected: unknown): boolean {
 	if (Array.isArray(actual) && Array.isArray(expected)) {
 		return (
 			actual.length === expected.length &&
-			expected.every((part, index) => partialMatch(actual[index], part))
+			expected.every((plugin, index) => partialMatch(actual[index], plugin))
 		);
 	}
 	if (isPlainRecord(actual) && isPlainRecord(expected)) {

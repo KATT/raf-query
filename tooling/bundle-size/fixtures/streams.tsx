@@ -5,11 +5,13 @@ import {
 	prefetch,
 	QueryClientProvider,
 	type QueryHandle,
-	queryOptions,
+	bindQueryOptions,
 	useQuery,
 } from "@raf-query/react";
 import { Suspense, use } from "react";
 import { createRoot } from "react-dom/client";
+
+const queryOptions = bindQueryOptions();
 
 const builds = group("builds");
 

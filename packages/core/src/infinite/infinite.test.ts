@@ -26,7 +26,6 @@ import {
 	hasNextPage,
 	hasPreviousPage,
 	type InfiniteData,
-	infiniteQueryOptions,
 	load,
 	prefetch,
 	revalidate,
@@ -37,6 +36,7 @@ import {
 import {
 	createBackend,
 	flush,
+	infiniteQueryOptions,
 	issues,
 	readPages,
 	start,
