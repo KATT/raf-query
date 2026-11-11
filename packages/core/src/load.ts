@@ -17,7 +17,9 @@ import {
 	type KeyOf,
 	optionsOf,
 	type QueryFactory,
+	type RootOfFactory,
 } from "./options.ts";
+import type { RootTypes } from "./root.ts";
 
 /** Bundlers replace `process.env.NODE_ENV`; typed here so consumers need no Node types. */
 declare const process: { readonly env: { readonly NODE_ENV?: string } };
@@ -162,6 +164,19 @@ type LoadedData<TEntries extends LoadEntries> = {
 	]: DataOfEntry<TEntries[TName]>;
 };
 
+/** In an error: the parts an entry's factory needs, which the client passed to `load` lacks. */
+interface ClientLacksParts<TTypes extends RootTypes> {
+	readonly "~the client lacks parts this entry's factory needs": TTypes;
+}
+
+/** An entry, if the client has the parts its factory needs; else what it needs. */
+type EntryFor<TTypes extends RootTypes, TEntry> =
+	TEntry extends LoadEntry<infer TFactory>
+		? [TTypes] extends [RootOfFactory<TFactory>]
+			? TEntry
+			: ClientLacksParts<RootOfFactory<TFactory>>
+		: TEntry;
+
 /**
  * What `load` resolves to: a handle per entry (`undefined` for `skipToken`),
  * and the data of `swr` and `revalidate` entries.
@@ -265,11 +280,17 @@ function waitAny(entry: Entry, pages: number | undefined): Promise<Outcome> {
  *
  * @see https://raf-query.katt.dev/docs/starting-queries
  */
-export async function load<const TEntries extends LoadEntries>(
-	client: QueryClient,
-	entries: TEntries,
+export async function load<
+	TTypes extends RootTypes,
+	const TEntries extends LoadEntries,
+>(
+	client: QueryClient<TTypes>,
+	entries: TEntries & {
+		readonly [TName in keyof TEntries]: EntryFor<TTypes, TEntries[TName]>;
+	},
 ): Promise<Loaded<TEntries>> {
-	const loading = Object.entries(entries).flatMap(([name, item]) =>
+	const items: LoadEntries = entries;
+	const loading = Object.entries(items).flatMap(([name, item]) =>
 		item === skipToken ? [] : [{ item, name }],
 	);
 	const started = loading.map((loaded) => {

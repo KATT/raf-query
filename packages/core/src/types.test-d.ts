@@ -4,15 +4,18 @@ import {
 	bindInfiniteQueryOptions,
 	bindQueryOptions,
 	createQueryClient,
+	type ClientFor,
 	type DataOf,
-	feature,
 	getData,
 	group,
+	infiniteQueryOptions,
 	type InputOf,
 	invalidateMany,
 	invalidateOne,
-	link,
 	load,
+	type Optional,
+	type OptionsOf,
+	part,
 	type PartialInput,
 	prefetch,
 	type QueryClient,
@@ -23,6 +26,7 @@ import {
 	type Recommended,
 	removeMany,
 	resetMany,
+	type Retry,
 	retry,
 	revalidate,
 	setData,
@@ -376,18 +380,22 @@ describe("verb types", () => {
 });
 
 describe("root types", () => {
-	const ownership = feature<{
-		readonly meta: { readonly owner?: "posts-team" | "users-team" };
-	}>();
+	interface Ownership {
+		readonly options: { readonly owner?: "posts-team" | "users-team" };
+	}
+	const ownership = part<Ownership>();
+	interface Api {
+		readonly context: { readonly api: (path: string) => Promise<string> };
+	}
+	const api = () => part<Api>({ context: { api: async (path) => path } });
 	const makeQueryClient = () =>
 		createQueryClient({
-			features: [ownership],
-			links: [retry()],
-			staleTime: 30_000,
+			defaults: { retry: 1, staleTime: 30_000 },
+			parts: [retry(), ownership, api()],
 		});
 	const posts = group("posts");
 	const writtenBy: Target<{ readonly owner: string | undefined }, string> = {
-		where: (query, owner) => query.meta.owner === owner,
+		where: (query, owner) => query.options.owner === owner,
 	};
 	const rootQueryOptions = bindQueryOptions<typeof makeQueryClient>();
 	const postById = (input: {
@@ -395,84 +403,172 @@ describe("root types", () => {
 		readonly id: string;
 	}) =>
 		rootQueryOptions({
-			meta: {
-				owner: "posts-team",
-				retry: false,
-			},
-			queryFn: async () => ({ title: "x" }),
+			owner: "posts-team",
+			queryFn: async (context) => ({ title: await context.api(input.id) }),
 			queryKey: posts("byId", input),
+			retry: false,
 		});
 
-	it("give a root the meta its parts declare", () => {
+	it("give a root the options and context its parts declare", () => {
 		expectTypeOf<RootOf<typeof makeQueryClient>>().toEqualTypeOf<{
-			readonly meta: {
+			readonly context: {
+				readonly api: (path: string) => Promise<string>;
+			};
+			readonly options: {
 				readonly owner: "posts-team" | "users-team" | undefined;
 				readonly retry: number | false | undefined;
 			};
 		}>();
 		expectTypeOf<
-			RootOf<
-				ReturnType<
-					typeof createQueryClient<
-						Recommended["links"],
-						Recommended["features"]
-					>
-				>
-			>
+			RootOf<ReturnType<typeof createQueryClient<Recommended>>>["options"]
 		>().toEqualTypeOf<{
-			readonly meta: {
-				readonly refetchInterval: number | false | undefined;
-				readonly refetchOnReconnect: boolean | undefined;
-				readonly refetchOnWindowFocus: boolean | undefined;
-				readonly retry: number | false | undefined;
-			};
+			readonly refetchInterval: number | false | undefined;
+			readonly refetchOnReconnect: boolean | undefined;
+			readonly refetchOnWindowFocus: boolean | undefined;
+			readonly retry: number | false | undefined;
 		}>();
 		expectTypeOf<
-			keyof RootOf<typeof createQueryClient<[], []>>["meta"]
+			keyof RootOf<typeof createQueryClient<[]>>["options"]
 		>().toEqualTypeOf<never>();
+		expectTypeOf(makeQueryClient().context.api).toBeFunction();
 	});
 
-	it("type a link's op by what it declares", () => {
-		const traced = link<{ readonly meta: { readonly traceId?: string } }>(
-			(op, next) => {
-				expectTypeOf(op.meta.traceId).toEqualTypeOf<string | undefined>();
+	it("type a link's op, and a setup's client, by what the part declares", () => {
+		interface Traced {
+			readonly options: { readonly traceId?: string };
+		}
+		const tracedQueryOptions = bindQueryOptions<Traced>();
+		const tracedQuery = () =>
+			tracedQueryOptions({
+				queryFn: () => 1,
+				queryKey: posts("traced"),
+				traceId: "t",
+			});
+		const traced = part<Traced>({
+			link: (op, next) => {
+				expectTypeOf(op.options.traceId).toEqualTypeOf<string | undefined>();
+				expectTypeOf(op.options.staleTime).toEqualTypeOf<number | undefined>();
 				return next(op);
 			},
-		);
-		const qc = () => createQueryClient({ links: [traced] });
-		expectTypeOf<RootOf<typeof qc>>().toEqualTypeOf<{
-			readonly meta: { readonly traceId: string | undefined };
+			setup: (tracedClient) => {
+				void invalidateOne(tracedClient, tracedQuery);
+			},
+		});
+		const qc = () => createQueryClient({ parts: [traced] });
+		expectTypeOf<RootOf<typeof qc>["options"]>().toEqualTypeOf<{
+			readonly traceId: string | undefined;
 		}>();
 	});
 
-	it("check meta against the root", () => {
+	it("need a part's context where it declares one", () => {
+		const wrong = () => {
+			// @ts-expect-error -- `Api` declares a context, so the part gives it
+			part<Api>();
+			// @ts-expect-error -- of its type
+			part<Api>({ context: { api: 1 } });
+			// @ts-expect-error -- a part that declares no context gives none
+			part<Ownership>({ context: { api: async () => "" } });
+		};
+		expectTypeOf(wrong).toBeFunction();
+	});
+
+	it("check options against the root", () => {
 		const wrong = () => {
 			rootQueryOptions({
-				// @ts-expect-error -- no link or feature in the root reads `cacheFor`
-				meta: { cacheFor: 1000 },
+				// @ts-expect-error -- no part of the root reads `cacheFor`
+				cacheFor: 1000,
 				queryFn: async () => 1,
 				queryKey: posts("x"),
 			});
 			rootQueryOptions({
-				// @ts-expect-error -- meta fields have their part's types
-				meta: { owner: "nobody" },
+				// @ts-expect-error -- options have their part's types
+				owner: "nobody",
 				queryFn: async () => 1,
 				queryKey: posts("y"),
 			});
 			rootQueryOptions({
-				// @ts-expect-error -- a typo isn't a field the root declares
-				meta: { retyr: 1 },
 				queryFn: async () => 1,
 				queryKey: posts("z"),
+				// @ts-expect-error -- a typo isn't an option the root declares
+				retyr: 1,
+			});
+			rootQueryOptions({
+				// @ts-expect-error -- `meta` isn't an option either
+				meta: { retry: 1 },
+				queryFn: async () => 1,
+				queryKey: posts("meta"),
 			});
 		};
 		expectTypeOf(wrong).toBeFunction();
-		expectTypeOf(postById).returns.toHaveProperty("meta");
+	});
+
+	it("take the core's options only on the unbound builders", () => {
 		queryOptions({
-			meta: { cacheFor: 1000, retyr: 1 },
-			queryFn: async () => 1,
+			gcTime: 1000,
+			queryFn: async (context) => {
+				expectTypeOf(context).not.toHaveProperty("api");
+				return 1;
+			},
 			queryKey: posts("unbound"),
+			ssr: false,
+			staleTime: Infinity,
+			structuralSharing: false,
 		});
+		const wrong = () => {
+			queryOptions({
+				queryFn: async () => 1,
+				queryKey: posts("unbound-retry"),
+				// @ts-expect-error -- `retry` needs a builder bound to a client with `retry()`
+				retry: false,
+			});
+			infiniteQueryOptions({
+				getNextPageParam: () => null,
+				initialPageParam: 0,
+				queryFn: async () => 1,
+				queryKey: posts("unbound-pages"),
+				// @ts-expect-error -- on the paged builder too
+				retry: false,
+			});
+		};
+		expectTypeOf(wrong).toBeFunction();
+	});
+
+	it("type a client's defaults by its parts", () => {
+		createQueryClient({
+			defaults: { gcTime: 1000, owner: "users-team", retry: false },
+			parts: [retry(), ownership],
+		});
+		const wrong = () => {
+			createQueryClient({
+				// @ts-expect-error -- no part of this client reads `retry`
+				defaults: { retry: 1 },
+				parts: [ownership],
+			});
+			createQueryClient({
+				// @ts-expect-error -- defaults have their part's types
+				defaults: { owner: "nobody" },
+				parts: [ownership],
+			});
+		};
+		expectTypeOf(wrong).toBeFunction();
+	});
+
+	it("type a fragment of options with OptionsOf", () => {
+		const pinned = {
+			retry: false,
+			staleTime: Infinity,
+		} satisfies OptionsOf<typeof makeQueryClient>;
+		rootQueryOptions({
+			...pinned,
+			queryFn: async () => 1,
+			queryKey: posts("pinned"),
+		});
+		expectTypeOf<OptionsOf<typeof makeQueryClient>>().toEqualTypeOf<
+			OptionsOf<ReturnType<typeof makeQueryClient>>
+		>();
+		// @ts-expect-error -- a typo isn't an option the root declares
+		const typo: OptionsOf<typeof makeQueryClient> = { retyr: 1 };
+		expectTypeOf(typo).toBeObject();
 	});
 
 	it("bind infiniteQueryOptions to the root too", () => {
@@ -482,21 +578,25 @@ describe("root types", () => {
 			rootInfiniteQueryOptions({
 				getNextPageParam: (page: number) => page + 1,
 				initialPageParam: 0,
-				meta: { owner: "posts-team", retry: 1 },
-				queryFn: async (context) => context.pageParam,
+				owner: "posts-team",
+				queryFn: async (context) => {
+					expectTypeOf(context.api).toBeFunction();
+					return context.pageParam;
+				},
 				queryKey: posts("pages"),
+				retry: 1,
 			});
 		void invalidateOne(makeQueryClient(), postPages);
 		const wrong = () => {
 			rootInfiniteQueryOptions({
+				// @ts-expect-error -- no part of the root reads `cacheFor`
+				cacheFor: 1000,
 				getNextPageParam: () => null,
 				initialPageParam: 0,
-				// @ts-expect-error -- no link or feature in the root reads `cacheFor`
-				meta: { cacheFor: 1000 },
 				queryFn: async () => 1,
 				queryKey: posts("wrong-pages"),
 			});
-			// @ts-expect-error -- postPages belongs to makeQueryClient's root
+			// @ts-expect-error -- a client without parts lacks what postPages needs
 			void invalidateOne(createQueryClient(), postPages);
 		};
 		expectTypeOf(wrong).toBeFunction();
@@ -510,15 +610,24 @@ describe("root types", () => {
 		void invalidateMany(qc, writtenBy, "a");
 		void invalidateMany(qc, {
 			where: (query: QueryInfo<{ readonly owner: string | undefined }>) =>
-				query.meta.owner === "users-team",
+				query.options.owner === "users-team",
 		});
 		void invalidateMany(qc, titles);
-		const bare = createQueryClient({ links: [retry()] });
+		void load(qc, {
+			post: swr(postById, { authorId: "a", id: "1" }),
+			settings: prefetch(settings),
+		});
+		const bare = createQueryClient({ parts: [retry()] });
 		const wrong = () => {
-			// @ts-expect-error -- postById belongs to makeQueryClient's root
+			// @ts-expect-error -- `bare` lacks parts postById needs
 			void invalidateMany(bare, postById);
-			// @ts-expect-error -- `writtenBy` reads meta.owner, which nothing in this root declares
+			// @ts-expect-error -- `writtenBy` reads `owner`, which nothing in this root declares
 			void invalidateMany(bare, writtenBy, "a");
+			void load(bare, {
+				// @ts-expect-error -- `load` checks each entry's factory against the client too
+				post: swr(postById, { authorId: "a", id: "1" }),
+				settings: prefetch(settings),
+			});
 		};
 		void invalidateMany(bare, posts);
 		expectTypeOf(wrong).toBeFunction();
@@ -527,12 +636,12 @@ describe("root types", () => {
 	it("check a list's targets against the client's root", () => {
 		const qc = makeQueryClient();
 		const owned: Target<{ readonly owner: string | undefined }> = {
-			where: (query) => query.meta.owner === "users-team",
+			where: (query) => query.options.owner === "users-team",
 		};
 		const ownedBy: Target<
 			{ readonly owner: string | undefined },
 			"posts-team" | "users-team"
-		> = { where: (query, team) => query.meta.owner === team };
+		> = { where: (query, team) => query.options.owner === team };
 		void invalidateMany(qc, [
 			posts,
 			postById,
@@ -542,16 +651,14 @@ describe("root types", () => {
 			[ownedBy, "posts-team"],
 			titles,
 		]);
-		const bare = createQueryClient({ links: [retry()] });
+		const bare = createQueryClient({ parts: [retry()] });
 		void invalidateMany(bare, [posts, titles, [titles, { id: 1 }]]);
-		const anyClient: QueryClient = qc;
-		void invalidateMany(anyClient, [postById, [writtenBy, "a"], owned]);
 		const wrong = () => {
-			// @ts-expect-error -- postById belongs to makeQueryClient's root
+			// @ts-expect-error -- `bare` lacks parts postById needs
 			void invalidateMany(bare, [posts, postById]);
-			// @ts-expect-error -- `writtenBy` reads meta.owner, which nothing in this root declares
+			// @ts-expect-error -- `writtenBy` reads `owner`, which nothing in this root declares
 			void invalidateMany(bare, [[writtenBy, "a"]]);
-			// @ts-expect-error -- nor does anything declare meta.owner
+			// @ts-expect-error -- nor does anything declare `owner`
 			void resetMany(bare, [owned]);
 			// @ts-expect-error -- a target that needs a parameter needs it in a list too
 			void invalidateMany(qc, [ownedBy]);
@@ -561,34 +668,96 @@ describe("root types", () => {
 		expectTypeOf(wrong).toBeFunction();
 	});
 
-	it("keep roots apart when one has fewer parts", () => {
-		const fewer = () => createQueryClient({ features: [ownership] });
-		const more = () =>
-			createQueryClient({ features: [ownership], links: [retry()] });
+	it("run a factory on every client that has its parts", () => {
+		const fewer = () => createQueryClient({ parts: [ownership] });
+		const more = () => createQueryClient({ parts: [ownership, retry()] });
 		const ofFewer = () =>
 			bindQueryOptions<typeof fewer>()({
+				owner: "users-team",
 				queryFn: async () => 1,
 				queryKey: group("fewer")(),
 			});
+		const ofMore = () =>
+			bindQueryOptions<typeof more>()({
+				queryFn: async () => 1,
+				queryKey: group("more")(),
+				retry: 1,
+			});
+		void invalidateMany(fewer(), ofFewer);
+		void invalidateMany(more(), ofFewer);
+		void invalidateMany(more(), [ofFewer, ofMore]);
+		void load(more(), { fewer: swr(ofFewer), more: swr(ofMore) });
 		const wrong = () => {
-			// @ts-expect-error -- a root with more parts isn't the same root
-			void invalidateMany(more(), ofFewer);
-			// @ts-expect-error -- nor is one with fewer
-			expectTypeOf(fewer()).toEqualTypeOf<ReturnType<typeof more>>();
+			// @ts-expect-error -- a client with fewer parts lacks `retry()`
+			void invalidateMany(fewer(), ofMore);
+			// @ts-expect-error -- in a list too
+			void invalidateMany(fewer(), [ofFewer, ofMore]);
 		};
 		expectTypeOf(wrong).toBeFunction();
+		expectTypeOf<ReturnType<typeof more>>().toExtend<
+			ReturnType<typeof fewer>
+		>();
 		expectTypeOf<ReturnType<typeof fewer>>().not.toExtend<
 			ReturnType<typeof more>
 		>();
-		expectTypeOf<ReturnType<typeof more>>().not.toExtend<
+		expectTypeOf<ClientFor<typeof ofFewer>>().toEqualTypeOf<
 			ReturnType<typeof fewer>
 		>();
 	});
 
-	it("take any root on a bare QueryClient", () => {
+	it("bind a library's builders to the parts it names", () => {
+		const libraryQueryOptions = bindQueryOptions<Api & Optional<Retry>>();
+		const libraryInfiniteQueryOptions = bindInfiniteQueryOptions<
+			Api & Optional<Retry>
+		>();
+		const libraryQuery = (input: { readonly path: string }) =>
+			libraryQueryOptions({
+				queryFn: (context) => context.api(input.path),
+				queryKey: posts("library", input),
+				retry: false,
+			});
+		const libraryPages = () =>
+			libraryInfiniteQueryOptions({
+				getNextPageParam: () => null,
+				initialPageParam: "",
+				queryFn: (context) => context.api(context.pageParam),
+				queryKey: posts("library-pages"),
+				retry: false,
+			});
+		const withApi = createQueryClient({ parts: [api()] });
+		const onlyRetry = createQueryClient({ parts: [retry()] });
+		void invalidateOne(withApi, libraryQuery, { path: "/" });
+		void invalidateOne(makeQueryClient(), libraryQuery, { path: "/" });
+		void load(withApi, {
+			one: swr(libraryQuery, { path: "/" }),
+			pages: swr(libraryPages),
+		});
+		expectTypeOf<DataOf<typeof libraryQuery>>().toEqualTypeOf<string>();
+		const wrong = () => {
+			libraryQueryOptions({
+				// @ts-expect-error -- the library named no part that reads `owner`
+				owner: "posts-team",
+				queryFn: () => 1,
+				queryKey: posts("library-owner"),
+			});
+			// @ts-expect-error -- a client with `retry()` alone has no `api`
+			void invalidateOne(onlyRetry, libraryQuery, { path: "/" });
+		};
+		expectTypeOf(wrong).toBeFunction();
+	});
+
+	it("take any client as a bare QueryClient, which runs only what needs no part", () => {
 		const anyClient: QueryClient = makeQueryClient();
-		void invalidateMany(anyClient, writtenBy, "a");
-		void invalidateMany(anyClient, postById);
+		void invalidateMany(anyClient, posts);
+		void invalidateMany(anyClient, settings);
+		void invalidateMany(anyClient, featured);
+		const wrong = () => {
+			// @ts-expect-error -- any client may lack the parts postById needs
+			void invalidateMany(anyClient, postById);
+			// @ts-expect-error -- or the option `writtenBy` reads
+			void invalidateMany(anyClient, writtenBy, "a");
+		};
+		expectTypeOf(wrong).toBeFunction();
 		expectTypeOf(anyClient).toExtend<QueryClient>();
 	});
 });

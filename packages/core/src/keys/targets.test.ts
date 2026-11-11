@@ -4,19 +4,19 @@
  * and an entry is invalidated while a matching stamp is newer than the
  * request its data came from. Read entries refetch at once; the rest are
  * checked when they're next read, which always goes through their
- * factory, so a target sees their input and `meta` by then.
+ * factory, so a target sees their input and options by then.
  *
  * - A factory matches the entries it made, by identity; with a partial
  *   input, only those whose input has those fields (objects partially,
  *   arrays whole), never the key.
  * - A group matches by key prefix (`./keys.test.ts`).
  * - Any object with `where(query, param)` matches what `where` returns
- *   `true` for. `query` has the entry's `queryKey`, `input`, `meta` and
+ *   `true` for. `query` has the entry's `queryKey`, `input`, `options` and
  *   `data`; `param` is what the verb was called with.
  * - A list matches what any of its targets match, each with its own
  *   argument.
  *
- * An entry that was only hydrated has no factory, input or `meta` until
+ * An entry that was only hydrated has no factory, input or options until
  * something reads it through its factory.
  */
 import { describe, expect, it } from "vitest";
@@ -29,7 +29,6 @@ import {
 	load,
 	type PartialInput,
 	type QueryKey,
-	type QueryMeta,
 	queryOptions,
 	removeMany,
 	resetMany,
@@ -58,7 +57,7 @@ describe("targets", () => {
 	});
 
 	it("matches part of an input with nested objects and arrays", async () => {
-		const client = testClient({ staleTime: Infinity });
+		const client = testClient({ defaults: { staleTime: Infinity } });
 		let calls = 0;
 		const list = (input: {
 			readonly filter: {
@@ -87,7 +86,7 @@ describe("targets", () => {
 	});
 
 	it("matches a partial against the input, whatever the key ends with", async () => {
-		const client = testClient({ staleTime: Infinity });
+		const client = testClient({ defaults: { staleTime: Infinity } });
 		const calls: Array<string> = [];
 		const bySlug = (input: { readonly slug: string }) =>
 			queryOptions({
@@ -117,7 +116,7 @@ describe("targets", () => {
 	});
 
 	it("matches a partial against a hydrated query once its factory reads it", async () => {
-		const client = testClient({ staleTime: Infinity });
+		const client = testClient({ defaults: { staleTime: Infinity } });
 		const calls: Array<string> = [];
 		const bySlug = (input: { readonly slug: string }) =>
 			queryOptions({
@@ -153,7 +152,7 @@ describe("targets", () => {
 
 	it("matches a one-off where target with its parameter", async () => {
 		const cache = await cached();
-		const byTitle: Target<QueryMeta, string> = {
+		const byTitle: Target<object, string> = {
 			where: (query, title) =>
 				// SAFETY: every query this test caches holds an issue or a draft string.
 				(query.data as { readonly title?: string } | undefined)?.title ===
@@ -180,7 +179,7 @@ describe("targets", () => {
 
 	it("applies invalidations to hydrated queries once a factory reads them", async () => {
 		const backend = createBackend();
-		const client = testClient({ staleTime: Infinity });
+		const client = testClient({ defaults: { staleTime: Infinity } });
 		const hydrated = (queryKey: QueryKey, data: unknown) => ({
 			data,
 			queryKey,
@@ -196,8 +195,8 @@ describe("targets", () => {
 				hydrated(drafts("byId", { id: 3 }), "Draft 3"),
 			],
 		});
-		// Hydrated entries have `{}` as their meta: `featured` matches the
-		// draft only once `draftQuery` reads it and gives it its meta.
+		// Hydrated entries have `{}` as their options: `featured` matches the
+		// draft only once `draftQuery` reads it and gives it its options.
 		await invalidateMany(client, featured);
 		const loading = load(client, {
 			draft: revalidate(backend.draftQuery, { id: 3 }),

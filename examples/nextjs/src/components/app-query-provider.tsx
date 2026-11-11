@@ -17,20 +17,20 @@ const StaleTimeDefaultsContext = createContext<QueryTimeDefaults | null>(null);
 
 /**
  * The client components' query client: one per server render, which starts
- * no request, and one per browser tab. The client reads its config live,
- * and that config is the object the settings menu mutates, so a new stale
+ * no request, and one per browser tab. The client reads its defaults live,
+ * and they are the object the settings menu mutates, so a new stale
  * time applies to the cache already on screen. Built here, in a client
- * component, because its links and features are functions a server
- * component can't pass.
+ * component, because its parts hold functions a server component can't
+ * pass.
  */
 export function AppQueryProvider(props: {
 	readonly children: ReactNode;
 	readonly staleTime: number;
 }) {
-	const [defaults] = useState(() =>
-		Object.assign(queryTimeDefaults(props.staleTime), recommended()),
+	const [defaults] = useState(() => queryTimeDefaults(props.staleTime));
+	const [client] = useState(() =>
+		createQueryClient({ defaults, parts: recommended() }),
 	);
-	const [client] = useState(() => createQueryClient(defaults));
 	return (
 		<StaleTimeDefaultsContext value={defaults}>
 			<QueryClientProvider client={client}>

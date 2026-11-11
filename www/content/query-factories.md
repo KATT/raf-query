@@ -31,7 +31,7 @@ tanstack-start/src/docs/query-factories.two-parameters.ts#two-parameters
 
 The factory is the only place a query is declared, including whether it's paged. Every other API — `prefetch`, `swr`, `revalidate`, `waterfallHandle`, `invalidateOne`, `setData` — takes either kind and infers the rest from the factory's type: the data, the input, and for paged queries the page and page param types. Components read the two kinds with their own hooks, `useQuery` and `useInfiniteQuery`.
 
-Options set in the factory override the client's (`staleTime`, `gcTime`, `structuralSharing`):
+Options set in the factory override the client's [defaults](./important-defaults.md#changing-the-defaults):
 
 | Option              | What it does                                                                                                    |
 | ------------------- | --------------------------------------------------------------------------------------------------------------- |
@@ -43,9 +43,8 @@ Options set in the factory override the client's (`staleTime`, `gcTime`, `struct
 | `structuralSharing` | See [Render optimizations](./render-optimizations.md)                                                           |
 | `stream`            | Folds the chunks of a `queryFn` that returns an async iterable. See [Streaming](./query-functions.md#streaming) |
 | `ssr`               | `false` for data only a browser has. See [Browser-only queries](./ssr-and-hydration.md#browser-only-queries)    |
-| `meta`              | Settings for the client's links and features, such as `retry`. See [Query meta](./links-and-features.md)        |
 
-Per-query retries, polling and focus refetching are `meta` fields, read by the link or feature that does them: `meta: { retry: 1 }` with `retry()`, `meta: { refetchInterval: 5000 }` with `polling()`. See [Retries](./retries.md), [Polling](./polling.md) and [Window focus refetching](./window-focus-refetching.md).
+Per-query retries, polling and focus refetching are options of the client's [parts](./links-and-features.md): `retry: 1` with `retry()`, `refetchInterval: 5000` with `polling()`. The `queryOptions` that `@raf-query/react` exports takes the options in the table. To set a part's option, build the factory with the `queryOptions` your app [binds to its client](./links-and-features.md#typing-options-by-the-client). See [Retries](./retries.md), [Polling](./polling.md) and [Window focus refetching](./window-focus-refetching.md).
 
 `infiniteQueryOptions` also takes `initialPageParam`, `getNextPageParam`, `getPreviousPageParam` and `maxPages`. See [Infinite queries](./infinite-queries.md).
 

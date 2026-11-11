@@ -3,8 +3,7 @@
  * it changes without notice between minor versions.
  */
 export {
-	type AnyFeature,
-	type AnyLink,
+	type AnyPart,
 	type ClientEvent,
 	mount,
 	systemClock,
@@ -21,13 +20,9 @@ export {
 	reset,
 	subscribeEntry,
 } from "./entry.ts";
-export type { FocusRefetchMeta } from "./features/focus-refetch/focus-refetch.ts";
-export type { PollingMeta } from "./features/polling/polling.ts";
-export type { ReconnectRefetchMeta } from "./features/reconnect-refetch/reconnect-refetch.ts";
 export { fetchPage, pageState } from "./infinite/paging.ts";
 export { type AnyFactory, hashKey } from "./keys/keys.ts";
 export type { AnyTarget } from "./keys/targets.ts";
-export type { RetryMeta } from "./links/retry/retry.ts";
 export {
 	isWaterfallHandle,
 	type LoadRecord,
@@ -35,5 +30,13 @@ export {
 	startIfStale,
 	readData,
 } from "./load.ts";
-export type { Decl, DefaultTypes, MetaOf, RootOf, RootTypes } from "./root.ts";
+export type {
+	Decl,
+	NoParts,
+	Root,
+	RootOf,
+	RootOfParts,
+	RootTypes,
+	SetsOf,
+} from "./root.ts";
 export { fulfilled, mapThenable, pending, rejected } from "./thenable.ts";

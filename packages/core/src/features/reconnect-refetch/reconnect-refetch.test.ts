@@ -1,7 +1,7 @@
 /**
  * `reconnectRefetch()` is a feature (see `../focus-refetch/` for how
  * features run). It listens for `online` on `window` and refetches every
- * read, stale query, unless its `meta.refetchOnReconnect` is
+ * read, stale query, unless its `refetchOnReconnect` is
  * `false`. It shares that sweep with `focusRefetch()` (`../shared.ts`).
  */
 import { act } from "@testing-library/react";
@@ -13,7 +13,7 @@ import { counted, flush, testClient } from "../../test-utils.ts";
 describe("reconnectRefetch()", () => {
 	it("refetches read, stale queries when the browser comes back online", async () => {
 		const counter = counted();
-		const client = testClient({ features: [reconnectRefetch()] });
+		const client = testClient({ parts: [reconnectRefetch()] });
 		await counter.show(client, "stale");
 		await counter.show(client, "opted out", { refetchOnReconnect: false });
 		act(() => {

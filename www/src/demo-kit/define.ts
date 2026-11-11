@@ -1,6 +1,6 @@
-import type { QueryClient } from "@raf-query/react";
 import type { ComponentType } from "react";
 
+import type { DemoClient } from "./client.ts";
 import type { FakeServer } from "./server.ts";
 
 export interface DemoVariant {
@@ -14,7 +14,7 @@ export interface DemoVariant {
 
 export interface DemoDefinition {
 	/** A fresh client per session; demos that need other defaults pass them here. */
-	readonly createClient?: () => QueryClient;
+	readonly createClient?: () => DemoClient;
 	/** One sentence on what to try. */
 	readonly hint: string;
 	readonly title: string;

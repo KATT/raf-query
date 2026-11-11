@@ -33,7 +33,7 @@ This lets `memo` components and React Compiler skip re-rendering children whose 
 
 When the whole response is deeply equal to the cached data, the old data is kept as it is, and the reader's thenable doesn't change.
 
-Structural sharing only looks inside plain objects and arrays. Class instances, `Map`s and `Date`s are compared by identity. Turn it off for very large responses where the comparison costs more than it saves, per query or for the whole client with `createQueryClient({ structuralSharing: false })`:
+Structural sharing only looks inside plain objects and arrays. Class instances, `Map`s and `Date`s are compared by identity. Turn it off for very large responses where the comparison costs more than it saves, per query or for the whole client with `createQueryClient({ defaults: { structuralSharing: false } })`:
 
 ```sample
 tanstack-start/src/docs/render-optimizations.ts#structural-sharing

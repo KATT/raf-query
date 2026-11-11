@@ -1,4 +1,4 @@
-import type { Link } from "../../client.ts";
+import { type Part, part } from "../../client.ts";
 
 /**
  * What a request that took too long fails with.
@@ -14,23 +14,25 @@ export class QueryTimeoutError extends Error {
  *
  * @see https://raf-query.katt.dev/docs/retries#timeouts
  */
-export function timeout(ms: number): Link {
-	return (op, next) => {
-		const controller = new AbortController();
-		const signal = AbortSignal.any([op.signal, controller.signal]);
-		return new Promise((resolve, reject) => {
-			const handle = op.client.clock.setTimeout(() => {
-				const error = new QueryTimeoutError(
-					`Query ${op.hash} took longer than ${ms} ms`,
-				);
-				controller.abort(error);
-				reject(error);
-			}, ms);
-			next({ ...op, signal })
-				.then(resolve, reject)
-				.finally(() => {
-					op.client.clock.clearTimeout(handle);
-				});
-		});
-	};
+export function timeout(ms: number): Part {
+	return part({
+		link: (op, next) => {
+			const controller = new AbortController();
+			const signal = AbortSignal.any([op.signal, controller.signal]);
+			return new Promise((resolve, reject) => {
+				const handle = op.client.clock.setTimeout(() => {
+					const error = new QueryTimeoutError(
+						`Query ${op.hash} took longer than ${ms} ms`,
+					);
+					controller.abort(error);
+					reject(error);
+				}, ms);
+				next({ ...op, signal })
+					.then(resolve, reject)
+					.finally(() => {
+						op.client.clock.clearTimeout(handle);
+					});
+			});
+		},
+	});
 }

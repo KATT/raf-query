@@ -14,7 +14,7 @@ function record(key: string) {
 }
 
 export const queryClientConfig = {
-	staleTime: 5000,
+	defaults: { staleTime: 5000 },
 } as const satisfies QueryClientConfig;
 
 export function postQuery(input: { slug: string }) {

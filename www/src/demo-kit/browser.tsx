@@ -1,5 +1,4 @@
 import { cn } from "@examples/ui/lib/utils";
-import { type QueryClient, useQueryClient } from "@raf-query/react";
 import { ArrowLeft, Lock, RotateCw } from "lucide-react";
 import {
 	createContext,
@@ -9,6 +8,8 @@ import {
 	useState,
 	useTransition,
 } from "react";
+
+import { type DemoClient, useQueryClient } from "./client.ts";
 
 export interface DemoLocation {
 	readonly path: string;
@@ -26,7 +27,7 @@ function href(location: DemoLocation) {
 }
 
 export type DemoLoader<TData> = (args: {
-	readonly client: QueryClient;
+	readonly client: DemoClient;
 	readonly location: DemoLocation;
 }) => TData | Promise<TData>;
 

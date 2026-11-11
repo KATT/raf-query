@@ -22,12 +22,12 @@ Your components never deal with this. A handle only carries a key and an input, 
 
 `createQueryClient` makes a server client where `window` doesn't exist (set `isServer` to choose). A server client renders once, so it behaves differently:
 
-| Behavior            | Browser                                                         | Server                                                                                            |
-| ------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Retries             | With the `retry()` link                                         | None, even with `retry()`                                                                         |
-| `gcTime`            | 5 minutes by default                                            | Never collected: the cache lives as long as the request                                           |
-| Stale cached data   | Refetched (`swr` entries resolve with it and refetch alongside) | Reused: `staleTime` doesn't apply within a request; `revalidate` entries refetch invalidated data |
-| Focus and reconnect | Refetch read, stale queries, with their feature                 | Not watched: features start when a provider mounts                                                |
+| Behavior            | Browser                                                                     | Server                                                                                            |
+| ------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Retries             | With `retry()`                                                              | None, even with `retry()`                                                                         |
+| `gcTime`            | 5 minutes by default                                                        | Never collected: the cache lives as long as the request                                           |
+| Stale cached data   | Refetched (`swr` entries resolve with it and refetch alongside)             | Reused: `staleTime` doesn't apply within a request; `revalidate` entries refetch invalidated data |
+| Focus and reconnect | Refetch read, stale queries, with `focusRefetch()` and `reconnectRefetch()` | Not watched: features start when a provider mounts                                                |
 
 So in a server render, every entry makes at most one request per query, whatever its `staleTime`, unless a write invalidates the query and a `revalidate` entry reads it again.
 

@@ -1,5 +1,5 @@
-import { getPost, listComments } from "~/api.ts";
-import { comments, posts } from "~/queries.ts";
+import { getAuthor, getMe } from "~/api.ts";
+import { account, authors, comments, posts } from "~/queries.ts";
 
 import type { makeQueryClient } from "./links-and-features.ts";
 
@@ -23,26 +23,31 @@ export const infiniteQueryOptions = bindInfiniteQueryOptions<Client>();
 export function commentsQuery(input: { slug: string }) {
 	return infiniteQueryOptions({
 		queryKey: comments(input.slug),
-		queryFn: (context) =>
-			listComments({ cursor: context.pageParam, slug: input.slug }),
+		// `api` is the context the `api()` part gives
+		queryFn: ({ api, pageParam, signal }) =>
+			api.listComments({ cursor: pageParam, slug: input.slug }, { signal }),
 		initialPageParam: 0,
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
-		meta: {
-			errorMessage: "Couldn't load the comments",
-			owner: "community",
-			retry: 1,
-		},
+		// Options the client's parts declare
+		errorMessage: "Couldn't load the comments",
+		owner: "community",
+		retry: 1,
 	});
 }
 // #endregion
 
 // #region bound-errors
-queryOptions({
-	queryKey: posts("bySlug", "hello-world"),
-	queryFn: () => getPost("hello-world"),
-	// @ts-expect-error -- 2769: no link or feature of the root reads `cacheFor`
-	meta: { cacheFor: 60_000 },
-});
+// @ts-expect-error -- 2769: no part of the client declares `cacheFor`
+queryOptions({ queryKey: account("me"), queryFn: getMe, cacheFor: 60_000 });
+// #endregion
+
+// #region context
+export function postQuery(input: { slug: string }) {
+	return queryOptions({
+		queryKey: posts("bySlug", input.slug),
+		queryFn: ({ api, signal }) => api.getPost(input.slug, { signal }),
+	});
+}
 // #endregion
 
 // #region use-query-client
@@ -58,5 +63,37 @@ export function RefreshComments(props: { slug: string }) {
 			Refresh
 		</button>
 	);
+}
+// #endregion
+
+// #region client-type
+import type { ClientFor } from "@raf-query/react";
+
+// The app's client
+type AppQueryClient = ReturnType<typeof makeQueryClient>;
+
+// Any client that can run `commentsQuery`
+type CommentsClient = ClientFor<typeof commentsQuery>;
+
+export function refreshComments(client: CommentsClient, slug: string) {
+	return invalidateMany(client, commentsQuery, { slug });
+}
+// #endregion
+
+// #region options-of
+import type { OptionsOf } from "@raf-query/react";
+
+// For data that doesn't change: never stale, and not worth a retry
+const pinned = {
+	retry: false,
+	staleTime: Infinity,
+} satisfies OptionsOf<typeof makeQueryClient>;
+
+export function authorQuery(input: { id: string }) {
+	return queryOptions({
+		...pinned,
+		queryKey: authors(input.id),
+		queryFn: () => getAuthor(input.id),
+	});
 }
 // #endregion

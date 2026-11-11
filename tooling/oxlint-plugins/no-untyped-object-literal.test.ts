@@ -14,7 +14,7 @@ const rule = plugin.rules["no-untyped-object-literal"];
 
 tester.run("no-untyped-object-literal", rule, {
 	valid: [
-		`const mentionsTodo: Target<QueryMeta, number> = {
+		`const mentionsTodo: Target<object, number> = {
        where: (query, id) => query.queryKey.includes(id),
      };`,
 		`const languages = { css: () => import("css") } satisfies Record<string, LanguageInput>;`,

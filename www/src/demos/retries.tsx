@@ -2,12 +2,14 @@ import { Button } from "@examples/ui/components/button";
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	createQueryClient,
+	focusRefetch,
 	group,
 	load,
+	polling,
 	prefetch,
 	type QueryHandle,
 	queryOptions,
-	recommended,
+	reconnectRefetch,
 	retry,
 	useQuery,
 	useQueryClient,
@@ -204,8 +206,12 @@ export default defineDemo({
 	Component: Retries,
 	createClient: () =>
 		createQueryClient({
-			...recommended(),
-			links: [retry({ attempts: 2, delay: (attempt) => 500 * 2 ** attempt })],
+			parts: [
+				retry({ attempts: 2, delay: (attempt) => 500 * 2 ** attempt }),
+				focusRefetch(),
+				reconnectRefetch(),
+				polling(),
+			],
 		}),
 	hint: "Queries here retry twice. Fail one request and open a post: the retry recovers it. Fail three to exhaust the retries: a first load hits the error boundary, a refetch keeps the old data.",
 	server,

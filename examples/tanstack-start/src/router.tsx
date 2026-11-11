@@ -18,11 +18,12 @@ import { readPrefetch, readStaleTime, toDefaultPreload } from "./settings.ts";
 export function getRouter() {
 	const staleTime = readStaleTime() ?? DEFAULT_STALE_TIME;
 	const queryDefaults = queryTimeDefaults(staleTime);
-	// The client reads its config live, so the settings panel can change
+	// The client reads its defaults live, so the settings panel can change
 	// `staleTime` without a new client. A server client leaves `gcTime` unset.
-	const queryClient = createQueryClient(
-		Object.assign(queryDefaults, recommended()),
-	);
+	const queryClient = createQueryClient({
+		defaults: queryDefaults,
+		parts: recommended(),
+	});
 	if (!queryClient.isServer) {
 		applyStaleTime(queryDefaults, staleTime);
 	}

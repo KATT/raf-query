@@ -2,7 +2,7 @@
  * `polling()` is a feature (see `../focus-refetch/` for how features run).
  * It subscribes to the client's events and keeps one timer per entry, on
  * the client's `Clock`: an entry gets a timer while it has readers and its
- * `meta.refetchInterval` is a positive number, and loses it when its last
+ * `refetchInterval` is a positive number, and loses it when its last
  * reader leaves, when it's removed, or when the feature stops. Each tick
  * starts the entry's request (joining one in flight) and schedules the
  * next, whether or not the data is stale.
@@ -11,7 +11,7 @@ import { useQuery } from "@raf-query/react";
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 
-import type { PollingMeta } from "./polling.ts";
+import type { Polling } from "./polling.ts";
 import { polling, removeOne, waterfallHandle } from "../../index.ts";
 import {
 	advance,
@@ -24,10 +24,10 @@ import {
 describe("polling()", () => {
 	it("refetches a read query every refetchInterval, until nothing reads it", async () => {
 		const counter = counted();
-		const client = testClient({ features: [polling()] });
+		const client = testClient({ parts: [polling()] });
 		const handle = waterfallHandle(counter.query, {
-			meta: { refetchInterval: 100 },
 			name: "polled",
+			options: { refetchInterval: 100 },
 		});
 		function Poll() {
 			useQuery(counter.query, handle);
@@ -52,7 +52,7 @@ describe("polling()", () => {
 
 	it("stops for a query that is removed or no longer read", async () => {
 		const counter = counted();
-		const client = testClient({ features: [polling()] });
+		const client = testClient({ parts: [polling()] });
 		await counter.show(client, "removed", { refetchInterval: 100 });
 		const left = await counter.show(client, "left", { refetchInterval: 100 });
 		removeOne(client, counter.query, { name: "removed" });
@@ -65,8 +65,8 @@ describe("polling()", () => {
 
 	it("leaves queries without an interval alone", async () => {
 		const counter = counted();
-		const client = testClient({ features: [polling()] });
-		const intervals: Array<PollingMeta["refetchInterval"]> = [
+		const client = testClient({ parts: [polling()] });
+		const intervals: Array<Polling["options"]["refetchInterval"]> = [
 			undefined,
 			false,
 			0,
@@ -78,5 +78,21 @@ describe("polling()", () => {
 		advance(client, 500);
 
 		expect(["undefined", "false", "0"].map(counter.calls)).toEqual([1, 1, 1]);
+	});
+
+	it("polls at the client's default interval, unless the query sets its own", async () => {
+		const counter = counted();
+		const client = testClient({
+			defaults: { refetchInterval: 100 },
+			parts: [polling()],
+		});
+		await counter.show(client, "default");
+		await counter.show(client, "off", { refetchInterval: false });
+		advance(client, 100);
+		await flush();
+		advance(client, 100);
+		await flush();
+
+		expect(["default", "off"].map(counter.calls)).toEqual([3, 1]);
 	});
 });

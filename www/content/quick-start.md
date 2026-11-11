@@ -82,7 +82,7 @@ react-router/app/root.tsx#middleware
 react-router/app/root.tsx#app
 ```
 
-A bare client only caches and dedupes. `recommended()` adds what most apps want: [retries](./retries.md), refetching stale data on [window focus](./window-focus-refetching.md) and reconnect, and [polling](./polling.md). `staleTime` says how long data counts as fresh. [Important defaults](./important-defaults.md) explains each.
+A bare client only caches and dedupes. `recommended()` adds what most apps want: [retries](./retries.md), refetching stale data on [window focus](./window-focus-refetching.md) and reconnect, and [polling](./polling.md). The `staleTime` in `defaults` says how long every query's data counts as fresh. [Important defaults](./important-defaults.md) explains each.
 
 The integration also moves the server's cache to the browser, so data loaded during server rendering is never fetched twice. Your framework's guide covers the details: [TanStack Start](./tanstack-start.md), [React Server Components](./react-server-components.md), [React Router](./react-router.md).
 

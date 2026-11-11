@@ -15,9 +15,9 @@
 
 - The published packages (`packages/*`) and the example apps don't use Effect: they're plain TypeScript with no runtime dependencies beyond React. See [`.agent-docs/decisions/effect-scope.md`](.agent-docs/decisions/effect-scope.md).
 - Write this repo's own logic in Effect: build steps, CI and deploy scripts, tooling. Files, processes, HTTP and env go through Effect's services (`FileSystem`, `Path`, `ChildProcessSpawner`, `HttpClient`, `Config`), provided by `NodeServices.layer` at the edge, not `node:fs` / `node:child_process` / `process.env`. Read `.repos/effect` (start with `LLMS.md`) for the idioms.
-- Behaviors beyond the kernel (retries, refetch on focus or reconnect, polling, hydration) are opt-in links, features or subpaths, so an app that doesn't use one doesn't bundle it. Keep the client-only base under the 5 kB gzip budget `pnpm bundle-size` checks.
+- Behaviors beyond the kernel (retries, refetch on focus or reconnect, polling, hydration) are opt-in parts or subpaths, so an app that doesn't use one doesn't bundle it. Keep the client-only base under the 5 kB gzip budget `pnpm bundle-size` checks.
 
-- Never bind an object literal to a variable without a type: write `const mentionsTodo: Target<QueryMeta, number> = { … }` or `{ … } satisfies X`, using a type the package exports (export it if it isn't). A literal passed straight to a call is typed by the parameter, so it's fine. `workspace/no-untyped-object-literal` enforces this in examples, `www/samples`, the docs demos, tests and Markdown fences.
+- Never bind an object literal to a variable without a type: write `const mentionsTodo: Target<object, number> = { … }` or `{ … } satisfies X`, using a type the package exports (export it if it isn't). A literal passed straight to a call is typed by the parameter, so it's fine. `workspace/no-untyped-object-literal` enforces this in examples, `www/samples`, the docs demos, tests and Markdown fences.
 
 ## Commits and pull requests
 

@@ -2,7 +2,6 @@ import {
 	createQueryClient,
 	focusRefetch,
 	polling,
-	queryOptions,
 	recommended,
 	reconnectRefetch,
 	retry,
@@ -12,27 +11,26 @@ import { posts } from "~/queries.ts";
 
 // #region the-features
 const queryClient = createQueryClient({
-	features: [focusRefetch(), reconnectRefetch()],
+	parts: [focusRefetch(), reconnectRefetch()],
 });
 // or
-const withEverything = createQueryClient({ ...recommended() });
+const withEverything = createQueryClient({ parts: recommended() });
 // #endregion
 
 // #region turning-it-off
 // `recommended()` without focusRefetch() and reconnectRefetch()
-const withoutFocus = createQueryClient({
-	links: [retry()],
-	features: [polling()],
-});
+const withoutFocus = createQueryClient({ parts: [retry(), polling()] });
 // #endregion
 
 // #region per-query
+import { queryOptions } from "~/raf.ts";
+
 // A post's body rarely changes while someone reads it.
 export function postBodyQuery(input: { slug: string }) {
 	return queryOptions({
 		queryKey: posts("body", input.slug),
 		queryFn: () => getPost(input.slug),
-		meta: { refetchOnWindowFocus: false },
+		refetchOnWindowFocus: false,
 	});
 }
 // #endregion

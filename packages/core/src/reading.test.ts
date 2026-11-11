@@ -166,7 +166,7 @@ describe("a read query", () => {
 
 	it("refetches on mount when it was invalidated while nobody read it", async () => {
 		const backend = createBackend();
-		const client = testClient({ staleTime: Infinity });
+		const client = testClient({ defaults: { staleTime: Infinity } });
 		const loading = load(client, {
 			issue: revalidate(backend.issueQuery, { id: 1 }),
 		});
@@ -214,7 +214,7 @@ describe("a read query", () => {
 describe("garbage collection", () => {
 	it("drops data nobody reads after gcTime, and keeps it while it's read", async () => {
 		const backend = createBackend();
-		const client = testClient({ gcTime: 1000 });
+		const client = testClient({ defaults: { gcTime: 1000 } });
 		const loading = load(client, {
 			issue: revalidate(backend.issueQuery, { id: 1 }),
 			other: revalidate(backend.issueQuery, { id: 2 }),
@@ -251,7 +251,7 @@ describe("garbage collection", () => {
 
 	it("leaves an entry that was removed while its collection waited", async () => {
 		const backend = createBackend();
-		const client = testClient({ gcTime: 10 });
+		const client = testClient({ defaults: { gcTime: 10 } });
 		void load(client, { issue: prefetch(backend.issueQuery, { id: 1 }) });
 		advance(client, 10);
 		removeOne(client, backend.issueQuery, { id: 1 });
@@ -267,7 +267,7 @@ describe("garbage collection", () => {
 	it("never collects on the server, or with an infinite gcTime", async () => {
 		const backend = createBackend();
 		const server = testClient({ isServer: true });
-		const browser = testClient({ gcTime: Infinity });
+		const browser = testClient({ defaults: { gcTime: Infinity } });
 		void load(server, { issue: prefetch(backend.issueQuery, { id: 1 }) });
 		void load(browser, { issue: prefetch(backend.issueQuery, { id: 1 }) });
 		await backend.respondAll();

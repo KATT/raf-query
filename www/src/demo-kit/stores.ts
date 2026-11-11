@@ -1,4 +1,4 @@
-import type { QueryClient } from "@raf-query/react";
+import type { CoreOptions, QueryClient } from "@raf-query/react";
 import { useSyncExternalStore } from "react";
 
 import { type FakeServer, keyLabel, type NetworkRequest } from "./server.ts";
@@ -93,7 +93,8 @@ function dataStatusOf(
 	if (!state.hasData) {
 		return "pending";
 	}
-	const staleTime = entry.options?.staleTime ?? client.config.staleTime ?? 0;
+	const defaults: CoreOptions | undefined = client.config.defaults;
+	const staleTime = entry.options?.staleTime ?? defaults?.staleTime ?? 0;
 	return tracked.invalidated ||
 		client.clock.now() - state.updatedAt >= staleTime
 		? "stale"

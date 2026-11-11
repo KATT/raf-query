@@ -13,7 +13,7 @@ import { postQuery } from "~/queries.ts";
 // #region seeding-the-cache
 const queryClient = createQueryClient({
 	isServer: false,
-	staleTime: Number.POSITIVE_INFINITY,
+	defaults: { staleTime: Number.POSITIVE_INFINITY },
 });
 
 setData(

@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 import {
 	getData,
 	invalidateOne,
-	link,
+	part,
 	load,
 	queryOptions,
 	removeOne,
@@ -151,7 +151,7 @@ describe("a streamed query", () => {
 	it("takes a link's answer that isn't a stream as it is", async () => {
 		const stream = source();
 		const client = testClient({
-			links: [link(async () => 42)],
+			parts: [part({ link: async () => 42 })],
 		});
 		const [, data] = await load(client, { sum: swr(stream.sum) });
 

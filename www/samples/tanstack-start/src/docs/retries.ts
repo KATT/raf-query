@@ -1,7 +1,6 @@
 import {
 	createQueryClient,
-	link,
-	queryOptions,
+	part,
 	recommended,
 	retry,
 	timeout,
@@ -11,24 +10,33 @@ import { getPost, HttpError } from "~/api.ts";
 import { posts } from "~/queries.ts";
 
 // #region intro
-const queryClient = createQueryClient({ links: [retry()] });
+const queryClient = createQueryClient({ parts: [retry()] });
 // or
-const withEverything = createQueryClient({ ...recommended() });
+const withEverything = createQueryClient({ parts: recommended() });
 // #endregion
 
 // #region attempts-per-query
+import { queryOptions } from "~/raf.ts";
+
 export function postQuery(input: { slug: string }) {
 	return queryOptions({
 		queryKey: posts("bySlug", input.slug),
 		queryFn: () => getPost(input.slug),
-		meta: { retry: 5 }, // or `false`
+		retry: 5, // or `false`
 	});
 }
 // #endregion
 
+// #region attempts-per-client
+const once = createQueryClient({
+	parts: recommended(),
+	defaults: { retry: 1 },
+});
+// #endregion
+
 // #region options
 const patient = createQueryClient({
-	links: [
+	parts: [
 		retry({
 			attempts: 5,
 			delay: (attempt) => 500 * (attempt + 1),
@@ -40,10 +48,10 @@ const patient = createQueryClient({
 
 // #region timeouts
 // Each attempt gets 10 seconds.
-const perAttempt = createQueryClient({ links: [retry(), timeout(10_000)] });
+const perAttempt = createQueryClient({ parts: [retry(), timeout(10_000)] });
 
 // The request and all its retries get 30 seconds.
-const overall = createQueryClient({ links: [timeout(30_000), retry()] });
+const overall = createQueryClient({ parts: [timeout(30_000), retry()] });
 // #endregion
 
 declare function showToast(message: string): void;
@@ -54,26 +62,30 @@ declare function reportError(
 ): void;
 
 // #region one-place-for-every-error
-const reportErrors = link<{ meta: { errorMessage?: string } }>(
-	async (op, next) => {
+interface ErrorReports {
+	readonly options: { readonly errorMessage?: string };
+}
+
+const reportErrors = part<ErrorReports>({
+	link: async (op, next) => {
 		try {
 			return await next(op);
 		} catch (error) {
 			if (!op.signal.aborted) {
 				reportError(error, { queryKey: op.queryKey });
-				showToast(op.meta.errorMessage ?? "Something went wrong");
+				showToast(op.options.errorMessage ?? "Something went wrong");
 			}
 			throw error;
 		}
 	},
-);
+});
 
-const reporting = createQueryClient({ links: [reportErrors, retry()] });
+const reporting = createQueryClient({ parts: [reportErrors, retry()] });
 // #endregion
 
 // #region redirects
 const withRedirects = createQueryClient({
-	links: [
+	parts: [
 		retry({
 			when: (error) =>
 				!isRedirect(error) &&

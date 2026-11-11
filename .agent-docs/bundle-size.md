@@ -38,11 +38,11 @@ Every opt-in feature is absent from the bundles that don't import it (the run fa
 - **Server renders that never start requests took the base from 4.47 to 4.42 kB** ([decisions/server-renders-start-no-requests.md](./decisions/server-renders-start-no-requests.md)): `startIfMissing` lost its server branch and the browser-only flag.
 - **One folder per behavior cost nothing.** Moving the links, features, hydration, paging, structural sharing and target matching into their own folders left every entry byte-identical (gzip, `src/`): the modules keep their code and their order in the bundle. `group()` stays in `keys/keys.ts` with `hashKey`, ahead of `keys/targets.ts`: a separate `group.ts` lands later in the bundle and moved most entries by 1 to 9 B.
 - **Tags left core** ([decisions/tags-userland.md](./decisions/tags-userland.md)): the tags row and its `".tags"` marker are gone, everything went from 6.91 to 6.76 kB, and every other entry is unchanged.
-- **The base sits at 4.44 kB of 5 kB.** Anything added to the always-imported path (`createQueryClient`, `load`, `useQuery`, the entry) has to pay for itself or go behind a link, a feature or an export the app has to import.
+- **The base sits at 4.44 kB of 5 kB.** Anything added to the always-imported path (`createQueryClient`, `load`, `useQuery`, the entry) has to pay for itself or go behind a part or an export the app has to import.
 
 ## What defeats tree-shaking
 
-- **Anything reachable from the always-imported path.** Behaviors that every client runs can't be shaken, so retries, focus/reconnect, polling, hydration and paging are opt-in: links, features, exports an app imports, or a `~run` function set only by `infiniteQueryOptions`.
+- **Anything reachable from the always-imported path.** Behaviors that every client runs can't be shaken, so retries, focus/reconnect, polling, hydration and paging are opt-in: parts given to `createQueryClient`, exports an app imports, or a `~run` function set only by `infiniteQueryOptions`.
 - **`export * as X` in a library build.** Rolldown/tsdown compile it to an `__exportAll` getter object, which keeps every member in `dist/`. The packages export named members only. Check with `pnpm bundle-size --dist` after `pnpm build`.
 - **Runtime branches on build-time facts.** `if (router.isServer) setupServer()` keeps the server half's imports; use an export condition ([decisions/router-browser-build.md](./decisions/router-browser-build.md)).
 - Dynamic access (`X[key]`) and re-exported `export *` of a module with side effects keep everything.

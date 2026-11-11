@@ -677,10 +677,9 @@ function HomePage() {
 							</a>{" "}
 							closely: query keys, deduping, staleness, garbage collection,
 							structural sharing and infinite pages. Retries and focus and
-							reconnect refetching are there too, as links and features you turn
-							on. If you know TanStack Query, you already know how raf-query
-							caches. What changes is where queries start and how components
-							read them.
+							reconnect refetching are there too, as parts you give the client.
+							If you know TanStack Query, you already know how raf-query caches.
+							What changes is where queries start and how components read them.
 						</p>
 						<div className="flex flex-wrap gap-3">
 							<Link

@@ -69,7 +69,7 @@ Paged factories read with `useInfiniteQuery`, which works the same way. See [Inf
 
 The state is tracked: a component re-renders when its thenable changes, or when a field it read while rendering changes. One that never reads `isFetching` doesn't re-render while a background refetch runs. See [Tracked state](./render-optimizations.md#tracked-state).
 
-The one option, `whilePending`, picks what shows while a new handle loads: see [Pagination and URL state](./url-state-and-pagination.md). There's no option to change the input, because the handle decides what's read, and per-query settings such as polling live in the factory as [`meta`](./links-and-features.md).
+The one option, `whilePending`, picks what shows while a new handle loads: see [Pagination and URL state](./url-state-and-pagination.md). There's no option to change the input, because the handle decides what's read, and per-query settings such as polling are [options](./links-and-features.md) in the factory.
 
 ## Errors
 

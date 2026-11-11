@@ -11,6 +11,8 @@ import {
 	type QueryClient,
 	type QueryState,
 	type QueryHandle,
+	polling,
+	queryOptions as plainQueryOptions,
 	retry,
 	type SingleQueryFactory,
 	type Thenable,
@@ -121,21 +123,22 @@ describe("useInfiniteQuery", () => {
 });
 
 describe("bindUseQueryClient", () => {
-	const makeQueryClient = () => createQueryClient({ links: [retry()] });
+	const makeQueryClient = () => createQueryClient({ parts: [retry()] });
 	const queryOptions = bindQueryOptions<typeof makeQueryClient>();
 	const useRootClient = bindUseQueryClient<typeof makeQueryClient>();
 	const posts = group("posts");
 	const postQuery = (input: { readonly id: number }) =>
 		queryOptions({
-			meta: { retry: 1 },
 			queryFn: async () => ({ id: input.id }),
 			queryKey: posts(input.id),
+			retry: 1,
 		});
-	const makeOtherClient = () => createQueryClient();
+	const makeOtherClient = () => createQueryClient({ parts: [polling()] });
 	const otherQuery = () =>
 		bindQueryOptions<typeof makeOtherClient>()({
 			queryFn: async () => 1,
 			queryKey: group("other")(),
+			refetchInterval: 1000,
 		});
 
 	it("returns a client of the root, whose verbs check factories", () => {
@@ -147,18 +150,25 @@ describe("bindUseQueryClient", () => {
 				QueryClient<RootOf<typeof makeQueryClient>>
 			>();
 			void invalidateMany(client, postQuery);
-			// @ts-expect-error -- otherQuery belongs to another root
+			// @ts-expect-error -- otherQuery needs `polling()`, which this client lacks
 			void invalidateMany(client, otherQuery);
 			return null;
 		}
 		expectTypeOf(Post).toBeFunction();
 	});
 
-	it("leaves the unbound useQueryClient taking any root", () => {
+	it("leaves the unbound useQueryClient with a client of any root, which runs what needs no part", () => {
+		const plainQuery = () =>
+			plainQueryOptions({
+				queryFn: async () => 1,
+				queryKey: group("plain")(),
+			});
 		function Post() {
 			const client = useQueryClient();
+			void invalidateMany(client, plainQuery);
+			void invalidateMany(client, posts);
+			// @ts-expect-error -- any client may lack `retry()`, which postQuery needs
 			void invalidateMany(client, postQuery);
-			void invalidateMany(client, otherQuery);
 			return null;
 		}
 		expectTypeOf(Post).toBeFunction();

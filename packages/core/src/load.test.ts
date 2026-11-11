@@ -96,7 +96,7 @@ describe("load", () => {
 
 	it("uses fresh data, and refetches stale data for revalidate entries", async () => {
 		const backend = createBackend();
-		const client = testClient({ staleTime: 1000 });
+		const client = testClient({ defaults: { staleTime: 1000 } });
 		const first = load(client, {
 			issue: revalidate(backend.issueQuery, { id: 1 }),
 		});
@@ -119,7 +119,7 @@ describe("load", () => {
 
 	it("takes a query's own staleTime over the client's", async () => {
 		const backend = createBackend();
-		const client = testClient({ staleTime: 1000 });
+		const client = testClient({ defaults: { staleTime: 1000 } });
 		const brief = (input: { readonly id: number }) => ({
 			...backend.issueQuery(input),
 			staleTime: 0,
