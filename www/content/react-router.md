@@ -32,6 +32,12 @@ react-router-spa/app/query-client.ts#query-client
 react-router-spa/app/root.tsx#app
 ```
 
+`raf.ts` [binds the builders to the client](./plugins.md#typing-options-by-the-client), here by the client's own type. Factories import `queryOptions` and `infiniteQueryOptions` from it, and components import `useQueryClient`:
+
+```sample
+react-router-spa/app/raf.ts
+```
+
 Nothing is on by default: [`recommended()`](./important-defaults.md) adds retries, refetching on window focus and reconnect, and polling.
 
 Mount DevTools only when [`import.meta.env.DEV`](https://vite.dev/guide/env-and-mode#built-in-constants) is true so Vite drops the panel from production builds.
@@ -62,10 +68,14 @@ react-router-spa/app/components/comments.tsx#component
 
 ### Provider
 
-One function makes the app's clients:
+One function makes the app's clients, and `raf.ts` [binds the builders to it](./plugins.md#typing-options-by-the-client). Factories import `queryOptions` and `infiniteQueryOptions` from that file, and components import `useQueryClient`:
 
 ```sample
 react-router/app/query-client.ts#make-query-client
+```
+
+```sample
+react-router/app/raf.ts
 ```
 
 The root route's component renders `Providers`, the [provider component every framework shares](./ssr-and-hydration.md#the-provider). Without a `client` prop, it creates one client per server render and one per browser tab:
@@ -88,7 +98,7 @@ Loaders start queries on the request's client below, and `HydrationBoundary` sen
 
 ### A client per request
 
-A root [`middleware`](https://reactrouter.com/how-to/middleware) creates the request's query client and puts it in a [context](https://reactrouter.com/api/utils/createContext):
+A root [`middleware`](https://reactrouter.com/how-to/middleware) creates the request's query client and puts it in a [context](https://reactrouter.com/api/utils/createContext). The context is typed as the app's client, `ReturnType<typeof makeQueryClient>`, so `load` runs the app's factories on what a loader reads from it:
 
 ```sample
 react-router/app/query-client.ts#context
@@ -166,7 +176,7 @@ Read search params from `args.request.url` in the `loader` or `clientLoader`, va
 
 ## Mutations
 
-Write from the browser in a React action, then await `invalidateOne(queryClient, factory, input)` or `invalidateMany` with the client from `useQueryClient()`, as in [Mutations](./mutations.md). React Router [actions](https://reactrouter.com/start/framework/actions) work too: after one, React Router runs the page's loaders again. A server `loader`'s new snapshot carries the new data. A `clientLoader` reads the tab's cache, which may still hold the old data as fresh, so `await invalidateOne(queryClient, ...)` in the [`clientAction`](https://reactrouter.com/start/framework/actions#client-actions) before it returns.
+Write from the browser in a React action, then await `invalidateOne(queryClient, factory, input)` or `invalidateMany` with the client from the `useQueryClient()` that `raf.ts` exports, as in [Mutations](./mutations.md). React Router [actions](https://reactrouter.com/start/framework/actions) work too: after one, React Router runs the page's loaders again. A server `loader`'s new snapshot carries the new data. A `clientLoader` reads the tab's cache, which may still hold the old data as fresh, so `await invalidateOne(queryClient, ...)` in the [`clientAction`](https://reactrouter.com/start/framework/actions#client-actions) before it returns.
 
 ## Example
 

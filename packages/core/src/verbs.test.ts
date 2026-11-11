@@ -24,7 +24,6 @@ import {
 	isFetching,
 	load,
 	prefetch,
-	queryOptions,
 	removeAll,
 	removeMany,
 	removeOne,
@@ -44,6 +43,7 @@ import {
 	flush,
 	type Issue,
 	issues,
+	queryOptions,
 	read,
 	testClient,
 } from "./test-utils.ts";

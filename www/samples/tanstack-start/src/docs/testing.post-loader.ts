@@ -1,10 +1,11 @@
-import { load, prefetch, type QueryClient, swr } from "@raf-query/react";
+import { load, prefetch, swr } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { commentsQuery, postQuery } from "~/queries.ts";
+import type { makeQueryClient } from "~/query-client.ts";
 
 export async function postLoader(args: {
-	context: { queryClient: QueryClient };
+	context: { queryClient: ReturnType<typeof makeQueryClient> };
 	params: { slug: string };
 }) {
 	const [handles] = await load(args.context.queryClient, {

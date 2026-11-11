@@ -60,7 +60,7 @@ export const useQueryClient: typeof UseQueryClient =
  * `bindUseQueryClient` runs at module level in a file server modules may
  * import too, so it works here and returns the throwing `useQueryClient`.
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#typing-options-by-the-client
+ * @see https://raf-query.katt.dev/docs/plugins#typing-options-by-the-client
  */
 export function bindUseQueryClient<T>(): () => QueryClient<RootOf<T>> {
 	// SAFETY: the app binds this hook to the client its provider is given.

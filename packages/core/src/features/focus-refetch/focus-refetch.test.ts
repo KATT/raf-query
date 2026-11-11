@@ -26,7 +26,7 @@ describe("focusRefetch()", () => {
 		const counter = counted();
 		const client = testClient({
 			defaults: { staleTime: 10 },
-			parts: [focusRefetch()],
+			plugins: [focusRefetch()],
 		});
 		await counter.show(client, "stale");
 		advance(client, 10);
@@ -43,7 +43,7 @@ describe("focusRefetch()", () => {
 		const counter = counted();
 		const client = testClient({
 			defaults: { staleTime: 10 },
-			parts: [focusRefetch()],
+			plugins: [focusRefetch()],
 		});
 		const unread = await counter.show(client, "unread");
 		unread.unmount();

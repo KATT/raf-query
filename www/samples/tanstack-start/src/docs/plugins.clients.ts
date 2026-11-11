@@ -12,12 +12,12 @@ import {
 
 // The site retries and polls; the embeddable widget only retries.
 export const makeSiteClient = () =>
-	createQueryClient({ parts: [retry(), polling()] });
-export const makeWidgetClient = () => createQueryClient({ parts: [retry()] });
+	createQueryClient({ plugins: [retry(), polling()] });
+export const makeWidgetClient = () => createQueryClient({ plugins: [retry()] });
 
 // Bound to the site's client: its factories need `retry()` and `polling()`.
 const siteQueryOptions = bindQueryOptions<typeof makeSiteClient>();
-// Bound to the part both clients have: its factories run on either.
+// Bound to the plugin both clients have: its factories run on either.
 const sharedQueryOptions = bindQueryOptions<Retry>();
 
 export function postViewsQuery(input: { slug: string }) {
@@ -55,7 +55,7 @@ import { recommended } from "@raf-query/react";
 
 export function makeQueryClient() {
 	return createQueryClient({
-		parts: recommended(),
+		plugins: recommended(),
 		defaults: {
 			// The core's options
 			staleTime: 30_000,
@@ -70,8 +70,8 @@ export function makeQueryClient() {
 
 // #region defaults-errors
 createQueryClient({
-	parts: [polling()],
-	// @ts-expect-error -- 2353: no part of this client declares `retry`
+	plugins: [polling()],
+	// @ts-expect-error -- 2353: no plugin of this client declares `retry`
 	defaults: { retry: 1 },
 });
 // #endregion

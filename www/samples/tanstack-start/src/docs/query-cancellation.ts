@@ -1,4 +1,5 @@
-import { group, queryOptions } from "@raf-query/react";
+import { group } from "@raf-query/react";
+import { queryOptions } from "~/raf.ts";
 import { posts } from "~/queries.ts";
 
 interface SearchResult {

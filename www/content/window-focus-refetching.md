@@ -5,7 +5,7 @@ section: Guides
 order: 14
 ---
 
-When the user leaves your app and comes back, the data on screen may be out of date. Two [parts](./links-and-features.md#parts) refetch it:
+When the user leaves your app and comes back, the data on screen may be out of date. Two [plugins](./plugins.md) refetch it:
 
 - `focusRefetch()` refetches every **read, stale** query when the window regains focus.
 - `reconnectRefetch()` does the same when the browser comes back online.
@@ -22,13 +22,13 @@ Both are features: they run while a `QueryClientProvider` has the client mounted
 
 ## Turning it off
 
-For every query, leave the part out of the client:
+For every query, leave the plugin out of the client:
 
 ```sample
 tanstack-start/src/docs/window-focus-refetching.ts#turning-it-off
 ```
 
-For one query, set `refetchOnWindowFocus: false` or `refetchOnReconnect: false` in its factory. The parts declare these options, so they're set with the `queryOptions` an app [binds to its client](./links-and-features.md#typing-options-by-the-client), here in `raf.ts`:
+For one query, set `refetchOnWindowFocus: false` or `refetchOnReconnect: false` in its factory. The plugins declare these options, so a factory can set them when its `queryOptions`, the one the app's `raf.ts` [binds to its client](./plugins.md#typing-options-by-the-client), is bound to a client that has them:
 
 ```sample
 tanstack-start/src/docs/window-focus-refetching.ts#per-query

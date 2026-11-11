@@ -12,13 +12,13 @@ import {
 } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 
-import type { AnyPart } from "./client.ts";
+import type { AnyPlugin } from "./client.ts";
 import {
+	bindInfiniteQueryOptions,
 	bindQueryOptions,
 	type Clock,
 	createQueryClient,
 	group,
-	infiniteQueryOptions,
 	load,
 	type LoadEntry,
 	type QueryClient,
@@ -29,12 +29,15 @@ import {
 	type OptionsOf,
 	type Polling,
 	type QueryHandle,
-	queryOptions,
 	type ReconnectRefetch,
 	revalidate,
 	type Target,
 	waterfallHandle,
 } from "./index.ts";
+
+/** The builders of factories that need no plugin: they run on any client. */
+export const queryOptions = bindQueryOptions();
+export const infiniteQueryOptions = bindInfiniteQueryOptions();
 
 export interface Issue {
 	readonly author: string;
@@ -104,7 +107,7 @@ export const author: Target<object, string | undefined> = {
 		return by !== undefined && (name === undefined || by === name);
 	},
 };
-/** What the drafts set: an option no part reads, for {@link featured} to match on. */
+/** What the drafts set: an option no plugin reads, for {@link featured} to match on. */
 interface Featured {
 	readonly options: { readonly featured?: boolean };
 }
@@ -234,9 +237,9 @@ export async function start<T>(
 }
 
 /** A browser client on a fake clock. */
-export function testClient<const TParts extends ReadonlyArray<AnyPart> = []>(
-	config: Parameters<typeof createQueryClient<TParts>>[0] = {},
-) {
+export function testClient<
+	const TPlugins extends ReadonlyArray<AnyPlugin> = [],
+>(config: Parameters<typeof createQueryClient<TPlugins>>[0] = {}) {
 	return createQueryClient({ clock: fakeClock(), isServer: false, ...config });
 }
 

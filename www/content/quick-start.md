@@ -1,11 +1,11 @@
 ---
 title: Quick start
-description: Build a blog post page with paged comments in TanStack Start, Next.js or React Router — define the queries, start them before render, read them with use(), and add a comment.
+description: Build a blog post page with paged comments in TanStack Start, Next.js or React Router — create the client, define the queries, start them before render, read them with use(), and add a comment.
 section: Getting started
 order: 3
 ---
 
-This page builds a blog post with its comments, the shape of most pages: something the page can't render without (the post), something that can stream in (the comments, loaded page by page), and a write (adding a comment). It covers the four things every raf-query app does:
+This page builds a blog post with its comments, the shape of most pages: something the page can't render without (the post), something that can stream in (the comments, loaded page by page), and a write (adding a comment). After a one-time setup of the client, it covers the four things every raf-query app does:
 
 1. **Define** each query once, as a factory.
 2. **Start** the page's queries before it renders, with `load`.
@@ -22,25 +22,33 @@ npm install @raf-query/react
 
 See [Installation](./installation.md) for the requirements.
 
-## 2. Define the queries
+## 2. Create the client
 
-A query is a **factory**: a function of at most one argument, its **input**, that returns `queryOptions(...)`. The comments load page by page, so their factory returns `infiniteQueryOptions(...)` instead. Everything else in raf-query takes the factory, so the data's type flows from the `queryFn` to every component that reads it.
-
-```sample title="queries.ts"
-react-router/app/queries.ts#home
-```
-
-- The input is serializable (`{ slug }`), because it travels with the query from the server to the browser.
-- The keys come from **groups**, which name sets of queries so one call can [invalidate](./query-invalidation.md) them all.
-- `listComments` returns a page and the next page's cursor, `null` after the last one. `getNextPageParam` hands that cursor to the next request.
-
-## 3. Create the client
-
-The client is the cache. On the server, make one **per request**, so users never share data. In the browser, make one per tab. `QueryClientProvider` gives it to the components below it.
+The client is the cache. A function makes it, because a server needs one **per request**, so users never share data, and a browser needs one per tab.
 
 ```sample framework="tanstack-start"
 tanstack-start/src/query-client.ts
 ```
+
+```sample framework="nextjs"
+nextjs/src/query-client.ts
+```
+
+```sample framework="react-router"
+react-router/app/query-client.ts
+```
+
+A bare client only caches and dedupes. `recommended()` returns the [plugins](./plugins.md) most apps want: [retries](./retries.md), refetching stale data on [window focus](./window-focus-refetching.md) and reconnect, and [polling](./polling.md). The `staleTime` in `defaults` says how long every query's data counts as fresh. [Important defaults](./important-defaults.md) explains each.
+
+Next, bind raf-query's builders to that client, once, in a file of their own:
+
+```sample title="raf.ts"
+tanstack-start/src/raf.ts
+```
+
+`queryOptions` and `infiniteQueryOptions` build the app's queries, and `useQueryClient` reads the client in a component. Bound to `makeQueryClient`, they know the client's plugins: a query can set `retry` because this client has `retry()`, and an option no plugin declares is a type error. The rest of the app imports the three from this file. [Typing options by the client](./plugins.md#typing-options-by-the-client) has the details.
+
+Last, give the client to the app. `QueryClientProvider` hands it to the components below it; loaders and server components get theirs from the same function:
 
 ```sample framework="tanstack-start"
 tanstack-start/src/router.tsx
@@ -55,19 +63,11 @@ tanstack-start/src/routes/__root.tsx
 ```
 
 ```sample framework="nextjs"
-nextjs/src/query-client.ts
-```
-
-```sample framework="nextjs"
 nextjs/src/components/providers.tsx
 ```
 
 ```sample framework="nextjs"
 nextjs/src/app/layout.tsx
-```
-
-```sample framework="react-router"
-react-router/app/query-client.ts
 ```
 
 ```sample framework="react-router"
@@ -82,9 +82,21 @@ react-router/app/root.tsx#middleware
 react-router/app/root.tsx#app
 ```
 
-A bare client only caches and dedupes. `recommended()` adds what most apps want: [retries](./retries.md), refetching stale data on [window focus](./window-focus-refetching.md) and reconnect, and [polling](./polling.md). The `staleTime` in `defaults` says how long every query's data counts as fresh. [Important defaults](./important-defaults.md) explains each.
+Whatever carries the client to a loader is typed as the app's client, `ReturnType<typeof makeQueryClient>`: the [router context](https://tanstack.com/router/latest/docs/framework/react/guide/router-context) in TanStack Start, the [context](https://reactrouter.com/api/utils/createContext) in React Router. The bare `QueryClient` type means any client, and `load` only runs the app's queries on a client that has its plugins.
 
 The integration also moves the server's cache to the browser, so data loaded during server rendering is never fetched twice. Your framework's guide covers the details: [TanStack Start](./tanstack-start.md), [React Server Components](./react-server-components.md), [React Router](./react-router.md).
+
+## 3. Define the queries
+
+A query is a **factory**: a function of at most one argument, its **input**, that returns `queryOptions(...)`, the builder from `raf.ts`. The comments load page by page, so their factory returns `infiniteQueryOptions(...)` instead. Everything else in raf-query takes the factory, so the data's type flows from the `queryFn` to every component that reads it.
+
+```sample title="queries.ts"
+react-router/app/queries.ts#home
+```
+
+- The input is serializable (`{ slug }`), because it travels with the query from the server to the browser.
+- The keys come from **groups**, which name sets of queries so one call can [invalidate](./query-invalidation.md) them all.
+- `listComments` returns a page and the next page's cursor, `null` after the last one. `getNextPageParam` hands that cursor to the next request.
 
 ## 4. Start the queries
 
@@ -151,7 +163,7 @@ There is no mutation hook: a write is a React action. Await the write, then awai
 tanstack-start/src/routes/posts.$slug.tsx#add-comment
 ```
 
-`invalidateMany` marks this post's comments stale and refetches them, since they're on screen. It resolves once the refetch has settled, so the form stays pending until the new comment shows. [Mutations](./mutations.md) covers optimistic updates and errors.
+`useQueryClient` is the one `raf.ts` exports, so the client it returns runs the app's factories. `invalidateMany` marks this post's comments stale and refetches them, since they're on screen. It resolves once the refetch has settled, so the form stays pending until the new comment shows. [Mutations](./mutations.md) covers optimistic updates and errors.
 
 ## Next steps
 

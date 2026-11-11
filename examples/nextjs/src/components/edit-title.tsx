@@ -4,10 +4,11 @@ import { api, parseResponse } from "~/api.ts";
 import type { Issue } from "@examples/db/types";
 import { warnMockDbWrite } from "@examples/kit/lib/mock-db-toast";
 import { cn } from "@examples/ui/lib/utils";
-import { invalidateMany, useQueryClient } from "@raf-query/react";
+import { invalidateMany } from "@raf-query/react";
 import { useActionState, useOptimistic } from "react";
 
 import { issues } from "~/queries.ts";
+import { useQueryClient } from "~/raf.ts";
 
 /**
  * The issue title, editable in place. Click (or tab) into it, then Enter or

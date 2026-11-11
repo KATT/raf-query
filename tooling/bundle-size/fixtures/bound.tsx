@@ -1,8 +1,8 @@
 /**
  * The base (`hooks.tsx`), with `queryOptions` and `useQueryClient` bound to
- * the client's root the way an app's `raf.ts` binds them. The binders return
- * the unbound functions, so this bundle stays within a few bytes of the base
- * and holds no paging code.
+ * the client's root the way an app's `raf.ts` binds them. Every binder
+ * returns the one function behind it, so this bundle stays within a few
+ * bytes of the base and holds no paging code.
  */
 import {
 	bindQueryOptions,

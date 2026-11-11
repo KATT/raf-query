@@ -164,17 +164,17 @@ type LoadedData<TEntries extends LoadEntries> = {
 	]: DataOfEntry<TEntries[TName]>;
 };
 
-/** In an error: the parts an entry's factory needs, which the client passed to `load` lacks. */
-interface ClientLacksParts<TTypes extends RootTypes> {
-	readonly "~the client lacks parts this entry's factory needs": TTypes;
+/** In an error: the plugins an entry's factory needs, which the client passed to `load` lacks. */
+interface ClientLacksPlugins<TTypes extends RootTypes> {
+	readonly "~the client lacks plugins this entry's factory needs": TTypes;
 }
 
-/** An entry, if the client has the parts its factory needs; else what it needs. */
+/** An entry, if the client has the plugins its factory needs; else what it needs. */
 type EntryFor<TTypes extends RootTypes, TEntry> =
 	TEntry extends LoadEntry<infer TFactory>
 		? [TTypes] extends [RootOfFactory<TFactory>]
 			? TEntry
-			: ClientLacksParts<RootOfFactory<TFactory>>
+			: ClientLacksPlugins<RootOfFactory<TFactory>>
 		: TEntry;
 
 /**

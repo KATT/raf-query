@@ -14,7 +14,6 @@ import {
 	QueryClientProvider,
 	QueryDevtools,
 	removeAll,
-	useQueryClient,
 } from "@raf-query/react";
 import { useState } from "react";
 import {
@@ -31,6 +30,7 @@ import {
 import { AppLink, PrefetchContext } from "~/components/app-link.tsx";
 import { Settings } from "~/components/settings.tsx";
 import { createAppQueryClient, queryClientContext } from "~/query-client.ts";
+import { useQueryClient } from "~/raf.ts";
 import {
 	DEFAULT_PREFETCH,
 	type Prefetch,

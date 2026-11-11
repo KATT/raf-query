@@ -2,10 +2,11 @@ import { api, parseResponse } from "~/api.ts";
 import type { IssueStatus } from "@examples/db/types";
 import { StatusMenu } from "@examples/kit/components/status-menu";
 import { warnMockDbWrite } from "@examples/kit/lib/mock-db-toast";
-import { invalidateMany, useQueryClient } from "@raf-query/react";
+import { invalidateMany } from "@raf-query/react";
 import { useOptimistic, useTransition } from "react";
 
 import { issues } from "~/queries.ts";
+import { useQueryClient } from "~/raf.ts";
 
 /** Status badge that opens a menu and saves the choice optimistically. */
 export function StatusSelect(props: {

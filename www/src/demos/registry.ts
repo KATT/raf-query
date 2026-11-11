@@ -1,6 +1,7 @@
-import { group, queryOptions } from "@raf-query/react";
+import { group } from "@raf-query/react";
 
 import type { DemoDefinition } from "~/demo-kit/define.ts";
+import { queryOptions } from "~/raf.ts";
 
 const demo = group("demo");
 

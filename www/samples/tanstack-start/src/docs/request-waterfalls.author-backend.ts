@@ -1,4 +1,5 @@
-import { load, prefetch, queryOptions } from "@raf-query/react";
+import { load, prefetch } from "@raf-query/react";
+import { queryOptions } from "~/raf.ts";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { getPostAuthor } from "~/api.ts";

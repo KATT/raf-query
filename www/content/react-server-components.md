@@ -17,7 +17,13 @@ One function makes the app's clients. Server components get one per request, sco
 nextjs/src/query-client.ts
 ```
 
-Client components get theirs from a `Providers` client component, which creates one client per server render and one per browser tab. A client's parts, such as the ones [`recommended()`](./important-defaults.md) returns, hold functions, which a server component can't pass to a client component, so the client is made on the client side of that boundary. The same component works in [every framework](./ssr-and-hydration.md#the-provider):
+`raf.ts` [binds the builders to that function](./plugins.md#typing-options-by-the-client). Factories import `queryOptions` and `infiniteQueryOptions` from it, and client components import `useQueryClient`. The file has no `"use client"`, so the server components that import the factories can load it:
+
+```sample
+nextjs/src/raf.ts
+```
+
+Client components get their client from a `Providers` client component, which creates one per server render and one per browser tab, with the same function. Both clients then have the same plugins, so the same factories run on both. A client's plugins, such as the ones [`recommended()`](./important-defaults.md) returns, hold functions, which a server component can't pass to a client component, so the client is made on the client side of that boundary. The same component works in [every framework](./ssr-and-hydration.md#the-provider):
 
 ```sample
 nextjs/src/components/providers.tsx

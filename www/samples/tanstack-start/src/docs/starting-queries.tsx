@@ -1,8 +1,9 @@
-import { load, prefetch, type QueryClient } from "@raf-query/react";
+import { load, prefetch } from "@raf-query/react";
 import { Link } from "@tanstack/react-router";
 import { postQuery } from "~/queries.ts";
+import type { makeQueryClient } from "~/query-client.ts";
 
-declare const qc: QueryClient;
+declare const qc: ReturnType<typeof makeQueryClient>;
 
 declare const slug: string;
 

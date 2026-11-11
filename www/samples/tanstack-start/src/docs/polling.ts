@@ -15,9 +15,9 @@ export function postViewsQuery(input: { slug: string }) {
 // #endregion
 
 // #region the-feature
-const queryClient = createQueryClient({ parts: [polling()] });
+const queryClient = createQueryClient({ plugins: [polling()] });
 // or
-const sameWithMore = createQueryClient({ parts: recommended() });
+const sameWithMore = createQueryClient({ plugins: recommended() });
 // #endregion
 
 // #region the-interval-per-input

@@ -5,15 +5,14 @@ import {
 	group,
 	invalidateOne,
 	load,
-	infiniteQueryOptions,
 	type QueryHandle,
 	swr,
 	useInfiniteQuery,
-	useQueryClient,
 } from "@raf-query/react";
 import { RefreshCw, RotateCcw } from "lucide-react";
 
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
+import { infiniteQueryOptions, useQueryClient } from "~/demo-kit/client.ts";
 import { formatTime, LoadMoreButton, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { pageOf, seedComments } from "~/demo-kit/fixtures.ts";

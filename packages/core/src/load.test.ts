@@ -15,7 +15,6 @@ import {
 	invalidateOne,
 	load,
 	prefetch,
-	queryOptions,
 	revalidate,
 	skipToken,
 	swr,
@@ -26,6 +25,7 @@ import {
 	createBackend,
 	issues,
 	mount,
+	queryOptions,
 	read,
 	testClient,
 } from "./test-utils.ts";

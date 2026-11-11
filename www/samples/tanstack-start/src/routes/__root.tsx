@@ -1,6 +1,8 @@
-import type { QueryClient } from "@raf-query/react";
 import { createRootRouteWithContext } from "@tanstack/react-router";
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
-	{},
-);
+import type { makeQueryClient } from "~/query-client.ts";
+
+export const Route = createRootRouteWithContext<{
+	// The app's client: loaders run the app's factories on it.
+	queryClient: ReturnType<typeof makeQueryClient>;
+}>()({});

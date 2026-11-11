@@ -1,4 +1,4 @@
-import { queryOptions } from "@raf-query/react";
+import { queryOptions } from "~/raf.ts";
 import { getPost } from "~/api.ts";
 import { posts } from "~/queries.ts";
 

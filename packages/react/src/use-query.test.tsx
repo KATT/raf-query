@@ -9,7 +9,6 @@ import {
 	load,
 	prefetch,
 	QueryClientProvider,
-	queryOptions,
 	type QueryState,
 	type QueryHandle,
 	removeOne,
@@ -25,6 +24,7 @@ import {
 	createBackend,
 	flush,
 	type Issue,
+	queryOptions,
 	renderWith,
 	testClient,
 } from "./test-utils.tsx";

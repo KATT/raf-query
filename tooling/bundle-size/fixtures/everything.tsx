@@ -13,7 +13,7 @@ import { issueQuery, render } from "./render.tsx";
 declare const state: DehydratedState;
 
 const client = createQueryClient({
-	parts: [...recommended(), timeout(10_000)],
+	plugins: [...recommended(), timeout(10_000)],
 });
 await render(client, (children) => (
 	<HydrationBoundary state={state}>{children}</HydrationBoundary>

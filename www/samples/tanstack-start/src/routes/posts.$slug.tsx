@@ -6,7 +6,6 @@ import {
 	swr,
 	useInfiniteQuery,
 	useQuery,
-	useQueryClient,
 } from "@raf-query/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense, use } from "react";
@@ -14,6 +13,7 @@ import { Suspense, use } from "react";
 import { addComment } from "~/api.ts";
 import { CommentsSkeleton, renderComment } from "~/components/comments.tsx";
 import { commentsQuery, postQuery } from "~/queries.ts";
+import { useQueryClient } from "~/raf.ts";
 
 // #region route
 export const Route = createFileRoute("/posts/$slug")({

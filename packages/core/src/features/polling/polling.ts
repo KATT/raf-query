@@ -1,4 +1,4 @@
-import { type Part, part } from "../../client.ts";
+import { type Plugin, plugin } from "../../client.ts";
 import { type Entry, fetchEntry } from "../../entry.ts";
 import { isNumber } from "../../guards.ts";
 import { optionOf } from "../shared.ts";
@@ -20,8 +20,8 @@ export interface Polling {
  *
  * @see https://raf-query.katt.dev/docs/polling
  */
-export function polling(): Part<Polling> {
-	return part<Polling>({
+export function polling(): Plugin<Polling> {
+	return plugin<Polling>({
 		setup: (client, signal) => {
 			const timers = new Map<Entry, unknown>();
 			const stop = (entry: Entry) => {

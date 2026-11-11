@@ -1,7 +1,7 @@
 import { getAuthor, getMe } from "~/api.ts";
 import { account, authors, comments, posts } from "~/queries.ts";
 
-import type { makeQueryClient } from "./links-and-features.ts";
+import type { makeQueryClient } from "./plugins.ts";
 
 // #region bind
 import {
@@ -23,12 +23,12 @@ export const infiniteQueryOptions = bindInfiniteQueryOptions<Client>();
 export function commentsQuery(input: { slug: string }) {
 	return infiniteQueryOptions({
 		queryKey: comments(input.slug),
-		// `api` is the context the `api()` part gives
+		// `api` is the context the `api()` plugin gives
 		queryFn: ({ api, pageParam, signal }) =>
 			api.listComments({ cursor: pageParam, slug: input.slug }, { signal }),
 		initialPageParam: 0,
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
-		// Options the client's parts declare
+		// Options the client's plugins declare
 		errorMessage: "Couldn't load the comments",
 		owner: "community",
 		retry: 1,
@@ -37,7 +37,7 @@ export function commentsQuery(input: { slug: string }) {
 // #endregion
 
 // #region bound-errors
-// @ts-expect-error -- 2769: no part of the client declares `cacheFor`
+// @ts-expect-error -- 2769: no plugin of the client declares `cacheFor`
 queryOptions({ queryKey: account("me"), queryFn: getMe, cacheFor: 60_000 });
 // #endregion
 

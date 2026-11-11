@@ -1,4 +1,4 @@
-import { type Operation, partsOf, type QueryClient } from "./client.ts";
+import { type Operation, pluginsOf, type QueryClient } from "./client.ts";
 import { isObject } from "./guards.ts";
 import { type AnyFactory, hashKey, type QueryKey } from "./keys/keys.ts";
 import { matches, type Stamp } from "./keys/targets.ts";
@@ -114,6 +114,18 @@ function optionOf<TName extends keyof CoreOptions>(
 ): CoreOptions[TName] {
 	const defaults: CoreOptions | undefined = entry.client.config.defaults;
 	return entry.options?.[name] ?? defaults?.[name];
+}
+
+/** A query's options over the client's defaults: an option it leaves `undefined` takes the default. */
+function withDefaults(
+	options: QueryOptions,
+	client: QueryClient,
+): QueryOptions {
+	const set = Object.fromEntries(
+		Object.entries(options).filter((field) => field[1] !== undefined),
+	);
+	// SAFETY: `set` has every field of `options` that isn't `undefined`.
+	return { ...client.config.defaults, ...set } as unknown as QueryOptions;
 }
 
 function gcTime(entry: Entry): number {
@@ -331,15 +343,26 @@ function terminal(op: Operation): Promise<unknown> {
 	});
 }
 
+/**
+ * The operation a link passed on, with its `context` over the one the link
+ * got: a link adds to the context, or replaces a field of it, and can't
+ * drop what the plugins before it gave.
+ */
+function passedOn(got: Operation, next: Operation): Operation {
+	return next.context === got.context
+		? next
+		: { ...next, context: { ...got.context, ...next.context } };
+}
+
 function chain(op: Operation): Promise<unknown> {
-	const parts = partsOf(op.client);
+	const plugins = pluginsOf(op.client);
 	const call = (index: number, current: Operation): Promise<unknown> => {
-		const one = parts[index];
+		const one = plugins[index];
 		if (!one) {
 			return terminal(current);
 		}
 		return one.link
-			? one.link(current, (next) => call(index + 1, next))
+			? one.link(current, (next) => call(index + 1, passedOn(current, next)))
 			: call(index + 1, current);
 	};
 	return call(0, op);
@@ -399,7 +422,7 @@ export function fetchEntry(
 		hasData: state.hasData,
 		hash: entry.hash,
 		input: entry.input,
-		options: { ...client.config.defaults, ...options },
+		options: withDefaults(options, client),
 		pages: request.pages,
 		queryKey: entry.key,
 		signal: run.controller.signal,

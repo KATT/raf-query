@@ -8,10 +8,10 @@ import type {
 	Decl,
 	Declares,
 	NoDecl,
-	NoParts,
+	NoPlugins,
 	OptionsOfDecl,
 	Root,
-	RootOfParts,
+	RootOfPlugins,
 	RootTypes,
 } from "./root.ts";
 
@@ -44,17 +44,18 @@ export const systemClock: Clock = {
 };
 
 /**
- * One request, as a part's link sees it. `TDecl` is what the part declares:
+ * One request, as a plugin's link sees it. `TDecl` is what the plugin declares:
  * `options` has the fields it reads.
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#parts
+ * @see https://raf-query.katt.dev/docs/plugins#writing-a-plugin
  */
 export interface Operation<TDecl extends Decl = Decl> {
 	readonly client: QueryClient;
 	/**
-	 * What the `queryFn` gets beside the client, key and signal: the parts'
+	 * What the `queryFn` gets beside the client, key and signal: the plugins'
 	 * context, as the links before this one left it. Pass `next` an
-	 * operation with another `context` to change it for this request.
+	 * operation with a `context` to add to it, or to replace a field of
+	 * it, for this request: the fields it leaves out stay.
 	 */
 	readonly context: Partial<ContextOfDecl<TDecl>>;
 	/** The entry's data when the request started (paged queries extend it). */
@@ -82,18 +83,18 @@ type SetupFunction = (client: QueryClient, signal: AbortSignal) => void;
 /**
  * One piece of a client's behavior: any of a link that wraps every request,
  * a feature's `setup`, and values for every `queryFn`'s context. `TDecl` is
- * what it declares: see {@link part}.
+ * what it declares: see {@link plugin}.
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#parts
+ * @see https://raf-query.katt.dev/docs/plugins#writing-a-plugin
  */
-export interface Part<TDecl extends Decl = NoDecl> extends Declares<TDecl> {
+export interface Plugin<TDecl extends Decl = NoDecl> extends Declares<TDecl> {
 	readonly context?: object;
 	readonly link?: LinkFunction;
 	readonly setup?: SetupFunction;
 }
 
-/** Any part, whatever it declares. */
-export interface AnyPart extends AnyDeclares {
+/** Any plugin, whatever it declares. */
+export interface AnyPlugin extends AnyDeclares {
 	readonly context?: object;
 	readonly link?: LinkFunction;
 	readonly setup?: SetupFunction;
@@ -104,10 +105,10 @@ type LinkOf<TDecl extends Decl, TNext> = (
 	next: (op: TNext) => Promise<unknown>,
 ) => Promise<unknown>;
 
-interface PartSetup<TDecl extends Decl> {
+interface PluginSetup<TDecl extends Decl> {
 	/**
 	 * A cache-wide behavior, started when a provider mounts the client and
-	 * stopped by `signal`. The client is typed with this part, so it runs
+	 * stopped by `signal`. The client is typed with this plugin, so it runs
 	 * the factories of a builder bound to it.
 	 */
 	readonly setup?: (
@@ -116,16 +117,16 @@ interface PartSetup<TDecl extends Decl> {
 	) => void;
 }
 
-/** The context a declaration says its part gives. */
+/** The context a declaration says its plugin gives. */
 type DeclaredContext<TDecl extends ContextDecl> = TDecl["context"];
 
-/** A declaration with a `context`: its part gives it. */
+/** A declaration with a `context`: its plugin gives it. */
 interface ContextDecl extends Decl {
 	readonly context: object;
 }
 
-/** What {@link part} takes for a part that declares no `context`. */
-interface PlainDefinition<TDecl extends Decl> extends PartSetup<TDecl> {
+/** What {@link plugin} takes for a plugin that declares no `context`. */
+interface PlainDefinition<TDecl extends Decl> extends PluginSetup<TDecl> {
 	readonly context?: never;
 	/**
 	 * Wraps every request, like a tRPC link. Call `next(op)` to run the
@@ -134,10 +135,10 @@ interface PlainDefinition<TDecl extends Decl> extends PartSetup<TDecl> {
 	readonly link?: LinkOf<TDecl, Operation<TDecl>>;
 }
 
-/** What {@link part} takes for a part that gives its `context` for the client. */
+/** What {@link plugin} takes for a plugin that gives its `context` for the client. */
 interface ClientContextDefinition<
 	TDecl extends ContextDecl,
-> extends PartSetup<TDecl> {
+> extends PluginSetup<TDecl> {
 	/** Merged into the context of every `queryFn` the client runs. */
 	readonly context: DeclaredContext<TDecl>;
 	/**
@@ -148,13 +149,13 @@ interface ClientContextDefinition<
 	readonly link?: LinkOf<TDecl, Operation<TDecl>>;
 }
 
-/** What {@link part} takes for a part that gives its `context` per request. */
+/** What {@link plugin} takes for a plugin that gives its `context` per request. */
 interface RequestContextDefinition<
 	TDecl extends ContextDecl,
-> extends PartSetup<TDecl> {
+> extends PluginSetup<TDecl> {
 	readonly context?: never;
 	/**
-	 * Wraps every request, and gives each the context the part declares:
+	 * Wraps every request, and gives each the context the plugin declares:
 	 * `next` takes an operation whose `context` has it.
 	 */
 	readonly link: LinkOf<
@@ -163,55 +164,55 @@ interface RequestContextDefinition<
 	>;
 }
 
-/** A declaration without a `context`: its part needs no definition. */
+/** A declaration without a `context`: its plugin needs no definition. */
 interface OptionsDecl {
 	readonly context?: never;
 	readonly options?: object;
 }
 
 /**
- * A part of a client, with what it declares: the per-query `options` it
+ * A plugin for a client, with what it declares: the per-query `options` it
  * reads and the `context` it gives every `queryFn`. A client's queries take
- * those options, and get that context, only when the client has the part.
+ * those options, and get that context, only when the client has the plugin.
  *
  * ```ts
  * interface Traced {
  *   readonly options: { readonly traceId?: string };
  * }
- * const traced = part<Traced>({
+ * const traced = plugin<Traced>({
  *   link: (op, next) => withTrace(op.options.traceId, () => next(op)),
  * });
  * ```
  *
- * A part without a link or `setup` only declares: an app's own options, such
+ * A plugin without a link or `setup` only declares: an app's own options, such
  * as an `owner` its targets match on.
  *
- * A part gives the `context` it declares for the client, as `context`, or
+ * A plugin gives the `context` it declares for the client, as `context`, or
  * per request, from its link:
  *
  * ```ts
  * interface Session {
  *   readonly context: { readonly token: string };
  * }
- * const session = part<Session>({
+ * const session = plugin<Session>({
  *   link: async (op, next) =>
- *     next({ ...op, context: { ...op.context, token: await freshToken() } }),
+ *     next({ ...op, context: { token: await freshToken() } }),
  * });
  * ```
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#parts
+ * @see https://raf-query.katt.dev/docs/plugins#writing-a-plugin
  */
-export function part<TDecl extends OptionsDecl = NoDecl>(
+export function plugin<TDecl extends OptionsDecl = NoDecl>(
 	definition?: PlainDefinition<NoInfer<TDecl>>,
-): Part<NoInfer<TDecl>>;
-export function part<TDecl extends ContextDecl>(
+): Plugin<NoInfer<TDecl>>;
+export function plugin<TDecl extends ContextDecl>(
 	definition: ClientContextDefinition<NoInfer<TDecl>>,
-): Part<NoInfer<TDecl>>;
-export function part<TDecl extends ContextDecl>(
+): Plugin<NoInfer<TDecl>>;
+export function plugin<TDecl extends ContextDecl>(
 	definition: RequestContextDefinition<NoInfer<TDecl>>,
-): Part<NoInfer<TDecl>>;
-export function part(definition: AnyPart = {}): AnyPart {
-	// A query's options are checked against its root's, which includes this part's.
+): Plugin<NoInfer<TDecl>>;
+export function plugin(definition: AnyPlugin = {}): AnyPlugin {
+	// A query's options are checked against its root's, which includes this plugin's.
 	return definition;
 }
 
@@ -220,7 +221,7 @@ export type ClientEvent =
 	| { readonly entry: Entry; readonly type: "readers" };
 
 /**
- * What `createQueryClient` takes: its parts and the cache-wide defaults.
+ * What `createQueryClient` takes: its plugins and the cache-wide defaults.
  *
  * @see https://raf-query.katt.dev/docs/important-defaults#changing-the-defaults
  */
@@ -228,7 +229,7 @@ export interface QueryClientConfig {
 	readonly clock?: Clock;
 	/**
 	 * Client-wide defaults for per-query options: the core's (`staleTime`,
-	 * `gcTime`, `structuralSharing`) and those the parts declare. `ssr` is a
+	 * `gcTime`, `structuralSharing`) and those the plugins declare. `ssr` is a
 	 * query's own.
 	 */
 	readonly defaults?: object;
@@ -238,20 +239,20 @@ export interface QueryClientConfig {
 	 * The client's behaviors. Links wrap every request, outermost first;
 	 * features start while a provider has the client mounted.
 	 */
-	readonly parts?: ReadonlyArray<AnyPart>;
+	readonly plugins?: ReadonlyArray<AnyPlugin>;
 }
 
 /**
- * A query cache. `TTypes` is its root's types: what its parts declare. It
- * runs the factories of builders bound to those parts, or to fewer of them,
+ * A query cache. `TTypes` is its root's types: what its plugins declare. It
+ * runs the factories of builders bound to those plugins, or to fewer of them,
  * so the bare `QueryClient` type takes any client.
  *
  * @see https://raf-query.katt.dev/docs/api-reference#the-client
  */
-export interface QueryClient<TTypes extends RootTypes = NoParts> {
+export interface QueryClient<TTypes extends RootTypes = NoPlugins> {
 	/** Entries changed since the last notification. */
 	readonly "~changed": Set<Entry>;
-	/** What the parts give every `queryFn` for the client; links can change it per request. */
+	/** What the plugins give every `queryFn` for the client; links can change it per request. */
 	readonly "~context": object;
 	readonly "~entries": Map<string, Entry>;
 	readonly "~events": Listeners<ClientEvent>;
@@ -277,7 +278,7 @@ export interface QueryClient<TTypes extends RootTypes = NoParts> {
 }
 
 /**
- * Create a query client. Behaviors are opt-in: pass `parts`, such as
+ * Create a query client. Behaviors are opt-in: pass `plugins`, such as
  * `recommended()`. The client's root is what they declare.
  *
  * ```ts
@@ -286,7 +287,7 @@ export interface QueryClient<TTypes extends RootTypes = NoParts> {
  * }
  * export const makeQueryClient = () =>
  *   createQueryClient({
- *     parts: [retry(), part<Ownership>()],
+ *     plugins: [retry(), plugin<Ownership>()],
  *     defaults: { staleTime: 30_000 },
  *   });
  * ```
@@ -297,22 +298,22 @@ export interface QueryClient<TTypes extends RootTypes = NoParts> {
  * @see https://raf-query.katt.dev/docs/important-defaults
  */
 export function createQueryClient<
-	const TParts extends ReadonlyArray<AnyPart> = [],
+	const TPlugins extends ReadonlyArray<AnyPlugin> = [],
 >(
-	config: Omit<QueryClientConfig, "defaults" | "parts"> & {
+	config: Omit<QueryClientConfig, "defaults" | "plugins"> & {
 		readonly defaults?: NoInfer<
-			Omit<CoreOptions, "ssr"> & Partial<RootOfParts<TParts>["options"]>
+			Omit<CoreOptions, "ssr"> & Partial<RootOfPlugins<TPlugins>["options"]>
 		>;
-		readonly parts?: TParts;
+		readonly plugins?: TPlugins;
 	} = {},
-): QueryClient<RootOfParts<TParts>> {
+): QueryClient<RootOfPlugins<TPlugins>> {
 	const events = listeners<ClientEvent>();
 	const entries = new Map<string, Entry>();
 	return {
 		"~changed": new Set(),
 		"~context": Object.assign(
 			{},
-			...(config.parts ?? []).map((one) => one.context),
+			...(config.plugins ?? []).map((one) => one.context),
 		),
 		"~entries": entries,
 		"~events": events,
@@ -333,9 +334,9 @@ export function createQueryClient<
 	};
 }
 
-/** The client's parts, as the kernel runs them. */
-export function partsOf(client: QueryClient): ReadonlyArray<AnyPart> {
-	return client.config.parts ?? [];
+/** The client's plugins, as the kernel runs them. */
+export function pluginsOf(client: QueryClient): ReadonlyArray<AnyPlugin> {
+	return client.config.plugins ?? [];
 }
 
 interface Mounted {
@@ -346,7 +347,7 @@ interface Mounted {
 const mounted = new WeakMap<QueryClient, Mounted>();
 
 /**
- * Start the features of the client's parts. Providers call it while mounted; the
+ * Start the features of the client's plugins. Providers call it while mounted; the
  * returned function stops them. Mounts are counted, so features start once
  * however many providers share the client, and stop with the last.
  */
@@ -355,7 +356,7 @@ export function mount(client: QueryClient): () => void {
 	if (!current) {
 		current = { controller: new AbortController(), count: 0 };
 		mounted.set(client, current);
-		for (const one of partsOf(client)) {
+		for (const one of pluginsOf(client)) {
 			one.setup?.(client, current.controller.signal);
 		}
 	}

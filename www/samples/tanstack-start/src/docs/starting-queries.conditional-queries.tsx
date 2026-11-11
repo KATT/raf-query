@@ -2,15 +2,15 @@ import {
 	group,
 	load,
 	prefetch,
-	type QueryClient,
 	type QueryHandle,
-	queryOptions,
 	skipToken,
 	swr,
 	useQuery,
 } from "@raf-query/react";
+import { queryOptions } from "~/raf.ts";
 import { Suspense, use } from "react";
 import { postQuery } from "~/queries.ts";
+import type { makeQueryClient } from "~/query-client.ts";
 
 const drafts = group("drafts");
 
@@ -28,7 +28,7 @@ function draftsQuery(input: { slug: string }) {
 	});
 }
 
-declare const queryClient: QueryClient;
+declare const queryClient: ReturnType<typeof makeQueryClient>;
 
 declare const user: { readonly isAdmin: boolean };
 

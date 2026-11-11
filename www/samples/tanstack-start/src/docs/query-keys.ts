@@ -1,11 +1,7 @@
-import {
-	createQueryClient,
-	group,
-	infiniteQueryOptions,
-	invalidateMany,
-	queryOptions,
-} from "@raf-query/react";
+import { group, invalidateMany } from "@raf-query/react";
+import { infiniteQueryOptions, queryOptions } from "~/raf.ts";
 import { getPost, listPostPage, listPosts } from "~/api.ts";
+import { makeQueryClient } from "~/query-client.ts";
 
 declare function getSpecial(): Promise<unknown>;
 
@@ -90,7 +86,7 @@ export function postListQuery(input: {
 }
 // #endregion
 
-const qc = createQueryClient();
+const qc = makeQueryClient();
 
 // #region design-keys-for-invalidation
 await invalidateMany(qc, posts); // every post query, drafts too

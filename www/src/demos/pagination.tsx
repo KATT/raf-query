@@ -5,12 +5,12 @@ import {
 	load,
 	prefetch,
 	type QueryHandle,
-	queryOptions,
 	useQuery,
 } from "@raf-query/react";
 import { use, useState } from "react";
 
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
+import { queryOptions } from "~/demo-kit/client.ts";
 import { Segmented, Spinner } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";

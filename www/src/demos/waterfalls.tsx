@@ -1,20 +1,22 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	group,
-	infiniteQueryOptions,
 	load,
 	prefetch,
 	type QueryHandle,
-	queryOptions,
 	removeAll,
 	useInfiniteQuery,
 	useQuery,
-	useQueryClient,
 	waterfallHandle,
 } from "@raf-query/react";
 import { Suspense, use, useState } from "react";
 
 import { DemoBrowser, type DemoLoader, DemoLink } from "~/demo-kit/browser.tsx";
+import {
+	infiniteQueryOptions,
+	queryOptions,
+	useQueryClient,
+} from "~/demo-kit/client.ts";
 import { LoadMoreButton, Segmented } from "~/demo-kit/controls.tsx";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { pageOf, seedComments, seedPosts } from "~/demo-kit/fixtures.ts";

@@ -1,4 +1,4 @@
-import { type Clock, type Part, part } from "../../client.ts";
+import { type Clock, type Plugin, plugin } from "../../client.ts";
 import { isResponse } from "../../guards.ts";
 
 /**
@@ -64,8 +64,8 @@ export interface Retry {
  *
  * @see https://raf-query.katt.dev/docs/retries
  */
-export function retry(options: RetryOptions = {}): Part<Retry> {
-	return part<Retry>({
+export function retry(options: RetryOptions = {}): Plugin<Retry> {
+	return plugin<Retry>({
 		link: async (op, next) => {
 			const configured = op.options.retry;
 			const attempts =

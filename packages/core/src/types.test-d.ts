@@ -8,21 +8,19 @@ import {
 	type DataOf,
 	getData,
 	group,
-	infiniteQueryOptions,
 	type InputOf,
 	invalidateMany,
 	invalidateOne,
 	load,
 	type Optional,
 	type OptionsOf,
-	part,
+	plugin,
 	type PartialInput,
 	prefetch,
 	type QueryClient,
 	type QueryHandle,
 	type QueryInfo,
 	type QueryKey,
-	queryOptions,
 	type Recommended,
 	removeMany,
 	resetMany,
@@ -36,7 +34,14 @@ import {
 	waterfallHandle,
 } from "./index.ts";
 import type { RootOf } from "./root.ts";
-import { author, createBackend, featured, issues } from "./test-utils.ts";
+import {
+	author,
+	createBackend,
+	featured,
+	infiniteQueryOptions,
+	issues,
+	queryOptions,
+} from "./test-utils.ts";
 
 const backend = createBackend();
 const client = createQueryClient();
@@ -383,15 +388,15 @@ describe("root types", () => {
 	interface Ownership {
 		readonly options: { readonly owner?: "posts-team" | "users-team" };
 	}
-	const ownership = part<Ownership>();
+	const ownership = plugin<Ownership>();
 	interface Api {
 		readonly context: { readonly api: (path: string) => Promise<string> };
 	}
-	const api = () => part<Api>({ context: { api: async (path) => path } });
+	const api = () => plugin<Api>({ context: { api: async (path) => path } });
 	const makeQueryClient = () =>
 		createQueryClient({
 			defaults: { retry: 1, staleTime: 30_000 },
-			parts: [retry(), ownership, api()],
+			plugins: [retry(), ownership, api()],
 		});
 	const posts = group("posts");
 	const writtenBy: Target<{ readonly owner: string | undefined }, string> = {
@@ -409,15 +414,13 @@ describe("root types", () => {
 			retry: false,
 		});
 
-	it("give a root the options and context its parts declare", () => {
-		expectTypeOf<RootOf<typeof makeQueryClient>>().toEqualTypeOf<{
-			readonly context: {
-				readonly api: (path: string) => Promise<string>;
-			};
-			readonly options: {
-				readonly owner: "posts-team" | "users-team" | undefined;
-				readonly retry: number | false | undefined;
-			};
+	it("give a root the options and context its plugins declare", () => {
+		expectTypeOf<RootOf<typeof makeQueryClient>["context"]>().toEqualTypeOf<{
+			readonly api: (path: string) => Promise<string>;
+		}>();
+		expectTypeOf<RootOf<typeof makeQueryClient>["options"]>().toEqualTypeOf<{
+			readonly owner: "posts-team" | "users-team" | undefined;
+			readonly retry: number | false | undefined;
 		}>();
 		expectTypeOf<
 			RootOf<ReturnType<typeof createQueryClient<Recommended>>>["options"]
@@ -432,7 +435,7 @@ describe("root types", () => {
 		>().toEqualTypeOf<never>();
 	});
 
-	it("type a link's op, and a setup's client, by what the part declares", () => {
+	it("type a link's op, and a setup's client, by what the plugin declares", () => {
 		interface Traced {
 			readonly options: { readonly traceId?: string };
 		}
@@ -443,7 +446,7 @@ describe("root types", () => {
 				queryKey: posts("traced"),
 				traceId: "t",
 			});
-		const traced = part<Traced>({
+		const traced = plugin<Traced>({
 			link: (op, next) => {
 				expectTypeOf(op.options.traceId).toEqualTypeOf<string | undefined>();
 				expectTypeOf(op.options.staleTime).toEqualTypeOf<number | undefined>();
@@ -453,14 +456,14 @@ describe("root types", () => {
 				void invalidateOne(tracedClient, tracedQuery);
 			},
 		});
-		const qc = () => createQueryClient({ parts: [traced] });
+		const qc = () => createQueryClient({ plugins: [traced] });
 		expectTypeOf<RootOf<typeof qc>["options"]>().toEqualTypeOf<{
 			readonly traceId: string | undefined;
 		}>();
 	});
 
-	it("need a part's context where it declares one: for the client, or from its link", () => {
-		part<Api>({
+	it("need a plugin's context where it declares one: for the client, or from its link", () => {
+		plugin<Api>({
 			context: { api: async (path) => path },
 			link: (op, next) => {
 				expectTypeOf(op.context.api).toEqualTypeOf<
@@ -469,34 +472,34 @@ describe("root types", () => {
 				return next(op);
 			},
 		});
-		const perRequest = part<Api>({
+		const perRequest = plugin<Api>({
 			link: (op, next) =>
 				next({ ...op, context: { ...op.context, api: async (path) => path } }),
 		});
-		const qc = () => createQueryClient({ parts: [perRequest] });
+		const qc = () => createQueryClient({ plugins: [perRequest] });
 		expectTypeOf<RootOf<typeof qc>["context"]>().toEqualTypeOf<{
 			readonly api: (path: string) => Promise<string>;
 		}>();
 		const wrong = () => {
-			// @ts-expect-error -- `Api` declares a context, so the part gives it
-			part<Api>();
+			// @ts-expect-error -- `Api` declares a context, so the plugin gives it
+			plugin<Api>();
 			// @ts-expect-error -- of its type
-			part<Api>({ context: { api: 1 } });
+			plugin<Api>({ context: { api: 1 } });
 			// @ts-expect-error -- a link that gives the context gives it to `next`
-			part<Api>({ link: (op, next) => next(op) });
-			part<Api>({
+			plugin<Api>({ link: (op, next) => next(op) });
+			plugin<Api>({
 				link: (op, next) =>
 					// @ts-expect-error -- of its type
 					next({ ...op, context: { ...op.context, api: 1 } }),
 			});
-			part<Api>({
+			plugin<Api>({
 				context: { api: async (path) => path },
 				link: (op, next) =>
-					// @ts-expect-error -- a link changes only the context its part declares
+					// @ts-expect-error -- a link changes only the context its plugin declares
 					next({ ...op, context: { ...op.context, other: 1 } }),
 			});
-			// @ts-expect-error -- a part that declares no context gives none
-			part<Ownership>({ context: { api: async () => "" } });
+			// @ts-expect-error -- a plugin that declares no context gives none
+			plugin<Ownership>({ context: { api: async () => "" } });
 		};
 		expectTypeOf(wrong).toBeFunction();
 	});
@@ -504,13 +507,13 @@ describe("root types", () => {
 	it("check options against the root", () => {
 		const wrong = () => {
 			rootQueryOptions({
-				// @ts-expect-error -- no part of the root reads `cacheFor`
+				// @ts-expect-error -- no plugin of the root reads `cacheFor`
 				cacheFor: 1000,
 				queryFn: async () => 1,
 				queryKey: posts("x"),
 			});
 			rootQueryOptions({
-				// @ts-expect-error -- options have their part's types
+				// @ts-expect-error -- options have their plugin's types
 				owner: "nobody",
 				queryFn: async () => 1,
 				queryKey: posts("y"),
@@ -562,21 +565,21 @@ describe("root types", () => {
 		expectTypeOf(wrong).toBeFunction();
 	});
 
-	it("type a client's defaults by its parts", () => {
+	it("type a client's defaults by its plugins", () => {
 		createQueryClient({
 			defaults: { gcTime: 1000, owner: "users-team", retry: false },
-			parts: [retry(), ownership],
+			plugins: [retry(), ownership],
 		});
 		const wrong = () => {
 			createQueryClient({
-				// @ts-expect-error -- no part of this client reads `retry`
+				// @ts-expect-error -- no plugin of this client reads `retry`
 				defaults: { retry: 1 },
-				parts: [ownership],
+				plugins: [ownership],
 			});
 			createQueryClient({
-				// @ts-expect-error -- defaults have their part's types
+				// @ts-expect-error -- defaults have their plugin's types
 				defaults: { owner: "nobody" },
-				parts: [ownership],
+				plugins: [ownership],
 			});
 		};
 		expectTypeOf(wrong).toBeFunction();
@@ -618,14 +621,14 @@ describe("root types", () => {
 		void invalidateOne(makeQueryClient(), postPages);
 		const wrong = () => {
 			rootInfiniteQueryOptions({
-				// @ts-expect-error -- no part of the root reads `cacheFor`
+				// @ts-expect-error -- no plugin of the root reads `cacheFor`
 				cacheFor: 1000,
 				getNextPageParam: () => null,
 				initialPageParam: 0,
 				queryFn: async () => 1,
 				queryKey: posts("wrong-pages"),
 			});
-			// @ts-expect-error -- a client without parts lacks what postPages needs
+			// @ts-expect-error -- a client without plugins lacks what postPages needs
 			void invalidateOne(createQueryClient(), postPages);
 		};
 		expectTypeOf(wrong).toBeFunction();
@@ -646,9 +649,9 @@ describe("root types", () => {
 			post: swr(postById, { authorId: "a", id: "1" }),
 			settings: prefetch(settings),
 		});
-		const bare = createQueryClient({ parts: [retry()] });
+		const bare = createQueryClient({ plugins: [retry()] });
 		const wrong = () => {
-			// @ts-expect-error -- `bare` lacks parts postById needs
+			// @ts-expect-error -- `bare` lacks plugins postById needs
 			void invalidateMany(bare, postById);
 			// @ts-expect-error -- `writtenBy` reads `owner`, which nothing in this root declares
 			void invalidateMany(bare, writtenBy, "a");
@@ -680,10 +683,10 @@ describe("root types", () => {
 			[ownedBy, "posts-team"],
 			titles,
 		]);
-		const bare = createQueryClient({ parts: [retry()] });
+		const bare = createQueryClient({ plugins: [retry()] });
 		void invalidateMany(bare, [posts, titles, [titles, { id: 1 }]]);
 		const wrong = () => {
-			// @ts-expect-error -- `bare` lacks parts postById needs
+			// @ts-expect-error -- `bare` lacks plugins postById needs
 			void invalidateMany(bare, [posts, postById]);
 			// @ts-expect-error -- `writtenBy` reads `owner`, which nothing in this root declares
 			void invalidateMany(bare, [[writtenBy, "a"]]);
@@ -697,9 +700,34 @@ describe("root types", () => {
 		expectTypeOf(wrong).toBeFunction();
 	});
 
-	it("run a factory on every client that has its parts", () => {
-		const fewer = () => createQueryClient({ parts: [ownership] });
-		const more = () => createQueryClient({ parts: [ownership, retry()] });
+	it("run a factory only where its options mean the same to the client's plugins", () => {
+		interface AnyOwner {
+			readonly options: { readonly owner?: string };
+		}
+		const looseQueryOptions = bindQueryOptions<AnyOwner>();
+		const looseQuery = () =>
+			looseQueryOptions({
+				owner: "nobody",
+				queryFn: async () => 1,
+				queryKey: posts("loose"),
+			});
+		const loose = createQueryClient({ plugins: [plugin<AnyOwner>()] });
+		const strict = createQueryClient({ plugins: [ownership] });
+		void invalidateOne(loose, looseQuery);
+		const wrong = () => {
+			// @ts-expect-error -- this client's plugin reads a narrower `owner`
+			void invalidateOne(strict, looseQuery);
+			void load(strict, {
+				// @ts-expect-error -- in `load` too
+				loose: swr(looseQuery),
+			});
+		};
+		expectTypeOf(wrong).toBeFunction();
+	});
+
+	it("run a factory on every client that has its plugins", () => {
+		const fewer = () => createQueryClient({ plugins: [ownership] });
+		const more = () => createQueryClient({ plugins: [ownership, retry()] });
 		const ofFewer = () =>
 			bindQueryOptions<typeof fewer>()({
 				owner: "users-team",
@@ -717,7 +745,7 @@ describe("root types", () => {
 		void invalidateMany(more(), [ofFewer, ofMore]);
 		void load(more(), { fewer: swr(ofFewer), more: swr(ofMore) });
 		const wrong = () => {
-			// @ts-expect-error -- a client with fewer parts lacks `retry()`
+			// @ts-expect-error -- a client with fewer plugins lacks `retry()`
 			void invalidateMany(fewer(), ofMore);
 			// @ts-expect-error -- in a list too
 			void invalidateMany(fewer(), [ofFewer, ofMore]);
@@ -734,7 +762,7 @@ describe("root types", () => {
 		>();
 	});
 
-	it("bind a library's builders to the parts it names", () => {
+	it("bind a library's builders to the plugins it names", () => {
 		const libraryQueryOptions = bindQueryOptions<Api & Optional<Retry>>();
 		const libraryInfiniteQueryOptions = bindInfiniteQueryOptions<
 			Api & Optional<Retry>
@@ -753,8 +781,8 @@ describe("root types", () => {
 				queryKey: posts("library-pages"),
 				retry: false,
 			});
-		const withApi = createQueryClient({ parts: [api()] });
-		const onlyRetry = createQueryClient({ parts: [retry()] });
+		const withApi = createQueryClient({ plugins: [api()] });
+		const onlyRetry = createQueryClient({ plugins: [retry()] });
 		void invalidateOne(withApi, libraryQuery, { path: "/" });
 		void invalidateOne(makeQueryClient(), libraryQuery, { path: "/" });
 		void load(withApi, {
@@ -764,7 +792,7 @@ describe("root types", () => {
 		expectTypeOf<DataOf<typeof libraryQuery>>().toEqualTypeOf<string>();
 		const wrong = () => {
 			libraryQueryOptions({
-				// @ts-expect-error -- the library named no part that reads `owner`
+				// @ts-expect-error -- the library named no plugin that reads `owner`
 				owner: "posts-team",
 				queryFn: () => 1,
 				queryKey: posts("library-owner"),
@@ -775,13 +803,13 @@ describe("root types", () => {
 		expectTypeOf(wrong).toBeFunction();
 	});
 
-	it("take any client as a bare QueryClient, which runs only what needs no part", () => {
+	it("take any client as a bare QueryClient, which runs only what needs no plugin", () => {
 		const anyClient: QueryClient = makeQueryClient();
 		void invalidateMany(anyClient, posts);
 		void invalidateMany(anyClient, settings);
 		void invalidateMany(anyClient, featured);
 		const wrong = () => {
-			// @ts-expect-error -- any client may lack the parts postById needs
+			// @ts-expect-error -- any client may lack the plugins postById needs
 			void invalidateMany(anyClient, postById);
 			// @ts-expect-error -- or the option `writtenBy` reads
 			void invalidateMany(anyClient, writtenBy, "a");

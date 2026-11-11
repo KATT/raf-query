@@ -1,7 +1,6 @@
 import { Skeleton } from "@examples/ui/components/skeleton";
 import {
 	group,
-	infiniteQueryOptions,
 	load,
 	prefetch,
 	type QueryHandle,
@@ -10,6 +9,7 @@ import {
 import { use } from "react";
 
 import { DemoBrowser, DemoLink } from "~/demo-kit/browser.tsx";
+import { infiniteQueryOptions } from "~/demo-kit/client.ts";
 import { defineDemo } from "~/demo-kit/define.ts";
 import { createFakeServer } from "~/demo-kit/server.ts";
 

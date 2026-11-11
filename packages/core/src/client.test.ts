@@ -1,6 +1,6 @@
 /**
  * `createQueryClient()` with no config: the system clock, a 5-minute
- * `gcTime`, and cache events through `client.subscribe`. Its parts give
+ * `gcTime`, and cache events through `client.subscribe`. Its plugins give
  * every `queryFn` their context, wrap every request in array order, and
  * read the client's `defaults` under each query's own options.
  */
@@ -11,16 +11,22 @@ import {
 	bindQueryOptions,
 	createQueryClient,
 	getData,
-	infiniteQueryOptions,
 	load,
-	part,
+	plugin,
 	prefetch,
 	type QueryClient,
-	queryOptions,
 	retry,
 	swr,
 } from "./index.ts";
-import { down, flush, issues, loadOne, testClient } from "./test-utils.ts";
+import {
+	down,
+	flush,
+	infiniteQueryOptions,
+	issues,
+	loadOne,
+	queryOptions,
+	testClient,
+} from "./test-utils.ts";
 
 const count = (input: { readonly name: string }) =>
 	queryOptions({ queryFn: async () => 1, queryKey: issues("count", input) });
@@ -42,11 +48,11 @@ describe("a client with the defaults", () => {
 	});
 });
 
-describe("a client's parts", () => {
+describe("a client's plugins", () => {
 	interface Session {
 		readonly context: { readonly user: string };
 	}
-	const session = (user: string) => part<Session>({ context: { user } });
+	const session = (user: string) => plugin<Session>({ context: { user } });
 
 	it("give every queryFn their context, plain or paged, one per client", async () => {
 		const sessionQueryOptions = bindQueryOptions<Session>();
@@ -64,8 +70,14 @@ describe("a client's parts", () => {
 				queryKey: issues("pages"),
 			});
 		// One session per query client, as a server keeps one per request.
-		const ada = createQueryClient({ isServer: true, parts: [session("ada")] });
-		const bob = createQueryClient({ isServer: true, parts: [session("bob")] });
+		const ada = createQueryClient({
+			isServer: true,
+			plugins: [session("ada")],
+		});
+		const bob = createQueryClient({
+			isServer: true,
+			plugins: [session("bob")],
+		});
 		const [, adas] = await load(ada, { me: swr(whoAmI), pages: swr(pages) });
 		const [, bobs] = await load(bob, { me: swr(whoAmI), pages: swr(pages) });
 
@@ -78,15 +90,13 @@ describe("a client's parts", () => {
 			readonly context: { readonly traceId: string };
 		}
 		let requests = 0;
-		const traced = part<Traced>({
+		const traced = plugin<Traced>({
+			// Only its own field: the kernel keeps what the other plugins gave.
 			link: (op, next) =>
-				next({
-					...op,
-					context: { ...op.context, traceId: `trace-${(requests += 1)}` },
-				}),
+				next({ ...op, context: { traceId: `trace-${(requests += 1)}` } }),
 		});
 		const seen: Array<unknown> = [];
-		const inner = part({
+		const inner = plugin({
 			link: (op, next) => {
 				seen.push(op.context);
 				return next(op);
@@ -95,7 +105,7 @@ describe("a client's parts", () => {
 		const makeClient = () =>
 			createQueryClient({
 				isServer: true,
-				parts: [session("ada"), traced, inner],
+				plugins: [session("ada"), traced, inner],
 			});
 		const tracedQueryOptions = bindQueryOptions<typeof makeClient>();
 		const tracedInfiniteQueryOptions =
@@ -126,8 +136,8 @@ describe("a client's parts", () => {
 		expect(seen[0]).toEqual({ traceId: "trace-1", user: "ada" });
 	});
 
-	it("let a link replace, for one request, what a part gives the client", async () => {
-		const impersonating = part<{
+	it("let a link replace, for one request, what a plugin gives the client", async () => {
+		const impersonating = plugin<{
 			readonly options: { readonly as?: string };
 		}>({
 			link: (op, next) =>
@@ -138,7 +148,7 @@ describe("a client's parts", () => {
 		const makeClient = () =>
 			createQueryClient({
 				isServer: true,
-				parts: [session("ada"), impersonating],
+				plugins: [session("ada"), impersonating],
 			});
 		const sessionQueryOptions = bindQueryOptions<typeof makeClient>();
 		const whoAmI = (input: { readonly as?: string }) =>
@@ -155,10 +165,10 @@ describe("a client's parts", () => {
 		expect(data).toEqual({ bob: "bob", own: "ada" });
 	});
 
-	it("wrap every request outermost first, skipping the parts without a link", async () => {
+	it("wrap every request outermost first, skipping the plugins without a link", async () => {
 		const order: Array<string> = [];
 		const named = (name: string) =>
-			part({
+			plugin({
 				link: async (op, next) => {
 					order.push(`${name} in`);
 					const result = await next(op);
@@ -167,10 +177,10 @@ describe("a client's parts", () => {
 				},
 			});
 		const client = createQueryClient({
-			parts: [
+			plugins: [
 				named("outer"),
-				part(),
-				part({ setup: () => {} }),
+				plugin(),
+				plugin({ setup: () => {} }),
 				named("inner"),
 			],
 		});
@@ -184,7 +194,7 @@ describe("a client's parts", () => {
 			readonly options: { readonly label?: string };
 		}
 		const labels: Array<string | undefined> = [];
-		const labelled = part<Labelled>({
+		const labelled = plugin<Labelled>({
 			link: (op, next) => {
 				labels.push(op.options.label);
 				return next(op);
@@ -193,7 +203,7 @@ describe("a client's parts", () => {
 		const makeClient = () =>
 			createQueryClient({
 				defaults: { label: "default" },
-				parts: [labelled],
+				plugins: [labelled],
 			});
 		const labelledQueryOptions = bindQueryOptions<typeof makeClient>();
 		const query = (input: { readonly label?: string }) =>
@@ -211,7 +221,7 @@ describe("a client's parts", () => {
 		expect(labels).toEqual(["own", "default"]);
 	});
 
-	it("take a built-in part's option as a default too", async () => {
+	it("take a built-in plugin's option as a default too", async () => {
 		let attempts = 0;
 		const failing = () =>
 			queryOptions({
@@ -223,9 +233,33 @@ describe("a client's parts", () => {
 			});
 		const client = testClient({
 			defaults: { retry: false },
-			parts: [retry({ delay: () => 0 })],
+			plugins: [retry({ delay: () => 0 })],
 		});
 		const outcome = await loadOne(client, swr(failing));
+		await flush();
+
+		expect(outcome.error).toBe(down);
+		expect(attempts).toBe(1);
+	});
+
+	it("take the default for an option a query leaves undefined", async () => {
+		const makeClient = () =>
+			testClient({
+				defaults: { retry: false },
+				plugins: [retry({ delay: () => 0 })],
+			});
+		const retryQueryOptions = bindQueryOptions<typeof makeClient>();
+		let attempts = 0;
+		const failing = (input: { readonly retry?: number }) =>
+			retryQueryOptions({
+				queryFn: async () => {
+					attempts += 1;
+					throw down;
+				},
+				queryKey: issues("failing-undefined"),
+				retry: input.retry,
+			});
+		const outcome = await loadOne(makeClient(), swr(failing, {}));
 		await flush();
 
 		expect(outcome.error).toBe(down);

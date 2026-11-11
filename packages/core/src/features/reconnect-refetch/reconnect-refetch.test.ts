@@ -13,7 +13,7 @@ import { counted, flush, testClient } from "../../test-utils.ts";
 describe("reconnectRefetch()", () => {
 	it("refetches read, stale queries when the browser comes back online", async () => {
 		const counter = counted();
-		const client = testClient({ parts: [reconnectRefetch()] });
+		const client = testClient({ plugins: [reconnectRefetch()] });
 		await counter.show(client, "stale");
 		await counter.show(client, "opted out", { refetchOnReconnect: false });
 		act(() => {

@@ -13,14 +13,13 @@ import { describe, expect, it } from "vitest";
 import {
 	getData,
 	invalidateOne,
-	part,
+	plugin,
 	load,
-	queryOptions,
 	removeOne,
 	swr,
 	waterfallHandle,
 } from "./index.ts";
-import { flush, issues, read, testClient } from "./test-utils.ts";
+import { flush, issues, queryOptions, read, testClient } from "./test-utils.ts";
 
 type Chunk = number | Error | undefined;
 
@@ -151,7 +150,7 @@ describe("a streamed query", () => {
 	it("takes a link's answer that isn't a stream as it is", async () => {
 		const stream = source();
 		const client = testClient({
-			parts: [part({ link: async () => 42 })],
+			plugins: [plugin({ link: async () => 42 })],
 		});
 		const [, data] = await load(client, { sum: swr(stream.sum) });
 

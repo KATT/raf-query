@@ -16,6 +16,13 @@ The cache's mechanics (dedupe, staleness, infinite paging, SSR hydration) follow
 ## A taste
 
 ```tsx
+// One function makes the client. Its plugins add retries, refetching and polling.
+export const makeQueryClient = () =>
+	createQueryClient({ plugins: recommended() });
+
+// Bound to that client, once: queries take the options its plugins declare.
+export const queryOptions = bindQueryOptions<typeof makeQueryClient>();
+
 // A group builds the keys, so one call can invalidate every post query.
 const posts = group("posts");
 
@@ -83,10 +90,10 @@ See [installation](https://raf-query.katt.dev/docs/installation) for requirement
 
 ## Packages
 
-| Package                              | Contents                                                                                                    |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| [`@raf-query/react`](packages/react) | Hooks, and the TanStack Router, RSC and devtools integrations. Re-exports `@raf-query/core`                 |
-| [`@raf-query/core`](packages/core)   | The framework-agnostic query client, its opt-in parts (retries, polling, refetching), hydration, and groups |
+| Package                              | Contents                                                                                                      |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| [`@raf-query/react`](packages/react) | Hooks, and the TanStack Router, RSC and devtools integrations. Re-exports `@raf-query/core`                   |
+| [`@raf-query/core`](packages/core)   | The framework-agnostic query client, its opt-in plugins (retries, polling, refetching), hydration, and groups |
 
 ## Examples
 

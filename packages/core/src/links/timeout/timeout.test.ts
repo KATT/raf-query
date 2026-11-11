@@ -8,13 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import {
-	part,
-	queryOptions,
-	QueryTimeoutError,
-	swr,
-	timeout,
-} from "../../index.ts";
+import { plugin, QueryTimeoutError, swr, timeout } from "../../index.ts";
 import {
 	advance,
 	down,
@@ -22,6 +16,7 @@ import {
 	flush,
 	issues,
 	loadOne,
+	queryOptions,
 	testClient,
 } from "../../test-utils.ts";
 
@@ -34,9 +29,9 @@ describe("timeout(ms)", () => {
 			});
 		let signal: AbortSignal | undefined;
 		const client = testClient({
-			parts: [
+			plugins: [
 				timeout(100),
-				part({
+				plugin({
 					link: (op, next) => {
 						signal = op.signal;
 						return next(op);
@@ -53,10 +48,10 @@ describe("timeout(ms)", () => {
 	});
 
 	it("lets faster requests and their errors through", async () => {
-		const client = testClient({ parts: [timeout(100)] });
+		const client = testClient({ plugins: [timeout(100)] });
 		const fast = await loadOne(client, swr(flaky([]).query));
 		const failing = await loadOne(
-			testClient({ parts: [timeout(100)] }),
+			testClient({ plugins: [timeout(100)] }),
 			swr(flaky([down]).query),
 		);
 		advance(client, 200);

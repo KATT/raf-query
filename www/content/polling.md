@@ -1,6 +1,6 @@
 ---
 title: Polling
-description: Refetch a query on an interval while it's on screen with refetchInterval and the polling() part.
+description: Refetch a query on an interval while it's on screen with refetchInterval and the polling() plugin.
 section: Guides
 order: 15
 ---
@@ -11,13 +11,13 @@ A query with a `refetchInterval` refetches every so many milliseconds while a co
 tanstack-start/src/docs/polling.ts#intro
 ```
 
-`polling()` is the [part](./links-and-features.md#parts) that reads the option, so the client needs it, on its own or through `recommended()`:
+`polling()` is the [plugin](./plugins.md) that reads the option, so the client needs it, on its own or through `recommended()`:
 
 ```sample
 tanstack-start/src/docs/polling.ts#the-feature
 ```
 
-`polling()` declares the option, so it's set with the `queryOptions` an app [binds to its client](./links-and-features.md#typing-options-by-the-client), here in `raf.ts`. The `queryOptions` that `@raf-query/react` exports doesn't take it, and neither does one bound to a client without `polling()`.
+`polling()` declares the option, so a factory can set it when its `queryOptions`, the one the app's `raf.ts` [binds to its client](./plugins.md#typing-options-by-the-client), is bound to a client that has `polling()`. On any other builder, `refetchInterval` is a type error.
 
 - Polling starts when the first component reads the query, and stops when the last one unmounts.
 - There is one timer per query, however many components read it.

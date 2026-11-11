@@ -1,8 +1,4 @@
-import {
-	type ApiClient,
-	makeQueryClient,
-	type Ownership,
-} from "./links-and-features.ts";
+import { type ApiClient, makeQueryClient, type Ownership } from "./plugins.ts";
 
 declare const apiClient: ApiClient;
 

@@ -1,6 +1,5 @@
 /// <reference types="vite/client" />
 import { ThemeProvider } from "@examples/kit/components/theme-provider";
-import type { QueryClient } from "@raf-query/react";
 import {
 	createRootRouteWithContext,
 	HeadContent,
@@ -17,12 +16,13 @@ import { SiteFooter } from "~/components/site-footer.tsx";
 import { SiteHeader } from "~/components/site-header.tsx";
 import { themeScript } from "~/components/theme-toggle.tsx";
 import { frameworkModeScript } from "~/framework-mode.ts";
+import type { makeQueryClient } from "~/query-client.ts";
 import { querySearchSchema } from "~/search-page.ts";
 import { site } from "~/site.ts";
 import appCss from "~/styles.css?url";
 
 export const Route = createRootRouteWithContext<{
-	queryClient: QueryClient;
+	queryClient: ReturnType<typeof makeQueryClient>;
 }>()({
 	head: () => ({
 		links: [

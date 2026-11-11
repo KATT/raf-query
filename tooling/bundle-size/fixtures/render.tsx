@@ -5,13 +5,15 @@ import {
 	type QueryClient,
 	QueryClientProvider,
 	type QueryHandle,
-	queryOptions,
+	bindQueryOptions,
 	useQuery,
 } from "@raf-query/react";
 import { type ReactNode, Suspense, use } from "react";
 import { createRoot } from "react-dom/client";
 
 import { getIssue } from "./api.ts";
+
+const queryOptions = bindQueryOptions();
 
 const issues = group("issues");
 

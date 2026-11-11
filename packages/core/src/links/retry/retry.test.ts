@@ -8,7 +8,7 @@
  *
  * - Attempts: the query's `retry` (a number, or `false` for none),
  *   else `attempts`, else 3. `retry` is typed only on clients whose
- * parts include `retry()`.
+ * plugins include `retry()`.
  * - Never retried: a thrown `Response` (a router redirect or not-found),
  *   what `when(error)` rules out, a request whose `op.signal` aborted, and
  *   anything on a server client.
@@ -25,8 +25,7 @@ import {
 	bindInfiniteQueryOptions,
 	bindQueryOptions,
 	createQueryClient,
-	part,
-	queryOptions,
+	plugin,
 	recommended,
 	removeOne,
 	retry,
@@ -39,13 +38,14 @@ import {
 	flush,
 	issues,
 	loadOne,
+	queryOptions,
 	testClient,
 } from "../../test-utils.ts";
 
 describe("retry()", () => {
 	it("retries after growing delays, and gives up after its attempts", async () => {
 		const flakes = flaky([down, down, down, down]);
-		const client = testClient({ parts: [retry()] });
+		const client = testClient({ plugins: [retry()] });
 		const outcome = await loadOne(client, swr(flakes.query));
 
 		for (const [wait, attempts] of [
@@ -65,7 +65,7 @@ describe("retry()", () => {
 	it("retries until it succeeds, with its own attempts and delays", async () => {
 		const flakes = flaky([down, down]);
 		const client = testClient({
-			parts: [retry({ attempts: 2, delay: () => 10 })],
+			plugins: [retry({ attempts: 2, delay: () => 10 })],
 		});
 		const outcome = await loadOne(client, swr(flakes.query));
 		advance(client, 10);
@@ -77,12 +77,12 @@ describe("retry()", () => {
 		expect(flakes.attempts()).toBe(3);
 	});
 
-	it("follows a query's own attempts, typed by its client's parts", async () => {
+	it("follows a query's own attempts, typed by its client's plugins", async () => {
 		const makeClient = () =>
 			createQueryClient({
 				clock: testClient().clock,
 				isServer: false,
-				parts: [retry({ delay: () => 0 })],
+				plugins: [retry({ delay: () => 0 })],
 			});
 		const boundQueryOptions = bindQueryOptions<typeof makeClient>();
 		const boundInfiniteQueryOptions =
@@ -124,9 +124,9 @@ describe("retry()", () => {
 	it("doesn't retry a thrown Response, or what `when` rules out", async () => {
 		const response = flaky([new Response(null, { status: 302 })]);
 		const ruledOut = flaky([down]);
-		await loadOne(testClient({ parts: [retry()] }), swr(response.query));
+		await loadOne(testClient({ plugins: [retry()] }), swr(response.query));
 		await loadOne(
-			testClient({ parts: [retry({ when: (error) => error !== down })] }),
+			testClient({ plugins: [retry({ when: (error) => error !== down })] }),
 			swr(ruledOut.query),
 		);
 
@@ -136,7 +136,7 @@ describe("retry()", () => {
 	it("never retries on the server", async () => {
 		const flakes = flaky([down]);
 		const outcome = await loadOne(
-			testClient({ isServer: true, parts: [retry({ delay: () => 0 })] }),
+			testClient({ isServer: true, plugins: [retry({ delay: () => 0 })] }),
 			swr(flakes.query),
 		);
 
@@ -146,7 +146,7 @@ describe("retry()", () => {
 
 	it("stops when the query is removed, waiting or mid-request", async () => {
 		const flakes = flaky([down, down]);
-		const client = testClient({ parts: [retry({ delay: () => 10 })] });
+		const client = testClient({ plugins: [retry({ delay: () => 10 })] });
 		await loadOne(client, swr(flakes.query));
 		removeOne(client, flakes.query);
 		advance(client, 100);
@@ -166,9 +166,9 @@ describe("retry()", () => {
 			});
 		let calls = 0;
 		const counting = testClient({
-			parts: [
+			plugins: [
 				retry({ delay: () => 0 }),
-				part({
+				plugin({
 					link: (op, next) => {
 						calls += 1;
 						return next(op);
@@ -185,7 +185,7 @@ describe("retry()", () => {
 
 	it("waits until the browser is back online", async () => {
 		const flakes = flaky([down]);
-		const client = testClient({ parts: [retry({ delay: () => 0 })] });
+		const client = testClient({ plugins: [retry({ delay: () => 0 })] });
 		const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
 		const outcome = await loadOne(client, swr(flakes.query));
 		advance(client, 100);
@@ -205,7 +205,7 @@ describe("retry()", () => {
 describe("recommended()", () => {
 	it("retries failed requests", async () => {
 		const flakes = flaky([down]);
-		const client = testClient({ parts: recommended() });
+		const client = testClient({ plugins: recommended() });
 		const outcome = await loadOne(client, swr(flakes.query));
 		advance(client, 1000);
 		await flush();

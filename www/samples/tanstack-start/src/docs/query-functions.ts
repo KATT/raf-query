@@ -1,4 +1,5 @@
-import { group, infiniteQueryOptions, queryOptions } from "@raf-query/react";
+import { group } from "@raf-query/react";
+import { infiniteQueryOptions, queryOptions } from "~/raf.ts";
 import type { Post, PostComment, PostPage } from "~/api.ts";
 
 const posts = group("posts");

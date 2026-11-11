@@ -3,7 +3,7 @@
  * it changes without notice between minor versions.
  */
 export {
-	type AnyPart,
+	type AnyPlugin,
 	type ClientEvent,
 	mount,
 	systemClock,
@@ -32,10 +32,10 @@ export {
 } from "./load.ts";
 export type {
 	Decl,
-	NoParts,
+	NoPlugins,
 	Root,
 	RootOf,
-	RootOfParts,
+	RootOfPlugins,
 	RootTypes,
 	SetsOf,
 } from "./root.ts";

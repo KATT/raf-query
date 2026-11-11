@@ -5,7 +5,7 @@ section: Guides
 order: 12
 ---
 
-Lists that load more data onto what's already shown, such as "load more" buttons and infinite scroll, are a common UI pattern. A paged factory returns `infiniteQueryOptions(...)`, and components read it with `useInfiniteQuery`. Loaders and verbs take it like any query.
+Lists that load more data onto what's already shown, such as "load more" buttons and infinite scroll, are a common UI pattern. A paged factory returns `infiniteQueryOptions(...)`, which the app's `raf.ts` binds next to `queryOptions`, and components read it with `useInfiniteQuery`. Loaders and verbs take it like any query.
 
 ```sample title="src/queries.ts"
 tanstack-start/src/docs/infinite-queries.ts#intro

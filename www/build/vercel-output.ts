@@ -58,6 +58,11 @@ const routes = [
 		status: 308,
 	},
 	{
+		headers: { Location: "/docs/plugins$1" },
+		src: "^/docs/links-and-features(\\.md)?$",
+		status: 308,
+	},
+	{
 		continue: true,
 		headers: { "Cache-Control": "public, max-age=31536000, immutable" },
 		src: "^/assets/.*$",

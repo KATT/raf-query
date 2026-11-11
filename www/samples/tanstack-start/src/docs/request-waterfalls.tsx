@@ -1,11 +1,7 @@
 import { Suspense } from "react";
-import {
-	createQueryClient,
-	load,
-	prefetch,
-	revalidate,
-} from "@raf-query/react";
+import { load, prefetch, revalidate } from "@raf-query/react";
 import { authorQuery, postQuery } from "~/queries.ts";
+import { makeQueryClient } from "~/query-client.ts";
 
 declare function useSuspenseFetch(url: string): { title: string };
 
@@ -30,7 +26,7 @@ function Post(props: { slug: string }) {
 }
 // #endregion
 
-const qc = createQueryClient();
+const qc = makeQueryClient();
 
 declare const slug: string;
 

@@ -1,13 +1,9 @@
-import {
-	getData,
-	invalidateMany,
-	type QueryClient,
-	setData,
-} from "@raf-query/react";
+import { getData, invalidateMany, setData } from "@raf-query/react";
 import { updatePost } from "~/api.ts";
 import { authors, feedQuery, postQuery, postsQuery } from "~/queries.ts";
+import type { makeQueryClient } from "~/query-client.ts";
 
-declare const queryClient: QueryClient;
+declare const queryClient: ReturnType<typeof makeQueryClient>;
 
 declare const slug: string;
 
@@ -24,7 +20,7 @@ await invalidateMany(queryClient, [
 
 // #region optimistic-updates-in-the-cache
 async function renamePost(
-	queryClient: QueryClient,
+	queryClient: ReturnType<typeof makeQueryClient>,
 	input: { slug: string; title: string },
 ) {
 	const previous = getData(queryClient, feedQuery);

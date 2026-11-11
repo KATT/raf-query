@@ -91,7 +91,7 @@ export const scenarios: ReadonlyArray<Scenario> = [
 	{
 		fixture: "bound.tsx",
 		imports: ["hooks"],
-		name: "+ bound `queryOptions` and `useQueryClient`",
+		name: "+ builders and `useQueryClient` bound to a client",
 	},
 	{
 		fixture: "hydration.tsx",

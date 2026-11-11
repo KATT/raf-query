@@ -1,12 +1,12 @@
 # Tags are a userland recipe, not part of core (human)
 
-- Core has no `groups()`, `tag`, `Tag` or tags option. It keeps the general mechanism tags are built on: a target is any object with `where(query, param)`, `query.options` is passed in, and `part<{ options: … }>()` without a definition declares typed options for the clients that have it ([parts-options-context.md](./parts-options-context.md)).
+- Core has no `groups()`, `tag`, `Tag` or tags option. It keeps the general mechanism tags are built on: a target is any object with `where(query, param)`, `query.options` is passed in, and `plugin<{ options: … }>()` without a definition declares typed options for the clients that have it ([parts-options-context.md](./parts-options-context.md)).
 - The recipe (docs: `www/content/query-invalidation.md#tags`; sample: `www/samples/tanstack-start/src/docs/query-invalidation.ts#tags`, `#tags-param`):
   ```ts
   interface Tags {
   	readonly options: { readonly tags?: ReadonlyArray<string> };
   }
-  const tagged = part<Tags>();
+  const tagged = plugin<Tags>();
   type Tagged = { readonly tags: ReadonlyArray<string> | undefined };
   const tag = (name: string): Target<Tagged> => ({
   	where: (query) => query.options.tags?.includes(name) ?? false,

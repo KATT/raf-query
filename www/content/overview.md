@@ -26,6 +26,8 @@ Every page uses three pieces.
 tanstack-start/src/docs/overview.ts#a-taste
 ```
 
+`queryOptions` is the app's own: a small file, `raf.ts`, binds it to the app's query client, so a query can set the options of that client's [plugins](./plugins.md), such as retries. The [quick start](./quick-start.md#2-create-the-client) sets it up.
+
 **`load`** starts queries where the page's input is known: a route loader, a server component, or an event handler. Each entry says whether to wait for the data, and `load` returns a **handle** per query: its key and input, plain data that crosses from a loader or a server to the browser.
 
 **`useQuery`** reads a handle in a component. It returns a **thenable**, a promise that React's `use()` can read synchronously once the data is there, so a query the loader waited for renders at once and one still in flight suspends to the nearest boundary.

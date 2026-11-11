@@ -1,6 +1,6 @@
 import {
 	group,
-	infiniteQueryOptions,
+	bindInfiniteQueryOptions,
 	load,
 	prefetch,
 	type QueryClient,
@@ -12,6 +12,8 @@ import { Suspense, use } from "react";
 import { createRoot } from "react-dom/client";
 
 import { getIssue, type Issue } from "./api.ts";
+
+const infiniteQueryOptions = bindInfiniteQueryOptions();
 
 const feed = group("feed");
 

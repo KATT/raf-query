@@ -6,7 +6,7 @@ import type {
 	QueryFunctionContext,
 	QueryOptions,
 } from "../options.ts";
-import type { NoParts, RootOf, RootTypes, SetsOf } from "../root.ts";
+import type { NoDecl, NoPlugins, RootOf, RootTypes, SetsOf } from "../root.ts";
 
 /**
  * A paged query's data.
@@ -26,7 +26,7 @@ export interface InfiniteData<TPage, TParam = unknown> {
 export type InfiniteQueryFunctionContext<
 	TKey extends QueryKey,
 	TParam,
-	TTypes extends RootTypes = NoParts,
+	TTypes extends RootTypes = NoPlugins,
 > = QueryFunctionContext<TKey, TTypes> & {
 	readonly direction: "backward" | "forward";
 	readonly pageParam: TParam;
@@ -86,7 +86,7 @@ export type InfiniteQueryOptions<
  * `infiniteQueryOptions` for a root: `TTypes` is what the factories it
  * builds need of a client, and `TSets` the options they can set.
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#typing-options-by-the-client
+ * @see https://raf-query.katt.dev/docs/plugins#typing-options-by-the-client
  */
 export interface InfiniteQueryOptionsBuilder<
 	TTypes extends RootTypes,
@@ -107,27 +107,8 @@ export interface InfiniteQueryOptionsBuilder<
 	): InfiniteQueryOptions<TKey, TPage, TParam, TData, TTypes>;
 }
 
-/**
- * Typed options for a paged query factory. Readers get `{ pages, pageParams }`
- * and, on their state, `fetchNextPage` and `fetchPreviousPage`:
- *
- * ```ts
- * export const commentsQuery = (input: { slug: string }) =>
- *   infiniteQueryOptions({
- *     queryKey: comments(input.slug),
- *     queryFn: ({ pageParam, signal }) => listComments({ ...input, cursor: pageParam }, { signal }),
- *     initialPageParam: 0,
- *     getNextPageParam: (lastPage) => lastPage.nextCursor,
- *   });
- * ```
- *
- * It takes the core's options only. For the options and the `queryFn`
- * context a client's parts declare, use the builder
- * {@link bindInfiniteQueryOptions} returns.
- *
- * @see https://raf-query.katt.dev/docs/infinite-queries
- */
-export const infiniteQueryOptions: InfiniteQueryOptionsBuilder<NoParts> = (
+/** The one builder behind every bound `infiniteQueryOptions`. */
+const buildInfiniteQueryOptions: InfiniteQueryOptionsBuilder<NoPlugins> = (
 	options,
 ) => ({
 	...options,
@@ -141,22 +122,34 @@ export const infiniteQueryOptions: InfiniteQueryOptionsBuilder<NoParts> = (
 });
 
 /**
- * `infiniteQueryOptions` bound to a root, like `bindQueryOptions`. Bind it
- * next to `queryOptions`, in apps that page:
+ * Makes `infiniteQueryOptions`, the builder of a paged query factory's
+ * options, bound like `bindQueryOptions`. Bind it next to `queryOptions`,
+ * in apps that page:
  *
  * ```ts
  * // raf.ts
  * export const infiniteQueryOptions = bindInfiniteQueryOptions<typeof makeQueryClient>();
+ *
+ * // queries.ts
+ * export const commentsQuery = (input: { slug: string }) =>
+ *   infiniteQueryOptions({
+ *     queryKey: comments(input.slug),
+ *     queryFn: ({ pageParam, signal }) => listComments({ ...input, cursor: pageParam }, { signal }),
+ *     initialPageParam: 0,
+ *     getNextPageParam: (lastPage) => lastPage.nextCursor,
+ *   });
  * ```
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#typing-options-by-the-client
+ * Readers get `{ pages, pageParams }` and, on their state, `fetchNextPage`
+ * and `fetchPreviousPage`.
+ *
+ * @see https://raf-query.katt.dev/docs/plugins#typing-options-by-the-client
  */
-export function bindInfiniteQueryOptions<T>(): InfiniteQueryOptionsBuilder<
-	RootOf<T>,
-	SetsOf<T>
-> {
+export function bindInfiniteQueryOptions<
+	T = NoDecl,
+>(): InfiniteQueryOptionsBuilder<RootOf<T>, SetsOf<T>> {
 	// SAFETY: the root is a phantom; the builder never reads it.
-	return infiniteQueryOptions as InfiniteQueryOptionsBuilder<
+	return buildInfiniteQueryOptions as InfiniteQueryOptionsBuilder<
 		RootOf<T>,
 		SetsOf<T>
 	>;

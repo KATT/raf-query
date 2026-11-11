@@ -17,7 +17,7 @@ import { useQueryClient } from "./provider.tsx";
  * hook, so call it at module level. This module has no `"use client"`, so a
  * server module can import the file that binds it.
  *
- * @see https://raf-query.katt.dev/docs/links-and-features#typing-options-by-the-client
+ * @see https://raf-query.katt.dev/docs/plugins#typing-options-by-the-client
  */
 export function bindUseQueryClient<T>(): () => QueryClient<RootOf<T>> {
 	// SAFETY: the app binds this hook to the client its provider is given.
