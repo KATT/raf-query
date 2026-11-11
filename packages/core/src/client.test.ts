@@ -71,10 +71,88 @@ describe("a client's parts", () => {
 
 		expect([adas.me, adas.pages.pages]).toEqual(["ada", ["ada's page 0"]]);
 		expect([bobs.me, bobs.pages.pages]).toEqual(["bob", ["bob's page 0"]]);
-		expect([ada.context, bob.context]).toEqual([
-			{ user: "ada" },
-			{ user: "bob" },
-		]);
+	});
+
+	it("give each request the context a link adds, for plain and paged queries and for the links after it", async () => {
+		interface Traced {
+			readonly context: { readonly traceId: string };
+		}
+		let requests = 0;
+		const traced = part<Traced>({
+			link: (op, next) =>
+				next({
+					...op,
+					context: { ...op.context, traceId: `trace-${(requests += 1)}` },
+				}),
+		});
+		const seen: Array<unknown> = [];
+		const inner = part({
+			link: (op, next) => {
+				seen.push(op.context);
+				return next(op);
+			},
+		});
+		const makeClient = () =>
+			createQueryClient({
+				isServer: true,
+				parts: [session("ada"), traced, inner],
+			});
+		const tracedQueryOptions = bindQueryOptions<typeof makeClient>();
+		const tracedInfiniteQueryOptions =
+			bindInfiniteQueryOptions<typeof makeClient>();
+		const who = (input: { readonly name: string }) =>
+			tracedQueryOptions({
+				queryFn: (context) => `${context.user} ${context.traceId}`,
+				queryKey: issues("traced", input),
+			});
+		const pages = () =>
+			tracedInfiniteQueryOptions({
+				getNextPageParam: (_page, all) => (all.length < 2 ? all.length : null),
+				initialPageParam: 0,
+				queryFn: (context) => `${context.traceId} page ${context.pageParam}`,
+				queryKey: issues("traced-pages"),
+			});
+		const client = makeClient();
+		const [, first] = await load(client, { who: swr(who, { name: "a" }) });
+		const [, second] = await load(client, {
+			pages: swr(pages, undefined, { pages: 2 }),
+			who: swr(who, { name: "b" }),
+		});
+
+		expect(first.who).toBe("ada trace-1");
+		expect(second.who).toBe("ada trace-3");
+		// One request, so one trace, for both of its pages.
+		expect(second.pages.pages).toEqual(["trace-2 page 0", "trace-2 page 1"]);
+		expect(seen[0]).toEqual({ traceId: "trace-1", user: "ada" });
+	});
+
+	it("let a link replace, for one request, what a part gives the client", async () => {
+		const impersonating = part<{
+			readonly options: { readonly as?: string };
+		}>({
+			link: (op, next) =>
+				op.options.as === undefined
+					? next(op)
+					: next({ ...op, context: { ...op.context, user: op.options.as } }),
+		});
+		const makeClient = () =>
+			createQueryClient({
+				isServer: true,
+				parts: [session("ada"), impersonating],
+			});
+		const sessionQueryOptions = bindQueryOptions<typeof makeClient>();
+		const whoAmI = (input: { readonly as?: string }) =>
+			sessionQueryOptions({
+				...input,
+				queryFn: (context) => context.user,
+				queryKey: issues("whoAmI", input),
+			});
+		const [, data] = await load(makeClient(), {
+			bob: swr(whoAmI, { as: "bob" }),
+			own: swr(whoAmI, {}),
+		});
+
+		expect(data).toEqual({ bob: "bob", own: "ada" });
 	});
 
 	it("wrap every request outermost first, skipping the parts without a link", async () => {

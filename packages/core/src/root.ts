@@ -9,7 +9,7 @@
 
 /**
  * What a part declares: the per-query `options` it reads, and the `context`
- * it gives every `queryFn`.
+ * it gives every `queryFn`, for the client or per request from its link.
  *
  * @see https://raf-query.katt.dev/docs/links-and-features#parts
  */
@@ -73,7 +73,7 @@ export type OptionsOfDecl<TDecl> = TDecl extends {
 	: unknown;
 
 /** The `queryFn` context a declaration adds to its root. */
-type ContextOfDecl<TDecl> = TDecl extends {
+export type ContextOfDecl<TDecl> = TDecl extends {
 	readonly context?: infer TContext extends object;
 }
 	? TContext

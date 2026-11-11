@@ -4,6 +4,7 @@ import type { Stamp } from "./keys/targets.ts";
 import type { CoreOptions, QueryOptions } from "./options.ts";
 import type {
 	AnyDeclares,
+	ContextOfDecl,
 	Decl,
 	Declares,
 	NoDecl,
@@ -50,6 +51,12 @@ export const systemClock: Clock = {
  */
 export interface Operation<TDecl extends Decl = Decl> {
 	readonly client: QueryClient;
+	/**
+	 * What the `queryFn` gets beside the client, key and signal: the parts'
+	 * context, as the links before this one left it. Pass `next` an
+	 * operation with another `context` to change it for this request.
+	 */
+	readonly context: Partial<ContextOfDecl<TDecl>>;
 	/** The entry's data when the request started (paged queries extend it). */
 	readonly data: unknown;
 	/** For paged queries: which page to add. */
@@ -92,23 +99,12 @@ export interface AnyPart extends AnyDeclares {
 	readonly setup?: SetupFunction;
 }
 
-/** What {@link part} takes: `context` is required when the part declares one. */
-export type PartDefinition<TDecl extends Decl> = (TDecl extends {
-	readonly context: infer TContext extends object;
-}
-	? {
-			/** Merged into the context of every `queryFn` the client runs. */
-			readonly context: TContext;
-		}
-	: { readonly context?: never }) & {
-	/**
-	 * Wraps every request, like a tRPC link. Call `next(op)` to run the
-	 * rest of the chain; the last link is the query's own `queryFn`.
-	 */
-	readonly link?: (
-		op: Operation<TDecl>,
-		next: (op: Operation) => Promise<unknown>,
-	) => Promise<unknown>;
+type LinkOf<TDecl extends Decl, TNext> = (
+	op: Operation<TDecl>,
+	next: (op: TNext) => Promise<unknown>,
+) => Promise<unknown>;
+
+interface PartSetup<TDecl extends Decl> {
 	/**
 	 * A cache-wide behavior, started when a provider mounts the client and
 	 * stopped by `signal`. The client is typed with this part, so it runs
@@ -118,7 +114,54 @@ export type PartDefinition<TDecl extends Decl> = (TDecl extends {
 		client: QueryClient<Root<TDecl>>,
 		signal: AbortSignal,
 	) => void;
-};
+}
+
+/** The context a declaration says its part gives. */
+type DeclaredContext<TDecl extends ContextDecl> = TDecl["context"];
+
+/** A declaration with a `context`: its part gives it. */
+interface ContextDecl extends Decl {
+	readonly context: object;
+}
+
+/** What {@link part} takes for a part that declares no `context`. */
+interface PlainDefinition<TDecl extends Decl> extends PartSetup<TDecl> {
+	readonly context?: never;
+	/**
+	 * Wraps every request, like a tRPC link. Call `next(op)` to run the
+	 * rest of the chain; the last link is the query's own `queryFn`.
+	 */
+	readonly link?: LinkOf<TDecl, Operation<TDecl>>;
+}
+
+/** What {@link part} takes for a part that gives its `context` for the client. */
+interface ClientContextDefinition<
+	TDecl extends ContextDecl,
+> extends PartSetup<TDecl> {
+	/** Merged into the context of every `queryFn` the client runs. */
+	readonly context: DeclaredContext<TDecl>;
+	/**
+	 * Wraps every request, like a tRPC link. Call `next(op)` to run the
+	 * rest of the chain; the last link is the query's own `queryFn`. An
+	 * operation with another `context` changes it for that request.
+	 */
+	readonly link?: LinkOf<TDecl, Operation<TDecl>>;
+}
+
+/** What {@link part} takes for a part that gives its `context` per request. */
+interface RequestContextDefinition<
+	TDecl extends ContextDecl,
+> extends PartSetup<TDecl> {
+	readonly context?: never;
+	/**
+	 * Wraps every request, and gives each the context the part declares:
+	 * `next` takes an operation whose `context` has it.
+	 */
+	readonly link: LinkOf<
+		TDecl,
+		Operation<TDecl> & { readonly context: DeclaredContext<TDecl> }
+	>;
+}
 
 /** A declaration without a `context`: its part needs no definition. */
 interface OptionsDecl {
@@ -143,13 +186,29 @@ interface OptionsDecl {
  * A part without a link or `setup` only declares: an app's own options, such
  * as an `owner` its targets match on.
  *
+ * A part gives the `context` it declares for the client, as `context`, or
+ * per request, from its link:
+ *
+ * ```ts
+ * interface Session {
+ *   readonly context: { readonly token: string };
+ * }
+ * const session = part<Session>({
+ *   link: async (op, next) =>
+ *     next({ ...op, context: { ...op.context, token: await freshToken() } }),
+ * });
+ * ```
+ *
  * @see https://raf-query.katt.dev/docs/links-and-features#parts
  */
 export function part<TDecl extends OptionsDecl = NoDecl>(
-	definition?: PartDefinition<NoInfer<TDecl>>,
+	definition?: PlainDefinition<NoInfer<TDecl>>,
 ): Part<NoInfer<TDecl>>;
-export function part<TDecl extends Decl>(
-	definition: PartDefinition<NoInfer<TDecl>>,
+export function part<TDecl extends ContextDecl>(
+	definition: ClientContextDefinition<NoInfer<TDecl>>,
+): Part<NoInfer<TDecl>>;
+export function part<TDecl extends ContextDecl>(
+	definition: RequestContextDefinition<NoInfer<TDecl>>,
 ): Part<NoInfer<TDecl>>;
 export function part(definition: AnyPart = {}): AnyPart {
 	// A query's options are checked against its root's, which includes this part's.
@@ -192,6 +251,8 @@ export interface QueryClientConfig {
 export interface QueryClient<TTypes extends RootTypes = NoParts> {
 	/** Entries changed since the last notification. */
 	readonly "~changed": Set<Entry>;
+	/** What the parts give every `queryFn` for the client; links can change it per request. */
+	readonly "~context": object;
 	readonly "~entries": Map<string, Entry>;
 	readonly "~events": Listeners<ClientEvent>;
 	/** Orders requests and invalidations. */
@@ -202,8 +263,6 @@ export interface QueryClient<TTypes extends RootTypes = NoParts> {
 	readonly "~types"?: { readonly root: TTypes };
 	readonly clock: Clock;
 	readonly config: QueryClientConfig;
-	/** What the parts give every `queryFn`, beside the client, key and signal. */
-	readonly context: TTypes["context"];
 	readonly isServer: boolean;
 	/**
 	 * Cache events: entries added, updated, removed, or gaining and losing
@@ -251,18 +310,16 @@ export function createQueryClient<
 	const entries = new Map<string, Entry>();
 	return {
 		"~changed": new Set(),
+		"~context": Object.assign(
+			{},
+			...(config.parts ?? []).map((one) => one.context),
+		),
 		"~entries": entries,
 		"~events": events,
 		"~seq": 0,
 		"~stamps": [],
 		clock: config.clock ?? systemClock,
 		config,
-		context:
-			// SAFETY: each part's `context` is typed by what it declares.
-			Object.assign(
-				{},
-				...(config.parts ?? []).map((one) => one.context),
-			) as RootOfParts<TParts>["context"],
 		isServer: config.isServer ?? !("window" in globalThis),
 		subscribe: (listener, options) => {
 			const unsubscribe = events.subscribe(listener, options);

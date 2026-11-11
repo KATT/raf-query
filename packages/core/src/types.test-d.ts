@@ -430,7 +430,6 @@ describe("root types", () => {
 		expectTypeOf<
 			keyof RootOf<typeof createQueryClient<[]>>["options"]
 		>().toEqualTypeOf<never>();
-		expectTypeOf(makeQueryClient().context.api).toBeFunction();
 	});
 
 	it("type a link's op, and a setup's client, by what the part declares", () => {
@@ -460,12 +459,42 @@ describe("root types", () => {
 		}>();
 	});
 
-	it("need a part's context where it declares one", () => {
+	it("need a part's context where it declares one: for the client, or from its link", () => {
+		part<Api>({
+			context: { api: async (path) => path },
+			link: (op, next) => {
+				expectTypeOf(op.context.api).toEqualTypeOf<
+					((path: string) => Promise<string>) | undefined
+				>();
+				return next(op);
+			},
+		});
+		const perRequest = part<Api>({
+			link: (op, next) =>
+				next({ ...op, context: { ...op.context, api: async (path) => path } }),
+		});
+		const qc = () => createQueryClient({ parts: [perRequest] });
+		expectTypeOf<RootOf<typeof qc>["context"]>().toEqualTypeOf<{
+			readonly api: (path: string) => Promise<string>;
+		}>();
 		const wrong = () => {
 			// @ts-expect-error -- `Api` declares a context, so the part gives it
 			part<Api>();
 			// @ts-expect-error -- of its type
 			part<Api>({ context: { api: 1 } });
+			// @ts-expect-error -- a link that gives the context gives it to `next`
+			part<Api>({ link: (op, next) => next(op) });
+			part<Api>({
+				link: (op, next) =>
+					// @ts-expect-error -- of its type
+					next({ ...op, context: { ...op.context, api: 1 } }),
+			});
+			part<Api>({
+				context: { api: async (path) => path },
+				link: (op, next) =>
+					// @ts-expect-error -- a link changes only the context its part declares
+					next({ ...op, context: { ...op.context, other: 1 } }),
+			});
 			// @ts-expect-error -- a part that declares no context gives none
 			part<Ownership>({ context: { api: async () => "" } });
 		};

@@ -51,7 +51,7 @@ tanstack-start/src/docs/links-and-features.ts#feature
 
 ### Context for every queryFn
 
-A part's `context` is merged into the context of every `queryFn` the client runs, beside `client`, `queryKey` and `signal`. The declaration names its fields, and `client.context` holds them:
+A part's `context` is merged into the context of every `queryFn` the client runs, beside `client`, `queryKey` and `signal`. The declaration names its fields:
 
 ```sample
 tanstack-start/src/docs/links-and-features.ts#context
@@ -64,6 +64,28 @@ In a factory whose builder is [bound to the client](#typing-options-by-the-clien
 ```sample
 tanstack-start/src/docs/links-and-features.bind.tsx#context
 ```
+
+### Context per request
+
+A part can also give its context from its link, for values that belong to one request: a token that may need refreshing, a trace id. The link passes `next` an operation with the `context` it wants the `queryFn`, and the links after it, to get. `op.context` is what the parts before it gave:
+
+```sample
+tanstack-start/src/docs/links-and-features.request-context.ts#session
+```
+
+The declaration is the same, so a factory reads `token` the same way:
+
+```sample
+tanstack-start/src/docs/links-and-features.request-context.ts#read
+```
+
+A part that declares a context gives it one of the two ways. With no `context`, its link's `next` only takes an operation that has the declared fields, so this is a type error:
+
+```sample
+tanstack-start/src/docs/links-and-features.request-context.ts#missing
+```
+
+A link can replace a field another part gave the client, too, for the one request. A paged query's pages are one request: they share its context.
 
 ### Options only
 
