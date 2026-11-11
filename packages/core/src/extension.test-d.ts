@@ -17,6 +17,8 @@ import {
 	type QueryInfo,
 	type Retry,
 	retry,
+	type RootOf,
+	setData,
 	type Target,
 } from "./index.ts";
 
@@ -89,6 +91,11 @@ const packageReportQuery = (input: { readonly id: number }) =>
 		retry: false,
 	});
 
+/** What the package does with a client: any that has `reports()`. */
+function seedReport(client: QueryClient<RootOf<Reports>>, id: number) {
+	setData(client, packageReportQuery, { id }, { id });
+}
+
 const makeQueryClient = () =>
 	createQueryClient({
 		parts: [traced(() => {}), ownership(() => {}), reports("/api")],
@@ -125,9 +132,12 @@ describe("extensions with public exports only", () => {
 		expectTypeOf(
 			invalidateMany(makeQueryClient(), packageReportQuery),
 		).resolves.toBeVoid();
+		seedReport(makeQueryClient(), 1);
 		const retrying = createQueryClient({ parts: [retry()] });
 		// @ts-expect-error -- this client has no `reports()`
 		void invalidateMany(retrying, packageReportQuery);
+		// @ts-expect-error -- nor for the package's own functions
+		seedReport(retrying, 1);
 	});
 
 	it("invalidate with a third-party target", () => {

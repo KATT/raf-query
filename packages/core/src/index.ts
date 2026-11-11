@@ -77,7 +77,7 @@ export {
 	queryOptions,
 	type StreamOptions,
 } from "./options.ts";
-export type { Optional } from "./root.ts";
+export type { Optional, RootOf } from "./root.ts";
 export { type Recommended, recommended } from "./presets.ts";
 export type { Thenable } from "./thenable.ts";
 export {

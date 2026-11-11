@@ -156,7 +156,11 @@ type OptionalOf<T> = T extends { readonly [optionalDecl]?: infer TDecl }
 
 /**
  * The root a builder is bound to: a client's, the root of a function that
- * makes one, or the root of the parts a library names by their declarations.
+ * makes one, or the root of the parts a library names by their
+ * declarations. `QueryClient<RootOf<Convex>>` is a client that has the part
+ * that declares `Convex`.
+ *
+ * @see https://raf-query.katt.dev/docs/links-and-features#binding-a-library-to-parts
  */
 export type RootOf<T> = [RootOfClient<T>] extends [never]
 	? Root<WithoutOptional<T>>
