@@ -41,7 +41,7 @@ function partialMatch(actual: unknown, expected: unknown): boolean {
 	if (Array.isArray(actual) && Array.isArray(expected)) {
 		return (
 			actual.length === expected.length &&
-			expected.every((plugin, index) => partialMatch(actual[index], plugin))
+			expected.every((part, index) => partialMatch(actual[index], part))
 		);
 	}
 	if (isPlainRecord(actual) && isPlainRecord(expected)) {

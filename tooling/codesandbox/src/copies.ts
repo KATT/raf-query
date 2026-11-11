@@ -48,7 +48,7 @@ export interface PackageJson {
 export function isIgnored(file: string, separator: string) {
 	return file
 		.split(separator)
-		.some((plugin) => ignored.has(plugin) || plugin.endsWith(".tsbuildinfo"));
+		.some((part) => ignored.has(part) || part.endsWith(".tsbuildinfo"));
 }
 
 /** The link that opens `app`'s copy on CodeSandbox, at its issue list route. */

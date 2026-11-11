@@ -141,7 +141,7 @@ describe("structural sharing", () => {
 		expect(Object.hasOwn(Object.prototype, "admin")).toBe(false);
 	});
 
-	it("replaces data it can't compare plugin by plugin", () => {
+	it("replaces data it can't compare part by part", () => {
 		const client = testClient();
 		// A list with a hole at 1, which structural sharing doesn't treat as plain.
 		const sparse = (): Array<number> =>
