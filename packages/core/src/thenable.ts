@@ -13,7 +13,7 @@ export type Thenable<T> = Promise<T> &
 	);
 
 /**
- * This doesn't do anything. It's an empty function,
+ * A function which intentionally doesn't do anything. It's an empty function,
  * which you can pass to methods and functions which require
  * a callback but you don't want anything to happen from it.
  *
