@@ -12,7 +12,14 @@ export type Thenable<T> = Promise<T> &
 		| { readonly status: "pending" }
 	);
 
-const noop = () => {};
+/**
+ * A function which intentionally doesn't do anything. It's an empty function,
+ * which you can pass to methods and functions which require
+ * a callback but you don't want anything to happen from it.
+ *
+ * @example promise.catch(noop) // Silently handles rejected promises
+ */
+const noop = (): void => {};
 
 export function fulfilled<T>(value: T): Thenable<T> {
 	return Object.assign(Promise.resolve(value), {
